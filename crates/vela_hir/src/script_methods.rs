@@ -13,7 +13,7 @@ use vela_package::{ModulePath, PackageId};
 
 use crate::body::{HirBody, HirSourceOrigin};
 use crate::ids::{HirBodyId, HirDeclId, HirNodeId, ModuleId};
-use crate::module_graph::{Declaration, DeclarationKind, ModuleGraph};
+use crate::module_graph::{Declaration, DeclarationKind, ModuleGraph, Visibility};
 use crate::type_hint::{FunctionSignature, ImplMetadata, ImplMetadataKind};
 
 #[cfg(test)]
@@ -156,6 +156,7 @@ pub struct ScriptMethod {
     origin: HirSourceOrigin,
     name_origin: HirSourceOrigin,
     owner_origin: HirSourceOrigin,
+    visibility: Visibility,
 }
 
 impl ScriptMethod {
@@ -212,6 +213,11 @@ impl ScriptMethod {
     #[must_use]
     pub const fn owner_origin(&self) -> HirSourceOrigin {
         self.owner_origin
+    }
+
+    #[must_use]
+    pub const fn visibility(&self) -> Visibility {
+        self.visibility
     }
 
     #[must_use]
@@ -321,6 +327,7 @@ struct MethodBuildInput<'graph> {
     body: &'graph HirBody,
     module: ModuleId,
     signature_module: ModuleId,
+    visibility: Visibility,
 }
 
 struct MethodBuildContext<'graph> {
@@ -404,6 +411,7 @@ fn collect_impl_methods(
                 body,
                 module: declaration.module,
                 signature_module: declaration.module,
+                visibility: method.visibility,
             },
         )?);
     }
@@ -479,6 +487,7 @@ fn collect_impl_methods(
                     body,
                     module: declaration.module,
                     signature_module: trait_metadata.module,
+                    visibility: Visibility::Public,
                 },
             )?);
         }
@@ -578,6 +587,7 @@ fn build_method(
         origin: input.body.origin,
         name_origin: input.name_origin,
         owner_origin: context.owner_origin,
+        visibility: input.visibility,
     })
 }
 

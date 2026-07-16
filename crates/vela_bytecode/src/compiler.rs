@@ -42,6 +42,7 @@ pub(crate) use test_support::*;
 pub struct CompiledProgram {
     bytecode: UnlinkedProgram,
     verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
+    binding_schema: Arc<crate::RustBindingSchema>,
     mir_executables: Box<[CompiledMirExecutable]>,
     budget_layouts: Box<[CompiledExecutableBudgetLayout]>,
     package_metadata: Option<crate::PackageCompilationMetadata>,
@@ -50,6 +51,7 @@ pub struct CompiledProgram {
 pub(crate) struct CompiledProgramParts {
     pub(crate) bytecode: UnlinkedProgram,
     pub(crate) verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
+    pub(crate) binding_schema: Arc<crate::RustBindingSchema>,
     pub(crate) mir_executables: Box<[CompiledMirExecutable]>,
     pub(crate) budget_layouts: Box<[CompiledExecutableBudgetLayout]>,
     pub(crate) package_metadata: Option<crate::PackageCompilationMetadata>,
@@ -95,6 +97,11 @@ impl CompiledProgram {
     }
 
     #[must_use]
+    pub fn binding_schema(&self) -> &Arc<crate::RustBindingSchema> {
+        &self.binding_schema
+    }
+
+    #[must_use]
     pub const fn package_metadata(&self) -> Option<&crate::PackageCompilationMetadata> {
         self.package_metadata.as_ref()
     }
@@ -104,6 +111,7 @@ impl CompiledProgram {
         CompiledProgramParts {
             bytecode: self.bytecode,
             verified_mir: self.verified_mir,
+            binding_schema: self.binding_schema,
             mir_executables: self.mir_executables,
             budget_layouts: self.budget_layouts,
             package_metadata: self.package_metadata,
@@ -237,6 +245,15 @@ fn compile_program_inner(
     let mut program = UnlinkedProgram::new();
     program.set_states(state_descriptors(graph, &input, &state_symbols)?);
     let (mut code, verified_mir) = compile_mir_roots(&input, graph)?;
+    let binding_schema = Arc::new(
+        crate::binding_schema::build_rust_binding_schema(
+            graph,
+            &script_function_symbols,
+            &methods,
+            &verified_mir,
+        )
+        .map_err(|message| CompileError::new(CompileErrorKind::RegistrySnapshot(message)))?,
+    );
     validate_state_initializers(&verified_mir, program.states())?;
     let mir_executables = compiled_mir_executables(&verified_mir);
     attach_compiled_mir_identities(&mut code, &mir_executables);
@@ -278,6 +295,7 @@ fn compile_program_inner(
         budget_layouts: compiled_budget_layouts(&bytecode),
         bytecode,
         verified_mir,
+        binding_schema,
         package_metadata,
     })
 }

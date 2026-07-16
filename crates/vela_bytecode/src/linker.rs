@@ -107,6 +107,7 @@ impl<'registry> Linker<'registry> {
         linked
             .bind_compiled_mir(
                 parts.verified_mir,
+                parts.binding_schema,
                 &parts.mir_executables,
                 &parts.budget_layouts,
                 package_metadata,

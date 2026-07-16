@@ -2021,6 +2021,19 @@ bindings. `HostRef`, `PathProxy`, lease guards, `CallArgs`, and erased runtime
 values remain internal boundary mechanisms or explicit low-level escape hatches,
 not normal business-function parameters.
 
+### Rust Bindings Consume One Compiler-Owned Schema
+
+Generated Rust-to-Vela bindings consume the deterministic schema attached to
+`CompiledProgram` and `LinkedArtifact`; they never rescan or reparse Vela
+source. The schema contains only public package/module callables, structural
+signature and default shape, sync/async form, transitive verified-MIR effect
+upper bounds, derived capabilities, receiver-qualified method identities,
+contract fingerprints, and source origins. Source positions, docs, Runtime
+grants, allowlists, reflection policy, budgets, and other deployment policy do
+not participate in callable fingerprints. Trait method identity is the pair of
+semantic receiver `TypeId` and protocol `MethodId`; its executable
+`FunctionId` remains the direct call target.
+
 ### Borrowed Host Returns Freeze Their Parent Owner
 
 A supported Rust `&T`/`&mut T` host return is exposed to Vela as a

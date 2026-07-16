@@ -135,9 +135,13 @@ owner through a retained safe self-cell lease, support the dedicated
 teardown. Sealed MIR analysis inserts conservative releases after proven last
 uses, at lexical death, on safe branch edges, before dead-value suspension, and
 on await resume after an awaited last use; observable aliases and escapes
-suppress automatic release. Batch D's authoritative binding schema, generator,
-runtime binding, stable re-resolution, active-context carrier, and source-backed
-diagnostics remain open.
+suppress automatic release. The compiler now emits one deterministic,
+policy-free Rust binding schema from public HIR callables and verified MIR,
+including receiver-qualified trait-method identities, structural signatures,
+transitive effects, contract fingerprints, and source origins, and carries it
+unchanged into `LinkedArtifact`. Batch D's generator, runtime binding, stable
+re-resolution, active-context carrier, and source-backed diagnostics remain
+open.
 
 ### State Storage Batch G
 

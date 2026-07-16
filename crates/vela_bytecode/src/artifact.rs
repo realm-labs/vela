@@ -17,6 +17,7 @@ pub struct LinkedArtifact {
     profile_layout: ProfileLayout,
     mir_executables: Box<[MirExecutableLayout]>,
     verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
+    binding_schema: Arc<crate::RustBindingSchema>,
     package_metadata: Option<crate::PackageArtifactMetadata>,
 }
 
@@ -84,6 +85,7 @@ pub mod test_support {
             profile_layout,
             mir_executables,
             verified_mir,
+            binding_schema: Arc::new(crate::RustBindingSchema::empty()),
             package_metadata: None,
         })
     }
@@ -131,6 +133,11 @@ impl LinkedArtifact {
     }
 
     #[must_use]
+    pub fn binding_schema(&self) -> &Arc<crate::RustBindingSchema> {
+        &self.binding_schema
+    }
+
+    #[must_use]
     pub const fn package_metadata(&self) -> Option<&crate::PackageArtifactMetadata> {
         self.package_metadata.as_ref()
     }
@@ -153,6 +160,7 @@ impl UnboundLinkedProgram {
             profile_layout: self.profile_layout,
             mir_executables,
             verified_mir,
+            binding_schema: Arc::new(crate::RustBindingSchema::empty()),
             package_metadata: None,
         }
     }
@@ -160,6 +168,7 @@ impl UnboundLinkedProgram {
     pub(crate) fn bind_compiled_mir(
         self,
         bundle: Arc<vela_mir::OwnedVerifiedMirBundle>,
+        binding_schema: Arc<crate::RustBindingSchema>,
         compiled_layouts: &[crate::compiler::CompiledMirExecutable],
         budget_layouts: &[crate::compiler::CompiledExecutableBudgetLayout],
         package_metadata: Option<crate::PackageArtifactMetadata>,
@@ -228,6 +237,7 @@ impl UnboundLinkedProgram {
             profile_layout: self.profile_layout,
             mir_executables,
             verified_mir: bundle,
+            binding_schema,
             package_metadata,
         })
     }

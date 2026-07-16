@@ -3,6 +3,7 @@
 //! Register bytecode for Vela code objects.
 
 pub(crate) mod artifact;
+mod binding_schema;
 mod budget_metadata;
 mod cache_policy;
 pub mod cache_site;
@@ -20,6 +21,13 @@ pub mod verification;
 #[doc(hidden)]
 pub use artifact::test_support;
 pub use artifact::{LinkedArtifact, MirExecutableLayout, ProfileFunctionLayout, ProfileLayout};
+pub use binding_schema::{
+    RUST_BINDING_SCHEMA_VERSION, RustBindingBoundaryMode, RustBindingCallable,
+    RustBindingCallableIdentity, RustBindingEffectSet, RustBindingErrorMode,
+    RustBindingMethodOwner, RustBindingModule, RustBindingPackage, RustBindingParameter,
+    RustBindingParameterDefault, RustBindingReturn, RustBindingReturnMode, RustBindingSchema,
+    RustBindingType,
+};
 pub use budget_metadata::MirBudgetCharge;
 pub(crate) use cache_policy::{CacheSiteInstruction, CacheSiteStorage};
 
