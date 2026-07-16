@@ -4,11 +4,119 @@
 //! grants, allowlists, reflection permissions, budgets, and other deployment
 //! policy deliberately live elsewhere and cannot affect an ABI fingerprint.
 
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt;
+use std::hash::Hash;
 
 use vela_common::{CallableAsyncness, CapabilitySet, Span, stable_id};
 
 use crate::native::{EffectSet, TypeHint};
+use crate::schema::ScriptHostSchema;
+
+/// Deterministic metadata proof for an ordinary owned/copy boundary value.
+/// Conversion is performed by the existing `IntoScriptArg`/`FromScriptArg`
+/// traits; this trait prevents exported signatures from silently degrading to
+/// `Any` when no stable type contract exists.
+pub trait VelaValueBoundary {
+    fn vela_type_hint() -> TypeHint;
+}
+
+/// Deterministic metadata proof for an exact registered host type.
+pub trait VelaHostBoundary: ScriptHostSchema {
+    fn vela_host_type_hint() -> TypeHint {
+        TypeHint::Host(Self::script_host_type_desc().key)
+    }
+}
+
+impl<T: ScriptHostSchema> VelaHostBoundary for T {}
+
+macro_rules! primitive_boundary {
+    ($($ty:ty => $hint:ident),* $(,)?) => {
+        $(
+            impl VelaValueBoundary for $ty {
+                fn vela_type_hint() -> TypeHint {
+                    TypeHint::$hint()
+                }
+            }
+        )*
+    };
+}
+
+primitive_boundary!(
+    () => unit,
+    bool => boolean,
+    char => char,
+    i8 => i8,
+    i16 => i16,
+    i32 => i32,
+    i64 => i64,
+    u8 => u8,
+    u16 => u16,
+    u32 => u32,
+    u64 => u64,
+    f32 => f32,
+    f64 => f64,
+    String => string,
+);
+
+impl<T: VelaValueBoundary> VelaValueBoundary for Vec<T> {
+    fn vela_type_hint() -> TypeHint {
+        TypeHint::array_of(T::vela_type_hint())
+    }
+}
+
+impl<T: VelaValueBoundary, const N: usize> VelaValueBoundary for [T; N] {
+    fn vela_type_hint() -> TypeHint {
+        TypeHint::array_of(T::vela_type_hint())
+    }
+}
+
+impl<T: VelaValueBoundary> VelaValueBoundary for Option<T> {
+    fn vela_type_hint() -> TypeHint {
+        TypeHint::option_of(T::vela_type_hint())
+    }
+}
+
+impl<T: VelaValueBoundary, E: VelaValueBoundary> VelaValueBoundary for Result<T, E> {
+    fn vela_type_hint() -> TypeHint {
+        TypeHint::result_of(T::vela_type_hint(), E::vela_type_hint())
+    }
+}
+
+impl<K, V> VelaValueBoundary for BTreeMap<K, V>
+where
+    K: VelaValueBoundary,
+    V: VelaValueBoundary,
+{
+    fn vela_type_hint() -> TypeHint {
+        TypeHint::map_of(K::vela_type_hint(), V::vela_type_hint())
+    }
+}
+
+impl<K, V> VelaValueBoundary for HashMap<K, V>
+where
+    K: VelaValueBoundary + Eq + Hash,
+    V: VelaValueBoundary,
+{
+    fn vela_type_hint() -> TypeHint {
+        TypeHint::map_of(K::vela_type_hint(), V::vela_type_hint())
+    }
+}
+
+impl<T: VelaValueBoundary> VelaValueBoundary for BTreeSet<T> {
+    fn vela_type_hint() -> TypeHint {
+        TypeHint::set_of(T::vela_type_hint())
+    }
+}
+
+impl<T> VelaValueBoundary for HashSet<T>
+where
+    T: VelaValueBoundary + Eq + Hash,
+{
+    fn vela_type_hint() -> TypeHint {
+        TypeHint::set_of(T::vela_type_hint())
+    }
+}
 
 /// Stable semantic category of a cross-language callable.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

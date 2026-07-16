@@ -57,6 +57,18 @@ impl GeneratedMethod {
                         Self::#method()
                     }
                 }
+
+                impl ::vela_engine::interop::VelaValueBoundary for #ident {
+                    fn vela_type_hint() -> ::vela_engine::native::TypeHint {
+                        let desc = Self::#method();
+                        match desc.kind {
+                            ::vela_reflect::registry::TypeKind::ScriptEnum => {
+                                ::vela_engine::native::TypeHint::Enum(desc.key)
+                            }
+                            _ => ::vela_engine::native::TypeHint::Record(desc.key),
+                        }
+                    }
+                }
             },
         }
     }

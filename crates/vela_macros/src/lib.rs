@@ -3,13 +3,28 @@
 //! Derive macros for Vela host embedding metadata.
 
 mod attrs;
+mod export;
 mod hash;
+mod methods;
 mod script_function;
 mod script_host;
 mod script_methods;
 mod signature;
 
 use proc_macro::TokenStream;
+
+/// Describes one ordinary Rust function through the unified Rust/Vela callable
+/// contract. Adapter registration uses the same classified signature.
+#[proc_macro_attribute]
+pub fn export(attr: TokenStream, input: TokenStream) -> TokenStream {
+    export::expand(attr.into(), input.into()).into()
+}
+
+/// Exports the supported public methods in one explicit inherent impl group.
+#[proc_macro_attribute]
+pub fn methods(attr: TokenStream, input: TokenStream) -> TokenStream {
+    methods::expand(attr.into(), input.into()).into()
+}
 
 #[proc_macro_derive(ScriptHost, attributes(script))]
 pub fn derive_script_host(input: TokenStream) -> TokenStream {
