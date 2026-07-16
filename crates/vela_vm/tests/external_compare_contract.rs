@@ -399,6 +399,7 @@ fn opcode_label(kind: &InstructionKind) -> &'static str {
         InstructionKind::HostMutate { .. } => "HostMutate",
         InstructionKind::HostRemove { .. } => "HostRemove",
         InstructionKind::HostCall { .. } => "HostCall",
+        InstructionKind::ReleaseBorrowLease { .. } => "ReleaseBorrowLease",
         InstructionKind::Return { .. } => "Return",
     }
 }
