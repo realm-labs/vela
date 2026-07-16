@@ -364,6 +364,14 @@ pub trait BindingAuthority {
     where
         R: FromScriptArg;
 
+    fn call_prepared_async<'call, R>(
+        &'call mut self,
+        callable: &'static BindingCallable,
+        args: CallArgs<'call>,
+    ) -> BindingCallFuture<'call, R>
+    where
+        R: FromScriptArg + Send + 'call;
+
     fn push_host_ref<'args, T>(
         &mut self,
         args: &mut CallArgs<'args>,
@@ -439,6 +447,25 @@ impl BindingAuthority for RootBinding<'_> {
         R::from_script_arg(&owned)
     }
 
+    fn call_prepared_async<'call, R>(
+        &'call mut self,
+        callable: &'static BindingCallable,
+        args: CallArgs<'call>,
+    ) -> BindingCallFuture<'call, R>
+    where
+        R: FromScriptArg + Send + 'call,
+    {
+        Box::pin(async move {
+            let spec = callable.spec()?;
+            let result = self
+                .runtime
+                .call_async(stable_target(spec), args, self.options.call.clone())
+                .await?;
+            let owned = self.runtime.value_to_owned(&result)?;
+            R::from_script_arg(&owned)
+        })
+    }
+
     fn push_host_ref<'args, T>(
         &mut self,
         args: &mut CallArgs<'args>,
@@ -512,6 +539,22 @@ impl BindingAuthority for ActiveBinding<'_, '_, '_> {
         let result = self.context.call(stable_target(spec), args)?;
         let owned = self.context.value_to_owned(&result)?;
         R::from_script_arg(&owned)
+    }
+
+    fn call_prepared_async<'call, R>(
+        &'call mut self,
+        callable: &'static BindingCallable,
+        args: CallArgs<'call>,
+    ) -> BindingCallFuture<'call, R>
+    where
+        R: FromScriptArg + Send + 'call,
+    {
+        Box::pin(async move {
+            let spec = callable.spec()?;
+            let result = self.context.call_async(stable_target(spec), args).await?;
+            let owned = self.context.value_to_owned(&result)?;
+            R::from_script_arg(&owned)
+        })
     }
 
     fn push_host_ref<'args, T>(

@@ -26,6 +26,13 @@ pub fn raise(player: Player, amount: i64) -> i64 {
     return player.level;
 }
 
+pub async fn raise_async(player: Player, amount: i64) -> i64 {
+    player.level += amount;
+    let marker = label(player.level).await;
+    player.level += marker.len();
+    return player.level;
+}
+
 pub fn read_level(player: Player) -> i64 { return player.level; }
 
 pub fn round_trip(player: Player, amount: i64) -> i64 {

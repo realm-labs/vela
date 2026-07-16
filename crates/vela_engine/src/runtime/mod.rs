@@ -531,26 +531,28 @@ where
         })
     }
 
-    pub fn call_async<'call, T>(
+    pub fn call_async<'call, 'args, T>(
         &'call mut self,
         entry: T,
-        args: CallArgs<'call>,
+        args: CallArgs<'args>,
         options: CallOptions,
     ) -> RuntimeCallFuture<'call>
     where
         T: RuntimeCallTarget + Send + 'call,
+        'args: 'call,
     {
         RuntimeCallFuture::new(async move { self.call_impl_async(entry, args, options).await })
     }
 
-    async fn call_impl_async<'call, T>(
+    async fn call_impl_async<'call, 'args, T>(
         &'call mut self,
         entry: T,
-        args: CallArgs<'call>,
+        args: CallArgs<'args>,
         options: CallOptions,
     ) -> VmResult<VelaValue>
     where
         T: RuntimeCallTarget + Send + 'call,
+        'args: 'call,
     {
         let mut budget = options.budget();
         let target = handles::call_target_sealed::Sealed::into_call_target(entry);

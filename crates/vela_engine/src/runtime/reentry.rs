@@ -234,11 +234,14 @@ impl ActiveNativeReentry<'_, '_> {
         }
     }
 
-    async fn drive_async<'call>(
+    async fn drive_async<'call, 'args>(
         &'call mut self,
         target: handles::EntryRequest,
-        args: CallArgs<'call>,
-    ) -> VmResult<VelaValue> {
+        args: CallArgs<'args>,
+    ) -> VmResult<VelaValue>
+    where
+        'args: 'call,
+    {
         let runtime_id = self.runtime_id;
         let retained_values = std::sync::Arc::clone(&self.retained_values);
         let mut child_host = ReentryExecutionHost::new(args, self.host)?;
@@ -452,11 +455,14 @@ impl NativeReentry for ActiveNativeReentry<'_, '_> {
         self.drive_sync(target, args)
     }
 
-    fn call_async<'call>(
+    fn call_async<'call, 'args>(
         &'call mut self,
         target: RuntimeCallTargetKind,
-        args: CallArgs<'call>,
-    ) -> RuntimeCallFuture<'call> {
+        args: CallArgs<'args>,
+    ) -> RuntimeCallFuture<'call>
+    where
+        'args: 'call,
+    {
         RuntimeCallFuture::new(async move {
             let target = self.resolve_target(target)?;
             self.drive_async(target, args).await

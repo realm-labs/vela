@@ -46,11 +46,13 @@ pub(crate) trait NativeReentry: Send {
         args: CallArgs<'args>,
     ) -> VmResult<VelaValue>;
 
-    fn call_async<'call>(
+    fn call_async<'call, 'args>(
         &'call mut self,
         target: RuntimeCallTargetKind,
-        args: CallArgs<'call>,
-    ) -> RuntimeCallFuture<'call>;
+        args: CallArgs<'args>,
+    ) -> RuntimeCallFuture<'call>
+    where
+        'args: 'call;
 
     fn bind_method(
         &mut self,
@@ -118,13 +120,14 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             .call(target, args)
     }
 
-    pub fn call_async<'call, T>(
+    pub fn call_async<'call, 'args, T>(
         &'call mut self,
         target: T,
-        args: CallArgs<'call>,
+        args: CallArgs<'args>,
     ) -> RuntimeCallFuture<'call>
     where
         T: RuntimeCallTarget + Send + 'call,
+        'args: 'call,
     {
         let target = crate::runtime::handles::call_target_sealed::Sealed::into_call_target(target);
         match self.reentry.as_deref_mut() {

@@ -118,6 +118,18 @@ pub fn call_generated_host(
     Ok((raised, read))
 }
 
+pub async fn call_generated_host_async(
+    runtime: &mut vela_engine::runtime::Runtime,
+    player: &mut Player,
+) -> Result<i64, String> {
+    let mut package = vela_bindings::bind(runtime).map_err(|error| error.to_string())?;
+    let mut module = package.dev_vela_anonymous_root_module();
+    module
+        .raise_async(player, 3)
+        .await
+        .map_err(|error| error.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use std::future::Future;
@@ -171,6 +183,17 @@ mod tests {
             Ok((12, 12))
         );
         assert_eq!(player.level, 12);
+        {
+            let dropped = super::call_generated_host_async(&mut runtime, &mut player);
+            require_send(&dropped);
+            drop(dropped);
+        }
+        assert_eq!(player.level, 12);
+        assert_eq!(
+            ready(super::call_generated_host_async(&mut runtime, &mut player)),
+            Ok(20)
+        );
+        assert_eq!(player.level, 20);
         let round_trip = runtime
             .call(
                 "round_trip",
@@ -185,9 +208,9 @@ mod tests {
             .expect("owned round trip");
         assert_eq!(
             <i64 as vela_engine::args::FromScriptArg>::from_script_arg(&owned),
-            Ok(43)
+            Ok(67)
         );
-        assert_eq!(player.level, 16);
+        assert_eq!(player.level, 24);
         let unrelated_error = runtime
             .call(
                 "round_trip_unrelated",
@@ -202,6 +225,8 @@ mod tests {
             }
         ));
     }
+
+    fn require_send<T: Send>(_: &T) {}
 
     #[test]
     fn generated_binding_re_resolves_after_compatible_body_reload() {
