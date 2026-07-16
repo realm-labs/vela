@@ -258,7 +258,8 @@ fn render_specs(output: &mut String, modules: &[GeneratedModule<'_>], schema: &R
             let callable = generated.callable;
             let constructor = match callable.identity {
                 RustBindingCallableIdentity::Function(function) => format!(
-                    "::vela_engine::binding::BindingCallableSpec::function(0x{:032x}, 0x{:032x}, 0x{:016x}, {}, {}, {}, {})",
+                    "::vela_engine::binding::BindingCallableSpec::function({:?}, 0x{:032x}, 0x{:032x}, 0x{:016x}, {}, {}, {}, {})",
+                    callable.public_path,
                     function.get(),
                     callable.executable.get(),
                     callable.contract_fingerprint,
@@ -268,7 +269,8 @@ fn render_specs(output: &mut String, modules: &[GeneratedModule<'_>], schema: &R
                     callable.source.end
                 ),
                 RustBindingCallableIdentity::Method { owner, method } => format!(
-                    "::vela_engine::binding::BindingCallableSpec::method(0x{:032x}, 0x{:032x}, 0x{:032x}, 0x{:016x}, {}, {}, {}, {})",
+                    "::vela_engine::binding::BindingCallableSpec::method({:?}, 0x{:032x}, 0x{:032x}, 0x{:032x}, 0x{:016x}, {}, {}, {}, {})",
+                    callable.public_path,
                     owner.get(),
                     method.get(),
                     callable.executable.get(),
@@ -290,7 +292,7 @@ fn render_package(output: &mut String, modules: &[GeneratedModule<'_>]) {
     writeln!(output, "    pub struct Package<A> {{ authority: A }}").expect("writing to String");
     writeln!(
         output,
-        "    pub fn bind(runtime: &mut ::vela_engine::runtime::Runtime) -> ::vela_engine::binding::VmResult<Package<::vela_engine::binding::RootBinding<'_>>> {{"
+        "    pub fn bind(runtime: &mut ::vela_engine::runtime::Runtime) -> ::vela_engine::binding::BindingResult<Package<::vela_engine::binding::RootBinding<'_>>> {{"
     )
     .expect("writing to String");
     writeln!(
@@ -301,7 +303,7 @@ fn render_package(output: &mut String, modules: &[GeneratedModule<'_>]) {
     writeln!(output, "    }}").expect("writing to String");
     writeln!(
         output,
-        "    pub fn bind_active<'ctx, 'host>(context: &'ctx mut ::vela_engine::NativeCallContext<'_, 'host>) -> ::vela_engine::binding::VmResult<Package<::vela_engine::binding::ActiveBinding<'ctx, 'host>>> {{"
+        "    pub fn bind_active<'binding, 'context, 'host>(context: &'binding mut ::vela_engine::context::NativeCallContext<'context, 'host>) -> ::vela_engine::binding::BindingResult<Package<::vela_engine::binding::ActiveBinding<'binding, 'context, 'host>>> {{"
     )
     .expect("writing to String");
     writeln!(
@@ -430,7 +432,15 @@ fn render_type(
     diagnostics: &mut Vec<RustBindingDiagnostic>,
 ) -> String {
     match ty {
-        RustBindingType::Any => "::vela_engine::runtime::VelaValue".to_owned(),
+        RustBindingType::Any => {
+            diagnostics.push(RustBindingDiagnostic {
+                code: "bindgen::untyped_boundary",
+                message: "a generated typed Rust binding requires an explicit Vela type hint"
+                    .to_owned(),
+                source: Some(source),
+            });
+            "()".to_owned()
+        }
         RustBindingType::Path {
             segments,
             arguments,

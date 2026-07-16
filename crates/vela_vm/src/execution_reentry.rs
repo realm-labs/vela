@@ -27,7 +27,7 @@ impl Vm {
         heap: &mut HeapExecution<'_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<()> {
-        if session.pending_async.is_empty() {
+        if session.pending_native.is_empty() {
             return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
                 opcode: "reentry without a suspended native invocation",
             }));

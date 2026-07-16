@@ -34,6 +34,15 @@ pub(crate) struct LinkedNativeFunctionCall<'a> {
 pub(crate) enum LinkedNativeDispatch {
     Complete,
     Async(PreparedAsyncNativeCall),
+    Context(PreparedContextNativeCall),
+}
+
+pub(crate) struct PreparedContextNativeCall {
+    pub(crate) native_id: FunctionId,
+    pub(crate) args: Vec<OwnedValue>,
+    pub(crate) destination: Option<Register>,
+    pub(crate) name: String,
+    pub(crate) source_span: Option<Span>,
 }
 
 pub(crate) struct PreparedAsyncNativeCall {
@@ -72,6 +81,7 @@ pub(crate) enum NativeCallTarget {
     BorrowedPure(BorrowedNativeFunction),
     Host(HostNativeFunction),
     BorrowedHost(crate::BorrowedHostNativeFunction),
+    ContextHost(HostNativeFunction),
 }
 
 impl NativeCallTarget {
@@ -84,6 +94,7 @@ impl NativeCallTarget {
             Self::BorrowedPure(_) => "borrowed_pure",
             Self::Host(_) => "host",
             Self::BorrowedHost(_) => "borrowed_host",
+            Self::ContextHost(_) => "context_host",
         }
     }
 }
@@ -94,6 +105,7 @@ pub(crate) fn dispatch_linked_native_function_call(
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     frame: &mut CallFrame,
+    context_native_boundaries: bool,
     call: LinkedNativeFunctionCall<'_>,
 ) -> VmResult<LinkedNativeDispatch> {
     let target = call.program.native_function(call.native).ok_or_else(|| {
@@ -128,6 +140,18 @@ pub(crate) fn dispatch_linked_native_function_call(
         }
         _ => None,
     };
+    if context_native_boundaries && matches!(target, NativeCallTarget::ContextHost(_)) {
+        let args = native_call_args_from_registers(frame, call.args, heap.as_deref())?
+            .as_slice()
+            .to_vec();
+        return Ok(LinkedNativeDispatch::Context(PreparedContextNativeCall {
+            native_id: call.native,
+            args,
+            destination: call.dst,
+            name: call.name.to_owned(),
+            source_span: call.call_site,
+        }));
+    }
     if let Some(function) = async_function {
         let args = native_call_args_from_registers(frame, call.args, heap.as_deref())?
             .as_slice()
@@ -214,7 +238,7 @@ fn dispatch_resolved_native_function_call(
         NativeCallTarget::AsyncPure(_)
         | NativeCallTarget::AsyncHost(_)
         | NativeCallTarget::ConditionalHost(_) => {
-            unreachable!("async targets are prepared before dispatch")
+            unreachable!("boundary targets are prepared before dispatch")
         }
         NativeCallTarget::BorrowedPure(native) => {
             let values = native_borrowed_call_args_from_registers(frame, call.args)?;
@@ -228,6 +252,16 @@ fn dispatch_resolved_native_function_call(
                 .map_err(|error| error.with_source_span_if_absent(call.call_site))?
         }
         NativeCallTarget::Host(native) => {
+            let values = native_call_args_from_registers(frame, call.args, heap.as_deref())?;
+            let host = host.as_deref_mut().ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "host context",
+                })
+            })?;
+            native(values.as_slice(), host, budget.as_deref_mut())
+                .map_err(|error| error.with_source_span_if_absent(call.call_site))?
+        }
+        NativeCallTarget::ContextHost(native) => {
             let values = native_call_args_from_registers(frame, call.args, heap.as_deref())?;
             let host = host.as_deref_mut().ok_or_else(|| {
                 VmError::new(VmErrorKind::TypeMismatch {
@@ -340,6 +374,12 @@ fn resolve_native_call_target_by_id(vm: &Vm, native: FunctionId) -> Option<Nativ
                 .get(&native)
                 .cloned()
                 .map(NativeCallTarget::Host)
+        })
+        .or_else(|| {
+            vm.context_host_native_ids
+                .get(&native)
+                .cloned()
+                .map(NativeCallTarget::ContextHost)
         })
 }
 

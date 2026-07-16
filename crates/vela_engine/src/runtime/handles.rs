@@ -4,7 +4,7 @@ use vela_bytecode::{
     LinkedArtifact, LinkedCodeObject, LinkedProgram, ProgramImage, ScriptFunctionHandle,
 };
 use vela_common::CallableAsyncness;
-use vela_def::{MethodId, TypeId};
+use vela_def::{FunctionId, MethodId, TypeId};
 use vela_hot_reload::runtime::HotReloadRuntime;
 use vela_hot_reload::symbol::ProgramVersionId;
 use vela_vm::error::VmResult;
@@ -96,7 +96,7 @@ pub trait RuntimeCallTarget: call_target_sealed::Sealed {}
 impl<T> RuntimeCallTarget for T where T: call_target_sealed::Sealed {}
 
 pub(crate) mod call_target_sealed {
-    use super::{RuntimeCallTargetKind, VelaFunction, VelaMethodTarget};
+    use super::{RuntimeCallTargetKind, StableVelaFunction, VelaFunction, VelaMethodTarget};
     use crate::runtime::ProviderMethodTarget;
 
     pub trait Sealed {
@@ -133,6 +133,12 @@ pub(crate) mod call_target_sealed {
         }
     }
 
+    impl Sealed for StableVelaFunction {
+        fn into_call_target(self) -> RuntimeCallTargetKind {
+            RuntimeCallTargetKind::StableFunction(self)
+        }
+    }
+
     impl Sealed for VelaMethodTarget {
         fn into_call_target(self) -> RuntimeCallTargetKind {
             RuntimeCallTargetKind::BoundMethod(self)
@@ -150,8 +156,16 @@ pub(crate) mod call_target_sealed {
 pub enum RuntimeCallTargetKind {
     FunctionName(String),
     Function(VelaFunction),
+    StableFunction(StableVelaFunction),
     BoundMethod(VelaMethodTarget),
     ProviderMethod(ProviderMethodTarget),
+}
+
+#[doc(hidden)]
+#[derive(Clone, Debug)]
+pub struct StableVelaFunction {
+    pub(crate) function: FunctionId,
+    pub(crate) diagnostic_name: &'static str,
 }
 
 pub trait RuntimeMethodSelector: method_selector_sealed::Sealed {}
@@ -305,6 +319,18 @@ pub(super) fn resolve_function_target(
                 function,
                 params,
                 param_defaults,
+                receiver: None,
+            })
+        }
+        RuntimeCallTargetKind::StableFunction(target) => {
+            let (function, code) =
+                linked_function_by_id(program, target.function, target.diagnostic_name)?;
+            Ok(EntryRequest {
+                name: target.diagnostic_name.to_owned(),
+                asyncness: code.asyncness,
+                function,
+                params: linked_params(program, code),
+                param_defaults: code.param_defaults.clone(),
                 receiver: None,
             })
         }

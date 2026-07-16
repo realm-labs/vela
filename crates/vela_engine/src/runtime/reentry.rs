@@ -9,7 +9,7 @@ use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 use vela_vm::{
     HostExecution, LinkedDriveOutcome, LinkedExecutionReentry, LinkedExecutionSession,
-    PreparedAsyncCall, VmStateValues,
+    PreparedAsyncCall, PreparedContextCall, VmStateValues,
 };
 
 use crate::context::{NativeCallContext, NativeReentry};
@@ -47,7 +47,8 @@ impl ActiveNativeReentry<'_, '_> {
     fn resolve_target(&mut self, target: RuntimeCallTargetKind) -> VmResult<handles::EntryRequest> {
         match target {
             target @ (RuntimeCallTargetKind::FunctionName(_)
-            | RuntimeCallTargetKind::Function(_)) => handles::resolve_function_target(
+            | RuntimeCallTargetKind::Function(_)
+            | RuntimeCallTargetKind::StableFunction(_)) => handles::resolve_function_target(
                 target,
                 self.runtime_id,
                 self.artifact.program(),
@@ -155,46 +156,80 @@ impl ActiveNativeReentry<'_, '_> {
             self.heap,
             self.budget,
         )?;
-        let mut host = HostExecution {
-            adapter: &mut child_host,
-            access: self.access,
-            state_values: Some(&mut *self.vm_state_values),
-        };
-        let outcome = match self.vm.drive_linked_execution(
-            self.session,
-            Some(&mut host),
-            self.heap,
-            self.budget,
-            Some(&*self.sidecars),
-            Some(&*self.sidecars),
-        ) {
-            Ok(outcome) => outcome,
-            Err(error) => {
-                self.vm
-                    .abort_linked_reentry(self.session, self.heap, self.budget)?;
-                return Err(error);
-            }
-        };
-        match outcome {
-            LinkedDriveOutcome::ReentryComplete(value) => {
-                let (value, active_root) = value.into_parts();
-                Ok(RuntimeValueRoots::retain_active(
-                    &retained_values,
-                    runtime_id,
-                    value,
-                    active_root,
-                ))
-            }
-            LinkedDriveOutcome::AsyncBoundary(call) => {
-                let name = call.name().to_owned();
-                self.vm
-                    .abort_linked_reentry(self.session, self.heap, self.budget)?;
-                Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait { name }))
-            }
-            LinkedDriveOutcome::Complete(_) => {
-                Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
-                    opcode: "root completed while driving native reentry",
-                }))
+        loop {
+            let outcome = {
+                let mut host = HostExecution {
+                    adapter: &mut child_host,
+                    access: self.access,
+                    state_values: Some(&mut *self.vm_state_values),
+                };
+                match self.vm.drive_linked_execution(
+                    self.session,
+                    Some(&mut host),
+                    self.heap,
+                    self.budget,
+                    Some(&*self.sidecars),
+                    Some(&*self.sidecars),
+                ) {
+                    Ok(outcome) => outcome,
+                    Err(error) => {
+                        self.vm
+                            .abort_linked_reentry(self.session, self.heap, self.budget)?;
+                        return Err(error);
+                    }
+                }
+            };
+            match outcome {
+                LinkedDriveOutcome::ReentryComplete(value) => {
+                    let (value, active_root) = value.into_parts();
+                    return Ok(RuntimeValueRoots::retain_active(
+                        &retained_values,
+                        runtime_id,
+                        value,
+                        active_root,
+                    ));
+                }
+                LinkedDriveOutcome::AsyncBoundary(call) => {
+                    let name = call.name().to_owned();
+                    self.vm
+                        .abort_linked_reentry(self.session, self.heap, self.budget)?;
+                    return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait { name }));
+                }
+                LinkedDriveOutcome::ContextBoundary(prepared) => {
+                    let result = {
+                        let mut nested = ActiveNativeReentry {
+                            runtime_id: self.runtime_id,
+                            engine: self.engine,
+                            registry_image: self.registry_image,
+                            artifact: self.artifact,
+                            vm: self.vm,
+                            session: self.session,
+                            host: &mut child_host,
+                            access: self.access,
+                            heap: self.heap,
+                            budget: self.budget,
+                            vm_state_values: &mut *self.vm_state_values,
+                            retained_values: std::sync::Arc::clone(&self.retained_values),
+                            sidecars: self.sidecars,
+                        };
+                        invoke_prepared_context(&prepared, &mut nested)
+                    };
+                    if let Err(error) = self.vm.resume_linked_context_call(
+                        self.session,
+                        result,
+                        Some(self.heap),
+                        Some(self.budget),
+                    ) {
+                        self.vm
+                            .abort_linked_reentry(self.session, self.heap, self.budget)?;
+                        return Err(error);
+                    }
+                }
+                LinkedDriveOutcome::Complete(_) => {
+                    return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                        opcode: "root completed while driving native reentry",
+                    }));
+                }
             }
         }
     }
@@ -297,12 +332,53 @@ impl ActiveNativeReentry<'_, '_> {
                         return Err(error);
                     }
                 }
+                LinkedDriveOutcome::ContextBoundary(prepared) => {
+                    let result = {
+                        let mut nested = ActiveNativeReentry {
+                            runtime_id: self.runtime_id,
+                            engine: self.engine,
+                            registry_image: self.registry_image,
+                            artifact: self.artifact,
+                            vm: self.vm,
+                            session: self.session,
+                            host: &mut child_host,
+                            access: self.access,
+                            heap: self.heap,
+                            budget: self.budget,
+                            vm_state_values: &mut *self.vm_state_values,
+                            retained_values: std::sync::Arc::clone(&self.retained_values),
+                            sidecars: self.sidecars,
+                        };
+                        invoke_prepared_context(&prepared, &mut nested)
+                    };
+                    if let Err(error) = self.vm.resume_linked_context_call(
+                        self.session,
+                        result,
+                        Some(self.heap),
+                        Some(self.budget),
+                    ) {
+                        self.vm
+                            .abort_linked_reentry(self.session, self.heap, self.budget)?;
+                        return Err(error);
+                    }
+                }
             }
         }
     }
 }
 
 impl NativeReentry for ActiveNativeReentry<'_, '_> {
+    fn binding_schema(&self) -> &vela_bytecode::RustBindingSchema {
+        self.artifact.binding_schema()
+    }
+
+    fn value_to_owned(&mut self, value: &VelaValue) -> VmResult<OwnedValue> {
+        if value.runtime_id() != self.runtime_id {
+            return Err(call_args_type_error("VelaValue belongs to another Runtime"));
+        }
+        vela_vm::persistent_value_to_owned(&value.value(), self.heap.heap)
+    }
+
     fn adapter(&mut self) -> &mut dyn ScriptStateAdapter {
         self.host
     }
@@ -317,6 +393,17 @@ impl NativeReentry for ActiveNativeReentry<'_, '_> {
             access: self.access,
             state_values: Some(&mut *self.vm_state_values),
         }
+    }
+
+    fn execution_parts(&mut self) -> (HostExecution<'_>, Option<&mut ExecutionBudget>) {
+        (
+            HostExecution {
+                adapter: self.host,
+                access: self.access,
+                state_values: Some(&mut *self.vm_state_values),
+            },
+            Some(self.budget),
+        )
     }
 
     fn budget(&self) -> Option<&ExecutionBudget> {
@@ -531,4 +618,28 @@ pub(super) async fn invoke_prepared_async(
             .await;
     }
     prepared.invoke().await
+}
+
+pub(super) fn invoke_prepared_context(
+    prepared: &PreparedContextCall,
+    active: &mut ActiveNativeReentry<'_, '_>,
+) -> VmResult<OwnedValue> {
+    let entry = active
+        .engine
+        .context_host_native_function(prepared.native_id())
+        .ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownNative {
+                name: prepared.name().to_owned(),
+            })
+        })?;
+    crate::engine::check_capabilities(
+        &entry.desc.name,
+        &entry.desc.effects,
+        active.engine.capabilities(),
+    )?;
+    let engine = active.engine.clone();
+    let function = std::sync::Arc::clone(&entry.function);
+    let args = prepared.args().to_vec();
+    let mut context = NativeCallContext::new_reentry(&engine, active);
+    function(&args, &mut context)
 }

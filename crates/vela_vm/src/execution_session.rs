@@ -16,12 +16,17 @@ use crate::{Vm, VmBytecodeProfiler, VmInlineCaches};
 
 pub struct LinkedExecutionSession {
     pub(crate) frames: Vec<ExecutionFrame>,
-    pub(crate) pending_async: Vec<PendingAsyncResume>,
+    pub(crate) pending_native: Vec<PendingNativeResume>,
     pub(crate) root_call_depth_charged: bool,
     pub(crate) root_generation: vela_bytecode::ExecutableGenerationId,
+    pub(crate) context_native_boundaries: bool,
 }
 
 impl LinkedExecutionSession {
+    pub fn enable_context_native_boundaries(&mut self) {
+        self.context_native_boundaries = true;
+    }
+
     pub(crate) fn top_reentry_frame(&self) -> Option<usize> {
         self.frames.iter().rposition(|frame| {
             frame
@@ -32,7 +37,7 @@ impl LinkedExecutionSession {
 }
 
 #[derive(Clone, Copy)]
-pub(crate) struct PendingAsyncResume {
+pub(crate) struct PendingNativeResume {
     pub(crate) destination: Option<Register>,
     pub(crate) source_span: Option<Span>,
 }
@@ -175,8 +180,9 @@ impl Vm {
         match entry {
             Ok(entry) => Ok(LinkedExecutionSession {
                 root_generation: entry.owner.generation(),
+                context_native_boundaries: false,
                 frames: vec![entry],
-                pending_async: Vec::new(),
+                pending_native: Vec::new(),
                 root_call_depth_charged: limits_call_depth,
             }),
             Err(error) => {

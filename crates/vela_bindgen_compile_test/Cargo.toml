@@ -1,0 +1,16 @@
+[package]
+name = "vela_bindgen_compile_test"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+publish = false
+
+[dependencies]
+vela_engine = { workspace = true }
+
+[build-dependencies]
+vela_bindgen = { workspace = true }
+vela_engine = { workspace = true }
+
+[lints]
+workspace = true

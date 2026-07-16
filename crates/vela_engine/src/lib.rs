@@ -5,6 +5,7 @@
 #![allow(clippy::result_large_err)]
 
 pub mod args;
+pub mod binding;
 pub mod builder;
 pub mod clock;
 mod compiler_options;

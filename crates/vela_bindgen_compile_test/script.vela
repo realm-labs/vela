@@ -1,0 +1,3 @@
+#[doc("Add two values through a generated binding.")]
+pub fn add(left: i64, right: i64) -> i64 { return left + right; }
+pub async fn label(value: i64) -> String { return "value"; }

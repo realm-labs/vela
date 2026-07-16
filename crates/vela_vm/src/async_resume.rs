@@ -209,9 +209,33 @@ impl Vm {
         heap: Option<&mut HeapExecution<'_>>,
         budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<()> {
-        let pending = session.pending_async.pop().ok_or_else(|| {
+        self.resume_linked_native_call(session, result, heap, budget, "async")
+    }
+
+    pub fn resume_linked_context_call(
+        &self,
+        session: &mut LinkedExecutionSession,
+        result: VmResult<OwnedValue>,
+        heap: Option<&mut HeapExecution<'_>>,
+        budget: Option<&mut ExecutionBudget>,
+    ) -> VmResult<()> {
+        self.resume_linked_native_call(session, result, heap, budget, "context")
+    }
+
+    fn resume_linked_native_call(
+        &self,
+        session: &mut LinkedExecutionSession,
+        result: VmResult<OwnedValue>,
+        heap: Option<&mut HeapExecution<'_>>,
+        budget: Option<&mut ExecutionBudget>,
+        boundary: &'static str,
+    ) -> VmResult<()> {
+        let pending = session.pending_native.pop().ok_or_else(|| {
             VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
-                opcode: "async resume without a pending invocation",
+                opcode: match boundary {
+                    "async" => "async resume without a pending invocation",
+                    _ => "context resume without a pending invocation",
+                },
             })
         })?;
         let value = result.map_err(|mut error| {
@@ -226,7 +250,7 @@ impl Vm {
         })?;
         let heap = heap.ok_or_else(|| {
             VmError::new(VmErrorKind::TypeMismatch {
-                operation: "async native heap",
+                operation: "native boundary heap",
             })
             .with_source_span_if_absent(pending.source_span)
         })?;

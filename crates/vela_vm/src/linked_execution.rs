@@ -9,8 +9,8 @@ use crate::budget::ExecutionBudget;
 use crate::equality::{ResumableComparison, ResumableComparisonKind, ResumableComparisonStep};
 use crate::error::{VmError, VmErrorKind, VmResult, VmStackFrame};
 use crate::execution_session::{
-    ExecutionFrame, LinkedExecutionSession, PendingAsyncResume, PendingFrameOperation,
-    PendingLinkedCall, PendingReturnTarget, ReturnContinuation,
+    ExecutionFrame, LinkedExecutionSession, PendingFrameOperation, PendingLinkedCall,
+    PendingNativeResume, PendingReturnTarget, ReturnContinuation,
 };
 use crate::frame::CallFrame;
 use crate::heap_execution::{ActiveExecutionValue, HeapExecution};
@@ -65,6 +65,11 @@ enum FrameDriveOutcome {
         destination: Option<Register>,
         source_span: Option<Span>,
     },
+    Context {
+        call: PreparedContextCall,
+        destination: Option<Register>,
+        source_span: Option<Span>,
+    },
     Return(Value),
 }
 
@@ -72,6 +77,30 @@ pub enum LinkedDriveOutcome {
     Complete(Value),
     ReentryComplete(ActiveExecutionValue),
     AsyncBoundary(PreparedAsyncCall),
+    ContextBoundary(PreparedContextCall),
+}
+
+pub struct PreparedContextCall {
+    native_id: vela_def::FunctionId,
+    args: Vec<crate::OwnedValue>,
+    name: String,
+}
+
+impl PreparedContextCall {
+    #[must_use]
+    pub const fn native_id(&self) -> vela_def::FunctionId {
+        self.native_id
+    }
+
+    #[must_use]
+    pub fn args(&self) -> &[crate::OwnedValue] {
+        &self.args
+    }
+
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -185,8 +214,9 @@ impl Vm {
         )?;
         let mut session = LinkedExecutionSession {
             root_generation: entry.owner.generation(),
+            context_native_boundaries: false,
             frames: vec![entry],
-            pending_async: Vec::new(),
+            pending_native: Vec::new(),
             root_call_depth_charged: false,
         };
         let dispatch = FrameDispatchContext {
@@ -209,6 +239,11 @@ impl Vm {
                     name: call.name().to_owned(),
                 }))
             }
+            LinkedDriveOutcome::ContextBoundary(_) => {
+                Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                    opcode: "context native boundary requires an Engine Runtime",
+                }))
+            }
         }
     }
 
@@ -225,6 +260,7 @@ impl Vm {
             .is_some_and(ExecutionBudget::limits_call_depth);
 
         loop {
+            let context_native_boundaries = session.context_native_boundaries;
             let outcome = {
                 let active = session
                     .frames
@@ -238,6 +274,7 @@ impl Vm {
                     host,
                     heap,
                     budget,
+                    context_native_boundaries,
                 )
             };
             let outcome = match outcome {
@@ -355,11 +392,22 @@ impl Vm {
                     destination,
                     source_span,
                 } => {
-                    session.pending_async.push(PendingAsyncResume {
+                    session.pending_native.push(PendingNativeResume {
                         destination,
                         source_span,
                     });
                     return Ok(LinkedDriveOutcome::AsyncBoundary(call));
+                }
+                FrameDriveOutcome::Context {
+                    call,
+                    destination,
+                    source_span,
+                } => {
+                    session.pending_native.push(PendingNativeResume {
+                        destination,
+                        source_span,
+                    });
+                    return Ok(LinkedDriveOutcome::ContextBoundary(call));
                 }
                 FrameDriveOutcome::Return(value) => {
                     let finished = session.frames.pop().expect("returning frame");
@@ -492,6 +540,9 @@ impl Vm {
             }
             Ok(LinkedDriveOutcome::AsyncBoundary(call)) => {
                 Ok(LinkedDriveOutcome::AsyncBoundary(call))
+            }
+            Ok(LinkedDriveOutcome::ContextBoundary(call)) => {
+                Ok(LinkedDriveOutcome::ContextBoundary(call))
             }
             Ok(LinkedDriveOutcome::ReentryComplete(value)) => {
                 Ok(LinkedDriveOutcome::ReentryComplete(value))
@@ -653,6 +704,7 @@ impl Vm {
         host: &mut Option<&mut HostExecution<'_>>,
         heap: &mut Option<&mut HeapExecution<'_>>,
         budget: &mut Option<&mut ExecutionBudget>,
+        context_native_boundaries: bool,
     ) -> VmResult<FrameDriveOutcome> {
         let current_owner = Arc::clone(&frame_state.owner);
         let program = current_owner.program();
@@ -1190,6 +1242,7 @@ impl Vm {
                         heap,
                         budget,
                         frame,
+                        context_native_boundaries,
                         native_function_calls::LinkedNativeFunctionCall {
                             program,
                             dst: *dst,
@@ -1201,25 +1254,40 @@ impl Vm {
                             call_site: instruction.span,
                         },
                     )?;
-                    if let native_function_calls::LinkedNativeDispatch::Async(prepared) = dispatch {
-                        let Some(resume) = await_resume else {
-                            return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
-                                name: prepared.name,
-                            })
-                            .with_source_span_if_absent(prepared.source_span));
-                        };
-                        frame_state.ip = resume;
-                        return Ok(FrameDriveOutcome::Async {
-                            call: PreparedAsyncCall {
-                                native_id: Some(prepared.native_id),
-                                method_id: None,
-                                function: prepared.function,
-                                args: prepared.args,
-                                name: prepared.name,
-                            },
-                            destination: prepared.destination,
-                            source_span: prepared.source_span,
-                        });
+                    match dispatch {
+                        native_function_calls::LinkedNativeDispatch::Complete => {}
+                        native_function_calls::LinkedNativeDispatch::Async(prepared) => {
+                            let Some(resume) = await_resume else {
+                                return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
+                                    name: prepared.name,
+                                })
+                                .with_source_span_if_absent(prepared.source_span));
+                            };
+                            frame_state.ip = resume;
+                            return Ok(FrameDriveOutcome::Async {
+                                call: PreparedAsyncCall {
+                                    native_id: Some(prepared.native_id),
+                                    method_id: None,
+                                    function: prepared.function,
+                                    args: prepared.args,
+                                    name: prepared.name,
+                                },
+                                destination: prepared.destination,
+                                source_span: prepared.source_span,
+                            });
+                        }
+                        native_function_calls::LinkedNativeDispatch::Context(prepared) => {
+                            frame_state.ip = InstructionOffset(ip);
+                            return Ok(FrameDriveOutcome::Context {
+                                call: PreparedContextCall {
+                                    native_id: prepared.native_id,
+                                    args: prepared.args,
+                                    name: prepared.name,
+                                },
+                                destination: prepared.destination,
+                                source_span: prepared.source_span,
+                            });
+                        }
                     }
                 }
                 InstructionKind::CallFunction {

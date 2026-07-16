@@ -745,15 +745,11 @@ impl Engine {
             let capabilities = self.capabilities;
             let function = Arc::clone(&entry.function);
             let engine = self.clone();
-            vm.register_budgeted_host_native_with_id(id, {
-                let function = Arc::clone(&function);
-                let engine = engine.clone();
-                move |args, host, budget| {
-                    check_capabilities(&name, &effects, capabilities)?;
-                    let mut context =
-                        crate::context::NativeCallContext::new(&engine, host, budget, None);
-                    function(args, &mut context)
-                }
+            vm.register_context_host_native_with_id(id, move |args, host, budget| {
+                check_capabilities(&name, &effects, capabilities)?;
+                let mut context =
+                    crate::context::NativeCallContext::new(&engine, host, budget, None);
+                function(args, &mut context)
             });
         }
     }

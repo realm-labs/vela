@@ -8,6 +8,7 @@ use vela_host::value::HostValue;
 use vela_vm::HostExecution;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::VmResult;
+use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
 use crate::permission::{Capability, CapabilitySet};
@@ -18,11 +19,17 @@ use crate::runtime::{
 };
 
 pub(crate) trait NativeReentry: Send {
+    fn binding_schema(&self) -> &vela_bytecode::RustBindingSchema;
+
+    fn value_to_owned(&mut self, value: &VelaValue) -> VmResult<OwnedValue>;
+
     fn adapter(&mut self) -> &mut dyn ScriptStateAdapter;
 
     fn access(&mut self) -> &mut HostAccess;
 
     fn host_execution(&mut self) -> HostExecution<'_>;
+
+    fn execution_parts(&mut self) -> (HostExecution<'_>, Option<&mut ExecutionBudget>);
 
     fn budget(&self) -> Option<&ExecutionBudget>;
 
@@ -116,6 +123,17 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             .bind_method(receiver, method)
     }
 
+    pub(crate) fn binding_schema(&self) -> Option<&vela_bytecode::RustBindingSchema> {
+        self.reentry.as_deref().map(NativeReentry::binding_schema)
+    }
+
+    pub(crate) fn value_to_owned(&mut self, value: &VelaValue) -> VmResult<OwnedValue> {
+        self.reentry
+            .as_deref_mut()
+            .ok_or_else(reentry_unavailable)?
+            .value_to_owned(value)
+    }
+
     #[must_use]
     pub fn engine(&self) -> &Engine {
         self.engine
@@ -155,40 +173,21 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             &mut NativeCallContext<'nested_ctx, 'nested_host>,
         ) -> VmResult<R>,
     ) -> VmResult<R> {
-        let Some(host) = self.host.take() else {
-            return Err(reentry_unavailable());
-        };
         let engine = self.engine;
-        let mut budget = self.budget.take();
-        let mut result = None;
-        let lease_result = {
-            let access = &mut *host.access;
-            let mut state_values = host.state_values.as_deref_mut();
-            host.adapter
-                .with_host_leases(requests, &mut |leases, leased_adapter| {
-                    let mut leased_host = HostExecution {
-                        adapter: leased_adapter,
-                        access: &mut *access,
-                        state_values: state_values.as_deref_mut(),
-                    };
-                    let mut nested = NativeCallContext::new(
-                        engine,
-                        &mut leased_host,
-                        budget.as_deref_mut(),
-                        None,
-                    );
-                    result = Some(invoke(leases, &mut nested));
-                    Ok(())
-                })
-        };
-        self.host = Some(host);
-        self.budget = budget;
-        lease_result?;
-        result.ok_or_else(|| {
-            vela_vm::error::VmError::new(vela_vm::error::VmErrorKind::TypeMismatch {
-                operation: "host lease callback did not run",
-            })
-        })?
+        if let Some(host) = self.host.take() {
+            let mut budget = self.budget.take();
+            let result =
+                invoke_context_with_host_leases(engine, host, &mut budget, requests, &mut invoke);
+            self.host = Some(host);
+            self.budget = budget;
+            return result;
+        }
+        let (mut host, mut budget) = self
+            .reentry
+            .as_deref_mut()
+            .ok_or_else(reentry_unavailable)?
+            .execution_parts();
+        invoke_context_with_host_leases(engine, &mut host, &mut budget, requests, &mut invoke)
     }
 
     pub fn access(&mut self) -> &mut HostAccess {
@@ -362,6 +361,41 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
                 .host_execution(),
         }
     }
+}
+
+fn invoke_context_with_host_leases<R>(
+    engine: &Engine,
+    host: &mut HostExecution<'_>,
+    budget: &mut Option<&mut ExecutionBudget>,
+    requests: &[(HostRef, HostLeaseKind)],
+    invoke: &mut impl for<'lease, 'nested_ctx, 'nested_host> FnMut(
+        &mut [ErasedHostLease<'lease>],
+        &mut NativeCallContext<'nested_ctx, 'nested_host>,
+    ) -> VmResult<R>,
+) -> VmResult<R> {
+    let mut result = None;
+    let lease_result = {
+        let access = &mut *host.access;
+        let mut state_values = host.state_values.as_deref_mut();
+        host.adapter
+            .with_host_leases(requests, &mut |leases, leased_adapter| {
+                let mut leased_host = HostExecution {
+                    adapter: leased_adapter,
+                    access: &mut *access,
+                    state_values: state_values.as_deref_mut(),
+                };
+                let mut nested =
+                    NativeCallContext::new(engine, &mut leased_host, budget.as_deref_mut(), None);
+                result = Some(invoke(leases, &mut nested));
+                Ok(())
+            })
+    };
+    lease_result?;
+    result.ok_or_else(|| {
+        vela_vm::error::VmError::new(vela_vm::error::VmErrorKind::TypeMismatch {
+            operation: "host lease callback did not run",
+        })
+    })?
 }
 
 fn reentry_unavailable() -> vela_vm::error::VmError {

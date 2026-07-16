@@ -19,12 +19,12 @@ use vela_vm::heap::{HeapValue, ScriptHeap};
 use vela_vm::heap_execution::HeapExecution;
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
-use vela_vm::{
-    LinkedDriveOutcome, LinkedExecutionStart, LinkedRuntimeCodeCall, PersistentHeapExecution,
-    persistent_value_to_owned,
-};
+use vela_vm::{LinkedDriveOutcome, LinkedExecutionStart, persistent_value_to_owned};
 #[cfg(test)]
-use vela_vm::{LinkedProgramHostBudgetCall, LinkedProgramHostCall};
+use vela_vm::{
+    LinkedProgramHostBudgetCall, LinkedProgramHostCall, LinkedRuntimeCodeCall,
+    PersistentHeapExecution,
+};
 
 use crate::engine::Engine;
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
@@ -70,7 +70,7 @@ use handles::{
     RuntimeCallExecution, RuntimeCallTargetKind, RuntimeMethodResolveContext,
     RuntimeMethodSelectorKind,
 };
-use reentry::{ActiveNativeReentry, invoke_prepared_async};
+use reentry::{ActiveNativeReentry, invoke_prepared_async, invoke_prepared_context};
 use state::RuntimeState;
 use vm_states::RuntimeValueRoots;
 
@@ -769,13 +769,10 @@ where
             budget,
         )?;
         let mut access = HostAccess::new();
-        let roots = call.vm_states.roots();
-        let mut host = HostExecution {
-            adapter: &mut execution_host,
-            access: &mut access,
-            state_values: Some(&mut call.vm_states.values),
-        };
         let vm = runtime_vm(call.engine, call.registry_image, call.hot_reload);
+        let roots = call.vm_states.roots();
+        let retained_values = std::sync::Arc::clone(&call.vm_states.retained_values);
+        let vm_state_values = &mut call.vm_states.values;
         let mut entry_args = Vec::with_capacity(
             resolved
                 .len()
@@ -785,20 +782,85 @@ where
             entry_args.push(receiver.value);
         }
         entry_args.extend_from_slice(&resolved);
-        let result = vm.run_linked_runtime_code_call(LinkedRuntimeCodeCall {
-            artifact: call.artifact,
-            function: call.target.function,
-            args: &entry_args,
-            host: &mut host,
-            persistent: PersistentHeapExecution {
-                heap: &mut call.vm_states.heap,
+        let mut heap = HeapExecution::new(&mut call.vm_states.heap);
+        let mut session = vm.start_linked_execution(
+            LinkedExecutionStart {
+                artifact: call.artifact,
+                function: call.target.function,
+                args: &entry_args,
                 roots: &roots,
+                inline_caches: Some(&*call.sidecars),
+                bytecode_profiler: Some(&*call.sidecars),
             },
+            &mut heap,
             budget,
-            inline_caches: Some(&*call.sidecars),
-            bytecode_profiler: Some(&*call.sidecars),
-        })?;
-        Ok(call.vm_states.retain(call.runtime_id, result))
+        )?;
+        session.enable_context_native_boundaries();
+
+        loop {
+            let outcome = {
+                let mut host = HostExecution {
+                    adapter: &mut execution_host,
+                    access: &mut access,
+                    state_values: Some(&mut *vm_state_values),
+                };
+                vm.drive_linked_execution(
+                    &mut session,
+                    Some(&mut host),
+                    &mut heap,
+                    budget,
+                    Some(&*call.sidecars),
+                    Some(&*call.sidecars),
+                )?
+            };
+            match outcome {
+                LinkedDriveOutcome::Complete(value) => {
+                    let value = vm.finish_linked_execution(value, &mut heap, &roots, budget);
+                    drop(heap);
+                    return Ok(RuntimeValueRoots::retain(
+                        &retained_values,
+                        call.runtime_id,
+                        value,
+                    ));
+                }
+                LinkedDriveOutcome::ReentryComplete(_) => {
+                    return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                        opcode: "unexpected root reentry completion",
+                    }));
+                }
+                LinkedDriveOutcome::AsyncBoundary(prepared) => {
+                    return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
+                        name: prepared.name().to_owned(),
+                    }));
+                }
+                LinkedDriveOutcome::ContextBoundary(prepared) => {
+                    let result = {
+                        let mut active = ActiveNativeReentry {
+                            runtime_id: call.runtime_id,
+                            engine: call.engine,
+                            registry_image: call.registry_image,
+                            artifact: call.artifact,
+                            vm: &vm,
+                            session: &mut session,
+                            host: &mut execution_host,
+                            access: &mut access,
+                            heap: &mut heap,
+                            budget,
+                            vm_state_values,
+                            retained_values: std::sync::Arc::clone(&retained_values),
+                            sidecars: &mut *call.sidecars,
+                        };
+                        invoke_prepared_context(&prepared, &mut active)
+                    };
+                    vm.resume_linked_context_call(
+                        &mut session,
+                        result,
+                        Some(&mut heap),
+                        Some(budget),
+                    )?;
+                }
+            }
+        }
     }
 
     async fn call_runtime_args_async(
@@ -841,6 +903,7 @@ where
             &mut heap,
             budget,
         )?;
+        session.enable_context_native_boundaries();
 
         loop {
             let outcome = {
@@ -899,6 +962,32 @@ where
                         Some(budget),
                     )?;
                 }
+                LinkedDriveOutcome::ContextBoundary(prepared) => {
+                    let result = {
+                        let mut active = ActiveNativeReentry {
+                            runtime_id: call.runtime_id,
+                            engine: call.engine,
+                            registry_image: call.registry_image,
+                            artifact: call.artifact,
+                            vm: &vm,
+                            session: &mut session,
+                            host: &mut execution_host,
+                            access: &mut access,
+                            heap: &mut heap,
+                            budget,
+                            vm_state_values,
+                            retained_values: std::sync::Arc::clone(&retained_values),
+                            sidecars: &mut *call.sidecars,
+                        };
+                        invoke_prepared_context(&prepared, &mut active)
+                    };
+                    vm.resume_linked_context_call(
+                        &mut session,
+                        result,
+                        Some(&mut heap),
+                        Some(budget),
+                    )?;
+                }
             }
         }
     }
@@ -910,7 +999,8 @@ where
     ) -> VmResult<handles::EntryRequest> {
         match target {
             target @ (RuntimeCallTargetKind::FunctionName(_)
-            | RuntimeCallTargetKind::Function(_)) => handles::resolve_function_target(
+            | RuntimeCallTargetKind::Function(_)
+            | RuntimeCallTargetKind::StableFunction(_)) => handles::resolve_function_target(
                 target,
                 self.state.id,
                 self.image.linked_program(),
@@ -942,6 +1032,10 @@ where
 
     fn current_program_version_id(&self) -> Option<ProgramVersionId> {
         self.image.current_program_version_id()
+    }
+
+    pub(crate) fn active_binding_schema(&self) -> &vela_bytecode::RustBindingSchema {
+        self.image.linked_artifact().binding_schema()
     }
 
     fn value_type_id(&self, value: &VelaValue) -> Option<vela_def::TypeId> {

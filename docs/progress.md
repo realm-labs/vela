@@ -56,7 +56,7 @@ storage Batch G reaches final acceptance.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Paused behind Batch G | Resume the cache-family audit after state-storage final acceptance. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
-| Rust/Vela interop | Batch D active | Ordinary Rust exports and natural Vela calls satisfy the Batch B/C checkpoints; typed Rust-to-Vela bindings are next. |
+| Rust/Vela interop | Batch D active | Generated typed root and active-session bindings execute scalar Vela exports; conversion and reload closure remain. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -142,9 +142,14 @@ transitive effects, contract fingerprints, and source origins, and carries it
 unchanged into `LinkedArtifact`. The single `vela_bindgen` generator consumes
 only that schema and deterministically emits package/module-shaped sync and
 async Rust methods, stable target specifications, the schema checksum, and
-source-origin documentation without a second Vela parser. Batch D's runtime
-binding, stable re-resolution, active-context carrier, conversion closure, and
-source-backed diagnostics remain open.
+source-origin documentation without a second Vela parser. Generated code now
+binds once against the active artifact, validates source-backed contract
+fingerprints, invokes stable function identities with bounded defaults, and
+uses the same linked execution session for `NativeCallContext` re-entry. A
+workspace compile fixture executes the generated scalar surface without
+runtime strings or manual boundary values. Batch D still needs the complete
+owned/custom/host-reference conversion matrix, method receiver generation,
+compatible body-reload proof, and async execution proof.
 
 ### State Storage Batch G
 

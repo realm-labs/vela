@@ -5,6 +5,90 @@ use std::pin::Pin;
 use std::task::{Context, Poll, Waker};
 
 #[test]
+fn linked_context_native_pauses_and_resumes_the_same_frame() {
+    let native_id = FunctionId::new(0x58);
+    let mut vm = Vm::new();
+    vm.register_context_host_native_with_id(native_id, |_args, _host, _budget| {
+        Ok(OwnedValue::Unit)
+    });
+
+    let mut program = vela_bytecode::LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let native_name = program.intern_debug_name("context_add_one");
+    let native = program.push_native_function(vela_bytecode::LinkedNativeFunction::new(
+        native_id,
+        native_name,
+    ));
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 2);
+    let value = code.push_constant(Constant::i64(41));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: value,
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::CallNative {
+            dst: Some(Register(1)),
+            native,
+            debug_name: native_name,
+            cache_site: None,
+            args: vec![Register(0)],
+        },
+    ));
+    code.push_instruction(vela_bytecode::linked::Instruction::new(
+        vela_bytecode::linked::InstructionKind::Return { src: Register(1) },
+    ));
+    let function = program.push_function(code);
+    program.set_entry_point(main_name, function);
+    let artifact = linked_test_owner(program);
+
+    let mut heap = ScriptHeap::new();
+    let mut heap = HeapExecution::new(&mut heap);
+    let mut budget = ExecutionBudget::unbounded();
+    let mut session = vm
+        .start_linked_execution(
+            LinkedExecutionStart {
+                artifact: &artifact,
+                function,
+                args: &[],
+                roots: &[],
+                inline_caches: None,
+                bytecode_profiler: None,
+            },
+            &mut heap,
+            &mut budget,
+        )
+        .expect("context entry should prepare");
+    session.enable_context_native_boundaries();
+
+    let LinkedDriveOutcome::ContextBoundary(prepared) = vm
+        .drive_linked_execution(&mut session, None, &mut heap, &mut budget, None, None)
+        .expect("context native should pause at the runtime boundary")
+    else {
+        panic!("context native should suspend the linked frame");
+    };
+    assert_eq!(prepared.native_id(), native_id);
+    assert_eq!(prepared.name(), "context_add_one");
+    assert_eq!(prepared.args(), &[OwnedValue::i64(41)]);
+
+    vm.resume_linked_context_call(
+        &mut session,
+        Ok(OwnedValue::i64(42)),
+        Some(&mut heap),
+        Some(&mut budget),
+    )
+    .expect("context result should resume the frame");
+    let LinkedDriveOutcome::Complete(value) = vm
+        .drive_linked_execution(&mut session, None, &mut heap, &mut budget, None, None)
+        .expect("resumed context entry should complete")
+    else {
+        panic!("resumed context entry should not suspend again");
+    };
+    assert_eq!(value, RuntimeValue::i64(42));
+}
+
+#[test]
 fn linked_async_native_arguments_and_results_are_owned_across_gc() {
     let native_id = FunctionId::new(0x57);
     let mut vm = Vm::new();

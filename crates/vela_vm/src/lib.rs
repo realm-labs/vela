@@ -122,7 +122,7 @@ use value::Value;
 pub use async_resume::PreparedAsyncCall;
 pub use execution_reentry::LinkedExecutionReentry;
 pub use execution_session::{LinkedExecutionSession, LinkedExecutionStart};
-pub use linked_execution::LinkedDriveOutcome;
+pub use linked_execution::{LinkedDriveOutcome, PreparedContextCall};
 
 pub type NativeFunction =
     Arc<dyn Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static>;
@@ -269,6 +269,7 @@ pub struct Vm {
     borrowed_native_ids: HashMap<FunctionId, BorrowedNativeFunction>,
     host_native_ids: HashMap<FunctionId, HostNativeFunction>,
     borrowed_host_native_ids: HashMap<FunctionId, BorrowedHostNativeFunction>,
+    context_host_native_ids: HashMap<FunctionId, HostNativeFunction>,
     type_registry: Option<Arc<TypeRegistry>>,
 }
 
@@ -905,6 +906,22 @@ impl Vm {
         self.host_native_ids.insert(id, Arc::new(function));
     }
 
+    #[doc(hidden)]
+    pub fn register_context_host_native_with_id(
+        &mut self,
+        id: FunctionId,
+        function: impl for<'host, 'budget> Fn(
+            &[OwnedValue],
+            &mut HostExecution<'host>,
+            Option<&'budget mut ExecutionBudget>,
+        ) -> VmResult<OwnedValue>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        self.context_host_native_ids.insert(id, Arc::new(function));
+    }
+
     pub(crate) fn register_borrowed_host_native(
         &mut self,
         name: impl Into<String>,
@@ -956,6 +973,7 @@ impl Vm {
             .chain(self.borrowed_native_ids.keys())
             .chain(self.host_native_ids.keys())
             .chain(self.borrowed_host_native_ids.keys())
+            .chain(self.context_host_native_ids.keys())
             .copied()
     }
 

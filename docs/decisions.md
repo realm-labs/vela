@@ -2163,6 +2163,17 @@ calls share one generation. Conversion, borrowed-return provenance/freeze,
 lease, Runtime call target, execution session, policy, and diagnostics continue
 to use the common interop paths.
 
+### Context Natives Use A Session-Aware VM Boundary
+
+Runtime-driven linked sessions pause synchronous context-native calls before
+the callback runs. `vela_engine` invokes the callback with an active re-entry
+authority, resumes the saved destination, and continues the same linked
+session. This preserves the pinned artifact, heap, state, host boundary,
+budget, and call stack across Vela-to-Rust-to-Vela nesting without a nested
+Runtime. Direct Engine/VM execution that has no re-entry session invokes the
+same registered callback normally with re-entry unavailable; context-native
+registration and capability checks remain shared rather than duplicated.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:
