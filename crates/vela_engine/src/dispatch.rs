@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use parking_lot::{Mutex, RwLock};
 use vela_bytecode::{RustBindingBoundaryMode, RustBindingCallable, RustBindingType};
-use vela_common::{DispatchGenerationId, InterceptSlotIndex, ReplaceableSlotId, stable_id};
+use vela_common::{DispatchGenerationId, InterceptSlotIndex, ReplaceableSlotId, Span, stable_id};
 use vela_def::FunctionId;
 
 use crate::args::FromScriptArg;
@@ -121,19 +121,27 @@ impl DispatchController {
         let mut by_path = BTreeMap::new();
         for (expected, slot) in slots.iter().enumerate() {
             if slot.index.get() != expected {
-                return Err(DispatchStageError::new(format!(
-                    "replaceable slot indices must be dense from zero; expected {expected}, got {}",
-                    slot.index.get()
-                )));
+                return Err(DispatchStageError::new(
+                    DispatchStageErrorCode::InvalidSlotLayout,
+                    format!(
+                        "replaceable slot indices must be dense from zero; expected {expected}, got {}",
+                        slot.index.get()
+                    ),
+                    None,
+                ));
             }
             if by_path
                 .insert(slot.contract.public_path.clone(), expected)
                 .is_some()
             {
-                return Err(DispatchStageError::new(format!(
-                    "duplicate replaceable slot path `{}`",
-                    slot.contract.public_path
-                )));
+                return Err(DispatchStageError::new(
+                    DispatchStageErrorCode::InvalidSlotLayout,
+                    format!(
+                        "duplicate replaceable slot path `{}`",
+                        slot.contract.public_path
+                    ),
+                    None,
+                ));
             }
         }
         let initial = Arc::new(DispatchGeneration {
@@ -169,7 +177,9 @@ impl DispatchController {
     ) -> Result<DispatchCandidate, DispatchStageError> {
         if base.len() != self.inner.slots.len() {
             return Err(DispatchStageError::new(
+                DispatchStageErrorCode::BaseLayoutMismatch,
                 "dispatch base belongs to another slot layout",
+                None,
             ));
         }
         let mut targets = base.targets.to_vec();
@@ -180,16 +190,24 @@ impl DispatchController {
                 continue;
             };
             let Some(index) = self.inner.by_path.get(path).copied() else {
-                return Err(DispatchStageError::new(format!(
-                    "Vela override `{}` names unknown replaceable target `{path}`",
-                    callable.public_path
-                )));
+                return Err(DispatchStageError::new(
+                    DispatchStageErrorCode::UnknownTarget,
+                    format!(
+                        "Vela override `{}` names unknown replaceable target `{path}`",
+                        callable.public_path
+                    ),
+                    Some(callable.source),
+                ));
             };
             if let Some(existing) = seen.insert(index, callable.public_path.clone()) {
-                return Err(DispatchStageError::new(format!(
-                    "Vela overrides `{existing}` and `{}` both target `{path}`",
-                    callable.public_path
-                )));
+                return Err(DispatchStageError::new(
+                    DispatchStageErrorCode::DuplicateTarget,
+                    format!(
+                        "Vela overrides `{existing}` and `{}` both target `{path}`",
+                        callable.public_path
+                    ),
+                    Some(callable.source),
+                ));
             }
             let slot = &self.inner.slots[index];
             validate_override(slot, callable)?;
@@ -310,15 +328,38 @@ impl DispatchInvocation {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DispatchStageError {
+    code: DispatchStageErrorCode,
     message: String,
+    source: Option<Span>,
 }
 
 impl DispatchStageError {
-    fn new(message: impl Into<String>) -> Self {
+    fn new(code: DispatchStageErrorCode, message: impl Into<String>, source: Option<Span>) -> Self {
         Self {
+            code,
             message: message.into(),
+            source,
         }
     }
+
+    #[must_use]
+    pub const fn code(&self) -> DispatchStageErrorCode {
+        self.code
+    }
+
+    #[must_use]
+    pub const fn source(&self) -> Option<Span> {
+        self.source
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DispatchStageErrorCode {
+    InvalidSlotLayout,
+    BaseLayoutMismatch,
+    UnknownTarget,
+    DuplicateTarget,
+    IncompatibleContract,
 }
 
 impl fmt::Display for DispatchStageError {
@@ -457,10 +498,14 @@ fn incompatible(
     callable: &RustBindingCallable,
     field: &str,
 ) -> DispatchStageError {
-    DispatchStageError::new(format!(
-        "Vela override `{}` is incompatible with replaceable target `{}` at {field}",
-        callable.public_path, slot.contract.public_path
-    ))
+    DispatchStageError::new(
+        DispatchStageErrorCode::IncompatibleContract,
+        format!(
+            "Vela override `{}` is incompatible with replaceable target `{}` at {field}",
+            callable.public_path, slot.contract.public_path
+        ),
+        Some(callable.source),
+    )
 }
 
 #[cfg(test)]
@@ -607,6 +652,7 @@ pub fn patched(value: i64) -> i64 { return value + 2; }
                 .stage_current(&runtime)
                 .expect_err("stage must reject invalid override");
             assert!(error.to_string().contains(expected), "{error}");
+            assert!(error.source().is_some());
         }
     }
 
