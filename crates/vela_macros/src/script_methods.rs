@@ -27,6 +27,10 @@ pub(crate) fn expand_standalone_method(input: TokenStream) -> TokenStream {
     }
 }
 
+pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenStream {
+    emission::script_host_object_impl_tokens(self_ty, &[])
+}
+
 fn expand_result(input: TokenStream) -> Result<TokenStream> {
     let mut item = parse2::<ItemImpl>(input)?;
     if item.trait_.is_some() {

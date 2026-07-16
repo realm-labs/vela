@@ -140,6 +140,16 @@ pub type AsyncHostNativeFunction = Arc<
         + Sync
         + 'static,
 >;
+pub type HostMethodFunction = Arc<
+    dyn for<'host> Fn(
+            &vela_host::path::HostPath,
+            &[OwnedValue],
+            &mut HostExecution<'host>,
+        ) -> VmResult<OwnedValue>
+        + Send
+        + Sync
+        + 'static,
+>;
 pub type AsyncHostMethodFunction = Arc<
     dyn for<'call, 'host, 'budget> Fn(
             &'call vela_host::path::HostPath,
@@ -231,6 +241,7 @@ pub struct Vm {
     native_ids: HashMap<FunctionId, NativeFunction>,
     async_native_ids: HashMap<FunctionId, AsyncNativeFunction>,
     async_host_native_ids: HashMap<FunctionId, AsyncHostNativeFunction>,
+    host_method_ids: HashMap<HostMethodId, HostMethodFunction>,
     async_host_method_ids: HashMap<HostMethodId, AsyncHostMethodFunction>,
     async_direct_host_method_ids: HashMap<
         HostMethodId,
@@ -740,6 +751,21 @@ impl Vm {
         + 'static,
     ) {
         self.async_host_method_ids.insert(id, Arc::new(function));
+    }
+
+    pub fn register_host_method_with_id(
+        &mut self,
+        id: HostMethodId,
+        function: impl for<'host> Fn(
+            &vela_host::path::HostPath,
+            &[OwnedValue],
+            &mut HostExecution<'host>,
+        ) -> VmResult<OwnedValue>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        self.host_method_ids.insert(id, Arc::new(function));
     }
 
     pub fn register_async_direct_host_method_with_id(

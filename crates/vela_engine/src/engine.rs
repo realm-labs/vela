@@ -387,6 +387,7 @@ impl Engine {
         self.install_async_native_functions(vm);
         self.install_async_host_native_functions(vm);
         self.install_async_context_host_native_functions(vm);
+        self.install_native_methods(vm);
         self.install_async_native_methods(vm);
         self.install_host_native_functions(vm);
         self.install_context_host_native_functions(vm);
@@ -532,6 +533,20 @@ impl Engine {
                     );
                 }
             }
+        }
+    }
+
+    fn install_native_methods(&self, vm: &mut Vm) {
+        for entry in self.native_methods.values() {
+            let id = entry.desc.id;
+            let name = entry.desc.name.clone();
+            let effects = entry.desc.effects;
+            let capabilities = self.capabilities;
+            let function = Arc::clone(&entry.function);
+            vm.register_host_method_with_id(id, move |receiver, args, host| {
+                check_capabilities(&name, &effects, capabilities)?;
+                function(receiver, args, host)
+            });
         }
     }
 

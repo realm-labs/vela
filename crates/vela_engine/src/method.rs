@@ -10,6 +10,7 @@ use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
 use crate::context::NativeCallContext;
+use crate::interop::CallableContract;
 use crate::native::{EffectSet, FunctionAccess, NativeCallFuture, TypeHint};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -25,6 +26,7 @@ pub struct NativeMethodDesc {
     pub docs: Option<String>,
     pub attrs: AttrMap,
     pub source_span: Option<Span>,
+    pub callable_contract: Option<CallableContract>,
 }
 
 impl NativeMethodDesc {
@@ -42,6 +44,7 @@ impl NativeMethodDesc {
             docs: None,
             attrs: AttrMap::new(),
             source_span: None,
+            callable_contract: None,
         }
     }
 
@@ -93,6 +96,12 @@ impl NativeMethodDesc {
     #[must_use]
     pub fn source_span(mut self, source_span: Span) -> Self {
         self.source_span = Some(source_span);
+        self
+    }
+
+    #[must_use]
+    pub fn callable_contract(mut self, callable_contract: CallableContract) -> Self {
+        self.callable_contract = Some(callable_contract);
         self
     }
 }

@@ -1691,6 +1691,32 @@ impl Vm {
                     };
                     if let script_method_calls::LinkedDynamicNonScriptTarget::Host { method_id } =
                         &target
+                        && let Some(function) = self.host_method_ids.get(method_id)
+                    {
+                        let prepared = host_access::prepare_async_host_root_method_args(
+                            frame,
+                            heap.as_deref(),
+                            *receiver,
+                            args,
+                        )?;
+                        let host = host.as_deref_mut().ok_or_else(|| {
+                            VmError::new(VmErrorKind::TypeMismatch {
+                                operation: "host context",
+                            })
+                        })?;
+                        let result = function(&prepared.receiver, &prepared.args, host)
+                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                        native_function_calls::write_native_result(
+                            frame,
+                            heap,
+                            budget,
+                            Some(*dst),
+                            result,
+                        )?;
+                        continue;
+                    }
+                    if let script_method_calls::LinkedDynamicNonScriptTarget::Host { method_id } =
+                        &target
                         && let Some((lease_kind, function)) =
                             self.async_direct_host_method_ids.get(method_id)
                     {
@@ -2307,6 +2333,32 @@ impl Vm {
                 } => {
                     let method_id =
                         host_access::linked_host_method_id(program, *method, instruction.span)?;
+                    if let Some(function) = self.host_method_ids.get(&method_id) {
+                        let prepared = host_access::prepare_async_host_method_args(
+                            frame,
+                            heap.as_deref(),
+                            *root,
+                            host_access::CodeHostTargetPlan {
+                                targets: &code.host_targets,
+                                target_id: *target,
+                                dynamic_args,
+                                cache_site: *cache_site,
+                            },
+                            args,
+                            instruction.span,
+                        )?;
+                        let host = host.as_deref_mut().ok_or_else(|| {
+                            VmError::new(VmErrorKind::TypeMismatch {
+                                operation: "host context",
+                            })
+                        })?;
+                        let result = function(&prepared.receiver, &prepared.args, host)
+                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                        native_function_calls::write_native_result(
+                            frame, heap, budget, *dst, result,
+                        )?;
+                        continue;
+                    }
                     if let Some((lease_kind, function)) =
                         self.async_direct_host_method_ids.get(&method_id)
                     {

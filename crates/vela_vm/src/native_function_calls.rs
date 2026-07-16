@@ -251,7 +251,7 @@ fn dispatch_resolved_native_function_call(
     write_native_result(frame, heap, budget, call.dst, result)
 }
 
-fn write_native_result(
+pub(crate) fn write_native_result(
     frame: &mut CallFrame,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,

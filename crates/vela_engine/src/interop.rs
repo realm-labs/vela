@@ -15,6 +15,7 @@ use vela_host::path::HostRef;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
+use crate::method::NativeMethodDesc;
 use crate::native::{EffectSet, TypeHint};
 use crate::schema::ScriptHostSchema;
 
@@ -26,6 +27,7 @@ type ExportInstaller =
 /// process-global discovery.
 pub struct ExportBundle {
     contracts: Vec<CallableContract>,
+    protocols: Vec<VelaProtocolContract>,
     installer: Arc<ExportInstaller>,
 }
 
@@ -40,6 +42,23 @@ impl ExportBundle {
     ) -> Self {
         Self {
             contracts,
+            protocols: Vec::new(),
+            installer: Arc::new(installer),
+        }
+    }
+
+    #[must_use]
+    pub fn with_protocols(
+        contracts: Vec<CallableContract>,
+        protocols: Vec<VelaProtocolContract>,
+        installer: impl Fn(crate::builder::EngineBuilder) -> crate::builder::EngineBuilder
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        Self {
+            contracts,
+            protocols,
             installer: Arc::new(installer),
         }
     }
@@ -47,6 +66,11 @@ impl ExportBundle {
     #[must_use]
     pub fn contracts(&self) -> &[CallableContract] {
         &self.contracts
+    }
+
+    #[must_use]
+    pub fn protocols(&self) -> &[VelaProtocolContract] {
+        &self.protocols
     }
 
     pub(crate) fn install(
@@ -560,6 +584,40 @@ impl CallableContract {
             desc = desc.docs(docs.clone());
         }
         desc.callable_contract(self.clone())
+    }
+
+    #[must_use]
+    pub fn native_method_desc(&self, owner: vela_reflect::registry::TypeKey) -> NativeMethodDesc {
+        let mut desc = NativeMethodDesc::new(
+            owner,
+            vela_common::HostMethodId::new(self.identity.stable),
+            self.public_path
+                .rsplit("::")
+                .next()
+                .unwrap_or(&self.public_path),
+        )
+        .returns(self.returns.ty.clone())
+        .effects(self.effects)
+        .asyncness(self.asyncness)
+        .access(crate::native::FunctionAccess {
+            public: self.access.public,
+            reflect_visible: self.access.reflect_visible,
+            reflect_callable: self.access.reflect_callable,
+        })
+        .callable_contract(self.clone());
+        for (index, parameter) in self.parameters.iter().enumerate() {
+            if index == 0 || parameter.mode == BoundaryMode::HiddenContext {
+                continue;
+            }
+            desc = desc.param(parameter.name.clone(), parameter.ty.clone());
+        }
+        if let Some(docs) = &self.docs {
+            desc = desc.docs(docs.clone());
+        }
+        if let Some(source_span) = self.origin.source_span {
+            desc = desc.source_span(source_span);
+        }
+        desc
     }
 
     /// Computes a deterministic fingerprint from semantic ABI only.

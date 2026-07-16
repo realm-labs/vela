@@ -5,7 +5,9 @@ use vela_engine::interop::{BoundaryMode, CallableKind, VelaValueBoundary};
 use vela_engine::native::{EffectSet, TypeHint};
 use vela_engine::permission::Capability;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
-use vela_macros::{ScriptHost, export, export_module, methods, script_methods, trait_export};
+use vela_macros::{
+    ScriptHost, export, export_external_trait_impl, export_module, methods, trait_export,
+};
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
@@ -23,6 +25,7 @@ pub trait Damageable {
     fn is_alive(&self) -> bool;
 }
 
+#[methods(path = "game::Player")]
 impl Damageable for Player {
     fn take_damage(&mut self, amount: i64) {
         self.level -= amount.max(0);
@@ -123,7 +126,6 @@ pub fn roll(_ctx: &mut NativeCallContext<'_, '_>, player: &Player) -> i64 {
 }
 
 #[methods(path = "game::Player")]
-#[script_methods]
 impl Player {
     pub fn current_level(&self) -> i64 {
         self.level
@@ -133,9 +135,55 @@ impl Player {
         self.level += amount;
     }
 
+    pub fn absorb(&mut self, other: &mut Player) -> i64 {
+        self.level += other.level;
+        other.level = 0;
+        self.level
+    }
+
+    pub fn combined(&self, other: &Player) -> i64 {
+        self.level + other.level
+    }
+
     fn rust_only_helper(&self) -> i64 {
         self.level
     }
+}
+
+pub trait ExternalDamage {
+    fn hit(&mut self, amount: i64);
+    fn active(&self) -> bool;
+}
+
+#[derive(Debug, ScriptHost)]
+#[script(path = "external::Npc")]
+pub struct ExternalNpc {
+    #[script(get, set)]
+    hp: i64,
+}
+
+impl ExternalDamage for ExternalNpc {
+    fn hit(&mut self, amount: i64) {
+        self.hp -= amount.max(0);
+    }
+
+    fn active(&self) -> bool {
+        self.hp > 0
+    }
+}
+
+#[methods(path = "external::Npc")]
+impl ExternalNpc {
+    pub fn current_hp(&self) -> i64 {
+        self.hp
+    }
+}
+
+export_external_trait_impl! {
+    type ExternalNpc;
+    trait ExternalDamage as "external::Damage";
+    fn hit(&mut self, amount: i64);
+    fn active(&self) -> bool;
 }
 
 #[test]
@@ -177,11 +225,13 @@ fn method_groups_share_receiver_classification() {
 #[test]
 fn trait_export_uses_explicit_vela_protocol_identity() {
     let protocol = vela_protocol_contract_Damageable();
+    let bundle = Player::vela_protocol_Damageable_exports();
 
     assert_eq!(protocol.identity.public_path, "game::Damageable");
     assert_eq!(protocol.methods.len(), 2);
     assert_eq!(protocol.methods[0].effects, EffectSet::host_write());
     assert_eq!(protocol.methods[1].effects, EffectSet::host_read());
+    assert_eq!(bundle.protocols(), std::slice::from_ref(&protocol));
 
     let mut player = Player { level: 5 };
     player.take_damage(2);
@@ -237,6 +287,8 @@ fn host_export_runtime(source: &str) -> Runtime {
         .register_exports(vela_export_bundle_strict_grant())
         .register_exports(vela_export_bundle_fail_grant())
         .register_exports(vela_export_bundle_panic_grant())
+        .register_exports(Player::vela_inherent_exports())
+        .register_exports(Player::vela_protocol_Damageable_exports())
         .build()
         .expect("host exports should register");
     let program = engine
@@ -413,4 +465,130 @@ fn host_export_converts_panic_and_releases_exclusive_lease() {
         );
     }
     assert_eq!(player.level, 5);
+}
+
+#[test]
+fn inherent_method_exports_use_ordinary_vela_method_syntax() {
+    let mut runtime = host_export_runtime(
+        "fn main(player: Player) { player.increment(4); return player.current_level(); }",
+    );
+    let mut player = Player { level: 5 };
+
+    let result = runtime
+        .call(
+            "main",
+            CallArgs::new().with_host_mut("player", &mut player),
+            CallOptions::unbounded(),
+        )
+        .expect("registered ordinary methods should execute");
+
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(9)));
+    assert_eq!(player.level, 9);
+}
+
+#[test]
+fn inherent_method_exports_apply_alias_matrix_to_receiver_and_parameters() {
+    let mut distinct_runtime = host_export_runtime(
+        "fn main(first: Player, second: Player) { return first.absorb(second); }",
+    );
+    let mut first = Player { level: 5 };
+    let mut second = Player { level: 4 };
+    let result = distinct_runtime
+        .call(
+            "main",
+            CallArgs::new()
+                .with_host_mut("first", &mut first)
+                .with_host_mut("second", &mut second),
+            CallOptions::unbounded(),
+        )
+        .expect("distinct mutable receiver and parameter should run");
+    assert_eq!(
+        distinct_runtime.value_to_owned(&result),
+        Ok(OwnedValue::i64(9))
+    );
+    assert_eq!((first.level, second.level), (9, 0));
+
+    let mut shared_runtime =
+        host_export_runtime("fn main(player: Player) { return player.combined(player); }");
+    let player = Player { level: 7 };
+    let result = shared_runtime
+        .call(
+            "main",
+            CallArgs::new().with_host_ref("player", &player),
+            CallOptions::unbounded(),
+        )
+        .expect("shared receiver and shared parameter alias should run");
+    assert_eq!(
+        shared_runtime.value_to_owned(&result),
+        Ok(OwnedValue::i64(14))
+    );
+
+    let mut aliased_runtime =
+        host_export_runtime("fn main(player: Player) { return player.absorb(player); }");
+    let mut player = Player { level: 7 };
+    let error = aliased_runtime
+        .call(
+            "main",
+            CallArgs::new().with_host_mut("player", &mut player),
+            CallOptions::unbounded(),
+        )
+        .expect_err("mutable receiver alias must fail before authored Rust");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::AliasedMutableHostArguments {
+            callable: "game::Player::absorb".to_owned(),
+            first_parameter: "self".to_owned(),
+            second_parameter: "other".to_owned(),
+        }
+    );
+    assert_eq!(player.level, 7);
+}
+
+#[test]
+fn explicit_trait_impl_exports_install_ufcs_method_thunks() {
+    let mut runtime = host_export_runtime(
+        "fn main(player: Player) { player.take_damage(3); return player.is_alive(); }",
+    );
+    let mut player = Player { level: 5 };
+
+    let result = runtime
+        .call(
+            "main",
+            CallArgs::new().with_host_mut("player", &mut player),
+            CallOptions::unbounded(),
+        )
+        .expect("explicit trait implementation exports should execute");
+
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    assert_eq!(player.level, 2);
+}
+
+#[test]
+fn declaration_only_external_trait_adapter_calls_existing_impl() {
+    let engine = Engine::builder()
+        .capability(Capability::HostRead)
+        .capability(Capability::HostWrite)
+        .register_host_type::<ExternalNpc>()
+        .register_exports(ExternalNpc::vela_inherent_exports())
+        .register_exports(VelaExternalExternalNpcExternalDamageExports::vela_exports())
+        .build()
+        .expect("declaration-only adapter should register");
+    let program = engine
+        .compile_source(
+            "fn main(npc: Npc) { npc.hit(3); return npc.active() && npc.current_hp() == 2; }",
+        )
+        .expect("external trait methods should compile as ordinary methods");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+    let mut npc = ExternalNpc { hp: 5 };
+
+    let result = runtime
+        .call(
+            "main",
+            CallArgs::new().with_host_mut("npc", &mut npc),
+            CallOptions::unbounded(),
+        )
+        .expect("generated UFCS thunks should call the existing trait impl");
+
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    assert_eq!(npc.hp, 2);
 }

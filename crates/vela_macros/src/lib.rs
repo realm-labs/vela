@@ -4,6 +4,7 @@
 
 mod attrs;
 mod export;
+mod export_external_trait_impl;
 mod export_module;
 mod hash;
 mod methods;
@@ -38,6 +39,13 @@ pub fn methods(attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn trait_export(attr: TokenStream, input: TokenStream) -> TokenStream {
     trait_export::expand(attr.into(), input.into()).into()
+}
+
+/// Generates declaration-only UFCS adapters for an existing external trait
+/// implementation without creating a duplicate Rust impl.
+#[proc_macro]
+pub fn export_external_trait_impl(input: TokenStream) -> TokenStream {
+    export_external_trait_impl::expand(input.into()).into()
 }
 
 #[proc_macro_derive(ScriptHost, attributes(script))]

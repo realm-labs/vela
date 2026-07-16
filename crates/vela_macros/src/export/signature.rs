@@ -663,6 +663,15 @@ impl ClassifiedSignature {
                 )
             })
     }
+
+    pub(crate) fn supports_sync_method_adapter(&self) -> bool {
+        self.supports_sync_host_adapter()
+            && !self.has_hidden_context()
+            && self
+                .parameters
+                .first()
+                .is_some_and(|parameter| matches!(parameter.ty, TypeShape::ReceiverHost))
+    }
 }
 
 fn is_str(ty: &Type) -> bool {
