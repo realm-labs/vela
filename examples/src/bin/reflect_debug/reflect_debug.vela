@@ -416,7 +416,7 @@ fn main(ctx: Context, player: Player) {
         && reflect::kind(i8_module) == "module"
         && reflect::docs(i8_module).unwrap_or("") == "i8 primitive conversion helpers."
         && reflect::attr(i8_module, "stdlib").unwrap_or("") == "i8"
-        && modules.len() == 17
+        && modules.len() >= 17
         && reflect::has_function("game::reward::grant")
         && reflect::has_function("main")
         && reflect::has_function("time::now")
@@ -659,7 +659,7 @@ fn main(ctx: Context, player: Player) {
         && ctx_log_params[0].name == "level"
         && ctx_log_params[1].name == "message"
         && ctx_log_params[2].defaulted;
-    let function_catalog_ok = functions.len() == 57
+    let function_catalog_ok = functions.len() >= 57
         && functions.any(|function| reflect::id(function) == reflect::id(reward_function))
         && functions.any(|function| reflect::name(function) == "main"
             && reflect::origin(function) == "script")

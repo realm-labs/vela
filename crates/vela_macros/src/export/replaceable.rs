@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
+use syn::ext::IdentExt;
 use syn::parse::Parser;
 use syn::{
     AngleBracketedGenericArguments, Attribute, FnArg, GenericArgument, ImplItemFn, ItemFn, LitInt,
@@ -381,7 +382,7 @@ fn parse_attrs(tokens: TokenStream) -> Result<ReplaceableAttrs> {
         }
         if meta.path.is_ident("authority") {
             let value = meta.value()?.parse::<LitStr>()?;
-            authority = Some(value.parse::<syn::Ident>()?);
+            authority = Some(value.parse_with(syn::Ident::parse_any)?);
             return Ok(());
         }
         if meta.path.is_ident("index") {

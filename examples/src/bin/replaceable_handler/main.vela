@@ -1,0 +1,5 @@
+#[override(host::handler::MessageHandler::handle)]
+fn patched(handler: MessageHandler, context: TurnContext, message: i64) -> i64 {
+    context.calls += 1;
+    return handler.adjacent(message) + 1;
+}

@@ -1,0 +1,5 @@
+pub fn apply(player: RoundTripPlayer, amount: i64) -> i64 {
+    let normalized = interop::normalize(amount);
+    player.grant(normalized);
+    return player.level();
+}

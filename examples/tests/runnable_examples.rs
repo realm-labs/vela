@@ -119,6 +119,24 @@ success_example!(
 );
 
 success_example!(
+    interop_round_trip_example_runs,
+    env!("CARGO_BIN_EXE_interop_round_trip"),
+    "interop_round_trip result=6 level=6\n",
+);
+
+success_example!(
+    replaceable_handler_example_runs,
+    env!("CARGO_BIN_EXE_replaceable_handler"),
+    "replaceable_handler fallback=41/10 active=42/1 adjacent=41 rollback=41/10\n",
+);
+
+success_example!(
+    replaceable_service_method_example_runs,
+    env!("CARGO_BIN_EXE_replaceable_service_method"),
+    "replaceable_service_method fallback=41 active=42 adjacent=41 rollback=41\n",
+);
+
+success_example!(
     async_stateful_reentry_example_runs,
     env!("CARGO_BIN_EXE_async_stateful_reentry"),
     "async_stateful_reentry result=Scalar(I64(12)) total=12\n",

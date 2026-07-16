@@ -13,6 +13,9 @@ cargo run --manifest-path examples/Cargo.toml --bin async_stateful_reentry
 cargo run --manifest-path examples/Cargo.toml --bin serde_value
 cargo run --manifest-path examples/Cargo.toml --bin container_type_hints
 cargo run --manifest-path examples/Cargo.toml --bin io_stdlib
+cargo run --manifest-path examples/Cargo.toml --bin interop_round_trip
+cargo run --manifest-path examples/Cargo.toml --bin replaceable_handler
+cargo run --manifest-path examples/Cargo.toml --bin replaceable_service_method
 ```
 
 Each example directory keeps the Rust entrypoint and script source together:
@@ -39,6 +42,14 @@ hand-write `ScriptHostObject` or `PathSegment` dispatch.
 
 Other useful embedding examples:
 
+- `interop_round_trip`: the primary ordinary interop workflow. Vela calls an
+  exported Rust function and methods using normal syntax, while Rust calls the
+  Vela entry through build-time generated typed bindings. Authored calls do not
+  assemble `CallArgs`, erase values, or resolve runtime target strings.
+- `replaceable_handler` and `replaceable_service_method`: optional
+  single-callable override extensions. They demonstrate direct fallback,
+  future-root activation, adjacent Rust methods, and rollback without a proxy
+  or complete Vela service implementation.
 - `async_stateful_reentry`: a mutable state lease held across a Rust service
   await, followed by same-session Vela reentry with an explicit mutable
   reborrow. Its actor-shaped container keeps Runtime and host storage disjoint
