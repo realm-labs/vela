@@ -1,7 +1,7 @@
 use vela_engine::context::NativeCallContext;
 use vela_engine::interop::{BoundaryMode, CallableKind};
 use vela_engine::native::EffectSet;
-use vela_macros::{ScriptHost, export, methods};
+use vela_macros::{ScriptHost, export, methods, trait_export};
 use vela_vm::error::VmResult;
 
 #[derive(Debug, ScriptHost)]
@@ -9,6 +9,22 @@ use vela_vm::error::VmResult;
 pub struct Player {
     #[script(get, set)]
     level: i64,
+}
+
+#[trait_export(path = "game::Damageable")]
+pub trait Damageable {
+    fn take_damage(&mut self, amount: i64);
+    fn is_alive(&self) -> bool;
+}
+
+impl Damageable for Player {
+    fn take_damage(&mut self, amount: i64) {
+        self.level -= amount.max(0);
+    }
+
+    fn is_alive(&self) -> bool {
+        self.level > 0
+    }
 }
 
 #[export(path = "game::normalize")]
@@ -76,4 +92,18 @@ fn method_groups_share_receiver_classification() {
     player.increment(2);
     assert_eq!(player.current_level(), 5);
     assert_eq!(player.rust_only_helper(), 5);
+}
+
+#[test]
+fn trait_export_uses_explicit_vela_protocol_identity() {
+    let protocol = vela_protocol_contract_Damageable();
+
+    assert_eq!(protocol.identity.public_path, "game::Damageable");
+    assert_eq!(protocol.methods.len(), 2);
+    assert_eq!(protocol.methods[0].effects, EffectSet::host_write());
+    assert_eq!(protocol.methods[1].effects, EffectSet::host_read());
+
+    let mut player = Player { level: 5 };
+    player.take_damage(2);
+    assert!(player.is_alive());
 }

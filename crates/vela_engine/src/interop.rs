@@ -308,6 +308,51 @@ impl CallableAbiFingerprint {
     }
 }
 
+/// Stable Vela protocol identity. Rust trait paths and `TypeId` values never
+/// become public Vela ABI accidentally.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct VelaProtocolIdentity {
+    pub stable: u64,
+    pub public_path: String,
+}
+
+impl VelaProtocolIdentity {
+    #[must_use]
+    pub fn new(public_path: impl Into<String>) -> Self {
+        let public_path = public_path.into();
+        Self {
+            stable: stable_id("vela_protocol", "", &public_path),
+            public_path,
+        }
+    }
+}
+
+/// Deterministic, declaration-only Vela protocol contract.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VelaProtocolContract {
+    pub identity: VelaProtocolIdentity,
+    pub methods: Vec<CallableContract>,
+    pub docs: Option<String>,
+    pub origin: CallableOrigin,
+}
+
+impl VelaProtocolContract {
+    #[must_use]
+    pub fn abi_fingerprint(&self) -> u64 {
+        let method_fingerprints = self
+            .methods
+            .iter()
+            .map(|method| format!("{:016x}", method.abi_fingerprint().get()))
+            .collect::<Vec<_>>()
+            .join(":");
+        stable_id(
+            "vela_protocol_abi_v1",
+            &self.identity.public_path,
+            &method_fingerprints,
+        )
+    }
+}
+
 /// Shared reflection/link/runtime contract for a cross-language callable.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CallableContract {
@@ -614,5 +659,15 @@ mod tests {
                 .to_string()
                 .contains("callable ABI field `effects` changed")
         );
+    }
+
+    #[test]
+    fn protocol_identity_depends_on_public_vela_path_not_rust_type_identity() {
+        let first = super::VelaProtocolIdentity::new("game::Damageable");
+        let second = super::VelaProtocolIdentity::new("game::Damageable");
+        let renamed = super::VelaProtocolIdentity::new("game::Target");
+
+        assert_eq!(first, second);
+        assert_ne!(first.stable, renamed.stable);
     }
 }

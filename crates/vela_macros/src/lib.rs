@@ -10,6 +10,7 @@ mod script_function;
 mod script_host;
 mod script_methods;
 mod signature;
+mod trait_export;
 
 use proc_macro::TokenStream;
 
@@ -24,6 +25,12 @@ pub fn export(attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn methods(attr: TokenStream, input: TokenStream) -> TokenStream {
     methods::expand(attr.into(), input.into()).into()
+}
+
+/// Exports a Rust trait as one explicitly named Vela protocol contract.
+#[proc_macro_attribute]
+pub fn trait_export(attr: TokenStream, input: TokenStream) -> TokenStream {
+    trait_export::expand(attr.into(), input.into()).into()
 }
 
 #[proc_macro_derive(ScriptHost, attributes(script))]
