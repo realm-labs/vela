@@ -22,8 +22,11 @@ ordinary Rust exports, exact lease adapters, owner-frozen borrowed returns,
 natural Vela calls, and conservative early release all use the shared runtime
 path. Batch D is complete: authoritative typed Rust-to-Vela bindings cover
 owned models, ordinary host references, stable reload, async value calls, and
-same-session active re-entry. Batch E is active on full nested/async policy and
-inheritance closure.
+same-session active re-entry. Batch E is complete: generated sync/async child
+reborrows, same-session round trips, parent restoration, effect-ceiling
+enforcement, inherited execution ownership, scoped borrowed-return
+propagation/release, and interop boundary benchmarks are verified. Batch F
+optional hot-replaceable dispatch is active.
 
 The explicit state-storage hard switch has Batches A-F landed, but its final
 Batch G remains queued behind this explicitly scheduled interop track. Its five
@@ -59,7 +62,7 @@ storage Batch G reaches final acceptance.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Paused behind Batch G | Resume the cache-family audit after state-storage final acceptance. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
-| Rust/Vela interop | Batch E active | Generated root and active-session bindings preserve canonical host identity across nested sync reborrows; async host reborrows and full inheritance acceptance remain. |
+| Rust/Vela interop | Batch F active | Nested sync/async interop and effect ceilings are complete; optional macro-generated hot-replaceable dispatch is next. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -124,7 +127,7 @@ storage Batch G reaches final acceptance.
 
 ## Active Gaps
 
-### Unified Rust/Vela Interop Batch E
+### Unified Rust/Vela Interop Batch F
 
 Batches B and C are complete. Item/module exports, inherent and selected trait-method
 thunks, exact named multi-lease preflight, ordinary sync/async Rust adapters,
@@ -157,10 +160,19 @@ boundary values. Generated host parameters now use ordinary `&T`/`&mut T` at
 the Rust call site. Root bindings create call-scoped direct host arguments;
 active bindings match the Rust reborrow against provenance captured from the
 live parent lease, reuse its canonical `HostRef`, and install a child direct
-scope for the nested call. The child scope drops before parent Rust use resumes,
-while unrelated pointers and shared-to-exclusive upgrades fail before the
-child body. Batch E still needs async host-reference reborrows, the complete
-nested effect-ceiling/inheritance matrix, and boundary benchmark closure.
+scope for the nested call. Sync and scoped `Send` async bindings retain that
+child across suspension, release it on completion or future drop, and restore
+parent Rust use. Unrelated pointers and shared-to-exclusive upgrades fail
+before the child body. The active Rust callable's normalized effect ceiling is
+inherited by leased child contexts; capability-scoped context operations and
+generated nested bindings are rejected before the requested operation when
+they exceed it, independent of wider Runtime grants. Existing execution-session
+tests cover shared budget, artifact generation, heap/state roots, host
+boundary, sidecars/tracing, and cancellation ownership across nesting. The
+reproducible `vela_engine` interop benchmark covers direct Rust,
+scalar/shared/exclusive Vela-to-Rust, generated Rust-to-Vela, and
+Vela-Rust-Vela round-trip costs. Batch F now needs the optional immutable
+dispatch-generation and macro interception layer.
 
 ### State Storage Batch G
 

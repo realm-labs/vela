@@ -42,5 +42,9 @@ harness = false
 name = "async_execution"
 harness = false
 
+[[bench]]
+name = "interop"
+harness = false
+
 [lints]
 workspace = true

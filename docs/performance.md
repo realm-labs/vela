@@ -26,7 +26,22 @@ cargo bench -p vela_vm --bench baseline -- --quick
 cargo bench -p vela_vm --bench external_compare -- --quick
 cargo bench -p vela_engine --bench hot_reload -- --quick
 cargo bench -p vela_engine --bench async_execution -- --quick
+cargo bench -p vela_engine --bench interop -- --quick
 ```
+
+The `interop` harness isolates the direct Rust lower bound, Vela-to-Rust scalar,
+shared-host and exclusive-host exports, a schema-backed generated Rust-to-Vela
+root call, and a same-session Vela-to-Rust-to-Vela round trip. Compilation and
+Runtime construction remain outside the timed loop.
+
+The Batch E pre-optimization quick checkpoint on 2026-07-17 used parent commit
+`87e871439`, Rust/Cargo 1.97.0, macOS 26.5.2 arm64, the optimized bench profile,
+one sample, 1,000 measured iterations, and 100 warmups. It recorded 0.4 ns/call
+for the inlined direct Rust lower bound, 15,271 ns scalar Vela-to-Rust, 13,554
+ns shared host, 11,889 ns exclusive host, 10,091 ns generated Rust-to-Vela,
+and 12,157 ns for the Vela-Rust-Vela round trip. Checksums were stable. These
+are boundary baselines, not optimization targets; stable multi-sample runs use
+`--stable`.
 
 `baseline` accepts optional workload-name substring filters after `--`, for
 example `cargo bench -p vela_vm --bench baseline -- --quick host_field`.
