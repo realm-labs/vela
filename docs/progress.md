@@ -124,12 +124,13 @@ storage Batch G reaches final acceptance.
 Batch B is active. Item/module exports, inherent and selected trait-method
 thunks, exact named multi-lease preflight, ordinary sync/async Rust adapters,
 and owner-frozen `&T`/`&mut T` returns are implemented, including direct,
-`VmResult`, `Option`, and `Result` success shapes. Scoped children
+`VmResult`, `Option`, `Result`, and homogeneous borrowed tuple success shapes.
+Tuple siblings retain one parent lease while receiving distinct child IDs and
+independent shared/exclusive invocation leases. Scoped children
 have distinct borrow identities, preserve shared/exclusive access, freeze their
 owner through a retained safe self-cell lease, support `host::release`, and are
-invalidated at root teardown. Approved tuple borrowed-return shapes and
-conservative automatic last-use/lexical release remain before the Batch B/C
-checkpoint closes.
+invalidated at root teardown. Conservative automatic last-use/lexical release
+remains before the Batch B/C checkpoint closes.
 
 ### State Storage Batch G
 

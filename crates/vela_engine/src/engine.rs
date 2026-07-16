@@ -560,14 +560,32 @@ impl Engine {
                     host.adapter.with_scoped_host_return(
                         &requests,
                         &mut |leases| match function(leases, args.to_vec()) {
-                            Ok(ScopedHostNativeOutcome::Direct(returned)) => Ok(Some(returned)),
+                            Ok(ScopedHostNativeOutcome::Direct(returned)) => Ok(Some(
+                                vela_host::adapter::ScopedHostReturns::Single(returned),
+                            )),
                             Ok(ScopedHostNativeOutcome::OptionSome(returned)) => {
                                 envelope = ScopedHostEnvelope::OptionSome;
-                                Ok(Some(returned))
+                                Ok(Some(vela_host::adapter::ScopedHostReturns::Single(
+                                    returned,
+                                )))
                             }
                             Ok(ScopedHostNativeOutcome::ResultOk(returned)) => {
                                 envelope = ScopedHostEnvelope::ResultOk;
-                                Ok(Some(returned))
+                                Ok(Some(vela_host::adapter::ScopedHostReturns::Single(
+                                    returned,
+                                )))
+                            }
+                            Ok(ScopedHostNativeOutcome::Tuple(returned)) => {
+                                envelope = ScopedHostEnvelope::Tuple;
+                                Ok(Some(vela_host::adapter::ScopedHostReturns::Group(returned)))
+                            }
+                            Ok(ScopedHostNativeOutcome::OptionSomeTuple(returned)) => {
+                                envelope = ScopedHostEnvelope::OptionSomeTuple;
+                                Ok(Some(vela_host::adapter::ScopedHostReturns::Group(returned)))
+                            }
+                            Ok(ScopedHostNativeOutcome::ResultOkTuple(returned)) => {
+                                envelope = ScopedHostEnvelope::ResultOkTuple;
+                                Ok(Some(vela_host::adapter::ScopedHostReturns::Group(returned)))
                             }
                             Ok(ScopedHostNativeOutcome::Value(value)) => {
                                 invocation_result = Some(Ok(value));
@@ -580,7 +598,7 @@ impl Engine {
                         },
                     )?;
                 match retained {
-                    Some(root) => Ok(envelope.wrap(root)),
+                    Some(roots) => Ok(envelope.wrap(roots)),
                     None => invocation_result.expect("missing scoped host invocation result"),
                 }
             });
@@ -788,14 +806,32 @@ impl Engine {
                                 leases,
                                 args.to_vec(),
                             ) {
-                                Ok(ScopedHostNativeOutcome::Direct(returned)) => Ok(Some(returned)),
+                                Ok(ScopedHostNativeOutcome::Direct(returned)) => Ok(Some(
+                                    vela_host::adapter::ScopedHostReturns::Single(returned),
+                                )),
                                 Ok(ScopedHostNativeOutcome::OptionSome(returned)) => {
                                     envelope = ScopedHostEnvelope::OptionSome;
-                                    Ok(Some(returned))
+                                    Ok(Some(vela_host::adapter::ScopedHostReturns::Single(
+                                        returned,
+                                    )))
                                 }
                                 Ok(ScopedHostNativeOutcome::ResultOk(returned)) => {
                                     envelope = ScopedHostEnvelope::ResultOk;
-                                    Ok(Some(returned))
+                                    Ok(Some(vela_host::adapter::ScopedHostReturns::Single(
+                                        returned,
+                                    )))
+                                }
+                                Ok(ScopedHostNativeOutcome::Tuple(returned)) => {
+                                    envelope = ScopedHostEnvelope::Tuple;
+                                    Ok(Some(vela_host::adapter::ScopedHostReturns::Group(returned)))
+                                }
+                                Ok(ScopedHostNativeOutcome::OptionSomeTuple(returned)) => {
+                                    envelope = ScopedHostEnvelope::OptionSomeTuple;
+                                    Ok(Some(vela_host::adapter::ScopedHostReturns::Group(returned)))
+                                }
+                                Ok(ScopedHostNativeOutcome::ResultOkTuple(returned)) => {
+                                    envelope = ScopedHostEnvelope::ResultOkTuple;
+                                    Ok(Some(vela_host::adapter::ScopedHostReturns::Group(returned)))
                                 }
                                 Ok(ScopedHostNativeOutcome::Value(value)) => {
                                     invocation_result = Some(Ok(value));
@@ -807,7 +843,7 @@ impl Engine {
                                 }
                             })?;
                     match retained {
-                        Some(root) => Ok(envelope.wrap(root)),
+                        Some(roots) => Ok(envelope.wrap(roots)),
                         None => invocation_result.expect("missing scoped host invocation result"),
                     }
                 });
@@ -952,20 +988,49 @@ enum ScopedHostEnvelope {
     Direct,
     OptionSome,
     ResultOk,
+    Tuple,
+    OptionSomeTuple,
+    ResultOkTuple,
 }
 
 impl ScopedHostEnvelope {
-    fn wrap(self, root: vela_host::path::HostRef) -> OwnedValue {
+    fn wrap(self, roots: Vec<vela_host::path::HostRef>) -> OwnedValue {
         match self {
-            Self::Direct => OwnedValue::HostRef(root),
+            Self::Direct => OwnedValue::HostRef(single_scoped_root(&roots)),
             Self::OptionSome => {
+                let root = single_scoped_root(&roots);
                 OwnedValue::enum_variant("Option", "Some", [("0", OwnedValue::HostRef(root))])
             }
             Self::ResultOk => {
+                let root = single_scoped_root(&roots);
                 OwnedValue::enum_variant("Result", "Ok", [("0", OwnedValue::HostRef(root))])
             }
+            Self::Tuple => OwnedValue::tuple(roots.into_iter().map(OwnedValue::HostRef)),
+            Self::OptionSomeTuple => OwnedValue::enum_variant(
+                "Option",
+                "Some",
+                [(
+                    "0",
+                    OwnedValue::tuple(roots.into_iter().map(OwnedValue::HostRef)),
+                )],
+            ),
+            Self::ResultOkTuple => OwnedValue::enum_variant(
+                "Result",
+                "Ok",
+                [(
+                    "0",
+                    OwnedValue::tuple(roots.into_iter().map(OwnedValue::HostRef)),
+                )],
+            ),
         }
     }
+}
+
+fn single_scoped_root(roots: &[vela_host::path::HostRef]) -> vela_host::path::HostRef {
+    let [root] = roots else {
+        panic!("single scoped host return must retain exactly one root");
+    };
+    *root
 }
 
 pub(crate) fn check_capabilities(

@@ -789,6 +789,16 @@ fn encode_hint(hint: &TypeHint, output: &mut String) {
         }
         TypeHint::Set => output.push_str("set"),
         TypeHint::SetOf(element) => encode_unary_hint("set", element, output),
+        TypeHint::TupleOf(elements) => {
+            output.push_str("tuple<");
+            for (index, element) in elements.iter().enumerate() {
+                if index > 0 {
+                    output.push(',');
+                }
+                encode_hint(element, output);
+            }
+            output.push('>');
+        }
         TypeHint::Iterator => output.push_str("iterator"),
         TypeHint::IteratorOf(element) => encode_unary_hint("iterator", element, output),
         TypeHint::OptionOf(element) => encode_unary_hint("option", element, output),

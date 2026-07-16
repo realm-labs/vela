@@ -365,6 +365,9 @@ fn type_hint_def(hint: &crate::native::TypeHint) -> TypeHintDef {
         crate::native::TypeHint::SetOf(element) => {
             TypeHintDef::named("Set").with_args([type_hint_def(element)])
         }
+        crate::native::TypeHint::TupleOf(elements) => {
+            TypeHintDef::tuple(elements.iter().map(type_hint_def))
+        }
         crate::native::TypeHint::Iterator => TypeHintDef::named("Iterator"),
         crate::native::TypeHint::IteratorOf(item) => {
             TypeHintDef::named("Iterator").with_args([type_hint_def(item)])

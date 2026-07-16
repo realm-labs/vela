@@ -27,6 +27,26 @@ pub struct PlayerService {
     touches: i64,
 }
 
+#[derive(Debug, ScriptHost)]
+#[script(path = "game::Team")]
+pub struct Team {
+    first: Player,
+    second: Player,
+    #[script(get, set)]
+    marker: i64,
+}
+
+#[methods(path = "game::Team")]
+impl Team {
+    pub fn total(&self) -> i64 {
+        self.first.level + self.second.level
+    }
+
+    pub fn players_mut(&mut self) -> (&mut Player, &mut Player) {
+        (&mut self.first, &mut self.second)
+    }
+}
+
 #[methods(path = "game::PlayerService")]
 impl PlayerService {
     pub fn touch_count(&self) -> i64 {
@@ -143,6 +163,21 @@ pub fn fallible_service_player(service: &PlayerService, allowed: bool) -> VmResu
             operation: "fallible borrowed host return",
         })
     })
+}
+
+#[export(path = "game::split_team")]
+pub fn split_team(team: &mut Team) -> (&mut Player, &mut Player) {
+    (&mut team.first, &mut team.second)
+}
+
+#[export(path = "game::split_team_if")]
+pub fn split_team_if(team: &mut Team, enabled: bool) -> Option<(&mut Player, &mut Player)> {
+    enabled.then_some((&mut team.first, &mut team.second))
+}
+
+#[export(path = "game::team_total")]
+pub fn team_total(team: &Team) -> i64 {
+    team.first.level + team.second.level
 }
 
 #[export(path = "game::touch_service")]
@@ -392,6 +427,7 @@ fn host_export_runtime(source: &str) -> Runtime {
         .capability(Capability::Random)
         .register_host_type::<Player>()
         .register_host_type::<PlayerService>()
+        .register_host_type::<Team>()
         .register_exports(vela_export_bundle_grant_exp())
         .register_exports(vela_export_bundle_sum_levels())
         .register_exports(vela_export_bundle_transfer())
@@ -401,6 +437,9 @@ fn host_export_runtime(source: &str) -> Runtime {
         .register_exports(vela_export_bundle_maybe_service_player())
         .register_exports(vela_export_bundle_checked_service_player())
         .register_exports(vela_export_bundle_fallible_service_player())
+        .register_exports(vela_export_bundle_split_team())
+        .register_exports(vela_export_bundle_split_team_if())
+        .register_exports(vela_export_bundle_team_total())
         .register_exports(vela_export_bundle_touch_service())
         .register_exports(vela_export_bundle_roll())
         .register_exports(vela_export_bundle_strict_grant())
@@ -411,6 +450,7 @@ fn host_export_runtime(source: &str) -> Runtime {
         .register_exports(vela_export_bundle_hold_player_async())
         .register_exports(Player::vela_inherent_exports())
         .register_exports(PlayerService::vela_inherent_exports())
+        .register_exports(Team::vela_inherent_exports())
         .register_exports(Player::vela_protocol_Damageable_exports())
         .build()
         .expect("host exports should register");
@@ -697,6 +737,79 @@ fn vm_result_borrowed_return_releases_owner_on_error() {
         )
         .expect("error cleanup must release the owner lease");
     assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(1)));
+}
+
+#[test]
+fn tuple_borrowed_return_creates_distinct_siblings_under_one_freeze() {
+    let mut runtime = host_export_runtime(
+        "fn main(team: Team) { let pair = game::split_team(team); let first = pair.0; let second = pair.1; first.increment(2); second.increment(3); let nested = game::sum_levels(first, second); host::release(first); host::release(second); return game::team_total(team) + nested; }",
+    );
+    let mut team = Team {
+        first: Player { level: 4 },
+        second: Player { level: 6 },
+        marker: 0,
+    };
+
+    let value = runtime
+        .call(
+            "main",
+            CallArgs::new().with_host_mut("team", &mut team),
+            CallOptions::unbounded(),
+        )
+        .expect("releasing every tuple sibling should unfreeze the owner");
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(30)));
+    assert_eq!(team.first.level, 6);
+    assert_eq!(team.second.level, 9);
+}
+
+#[test]
+fn option_tuple_borrowed_return_retains_only_the_some_group() {
+    let mut runtime = host_export_runtime(
+        "fn some(team: Team) { let pair = game::split_team_if(team, true)?; let first = pair.0; let second = pair.1; first.increment(1); host::release(first); host::release(second); return Option::Some(game::team_total(team)); } fn none(team: Team) { return game::split_team_if(team, false); }",
+    );
+    let mut team = Team {
+        first: Player { level: 2 },
+        second: Player { level: 3 },
+        marker: 0,
+    };
+
+    for (entry, variant) in [("some", "Some"), ("none", "None")] {
+        let value = runtime
+            .call(
+                entry,
+                CallArgs::new().with_host_mut("team", &mut team),
+                CallOptions::unbounded(),
+            )
+            .expect("optional tuple branch should execute");
+        let owned = runtime
+            .value_to_owned(&value)
+            .expect("value should materialize");
+        assert!(matches!(
+            owned,
+            OwnedValue::Enum { variant: ref actual, .. } if actual == variant
+        ));
+    }
+}
+
+#[test]
+fn tuple_borrowed_method_return_uses_the_same_sibling_group_model() {
+    let mut runtime = host_export_runtime(
+        "fn main(team: Team) { let pair = team.players_mut(); let first = pair.0; let second = pair.1; first.increment(4); second.increment(5); host::release(first); host::release(second); return team.total(); }",
+    );
+    let mut team = Team {
+        first: Player { level: 1 },
+        second: Player { level: 2 },
+        marker: 0,
+    };
+
+    let value = runtime
+        .call(
+            "main",
+            CallArgs::new().with_host_mut("team", &mut team),
+            CallOptions::unbounded(),
+        )
+        .expect("tuple method siblings should release independently");
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(12)));
 }
 
 #[test]

@@ -161,6 +161,7 @@ fn add_type_hint(mut options: CompilerOptions, hint: &TypeHint) -> CompilerOptio
             options = add_type_hint(options, key);
             add_type_hint(options, value)
         }
+        TypeHint::TupleOf(elements) => elements.iter().fold(options, add_type_hint),
         TypeHint::Record(key) | TypeHint::Enum(key) | TypeHint::Host(key) => {
             options.with_opaque_external_type_hint(key.name.clone())
         }

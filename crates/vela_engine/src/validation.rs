@@ -676,6 +676,12 @@ fn validate_type_hint(
             validate_type_hint(ok, descriptor, lookup)?;
             validate_type_hint(err, descriptor, lookup)
         }
+        TypeHint::TupleOf(elements) => {
+            for element in elements {
+                validate_type_hint(element, descriptor, lookup)?;
+            }
+            Ok(())
+        }
     }
 }
 
@@ -794,7 +800,7 @@ fn is_keyable_type_hint(hint: &TypeHint) -> bool {
         | TypeHint::Host(_)
         | TypeHint::Trait(_)
         | TypeHint::PathProxy => !matches!(hint, TypeHint::PathProxy),
-        TypeHint::Function => false,
+        TypeHint::TupleOf(_) | TypeHint::Function => false,
     }
 }
 

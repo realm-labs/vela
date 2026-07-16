@@ -428,6 +428,14 @@ fn type_hint_name(hint: &TypeHint) -> String {
         }
         TypeHint::Set => "Set".to_owned(),
         TypeHint::SetOf(element) => format!("Set<{}>", type_hint_name(element)),
+        TypeHint::TupleOf(elements) => format!(
+            "({})",
+            elements
+                .iter()
+                .map(type_hint_name)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
         TypeHint::PathProxy => "path_proxy".to_owned(),
         TypeHint::Record(key) | TypeHint::Enum(key) | TypeHint::Host(key) => key.name.clone(),
         TypeHint::Trait(name) => name.clone(),

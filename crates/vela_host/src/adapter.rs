@@ -3,7 +3,10 @@ use vela_def::StateId;
 
 use crate::{
     error::{HostError, HostErrorKind, HostResult},
-    lease::{ErasedHostLease, HostLeaseKind, ScopedBorrowedHostCell, host_lease_unsupported},
+    lease::{
+        ErasedHostLease, HostLeaseKind, ScopedBorrowedHostCell, ScopedBorrowedHostGroupCell,
+        host_lease_unsupported,
+    },
     path::HostRef,
     resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess},
     target::HostTargetInstance,
@@ -27,9 +30,19 @@ pub struct ScopedHostReturn<'lease> {
     pub access: HostLeaseKind,
 }
 
+pub struct ScopedHostReturnGroup<'lease> {
+    pub object: ScopedBorrowedHostGroupCell<'lease>,
+    pub accesses: Vec<HostLeaseKind>,
+}
+
+pub enum ScopedHostReturns<'lease> {
+    Single(ScopedHostReturn<'lease>),
+    Group(ScopedHostReturnGroup<'lease>),
+}
+
 pub type ScopedHostReturnInvoker<'callback> = dyn for<'lease> FnMut(
         &mut [ErasedHostLease<'lease>],
-    ) -> HostResult<Option<ScopedHostReturn<'lease>>>
+    ) -> HostResult<Option<ScopedHostReturns<'lease>>>
     + 'callback;
 
 pub trait ScriptStateAdapter {
@@ -75,7 +88,7 @@ pub trait ScriptStateAdapter {
         &mut self,
         requests: &[(HostRef, HostLeaseKind)],
         _invoke: &mut ScopedHostReturnInvoker<'_>,
-    ) -> HostResult<Option<HostRef>> {
+    ) -> HostResult<Option<Vec<HostRef>>> {
         match requests.first() {
             Some((root, _)) => Err(host_lease_unsupported(*root)),
             None => Err(HostError::new(HostErrorKind::InvalidArgument {

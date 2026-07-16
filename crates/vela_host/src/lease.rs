@@ -110,6 +110,18 @@ self_cell::self_cell!(
     }
 );
 
+pub type ScopedHostGroupDependents<'host> = Vec<ScopedHostLeaseSlot<'host>>;
+
+self_cell::self_cell!(
+    /// One retained parent lease with multiple independently leased children.
+    pub struct ScopedBorrowedHostGroupCell<'host> {
+        owner: self_cell::MutBorrow<ErasedHostLease<'host>>,
+
+        #[not_covariant]
+        dependent: ScopedHostGroupDependents,
+    }
+);
+
 pub struct SharedScopedHost<'host, T>(&'host T);
 
 impl<'host, T> SharedScopedHost<'host, T> {
@@ -137,6 +149,44 @@ pub fn try_scoped_host_cell<'host, Error>(
     ScopedBorrowedHostCell::try_new(self_cell::MutBorrow::new(parent_lease), |owner| {
         build(owner.borrow_mut())
     })
+}
+
+pub fn try_scoped_host_group_cell<'host, Error>(
+    parent_lease: ErasedHostLease<'host>,
+    build: impl for<'borrow> FnOnce(
+        &'borrow mut ErasedHostLease<'host>,
+    ) -> Result<Vec<ScopedHostDependent<'borrow>>, Error>,
+) -> Result<ScopedBorrowedHostGroupCell<'host>, Error> {
+    ScopedBorrowedHostGroupCell::try_new(self_cell::MutBorrow::new(parent_lease), |owner| {
+        build(owner.borrow_mut()).map(|objects| {
+            objects
+                .into_iter()
+                .map(|object| Arc::new(RwLock::new(object)))
+                .collect()
+        })
+    })
+}
+
+impl ScopedBorrowedHostGroupCell<'_> {
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.with_dependent(|_, objects| objects.len())
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.with_dependent(|_, objects| objects.is_empty())
+    }
+
+    #[must_use]
+    pub fn child_type_id(&self, index: usize) -> Option<vela_common::HostTypeId> {
+        self.with_dependent(|_, objects| {
+            objects
+                .get(index)
+                .and_then(|object| object.try_read())
+                .map(|object| object.host_type_id())
+        })
+    }
 }
 
 pub fn shared_scoped_host<T>(value: &T) -> ScopedHostDependent<'_>

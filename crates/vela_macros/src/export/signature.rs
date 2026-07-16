@@ -91,6 +91,7 @@ pub(super) enum TypeShape {
     Array(Box<TypeShape>),
     Map(Box<TypeShape>, Box<TypeShape>),
     Set(Box<TypeShape>),
+    Tuple(Vec<TypeShape>),
     Option(Box<TypeShape>),
     Result(Box<TypeShape>, Box<TypeShape>),
     Value(Type),
@@ -397,6 +398,17 @@ fn classify_return_shape(ty: &Type) -> Result<TypeShape> {
     if let Some(inner) = wrapper_inner_type(ty, &["Option"]) {
         return Ok(TypeShape::Option(Box::new(classify_return_shape(inner)?)));
     }
+    if let Type::Tuple(tuple) = ty {
+        if tuple.elems.is_empty() {
+            return Ok(TypeShape::Unit);
+        }
+        return tuple
+            .elems
+            .iter()
+            .map(classify_return_shape)
+            .collect::<Result<Vec<_>>>()
+            .map(TypeShape::Tuple);
+    }
     if type_ident(ty).is_some_and(|ident| ident == "Result") {
         let args = type_generic_args(ty);
         let [ok, err] = args.as_slice() else {
@@ -415,8 +427,16 @@ fn classify_return_shape(ty: &Type) -> Result<TypeShape> {
 
 fn classify_owned_type(ty: &Type) -> Result<TypeShape> {
     reject_boundary_wrapper(ty)?;
-    if matches!(ty, Type::Tuple(tuple) if tuple.elems.is_empty()) {
-        return Ok(TypeShape::Unit);
+    if let Type::Tuple(tuple) = ty {
+        if tuple.elems.is_empty() {
+            return Ok(TypeShape::Unit);
+        }
+        return tuple
+            .elems
+            .iter()
+            .map(classify_owned_type)
+            .collect::<Result<Vec<_>>>()
+            .map(TypeShape::Tuple);
     }
     if let Type::Array(array) = ty {
         return Ok(TypeShape::Array(Box::new(classify_owned_type(
@@ -599,6 +619,38 @@ fn host_return_access(shape: &TypeShape) -> Result<Option<HostAccess>> {
         TypeShape::Host(_, access) => Ok(Some(*access)),
         TypeShape::Option(inner) => host_return_access(inner),
         TypeShape::Result(ok, _) => host_return_access(ok),
+        TypeShape::Tuple(elements) => {
+            let mut access = None;
+            for element in elements {
+                let TypeShape::Host(_, element_access) = element else {
+                    if host_return_access(element)?.is_some() || access.is_some() {
+                        return Err(syn::Error::new(
+                            proc_macro2::Span::call_site(),
+                            "borrowed host tuples must contain only direct host references",
+                        ));
+                    }
+                    continue;
+                };
+                if access.is_some_and(|access| access != *element_access) {
+                    return Err(syn::Error::new(
+                        proc_macro2::Span::call_site(),
+                        "borrowed host tuples must use one shared or exclusive access mode",
+                    ));
+                }
+                access = Some(*element_access);
+            }
+            if access.is_some()
+                && elements
+                    .iter()
+                    .any(|item| !matches!(item, TypeShape::Host(_, _)))
+            {
+                return Err(syn::Error::new(
+                    proc_macro2::Span::call_site(),
+                    "borrowed host tuples cannot mix owned values and host references",
+                ));
+            }
+            Ok(access)
+        }
         TypeShape::Unit
         | TypeShape::Bool
         | TypeShape::Char
@@ -626,7 +678,12 @@ impl TypeShape {
     fn is_structured(&self) -> bool {
         matches!(
             self,
-            Self::Array(_) | Self::Map(_, _) | Self::Set(_) | Self::Option(_) | Self::Result(_, _)
+            Self::Array(_)
+                | Self::Map(_, _)
+                | Self::Set(_)
+                | Self::Tuple(_)
+                | Self::Option(_)
+                | Self::Result(_, _)
         )
     }
 }
@@ -717,6 +774,19 @@ impl ClassifiedSignature {
                 Some(ScopedReturnContainer::Option)
             }
             TypeShape::Result(ok, _) if matches!(&**ok, TypeShape::Host(_, _)) => {
+                Some(ScopedReturnContainer::Result)
+            }
+            TypeShape::Tuple(elements)
+                if elements
+                    .iter()
+                    .all(|item| matches!(item, TypeShape::Host(_, _))) =>
+            {
+                Some(ScopedReturnContainer::Direct)
+            }
+            TypeShape::Option(inner) if matches!(&**inner, TypeShape::Tuple(elements) if elements.iter().all(|item| matches!(item, TypeShape::Host(_, _)))) => {
+                Some(ScopedReturnContainer::Option)
+            }
+            TypeShape::Result(ok, _) if matches!(&**ok, TypeShape::Tuple(elements) if elements.iter().all(|item| matches!(item, TypeShape::Host(_, _)))) => {
                 Some(ScopedReturnContainer::Result)
             }
             _ => None,

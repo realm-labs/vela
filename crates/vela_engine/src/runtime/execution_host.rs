@@ -1,12 +1,15 @@
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
+
 use vela_common::HostMethodId;
 use vela_host::adapter::{
-    ExternStateBinding, HostLeaseInvoker, ScopedHostReturn, ScopedHostReturnInvoker,
-    ScriptStateAdapter,
+    ExternStateBinding, HostLeaseInvoker, ScopedHostReturn, ScopedHostReturnGroup,
+    ScopedHostReturnInvoker, ScopedHostReturns, ScriptStateAdapter,
 };
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::lease::{
-    BorrowLeaseId, ErasedHostLease, HostLeaseKind, ScopedHostLeaseSlot, host_lease_unsupported,
-    host_object_busy,
+    BorrowLeaseId, ErasedHostLease, HostLeaseKind, ScopedBorrowedHostGroupCell,
+    ScopedHostLeaseSlot, host_lease_unsupported, host_object_busy,
 };
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
@@ -46,7 +49,16 @@ pub(super) struct ExecutionHost<'state, 'host> {
 struct ScopedHostBinding<'host> {
     _borrow_lease_id: BorrowLeaseId,
     access: HostLeaseKind,
-    object: ScopedHostLeaseSlot<'host>,
+    object: ScopedHostObjectBinding<'host>,
+    activity: Arc<()>,
+}
+
+enum ScopedHostObjectBinding<'host> {
+    Single(ScopedHostLeaseSlot<'host>),
+    Group {
+        object: Arc<ScopedBorrowedHostGroupCell<'host>>,
+        index: usize,
+    },
 }
 
 pub(super) trait ExecutionHostBoundary: ScriptStateAdapter + Send {
@@ -147,15 +159,16 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             });
         }
         if let Some(binding) = self.scoped_hosts.get(&root) {
+            let ScopedHostObjectBinding::Single(object) = &binding.object else {
+                return Err(host_lease_unsupported(root));
+            };
             return match (binding.access, kind) {
                 (HostLeaseKind::Shared, HostLeaseKind::Exclusive) => Err(host_object_busy(root)),
-                (_, HostLeaseKind::Shared) => binding
-                    .object
+                (_, HostLeaseKind::Shared) => object
                     .try_read_arc()
                     .map(|object| ErasedHostLease::ScopedShared { object })
                     .ok_or_else(|| host_object_busy(root)),
-                (HostLeaseKind::Exclusive, HostLeaseKind::Exclusive) => binding
-                    .object
+                (HostLeaseKind::Exclusive, HostLeaseKind::Exclusive) => object
                     .try_write_arc()
                     .map(|object| ErasedHostLease::ScopedExclusive { object })
                     .ok_or_else(|| host_object_busy(root)),
@@ -194,10 +207,107 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             ScopedHostBinding {
                 _borrow_lease_id: BorrowLeaseId::new(root.object_id.get()),
                 access: returned.access,
-                object: Arc::new(parking_lot::RwLock::new(Box::new(returned.object))),
+                object: ScopedHostObjectBinding::Single(Arc::new(parking_lot::RwLock::new(
+                    Box::new(returned.object),
+                ))),
+                activity: Arc::new(()),
             },
         );
         root
+    }
+
+    fn retain_scoped_host_group(
+        &mut self,
+        returned: ScopedHostReturnGroup<'host>,
+    ) -> HostResult<Vec<HostRef>> {
+        if returned.object.len() != returned.accesses.len() || returned.object.is_empty() {
+            return Err(HostError {
+                kind: HostErrorKind::InvalidArgument {
+                    expected: "matching non-empty scoped host group children and access modes",
+                },
+                source_span: None,
+            });
+        }
+        let object = Arc::new(returned.object);
+        let mut roots = Vec::with_capacity(returned.accesses.len());
+        for (index, access) in returned.accesses.into_iter().enumerate() {
+            let type_id = object.child_type_id(index).ok_or(HostError {
+                kind: HostErrorKind::InvalidArgument {
+                    expected: "uncontended scoped host group child",
+                },
+                source_span: None,
+            })?;
+            let root = HostRef::new(
+                type_id,
+                vela_common::HostObjectId::new(self.next_direct_object_id),
+                1,
+            );
+            self.next_direct_object_id = self.next_direct_object_id.saturating_add(1);
+            self.scoped_hosts.insert(
+                root,
+                ScopedHostBinding {
+                    _borrow_lease_id: BorrowLeaseId::new(root.object_id.get()),
+                    access,
+                    object: ScopedHostObjectBinding::Group {
+                        object: Arc::clone(&object),
+                        index,
+                    },
+                    activity: Arc::new(()),
+                },
+            );
+            roots.push(root);
+        }
+        Ok(roots)
+    }
+
+    fn with_group_host_leases(
+        &mut self,
+        requests: &[(HostRef, HostLeaseKind)],
+        invoke: &mut HostLeaseInvoker<'_>,
+    ) -> Option<HostResult<()>> {
+        let mut group = None;
+        let mut children = Vec::with_capacity(requests.len());
+        for (root, kind) in requests {
+            let binding = self.scoped_hosts.get(root)?;
+            let ScopedHostObjectBinding::Group { object, index } = &binding.object else {
+                return None;
+            };
+            if let Some(group) = &group {
+                if !Arc::ptr_eq(group, object) {
+                    return None;
+                }
+            } else {
+                group = Some(Arc::clone(object));
+            }
+            if binding.access == HostLeaseKind::Shared && *kind == HostLeaseKind::Exclusive {
+                return Some(Err(host_object_busy(*root)));
+            }
+            children.push((*root, *index, *kind, Arc::clone(&binding.activity)));
+        }
+        let group = group?;
+        Some(group.with_dependent(move |_, objects| {
+            let mut leases = Vec::with_capacity(children.len());
+            let mut activities = Vec::with_capacity(children.len());
+            for (root, index, kind, activity) in children {
+                let child = objects
+                    .get(index)
+                    .ok_or_else(|| host_lease_unsupported(root))?;
+                let lease = match kind {
+                    HostLeaseKind::Shared => child
+                        .try_read_arc()
+                        .map(|object| ErasedHostLease::ScopedShared { object })
+                        .ok_or_else(|| host_object_busy(root))?,
+                    HostLeaseKind::Exclusive => child
+                        .try_write_arc()
+                        .map(|object| ErasedHostLease::ScopedExclusive { object })
+                        .ok_or_else(|| host_object_busy(root))?,
+                };
+                leases.push(lease);
+                activities.push(activity);
+            }
+            let _activities = activities;
+            invoke(&mut leases, self)
+        }))
     }
 }
 
@@ -387,7 +497,7 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_> {
         &mut self,
         requests: &[(HostRef, HostLeaseKind)],
         invoke: &mut ScopedHostReturnInvoker<'_>,
-    ) -> HostResult<Option<HostRef>> {
+    ) -> HostResult<Option<Vec<HostRef>>> {
         if requests
             .iter()
             .all(|(root, _)| self.args.direct_binding(*root).is_some())
@@ -529,6 +639,9 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 return Err(host_lease_unsupported(*root));
             }
         }
+        if let Some(result) = self.with_group_host_leases(requests, invoke) {
+            return result;
+        }
         let mut leases = self.take_execution_host_leases(requests)?;
         invoke(&mut leases, self)
     }
@@ -537,14 +650,19 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         &mut self,
         requests: &[(HostRef, HostLeaseKind)],
         invoke: &mut ScopedHostReturnInvoker<'_>,
-    ) -> HostResult<Option<HostRef>> {
+    ) -> HostResult<Option<Vec<HostRef>>> {
         for (root, _) in requests {
             if self.extern_states.binding(*root).is_some() {
                 return Err(host_lease_unsupported(*root));
             }
         }
         let mut leases = self.take_execution_host_leases(requests)?;
-        Ok(invoke(&mut leases)?.map(|returned| self.retain_scoped_host(returned)))
+        invoke(&mut leases)?
+            .map(|returned| match returned {
+                ScopedHostReturns::Single(returned) => Ok(vec![self.retain_scoped_host(returned)]),
+                ScopedHostReturns::Group(returned) => self.retain_scoped_host_group(returned),
+            })
+            .transpose()
     }
 
     fn release_scoped_host(&mut self, root: HostRef) -> HostResult<()> {
@@ -563,7 +681,11 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 source_span: None,
             });
         };
-        if Arc::strong_count(&binding.object) != 1 {
+        let in_use = match &binding.object {
+            ScopedHostObjectBinding::Single(object) => Arc::strong_count(object) != 1,
+            ScopedHostObjectBinding::Group { .. } => Arc::strong_count(&binding.activity) != 1,
+        };
+        if in_use {
             return Err(HostError {
                 kind: HostErrorKind::BorrowStillInUse {
                     path: vela_host::path::HostPath::new(root),
@@ -881,5 +1003,3 @@ mod tests {
         assert!(host.args.direct_binding(child_ref).is_none());
     }
 }
-use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;

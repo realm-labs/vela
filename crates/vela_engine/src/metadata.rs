@@ -51,6 +51,7 @@ pub(crate) fn inject_host_method_metadata(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn inject_native_function_metadata(
     registry: &mut TypeRegistry,
     native_functions: &[NativeFunctionEntry],
@@ -222,6 +223,14 @@ pub(crate) fn type_hint_display(hint: &TypeHint) -> String {
         }
         TypeHint::Set => "Set".to_owned(),
         TypeHint::SetOf(element) => format!("Set<{}>", type_hint_display(element)),
+        TypeHint::TupleOf(elements) => format!(
+            "({})",
+            elements
+                .iter()
+                .map(type_hint_display)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
         TypeHint::Iterator => "Iterator".to_owned(),
         TypeHint::IteratorOf(item) => format!("Iterator<{}>", type_hint_display(item)),
         TypeHint::OptionOf(payload) => format!("Option<{}>", type_hint_display(payload)),

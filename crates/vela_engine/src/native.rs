@@ -350,6 +350,7 @@ pub enum TypeHint {
     },
     Set,
     SetOf(Box<TypeHint>),
+    TupleOf(Vec<TypeHint>),
     Iterator,
     IteratorOf(Box<TypeHint>),
     OptionOf(Box<TypeHint>),
@@ -467,6 +468,11 @@ impl TypeHint {
     #[must_use]
     pub fn set_of(element: TypeHint) -> Self {
         Self::SetOf(Box::new(element))
+    }
+
+    #[must_use]
+    pub fn tuple_of(elements: impl IntoIterator<Item = TypeHint>) -> Self {
+        Self::TupleOf(elements.into_iter().collect())
     }
 
     #[must_use]
@@ -628,21 +634,26 @@ pub struct AsyncDirectHostNativeFunctionEntry {
 pub struct ScopedHostNativeFunctionEntry {
     pub desc: NativeFunctionDesc,
     pub requests: HostLeaseRequestFactory,
-    pub function: Arc<
-        dyn for<'host> Fn(
-                &mut [vela_host::lease::ErasedHostLease<'host>],
-                Vec<OwnedValue>,
-            ) -> VmResult<ScopedHostNativeOutcome<'host>>
-            + Send
-            + Sync
-            + 'static,
-    >,
+    pub function: ScopedHostNativeFunction,
 }
+
+pub type ScopedHostNativeFunction = Arc<
+    dyn for<'host> Fn(
+            &mut [vela_host::lease::ErasedHostLease<'host>],
+            Vec<OwnedValue>,
+        ) -> VmResult<ScopedHostNativeOutcome<'host>>
+        + Send
+        + Sync
+        + 'static,
+>;
 
 pub enum ScopedHostNativeOutcome<'host> {
     Direct(vela_host::adapter::ScopedHostReturn<'host>),
     OptionSome(vela_host::adapter::ScopedHostReturn<'host>),
     ResultOk(vela_host::adapter::ScopedHostReturn<'host>),
+    Tuple(vela_host::adapter::ScopedHostReturnGroup<'host>),
+    OptionSomeTuple(vela_host::adapter::ScopedHostReturnGroup<'host>),
+    ResultOkTuple(vela_host::adapter::ScopedHostReturnGroup<'host>),
     Value(OwnedValue),
 }
 
