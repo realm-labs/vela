@@ -32,10 +32,10 @@ error conversion. `HostRef`, `HostPath`, `PathProxy`, `HostLeaseRef`,
 `HostLeaseMut`, and `HostAccess` remain internal safety and execution
 primitives, but they are not normal business-function parameter types.
 
-Replaceable callable slots, optional service groups, provider selection, and
+Macro-generated callable-entry interception, provider selection, and
 generation-safe hot override are an optional layer built on this general
-callable model. Ordinary Rust/Vela interop must not require a replaceable slot,
-service trait, or service group.
+callable model. Ordinary Rust/Vela interop must not require a replaceable slot
+or service trait.
 
 This is deliberately not arbitrary Rust ABI reflection. Only explicitly
 exported Rust items and explicitly exported Vela items enter the cross-language
@@ -117,10 +117,12 @@ record accepted design decisions in `docs/decisions.md`.
     required capabilities are a deterministic projection of that final set.
     Active deployment grants, callable allowlists, policy profiles, and
     reflection-tool permissions are runtime policy, not callable ABI.
-16. A direct call to a concrete Rust function or value remains an ordinary Rust
-    call. It is not intercepted or made hot-swappable implicitly.
-17. Optional handler/function and service-group hot override uses an immutable
-    dispatch generation pinned by the root call. It does not redefine the
+16. Unannotated Rust calls remain direct and are never intercepted implicitly.
+    An explicitly annotated handler, function, or method keeps its ordinary
+    source call shape while its macro-generated public entry performs the
+    replaceable-slot check and its generated private fallback stays direct.
+17. Optional handler/function/method hot override uses an immutable dispatch
+    generation pinned by the host root scope. It does not redefine the
     ordinary callable boundary.
 18. No `unsafe` reference fabrication is allowed, including from an address or
     `TypeId` alone. A borrowed-return child is backed by the retained, pinned
@@ -139,7 +141,8 @@ record accepted design decisions in `docs/decisions.md`.
 - Batch C: natural Vela-to-Rust function and method calls.
 - Batch D: generated typed Rust-to-Vela bindings.
 - Batch E: nested bidirectional calls, reborrows, async, and unified policy.
-- Batch F: optional Rust/Vela hot-replaceable dispatch slots and service groups.
+- Batch F: optional macro-generated callable-entry interception and Vela
+  override functions.
 - Batch G: end-to-end acceptance, tooling, documentation, and performance.
 
 ### Never-complete conditions
@@ -168,6 +171,10 @@ Do not declare this goal complete while any of the following remains true:
 - ordinary `&T`/`&mut T` effects must be repeated manually, or a related
   function group requires one path prefix and Engine registration call per
   function;
+- a replaceable business method changes existing caller syntax, requires a
+  handwritten proxy, or forces Vela to implement adjacent service methods;
+- the no-override method-entry path requires a runtime string/hash lookup,
+  global lock, allocation, or argument serialization before its Rust fallback;
 - hot override remains the only demonstrated use of the interop layer;
 - focused, workspace, formatting, and lint validation are not green.
 
@@ -614,26 +621,32 @@ scoped `Send` execution future and session driver as `Runtime::call_async`.
 
 ### 2.10 Optional hot-replaceable dispatch
 
-Only call sites that must select an implementation at runtime need a
-replaceable dispatch slot. A slot may represent one handler or function. A
-service group is an optional atomic group of slots for methods that share
-state, invariants, or rollout policy.
+Only handlers, functions, or methods explicitly selected by a host macro gain
+a replaceable slot. The macro keeps the existing public name and ordinary Rust
+call syntax, moves the authored body into a private Rust fallback, and emits a
+very small interception check at the public entry.
 
 ```text
-replaceable handler/function -> one CallableContract -> one slot
-replaceable service          -> callable group       -> atomically selected slots
+annotated public entry
+  -> dense slot lookup
+  -> no Vela target: direct private Rust fallback
+  -> Vela target: common generated adapter and Vela function
 ```
 
-Both forms reuse the same parameter classifier, callable contracts, Rust
-adapters, Vela bindings, lease handling, and runtime execution path. They add
-only stable slot identity, target selection, and dispatch-generation behavior.
-A service trait is accepted when it is already the natural Rust contract, but
-must not be required merely to make a handler replaceable; an exported item or
-explicit export group may generate the same dispatch metadata.
+One annotated method is one replacement unit. A concrete service struct may
+have many independently replaceable methods; a Vela patch implements only the
+methods it changes. Neither a service trait nor a complete Vela service
+implementation is required. A patch package may name any set of slots, and
+staging materializes and atomically publishes one immutable full dispatch
+table for that delta.
 
-Ordinary `game::grant_exp(...)` does not require a slot. A direct concrete Rust
-call also remains direct and is not intercepted. Code that must be patchable
-calls the generated typed dispatch facade explicitly.
+The macro reuses the same parameter classifier, callable contract, generated
+adapter, lease handling, and runtime execution path as ordinary interop. From
+the business author's perspective the original receiver and parameters enter
+Vela unchanged; internally Rust references become scoped HostRefs and other
+values follow their normal boundary mappings. No caller-side facade, manual
+proxy, per-method registration call, or service-wide implementation is
+authored. Unannotated functions and methods remain direct Rust calls.
 
 ## 3. Core Model
 
@@ -770,17 +783,20 @@ or build script.
 
 A dispatch slot is indirection over one `CallableContract`. It is needed only
 when the host selects among implementations, such as a Rust default and a Vela
-hotfix. Related slots may be placed in one atomic dispatch group.
+hotfix. Stable identity is separate from the dense build-local index used by
+the interception fast path.
 
 ```text
 ReplaceableSlotId = stable configured callable-dispatch identity
-DispatchTarget = validated Rust or Vela implementation
-DispatchGroupId = optional atomic group of ReplaceableSlotId entries
-DispatchGeneration = immutable selected-target table
+InterceptSlotIndex = dense build-local array index emitted by the host macro
+VelaOverrideTarget = validated optional Vela implementation
+DispatchGeneration = immutable Option<VelaOverrideTarget> table
 ```
 
 Slots do not own values, VM frames, heap state, host state, budgets, or
-capabilities. They resolve a target before the ordinary prepared-call path.
+capabilities. The generated public Rust entry tests the pinned generation at
+its dense index. An empty entry calls its generated private Rust fallback; a
+present entry enters the ordinary prepared-call path for the Vela target.
 
 ## 4. Signature Boundary And ABI
 
@@ -1333,12 +1349,11 @@ Only the selected callable target changes. A nested Rust-to-Vela or
 Vela-to-Rust call must not create a fresh Runtime context, replenish budgets,
 or observe a newer hot-reload generation partway through one operation.
 
-Rust-to-Rust calls may remain direct when the author calls a concrete Rust
-function. Such calls have ordinary Rust semantics and are outside Runtime
-policy. A caller that wants runtime policy or replaceability uses an exported
-binding or replaceable dispatch facade explicitly. Direct internal calls such
-as `self.helper()` also bypass dispatch unless the helper is deliberately
-exported and invoked through that facade.
+Unannotated Rust-to-Rust calls remain direct, have ordinary Rust semantics, and
+are outside Runtime policy. An explicitly annotated public entry performs its
+macro-generated slot check even though the caller continues to use ordinary
+function or method syntax. Its generated private Rust fallback and every
+unannotated helper bypass dispatch.
 
 ## 9. Host Mutation Semantics
 
@@ -1397,120 +1412,176 @@ they do not change ordinary callable ABI or generated binding fingerprints.
 
 ## 10. Optional Hot-Replaceable Dispatch Layer
 
-### 10.1 One callable, one replaceable slot
+### 10.1 Macro-generated entry interception
 
-A `ReplaceableSlotId` identifies one stable `CallableContract` whose active
-implementation may be selected at runtime. The normal deployment selects its
-Rust target; a staged hotfix may select a compatible Vela target instead.
+A `ReplaceableSlotId` identifies one explicitly annotated callable contract.
+The host integration macro keeps the authored public name and signature, moves
+the body into a generated private Rust fallback, emits the callable metadata
+and dense `InterceptSlotIndex`, and replaces the public body with the
+interception entry.
 
-```text
-Rust or Vela caller
-  -> generated typed dispatch facade
-  -> ReplaceableSlotId in pinned DispatchGeneration
-  -> Rust default target | Vela override target
-  -> common prepared-call path
+Conceptually, a service method becomes:
+
+```rust,ignore
+pub fn level_up(
+    &self,
+    actor: &mut PlayerActor,
+    accessory_id: i32,
+    target_level: i32,
+) -> GameResult<DisplayAccessory> {
+    if let Some(target) = actor
+        .vela_dispatch_scope()
+        .target(PLAYER_ACCESSORY_LEVEL_UP_SLOT)
+    {
+        return target.call((self, actor, accessory_id, target_level));
+    }
+
+    self.__vela_rust_level_up(actor, accessory_id, target_level)
+}
 ```
 
-The slot adds no parameter conversion, return conversion, lease, error,
-effect, capability, sync/async, or execution-session semantics. Rust and Vela
-targets must implement the exact same callable contract and enter the same
-prepared invocation path.
+The actual expansion uses the shared generated adapter and safe borrow
+machinery rather than an authored tuple or erased call. Business callers keep
+writing `service.level_up(...)`; they do not obtain a port, proxy, or typed
+dispatch object. An internal call to another annotated public method performs
+that method's own slot check. The generated private fallback bypasses the
+slot. Unannotated methods and functions remain direct Rust calls.
 
-Replaceability is explicit at the call site. A concrete Rust call such as
-`service.handle(request)` or an internal `self.helper()` call remains direct
-and cannot be redirected. A helper that must be patchable or available for
-Vela recomposition is exported as part of the replaceable surface and called
-through the generated dispatch facade. The runtime must not intercept all Rust
-method calls or implement monkey patching.
+The macro must derive an explicit Runtime/dispatch authority from a receiver,
+context, or parameter supplied by the host integration. It must not consult an
+ambient process-global Runtime. A free function with no such authority remains
+direct or is invoked through an explicit runtime-bound generated binding.
 
-### 10.2 Optional service groups
+### 10.2 Fast path
 
-A service group associates multiple `ReplaceableSlotId` entries with one
-stable group identity and rollout policy. It is useful when handlers share a
-receiver, state, invariants, internal call structure, or activation boundary.
-The group is selection policy over ordinary callable contracts, not a second
-service ABI.
+Each registered replaceable entry has one dense build-local slot index. The
+pinned `DispatchGeneration` stores a dense array of optional Vela targets:
 
 ```text
-DispatchGroupId
-  + ordered ReplaceableSlotId entries
-  + shared Rust or Vela implementation identity
-  -> atomically selected target set
+targets[slot_index] == None         -> direct generated Rust fallback
+targets[slot_index] == Some(target) -> generated adapter -> Vela target
 ```
 
-A Rust trait may define this group when it is already the application's natural
-contract. Otherwise an explicit export module or impl group can generate it;
-authors must not create a service trait solely to obtain hot replacement.
+The no-override path must contain no runtime string lookup, hash map, global
+lock, allocation, argument serialization, or dynamic trait dispatch added only
+for hot replacement. With Vela support compiled out, the macro may erase the
+check completely. With support enabled, the target is one indexed load and a
+predictable empty-entry branch before the ordinary Rust fallback.
 
-The initial implementation selects one complete target for a whole service
-group. Independent handlers may use independent single-callable slots. A later
-partial service override must materialize a complete immutable per-method table
-during staging; runtime must never use `try override, then fallback on
-missing/error`.
+### 10.3 Vela override declaration
 
-### 10.3 Typed facades, namespaces, and ports
+Vela implements only the callable being repaired:
 
-Generated Rust dispatch facades and Vela namespaces are views of the same
-callable contracts. Their methods retain the ordinary signatures used by
-direct exports, resolve a `ReplaceableSlotId`, and then enter the common
-prepared-call path.
+```vela
+#[override(host::player::accessory::level_up)]
+fn level_up(service, actor, accessory_id, target_level) {
+    // patched logic
+}
+```
 
-Static resolution preserves slot and callable identity through HIR, MIR,
-bytecode, linking, diagnostics, and tooling. Runtime strings are not the
-primary locator. The exact authoring attribute and registration spelling for
-marking an export or group replaceable is resolved before Batch F; it must
-reuse existing export bundles and must not require handwritten wrappers.
+The attribute argument is a statically resolved host symbol, not a runtime
+string. It resolves to the registered `ReplaceableSlotId` and imports that
+target's `CallableContract`. The target contract supplies the parameter modes,
+return family, sync/async shape, and effect ceiling; optional Vela type hints
+must agree with it. Duplicate overrides for one slot in one staged package are
+rejected.
 
-### 10.4 Contract equivalence for host values and borrowed returns
+An override package may implement one method or any arbitrary subset of
+handlers, functions, and methods across host types. It never has to implement
+the rest of a Rust service struct or trait. Host export bundles and host-owned
+business macros register all generated slots as one deterministic bundle; the
+embedding application does not register each method manually.
 
-An override may change implementation language, not boundary meaning. In
-particular, a Vela target implementing a Rust contract that returns `&T` or
-`&mut T` must return a compatible scoped `HostRef` descended from the declared
-parent origin, with the same provenance, shared/exclusive freeze, and access
-mode. It cannot substitute an unrelated HostRef or an ordinary Vela record.
+### 10.4 Handler and method integrations
 
-The Rust service instance and business state normally remain host-owned. A Vela
-override replaces handler orchestration and may call exported lower-level Rust
-operations using the same host receivers and HostRefs; selecting Vela does not
-move the service state under the script GC.
+Handler traits, concrete service structs, rules, and event handlers are host
+framework concepts, not Vela language concepts. Their integration macros map
+each selected entry independently to the same replaceable callable model:
 
-### 10.5 Dispatch generations
+```text
+one concrete Handler<Message>::handle entry -> one ReplaceableSlotId
+one annotated ServiceStruct::method entry   -> one ReplaceableSlotId
+one annotated Rust free function            -> one ReplaceableSlotId
+```
 
-The runtime publishes immutable slot tables by generation. A root call captures
-one generation token; nested replaceable calls, callbacks, re-entry, and
-futures inherit it. Activation publishes a new generation for future roots
-while old generations remain alive exactly as long as active calls reference
-them. A nested call never observes a mixture of pre-activation and
-post-activation targets.
+For an actor framework, interception must occur inside the actor turn after
+mailbox ownership has been established. The handler macro may pass the actor,
+actor context, message, and other original parameters into the generated
+adapter. Vela does not implement or emulate the Rust Handler trait; it
+implements the resulting callable contract.
+
+### 10.5 Original parameters and boundary safety
+
+From authored Rust and Vela, the receiver and arguments retain their original
+business meaning and order. The boundary is still generated rather than a
+literal Rust ABI transfer:
+
+- scalars and supported owned values use their ordinary conversions;
+- `&T` and `&mut T`, including actor or service receivers, become scoped shared
+  or exclusive HostRefs backed by the exact live arguments;
+- an actor context or other registered host object may be exposed as a scoped
+  opaque HostRef and permits only its registered fields and methods;
+- a host object registered only as opaque may be carried and passed back to
+  Rust but has no callable Vela surface;
+- unsupported signatures fail at macro expansion or registration instead of
+  requiring a handwritten wrapper.
+
+An override may change implementation language, not boundary meaning. A Vela
+target implementing a borrowed-return contract must return a compatible scoped
+HostRef descended from the declared parent origin with the same provenance,
+freeze, and access mode. Rust-owned actor, service, and business state remain
+outside the script GC.
+
+### 10.6 Host root scope and dispatch generations
+
+The host may begin a pinned dispatch root before any Vela function runs. For an
+actor integration, one mailbox turn, timer turn, or event turn may be the root:
+
+```text
+host enters root dispatch scope and pins generation
+  -> Rust or Vela handler
+  -> nested Rust/Vela service and function calls
+  -> root scope exits
+```
+
+This allows a Rust handler to call a Vela-overridden service method while every
+nested interception observes the same generation. Callbacks, re-entry, async
+suspension, and futures inherit it. Activation publishes a new generation for
+future host roots while active roots retain the prior table. A root never sees
+a mixture of pre-activation and post-activation targets.
 
 The dispatch generation owns selection only. It does not duplicate VM state,
 heap, HostAccess, budgets, capabilities, tracing, or cancellation.
 
-### 10.6 Staging, activation, and rollback
+### 10.7 Staging, activation, and rollback
 
-Staging validates the complete candidate slot table:
+A staged package is a delta containing only its declared overrides. Staging
+applies that delta to the selected base generation and materializes one full
+immutable candidate target table. Unmentioned slots preserve their base
+selection, usually the empty entry that selects the Rust fallback.
 
-- every target exists and implements the exact callable contract;
-- every configured service group is complete and internally consistent;
-- every dependency resolves to a configured slot and callable;
+Staging validates:
+
+- every target slot exists and is replaceable;
+- every Vela function implements the exact callable contract;
 - borrowed-return origin, provenance, freeze, and access modes match;
-- transitive effects and their derived coarse capabilities fit deployment
-  policy;
-- async shape and host parameter modes match;
+- transitive effects and derived coarse capabilities fit deployment policy;
+- sync/async shape and host parameter modes match;
 - persistent `state`/`extern state` schemas remain compatible;
-- no unresolved provider or target IDs remain.
+- no duplicate, unresolved, provider, or target IDs remain.
 
-A failed stage changes nothing. Activation atomically changes future roots.
-Rollback publishes another validated generation, commonly selecting the prior
-Rust target. It never retries a call that may already have produced effects and
-does not rewind host state.
+A failed stage changes nothing. Activation atomically publishes the candidate
+for future roots. Rollback publishes another validated generation. A Vela
+error propagates through the contract and never triggers automatic execution
+of the Rust fallback, because the Vela body may already have produced effects.
+An explicit Vela call to the displaced Rust body is deferred until a real use
+case justifies the additional surface.
 
-### 10.7 Provider identity and state
+### 10.8 Provider identity and state
 
 Existing `ProviderKey` remains the identity of one Vela provider declaration.
-`ReplaceableSlotId` identifies one configured callable dispatch point, and
-`DispatchGroupId` identifies an optional atomic rollout group. These identities
-must not be conflated.
+`ReplaceableSlotId` identifies one configured callable interception point.
+They must not be conflated.
 
 Provider-private state is not migrated implicitly. Persistent business state
 belongs in compatible Vela `state`, host `extern state`, or explicit Rust host
@@ -1590,8 +1661,8 @@ Reflection may expose read-only callable metadata:
 - source language and callable kind;
 - parameters, boundary modes, return type, and asyncness;
 - effects, derived coarse capability requirements, docs, and source origin;
-- optional replaceable slot, dispatch group, and selected target kind where
-  policy permits.
+- optional replaceable slot, dense interception index, and selected target kind
+  where policy permits.
 
 Reflection cannot synthesize Rust references, mutate callable contracts,
 install providers, change slots, or rewrite type structure.
@@ -1647,19 +1718,19 @@ applicable. They never expose pointer values or raw host addresses.
 
 | Area | Primary responsibility |
 | --- | --- |
-| `vela_common` / definition IDs | Stable callable, function, method, replaceable-slot/group, service, diagnostic, and source identities. |
+| `vela_common` / definition IDs | Stable callable, function, method, replaceable-slot, service, diagnostic, and source identities. |
 | `vela_host` | Exact-object proof, canonical lease identity, atomic requests, reborrow provenance, owner-frozen borrowed-return slots, HostAccess gates, and RAII. |
 | `vela_reflect` | Read-only callable contracts, type and Vela protocol metadata, implemented-protocol relationships, effects, derived coarse capabilities, and origins; no live deployment grants. |
-| `vela_macros` | Rust signature classification, function/inherent/trait export adapters, external-impl UFCS declarations, descriptors, and compile-time diagnostics. |
-| `vela_hir` | Resolve Rust exports like normal functions/methods, retain exact callable identity, and expose lexical/escape facts needed for conservative borrowed-child liveness. |
+| `vela_macros` | Rust signature classification, function/inherent/trait export adapters, reusable callable-entry/private-fallback interception generation, external-impl UFCS declarations, descriptors, and compile-time diagnostics. |
+| `vela_hir` | Resolve Rust exports and static `#[override(...)]` targets like normal callables, retain exact callable identity, and expose lexical/escape facts needed for conservative borrowed-child liveness. |
 | `vela_analysis` / LSP crates | Call facts, effects, borrowed-child escape/last-use facts, completion, navigation, hover, and diagnostics. |
-| `vela_bytecode` / linker | Linked callable targets, binding schemas, ABI fingerprints, and compiler-inserted `ReleaseBorrowLease` operations. |
+| `vela_bytecode` / linker | Linked callable and override targets, binding schemas, ABI fingerprints, and compiler-inserted `ReleaseBorrowLease` operations. |
 | `vela_vm` | Execute prepared Rust or Vela targets on one session, own `BorrowLeaseId`/parent-freeze tables, and implement deterministic release without deployment-selection policy. |
 | `vela_stdlib` / `vela_stdlib_runtime` | Reserve and expose the namespaced `host::release` intrinsic and its metadata; no bare `release` global. |
-| `vela_engine` | Registration, authoritative binding-schema emission, Runtime policy/profile ownership, target preparation, and root-call authority. |
-| `vela_hot_reload` | Callable ABI comparison, artifact publication, and optional slot-generation publication/retirement. |
+| `vela_engine` | Registration, authoritative binding-schema emission, Runtime policy/profile ownership, target preparation, explicit host-root dispatch authority, and root-call authority. |
+| `vela_hot_reload` | Callable ABI comparison, override-delta staging, artifact publication, and optional slot-generation publication/retirement. |
 | optional bindgen module or crate | Deterministic Rust code generation from Engine/compiler-owned binding schema. |
-| examples and docs | Ordinary round-trip interop first; single-handler and grouped-service Rust/Vela hot override as extension examples. |
+| examples and docs | Ordinary round-trip interop first; single-handler and single-method Rust/Vela hot override as extension examples. |
 
 Use repository boundaries discovered during implementation rather than moving
 unrelated systems merely to match this table. Share one parameter classifier
@@ -1820,41 +1891,46 @@ Runtime policy, and hot-reload ownership remain preserved.
 
 ### Batch F: Optional Hot-Replaceable Dispatch
 
-- [ ] F1. Define `ReplaceableSlotId`, `DispatchTarget`, optional
-  `DispatchGroupId`, and the immutable `DispatchGeneration` over shared
-  callable contracts.
-- [ ] F2. Generate wrapper-free typed Rust dispatch facades and matching Vela
-  namespaces for single handlers/functions and explicit service groups.
-- [ ] F3. Add immutable slot tables and a sealed replaceable-slot target to the
-  existing call-target model.
-- [ ] F4. Resolve compatible Rust defaults and Vela overrides into common
-  prepared invocations, including borrowed-return provenance/freeze checks.
-- [ ] F5. Pin one dispatch generation across each root call tree, including
-  nested calls, re-entry, callbacks, and suspended futures.
-- [ ] F6. Stage and atomically publish compatible Rust/Vela target switches for
-  future roots.
-- [ ] F7. Roll back future roots without fallback retries, replaying calls, or
-  rewinding state.
-- [ ] F8. Preserve existing provider identity, discovery, body reload, and
-  handle re-resolution behavior without conflating provider, slot, and group
-  identities.
-- [ ] F9. Support independent single-callable slots and ship whole-service
-  group selection before partial service override.
-- [ ] F10. Prove that concrete Rust calls and internal `self.method()` calls
-  remain direct, while explicitly generated dispatch-facade calls are
-  replaceable.
+- [ ] F1. Define stable `ReplaceableSlotId`, dense build-local
+  `InterceptSlotIndex`, optional `VelaOverrideTarget`, and immutable
+  `DispatchGeneration` entries over the shared callable contracts.
+- [ ] F2. Provide reusable macro-generation support that lets host business
+  macros move an annotated body into a private Rust fallback and retain the
+  same public function/method call shape with an entry interception check.
+- [ ] F3. Implement the no-override fast path as one pinned dense target lookup
+  and predictable empty-entry branch, with no string/hash lookup, global lock,
+  allocation, serialization, or hot-replacement-only trait dispatch.
+- [ ] F4. Add Vela `#[override(host::path::target)]` declarations whose
+  signatures are inferred and validated from the target `CallableContract`.
+- [ ] F5. Pass the original receiver, actor/context, message, and business
+  parameters through the common generated adapter and existing HostRef/value
+  mappings without authored wrappers.
+- [ ] F6. Let a host enter a pinned dispatch root before any Vela call, and
+  inherit that generation across Rust/Vela nesting, re-entry, callbacks, and
+  suspended futures.
+- [ ] F7. Stage arbitrary override deltas, materialize a full immutable table,
+  and atomically publish it for future roots without requiring a complete
+  service implementation.
+- [ ] F8. Roll back future roots without fallback retries, replaying calls, or
+  rewinding state; propagate Vela execution errors without invoking Rust again.
+- [ ] F9. Preserve provider identity, discovery, body reload, and handle
+  re-resolution without conflating provider and slot identities.
+- [ ] F10. Prove that annotated public entries intercept, their generated
+  private fallbacks bypass interception, and unannotated functions/helpers stay
+  direct.
 
-Checkpoint: a Rust handler/function or complete service group can switch
-between compatible Rust and Vela targets for future roots without changing the
-ordinary interop ABI, disturbing active-call selection, or creating a second
-execution path.
+Checkpoint: one annotated Rust handler, function, or method can use its normal
+call shape, take the direct low-cost Rust fallback when no override exists, and
+switch to one compatible Vela function for future host roots without changing
+the ordinary interop ABI or creating a second execution path.
 
 ### Batch G: Acceptance, Documentation, And Performance
 
 - [ ] G1. Build an ordinary round-trip example whose Vela code calls ordinary
   Rust functions/methods and whose Rust host calls exported Vela functions.
-- [ ] G2. Build separate single-handler and grouped-service Rust/Vela
-  hot-override examples with activation and rollback.
+- [ ] G2. Build separate single-handler and single-service-method Rust/Vela
+  hot-override examples with activation and rollback while adjacent methods
+  remain Rust.
 - [ ] G3. Cover signature conversion, alias rejection, nested reborrow,
   inferred/additional effects, nested effect-ceiling denial, capability denial
   before authored code, policy-versus-ABI separation, local and external trait
@@ -1876,8 +1952,8 @@ execution path.
   corresponding checkpoint.
 
 Checkpoint: ordinary bidirectional interop is the primary documented workflow;
-single-callable and grouped-service hot override are tested optional
-extensions; all safety and validation gates pass.
+macro-generated single-callable hot override is a tested optional extension;
+all safety and validation gates pass.
 
 ## 16. Acceptance Matrix
 
@@ -1912,6 +1988,13 @@ extensions; all safety and validation gates pass.
 - [ ] Rust calls a Vela export through generated typed code without `CallArgs`,
   `OwnedValue`, `HostRef`, or a runtime string.
 - [ ] Ordinary interop works with no service trait, provider, or slot.
+- [ ] A host business macro makes one existing public handler/function/method
+  replaceable without changing any caller or requiring a handwritten proxy.
+- [ ] A Vela `#[override(host::path::target)]` implements only the selected callable
+  and inherits its parameter/return/effect contract without implementing the
+  surrounding service.
+- [ ] The Vela override receives the original receiver, actor/context, message,
+  and business parameters through generated boundary mappings.
 
 ### 16.2 Parameter and lease safety
 
@@ -1974,14 +2057,18 @@ extensions; all safety and validation gates pass.
 - [ ] Changing active Runtime grants or allowlists is handled as policy
   validation or restaging, not interop callable/binding ABI incompatibility.
 - [ ] An active nested call tree retains one linked artifact generation.
-- [ ] Optional handler or service-group activation changes future roots only.
-- [ ] Optional handler or service-group rollback does not retry or rewind an
+- [ ] Optional handler/function/method activation changes future host roots
+  only.
+- [ ] Optional handler/function/method rollback does not retry or rewind an
   in-flight call.
 - [ ] Suspended async calls retain their pinned artifact and optional dispatch
   generation.
 - [ ] A root call never mixes targets from different dispatch generations.
-- [ ] Direct concrete Rust calls and internal `self.method()` calls remain
-  direct; only generated dispatch-facade calls are replaceable.
+- [ ] An annotated public entry performs its generated interception check;
+  adjacent unannotated methods and the generated private Rust fallback remain
+  direct.
+- [ ] A Vela execution error propagates without automatically invoking the
+  Rust fallback.
 
 ### 16.5 Trust, reflection, and tooling
 
@@ -2025,9 +2112,10 @@ Record reproducible baselines before optimization:
 | Rust-to-Vela same-session re-entry | child binding and frame push/pop |
 | Vela -> Rust -> Vela round trip | provenance and context inheritance |
 | generated binding after reload | stable re-resolution and ABI guard |
-| optional replaceable slot local hit | generation-local target resolution |
+| annotated entry with no override | dense empty-slot check plus direct Rust fallback |
+| optional replaceable slot local hit | dense target resolution and Vela adapter entry |
 | first replaceable call after activation | new-generation cache behavior |
-| whole-service group activation | atomic multi-slot publication and lookup |
+| arbitrary multi-slot patch activation | immutable delta materialization and atomic publication |
 
 Measure allocation, conversion, target resolution, lease acquisition, VM
 instructions, and end-to-end latency where the harness permits it. Do not set
@@ -2074,9 +2162,9 @@ This plan does not implement:
 
 ## 19. Resolved Authoring And Open Delivery Decisions
 
-The authoring spelling in R1 is resolved. Resolve each remaining open item
-before the batch that depends on it. These delivery decisions are not reasons
-to make service grouping the foundation of ordinary interop.
+The authoring spellings in R1 and R5 are resolved. Resolve each remaining open
+item before the batch that depends on it. Hot replacement remains a generated
+single-callable entry concern rather than the foundation of ordinary interop.
 
 ### R1. Rust export grouping and effect spelling
 
@@ -2103,6 +2191,18 @@ it must not generate a duplicate Rust impl. Unsupported signatures require an
 explicit boundary-safe mapping. No design may depend on runtime Rust trait
 enumeration, automatic exposure of marker traits, or user-authored forwarding
 methods for otherwise boundary-safe annotatable impls.
+
+### R5. Callable-entry override spelling
+
+Decision: a host business macro marks one Rust handler, function, or method as
+replaceable and generates its same-name public interception entry, private Rust
+fallback, stable identity, dense index, adapter, and bundle metadata. External
+host macros may emit the same approved descriptors so domain code keeps its
+existing macro vocabulary. Vela binds a normal function to the statically
+resolved host slot with `#[override(host::path::target)]`; it implements only
+that callable and inherits the target contract. No caller-side proxy,
+service-wide Vela implementation, per-method registration call, or MVP
+dispatch-group concept is introduced.
 
 ### O2. Rust binding generation command and artifact
 
@@ -2132,13 +2232,15 @@ capability profile, type/lease safety, and budgets. A later restricted export
 may opt into `HostAccess` without changing the default ordinary-reference
 surface. It must not add business permission strings to `CallableContract`.
 
-### O6. Displaced-target delegate and partial service override
+### O6. Explicit call to the displaced Rust fallback
 
-Recommended: support an independent handler/function slot directly and use
-whole-service selection for grouped methods first. Defer partial service
-override. If explicit delegation to the displaced implementation is required,
-generate a generation-pinned typed delegate; never infer fallback after an
-error.
+Decision: defer a Vela-visible base-call facility in the first slice. A missing
+override selects the generated Rust fallback; a Vela execution error never
+does. If a real patch later needs to delegate an unaffected branch to the
+displaced Rust body, add one explicit namespaced, generation-pinned intrinsic
+with the current callable's exact signature. Never infer fallback after an
+error or expose the private Rust fallback as an ordinary recursively dispatched
+method.
 
 ### R3. Owner-frozen borrowed host returns
 
@@ -2260,8 +2362,8 @@ Validation:
 ```
 
 This slice proves the general interop and safety model first. Optional
-hot-replaceable dispatch slots and service groups belong to Batch F after
-ordinary round-trip calls work.
+macro-generated callable-entry interception and Vela override functions belong
+to Batch F after ordinary round-trip calls work.
 
 ## 21. Final Completion Criteria
 
@@ -2295,9 +2397,11 @@ The goal is complete only when all of the following are true:
 11. Trusted Rust mutation is clearly callable-grained: invocation capability
    and lease checks are enforced, while field-level sandboxing inside `&mut T`
    bodies is explicitly deferred.
-12. Optional handler/function slots and service-group hot override reuse the
-    general callable model instead of defining a parallel boundary or
-    execution path; direct concrete Rust calls remain direct.
+12. Optional handler/function/method interception reuses the general callable
+    model: a host macro preserves the public call shape, emits one low-cost
+    dense slot check and private Rust fallback, and accepts a Vela
+    `#[override(...)]` for only that callable without defining a parallel
+    boundary or execution path.
 13. Local and external Rust trait implementations expose only their selected,
     boundary-safe Vela protocol surface and use the ordinary method call,
     lease, reflection, effect, and ABI paths.
@@ -2307,6 +2411,7 @@ The goal is complete only when all of the following are true:
     proven last use or non-escaping scope exit, support explicit namespaced
     `host::release`, and retain deterministic root cleanup without business
     identity/resolver machinery or GC-dependent correctness.
-15. Ordinary round-trip plus optional single-handler and grouped-service
-    override examples, acceptance tests, documentation, benchmarks,
-    formatting, lint, and workspace tests are complete and green.
+15. Ordinary round-trip plus optional single-handler and single-method override
+    examples, acceptance tests, no-override fast-path benchmarks,
+    documentation, formatting, lint, and workspace tests are complete and
+    green.

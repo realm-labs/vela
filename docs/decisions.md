@@ -2088,21 +2088,36 @@ UFCS guessing.
 ### Hot-Replaceable Dispatch Is An Optional Interop Extension
 
 Ordinary Rust/Vela calls require neither a service trait nor a dispatch slot.
-Runtime replacement is explicit: one `ReplaceableSlotId` selects a compatible
-Rust or Vela implementation of one existing callable contract, while an
-optional `DispatchGroupId` atomically groups related service methods. A service
-trait is permitted when it is already the natural Rust contract, but is not
-required merely to make a handler replaceable.
+Runtime replacement is explicit at declaration time: a host business macro
+maps one selected handler, function, or method to one `ReplaceableSlotId`,
+moves the authored body into a private Rust fallback, and keeps the original
+public name and call syntax as a generated interception entry. Unannotated
+calls and generated private fallbacks remain direct. No service trait,
+complete Vela service implementation, caller-side proxy, or MVP grouping
+identity is required.
 
-Only calls through the generated typed dispatch facade are replaceable. Direct
-concrete Rust calls and internal `self.method()` calls remain direct and are
-never intercepted. Independent handlers may switch per slot; methods sharing
-service invariants use whole-group selection first, with partial group override
-deferred. Target selection, pinned immutable dispatch generations, activation,
-and rollback reuse the common conversion, borrowed-return provenance/freeze,
-lease, Runtime call target, execution session, policy, and diagnostics paths.
-Activation affects future root calls only, and rollback never retries or
-rewinds an in-flight call.
+The no-override path uses a dense build-local slot index into the pinned
+immutable `DispatchGeneration`; an empty entry immediately calls the private
+Rust fallback. It performs no runtime string/hash lookup, global lock,
+allocation, serialization, or hot-replacement-only trait dispatch. The host
+macro derives explicit dispatch authority from a receiver, context, or
+parameter and never consults an ambient Runtime.
+
+Vela binds one function to one statically resolved target with
+`#[override(host::path::target)]`. The target callable contract supplies its
+signature, parameter modes, return family, effects, and sync/async shape. The
+generated adapter presents the original receiver, actor/context, message, and
+business parameters while preserving HostRef and lease safety internally. A
+package may override any subset of slots; staging applies that delta to a base
+generation and atomically publishes one full immutable table for future host
+roots. Adjacent methods remain Rust. Vela errors propagate without executing
+the Rust fallback, and an explicit Vela base-call facility is deferred.
+
+Host integrations may pin a dispatch root before any Vela call, such as at the
+start of an actor mailbox turn, so Rust handlers and nested Rust/Vela service
+calls share one generation. Conversion, borrowed-return provenance/freeze,
+lease, Runtime call target, execution session, policy, and diagnostics continue
+to use the common interop paths.
 
 ## Validation Rules
 
