@@ -2013,10 +2013,15 @@ the owner but reject exclusive calls; an exclusive-origin child rejects every
 later owner call. Conflicts fail immediately rather than block. These children
 may propagate through local Vela values and nested Rust/Vela calls in the same
 root, including scoped await suspension, but cannot escape through state,
-globals, the root result, native caches, or unscoped tasks. Root cleanup
-invalidates children and releases parent freezes deterministically without
-depending on GC timing. A durable cross-root HostRef remains a separate,
-explicit model.
+globals, the root result, native caches, or unscoped tasks. Each distinct child
+has one `BorrowLeaseId` shared by all its aliases. Conservative MIR last-use and
+non-escaping lexical-scope analysis release proven-dead children automatically;
+dynamic cases use the reserved `host::release(value)` intrinsic, never a bare
+global `release`. Closing a child invalidates all of its aliases, while distinct
+sibling children keep the parent frozen until each closes. Root cleanup remains
+the unconditional fallback and releases parent freezes deterministically
+without depending on GC timing. A durable cross-root HostRef remains a
+separate, explicit model.
 
 ### Trusted Native Mutation Uses A Coarse Call Boundary
 

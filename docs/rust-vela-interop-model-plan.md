@@ -85,6 +85,9 @@ record accepted design decisions in `docs/decisions.md`.
    propagate through ordinary Vela locals, local containers, and nested
    Rust/Vela calls in the same root call tree, but cannot escape into `state`,
    `extern state`, globals, native caches, the root result, or an unscoped task.
+   A compiler-proven last use, a non-escaping lexical scope exit, or explicit
+   `host::release(value)` may end a child borrow earlier; root cleanup remains
+   the deterministic fallback and correctness never depends on GC timing.
 9. Direct Vela field, index, and path mutations continue through
    `HostRef`/`HostPath`/`PathProxy` and `HostAccess` with their normal fine-grain
    direct-operation policy. That policy is not imported into ordinary callable
@@ -336,8 +339,22 @@ rules.validate(player);
 The shared result keeps `service` shared-frozen, so later shared service calls
 remain valid and exclusive calls fail immediately. The mutable result keeps
 `service` exclusive-frozen, so every later service call fails while the result
-remains in its usable root scope. Section 5.5 defines propagation, alias,
-cleanup, and escape rules.
+borrow group remains live. Section 5.5 defines propagation, early release,
+alias, cleanup, and escape rules.
+
+When the compiler cannot prove the last use automatically, Vela may close the
+borrow group explicitly through the reserved host namespace:
+
+```vela
+let player = service.player_mut(id)?;
+player.exp += 10;
+host::release(player);
+
+let other = service.player_mut(other_id)?;
+```
+
+There is no bare global `release(...)`; namespacing prevents collisions with
+domain functions and makes the runtime lease operation explicit.
 
 ### 2.4 Export Rust trait implementations
 
@@ -1082,12 +1099,51 @@ share one canonical child identity and do not authorize simultaneous mutable
 reborrows; ordinary alias preflight rejects conflicting sibling uses before
 Rust references are created.
 
-The first implementation may conservatively retain each parent freeze until
-the root call tree finishes, even if the VM can no longer reach an individual
-child. A later deterministic early-release optimization may unfreeze after the
-last child is explicitly dead, but correctness must not depend on GC timing.
-Root completion, error, panic conversion, cancellation, or future drop
-invalidates every child slot and releases its retained parent lease.
+Every distinct borrowed child owns a `BorrowLeaseId`; all aliases and clones of
+that child share it. Distinct children returned together have distinct child
+IDs but share one retained parent freeze. Closing one child invalidates all of
+its aliases and decrements the parent freeze count; the owner becomes available
+only after every live child derived from that freeze is closed.
+
+Early release uses three ordered mechanisms:
+
+1. MIR liveness inserts `ReleaseBorrowLease` immediately after the last proven
+   use when no alias, live container element, closure capture, nested result, or
+   other escape can still reach the child.
+2. A lexical scope exit inserts the same release for borrow groups created in
+   that scope and proven not to escape it.
+3. `host::release(value)` explicitly closes the scoped borrow group identified
+   by `value` when dynamic propagation prevents a static proof.
+
+Analysis is conservative and does not implement a general Vela borrow checker.
+If it cannot prove that every alias is dead, it emits no automatic release.
+Branches insert releases only when every outgoing path has ended the borrow;
+last use before an `await` releases before suspension, while a later use keeps
+the parent frozen across the await.
+
+`host::release` is the only initial explicit spelling. It is a reserved
+namespaced runtime intrinsic, not a bare global function and not a user
+overload. It accepts a live borrowed-return HostRef, closes that child's
+`BorrowLeaseId`, and invalidates every alias of that child. Later use of any
+alias fails with `ExpiredBorrowedHostRef`. Releasing an ordinary durable/root
+HostRef fails with `NotScopedBorrow`, and releasing a child with an active Rust
+descendant reborrow fails with `BorrowStillInUse`; release never waits.
+`host::release` mutates only the current execution's lease/provenance table, not
+host business state, so it adds no host effect or capability requirement and
+cannot name or close a token owned by another Runtime/root execution.
+Its script-visible result is unit; misuse is a structured call failure rather
+than `false`, a panic, or silent no-op.
+
+Reference counting or GC may help implementation bookkeeping but is not a
+correctness boundary: unreachable cycles and delayed collection cannot retain
+or release an owner unpredictably. A future owner-conflict slow path may run a
+targeted reachability proof before rejecting, but it is not required for the
+initial model.
+
+Root completion remains the unconditional fallback. Normal return, error,
+panic conversion, cancellation, or future drop closes every remaining child,
+invalidates its aliases, and releases all retained parent leases even when no
+automatic or explicit early release occurred.
 
 This model requires the parent service instance to remain pinned and requires
 all access that could conflict with its Rust borrow to participate in the same
@@ -1457,6 +1513,9 @@ Trust rules are:
   call tree only through that scoped model; its parent owner remains frozen for
   the suspension, and cancellation or future drop invalidates the child and
   releases the parent lease.
+- Proven last use before `await` emits `ReleaseBorrowLease` before suspension;
+  the runtime does not retain a parent freeze merely because root cleanup would
+  eventually release it.
 - Generated code never turns a borrowed `&mut T` into an unscoped `'static`
   capture.
 - Re-entry while an exclusive lease is held rejects unrelated aliases and
@@ -1521,6 +1580,9 @@ At minimum define stable diagnostics for:
 - invalid or expired reborrow provenance;
 - borrowed-return parent owner busy;
 - ambiguous or unsupported borrowed-return origin;
+- expired borrowed HostRef after automatic or explicit release;
+- explicit `host::release` of a non-scoped HostRef or a child with an active
+  descendant reborrow;
 - call-scoped host handle escape;
 - missing exported callable or method;
 - async call from an invalid context;
@@ -1538,10 +1600,11 @@ applicable. They never expose pointer values or raw host addresses.
 | `vela_host` | Exact-object proof, canonical lease identity, atomic requests, reborrow provenance, owner-frozen borrowed-return slots, HostAccess gates, and RAII. |
 | `vela_reflect` | Read-only callable contracts, type and Vela protocol metadata, implemented-protocol relationships, effects, derived coarse capabilities, and origins; no live deployment grants. |
 | `vela_macros` | Rust signature classification, function/inherent/trait export adapters, external-impl UFCS declarations, descriptors, and compile-time diagnostics. |
-| `vela_hir` | Resolve Rust exports like normal functions/methods and retain exact callable identity. |
-| `vela_analysis` / LSP crates | Call facts, effects, completion, navigation, hover, and diagnostics. |
-| `vela_bytecode` / linker | Linked callable targets, binding schemas, and ABI fingerprints. |
-| `vela_vm` | Execute prepared Rust or Vela targets on one session without deployment-selection policy. |
+| `vela_hir` | Resolve Rust exports like normal functions/methods, retain exact callable identity, and expose lexical/escape facts needed for conservative borrowed-child liveness. |
+| `vela_analysis` / LSP crates | Call facts, effects, borrowed-child escape/last-use facts, completion, navigation, hover, and diagnostics. |
+| `vela_bytecode` / linker | Linked callable targets, binding schemas, ABI fingerprints, and compiler-inserted `ReleaseBorrowLease` operations. |
+| `vela_vm` | Execute prepared Rust or Vela targets on one session, own `BorrowLeaseId`/parent-freeze tables, and implement deterministic release without deployment-selection policy. |
+| `vela_stdlib` / `vela_stdlib_runtime` | Reserve and expose the namespaced `host::release` intrinsic and its metadata; no bare `release` global. |
 | `vela_engine` | Registration, authoritative binding-schema emission, Runtime policy/profile ownership, target preparation, and root-call authority. |
 | `vela_hot_reload` | Callable ABI comparison, artifact publication, and optional slot-generation publication/retirement. |
 | optional bindgen module or crate | Deterministic Rust code generation from Engine/compiler-owned binding schema. |
@@ -1619,6 +1682,9 @@ removing a redundant explicit effect does not change a callable fingerprint.
   child slots, read/write capability preservation, immediate owner-busy
   diagnostics, deterministic root-end invalidation, and rollback when return
   conversion fails.
+- [ ] B14. Give each distinct borrowed child a `BorrowLeaseId`, share it across
+  aliases, count distinct live children against the parent freeze, and
+  implement close/invalidate/error semantics without relying on GC timing.
 
 Checkpoint: supported Rust exports use ordinary signatures, many related
 functions register as one explicit bundle, no conflicting reference set can
@@ -1643,9 +1709,15 @@ without an authored wrapper, business identity, or resolver.
 - [ ] C8. Resolve exported trait methods through stable Vela protocol and
   implementation identities, including runtime `implements` checks and
   dynamic protocol dispatch.
+- [ ] C9. Reserve `host::release` as the sole explicit release spelling, lower
+  it to `ReleaseBorrowLease`, and add conservative MIR last-use plus
+  non-escaping lexical-scope release insertion. Do not add a bare `release`
+  global or a general script borrow checker.
 
 Checkpoint: Vela calls Rust free functions and methods with ordinary syntax and
-ordinary Vela values or host objects.
+ordinary Vela values or host objects; proven last use or lexical death releases
+borrowed children automatically, and dynamic cases use namespaced
+`host::release`.
 
 ### Batch D: Typed Rust-To-Vela Bindings
 
@@ -1686,11 +1758,14 @@ without runtime strings or manual boundary values.
 - [ ] E9. Allow borrowed-return HostRefs to propagate through local Vela
   containers and nested Rust/Vela calls, and across scoped await suspension,
   while rejecting state/global/root-result/native-cache/unscoped-task escape.
+- [ ] E10. Release proven-dead children before await, reject explicit release
+  while a descendant Rust reborrow is active, and retain root cleanup as the
+  unconditional success/error/panic/cancellation/future-drop fallback.
 
 Checkpoint: nested bidirectional calls behave like one call tree, borrowed
-host returns may be recomposed within that tree while freezing their parent
-owners, and Rust alias safety, Runtime policy, and hot-reload ownership remain
-preserved.
+host returns may be recomposed and released early within that tree while
+freezing their parent owners only as long as necessary, and Rust alias safety,
+Runtime policy, and hot-reload ownership remain preserved.
 
 ### Batch F: Optional Service Slots And Hot Override
 
@@ -1721,8 +1796,8 @@ changing the ordinary interop ABI or active-call selection.
 - [ ] G3. Cover signature conversion, alias rejection, nested reborrow,
   inferred/additional effects, nested effect-ceiling denial, capability denial
   before authored code, policy-versus-ABI separation, local and external trait
-  export, borrowed-return owner freezing and escape rejection, async
-  cancellation, and reload ABI mismatch.
+  export, borrowed-return owner freezing, automatic/explicit early release,
+  escape rejection, async cancellation, and reload ABI mismatch.
 - [ ] G4. Document export, binding generation, registration, calling,
   debugging, deployment, activation, and rollback workflows.
 - [ ] G5. Audit public examples and docs for unnecessary `HostRef`, `CallArgs`,
@@ -1732,7 +1807,8 @@ changing the ordinary interop ABI or active-call selection.
 - [ ] G7. Audit for duplicate execution APIs, duplicate signature classifiers,
   per-function path/effect ceremony that should be inferred, string-based
   linked or permission lookup, ambient export discovery, live grants in
-  fingerprints, escaped wrappers, and unbounded paths.
+  fingerprints, a bare `release` global, GC-dependent lease correctness,
+  escaped wrappers, and unbounded paths.
 - [ ] G8. Run focused and full workspace validation gates.
 - [ ] G9. Update `docs/progress.md` only when the repository reaches the
   corresponding checkpoint.
@@ -1752,6 +1828,9 @@ gates pass.
 - [ ] An exported method may return supported `&T`/`&mut T` host borrows that
   Vela receives as ordinary read-only/writable HostRefs without an identity or
   resolver annotation.
+- [ ] Straight-line last use and non-escaping lexical scope exit release a
+  borrowed child without authored cleanup; dynamic cases use
+  `host::release(value)`, never a bare `release(value)`.
 - [ ] An annotatable Rust trait impl exports through `#[vela::methods]`
   without an inherent forwarding method or user-authored wrapper body.
 - [ ] An existing external trait impl exports a selected, explicitly declared
@@ -1802,6 +1881,14 @@ gates pass.
   escapes fail deterministically.
 - [ ] Root success, error, panic, cancellation, and future drop invalidate
   borrowed-return children and unfreeze their parent owners.
+- [ ] Automatic and explicit release invalidate every alias sharing the same
+  `BorrowLeaseId`; distinct sibling children keep the parent frozen until each
+  is released.
+- [ ] `host::release` rejects ordinary HostRefs and active descendant
+  reborrows, never blocks, and makes every later use of the released child fail
+  as expired.
+- [ ] Branches release automatically only when every outgoing path ends the
+  borrow, and a proven last use before await releases before suspension.
 
 ### 16.3 Direction and nesting equivalence
 
@@ -1866,6 +1953,8 @@ Record reproducible baselines before optimization:
 | shared borrowed host return | child-slot creation and retained shared-owner freeze |
 | exclusive borrowed host return | child-slot creation and retained exclusive-owner freeze |
 | borrowed child passed back to Rust | provenance reborrow without parent reacquisition |
+| compiler-inserted last-use release | `ReleaseBorrowLease` fast path and parent unfreeze |
+| explicit `host::release` with aliases | group invalidation and remaining-sibling accounting |
 | Rust-to-Vela generated root call | binding, root host scope, and VM entry |
 | Rust-to-Vela same-session re-entry | child binding and frame push/pop |
 | Vela -> Rust -> Vela round trip | provenance and context inheritance |
@@ -1901,6 +1990,9 @@ This plan does not implement:
 - owner-frozen borrowed HostRefs escaping their root invocation;
 - indefinite service freezing through persistent state/global/native-cache
   retention of a borrowed return;
+- GC timing or reference-count cycle collection as the correctness condition
+  for releasing a parent owner;
+- a general Rust-style borrow checker for Vela merely to support early release;
 - downcasting opaque adapters from type ID alone;
 - arbitrary nested `PathProxy` conversion into Rust field references;
 - arbitrary retained cross-language closures in the first slice;
@@ -1993,6 +2085,18 @@ invalidates children and releases parent freezes deterministically; correctness
 never depends on GC timing. Durable cross-root host handles remain a separate,
 explicit future model.
 
+### R4. Borrowed-host early release spelling
+
+Decision: use a hybrid deterministic release model. Conservative MIR last-use
+and non-escaping lexical-scope analysis insert `ReleaseBorrowLease`
+automatically. Dynamic cases explicitly call `host::release(value)`; no bare
+global `release` is registered. All aliases of one child share a
+`BorrowLeaseId`, so release invalidates that alias group, while distinct sibling
+children keep the parent frozen until each group closes. Explicit release of an
+ordinary HostRef or a child with an active descendant reborrow fails
+immediately. Root cleanup remains the unconditional fallback, and neither GC
+timing nor reference-count cycle collection is a correctness dependency.
+
 ## 20. Suggested First Vertical Slice Task
 
 ```text
@@ -2015,8 +2119,13 @@ Expected behavior:
     passes it through a local container and into another Rust function while
     later shared service calls remain allowed and an exclusive call is denied.
   - One &mut self service method returns &mut Player as an exclusive scoped
-    HostRef; every later service call is denied without blocking until root
-    cleanup, which invalidates the child and releases the freeze.
+    HostRef; every later service call is denied without blocking while that
+    child is live, and root cleanup remains the release fallback.
+  - Proven last use of that Player inserts `ReleaseBorrowLease`, after which a
+    second `&mut self` service call succeeds in the same root.
+  - A dynamically aliased child stays frozen until `host::release(player)`;
+    release invalidates every alias of that child, and no bare `release`
+    function resolves.
   - One context function explicitly adds random or event_emit beyond its
     signature-inferred base.
   - Vela calls all three with normal function/method syntax.
@@ -2047,6 +2156,11 @@ Tests:
   - exclusive_borrowed_return_freezes_owner_against_all_calls
   - borrowed_return_propagates_through_local_values_and_rust_calls
   - borrowed_return_escape_and_post_root_use_are_rejected
+  - borrowed_return_last_use_releases_before_root_end
+  - lexical_non_escaping_borrow_releases_at_scope_exit
+  - host_release_invalidates_alias_group_and_unfreezes_owner
+  - bare_release_name_is_not_registered
+  - host_release_rejects_non_scoped_and_in_use_children
   - rust_typed_binding_calls_vela_export
   - round_trip_reentry_preserves_one_execution_session
   - nested_reborrow_restores_parent_reference
@@ -2118,8 +2232,10 @@ The goal is complete only when all of the following are true:
     lease, reflection, effect, and ABI paths.
 14. Supported borrowed host returns become owner-frozen scoped HostRefs that
     preserve read/write capability, propagate within one root call tree,
-    reject conflicting owner calls without blocking, and release
-    deterministically without business identity/resolver machinery.
+    reject conflicting owner calls without blocking, release automatically at
+    proven last use or non-escaping scope exit, support explicit namespaced
+    `host::release`, and retain deterministic root cleanup without business
+    identity/resolver machinery or GC-dependent correctness.
 15. Non-service round-trip and optional mixed-service examples, acceptance
     tests, documentation, benchmarks, formatting, lint, and workspace tests are
     complete and green.
