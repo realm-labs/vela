@@ -1,9 +1,7 @@
 use std::error::Error;
 use std::hint::black_box;
-use std::sync::Arc;
 use std::time::Instant;
 
-use parking_lot::Mutex;
 use vela_bytecode::{RustBindingCallableIdentity, RustBindingSchema};
 use vela_common::Capability;
 use vela_engine::binding::{
@@ -11,7 +9,9 @@ use vela_engine::binding::{
     BindingSchemaSpec, RootBinding, VmResult,
 };
 use vela_engine::context::NativeCallContext;
-use vela_engine::dispatch::{DispatchAuthority, DispatchController, DispatchRoot};
+use vela_engine::dispatch::{
+    DispatchAuthority, DispatchController, DispatchInvocation, DispatchRoot,
+};
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime, RuntimeImage, SharedRuntime};
 use vela_macros::{ScriptHost, ScriptReflect, export, methods, replaceable};
@@ -31,8 +31,8 @@ fn round_trip_entry(value: i64) -> i64 { return bench::round_trip(value); }
 
 const DISPATCH_SOURCE: &str = r#"
 #[override(host::bench::replaceable_scalar)]
-fn replaceable_patch(context: DispatchContext, value: i64) -> i64 {
-    return context.marker + value + 1;
+fn replaceable_patch(value: i64) -> i64 {
+    return value + 2;
 }
 "#;
 
@@ -57,11 +57,18 @@ pub struct DispatchContext {
     marker: i64,
     #[script(skip)]
     root: DispatchRoot,
+    #[script(skip)]
+    runtime: SharedRuntime,
 }
 
 impl DispatchAuthority for DispatchContext {
     fn vela_dispatch_root(&self) -> &DispatchRoot {
         &self.root
+    }
+
+    fn vela_dispatch_invocation(&mut self) -> VmResult<DispatchInvocation<'_>> {
+        let Self { root, runtime, .. } = self;
+        root.invocation(runtime)
     }
 }
 
@@ -100,7 +107,7 @@ pub fn round_trip(context: &mut NativeCallContext<'_, '_>, value: i64) -> VmResu
     authority = "context",
     index = 0
 )]
-pub fn replaceable_scalar(context: &DispatchContext, value: i64) -> VmResult<i64> {
+pub fn replaceable_scalar(context: &mut DispatchContext, value: i64) -> VmResult<i64> {
     Ok(context.marker + value)
 }
 
@@ -109,7 +116,7 @@ pub fn replaceable_scalar(context: &DispatchContext, value: i64) -> VmResult<i64
     authority = "context",
     index = 1
 )]
-pub fn replaceable_other(context: &DispatchContext, value: i64) -> VmResult<i64> {
+pub fn replaceable_other(context: &mut DispatchContext, value: i64) -> VmResult<i64> {
     Ok(context.marker + value)
 }
 
@@ -155,22 +162,22 @@ fn main() -> Result<(), Box<dyn Error>> {
     let dispatch_program = dispatch_engine.compile_source(DISPATCH_SOURCE)?;
     let dispatch_image =
         RuntimeImage::new_compiled(dispatch_engine, dispatch_program).into_shared();
-    let dispatch_runtime = Arc::new(Mutex::new(SharedRuntime::from_shared_image(
-        dispatch_image,
-    )?));
+    let dispatch_runtime = SharedRuntime::from_shared_image(dispatch_image.clone())?;
     let fallback_controller = DispatchController::new(dispatch_slots.clone())?;
-    let fallback_context = DispatchContext {
+    let mut fallback_context = DispatchContext {
         marker: 1,
-        root: DispatchRoot::pin(&fallback_controller, Arc::clone(&dispatch_runtime))?,
+        root: DispatchRoot::pin(&fallback_controller),
+        runtime: SharedRuntime::from_shared_image(dispatch_image.clone())?,
     };
     let dispatch_controller = DispatchController::new(dispatch_slots)?;
     let dispatch_candidate = dispatch_controller.stage_current(&dispatch_runtime)?;
     dispatch_controller
         .activate(dispatch_candidate)
         .expect("activate dispatch candidate");
-    let active_context = DispatchContext {
+    let mut active_context = DispatchContext {
         marker: 1,
-        root: DispatchRoot::pin(&dispatch_controller, Arc::clone(&dispatch_runtime))?,
+        root: DispatchRoot::pin(&dispatch_controller),
+        runtime: SharedRuntime::from_shared_image(dispatch_image.clone())?,
     };
 
     report("direct_rust_scalar", iterations, || Ok(scalar(41)))?;
@@ -206,10 +213,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         )
     })?;
     report("replaceable_empty_slot_fallback", iterations, || {
-        Ok(replaceable_scalar(&fallback_context, 41)?)
+        Ok(replaceable_scalar(&mut fallback_context, 41)?)
     })?;
     report("replaceable_local_override_hit", iterations, || {
-        Ok(replaceable_scalar(&active_context, 41)?)
+        Ok(replaceable_scalar(&mut active_context, 41)?)
     })?;
     report(
         "replaceable_partial_stage_activate_first_call",
@@ -219,11 +226,12 @@ fn main() -> Result<(), Box<dyn Error>> {
             dispatch_controller
                 .activate(candidate)
                 .expect("activate dispatch candidate");
-            let context = DispatchContext {
+            let mut context = DispatchContext {
                 marker: 1,
-                root: DispatchRoot::pin(&dispatch_controller, Arc::clone(&dispatch_runtime))?,
+                root: DispatchRoot::pin(&dispatch_controller),
+                runtime: SharedRuntime::from_shared_image(dispatch_image.clone())?,
             };
-            Ok(replaceable_scalar(&context, 41)?)
+            Ok(replaceable_scalar(&mut context, 41)?)
         },
     )?;
     Ok(())

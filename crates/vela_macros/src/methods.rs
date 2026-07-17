@@ -7,7 +7,7 @@ use syn::{ImplItem, ItemImpl, LitStr, Result, Visibility, parse::Parser, parse2}
 use crate::attrs::parse_qualified_name;
 use crate::export::emission;
 use crate::export::replaceable;
-use crate::export::signature::classify_method;
+use crate::export::signature::{classify_method, classify_replaceable_method};
 use crate::signature::{
     docs_from_attrs, reject_extern_signature, reject_generic_signature, reject_unsafe_signature,
 };
@@ -49,7 +49,11 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         let additional_effects = replaceable_attrs
             .as_ref()
             .map_or_else(BTreeSet::new, |attrs| attrs.effects.clone());
-        let signature = classify_method(&method.sig, &additional_effects)?;
+        let signature = if let Some(attrs) = replaceable_attrs.as_ref() {
+            classify_replaceable_method(&method.sig, &additional_effects, &attrs.authority)?
+        } else {
+            classify_method(&method.sig, &additional_effects)?
+        };
         if let Some(attrs) = replaceable_attrs.as_ref() {
             let rewritten =
                 replaceable::rewrite_method(method, attrs, &signature, trait_path.is_some())?;
@@ -64,6 +68,15 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 "vela_replaceable_slot_{}",
                 method.sig.ident
             ));
+            let docs = docs_from_attrs(&method.attrs);
+            generated.push(emission::method_contract(
+                method,
+                &item.self_ty,
+                &owner_path,
+                docs.as_deref(),
+                &signature,
+            ));
+            continue;
         }
         let docs = docs_from_attrs(&method.attrs);
         generated.push(emission::method_contract(
@@ -260,7 +273,8 @@ mod tests {
         assert!(output.contains("pub fn vela_replaceable_slots"));
         assert!(output.contains("Self :: vela_replaceable_slot_compute"));
         assert!(output.contains("push_positional_host_ref (self)"));
-        assert!(output.contains("push_positional_host_mut (context)"));
+        assert!(!output.contains("push_positional_host_mut (context)"));
+        assert!(output.contains("vela_dispatch_invocation"));
         assert!(output.contains("pub fn adjacent"));
         assert!(!output.contains("__vela_rust_adjacent"));
     }

@@ -18,12 +18,12 @@ use super::attrs::ExportAttrs;
 use super::emission;
 use super::signature::{
     BorrowOrigin, EffectName, ErrorMode, HostAccess, ParameterMode, ReturnMode,
-    ScopedReturnContainer, TypeShape, classify_function,
+    ScopedReturnContainer, TypeShape, classify_replaceable_function,
 };
 
 pub(crate) struct ReplaceableAttrs {
     path: String,
-    authority: syn::Ident,
+    pub(crate) authority: syn::Ident,
     index: usize,
     pub(crate) effects: BTreeSet<EffectName>,
 }
@@ -53,8 +53,8 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     }
     let attrs = parse_attrs(attr)?;
     let authority = authority_parameter(&item, &attrs.authority)?;
-    let classified = classify_function(&item.sig, &attrs.effects)?;
-    let authority_is_context = authority_is_hidden_context(&classified, &attrs.authority);
+    let classified = classify_replaceable_function(&item.sig, &attrs.effects, &attrs.authority)?;
+    let authority_is_reentry = authority_is_native_context(&item.sig, &attrs.authority);
 
     let function_ident = item.sig.ident.clone();
     let fallback_ident = format_ident!("__vela_rust_{function_ident}");
@@ -120,7 +120,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         })
         .collect::<Vec<_>>();
 
-    let target_lookup = if authority_is_context {
+    let target_lookup = if authority_is_reentry {
         quote! { #authority.dispatch_target(#slot_ident) }
     } else {
         quote! {
@@ -130,22 +130,28 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             .target(#slot_ident)
         }
     };
-    let invocation_prelude = if authority_is_context {
+    let invocation_prelude = if authority_is_reentry {
         quote! {}
     } else {
         quote! {
             let __vela_invocation =
-                <_ as ::vela_engine::dispatch::DispatchAuthority>::vela_dispatch_root(
-                    &*#authority,
-                )
-                .invocation();
+                <_ as ::vela_engine::dispatch::DispatchAuthority>::vela_dispatch_invocation(
+                    &mut *#authority,
+                );
         }
     };
     let override_call = if item.sig.asyncness.is_some() {
-        let invocation = if authority_is_context {
+        let invocation = if authority_is_reentry {
             quote! { #authority.call_dispatch_owned_async(__vela_target, __vela_args).await }
         } else {
-            quote! { __vela_invocation.call_owned_async(__vela_target, __vela_args).await }
+            quote! {
+                match __vela_invocation {
+                    Ok(mut __vela_invocation) => __vela_invocation
+                        .call_owned_async(__vela_target, __vela_args)
+                        .await,
+                    Err(__vela_error) => Err(__vela_error),
+                }
+            }
         };
         quote! {
             #invocation_prelude
@@ -155,10 +161,16 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             return #return_adapter;
         }
     } else {
-        let invocation = if authority_is_context {
+        let invocation = if authority_is_reentry {
             quote! { #authority.call_dispatch_owned(__vela_target, __vela_args) }
         } else {
-            quote! { __vela_invocation.call_owned(__vela_target, __vela_args) }
+            quote! {
+                match __vela_invocation {
+                    Ok(mut __vela_invocation) =>
+                        __vela_invocation.call_owned(__vela_target, __vela_args),
+                    Err(__vela_error) => Err(__vela_error),
+                }
+            }
         };
         quote! {
             #invocation_prelude
@@ -243,7 +255,7 @@ pub(crate) fn rewrite_method(
         ));
     }
     let authority = method_authority(method, &attrs.authority)?;
-    let authority_is_context = authority_is_hidden_context(classified, &attrs.authority);
+    let authority_is_reentry = authority_is_native_context(&method.sig, &attrs.authority);
     let method_ident = method.sig.ident.clone();
     let fallback_ident = format_ident!("__vela_rust_{method_ident}");
     let slot_ident = format_ident!(
@@ -290,7 +302,7 @@ pub(crate) fn rewrite_method(
         })
         .collect::<Vec<_>>();
     let context_authority = &attrs.authority;
-    let target_lookup = if authority_is_context {
+    let target_lookup = if authority_is_reentry {
         quote! { #context_authority.dispatch_target(Self::#slot_ident) }
     } else {
         quote! {
@@ -300,24 +312,32 @@ pub(crate) fn rewrite_method(
             .target(Self::#slot_ident)
         }
     };
-    let invocation_prelude = if authority_is_context {
+    let invocation_prelude = if authority_is_reentry {
         quote! {}
     } else {
         quote! {
             let __vela_invocation =
-                <_ as ::vela_engine::dispatch::DispatchAuthority>::vela_dispatch_root(#authority)
-                    .invocation();
+                <_ as ::vela_engine::dispatch::DispatchAuthority>::vela_dispatch_invocation(
+                    #authority,
+                );
         }
     };
     let override_call = if method.sig.asyncness.is_some() {
-        let invocation = if authority_is_context {
+        let invocation = if authority_is_reentry {
             quote! {
                 #context_authority
                     .call_dispatch_owned_async(__vela_target, __vela_args)
                     .await
             }
         } else {
-            quote! { __vela_invocation.call_owned_async(__vela_target, __vela_args).await }
+            quote! {
+                match __vela_invocation {
+                    Ok(mut __vela_invocation) => __vela_invocation
+                        .call_owned_async(__vela_target, __vela_args)
+                        .await,
+                    Err(__vela_error) => Err(__vela_error),
+                }
+            }
         };
         quote! {
             #invocation_prelude
@@ -327,10 +347,16 @@ pub(crate) fn rewrite_method(
             return #return_adapter;
         }
     } else {
-        let invocation = if authority_is_context {
+        let invocation = if authority_is_reentry {
             quote! { #context_authority.call_dispatch_owned(__vela_target, __vela_args) }
         } else {
-            quote! { __vela_invocation.call_owned(__vela_target, __vela_args) }
+            quote! {
+                match __vela_invocation {
+                    Ok(mut __vela_invocation) =>
+                        __vela_invocation.call_owned(__vela_target, __vela_args),
+                    Err(__vela_error) => Err(__vela_error),
+                }
+            }
         };
         quote! {
             #invocation_prelude
@@ -396,21 +422,18 @@ fn is_replaceable_attr(attribute: &Attribute) -> bool {
 
 fn method_authority(method: &ImplItemFn, authority: &syn::Ident) -> Result<TokenStream> {
     if authority == "self" {
-        if method
-            .sig
-            .inputs
-            .iter()
-            .any(|input| matches!(input, FnArg::Receiver(_)))
-        {
-            return Ok(quote! { &*self });
+        if method.sig.inputs.iter().any(
+            |input| matches!(input, FnArg::Receiver(receiver) if receiver.mutability.is_some()),
+        ) {
+            return Ok(quote! { self });
         }
         return Err(syn::Error::new_spanned(
             &method.sig,
-            "dispatch authority `self` requires a method receiver",
+            "dispatch authority `self` requires a mutable method receiver",
         ));
     }
     authority_parameter_in_inputs(&method.sig.inputs, authority)?;
-    Ok(quote! { &*#authority })
+    Ok(quote! { #authority })
 }
 
 fn argument_binding(mode: ParameterMode, argument: &TokenStream, tracked: bool) -> TokenStream {
@@ -509,10 +532,16 @@ fn authority_parameter_in_inputs(
             continue;
         };
         if pattern.ident == *authority {
-            if !matches!(parameter.ty.as_ref(), Type::Reference(_)) {
+            let Type::Reference(reference) = parameter.ty.as_ref() else {
                 return Err(syn::Error::new_spanned(
                     &parameter.ty,
-                    "dispatch authority must be passed by reference",
+                    "dispatch authority must be passed as a mutable reference",
+                ));
+            };
+            if reference.mutability.is_none() {
+                return Err(syn::Error::new_spanned(
+                    &parameter.ty,
+                    "dispatch authority must be passed as a mutable reference",
                 ));
             }
             return Ok(());
@@ -733,12 +762,17 @@ fn borrowed_origin_index(returns: &super::signature::ClassifiedReturn) -> Option
     }
 }
 
-fn authority_is_hidden_context(
-    classified: &super::signature::ClassifiedSignature,
-    authority: &syn::Ident,
-) -> bool {
-    classified.parameters.iter().any(|parameter| {
-        *authority == parameter.name && parameter.mode == ParameterMode::HiddenContext
+fn authority_is_native_context(signature: &syn::Signature, authority: &syn::Ident) -> bool {
+    signature.inputs.iter().any(|input| {
+        let FnArg::Typed(parameter) = input else {
+            return false;
+        };
+        let Pat::Ident(pattern) = parameter.pat.as_ref() else {
+            return false;
+        };
+        pattern.ident == *authority
+            && crate::signature::type_ident(&parameter.ty)
+                .is_some_and(|ident| ident == "NativeCallContext")
     })
 }
 

@@ -1,11 +1,10 @@
 #![cfg_attr(not(test), deny(clippy::wildcard_imports))]
 
 use std::error::Error;
-use std::sync::Arc;
-
-use parking_lot::Mutex;
 use vela_engine::binding::VmResult;
-use vela_engine::dispatch::{DispatchAuthority, DispatchController, DispatchRoot};
+use vela_engine::dispatch::{
+    DispatchAuthority, DispatchController, DispatchInvocation, DispatchRoot,
+};
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{RuntimeImage, SharedRuntime};
 use vela_macros::{ScriptHost, ScriptReflect, methods};
@@ -17,11 +16,20 @@ struct TurnContext {
     calls: i64,
     #[script(skip)]
     dispatch: DispatchRoot,
+    #[script(skip)]
+    runtime: SharedRuntime,
 }
 
 impl DispatchAuthority for TurnContext {
     fn vela_dispatch_root(&self) -> &DispatchRoot {
         &self.dispatch
+    }
+
+    fn vela_dispatch_invocation(&mut self) -> VmResult<DispatchInvocation<'_>> {
+        let Self {
+            dispatch, runtime, ..
+        } = self;
+        dispatch.invocation(runtime)
     }
 }
 
@@ -68,13 +76,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         .build()?;
     let program = engine.compile_source(include_str!("main.vela"))?;
     let image = RuntimeImage::new_compiled(engine, program).into_shared();
-    let runtime = Arc::new(Mutex::new(SharedRuntime::from_shared_image(image)?));
+    let runtime = SharedRuntime::from_shared_image(image.clone())?;
     let controller = DispatchController::new(slots)?;
     let handler = MessageHandler { bonus: 1 };
 
     let mut fallback_context = TurnContext {
         calls: 0,
-        dispatch: DispatchRoot::pin(&controller, Arc::clone(&runtime))?,
+        dispatch: DispatchRoot::pin(&controller),
+        runtime: SharedRuntime::from_shared_image(image.clone())?,
     };
     let fallback = handler.handle(&mut fallback_context, 40)?;
 
@@ -82,7 +91,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let previous = controller.activate(candidate)?;
     let mut active_context = TurnContext {
         calls: 0,
-        dispatch: DispatchRoot::pin(&controller, Arc::clone(&runtime))?,
+        dispatch: DispatchRoot::pin(&controller),
+        runtime: SharedRuntime::from_shared_image(image.clone())?,
     };
     let active = handler.handle(&mut active_context, 40)?;
     let adjacent = handler.adjacent(40);
@@ -90,7 +100,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     controller.rollback(previous)?;
     let mut rolled_back_context = TurnContext {
         calls: 0,
-        dispatch: DispatchRoot::pin(&controller, Arc::clone(&runtime))?,
+        dispatch: DispatchRoot::pin(&controller),
+        runtime: SharedRuntime::from_shared_image(image)?,
     };
     let rolled_back = handler.handle(&mut rolled_back_context, 40)?;
 

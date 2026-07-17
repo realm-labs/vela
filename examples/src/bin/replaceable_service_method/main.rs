@@ -1,11 +1,10 @@
 #![cfg_attr(not(test), deny(clippy::wildcard_imports))]
 
 use std::error::Error;
-use std::sync::Arc;
-
-use parking_lot::Mutex;
 use vela_engine::binding::VmResult;
-use vela_engine::dispatch::{DispatchAuthority, DispatchController, DispatchRoot};
+use vela_engine::dispatch::{
+    DispatchAuthority, DispatchController, DispatchInvocation, DispatchRoot,
+};
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{RuntimeImage, SharedRuntime};
 use vela_macros::{ScriptHost, ScriptReflect, methods};
@@ -15,13 +14,21 @@ use vela_macros::{ScriptHost, ScriptReflect, methods};
 struct PricingService {
     #[script(get)]
     base: i64,
-    #[script(skip)]
-    dispatch: DispatchRoot,
 }
 
-impl DispatchAuthority for PricingService {
+struct PricingTurn {
+    dispatch: DispatchRoot,
+    runtime: SharedRuntime,
+}
+
+impl DispatchAuthority for PricingTurn {
     fn vela_dispatch_root(&self) -> &DispatchRoot {
         &self.dispatch
+    }
+
+    fn vela_dispatch_invocation(&mut self) -> VmResult<DispatchInvocation<'_>> {
+        let Self { dispatch, runtime } = self;
+        dispatch.invocation(runtime)
     }
 }
 
@@ -29,10 +36,11 @@ impl DispatchAuthority for PricingService {
 impl PricingService {
     #[vela_macros::replaceable(
         path = "host::pricing::PricingService::quote",
-        authority = "self",
+        authority = "turn",
         index = 0
     )]
-    pub fn quote(&self, value: i64) -> VmResult<i64> {
+    pub fn quote(&self, turn: &mut PricingTurn, value: i64) -> VmResult<i64> {
+        let _ = turn;
         Ok(self.adjacent(value))
     }
 
@@ -51,30 +59,33 @@ fn main() -> Result<(), Box<dyn Error>> {
         .build()?;
     let program = engine.compile_source(include_str!("main.vela"))?;
     let image = RuntimeImage::new_compiled(engine, program).into_shared();
-    let runtime = Arc::new(Mutex::new(SharedRuntime::from_shared_image(image)?));
+    let runtime = SharedRuntime::from_shared_image(image.clone())?;
     let controller = DispatchController::new(slots)?;
 
-    let fallback_service = PricingService {
-        base: 1,
-        dispatch: DispatchRoot::pin(&controller, Arc::clone(&runtime))?,
+    let fallback_service = PricingService { base: 1 };
+    let mut fallback_turn = PricingTurn {
+        dispatch: DispatchRoot::pin(&controller),
+        runtime: SharedRuntime::from_shared_image(image.clone())?,
     };
-    let fallback = fallback_service.quote(40)?;
+    let fallback = fallback_service.quote(&mut fallback_turn, 40)?;
 
     let candidate = controller.stage_current(&runtime)?;
     let previous = controller.activate(candidate)?;
-    let active_service = PricingService {
-        base: 1,
-        dispatch: DispatchRoot::pin(&controller, Arc::clone(&runtime))?,
+    let active_service = PricingService { base: 1 };
+    let mut active_turn = PricingTurn {
+        dispatch: DispatchRoot::pin(&controller),
+        runtime: SharedRuntime::from_shared_image(image.clone())?,
     };
-    let active = active_service.quote(40)?;
+    let active = active_service.quote(&mut active_turn, 40)?;
     let adjacent = active_service.adjacent(40);
 
     controller.rollback(previous)?;
-    let rolled_back_service = PricingService {
-        base: 1,
-        dispatch: DispatchRoot::pin(&controller, Arc::clone(&runtime))?,
+    let rolled_back_service = PricingService { base: 1 };
+    let mut rolled_back_turn = PricingTurn {
+        dispatch: DispatchRoot::pin(&controller),
+        runtime: SharedRuntime::from_shared_image(image)?,
     };
-    let rolled_back = rolled_back_service.quote(40)?;
+    let rolled_back = rolled_back_service.quote(&mut rolled_back_turn, 40)?;
 
     println!(
         "replaceable_service_method fallback={fallback} active={active} adjacent={adjacent} rollback={rolled_back}"

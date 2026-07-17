@@ -1,15 +1,16 @@
-use std::sync::Arc;
-
-use parking_lot::Mutex;
 use vela_macros::{ScriptHost, ScriptReflect, methods};
 use vela_vm::error::VmResult;
 
-use super::{DispatchAuthority, DispatchController, DispatchRoot, SharedDispatchRuntime};
+use super::{DispatchAuthority, DispatchController, DispatchInvocation, DispatchRoot};
 use crate::engine::Engine;
 use crate::runtime::{RuntimeImage, SharedRuntime};
 
 pub trait Handler<Message> {
-    fn handle(&self, context: &mut P9Context, message: Message) -> VmResult<i64>;
+    fn handle(&self, actor: &mut P9Actor, message: Message) -> VmResult<i64>;
+}
+
+pub trait Service {
+    fn quote(&self, actor: &mut P9Actor, value: i64) -> VmResult<i64>;
 }
 
 #[derive(ScriptHost, ScriptReflect)]
@@ -17,8 +18,16 @@ pub trait Handler<Message> {
 pub struct P9Context {
     #[script(get, set)]
     calls: i64,
-    #[script(skip)]
+}
+
+pub struct P9Turn {
     root: DispatchRoot,
+    runtime: SharedRuntime,
+}
+
+pub struct P9Actor {
+    turn: P9Turn,
+    context: P9Context,
 }
 
 #[methods(path = "host::p9::Context")]
@@ -55,10 +64,16 @@ macro_rules! p9_lattice {
         impl $handler {
             #[vela_macros::replaceable(
                 path = "host::p9::Handler::handle",
-                authority = "context",
+                authority = "turn",
                 index = 0
             )]
-            pub fn handle(&self, context: &mut P9Context, message: $message) -> VmResult<i64> {
+            pub fn handle(
+                &self,
+                turn: &mut P9Turn,
+                context: &mut P9Context,
+                message: $message,
+            ) -> VmResult<i64> {
+                let _ = turn;
                 let $handler_self = self;
                 let $handler_context = context;
                 let $message_value = message;
@@ -67,14 +82,20 @@ macro_rules! p9_lattice {
         }
 
         impl Handler<$message> for $handler {
-            fn handle(&self, context: &mut P9Context, message: $message) -> VmResult<i64> {
-                <$handler>::handle(self, context, message)
+            fn handle(&self, actor: &mut P9Actor, message: $message) -> VmResult<i64> {
+                let P9Actor { turn, context } = actor;
+                <$handler>::handle(self, turn, context, message)
             }
         }
 
-        impl DispatchAuthority for P9Context {
+        impl DispatchAuthority for P9Turn {
             fn vela_dispatch_root(&self) -> &DispatchRoot {
                 &self.root
+            }
+
+            fn vela_dispatch_invocation(&mut self) -> VmResult<DispatchInvocation<'_>> {
+                let Self { root, runtime, .. } = self;
+                root.invocation(runtime)
             }
         }
 
@@ -82,10 +103,16 @@ macro_rules! p9_lattice {
         impl $service {
             #[vela_macros::replaceable(
                 path = "host::p9::PricingService::quote",
-                authority = "context",
+                authority = "turn",
                 index = 1
             )]
-            pub fn quote(&self, context: &mut P9Context, value: i64) -> VmResult<i64> {
+            pub fn quote(
+                &self,
+                turn: &mut P9Turn,
+                context: &mut P9Context,
+                value: i64,
+            ) -> VmResult<i64> {
+                let _ = turn;
                 let $service_self = self;
                 let $service_context = context;
                 let $service_value = value;
@@ -94,6 +121,13 @@ macro_rules! p9_lattice {
 
             pub fn adjacent(&self, value: i64) -> i64 {
                 value + self.offset
+            }
+        }
+
+        impl Service for $service {
+            fn quote(&self, actor: &mut P9Actor, value: i64) -> VmResult<i64> {
+                let P9Actor { turn, context } = actor;
+                <$service>::quote(self, turn, context, value)
             }
         }
 
@@ -162,38 +196,50 @@ return service.adjacent(value) + 1;
     let worker = Worker { bonus: 1 };
     let service = PricingService { offset: 1 };
 
-    let mut fallback = P9Context {
-        calls: 0,
-        root: DispatchRoot::pin(&controller, Arc::clone(&runtime)).expect("fallback root"),
+    let mut fallback = P9Actor {
+        turn: P9Turn {
+            root: DispatchRoot::pin(&controller),
+            runtime: SharedRuntime::from_shared_image(runtime.shared_image())
+                .expect("actor runtime"),
+        },
+        context: P9Context { calls: 0 },
     };
     assert_eq!(
         <Worker as Handler<i64>>::handle(&worker, &mut fallback, 40),
         Ok(41)
     );
-    assert_eq!(service.quote(&mut fallback, 40), Ok(41));
-    assert_eq!(fallback.calls(), 20);
+    assert_eq!(
+        <PricingService as Service>::quote(&service, &mut fallback, 40),
+        Ok(41)
+    );
+    assert_eq!(fallback.context.calls(), 20);
 
     let candidate = controller.stage_current(&runtime).expect("override stage");
     controller.activate(candidate).expect("activate candidate");
-    let mut active = P9Context {
-        calls: 0,
-        root: DispatchRoot::pin(&controller, Arc::clone(&runtime)).expect("active root"),
+    let mut active = P9Actor {
+        turn: P9Turn {
+            root: DispatchRoot::pin(&controller),
+            runtime: SharedRuntime::from_shared_image(runtime.shared_image())
+                .expect("actor runtime"),
+        },
+        context: P9Context { calls: 0 },
     };
     assert_eq!(
         <Worker as Handler<i64>>::handle(&worker, &mut active, 40),
         Ok(42)
     );
-    assert_eq!(service.quote(&mut active, 40), Ok(42));
-    assert_eq!(active.calls(), 2);
+    assert_eq!(
+        <PricingService as Service>::quote(&service, &mut active, 40),
+        Ok(42)
+    );
+    assert_eq!(active.context.calls(), 2);
     assert_eq!(service.adjacent(40), 41);
 }
 
 fn shared_runtime(
     engine: Engine,
     program: vela_bytecode::compiler::CompiledProgram,
-) -> SharedDispatchRuntime {
+) -> SharedRuntime {
     let image = RuntimeImage::new_compiled(engine, program).into_shared();
-    Arc::new(Mutex::new(
-        SharedRuntime::from_shared_image(image).expect("shared runtime"),
-    ))
+    SharedRuntime::from_shared_image(image).expect("staging runtime")
 }

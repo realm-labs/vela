@@ -9,7 +9,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use vela_bytecode::{
     RustBindingBoundaryMode, RustBindingCallable, RustBindingEffectSet, RustBindingType,
 };
@@ -33,7 +33,6 @@ const DEFAULT_EXECUTION_UNITS: u64 = 1_000_000;
 const DEFAULT_MEMORY_BYTES: usize = 8 * 1024 * 1024;
 const DEFAULT_CALL_DEPTH: usize = 128;
 
-pub type SharedDispatchRuntime = Arc<Mutex<SharedRuntime>>;
 pub type DispatchCallFuture<'call, T> = Pin<Box<dyn Future<Output = VmResult<T>> + Send + 'call>>;
 
 #[derive(Clone, Debug)]
@@ -186,14 +185,14 @@ impl DispatchController {
 
     pub fn stage_current(
         &self,
-        runtime: &SharedDispatchRuntime,
+        runtime: &SharedRuntime,
     ) -> Result<DispatchCandidate, DispatchStageError> {
         self.stage_from(runtime, self.current())
     }
 
     pub fn stage_from(
         &self,
-        runtime: &SharedDispatchRuntime,
+        runtime: &SharedRuntime,
         base: Arc<DispatchGeneration>,
     ) -> Result<DispatchCandidate, DispatchStageError> {
         if !Arc::ptr_eq(&base.layout, &self.inner.layout) {
@@ -203,8 +202,7 @@ impl DispatchController {
                 None,
             ));
         }
-        let runtime_guard = runtime.lock();
-        let staged_image = runtime_guard.shared_image();
+        let staged_image = runtime.shared_image();
         let same_artifact = base
             .image
             .as_ref()
@@ -215,7 +213,7 @@ impl DispatchController {
             vec![None; base.targets.len()]
         };
         let mut seen = BTreeMap::<usize, String>::new();
-        for callable in runtime_guard.active_binding_schema().callables() {
+        for callable in runtime.active_binding_schema().callables() {
             let Some(override_target) = callable.override_target.as_ref() else {
                 continue;
             };
@@ -386,38 +384,21 @@ impl DispatchCandidate {
 #[derive(Clone)]
 pub struct DispatchRoot {
     generation: Arc<DispatchGeneration>,
-    runtime: SharedDispatchRuntime,
     options: CallOptions,
 }
 
 impl DispatchRoot {
-    pub fn pin(
-        controller: &DispatchController,
-        runtime: SharedDispatchRuntime,
-    ) -> Result<Self, DispatchStageError> {
-        Self::pin_with_options(controller, runtime, default_dispatch_call_options())
+    #[must_use]
+    pub fn pin(controller: &DispatchController) -> Self {
+        Self::pin_with_options(controller, default_dispatch_call_options())
     }
 
-    pub fn pin_with_options(
-        controller: &DispatchController,
-        runtime: SharedDispatchRuntime,
-        options: CallOptions,
-    ) -> Result<Self, DispatchStageError> {
-        let generation = controller.current();
-        if let Some(expected) = generation.image.as_ref()
-            && !expected.same_image(&runtime.lock().shared_image())
-        {
-            return Err(DispatchStageError::new(
-                DispatchStageErrorCode::ArtifactMismatch,
-                "dispatch root Runtime does not use the generation's linked artifact",
-                None,
-            ));
-        }
-        Ok(Self {
-            generation,
-            runtime,
+    #[must_use]
+    pub fn pin_with_options(controller: &DispatchController, options: CallOptions) -> Self {
+        Self {
+            generation: controller.current(),
             options,
-        })
+        }
     }
 
     #[must_use]
@@ -430,37 +411,48 @@ impl DispatchRoot {
         self.generation.target(index)
     }
 
-    #[must_use]
-    pub fn invocation(&self) -> DispatchInvocation {
-        DispatchInvocation {
-            generation: Arc::clone(&self.generation),
-            runtime: Arc::clone(&self.runtime),
-            options: self.options.clone(),
+    pub fn invocation<'turn>(
+        &self,
+        runtime: &'turn mut SharedRuntime,
+    ) -> VmResult<DispatchInvocation<'turn>> {
+        if let Some(expected) = self.generation.image.as_ref()
+            && !expected.same_image(&runtime.shared_image())
+        {
+            return Err(vela_vm::error::VmError::new(
+                vela_vm::error::VmErrorKind::TypeMismatch {
+                    operation: "dispatch generation artifact",
+                },
+            ));
         }
+        Ok(DispatchInvocation {
+            generation: Arc::clone(&self.generation),
+            runtime,
+            options: self.options.clone(),
+        })
     }
 }
 
 pub trait DispatchAuthority {
     fn vela_dispatch_root(&self) -> &DispatchRoot;
+
+    fn vela_dispatch_invocation(&mut self) -> VmResult<DispatchInvocation<'_>>;
 }
 
-#[derive(Clone)]
-pub struct DispatchInvocation {
+pub struct DispatchInvocation<'turn> {
     generation: Arc<DispatchGeneration>,
-    runtime: SharedDispatchRuntime,
+    runtime: &'turn mut SharedRuntime,
     options: CallOptions,
 }
 
-impl DispatchInvocation {
+impl DispatchInvocation<'_> {
     pub fn call_owned(
-        &self,
+        &mut self,
         target: VelaOverrideTarget,
         args: CallArgs<'_>,
     ) -> VmResult<vela_vm::owned_value::OwnedValue> {
         self.validate_target(&target)?;
-        let mut runtime = self.runtime.lock();
-        self.validate_runtime(&runtime)?;
-        let value = runtime.call(
+        self.validate_runtime()?;
+        let value = self.runtime.call(
             StableVelaFunction {
                 function: target.function,
                 diagnostic_name: "Vela dispatch override",
@@ -468,10 +460,10 @@ impl DispatchInvocation {
             args,
             dispatch_call_options(&self.options, Arc::clone(&self.generation)),
         )?;
-        runtime.value_to_owned(&value)
+        self.runtime.value_to_owned(&value)
     }
 
-    pub fn call<R>(&self, target: VelaOverrideTarget, args: CallArgs<'_>) -> VmResult<R>
+    pub fn call<R>(&mut self, target: VelaOverrideTarget, args: CallArgs<'_>) -> VmResult<R>
     where
         R: FromScriptArg,
     {
@@ -480,30 +472,20 @@ impl DispatchInvocation {
     }
 
     pub fn call_owned_async<'call>(
-        &'call self,
+        &'call mut self,
         target: VelaOverrideTarget,
         args: CallArgs<'call>,
     ) -> DispatchCallFuture<'call, vela_vm::owned_value::OwnedValue> {
         if let Err(error) = self.validate_target(&target) {
             return Box::pin(async move { Err(error) });
         }
-        let runtime = Arc::clone(&self.runtime);
-        let expected_image = self.generation.image.clone();
         let generation = Arc::clone(&self.generation);
         let options = self.options.clone();
         let function = target.function;
         Box::pin(async move {
-            let mut runtime = runtime.lock_arc();
-            if let Some(expected) = expected_image.as_ref()
-                && !expected.same_image(&runtime.shared_image())
-            {
-                return Err(vela_vm::error::VmError::new(
-                    vela_vm::error::VmErrorKind::TypeMismatch {
-                        operation: "dispatch generation artifact",
-                    },
-                ));
-            }
-            let value = runtime
+            self.validate_runtime()?;
+            let value = self
+                .runtime
                 .call_async(
                     StableVelaFunction {
                         function,
@@ -513,12 +495,12 @@ impl DispatchInvocation {
                     dispatch_call_options(&options, generation),
                 )
                 .await?;
-            runtime.value_to_owned(&value)
+            self.runtime.value_to_owned(&value)
         })
     }
 
     pub fn call_async<'call, R>(
-        &'call self,
+        &'call mut self,
         target: VelaOverrideTarget,
         args: CallArgs<'call>,
     ) -> DispatchCallFuture<'call, R>
@@ -542,12 +524,12 @@ impl DispatchInvocation {
         Ok(())
     }
 
-    fn validate_runtime(&self, runtime: &SharedRuntime) -> VmResult<()> {
+    fn validate_runtime(&self) -> VmResult<()> {
         if self
             .generation
             .image
             .as_ref()
-            .is_some_and(|expected| !expected.same_image(&runtime.shared_image()))
+            .is_some_and(|expected| !expected.same_image(&self.runtime.shared_image()))
         {
             return Err(vela_vm::error::VmError::new(
                 vela_vm::error::VmErrorKind::TypeMismatch {

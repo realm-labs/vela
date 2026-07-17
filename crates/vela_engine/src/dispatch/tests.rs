@@ -7,18 +7,16 @@ use std::task::{Context, Poll, Waker};
 use vela_common::{CallableAsyncness, SourceId, Span};
 use vela_macros::{ScriptHost, ScriptReflect, export, methods, replaceable};
 
-fn shared_dispatch_runtime(
+fn dispatch_runtime(
     engine: crate::engine::Engine,
     program: vela_bytecode::compiler::CompiledProgram,
-) -> SharedDispatchRuntime {
+) -> crate::runtime::SharedRuntime {
     let image = crate::runtime::RuntimeImage::new_compiled(engine, program).into_shared();
-    shared_runtime_from_image(image)
+    runtime_from_image(image)
 }
 
-fn shared_runtime_from_image(image: crate::runtime::SharedImage) -> SharedDispatchRuntime {
-    Arc::new(Mutex::new(
-        crate::runtime::SharedRuntime::from_shared_image(image).expect("shared runtime"),
-    ))
+fn runtime_from_image(image: crate::runtime::SharedImage) -> crate::runtime::SharedRuntime {
+    crate::runtime::SharedRuntime::from_shared_image(image).expect("actor runtime")
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -59,10 +57,20 @@ pub struct ActorContext {
     calls: i64,
     #[script(skip)]
     root: DispatchRoot,
+    #[script(skip)]
+    runtime: crate::runtime::SharedRuntime,
 }
 
 #[methods]
 impl ActorContext {
+    fn for_turn(root: DispatchRoot, template: &crate::runtime::SharedRuntime) -> Self {
+        Self {
+            calls: 0,
+            root,
+            runtime: runtime_from_image(template.shared_image()),
+        }
+    }
+
     pub fn call_count(&self) -> i64 {
         self.calls
     }
@@ -96,6 +104,11 @@ impl DispatchAuthority for ActorContext {
     fn vela_dispatch_root(&self) -> &DispatchRoot {
         &self.root
     }
+
+    fn vela_dispatch_invocation(&mut self) -> VmResult<DispatchInvocation<'_>> {
+        let Self { root, runtime, .. } = self;
+        root.invocation(runtime)
+    }
 }
 
 #[replaceable(path = "host::game::increment", authority = "context", index = 0)]
@@ -126,9 +139,20 @@ pub fn replaceable_business(
     value
 }
 
-#[replaceable(path = "host::game::borrow_context", authority = "context", index = 0)]
-pub fn replaceable_borrow_context(context: &ActorContext) -> VmResult<&ActorContext> {
-    Ok(context)
+#[derive(ScriptHost, ScriptReflect)]
+#[script(path = "host::ActorBorrowContext")]
+pub struct ActorBorrowContext {
+    #[script(get)]
+    marker: i64,
+}
+
+#[methods(path = "host::game")]
+impl ActorBorrowContext {
+    #[replaceable(path = "host::game::borrow_context", authority = "turn", index = 0)]
+    pub fn borrow_context(&self, turn: &mut ActorContext) -> VmResult<&ActorBorrowContext> {
+        let _ = turn;
+        Ok(self)
+    }
 }
 
 #[replaceable(path = "host::game::outer", authority = "context", index = 0)]
@@ -140,21 +164,18 @@ pub fn replaceable_outer(context: &mut ActorContext, value: i64) -> VmResult<i64
 #[replaceable(path = "host::game::inner", authority = "ctx", index = 1)]
 pub fn replaceable_inner(
     ctx: &mut crate::context::NativeCallContext<'_, '_>,
-    context: &mut ActorContext,
     value: i64,
 ) -> VmResult<i64> {
     let _ = ctx;
-    context.calls += 10;
     Ok(value + 1)
 }
 
 #[export(path = "host::game::call_inner")]
 pub fn call_inner(
     ctx: &mut crate::context::NativeCallContext<'_, '_>,
-    context: &mut ActorContext,
     value: i64,
 ) -> VmResult<i64> {
-    replaceable_inner(ctx, context, value)
+    replaceable_inner(ctx, value)
 }
 
 #[replaceable(path = "host::game::outer_async", authority = "context", index = 0)]
@@ -195,6 +216,11 @@ pub async fn pause_once(value: i64) -> VmResult<i64> {
     .await
 }
 
+#[export(path = "host::game::panic_async")]
+pub async fn panic_async(_value: i64) -> VmResult<i64> {
+    panic!("intentional replacement unwind proof")
+}
+
 fn direct_helper(value: i64) -> i64 {
     value + 1
 }
@@ -226,15 +252,15 @@ pub fn patched(value: i64) -> i64 { return value + 2; }
             .and_then(vela_bytecode::RustBindingOverrideTarget::resolved),
         Some((slots[0].id, slots[0].contract.abi_fingerprint().get()))
     );
-    let runtime = shared_dispatch_runtime(engine, program);
+    let mut runtime = dispatch_runtime(engine, program);
     let controller = DispatchController::new(slots).expect("controller");
 
-    let before = DispatchRoot::pin(&controller, Arc::clone(&runtime)).expect("root");
+    let before = DispatchRoot::pin(&controller);
     let candidate = controller
         .stage_current(&runtime)
         .expect("compatible override");
     let previous = controller.activate(candidate).expect("activate candidate");
-    let active = DispatchRoot::pin(&controller, Arc::clone(&runtime)).expect("root");
+    let active = DispatchRoot::pin(&controller);
 
     assert!(before.target(InterceptSlotIndex::new(0)).is_none());
     let target = active
@@ -242,19 +268,20 @@ pub fn patched(value: i64) -> i64 { return value + 2; }
         .expect("active override");
     assert_eq!(
         active
-            .invocation()
+            .invocation(&mut runtime)
+            .expect("actor turn")
             .call::<i64>(target.clone(), CallArgs::new().with(40_i64)),
         Ok(42)
     );
 
     controller.rollback(previous).expect("rollback generation");
-    let rolled_back = DispatchRoot::pin(&controller, Arc::clone(&runtime)).expect("root");
+    let rolled_back = DispatchRoot::pin(&controller);
     assert!(rolled_back.target(InterceptSlotIndex::new(0)).is_none());
     assert_eq!(active.target(InterceptSlotIndex::new(0)), Some(target));
 }
 
 #[test]
-fn independent_roots_share_code_without_sharing_a_runtime_lock() {
+fn independent_actor_turns_overlap_on_one_immutable_generation() {
     let slots = vec![slot(0, "host::math::increment")];
     let engine = crate::engine::Engine::builder()
         .register_replaceable_slots(slots.clone())
@@ -269,36 +296,33 @@ pub fn patched(value: i64) -> i64 { return value + 2; }
         )
         .expect("override program");
     let image = crate::runtime::RuntimeImage::new_compiled(engine, program).into_shared();
-    let first_runtime = shared_runtime_from_image(image.clone());
-    let second_runtime = shared_runtime_from_image(image);
+    let mut first_runtime = runtime_from_image(image.clone());
+    let mut second_runtime = runtime_from_image(image);
     let controller = DispatchController::new(slots).expect("controller");
     let candidate = controller
         .stage_current(&first_runtime)
         .expect("compatible override");
     controller.activate(candidate).expect("activate candidate");
-    let first_root =
-        DispatchRoot::pin(&controller, Arc::clone(&first_runtime)).expect("first root");
-    let second_root =
-        DispatchRoot::pin(&controller, Arc::clone(&second_runtime)).expect("second root");
+    let first_root = DispatchRoot::pin(&controller);
+    let second_root = DispatchRoot::pin(&controller);
 
-    let _first_guard = first_runtime.lock();
-    assert!(
-        second_runtime.try_lock().is_some(),
-        "roots over one immutable image must own independent runtime locks"
-    );
+    let _first_turn = first_root
+        .invocation(&mut first_runtime)
+        .expect("first actor turn remains borrowed");
     let target = second_root
         .target(InterceptSlotIndex::new(0))
         .expect("active target");
     assert_eq!(
         second_root
-            .invocation()
+            .invocation(&mut second_runtime)
+            .expect("second actor turn")
             .call::<i64>(target, CallArgs::new().with(40_i64)),
         Ok(42)
     );
     assert_eq!(
         first_root.generation().id(),
         second_root.generation().id(),
-        "independent runtime sessions still pin one dispatch generation"
+        "independent actor turns still pin one dispatch generation"
     );
 }
 
@@ -317,7 +341,7 @@ pub fn patched(value: i64) -> i64 { return value + 2; }
 "#,
         )
         .expect("override program");
-    let runtime = shared_dispatch_runtime(engine, program);
+    let runtime = dispatch_runtime(engine, program);
     let first = DispatchController::new(slots.clone()).expect("first");
     let second = DispatchController::new(slots).expect("second");
 
@@ -372,7 +396,7 @@ fn compilation_links_targets_and_rejects_unknown_or_incompatible_overrides() {
             r#"#[override(host::math::increment)] pub fn patched(value: i64) -> i64 { return value; }"#,
         )
         .expect("linked override");
-    let linked_runtime = shared_dispatch_runtime(engine.clone(), linked_program);
+    let linked_runtime = dispatch_runtime(engine.clone(), linked_program);
     let mut changed_contract = slots[0].clone();
     changed_contract.contract.returns.error_mode = ErrorMode::Value;
     let changed_controller =
@@ -395,7 +419,7 @@ fn compilation_links_targets_and_rejects_unknown_or_incompatible_overrides() {
 "#,
         )
         .expect("duplicate override program links each declaration");
-    let runtime = shared_dispatch_runtime(engine, program);
+    let runtime = dispatch_runtime(engine, program);
     let controller = DispatchController::new(slots).expect("controller");
     let error = controller
         .stage_current(&runtime)
@@ -442,7 +466,7 @@ return context.call_count();
         RustBindingBoundaryMode::ExclusiveHost,
         "the target contract supplies the exact host parameter mode"
     );
-    let read_runtime = shared_dispatch_runtime(write_ceiling_engine, read_program);
+    let read_runtime = dispatch_runtime(write_ceiling_engine, read_program);
     let write_ceiling = DispatchController::new(write_slots).expect("write ceiling controller");
     write_ceiling
         .stage_current(&read_runtime)
@@ -483,7 +507,7 @@ fn compilation_imports_borrowed_return_contract_before_staging() {
     let slot = borrowed_host_contract("host::game::borrow_context");
     let slots = vec![ReplaceableSlotDescriptor::new(0, slot.clone())];
     let engine = crate::engine::Engine::builder()
-        .register_host_type::<ActorContext>()
+        .register_host_type::<ActorBorrowContext>()
         .register_replaceable_slots(slots.clone())
         .capability(vela_common::Capability::HostRead)
         .build()
@@ -492,7 +516,7 @@ fn compilation_imports_borrowed_return_contract_before_staging() {
         .compile_source(
             r#"
 #[override(host::game::borrow_context)]
-pub fn borrow_context(context: ActorContext) -> ActorContext {
+pub fn borrow_context(context: ActorBorrowContext) -> ActorBorrowContext {
 return context;
 }
 "#,
@@ -520,7 +544,7 @@ return context;
         vela_bytecode::RustBindingErrorMode::RuntimeResult
     );
 
-    let runtime = shared_dispatch_runtime(engine, program);
+    let runtime = dispatch_runtime(engine, program);
     DispatchController::new(slots)
         .expect("controller")
         .stage_current(&runtime)
@@ -542,7 +566,7 @@ fn first(value: i64) -> i64 { return value + 1; }
 "#,
         )
         .expect("first delta");
-    let first_runtime = shared_dispatch_runtime(first_engine, first_program);
+    let first_runtime = dispatch_runtime(first_engine, first_program);
     let second_engine = crate::engine::Engine::builder()
         .register_replaceable_slots(slots.clone())
         .build()
@@ -558,7 +582,7 @@ fn second(value: i64) -> i64 { return value + 2; }
 "#,
         )
         .expect("second delta");
-    let second_runtime = shared_dispatch_runtime(second_engine, second_program);
+    let mut second_runtime = dispatch_runtime(second_engine, second_program);
     let controller = DispatchController::new(slots).expect("controller");
 
     let first = controller
@@ -569,7 +593,7 @@ fn second(value: i64) -> i64 { return value + 2; }
         .stage_current(&second_runtime)
         .expect("second delta over first generation");
     controller.activate(second).expect("activate second delta");
-    let root = DispatchRoot::pin(&controller, Arc::clone(&second_runtime)).expect("root");
+    let root = DispatchRoot::pin(&controller);
     let first_target = root
         .target(InterceptSlotIndex::new(0))
         .expect("preserved first target");
@@ -578,12 +602,14 @@ fn second(value: i64) -> i64 { return value + 2; }
         .expect("new second target");
 
     assert_eq!(
-        root.invocation()
+        root.invocation(&mut second_runtime)
+            .expect("actor turn")
             .call::<i64>(first_target, CallArgs::new().with(40_i64)),
         Ok(41)
     );
     assert_eq!(
-        root.invocation()
+        root.invocation(&mut second_runtime)
+            .expect("actor turn")
             .call::<i64>(second_target, CallArgs::new().with(40_i64)),
         Ok(42)
     );
@@ -606,39 +632,31 @@ fn macro_entry_intercepts_while_old_roots_and_private_fallback_stay_direct() {
         .compile_source(
             r#"
 #[override(host::game::increment)]
-pub fn patched(context: ActorContext, value: i64) -> i64 {
-context.calls += 1;
+pub fn patched(value: i64) -> i64 {
 return value + 2;
 }
 
 #[override(host::game::increment_async)]
-pub async fn patched_async(context: ActorContext, value: i64) -> i64 {
-context.calls += 1;
+pub async fn patched_async(value: i64) -> i64 {
 return value + 3;
 }
 "#,
         )
         .expect("override program");
-    let runtime = shared_dispatch_runtime(engine, program);
+    let runtime = dispatch_runtime(engine, program);
     let controller = DispatchController::new(slots).expect("controller");
-    let mut old_context = ActorContext {
-        calls: 0,
-        root: DispatchRoot::pin(&controller, Arc::clone(&runtime)).expect("root"),
-    };
+    let mut old_context = ActorContext::for_turn(DispatchRoot::pin(&controller), &runtime);
     assert_eq!(replaceable_increment(&mut old_context, 40), Ok(41));
 
     let candidate = controller.stage_current(&runtime).expect("override stage");
     controller.activate(candidate).expect("activate candidate");
-    let mut active_context = ActorContext {
-        calls: 0,
-        root: DispatchRoot::pin(&controller, Arc::clone(&runtime)).expect("root"),
-    };
+    let mut active_context = ActorContext::for_turn(DispatchRoot::pin(&controller), &runtime);
     assert_eq!(replaceable_increment(&mut active_context, 40), Ok(42));
     assert_eq!(
         ready(replaceable_increment_async(&mut active_context, 40)),
         Ok(43)
     );
-    assert_eq!(active_context.call_count(), 2);
+    assert_eq!(active_context.call_count(), 0);
 
     assert_eq!(replaceable_increment(&mut old_context, 40), Ok(41));
     assert_eq!(
@@ -647,7 +665,7 @@ return value + 3;
     );
     assert_eq!(direct_helper(40), 41);
     assert_eq!(old_context.calls, 20);
-    assert_eq!(active_context.calls, 12);
+    assert_eq!(active_context.calls, 10);
 }
 
 #[test]
@@ -667,24 +685,20 @@ fn override_error_propagates_without_fallback_retry() {
         .compile_source(
             r#"
 #[override(host::game::increment)]
-pub fn broken(context: ActorContext, value: i64) -> i64 {
-context.calls += 1;
+pub fn broken(value: i64) -> i64 {
 return value / 0;
 }
 "#,
         )
         .expect("override program");
-    let runtime = shared_dispatch_runtime(engine, program);
+    let runtime = dispatch_runtime(engine, program);
     let controller = DispatchController::new(slots).expect("controller");
     let candidate = controller.stage_current(&runtime).expect("override stage");
     controller.activate(candidate).expect("activate candidate");
-    let mut context = ActorContext {
-        calls: 0,
-        root: DispatchRoot::pin(&controller, Arc::clone(&runtime)).expect("root"),
-    };
+    let mut context = ActorContext::for_turn(DispatchRoot::pin(&controller), &runtime);
 
     assert!(replaceable_increment(&mut context, 40).is_err());
-    assert_eq!(context.calls, 1);
+    assert_eq!(context.calls, 0);
 }
 
 #[test]
@@ -704,18 +718,15 @@ fn replaceable_entries_preserve_plain_and_business_result_returns() {
         .compile_source(
             r#"
 #[override(host::game::plain)]
-pub fn patched_plain(context: ActorContext, value: i64) -> i64 {
-context.calls += 1;
+pub fn patched_plain(value: i64) -> i64 {
 return value + 2;
 }
 
 #[override(host::game::business)]
 pub fn patched_business(
-    context: ActorContext,
     value: Result<i64, String>,
     divisor: i64,
 ) -> Result<i64, String> {
-context.calls += 1;
 let checked = 1 / divisor;
 return value;
 }
@@ -724,36 +735,31 @@ return value;
         .expect("override program");
     let failure_engine = engine.clone();
     let failure_slots = slots.clone();
-    let runtime = shared_dispatch_runtime(engine, program);
+    let runtime = dispatch_runtime(engine, program);
     let controller = DispatchController::new(slots).expect("controller");
     let candidate = controller.stage_current(&runtime).expect("override stage");
     controller.activate(candidate).expect("activate candidate");
-    let mut context = ActorContext {
-        calls: 0,
-        root: DispatchRoot::pin(&controller, Arc::clone(&runtime)).expect("root"),
-    };
+    let mut context = ActorContext::for_turn(DispatchRoot::pin(&controller), &runtime);
 
     assert_eq!(replaceable_plain(&mut context, 40), 42);
     assert_eq!(replaceable_business(&mut context, Ok(43), 1), Ok(43));
-    assert_eq!(context.calls, 2);
+    assert_eq!(context.calls, 0);
 
     let failure_program = failure_engine
         .compile_source(
             r#"
 #[override(host::game::business)]
 pub fn patched_business(
-    context: ActorContext,
     value: Result<i64, String>,
     divisor: i64,
 ) -> Result<i64, String> {
-context.calls += 1;
 let checked = 1 / divisor;
 return value;
 }
 "#,
         )
         .expect("failing business override program");
-    let failure_runtime = shared_dispatch_runtime(failure_engine, failure_program);
+    let failure_runtime = dispatch_runtime(failure_engine, failure_program);
     let failure_controller = DispatchController::new(failure_slots).expect("failure controller");
     let candidate = failure_controller
         .stage_current(&failure_runtime)
@@ -761,11 +767,8 @@ return value;
     failure_controller
         .activate(candidate)
         .expect("activate failure candidate");
-    let mut failure_context = ActorContext {
-        calls: 0,
-        root: DispatchRoot::pin(&failure_controller, Arc::clone(&failure_runtime))
-            .expect("failure root"),
-    };
+    let mut failure_context =
+        ActorContext::for_turn(DispatchRoot::pin(&failure_controller), &failure_runtime);
     let error = replaceable_business(&mut failure_context, Ok(43), 0)
         .expect_err("VM failures map into the business error family");
     assert!(
@@ -773,14 +776,14 @@ return value;
             || error.0.to_ascii_lowercase().contains("division"),
         "{error:?}"
     );
-    assert_eq!(failure_context.calls, 1);
+    assert_eq!(failure_context.calls, 0);
 }
 
 #[test]
 fn replaceable_borrowed_return_reuses_the_proven_direct_origin() {
-    let slots = vec![vela_replaceable_slot_replaceable_borrow_context()];
+    let slots = vec![ActorBorrowContext::vela_replaceable_slot_borrow_context()];
     let engine = crate::engine::Engine::builder()
-        .register_host_type::<ActorContext>()
+        .register_host_type::<ActorBorrowContext>()
         .register_replaceable_slots(slots.clone())
         .capability(vela_common::Capability::HostRead)
         .build()
@@ -789,22 +792,20 @@ fn replaceable_borrowed_return_reuses_the_proven_direct_origin() {
         .compile_source(
             r#"
 #[override(host::game::borrow_context)]
-pub fn borrow_context(context: ActorContext) -> ActorContext {
+pub fn borrow_context(context: ActorBorrowContext) -> ActorBorrowContext {
 return context;
 }
 "#,
         )
         .expect("borrowed override program");
-    let runtime = shared_dispatch_runtime(engine, program);
+    let runtime = dispatch_runtime(engine, program);
     let controller = DispatchController::new(slots).expect("controller");
     let candidate = controller.stage_current(&runtime).expect("override stage");
     controller.activate(candidate).expect("activate candidate");
-    let context = ActorContext {
-        calls: 0,
-        root: DispatchRoot::pin(&controller, Arc::clone(&runtime)).expect("root"),
-    };
+    let mut turn = ActorContext::for_turn(DispatchRoot::pin(&controller), &runtime);
+    let context = ActorBorrowContext { marker: 7 };
 
-    let borrowed = replaceable_borrow_context(&context).expect("borrowed origin");
+    let borrowed = context.borrow_context(&mut turn).expect("borrowed origin");
     assert!(std::ptr::eq(borrowed, &context));
 }
 
@@ -826,29 +827,25 @@ fn nested_replaceable_call_reenters_the_active_runtime_session() {
         .compile_source(
             r#"
 #[override(host::game::outer)]
-pub fn outer(context: ActorContext, value: i64) -> i64 {
-return host::game::call_inner(context, value);
+pub fn outer(value: i64) -> i64 {
+return host::game::call_inner(value);
 }
 
 #[override(host::game::inner)]
-pub fn inner(context: ActorContext, value: i64) -> i64 {
-context.calls += 1;
+pub fn inner(value: i64) -> i64 {
 return value + 2;
 }
 "#,
         )
         .expect("nested override program");
-    let runtime = shared_dispatch_runtime(engine, program);
+    let runtime = dispatch_runtime(engine, program);
     let controller = DispatchController::new(slots).expect("controller");
     let candidate = controller.stage_current(&runtime).expect("override stage");
     controller.activate(candidate).expect("activate candidate");
-    let mut context = ActorContext {
-        calls: 0,
-        root: DispatchRoot::pin(&controller, Arc::clone(&runtime)).expect("root"),
-    };
+    let mut context = ActorContext::for_turn(DispatchRoot::pin(&controller), &runtime);
 
     assert_eq!(replaceable_outer(&mut context, 40), Ok(42));
-    assert_eq!(context.calls, 1);
+    assert_eq!(context.calls, 0);
 }
 
 #[test]
@@ -869,13 +866,12 @@ fn nested_replaceable_call_consumes_the_root_remaining_budget() {
         .compile_source(
             r#"
 #[override(host::game::outer)]
-pub fn outer(context: ActorContext, value: i64) -> i64 {
-return host::game::call_inner(context, value);
+pub fn outer(value: i64) -> i64 {
+return host::game::call_inner(value);
 }
 
 #[override(host::game::inner)]
-pub fn inner(context: ActorContext, value: i64) -> i64 {
-context.calls += 1;
+pub fn inner(value: i64) -> i64 {
 let total = 0;
 for current in 1..=1000 { total += current; }
 return value + total;
@@ -883,17 +879,13 @@ return value + total;
 "#,
         )
         .expect("budget override program");
-    let runtime = shared_dispatch_runtime(engine, program);
+    let runtime = dispatch_runtime(engine, program);
     let controller = DispatchController::new(slots).expect("controller");
     let candidate = controller.stage_current(&runtime).expect("override stage");
     controller.activate(candidate).expect("activate candidate");
-    let root = DispatchRoot::pin_with_options(
-        &controller,
-        Arc::clone(&runtime),
-        CallOptions::new(200, usize::MAX, usize::MAX),
-    )
-    .expect("budgeted root");
-    let mut context = ActorContext { calls: 0, root };
+    let root =
+        DispatchRoot::pin_with_options(&controller, CallOptions::new(200, usize::MAX, usize::MAX));
+    let mut context = ActorContext::for_turn(root, &runtime);
 
     let error = replaceable_outer(&mut context, 40)
         .expect_err("nested override must not receive a fresh default budget");
@@ -908,7 +900,7 @@ return value + total;
         "{error}"
     );
     assert_eq!(
-        context.calls, 1,
+        context.calls, 0,
         "the outer call reached the nested override before sharing exhaustion"
     );
 }
@@ -932,7 +924,7 @@ fn nested_async_replaceable_calls_pin_generation_and_release_on_cancel() {
         .compile_source(
             r#"
 #[override(host::game::outer_async)]
-pub async fn outer(context: ActorContext, value: i64) -> i64 {
+pub async fn outer(value: i64) -> i64 {
 return host::game::call_inner_async(value).await;
 }
 
@@ -944,37 +936,30 @@ return paused + 2;
 "#,
         )
         .expect("first async override program");
-    let first_runtime = shared_dispatch_runtime(engine.clone(), first_program);
+    let first_runtime = dispatch_runtime(engine.clone(), first_program);
     let controller = DispatchController::new(slots).expect("controller");
     let candidate = controller
         .stage_current(&first_runtime)
         .expect("first override stage");
     controller.activate(candidate).expect("activate first");
 
-    let cancelled_root =
-        DispatchRoot::pin(&controller, Arc::clone(&first_runtime)).expect("cancelled root");
-    let mut cancelled_context = ActorContext {
-        calls: 0,
-        root: cancelled_root,
-    };
+    let cancelled_root = DispatchRoot::pin(&controller);
+    let mut cancelled_context = ActorContext::for_turn(cancelled_root, &first_runtime);
     {
         let mut future = std::pin::pin!(replaceable_outer_async(&mut cancelled_context, 40));
         let mut task = Context::from_waker(Waker::noop());
         assert!(matches!(future.as_mut().poll(&mut task), Poll::Pending));
     }
     assert_eq!(cancelled_context.calls, 0);
-    assert!(
-        first_runtime.try_lock().is_some(),
-        "dropping a suspended root must release its runtime session"
+    assert_eq!(
+        ready(replaceable_outer_async(&mut cancelled_context, 40)),
+        Ok(42),
+        "dropping a suspended call must release the actor-turn Runtime borrow"
     );
 
-    let pinned_root =
-        DispatchRoot::pin(&controller, Arc::clone(&first_runtime)).expect("pinned old root");
+    let pinned_root = DispatchRoot::pin(&controller);
     let old_generation = pinned_root.generation().id();
-    let mut pinned_context = ActorContext {
-        calls: 0,
-        root: pinned_root,
-    };
+    let mut pinned_context = ActorContext::for_turn(pinned_root, &first_runtime);
     let old_result = {
         let mut future = std::pin::pin!(replaceable_outer_async(&mut pinned_context, 40));
         let mut task = Context::from_waker(Waker::noop());
@@ -984,7 +969,7 @@ return paused + 2;
             .compile_source(
                 r#"
 #[override(host::game::outer_async)]
-pub async fn outer(context: ActorContext, value: i64) -> i64 {
+pub async fn outer(value: i64) -> i64 {
 return host::game::call_inner_async(value).await;
 }
 
@@ -996,7 +981,7 @@ return paused + 3;
 "#,
             )
             .expect("second async override program");
-        let second_runtime = shared_dispatch_runtime(engine, second_program);
+        let second_runtime = dispatch_runtime(engine, second_program);
         let candidate = controller
             .stage_current(&second_runtime)
             .expect("second override stage");
@@ -1012,14 +997,114 @@ return paused + 3;
     assert_eq!(old_result.0, Ok(42));
     assert_eq!(pinned_context.calls, 0);
 
-    let new_root = DispatchRoot::pin(&controller, Arc::clone(&old_result.1)).expect("new root");
+    let new_root = DispatchRoot::pin(&controller);
     assert_ne!(new_root.generation().id(), old_generation);
-    let mut new_context = ActorContext {
-        calls: 0,
-        root: new_root,
-    };
+    let mut new_context = ActorContext::for_turn(new_root, &old_result.1);
     assert_eq!(ready(replaceable_outer_async(&mut new_context, 40)), Ok(43));
     assert_eq!(new_context.calls, 0);
+}
+
+#[test]
+fn pending_actors_overlap_and_keep_vela_state_isolated() {
+    let slots = vec![vela_replaceable_slot_replaceable_outer_async()];
+    let engine = crate::engine::Engine::builder()
+        .register_exports(vela_export_bundle_pause_once())
+        .register_replaceable_slots(slots.clone())
+        .build()
+        .expect("engine");
+    let program = engine
+        .compile_source(
+            r#"
+state calls: i64 = 0;
+
+#[override(host::game::outer_async)]
+pub async fn outer(value: i64) -> i64 {
+    let value = host::game::pause_once(value).await;
+    calls += 1;
+    return calls;
+}
+"#,
+        )
+        .expect("stateful async override program");
+    let staging_runtime = dispatch_runtime(engine, program);
+    let controller = DispatchController::new(slots).expect("controller");
+    let candidate = controller
+        .stage_current(&staging_runtime)
+        .expect("override stage");
+    controller.activate(candidate).expect("activate candidate");
+    let mut first = ActorContext::for_turn(DispatchRoot::pin(&controller), &staging_runtime);
+    let mut second = ActorContext::for_turn(DispatchRoot::pin(&controller), &staging_runtime);
+
+    let first_result = {
+        let mut first_call = std::pin::pin!(replaceable_outer_async(&mut first, 0));
+        let mut task = Context::from_waker(Waker::noop());
+        assert!(matches!(first_call.as_mut().poll(&mut task), Poll::Pending));
+        assert_eq!(
+            ready(replaceable_outer_async(&mut second, 0)),
+            Ok(1),
+            "one pending Actor must not block another Actor using the same override generation"
+        );
+        loop {
+            if let Poll::Ready(result) = first_call.as_mut().poll(&mut task) {
+                break result;
+            }
+        }
+    };
+    assert_eq!(first_result, Ok(1));
+    assert_eq!(
+        ready(replaceable_outer_async(&mut second, 0)),
+        Ok(2),
+        "each Actor Runtime must retain its own persistent Vela state"
+    );
+}
+
+#[test]
+fn panic_and_unpolled_drop_release_actor_turn_authority() {
+    let slots = vec![vela_replaceable_slot_replaceable_outer_async()];
+    let engine = crate::engine::Engine::builder()
+        .register_exports(vela_export_bundle_panic_async())
+        .register_replaceable_slots(slots.clone())
+        .build()
+        .expect("engine");
+    let program = engine
+        .compile_source(
+            r#"
+#[override(host::game::outer_async)]
+pub async fn outer(value: i64) -> i64 {
+    return host::game::panic_async(value).await;
+}
+
+pub fn healthy() -> i64 { return 7; }
+"#,
+        )
+        .expect("panicking async override program");
+    let staging_runtime = dispatch_runtime(engine, program);
+    let controller = DispatchController::new(slots).expect("controller");
+    let candidate = controller
+        .stage_current(&staging_runtime)
+        .expect("override stage");
+    controller.activate(candidate).expect("activate candidate");
+    let mut actor = ActorContext::for_turn(DispatchRoot::pin(&controller), &staging_runtime);
+
+    drop(replaceable_outer_async(&mut actor, 0));
+
+    let unwind = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        ready(replaceable_outer_async(&mut actor, 0))
+    }));
+    assert!(
+        unwind.is_err(),
+        "the native panic must cross the scoped call future"
+    );
+
+    let healthy = actor
+        .runtime
+        .call("healthy", CallArgs::new(), CallOptions::unbounded())
+        .expect("Runtime remains callable after unwind");
+    let healthy = actor
+        .runtime
+        .value_to_owned(&healthy)
+        .expect("healthy result materializes");
+    assert_eq!(i64::from_script_arg(&healthy), Ok(7));
 }
 
 #[test]
@@ -1042,20 +1127,16 @@ fn replaceable_service_method_preserves_receiver_and_adjacent_rust_method() {
         .compile_source(
             r#"
 #[override(host::game::GameService::compute)]
-pub fn patched(service: GameService, context: ActorContext, value: i64) -> i64 {
-context.calls += 1;
+pub fn patched(service: GameService, value: i64) -> i64 {
 return service.adjacent(value) + 1;
 }
 "#,
         )
         .expect("service override program");
-    let runtime = shared_dispatch_runtime(engine, program);
+    let runtime = dispatch_runtime(engine, program);
     let controller = DispatchController::new(slots).expect("controller");
     let service = GameService { offset: 1 };
-    let mut old_context = ActorContext {
-        calls: 0,
-        root: DispatchRoot::pin(&controller, Arc::clone(&runtime)).expect("root"),
-    };
+    let mut old_context = ActorContext::for_turn(DispatchRoot::pin(&controller), &runtime);
 
     assert_eq!(service.compute(&mut old_context, 40), Ok(41));
     assert_eq!(service.adjacent(40), 41);
@@ -1064,23 +1145,17 @@ return service.adjacent(value) + 1;
         .stage_current(&runtime)
         .expect("service override stage");
     let previous = controller.activate(candidate).expect("activate candidate");
-    let mut active_context = ActorContext {
-        calls: 0,
-        root: DispatchRoot::pin(&controller, Arc::clone(&runtime)).expect("root"),
-    };
+    let mut active_context = ActorContext::for_turn(DispatchRoot::pin(&controller), &runtime);
 
     assert_eq!(service.compute(&mut active_context, 40), Ok(42));
-    assert_eq!(active_context.calls, 1);
+    assert_eq!(active_context.calls, 0);
     assert_eq!(service.adjacent(40), 41);
     assert_eq!(service.__vela_rust_compute(&mut active_context, 40), Ok(41));
-    assert_eq!(active_context.calls, 11);
+    assert_eq!(active_context.calls, 10);
     assert_eq!(service.compute(&mut old_context, 40), Ok(41));
 
     controller.rollback(previous).expect("rollback generation");
-    let mut rolled_back_context = ActorContext {
-        calls: 0,
-        root: DispatchRoot::pin(&controller, Arc::clone(&runtime)).expect("root"),
-    };
+    let mut rolled_back_context = ActorContext::for_turn(DispatchRoot::pin(&controller), &runtime);
     assert_eq!(service.compute(&mut rolled_back_context, 40), Ok(41));
     assert_eq!(rolled_back_context.calls, 10);
 }
@@ -1146,8 +1221,8 @@ fn host_contract(path: &str, mode: BoundaryMode, effects: EffectSet) -> Callable
 
 fn borrowed_host_contract(path: &str) -> CallableContract {
     let host = TypeHint::Host(vela_reflect::registry::TypeKey::new(
-        ActorContext::vela_type_id(),
-        "ActorContext",
+        ActorBorrowContext::vela_type_id(),
+        "ActorBorrowContext",
     ));
     CallableContract {
         identity: CallableIdentity::new(CallableKind::RustFunction, 3),

@@ -13,6 +13,12 @@ impl DispatchAuthority for Context {
     fn vela_dispatch_root(&self) -> &DispatchRoot {
         &self.root
     }
+
+    fn vela_dispatch_invocation(
+        &mut self,
+    ) -> VmResult<vela_engine::dispatch::DispatchInvocation<'_>> {
+        unreachable!("the compile-pass fixture does not execute")
+    }
 }
 
 #[methods(path = "host::Context")]

@@ -1,10 +1,7 @@
-use std::sync::Arc;
-
-use parking_lot::Mutex;
-use vela_macros::{ScriptHost, ScriptReflect, methods, replaceable};
+use vela_macros::{ScriptHost, ScriptReflect, methods};
 use vela_vm::error::{VmError, VmResult};
 
-use super::{DispatchAuthority, DispatchController, DispatchRoot, SharedDispatchRuntime};
+use super::{DispatchAuthority, DispatchController, DispatchInvocation, DispatchRoot};
 use crate::args::{FromScriptArg, IntoScriptArg};
 use crate::interop::VelaValueBoundary;
 use crate::native::TypeHint;
@@ -44,57 +41,65 @@ impl VelaValueBoundary for ReturnError {
 pub struct ReturnContext {
     #[script(get)]
     marker: i64,
-    #[script(skip)]
-    root: DispatchRoot,
 }
 
-#[methods]
+#[methods(path = "host::returns")]
 impl ReturnContext {
     pub fn marker(&self) -> i64 {
         self.marker
     }
-}
 
-impl DispatchAuthority for ReturnContext {
-    fn vela_dispatch_root(&self) -> &DispatchRoot {
-        &self.root
+    #[replaceable(
+        path = "host::returns::optional_context",
+        authority = "turn",
+        index = 0
+    )]
+    pub fn optional_context(&self, turn: &mut ReturnTurn, present: bool) -> Option<&ReturnContext> {
+        let _ = turn;
+        present.then_some(self)
+    }
+
+    #[replaceable(path = "host::returns::result_context", authority = "turn", index = 1)]
+    pub fn result_context(
+        &self,
+        turn: &mut ReturnTurn,
+        succeed: bool,
+    ) -> Result<&ReturnContext, ReturnError> {
+        let _ = turn;
+        succeed
+            .then_some(self)
+            .ok_or_else(|| ReturnError("fallback".to_owned()))
+    }
+
+    #[replaceable(path = "host::returns::context_pair", authority = "turn", index = 2)]
+    pub fn context_pair(&self, turn: &mut ReturnTurn) -> (&ReturnContext, &ReturnContext) {
+        let _ = turn;
+        (self, self)
     }
 }
 
-#[replaceable(
-    path = "host::returns::optional_context",
-    authority = "context",
-    index = 0
-)]
-pub fn optional_context(context: &ReturnContext, present: bool) -> Option<&ReturnContext> {
-    present.then_some(context)
+pub struct ReturnTurn {
+    root: DispatchRoot,
+    runtime: SharedRuntime,
 }
 
-#[replaceable(
-    path = "host::returns::result_context",
-    authority = "context",
-    index = 1
-)]
-pub fn result_context(
-    context: &ReturnContext,
-    succeed: bool,
-) -> Result<&ReturnContext, ReturnError> {
-    succeed
-        .then_some(context)
-        .ok_or_else(|| ReturnError("fallback".to_owned()))
-}
+impl DispatchAuthority for ReturnTurn {
+    fn vela_dispatch_root(&self) -> &DispatchRoot {
+        &self.root
+    }
 
-#[replaceable(path = "host::returns::context_pair", authority = "context", index = 2)]
-pub fn context_pair(context: &ReturnContext) -> (&ReturnContext, &ReturnContext) {
-    (context, context)
+    fn vela_dispatch_invocation(&mut self) -> VmResult<DispatchInvocation<'_>> {
+        let Self { root, runtime } = self;
+        root.invocation(runtime)
+    }
 }
 
 #[test]
 fn replaceable_borrowed_containers_reuse_only_the_tracked_origin() {
     let slots = vec![
-        vela_replaceable_slot_optional_context(),
-        vela_replaceable_slot_result_context(),
-        vela_replaceable_slot_context_pair(),
+        ReturnContext::vela_replaceable_slot_optional_context(),
+        ReturnContext::vela_replaceable_slot_result_context(),
+        ReturnContext::vela_replaceable_slot_context_pair(),
     ];
     let engine = crate::engine::Engine::builder()
         .register_host_type::<ReturnContext>()
@@ -130,23 +135,28 @@ return (aliases[0], aliases[1]);
     let controller = DispatchController::new(slots).expect("controller");
     let candidate = controller.stage_current(&runtime).expect("override stage");
     controller.activate(candidate).expect("activate candidate");
-    let context = ReturnContext {
-        marker: 7,
-        root: DispatchRoot::pin(&controller, Arc::clone(&runtime)).expect("root"),
+    let context = ReturnContext { marker: 7 };
+    let mut turn = ReturnTurn {
+        root: DispatchRoot::pin(&controller),
+        runtime: SharedRuntime::from_shared_image(runtime.shared_image()).expect("actor runtime"),
     };
     assert_eq!(context.marker(), 7);
 
-    let optional = optional_context(&context, true).expect("present origin");
+    let optional = context
+        .optional_context(&mut turn, true)
+        .expect("present origin");
     assert!(std::ptr::eq(optional, &context));
 
-    let returned = result_context(&context, true).expect("successful origin");
+    let returned = context
+        .result_context(&mut turn, true)
+        .expect("successful origin");
     assert!(std::ptr::eq(returned, &context));
-    let Err(error) = result_context(&context, false) else {
+    let Err(error) = context.result_context(&mut turn, false) else {
         panic!("expected business error");
     };
     assert_eq!(error, ReturnError("denied".to_owned()));
 
-    let (first, second) = context_pair(&context);
+    let (first, second) = context.context_pair(&mut turn);
     assert!(std::ptr::eq(first, &context));
     assert!(std::ptr::eq(second, &context));
 }
@@ -154,9 +164,7 @@ return (aliases[0], aliases[1]);
 fn shared_runtime(
     engine: crate::engine::Engine,
     program: vela_bytecode::compiler::CompiledProgram,
-) -> SharedDispatchRuntime {
+) -> SharedRuntime {
     let image = RuntimeImage::new_compiled(engine, program).into_shared();
-    Arc::new(Mutex::new(
-        SharedRuntime::from_shared_image(image).expect("shared runtime"),
-    ))
+    SharedRuntime::from_shared_image(image).expect("staging runtime")
 }
