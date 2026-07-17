@@ -165,12 +165,12 @@ completion.
 
 The following closure tasks reopen the replaceable portions of Batches E-G:
 
-- [ ] F-REVIEW-1. Replace target-owned `Mutex<Runtime>` execution with an
+- [x] F-REVIEW-1. Replace target-owned `Mutex<Runtime>` execution with an
   explicit session-aware invocation authority. A host root may enter a Runtime
   once; an override reached from an active Vela execution must push a child on
   the current `ExecutionSession`. Nested replaceable calls must neither
   deadlock nor serialize unrelated host roots through one package-global lock.
-- [ ] F-REVIEW-2. Inherit the pinned linked artifact, heap, state view,
+- [x] F-REVIEW-2. Inherit the pinned linked artifact, heap, state view,
   HostAccess, remaining budgets, effect ceiling, capabilities, tracing,
   cancellation, lease provenance, and dispatch generation across every
   replaceable transition. No override hit may construct fresh default budgets

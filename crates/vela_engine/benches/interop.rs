@@ -13,7 +13,7 @@ use vela_engine::binding::{
 use vela_engine::context::NativeCallContext;
 use vela_engine::dispatch::{DispatchAuthority, DispatchController, DispatchRoot};
 use vela_engine::engine::Engine;
-use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
+use vela_engine::runtime::{CallArgs, CallOptions, Runtime, RuntimeImage, SharedRuntime};
 use vela_macros::{ScriptHost, ScriptReflect, export, methods, replaceable};
 
 const DEFAULT_ITERATIONS: usize = 10_000;
@@ -147,18 +147,22 @@ fn main() -> Result<(), Box<dyn Error>> {
         vela_replaceable_slot_replaceable_scalar(),
         vela_replaceable_slot_replaceable_other(),
     ];
-    let fallback_controller = DispatchController::new(dispatch_slots.clone())?;
-    let fallback_context = DispatchContext {
-        marker: 1,
-        root: DispatchRoot::pin(&fallback_controller),
-    };
     let dispatch_engine = Engine::builder()
         .register_host_type::<DispatchContext>()
         .register_replaceable_slots(dispatch_slots.clone())
         .capability(Capability::HostRead)
         .build()?;
     let dispatch_program = dispatch_engine.compile_source(DISPATCH_SOURCE)?;
-    let dispatch_runtime = Arc::new(Mutex::new(Runtime::new(dispatch_engine, dispatch_program)?));
+    let dispatch_image =
+        RuntimeImage::new_compiled(dispatch_engine, dispatch_program).into_shared();
+    let dispatch_runtime = Arc::new(Mutex::new(SharedRuntime::from_shared_image(
+        dispatch_image,
+    )?));
+    let fallback_controller = DispatchController::new(dispatch_slots.clone())?;
+    let fallback_context = DispatchContext {
+        marker: 1,
+        root: DispatchRoot::pin(&fallback_controller, Arc::clone(&dispatch_runtime))?,
+    };
     let dispatch_controller = DispatchController::new(dispatch_slots)?;
     let dispatch_candidate = dispatch_controller.stage_current(&dispatch_runtime)?;
     dispatch_controller
@@ -166,7 +170,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .expect("activate dispatch candidate");
     let active_context = DispatchContext {
         marker: 1,
-        root: DispatchRoot::pin(&dispatch_controller),
+        root: DispatchRoot::pin(&dispatch_controller, Arc::clone(&dispatch_runtime))?,
     };
 
     report("direct_rust_scalar", iterations, || Ok(scalar(41)))?;
@@ -217,7 +221,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .expect("activate dispatch candidate");
             let context = DispatchContext {
                 marker: 1,
-                root: DispatchRoot::pin(&dispatch_controller),
+                root: DispatchRoot::pin(&dispatch_controller, Arc::clone(&dispatch_runtime))?,
             };
             Ok(replaceable_scalar(&context, 41)?)
         },

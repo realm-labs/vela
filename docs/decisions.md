@@ -2243,10 +2243,13 @@ to use the common interop paths.
 The 2026-07-17 post-implementation review found that the first mechanism slice
 did not satisfy the preceding decision. Controller-owned generation identity,
 Engine-registered compile-time target linking, authoritative contract import,
-and exact staging fingerprints now close the path-string and lossy-validation
-findings. Target-owned Runtime locks and the `VmResult<T>`-only replaceable
-macro remain implementation gaps, not accepted compatibility contracts, and
-may be replaced outright during the post-review closure.
+exact staging fingerprints, explicit root-owned `SharedRuntime` sessions, and
+same-session sync/async re-entry now close the identity, validation, deadlock,
+fresh-budget, and target-owned Runtime findings. Independent roots may share
+one immutable `SharedImage` while retaining separate Runtime locks and state.
+The return adapter supports ordinary values, business Result aliases, and
+direct borrowed origins; borrowed containers and the business-macro authoring
+surface remain implementation gaps rather than accepted compatibility paths.
 
 ### Context Natives Use A Session-Aware VM Boundary
 

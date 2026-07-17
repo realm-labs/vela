@@ -21,7 +21,7 @@ use crate::binding::VmResult;
 use crate::interop::{BoundaryMode, CallableContract};
 use crate::native::{EffectSet, TypeHint};
 use crate::runtime::handles::StableVelaFunction;
-use crate::runtime::{CallArgs, CallOptions, Runtime};
+use crate::runtime::{CallArgs, CallOptions, SharedImage, SharedRuntime};
 
 pub use returning::{
     BusinessResultReturn, FromDispatchReturn, RuntimeResultReturn, ValueReturn,
@@ -32,7 +32,7 @@ const DEFAULT_EXECUTION_UNITS: u64 = 1_000_000;
 const DEFAULT_MEMORY_BYTES: usize = 8 * 1024 * 1024;
 const DEFAULT_CALL_DEPTH: usize = 128;
 
-pub type SharedDispatchRuntime = Arc<Mutex<Runtime>>;
+pub type SharedDispatchRuntime = Arc<Mutex<SharedRuntime>>;
 pub type DispatchCallFuture<'call, T> = Pin<Box<dyn Future<Output = VmResult<T>> + Send + 'call>>;
 
 #[derive(Clone, Debug)]
@@ -61,7 +61,6 @@ impl ReplaceableSlotDescriptor {
 pub struct VelaOverrideTarget {
     pub slot: ReplaceableSlotId,
     pub function: FunctionId,
-    runtime: SharedDispatchRuntime,
 }
 
 impl fmt::Debug for VelaOverrideTarget {
@@ -76,19 +75,29 @@ impl fmt::Debug for VelaOverrideTarget {
 
 impl PartialEq for VelaOverrideTarget {
     fn eq(&self, other: &Self) -> bool {
-        self.slot == other.slot
-            && self.function == other.function
-            && Arc::ptr_eq(&self.runtime, &other.runtime)
+        self.slot == other.slot && self.function == other.function
     }
 }
 
 impl Eq for VelaOverrideTarget {}
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct DispatchGeneration {
     id: DispatchGenerationId,
     layout: Arc<DispatchLayoutIdentity>,
     targets: Box<[Option<VelaOverrideTarget>]>,
+    image: Option<SharedImage>,
+}
+
+impl fmt::Debug for DispatchGeneration {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("DispatchGeneration")
+            .field("id", &self.id)
+            .field("targets", &self.targets)
+            .field("has_artifact", &self.image.is_some())
+            .finish()
+    }
 }
 
 #[derive(Debug)]
@@ -106,6 +115,15 @@ impl DispatchGeneration {
     pub fn target(&self, index: InterceptSlotIndex) -> Option<VelaOverrideTarget> {
         let target = self.targets.get(index.get())?.as_ref()?;
         (self.layout.slot_ids.get(index.get()) == Some(&target.slot)).then(|| target.clone())
+    }
+
+    fn target_for_slot(&self, slot: ReplaceableSlotId) -> Option<&VelaOverrideTarget> {
+        let index = self
+            .layout
+            .slot_ids
+            .iter()
+            .position(|candidate| *candidate == slot)?;
+        self.targets.get(index)?.as_ref()
     }
 
     #[must_use]
@@ -147,6 +165,7 @@ impl DispatchController {
             id: DispatchGenerationId::new(0),
             layout: Arc::clone(&layout),
             targets: vec![None; slots.len()].into_boxed_slice(),
+            image: None,
         });
         Ok(Self {
             inner: Arc::new(DispatchControllerInner {
@@ -183,9 +202,18 @@ impl DispatchController {
                 None,
             ));
         }
-        let mut targets = base.targets.to_vec();
-        let mut seen = BTreeMap::<usize, String>::new();
         let runtime_guard = runtime.lock();
+        let staged_image = runtime_guard.shared_image();
+        let same_artifact = base
+            .image
+            .as_ref()
+            .is_some_and(|base_image| base_image.same_image(&staged_image));
+        let mut targets = if same_artifact {
+            base.targets.to_vec()
+        } else {
+            vec![None; base.targets.len()]
+        };
+        let mut seen = BTreeMap::<usize, String>::new();
         for callable in runtime_guard.active_binding_schema().callables() {
             let Some(override_target) = callable.override_target.as_ref() else {
                 continue;
@@ -234,8 +262,21 @@ impl DispatchController {
             targets[index] = Some(VelaOverrideTarget {
                 slot: slot.id,
                 function: callable.executable,
-                runtime: Arc::clone(runtime),
             });
+        }
+        if !same_artifact {
+            for (index, previous) in base.targets.iter().enumerate() {
+                if previous.is_some() && targets[index].is_none() {
+                    return Err(DispatchStageError::new(
+                        DispatchStageErrorCode::ArtifactMismatch,
+                        format!(
+                            "staged artifact omits active override `{}`; coherent replacement artifacts must materialize every selected slot",
+                            self.inner.slots[index].contract.public_path
+                        ),
+                        None,
+                    ));
+                }
+            }
         }
         Ok(DispatchCandidate(Arc::new(DispatchGeneration {
             id: DispatchGenerationId::new(
@@ -243,6 +284,7 @@ impl DispatchController {
             ),
             layout: Arc::clone(&self.inner.layout),
             targets: targets.into_boxed_slice(),
+            image: Some(staged_image),
         })))
     }
 
@@ -343,14 +385,38 @@ impl DispatchCandidate {
 #[derive(Clone)]
 pub struct DispatchRoot {
     generation: Arc<DispatchGeneration>,
+    runtime: SharedDispatchRuntime,
+    options: CallOptions,
 }
 
 impl DispatchRoot {
-    #[must_use]
-    pub fn pin(controller: &DispatchController) -> Self {
-        Self {
-            generation: controller.current(),
+    pub fn pin(
+        controller: &DispatchController,
+        runtime: SharedDispatchRuntime,
+    ) -> Result<Self, DispatchStageError> {
+        Self::pin_with_options(controller, runtime, default_dispatch_call_options())
+    }
+
+    pub fn pin_with_options(
+        controller: &DispatchController,
+        runtime: SharedDispatchRuntime,
+        options: CallOptions,
+    ) -> Result<Self, DispatchStageError> {
+        let generation = controller.current();
+        if let Some(expected) = generation.image.as_ref()
+            && !expected.same_image(&runtime.lock().shared_image())
+        {
+            return Err(DispatchStageError::new(
+                DispatchStageErrorCode::ArtifactMismatch,
+                "dispatch root Runtime does not use the generation's linked artifact",
+                None,
+            ));
         }
+        Ok(Self {
+            generation,
+            runtime,
+            options,
+        })
     }
 
     #[must_use]
@@ -365,7 +431,11 @@ impl DispatchRoot {
 
     #[must_use]
     pub fn invocation(&self) -> DispatchInvocation {
-        DispatchInvocation
+        DispatchInvocation {
+            generation: Arc::clone(&self.generation),
+            runtime: Arc::clone(&self.runtime),
+            options: self.options.clone(),
+        }
     }
 }
 
@@ -373,8 +443,12 @@ pub trait DispatchAuthority {
     fn vela_dispatch_root(&self) -> &DispatchRoot;
 }
 
-#[derive(Clone, Copy)]
-pub struct DispatchInvocation;
+#[derive(Clone)]
+pub struct DispatchInvocation {
+    generation: Arc<DispatchGeneration>,
+    runtime: SharedDispatchRuntime,
+    options: CallOptions,
+}
 
 impl DispatchInvocation {
     pub fn call_owned(
@@ -382,14 +456,16 @@ impl DispatchInvocation {
         target: VelaOverrideTarget,
         args: CallArgs<'_>,
     ) -> VmResult<vela_vm::owned_value::OwnedValue> {
-        let mut runtime = target.runtime.lock();
+        self.validate_target(&target)?;
+        let mut runtime = self.runtime.lock();
+        self.validate_runtime(&runtime)?;
         let value = runtime.call(
             StableVelaFunction {
                 function: target.function,
                 diagnostic_name: "Vela dispatch override",
             },
             args,
-            dispatch_call_options(),
+            dispatch_call_options(&self.options, Arc::clone(&self.generation)),
         )?;
         runtime.value_to_owned(&value)
     }
@@ -407,10 +483,25 @@ impl DispatchInvocation {
         target: VelaOverrideTarget,
         args: CallArgs<'call>,
     ) -> DispatchCallFuture<'call, vela_vm::owned_value::OwnedValue> {
-        let runtime = Arc::clone(&target.runtime);
+        if let Err(error) = self.validate_target(&target) {
+            return Box::pin(async move { Err(error) });
+        }
+        let runtime = Arc::clone(&self.runtime);
+        let expected_image = self.generation.image.clone();
+        let generation = Arc::clone(&self.generation);
+        let options = self.options.clone();
         let function = target.function;
         Box::pin(async move {
             let mut runtime = runtime.lock_arc();
+            if let Some(expected) = expected_image.as_ref()
+                && !expected.same_image(&runtime.shared_image())
+            {
+                return Err(vela_vm::error::VmError::new(
+                    vela_vm::error::VmErrorKind::TypeMismatch {
+                        operation: "dispatch generation artifact",
+                    },
+                ));
+            }
             let value = runtime
                 .call_async(
                     StableVelaFunction {
@@ -418,7 +509,7 @@ impl DispatchInvocation {
                         diagnostic_name: "Vela dispatch override",
                     },
                     args,
-                    dispatch_call_options(),
+                    dispatch_call_options(&options, generation),
                 )
                 .await?;
             runtime.value_to_owned(&value)
@@ -437,6 +528,33 @@ impl DispatchInvocation {
             let owned = self.call_owned_async(target, args).await?;
             R::from_script_arg(&owned)
         })
+    }
+
+    fn validate_target(&self, target: &VelaOverrideTarget) -> VmResult<()> {
+        if self.generation.target_for_slot(target.slot) != Some(target) {
+            return Err(vela_vm::error::VmError::new(
+                vela_vm::error::VmErrorKind::TypeMismatch {
+                    operation: "dispatch target generation",
+                },
+            ));
+        }
+        Ok(())
+    }
+
+    fn validate_runtime(&self, runtime: &SharedRuntime) -> VmResult<()> {
+        if self
+            .generation
+            .image
+            .as_ref()
+            .is_some_and(|expected| !expected.same_image(&runtime.shared_image()))
+        {
+            return Err(vela_vm::error::VmError::new(
+                vela_vm::error::VmErrorKind::TypeMismatch {
+                    operation: "dispatch generation artifact",
+                },
+            ));
+        }
+        Ok(())
     }
 }
 
@@ -474,6 +592,7 @@ pub enum DispatchStageErrorCode {
     UnknownTarget,
     DuplicateTarget,
     IncompatibleContract,
+    ArtifactMismatch,
 }
 
 impl fmt::Display for DispatchStageError {
@@ -484,12 +603,19 @@ impl fmt::Display for DispatchStageError {
 
 impl std::error::Error for DispatchStageError {}
 
-fn dispatch_call_options() -> CallOptions {
+fn default_dispatch_call_options() -> CallOptions {
     CallOptions::new(
         DEFAULT_EXECUTION_UNITS,
         DEFAULT_MEMORY_BYTES,
         DEFAULT_CALL_DEPTH,
     )
+}
+
+fn dispatch_call_options(
+    options: &CallOptions,
+    generation: Arc<DispatchGeneration>,
+) -> CallOptions {
+    options.clone().with_dispatch_generation(generation)
 }
 
 pub(crate) fn validate_override(

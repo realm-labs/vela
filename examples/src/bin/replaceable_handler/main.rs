@@ -7,7 +7,7 @@ use parking_lot::Mutex;
 use vela_engine::binding::VmResult;
 use vela_engine::dispatch::{DispatchAuthority, DispatchController, DispatchRoot};
 use vela_engine::engine::Engine;
-use vela_engine::runtime::Runtime;
+use vela_engine::runtime::{RuntimeImage, SharedRuntime};
 use vela_macros::{ScriptHost, ScriptReflect, methods};
 
 #[derive(ScriptHost, ScriptReflect)]
@@ -67,13 +67,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         .capability(vela_common::Capability::HostWrite)
         .build()?;
     let program = engine.compile_source(include_str!("main.vela"))?;
-    let runtime = Arc::new(Mutex::new(Runtime::new(engine, program)?));
+    let image = RuntimeImage::new_compiled(engine, program).into_shared();
+    let runtime = Arc::new(Mutex::new(SharedRuntime::from_shared_image(image)?));
     let controller = DispatchController::new(slots)?;
     let handler = MessageHandler { bonus: 1 };
 
     let mut fallback_context = TurnContext {
         calls: 0,
-        dispatch: DispatchRoot::pin(&controller),
+        dispatch: DispatchRoot::pin(&controller, Arc::clone(&runtime))?,
     };
     let fallback = handler.handle(&mut fallback_context, 40)?;
 
@@ -81,7 +82,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let previous = controller.activate(candidate)?;
     let mut active_context = TurnContext {
         calls: 0,
-        dispatch: DispatchRoot::pin(&controller),
+        dispatch: DispatchRoot::pin(&controller, Arc::clone(&runtime))?,
     };
     let active = handler.handle(&mut active_context, 40)?;
     let adjacent = handler.adjacent(40);
@@ -89,7 +90,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     controller.rollback(previous)?;
     let mut rolled_back_context = TurnContext {
         calls: 0,
-        dispatch: DispatchRoot::pin(&controller),
+        dispatch: DispatchRoot::pin(&controller, Arc::clone(&runtime))?,
     };
     let rolled_back = handler.handle(&mut rolled_back_context, 40)?;
 

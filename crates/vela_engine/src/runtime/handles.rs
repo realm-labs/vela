@@ -361,6 +361,7 @@ pub(super) struct RuntimeCallExecution<'program, 'state, 'host, 'budget> {
     pub(super) target: EntryRequest,
     pub(super) args: CallArgs<'host>,
     pub(super) budget: &'budget mut vela_vm::budget::ExecutionBudget,
+    pub(super) dispatch_generation: Option<Arc<crate::dispatch::DispatchGeneration>>,
 }
 
 fn linked_function_by_name<'program>(

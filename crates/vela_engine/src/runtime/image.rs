@@ -45,6 +45,11 @@ impl SharedImage {
     pub fn from_arc(image: Arc<RuntimeImage>) -> Self {
         Self { image }
     }
+
+    #[must_use]
+    pub(crate) fn same_image(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.image, &other.image)
+    }
 }
 
 impl Deref for OwnedImage {

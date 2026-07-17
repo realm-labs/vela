@@ -32,6 +32,7 @@ pub(super) struct ActiveNativeReentry<'execution, 'heap> {
     pub(super) engine: &'execution Engine,
     pub(super) registry_image: &'execution ProgramImage,
     pub(super) artifact: &'execution std::sync::Arc<vela_bytecode::LinkedArtifact>,
+    pub(super) dispatch_generation: Option<std::sync::Arc<crate::dispatch::DispatchGeneration>>,
     pub(super) vm: &'execution vela_vm::Vm,
     pub(super) session: &'execution mut LinkedExecutionSession,
     pub(super) host: &'execution mut dyn ExecutionHostBoundary,
@@ -202,6 +203,7 @@ impl ActiveNativeReentry<'_, '_> {
                             engine: self.engine,
                             registry_image: self.registry_image,
                             artifact: self.artifact,
+                            dispatch_generation: self.dispatch_generation.clone(),
                             vm: self.vm,
                             session: self.session,
                             host: &mut child_host,
@@ -312,6 +314,7 @@ impl ActiveNativeReentry<'_, '_> {
                             engine: self.engine,
                             registry_image: self.registry_image,
                             artifact: self.artifact,
+                            dispatch_generation: self.dispatch_generation.clone(),
                             vm: self.vm,
                             session: self.session,
                             host: &mut child_host,
@@ -342,6 +345,7 @@ impl ActiveNativeReentry<'_, '_> {
                             engine: self.engine,
                             registry_image: self.registry_image,
                             artifact: self.artifact,
+                            dispatch_generation: self.dispatch_generation.clone(),
                             vm: self.vm,
                             session: self.session,
                             host: &mut child_host,
@@ -373,6 +377,10 @@ impl ActiveNativeReentry<'_, '_> {
 impl NativeReentry for ActiveNativeReentry<'_, '_> {
     fn binding_schema(&self) -> &vela_bytecode::RustBindingSchema {
         self.artifact.binding_schema()
+    }
+
+    fn dispatch_generation(&self) -> Option<&std::sync::Arc<crate::dispatch::DispatchGeneration>> {
+        self.dispatch_generation.as_ref()
     }
 
     fn value_to_owned(&mut self, value: &VelaValue) -> VmResult<OwnedValue> {
@@ -431,6 +439,7 @@ impl NativeReentry for ActiveNativeReentry<'_, '_> {
                     engine,
                     registry_image,
                     artifact,
+                    dispatch_generation: self.dispatch_generation.clone(),
                     vm,
                     session: &mut *session,
                     host: leased_host,
@@ -518,6 +527,7 @@ struct RuntimeDirectContextInvoker<'execution, 'heap> {
     pub(super) engine: &'execution Engine,
     pub(super) registry_image: &'execution ProgramImage,
     pub(super) artifact: &'execution std::sync::Arc<vela_bytecode::LinkedArtifact>,
+    pub(super) dispatch_generation: Option<std::sync::Arc<crate::dispatch::DispatchGeneration>>,
     pub(super) vm: &'execution vela_vm::Vm,
     pub(super) session: &'execution mut LinkedExecutionSession,
     pub(super) access: &'execution mut HostAccess,
@@ -547,6 +557,7 @@ impl DirectContextInvoker for RuntimeDirectContextInvoker<'_, '_> {
                 engine: self.engine,
                 registry_image: self.registry_image,
                 artifact: self.artifact,
+                dispatch_generation: self.dispatch_generation.clone(),
                 vm: self.vm,
                 session: self.session,
                 host,
@@ -627,6 +638,7 @@ pub(super) async fn invoke_prepared_async(
             engine: active.engine,
             registry_image: active.registry_image,
             artifact: active.artifact,
+            dispatch_generation: active.dispatch_generation.clone(),
             vm: active.vm,
             session: &mut *active.session,
             access: &mut *active.access,

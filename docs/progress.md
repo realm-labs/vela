@@ -14,10 +14,11 @@ The ordinary Rust/Vela interop path is accepted: Rust exports, exact lease
 adapters, owner-frozen borrowed returns, generated typed Rust-to-Vela bindings,
 and `NativeCallContext` sync/async re-entry use the shared execution path.
 Post-implementation review reopened the optional replaceable-dispatch layer:
-its current target-owned Runtime starts a second execution with fresh budgets,
-can deadlock on same-Runtime nesting, narrows returns to `VmResult<T>`, and
-still exposes low-level slot ceremony to business authors. Controller-owned
-generations, compile-time stable target
+its remaining return adapter does not yet cover the full borrowed-container
+surface, and it still exposes low-level slot ceremony to business authors.
+Explicit root-owned `SharedRuntime` sessions, same-session sync/async re-entry,
+remaining-budget and generation inheritance, independent root locks, coherent
+artifact publication, controller-owned generations, compile-time stable target
 linking, and complete inherited contract/effect validation are closed. The
 corrected status and remaining closure tasks live
 in [the unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17)
@@ -57,7 +58,7 @@ state-storage hard switch.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Ready to resume | State-storage acceptance is complete; resume the cache-family audit. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
-| Rust/Vela interop | Partially complete; replaceable reopened | Ordinary generated interop is accepted. Optional replacement must close same-session execution, generation ownership, exact contract, return mapping, static linking, and business-macro integration gaps. |
+| Rust/Vela interop | Partially complete; replaceable reopened | Ordinary generated interop is accepted. Optional replacement must close borrowed-container return mapping, business-macro integration, and final acceptance gaps. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -106,11 +107,12 @@ state-storage hard switch.
   schema and build-time generated typed Rust surface. Runtime strings and
   boundary wrapper values remain low-level dynamic escape hatches, not the
   primary call workflow.
-- Optional `#[replaceable]` entries currently prove stable dense slots, an
-  empty-slot fast path, immutable root-pinned selection, partial activation,
-  rollback, and no fallback retry. Their target-owned Runtime execution and
-  low-level authoring surface are provisional and are not the accepted final
-  interop architecture.
+- Optional `#[replaceable]` entries use explicit root-owned `SharedRuntime`
+  sessions and same-session native re-entry. They prove stable dense slots,
+  independent root locks over shared immutable code, remaining-budget and
+  generation inheritance, async cancellation, coherent activation, rollback,
+  and no fallback retry. Their low-level authoring surface and remaining
+  borrowed-container return gap are not the accepted final interop surface.
 
 ### Standard Library, Tooling, And Proof
 
@@ -134,18 +136,18 @@ state-storage hard switch.
 ### Rust/Vela Replaceable Dispatch Post-Review
 
 Ordinary interop remains accepted. Optional replacement has closed
-`F-REVIEW-3` through `F-REVIEW-5`: controller-owned opaque layout identity
-rejects foreign generations; Engine compilation resolves override declarations
-to stable registered slots; target contracts supply exact parameter,
-return/error, borrowed-return, async, type, and effect metadata; and staging
-validates the complete target fingerprint plus the implementation effect
-subset. It must still complete `F-REVIEW-1`, `F-REVIEW-2`, `F-REVIEW-6`,
-`F-REVIEW-7`, and
+`F-REVIEW-1` through `F-REVIEW-5`: explicit root-owned shared-image Runtime
+sessions preserve active sync/async re-entry policy without serializing
+independent roots; controller-owned opaque layout identity rejects foreign
+generations; Engine compilation resolves override declarations to stable
+registered slots; target contracts supply exact parameter, return/error,
+borrowed-return, async, type, and effect metadata; and staging validates the
+complete target fingerprint plus the implementation effect subset. It must
+still complete `F-REVIEW-6`, `F-REVIEW-7`, and
 `G-REVIEW-1` through `G-REVIEW-2` in the
 [unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17).
-The closure requires one session-aware invocation authority, inherited runtime
-policy and remaining budgets, ordinary return/error/borrowed-return execution
-mapping, and a p9-lattice-shaped business macro fixture. Do not close it by
+The closure requires complete borrowed-container return propagation/release
+and a p9-lattice-shaped business macro fixture. Do not close it by
 adding a reentrant or process-global Runtime lock,
 replenishing nested budgets, accepting capability projection as full ABI,
 fabricating Rust references, or documenting manual slot indices as the final

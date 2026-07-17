@@ -198,6 +198,7 @@ where
                 target,
                 args: CallArgs::new(),
                 budget,
+                dispatch_generation: None,
             })
             .map_err(|error| RuntimeBuildError::Initializer {
                 state: state.qualified_name.clone(),

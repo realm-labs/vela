@@ -150,7 +150,7 @@ let candidate = controller.stage_current(&override_runtime)?;
 let previous = controller.activate(candidate)?;
 
 let service = Service {
-    dispatch: DispatchRoot::pin(&controller),
+    dispatch: DispatchRoot::pin(&controller, override_runtime.clone())?,
     // business fields...
 };
 let result = service.quote(40)?;
@@ -158,13 +158,16 @@ let result = service.quote(40)?;
 controller.rollback(previous)?;
 ```
 
-Pin a `DispatchRoot` at the host operation boundary, such as an actor mailbox
-turn. In the current mechanism, active roots retain their immutable target
-selection while activation changes future roots. A staged package is a partial
-delta, rollback republishes a prior generation, and a Vela error propagates
-without retrying the displaced Rust body. Do not yet rely on nested
-replaceable calls sharing the active Vela session or remaining budgets; that is
-a required closure item rather than a current guarantee.
+Pin a `DispatchRoot` with an explicit `SharedRuntime` at the host operation
+boundary, such as an actor mailbox turn. Active roots retain their immutable
+target selection while activation changes future roots. Nested replaceable
+calls re-enter the active session and inherit its remaining budgets, artifact,
+heap, state, HostAccess, capabilities, cancellation, and generation. Separate
+host roots may use distinct `SharedRuntime` instances over one immutable
+`SharedImage`, so package code sharing does not impose one global Runtime lock.
+A staged package is a coherent partial delta, rollback republishes a prior
+generation, and a Vela error propagates without retrying the displaced Rust
+body.
 
 The no-override entry performs one dense indexed lookup and empty-entry branch
 before the private Rust fallback. It does not perform a string/hash lookup,

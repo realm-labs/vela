@@ -54,16 +54,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let attrs = parse_attrs(attr)?;
     let authority = authority_parameter(&item, &attrs.authority)?;
     let classified = classify_function(&item.sig, &attrs.effects)?;
-    if classified
-        .parameters
-        .iter()
-        .any(|parameter| parameter.mode == ParameterMode::HiddenContext)
-    {
-        return Err(syn::Error::new_spanned(
-            &item.sig,
-            "replaceable entries derive dispatch from an ordinary authority parameter, not NativeCallContext",
-        ));
-    }
+    let authority_is_context = authority_is_hidden_context(&classified, &attrs.authority);
 
     let function_ident = item.sig.ident.clone();
     let fallback_ident = format_ident!("__vela_rust_{function_ident}");
@@ -113,35 +104,30 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         .iter()
         .zip(&call_arguments)
         .enumerate()
-        .map(|(index, (parameter, argument))| {
-            argument_binding(
+        .filter_map(|(index, (parameter, argument))| {
+            if parameter.mode == ParameterMode::HiddenContext {
+                return None;
+            }
+            Some(argument_binding(
                 parameter.mode,
                 &quote! { #argument },
                 tracked_origin == Some(index),
-            )
+            ))
         })
         .collect::<Vec<_>>();
 
-    let target_lookup = quote! {
-        <_ as ::vela_engine::dispatch::DispatchAuthority>::vela_dispatch_root(
-            &*#authority,
-        )
-        .target(#slot_ident)
-    };
-    let override_call = if item.sig.asyncness.is_some() {
+    let target_lookup = if authority_is_context {
+        quote! { #authority.dispatch_target(#slot_ident) }
+    } else {
         quote! {
-            let __vela_invocation =
-                <_ as ::vela_engine::dispatch::DispatchAuthority>::vela_dispatch_root(
-                    &*#authority,
-                )
-                .invocation();
-            let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
-            #(#arg_bindings)*
-            let __vela_result = __vela_invocation
-                .call_owned_async(__vela_target, __vela_args)
-                .await;
-            return #return_adapter;
+            <_ as ::vela_engine::dispatch::DispatchAuthority>::vela_dispatch_root(
+                &*#authority,
+            )
+            .target(#slot_ident)
         }
+    };
+    let invocation_prelude = if authority_is_context {
+        quote! {}
     } else {
         quote! {
             let __vela_invocation =
@@ -149,9 +135,32 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     &*#authority,
                 )
                 .invocation();
+        }
+    };
+    let override_call = if item.sig.asyncness.is_some() {
+        let invocation = if authority_is_context {
+            quote! { #authority.call_dispatch_owned_async(__vela_target, __vela_args).await }
+        } else {
+            quote! { __vela_invocation.call_owned_async(__vela_target, __vela_args).await }
+        };
+        quote! {
+            #invocation_prelude
             let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
             #(#arg_bindings)*
-            let __vela_result = __vela_invocation.call_owned(__vela_target, __vela_args);
+            let __vela_result = #invocation;
+            return #return_adapter;
+        }
+    } else {
+        let invocation = if authority_is_context {
+            quote! { #authority.call_dispatch_owned(__vela_target, __vela_args) }
+        } else {
+            quote! { __vela_invocation.call_owned(__vela_target, __vela_args) }
+        };
+        quote! {
+            #invocation_prelude
+            let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
+            #(#arg_bindings)*
+            let __vela_result = #invocation;
             return #return_adapter;
         }
     };
@@ -229,6 +238,7 @@ pub(crate) fn rewrite_method(
         ));
     }
     let authority = method_authority(method, &attrs.authority)?;
+    let authority_is_context = authority_is_hidden_context(classified, &attrs.authority);
     let method_ident = method.sig.ident.clone();
     let fallback_ident = format_ident!("__vela_rust_{method_ident}");
     let slot_ident = format_ident!(
@@ -265,40 +275,59 @@ pub(crate) fn rewrite_method(
         .iter()
         .zip(&call_arguments)
         .enumerate()
+        .filter(|(_, (parameter, _))| parameter.mode != ParameterMode::HiddenContext)
         .map(|(index, (parameter, argument))| {
             argument_binding(parameter.mode, argument, tracked_origin == Some(index))
         })
         .collect::<Vec<_>>();
-    let target_lookup = quote! {
-        <_ as ::vela_engine::dispatch::DispatchAuthority>::vela_dispatch_root(
-            #authority,
-        )
-        .target(Self::#slot_ident)
-    };
-    let override_call = if method.sig.asyncness.is_some() {
+    let context_authority = &attrs.authority;
+    let target_lookup = if authority_is_context {
+        quote! { #context_authority.dispatch_target(Self::#slot_ident) }
+    } else {
         quote! {
-            let __vela_invocation =
-                <_ as ::vela_engine::dispatch::DispatchAuthority>::vela_dispatch_root(
-                    #authority,
-                )
-                .invocation();
-            let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
-            #(#arg_bindings)*
-            let __vela_result = __vela_invocation
-                .call_owned_async(__vela_target, __vela_args)
-                .await;
-            return #return_adapter;
+            <_ as ::vela_engine::dispatch::DispatchAuthority>::vela_dispatch_root(
+                #authority,
+            )
+            .target(Self::#slot_ident)
         }
+    };
+    let invocation_prelude = if authority_is_context {
+        quote! {}
     } else {
         quote! {
             let __vela_invocation =
-                <_ as ::vela_engine::dispatch::DispatchAuthority>::vela_dispatch_root(
-                    #authority,
-                )
-                .invocation();
+                <_ as ::vela_engine::dispatch::DispatchAuthority>::vela_dispatch_root(#authority)
+                    .invocation();
+        }
+    };
+    let override_call = if method.sig.asyncness.is_some() {
+        let invocation = if authority_is_context {
+            quote! {
+                #context_authority
+                    .call_dispatch_owned_async(__vela_target, __vela_args)
+                    .await
+            }
+        } else {
+            quote! { __vela_invocation.call_owned_async(__vela_target, __vela_args).await }
+        };
+        quote! {
+            #invocation_prelude
             let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
             #(#arg_bindings)*
-            let __vela_result = __vela_invocation.call_owned(__vela_target, __vela_args);
+            let __vela_result = #invocation;
+            return #return_adapter;
+        }
+    } else {
+        let invocation = if authority_is_context {
+            quote! { #context_authority.call_dispatch_owned(__vela_target, __vela_args) }
+        } else {
+            quote! { __vela_invocation.call_owned(__vela_target, __vela_args) }
+        };
+        quote! {
+            #invocation_prelude
+            let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
+            #(#arg_bindings)*
+            let __vela_result = #invocation;
             return #return_adapter;
         }
     };
@@ -560,6 +589,15 @@ fn borrowed_origin_index(returns: &super::signature::ClassifiedReturn) -> Option
         } => Some(usize::from(index)),
         _ => None,
     }
+}
+
+fn authority_is_hidden_context(
+    classified: &super::signature::ClassifiedSignature,
+    authority: &syn::Ident,
+) -> bool {
+    classified.parameters.iter().any(|parameter| {
+        *authority == parameter.name && parameter.mode == ParameterMode::HiddenContext
+    })
 }
 
 fn is_business_result(shape: &TypeShape) -> bool {
