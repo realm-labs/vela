@@ -1,8 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Weak;
+use std::sync::{Arc, Weak};
 
 use vela_bytecode::{
-    CacheSiteId, DebugNameId, ExecutableGenerationId, InstructionOffset, LinkedProgram,
+    CacheSiteId, DebugNameId, ExecutableGenerationId, InstructionOffset, LinkedArtifact,
+    LinkedProgram,
 };
 use vela_common::StateSlot;
 
@@ -24,7 +25,7 @@ pub(super) struct RuntimeSidecars {
 }
 
 struct GenerationRuntimeState {
-    lifetime: Weak<()>,
+    artifact: Weak<LinkedArtifact>,
     vm_states: BTreeSet<vela_def::StateId>,
     extern_states: BTreeSet<vela_def::StateId>,
     inline_caches: InlineCaches,
@@ -65,7 +66,7 @@ impl RuntimeState {
 
     pub(super) fn reclaim_dead_generations(&mut self) {
         self.vm_states.collect();
-        self.sidecars.prune_dead_generations();
+        self.sidecars.prune_dead_generations(&self.vm_states);
         let (vm_states, extern_states) = self.sidecars.retained_state_ids();
         self.vm_states.retain_state_ids(&vm_states);
         self.extern_states.retain_state_ids(&extern_states);
@@ -94,10 +95,45 @@ impl RuntimeSidecars {
             .expect("active runtime generation sidecar exists")
     }
 
-    fn prune_dead_generations(&mut self) {
-        let active = self.active_generation;
+    fn prune_dead_generations(&mut self, vm_states: &RuntimeVmStateStore) {
+        let mut live = BTreeSet::from([self.active_generation]);
+
+        loop {
+            let external_state_ids = live
+                .iter()
+                .filter_map(|generation| self.generations.get(generation))
+                .flat_map(|state| state.vm_states.iter().copied())
+                .collect::<BTreeSet<_>>();
+            let inactive_state_ids = self
+                .generations
+                .iter()
+                .filter(|(generation, _)| !live.contains(generation))
+                .flat_map(|(_, state)| state.vm_states.iter().copied())
+                .collect::<BTreeSet<_>>();
+            let mut external_roots = vm_states.retained_roots();
+            external_roots.extend(vm_states.state_roots(&external_state_ids));
+            let internal_roots = vm_states.state_roots(&inactive_state_ids);
+            let internal_owners = vm_states
+                .heap
+                .linked_owner_counts_exclusive_to_roots(&internal_roots, &external_roots);
+
+            let newly_live = self
+                .generations
+                .iter()
+                .filter(|(generation, _)| !live.contains(generation))
+                .filter_map(|(generation, state)| {
+                    let internal = internal_owners.get(generation).copied().unwrap_or(0);
+                    (state.artifact.strong_count() > internal).then_some(*generation)
+                })
+                .collect::<Vec<_>>();
+            if newly_live.is_empty() {
+                break;
+            }
+            live.extend(newly_live);
+        }
+
         self.generations
-            .retain(|generation, state| *generation == active || state.lifetime.strong_count() > 0);
+            .retain(|generation, _| live.contains(generation));
     }
 
     fn retained_state_ids(&self) -> (BTreeSet<vela_def::StateId>, BTreeSet<vela_def::StateId>) {
@@ -118,12 +154,12 @@ impl RuntimeSidecars {
 
 impl GenerationRuntimeState {
     fn for_image(image: &RuntimeImage) -> Self {
-        Self::for_program(image.linked_program())
+        Self::for_program(image.linked_program(), image.linked_artifact())
     }
 
-    fn for_program(program: &LinkedProgram) -> Self {
+    fn for_program(program: &LinkedProgram, artifact: &Arc<LinkedArtifact>) -> Self {
         Self {
-            lifetime: program.lifetime_token(),
+            artifact: Arc::downgrade(artifact),
             vm_states: program
                 .states()
                 .iter()

@@ -6,6 +6,65 @@ use std::sync::{
 use super::*;
 
 #[test]
+fn removed_closure_state_does_not_pin_its_own_generation() {
+    let engine = Engine::builder()
+        .register_type(direct_player_type())
+        .build()
+        .expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_with_id(
+            SourceId::new(24),
+            r#"
+extern state host: Player;
+state retired: Closure = || 5;
+fn current() { return 1; }
+"#,
+        )
+        .expect("initial generation");
+    let vm_state = initial
+        .linked_program()
+        .states()
+        .iter()
+        .find(|state| state.qualified_name == "main::retired")
+        .expect("VM state descriptor")
+        .id;
+    let extern_state = initial
+        .linked_program()
+        .states()
+        .iter()
+        .find(|state| state.qualified_name == "main::host")
+        .expect("extern state descriptor")
+        .id;
+    let update = engine
+        .compile_hot_reload_update_with_id(
+            &initial,
+            SourceId::new(25),
+            "fn current() { return 2; }",
+        )
+        .expect("private state removal is compatible");
+    let drops = Arc::new(AtomicUsize::new(0));
+    let mut builder = Runtime::builder_from_hot_reload_version(engine, initial);
+    builder
+        .bind_extern_state(
+            "main::host",
+            DropTrackedHost {
+                drops: Arc::clone(&drops),
+            },
+        )
+        .expect("extern state binding");
+    let mut runtime = builder.build().expect("runtime initializes");
+
+    let report = runtime.apply_hot_update(update).expect("reload applies");
+    assert!(report.accepted);
+    assert_eq!(runtime.check_reload(), Ok(None));
+
+    assert_eq!(runtime.retained_generation_count(), 1);
+    assert!(!runtime.retains_vm_state_id(vm_state));
+    assert!(!runtime.retains_extern_state_id(extern_state));
+    assert_eq!(drops.load(Ordering::SeqCst), 1);
+}
+
+#[test]
 fn reload_safe_point_reclaims_removed_state_after_final_old_owner_drops() {
     let engine = Engine::builder()
         .register_type(direct_player_type())

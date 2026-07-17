@@ -330,6 +330,21 @@ impl RuntimeVmStateStore {
         roots
     }
 
+    pub(super) fn retained_roots(&self) -> Vec<Value> {
+        self.retained_values
+            .lock()
+            .expect("runtime value roots mutex poisoned")
+            .values()
+            .collect()
+    }
+
+    pub(super) fn state_roots(&self, states: &BTreeSet<StateId>) -> Vec<Value> {
+        states
+            .iter()
+            .filter_map(|state| self.values.get(*state))
+            .collect()
+    }
+
     pub(super) fn retain_state_ids(&mut self, retained: &BTreeSet<StateId>) {
         self.values.retain(|state, _| retained.contains(&state));
         self.collect();
