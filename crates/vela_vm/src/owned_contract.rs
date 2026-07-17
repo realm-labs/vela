@@ -199,13 +199,18 @@ fn owned_script_type_id(value: &OwnedValue, program: &LinkedProgram) -> Option<T
 }
 
 fn resolve_owned_type_id(type_name: &str, program: &LinkedProgram) -> Option<TypeId> {
+    let exact = program
+        .types()
+        .find_map(|(_, ty)| (program.debug_name(ty.debug_name) == type_name).then_some(ty.id));
+    if exact.is_some() || type_name.contains("::") {
+        return exact;
+    }
+
     let mut matches = program
         .types()
         .filter_map(|(_, ty)| {
             let linked_name = program.debug_name(ty.debug_name);
-            (linked_name == type_name
-                || linked_name.rsplit("::").next() == type_name.rsplit("::").next())
-            .then_some(ty.id)
+            (linked_name.rsplit("::").next() == Some(type_name)).then_some(ty.id)
         })
         .collect::<Vec<_>>();
     matches.sort_unstable();
@@ -465,6 +470,56 @@ mod tests {
                 &status_contract,
                 &program,
                 "main::status"
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn qualified_owned_type_names_resolve_exactly_without_leaf_fallback() {
+        let mut program = LinkedProgram::new();
+        let alpha_id = TypeId::new(51);
+        let beta_id = TypeId::new(52);
+        let alpha_name = program.intern_debug_name("alpha::Player");
+        let beta_name = program.intern_debug_name("beta::Player");
+        program.push_type(LinkedType::new(alpha_id, alpha_name));
+        program.push_type(LinkedType::new(beta_id, beta_name));
+        let alpha_contract = MirTypeContract::Definition(alpha_id);
+        let beta_contract = MirTypeContract::Definition(beta_id);
+
+        assert_eq!(
+            validate_owned_value_contract(
+                &OwnedValue::record("alpha::Player", Vec::<(&str, OwnedValue)>::new()),
+                &alpha_contract,
+                &program,
+                "main::alpha"
+            ),
+            Ok(())
+        );
+        assert_eq!(
+            validate_owned_value_contract(
+                &OwnedValue::record("beta::Player", Vec::<(&str, OwnedValue)>::new()),
+                &beta_contract,
+                &program,
+                "main::beta"
+            ),
+            Ok(())
+        );
+        assert!(
+            validate_owned_value_contract(
+                &OwnedValue::record("spoofed::Player", Vec::<(&str, OwnedValue)>::new()),
+                &alpha_contract,
+                &program,
+                "main::alpha"
+            )
+            .is_err()
+        );
+        assert!(
+            validate_owned_value_contract(
+                &OwnedValue::record("Player", Vec::<(&str, OwnedValue)>::new()),
+                &alpha_contract,
+                &program,
+                "main::alpha"
             )
             .is_err()
         );
