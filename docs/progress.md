@@ -13,12 +13,13 @@ history belongs in Git.
 The ordinary Rust/Vela interop path is accepted: Rust exports, exact lease
 adapters, owner-frozen borrowed returns, generated typed Rust-to-Vela bindings,
 and `NativeCallContext` sync/async re-entry use the shared execution path.
-Post-implementation review reopened the optional replaceable-dispatch layer:
-its remaining low-level slot ceremony is still exposed to business authors.
+Post-implementation review reopened the optional replaceable-dispatch layer.
 Explicit root-owned `SharedRuntime` sessions, same-session sync/async re-entry,
 remaining-budget and generation inheritance, independent root locks, coherent
 artifact publication, controller-owned generations, compile-time stable target
-linking, and complete inherited contract/effect validation are closed. The
+linking, complete inherited contract/effect validation, return-family mapping,
+generated method slot bundles, and a p9-shaped Handler/Service host-macro
+fixture are closed. Only the final acceptance rerun/report remains. The
 corrected status and remaining closure tasks live
 in [the unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17)
 and [the post-review report](archive/rust-vela-interop-post-review-2026-07-17.md).
@@ -57,7 +58,7 @@ state-storage hard switch.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Ready to resume | State-storage acceptance is complete; resume the cache-family audit. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
-| Rust/Vela interop | Partially complete; replaceable reopened | Ordinary generated interop is accepted. Optional replacement must close business-macro integration and final acceptance gaps. |
+| Rust/Vela interop | Acceptance rerun pending | Ordinary generated interop is accepted. Optional replacement implementation gaps are closed; final full validation and the superseding acceptance report remain. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -110,8 +111,8 @@ state-storage hard switch.
   sessions and same-session native re-entry. They prove stable dense slots,
   independent root locks over shared immutable code, remaining-budget and
   generation inheritance, async cancellation, coherent activation, rollback,
-  ordinary/business/direct-origin container returns, and no fallback retry.
-  Their low-level authoring surface is not the accepted final interop surface.
+  ordinary/business/direct-origin container returns, generated group slot
+  bundles, p9-shaped business-macro integration, and no fallback retry.
 
 ### Standard Library, Tooling, And Proof
 
@@ -135,18 +136,19 @@ state-storage hard switch.
 ### Rust/Vela Replaceable Dispatch Post-Review
 
 Ordinary interop remains accepted. Optional replacement has closed
-`F-REVIEW-1` through `F-REVIEW-5`: explicit root-owned shared-image Runtime
+`F-REVIEW-1` through `F-REVIEW-7`: explicit root-owned shared-image Runtime
 sessions preserve active sync/async re-entry policy without serializing
 independent roots; controller-owned opaque layout identity rejects foreign
 generations; Engine compilation resolves override declarations to stable
 registered slots; target contracts supply exact parameter, return/error,
 borrowed-return, async, type, and effect metadata; and staging validates the
-complete target fingerprint plus the implementation effect subset. It must
-still complete `F-REVIEW-7` and
-`G-REVIEW-1` through `G-REVIEW-2` in the
+complete target fingerprint plus the implementation effect subset; generated
+method groups publish their slot descriptors as one bundle, and the p9-shaped
+fixture hides authority, indices, registration, and forwarding from business
+bodies. The complete focused regression matrix is green; it must still
+complete `G-REVIEW-2` in the
 [unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17).
-The closure requires a p9-lattice-shaped business macro fixture. Do not close it by
-adding a reentrant or process-global Runtime lock,
+Do not close final acceptance by adding a reentrant or process-global Runtime lock,
 replenishing nested budgets, accepting capability projection as full ABI,
 fabricating Rust references, or documenting manual slot indices as the final
 business surface.

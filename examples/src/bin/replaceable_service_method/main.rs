@@ -42,7 +42,7 @@ impl PricingService {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let slots = vec![PricingService::vela_replaceable_slot_quote()];
+    let slots = PricingService::vela_replaceable_slots();
     let engine = Engine::builder()
         .register_host_type::<PricingService>()
         .register_exports(PricingService::vela_inherent_exports())

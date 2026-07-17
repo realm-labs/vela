@@ -57,7 +57,7 @@ impl MessageHandler {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let slots = vec![MessageHandler::vela_replaceable_slot_handle()];
+    let slots = MessageHandler::vela_replaceable_slots();
     let engine = Engine::builder()
         .register_host_type::<TurnContext>()
         .register_host_type::<MessageHandler>()

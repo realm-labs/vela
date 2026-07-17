@@ -197,12 +197,12 @@ The following closure tasks reopen the replaceable portions of Batches E-G:
   replaceable entries. Ordinary values, boundary-safe `Result<T, E>`, host
   business result aliases, and supported borrowed host returns must not be
   narrowed to `VmResult<T>` or converted through `FromScriptArg for &T`.
-- [ ] F-REVIEW-7. Provide and demonstrate the reusable host-business-macro
+- [x] F-REVIEW-7. Provide and demonstrate the reusable host-business-macro
   integration promised by F2. Business authors must not assign dense indices,
   repeat authority plumbing, collect slot descriptors one method at a time, or
   construct a handwritten proxy. Add a Handler-trait and Service-struct
   fixture matching the p9-lattice integration shape.
-- [ ] G-REVIEW-1. Add regression tests for same-Runtime nested replaceable
+- [x] G-REVIEW-1. Add regression tests for same-Runtime nested replaceable
   calls, async suspension and cancellation, remaining-budget inheritance,
   artifact/generation pinning, cross-controller candidate rejection, complete
   ABI/effect validation, business `Result` mapping, and borrowed-return

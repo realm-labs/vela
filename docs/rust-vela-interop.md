@@ -103,14 +103,10 @@ should use generated bindings.
 
 ## Optional Single-Callable Replacement
 
-> **Post-review status:** the current API is an experimental mechanism slice,
-> not the completed production replacement contract. Single-level activation,
-> partial deltas, rollback, error propagation, and the empty-slot fast path are
-> demonstrated. Controller-owned generations, static override linking, and
-> complete inherited contract validation are now implemented. Same-Runtime
-> nested replacement, same-session budget/policy inheritance, ordinary
-> business and borrowed-return execution mapping, and host-business-macro
-> ergonomics remain open in the
+> **Post-review status:** the corrected implementation is complete, including
+> same-session sync/async nesting, policy inheritance, return-family mapping,
+> coherent artifacts, and host-business-macro integration. Final production
+> acceptance still awaits the full validation rerun and superseding report in the
 > [unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17).
 
 Replacement is an explicit extension. A selected public entry keeps its normal
@@ -143,9 +139,7 @@ The host constructs a deterministic slot bundle, stages the override Runtime,
 and publishes the candidate for future roots:
 
 ```rust,ignore
-let controller = DispatchController::new(vec![
-    Service::vela_replaceable_slot_quote(),
-])?;
+let controller = DispatchController::new(Service::vela_replaceable_slots())?;
 let candidate = controller.stage_current(&override_runtime)?;
 let previous = controller.activate(candidate)?;
 
@@ -168,6 +162,13 @@ host roots may use distinct `SharedRuntime` instances over one immutable
 A staged package is a coherent partial delta, rollback republishes a prior
 generation, and a Vela error propagates without retrying the displaced Rust
 body.
+
+The explicit `#[replaceable(...)]` spelling is the low-level mechanism a host
+framework macro may emit. `#[methods]` generates `vela_replaceable_slots()`
+for an inherent group and a trait-specific slot bundle for an exported trait
+group. A Handler/Service host macro can therefore generate stable paths,
+indices, authority wiring, registration, and trait forwarding once; business
+bodies do not repeat those details or construct a proxy.
 
 The no-override entry performs one dense indexed lookup and empty-entry branch
 before the private Rust fallback. It does not perform a string/hash lookup,

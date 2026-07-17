@@ -2251,9 +2251,11 @@ The return adapter supports ordinary values, business Result aliases, and
 direct borrowed origins in direct, Option, Result, and shared-tuple containers.
 Every returned HostRef must match the tracked origin before safe Rust rebuilds
 the authored references; different child projections and multiple exclusive
-aliases are rejected rather than fabricated. The business-macro authoring
-surface remains an implementation gap rather than an accepted compatibility
-path.
+aliases are rejected rather than fabricated. `#[methods]` emits one generated
+replaceable-slot bundle per inherent or trait group, and host business macros
+may combine those group bundles while generating paths, indices, authority,
+registration, and any trait forwarding. Business bodies and callers retain
+their ordinary Handler/Service shapes without a handwritten proxy.
 
 ### Context Natives Use A Session-Aware VM Boundary
 

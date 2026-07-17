@@ -234,8 +234,9 @@ pub(crate) fn rewrite_method(
     method: &mut ImplItemFn,
     attrs: &ReplaceableAttrs,
     classified: &crate::export::signature::ClassifiedSignature,
+    trait_method: bool,
 ) -> Result<RewrittenMethod> {
-    if !matches!(method.vis, Visibility::Public(_)) {
+    if !trait_method && !matches!(method.vis, Visibility::Public(_)) {
         return Err(syn::Error::new_spanned(
             &method.vis,
             "replaceable methods must be public",

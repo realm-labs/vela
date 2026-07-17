@@ -934,3 +934,7 @@ mod tests;
 #[cfg(test)]
 #[path = "dispatch/returning_tests.rs"]
 mod returning_tests;
+
+#[cfg(test)]
+#[path = "dispatch/business_macro_tests.rs"]
+mod business_macro_tests;
