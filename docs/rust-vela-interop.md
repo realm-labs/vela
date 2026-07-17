@@ -103,11 +103,11 @@ should use generated bindings.
 
 ## Optional Single-Callable Replacement
 
-> **Post-review status:** the corrected implementation is complete, including
+> **Status:** accepted in full, including
 > same-session sync/async nesting, policy inheritance, return-family mapping,
-> coherent artifacts, and host-business-macro integration. Final production
-> acceptance still awaits the full validation rerun and superseding report in the
-> [unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17).
+> coherent artifacts, and host-business-macro integration. The full validation
+> and replacement acceptance evidence are recorded in the
+> [post-review acceptance report](archive/rust-vela-interop-post-review-acceptance-2026-07-17.md).
 
 Replacement is an explicit extension. A selected public entry keeps its normal
 call shape while the macro moves its body to a private Rust fallback:
@@ -176,9 +176,9 @@ global lock, allocation, serialization, or dynamic trait dispatch.
 
 ## Deployment Checklist
 
-The ordinary generated interop checklist below is production-oriented. Treat
-the optional replacement steps as evaluation-only until the post-review
-closure receives a replacement acceptance report.
+The ordinary generated interop and optional replacement checklist below is
+production-oriented. Optional replacement remains opt-in and should be used
+only for callables whose deployment policy requires runtime replacement.
 
 1. Generate bindings from the exact package/source graph used for deployment.
 2. Register export bundles, host types, capabilities, and policy explicitly.

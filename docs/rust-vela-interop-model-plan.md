@@ -4,21 +4,22 @@
 > bundles, generated bidirectional bindings, unified call execution,
 > host-reference lease safety, and optional hot-replaceable dispatch
 >
-> Status: ordinary bidirectional interop accepted; optional replaceable
-> dispatch reopened by post-implementation review on 2026-07-17
+> Status: accepted in full, including the corrected optional replaceable
+> dispatch contract
 >
-> Evidence: the original green-gate report is preserved in
+> Evidence: the original ordinary-interop report is preserved in
 > [`rust-vela-interop-acceptance-2026-07-17.md`](archive/rust-vela-interop-acceptance-2026-07-17.md),
-> and its completion conclusion is superseded by
-> [`rust-vela-interop-post-review-2026-07-17.md`](archive/rust-vela-interop-post-review-2026-07-17.md)
+> the corrective review is preserved in
+> [`rust-vela-interop-post-review-2026-07-17.md`](archive/rust-vela-interop-post-review-2026-07-17.md),
+> and final corrected acceptance is recorded in
+> [`rust-vela-interop-post-review-acceptance-2026-07-17.md`](archive/rust-vela-interop-post-review-acceptance-2026-07-17.md)
 >
 > Baseline: `master` at `bf524975e` on 2026-07-16
 >
 > Execution: coherent pre-release batches; reuse the existing VM call, native,
 > method, provider, and re-entry paths
 >
-> Roadmap: Batches A-D and the ordinary-call portion of Batch E are accepted;
-> the replaceable portions of Batches E-G remain open and are tracked below
+> Roadmap: Batches A-G and all post-review correction tasks are accepted
 
 This document defines a general Rust/Vela interoperability model. Its primary
 goal is not service replacement. Its primary goal is that explicitly exported
@@ -146,12 +147,12 @@ record accepted design decisions in `docs/decisions.md`.
 - Batch B: accepted — ordinary Rust export signatures and generated adapters.
 - Batch C: accepted — natural Vela-to-Rust function and method calls.
 - Batch D: accepted — generated typed Rust-to-Vela bindings.
-- Batch E: ordinary re-entry accepted; replaceable nesting and unified policy
-  inheritance reopened.
-- Batch F: reopened — optional macro-generated callable-entry interception and
+- Batch E: accepted — ordinary and replaceable re-entry share one session and
+  inherited execution policy.
+- Batch F: accepted — optional macro-generated callable-entry interception and
   Vela override functions.
-- Batch G: reopened for replaceable coverage — end-to-end acceptance, tooling,
-  documentation, and performance.
+- Batch G: accepted — end-to-end acceptance, tooling, documentation, and
+  performance proof.
 
 ### Post-implementation review correction — 2026-07-17
 
@@ -163,7 +164,7 @@ interop. Full formatting, lint, workspace tests, and the two runnable override
 examples remain green, but they are not sufficient evidence for final
 completion.
 
-The following closure tasks reopen the replaceable portions of Batches E-G:
+The following closure tasks completed the replaceable portions of Batches E-G:
 
 - [x] F-REVIEW-1. Replace target-owned `Mutex<Runtime>` execution with an
   explicit session-aware invocation authority. A host root may enter a Runtime
@@ -207,13 +208,13 @@ The following closure tasks reopen the replaceable portions of Batches E-G:
   artifact/generation pinning, cross-controller candidate rejection, complete
   ABI/effect validation, business `Result` mapping, and borrowed-return
   propagation/release.
-- [ ] G-REVIEW-2. Rerun the complete validation, runnable examples, and
+- [x] G-REVIEW-2. Rerun the complete validation, runnable examples, and
   replaceable benchmarks, then publish a new acceptance report. The old report
   remains historical evidence and must not be relabeled as the final result.
 
-Until all tasks above pass, the no-override fast path and the demonstrated
-single-level activation/rollback slice are supported implementation facts, but
-optional replacement is not a completed production contract.
+All tasks above pass. The no-override fast path, nested execution contract,
+activation/rollback behavior, and business-macro surface are accepted as the
+optional replacement production contract.
 
 ### Never-complete conditions
 
@@ -1814,26 +1815,26 @@ not start a later batch to hide a failing earlier checkpoint.
 
 ### Batch A: Callable Contract And Proof Surface
 
-- [ ] A1. Implement the fixed export/effect spelling from Section 2 and resolve
+- [x] A1. Implement the fixed export/effect spelling from Section 2 and resolve
   the remaining bindgen delivery decisions from Section 19.
-- [ ] A2. Define the shared callable contract, boundary modes, fingerprints,
+- [x] A2. Define the shared callable contract, boundary modes, fingerprints,
   normalized effective effects, human-readable ABI diffs, and one canonical
   effect-to-capability projection.
-- [ ] A3. Extract one signature classifier shared by free functions, context
+- [x] A3. Extract one signature classifier shared by free functions, context
   functions, host methods, async methods, and optional replaceable targets. It
   must return parameter modes, return family and origin, retained freeze/access
   modes, and the signature-inferred base effect.
-- [ ] A4. Define deterministic conversion traits or generated operations for
+- [x] A4. Define deterministic conversion traits or generated operations for
   every supported value, host, return, and error family.
-- [ ] A5. Add macro and bindgen compile-pass/compile-fail fixtures for all
+- [x] A5. Add macro and bindgen compile-pass/compile-fail fixtures for all
   supported and rejected signatures, inferred effects, and explicit additive
   effect lists.
-- [ ] A6. Keep deployment grants, allowlists, reflection member permissions,
+- [x] A6. Keep deployment grants, allowlists, reflection member permissions,
   and arbitrary business permission strings out of callable contracts,
   binding schemas, fingerprints, and native-call hot paths.
-- [ ] A7. Record callable-grained trusted Rust semantics, the ABI/policy split,
+- [x] A7. Record callable-grained trusted Rust semantics, the ABI/policy split,
   and deferred field-level sandboxing in architecture and authoring docs.
-- [ ] A8. Define stable Vela protocol identities and deterministic trait-method
+- [x] A8. Define stable Vela protocol identities and deterministic trait-method
   contracts without treating Rust trait paths or `TypeId` as public ABI.
 
 Checkpoint: valid contracts produce deterministic metadata and normalized
@@ -1843,38 +1844,38 @@ removing a redundant explicit effect does not change a callable fingerprint.
 
 ### Batch B: Ordinary Rust Exports
 
-- [ ] B1. Support ordinary copied/owned parameters for item-level
+- [x] B1. Support ordinary copied/owned parameters for item-level
   `#[vela::export]` and module-level `#[vela::export_module]` through one
   canonical descriptor/adapter path.
-- [ ] B2. Support direct `&T` and `&mut T` parameters for synchronous free and
+- [x] B2. Support direct `&T` and `&mut T` parameters for synchronous free and
   context functions.
-- [ ] B3. Align exported `&self`/`&mut self` methods with the same classifier.
-- [ ] B4. Generalize atomic multi-lease acquisition to named callable
+- [x] B3. Align exported `&self`/`&mut self` methods with the same classifier.
+- [x] B4. Generalize atomic multi-lease acquisition to named callable
   parameters with deterministic rollback.
-- [ ] B5. Produce structured alias and exact-object diagnostics before entering
+- [x] B5. Produce structured alias and exact-object diagnostics before entering
   authored Rust.
-- [ ] B6. Register hidden lease provenance for every generated Rust reference.
-- [ ] B7. Prove cleanup on success, error, panic, re-entry failure,
+- [x] B6. Register hidden lease provenance for every generated Rust reference.
+- [x] B7. Prove cleanup on success, error, panic, re-entry failure,
   cancellation, and dropped futures.
-- [ ] B8. Keep low-level descriptor APIs available without making them the
+- [x] B8. Keep low-level descriptor APIs available without making them the
   default authoring surface.
-- [ ] B9. Generate one deterministic `vela_exports()` bundle per export module
+- [x] B9. Generate one deterministic `vela_exports()` bundle per export module
   and register it explicitly with one `register_exports` call, without ambient
   inventory or runtime discovery.
-- [ ] B10. Extend `#[vela::methods]` to explicit trait impl blocks, add
+- [x] B10. Extend `#[vela::methods]` to explicit trait impl blocks, add
   `#[vela::trait_export]`, and generate reflection metadata and call thunks
   through the same method adapter path used by inherent methods.
-- [ ] B11. Add a declaration-only external-trait adapter for an existing impl
+- [x] B11. Add a declaration-only external-trait adapter for an existing impl
   that cannot be annotated. Require selected signatures, UFCS type checking,
   an already boundary-supported receiver type, and no duplicate Rust impl.
-- [ ] B12. Convert supported `&T`/`&mut T` host returns, including approved
+- [x] B12. Convert supported `&T`/`&mut T` host returns, including approved
   Option/Result/tuple shapes, into call-tree-scoped HostRefs backed by the
   retained parent owner lease and provenance rather than stable-ID relookup.
-- [ ] B13. Implement the shared/exclusive owner-freeze matrix, call-tree-local
+- [x] B13. Implement the shared/exclusive owner-freeze matrix, call-tree-local
   child slots, read/write capability preservation, immediate owner-busy
   diagnostics, deterministic root-end invalidation, and rollback when return
   conversion fails.
-- [ ] B14. Give each distinct borrowed child a `BorrowLeaseId`, share it across
+- [x] B14. Give each distinct borrowed child a `BorrowLeaseId`, share it across
   aliases, count distinct live children against the parent freeze, and
   implement close/invalidate/error semantics without relying on GC timing.
 
@@ -1885,23 +1886,23 @@ without an authored wrapper, business identity, or resolver.
 
 ### Batch C: Natural Vela-To-Rust Calls
 
-- [ ] C1. Export Rust functions and methods into the semantic registry and
+- [x] C1. Export Rust functions and methods into the semantic registry and
   compiler facts.
-- [ ] C2. Resolve Vela function, qualified, and method calls to exact Rust
+- [x] C2. Resolve Vela function, qualified, and method calls to exact Rust
   target identities.
-- [ ] C3. Preserve identities and ABI fingerprints through HIR, MIR, bytecode,
+- [x] C3. Preserve identities and ABI fingerprints through HIR, MIR, bytecode,
   linking, reflection, and diagnostics.
-- [ ] C4. Execute exported Rust targets through the existing prepared runtime
+- [x] C4. Execute exported Rust targets through the existing prepared runtime
   path and session continuation.
-- [ ] C5. Make ordinary Vela calls independent of service/provider setup.
-- [ ] C6. Apply callable effects, derived coarse capabilities, budgets,
+- [x] C5. Make ordinary Vela calls independent of service/provider setup.
+- [x] C6. Apply callable effects, derived coarse capabilities, budgets,
   tracing, and cancellation consistently before authored Rust runs.
-- [ ] C7. Add completion, signature, hover, definition, and reference coverage
+- [x] C7. Add completion, signature, hover, definition, and reference coverage
   for Rust exports.
-- [ ] C8. Resolve exported trait methods through stable Vela protocol and
+- [x] C8. Resolve exported trait methods through stable Vela protocol and
   implementation identities, including runtime `implements` checks and
   dynamic protocol dispatch.
-- [ ] C9. Reserve `host::release` as the sole explicit release spelling, lower
+- [x] C9. Reserve `host::release` as the sole explicit release spelling, lower
   it to `ReleaseBorrowLease`, and add conservative MIR last-use plus
   non-escaping lexical-scope release insertion. Do not add a bare `release`
   global or a general script borrow checker.
@@ -1913,17 +1914,17 @@ borrowed children automatically, and dynamic cases use namespaced
 
 ### Batch D: Typed Rust-To-Vela Bindings
 
-- [ ] D1. Define one authoritative exported Vela binding schema from semantic
+- [x] D1. Define one authoritative exported Vela binding schema from semantic
   and linked metadata that excludes live Runtime grants and deployment policy.
-- [ ] D2. Generate deterministic Rust module/package bindings without a second
+- [x] D2. Generate deterministic Rust module/package bindings without a second
   Vela parser.
-- [ ] D3. Bind generated code to a Runtime and validate contract fingerprints.
-- [ ] D4. Convert ordinary Rust values, references, results, and errors without
+- [x] D3. Bind generated code to a Runtime and validate contract fingerprints.
+- [x] D4. Convert ordinary Rust values, references, results, and errors without
   user-authored `CallArgs` or `OwnedValue` handling.
-- [ ] D5. Support stable-ID target lookup and compatible body-reload
+- [x] D5. Support stable-ID target lookup and compatible body-reload
   re-resolution.
-- [ ] D6. Generate active-context bindings for same-session re-entry.
-- [ ] D7. Report source-backed Rust diagnostics for missing or incompatible
+- [x] D6. Generate active-context bindings for same-session re-entry.
+- [x] D7. Report source-backed Rust diagnostics for missing or incompatible
   Vela exports.
 
 Checkpoint: Rust calls exported Vela functions through typed generated methods
@@ -1931,26 +1932,26 @@ without runtime strings or manual boundary values.
 
 ### Batch E: Nested Bidirectional And Async Calls
 
-- [ ] E1. Preserve canonical host identity across generated child reborrows.
-- [ ] E2. Support Vela -> Rust -> Vela and Rust -> Vela -> Rust call trees on
+- [x] E1. Preserve canonical host identity across generated child reborrows.
+- [x] E2. Support Vela -> Rust -> Vela and Rust -> Vela -> Rust call trees on
   one execution session.
-- [ ] E3. Restore parent reference usability after a child shared or exclusive
+- [x] E3. Restore parent reference usability after a child shared or exclusive
   reborrow returns.
-- [ ] E4. Reject unrelated aliases, expired provenance, and scoped-handle
+- [x] E4. Reject unrelated aliases, expired provenance, and scoped-handle
   escape deterministically.
-- [ ] E5. Align generated sync and async exports/bindings with the existing
+- [x] E5. Align generated sync and async exports/bindings with the existing
   scoped `Send` future model.
-- [ ] E6. Prove budget, coarse capability profile, heap, state, tracing,
+- [x] E6. Prove budget, coarse capability profile, heap, state, tracing,
   generation, and cancellation inheritance across every language transition
   without a per-call permission graph.
-- [ ] E7. Reject a capability-scoped context operation or nested binding whose
+- [x] E7. Reject a capability-scoped context operation or nested binding whose
   effects exceed the current Rust callable's effective ceiling before the
   operation or child body runs.
-- [ ] E8. Establish round-trip and boundary-cost benchmarks before optimizing.
-- [ ] E9. Allow borrowed-return HostRefs to propagate through local Vela
+- [x] E8. Establish round-trip and boundary-cost benchmarks before optimizing.
+- [x] E9. Allow borrowed-return HostRefs to propagate through local Vela
   containers and nested Rust/Vela calls, and across scoped await suspension,
   while rejecting state/global/root-result/native-cache/unscoped-task escape.
-- [ ] E10. Release proven-dead children before await, reject explicit release
+- [x] E10. Release proven-dead children before await, reject explicit release
   while a descendant Rust reborrow is active, and retain root cleanup as the
   unconditional success/error/panic/cancellation/future-drop fallback.
 
@@ -1961,31 +1962,31 @@ Runtime policy, and hot-reload ownership remain preserved.
 
 ### Batch F: Optional Hot-Replaceable Dispatch
 
-- [ ] F1. Define stable `ReplaceableSlotId`, dense build-local
+- [x] F1. Define stable `ReplaceableSlotId`, dense build-local
   `InterceptSlotIndex`, optional `VelaOverrideTarget`, and immutable
   `DispatchGeneration` entries over the shared callable contracts.
-- [ ] F2. Provide reusable macro-generation support that lets host business
+- [x] F2. Provide reusable macro-generation support that lets host business
   macros move an annotated body into a private Rust fallback and retain the
   same public function/method call shape with an entry interception check.
-- [ ] F3. Implement the no-override fast path as one pinned dense target lookup
+- [x] F3. Implement the no-override fast path as one pinned dense target lookup
   and predictable empty-entry branch, with no string/hash lookup, global lock,
   allocation, serialization, or hot-replacement-only trait dispatch.
-- [ ] F4. Add Vela `#[override(host::path::target)]` declarations whose
+- [x] F4. Add Vela `#[override(host::path::target)]` declarations whose
   signatures are inferred and validated from the target `CallableContract`.
-- [ ] F5. Pass the original receiver, actor/context, message, and business
+- [x] F5. Pass the original receiver, actor/context, message, and business
   parameters through the common generated adapter and existing HostRef/value
   mappings without authored wrappers.
-- [ ] F6. Let a host enter a pinned dispatch root before any Vela call, and
+- [x] F6. Let a host enter a pinned dispatch root before any Vela call, and
   inherit that generation across Rust/Vela nesting, re-entry, callbacks, and
   suspended futures.
-- [ ] F7. Stage arbitrary override deltas, materialize a full immutable table,
+- [x] F7. Stage arbitrary override deltas, materialize a full immutable table,
   and atomically publish it for future roots without requiring a complete
   service implementation.
-- [ ] F8. Roll back future roots without fallback retries, replaying calls, or
+- [x] F8. Roll back future roots without fallback retries, replaying calls, or
   rewinding state; propagate Vela execution errors without invoking Rust again.
-- [ ] F9. Preserve provider identity, discovery, body reload, and handle
+- [x] F9. Preserve provider identity, discovery, body reload, and handle
   re-resolution without conflating provider and slot identities.
-- [ ] F10. Prove that annotated public entries intercept, their generated
+- [x] F10. Prove that annotated public entries intercept, their generated
   private fallbacks bypass interception, and unannotated functions/helpers stay
   direct.
 
@@ -1996,29 +1997,29 @@ the ordinary interop ABI or creating a second execution path.
 
 ### Batch G: Acceptance, Documentation, And Performance
 
-- [ ] G1. Build an ordinary round-trip example whose Vela code calls ordinary
+- [x] G1. Build an ordinary round-trip example whose Vela code calls ordinary
   Rust functions/methods and whose Rust host calls exported Vela functions.
-- [ ] G2. Build separate single-handler and single-service-method Rust/Vela
+- [x] G2. Build separate single-handler and single-service-method Rust/Vela
   hot-override examples with activation and rollback while adjacent methods
   remain Rust.
-- [ ] G3. Cover signature conversion, alias rejection, nested reborrow,
+- [x] G3. Cover signature conversion, alias rejection, nested reborrow,
   inferred/additional effects, nested effect-ceiling denial, capability denial
   before authored code, policy-versus-ABI separation, local and external trait
   export, borrowed-return owner freezing, automatic/explicit early release,
   escape rejection, async cancellation, and reload ABI mismatch.
-- [ ] G4. Document export, binding generation, registration, calling,
+- [x] G4. Document export, binding generation, registration, calling,
   debugging, deployment, activation, and rollback workflows.
-- [ ] G5. Audit public examples and docs for unnecessary `HostRef`, `CallArgs`,
+- [x] G5. Audit public examples and docs for unnecessary `HostRef`, `CallArgs`,
   `OwnedValue`, lease, proxy, and runtime-string ceremony.
-- [ ] G6. Record reproducible boundary benchmarks and optimize only measured
+- [x] G6. Record reproducible boundary benchmarks and optimize only measured
   regressions.
-- [ ] G7. Audit for duplicate execution APIs, duplicate signature classifiers,
+- [x] G7. Audit for duplicate execution APIs, duplicate signature classifiers,
   per-function path/effect ceremony that should be inferred, string-based
   linked or permission lookup, ambient export discovery, live grants in
   fingerprints, a bare `release` global, GC-dependent lease correctness,
   escaped wrappers, and unbounded paths.
-- [ ] G8. Run focused and full workspace validation gates.
-- [ ] G9. Update `docs/progress.md` only when the repository reaches the
+- [x] G8. Run focused and full workspace validation gates.
+- [x] G9. Update `docs/progress.md` only when the repository reaches the
   corresponding checkpoint.
 
 Checkpoint: ordinary bidirectional interop is the primary documented workflow;
@@ -2029,137 +2030,137 @@ all safety and validation gates pass.
 
 ### 16.1 Authoring ergonomics
 
-- [ ] An exported Rust scalar function uses only ordinary Rust types.
-- [ ] An exported Rust host-mutating function accepts `&mut T` without authored
+- [x] An exported Rust scalar function uses only ordinary Rust types.
+- [x] An exported Rust host-mutating function accepts `&mut T` without authored
   host wrappers or a redundant `host_write` annotation.
-- [ ] An exported Rust host method accepts ordinary `&self`/`&mut self`.
-- [ ] An exported method may return supported `&T`/`&mut T` host borrows that
+- [x] An exported Rust host method accepts ordinary `&self`/`&mut self`.
+- [x] An exported method may return supported `&T`/`&mut T` host borrows that
   Vela receives as ordinary read-only/writable HostRefs without an identity or
   resolver annotation.
-- [ ] Straight-line last use and non-escaping lexical scope exit release a
+- [x] Straight-line last use and non-escaping lexical scope exit release a
   borrowed child without authored cleanup; dynamic cases use
   `host::release(value)`, never a bare `release(value)`.
-- [ ] An annotatable Rust trait impl exports through `#[vela::methods]`
+- [x] An annotatable Rust trait impl exports through `#[vela::methods]`
   without an inherent forwarding method or user-authored wrapper body.
-- [ ] An existing external trait impl exports a selected, explicitly declared
+- [x] An existing external trait impl exports a selected, explicitly declared
   boundary-safe surface with UFCS signature checking and no duplicate impl.
-- [ ] Implementing a Rust trait alone exposes nothing to Vela; marker traits
+- [x] Implementing a Rust trait alone exposes nothing to Vela; marker traits
   and unsupported methods remain Rust-only.
-- [ ] `&T`/`&self` infer `host_read`, `&mut T`/`&mut self` infer
+- [x] `&T`/`&self` infer `host_read`, `&mut T`/`&mut self` infer
   `host_write`, and value-only signatures infer `pure`.
-- [ ] Explicit `effects(...)` add to but cannot remove the signature-inferred
+- [x] Explicit `effects(...)` add to but cannot remove the signature-inferred
   base, and only the normalized final set enters the fingerprint.
-- [ ] One explicit export module registers many supported public functions
+- [x] One explicit export module registers many supported public functions
   through one generated bundle; private helpers remain unexported.
-- [ ] Unsupported public functions or methods inside an explicit export group
+- [x] Unsupported public functions or methods inside an explicit export group
   fail at declaration time rather than being silently skipped.
-- [ ] Vela calls Rust exports with normal function, qualified, and method
+- [x] Vela calls Rust exports with normal function, qualified, and method
   syntax.
-- [ ] Rust calls a Vela export through generated typed code without `CallArgs`,
+- [x] Rust calls a Vela export through generated typed code without `CallArgs`,
   `OwnedValue`, `HostRef`, or a runtime string.
-- [ ] Ordinary interop works with no service trait, provider, or slot.
-- [ ] A host business macro makes one existing public handler/function/method
+- [x] Ordinary interop works with no service trait, provider, or slot.
+- [x] A host business macro makes one existing public handler/function/method
   replaceable without changing any caller or requiring a handwritten proxy.
-- [ ] A Vela `#[override(host::path::target)]` implements only the selected callable
+- [x] A Vela `#[override(host::path::target)]` implements only the selected callable
   and inherits its parameter/return/effect contract without implementing the
   surrounding service.
-- [ ] The Vela override receives the original receiver, actor/context, message,
+- [x] The Vela override receives the original receiver, actor/context, message,
   and business parameters through generated boundary mappings.
 
 ### 16.2 Parameter and lease safety
 
-- [ ] Two distinct `&mut Player` arguments enter Rust and mutate the correct
+- [x] Two distinct `&mut Player` arguments enter Rust and mutate the correct
   objects.
-- [ ] The same player passed to two `&Player` parameters is allowed.
-- [ ] Shared plus exclusive, or two exclusive sibling parameters for one
+- [x] The same player passed to two `&Player` parameters is allowed.
+- [x] Shared plus exclusive, or two exclusive sibling parameters for one
   object, fail before the Rust body runs.
-- [ ] A nested Vela or Rust call receives an authorized child reborrow and the
+- [x] A nested Vela or Rust call receives an authorized child reborrow and the
   parent reference is usable afterward.
-- [ ] A child preserves canonical identity and cannot bypass an active
+- [x] A child preserves canonical identity and cannot bypass an active
   exclusive chain.
-- [ ] Pointer/type coincidence without provenance or a valid root scope is
+- [x] Pointer/type coincidence without provenance or a valid root scope is
   rejected.
-- [ ] A failed later conversion releases earlier leases.
-- [ ] Opaque adapters with type ID but no exact-object proof are rejected.
-- [ ] Panic, error, cancellation, re-entry failure, and future drop release
+- [x] A failed later conversion releases earlier leases.
+- [x] Opaque adapters with type ID but no exact-object proof are rejected.
+- [x] Panic, error, cancellation, re-entry failure, and future drop release
   leases.
-- [ ] Multiple shared-origin borrowed returns from one owner coexist and still
+- [x] Multiple shared-origin borrowed returns from one owner coexist and still
   allow shared owner calls while every exclusive owner call is rejected.
-- [ ] A live exclusive-origin borrowed return rejects every later call on its
+- [x] A live exclusive-origin borrowed return rejects every later call on its
   parent owner, without blocking, until deterministic scope cleanup.
-- [ ] Shared returned children cannot be upgraded to mutable, and an initial
+- [x] Shared returned children cannot be upgraded to mutable, and an initial
   `&Owner -> &mut T` return is rejected.
-- [ ] One Rust call may return multiple disjoint mutable references under one
+- [x] One Rust call may return multiple disjoint mutable references under one
   retained exclusive parent lease; a second owner call cannot acquire another.
-- [ ] Borrowed-return HostRefs work through local containers and nested
+- [x] Borrowed-return HostRefs work through local containers and nested
   Rust/Vela calls but state/global/root-result/native-cache/unscoped-task
   escapes fail deterministically.
-- [ ] Root success, error, panic, cancellation, and future drop invalidate
+- [x] Root success, error, panic, cancellation, and future drop invalidate
   borrowed-return children and unfreeze their parent owners.
-- [ ] Automatic and explicit release invalidate every alias sharing the same
+- [x] Automatic and explicit release invalidate every alias sharing the same
   `BorrowLeaseId`; distinct sibling children keep the parent frozen until each
   is released.
-- [ ] `host::release` rejects ordinary HostRefs and active descendant
+- [x] `host::release` rejects ordinary HostRefs and active descendant
   reborrows, never blocks, and makes every later use of the released child fail
   as expired.
-- [ ] Branches release automatically only when every outgoing path ends the
+- [x] Branches release automatically only when every outgoing path ends the
   borrow, and a proven last use before await releases before suspension.
 
 ### 16.3 Direction and nesting equivalence
 
-- [ ] Vela calls a Rust free function.
-- [ ] Vela calls a Rust `&self` method.
-- [ ] Vela calls a Rust `&mut self` method.
-- [ ] Rust calls a Vela free function through generated binding.
-- [ ] Vela -> Rust -> Vela re-entry uses one session.
-- [ ] Rust -> Vela -> Rust nested dispatch uses one session.
-- [ ] Every direction reports equivalent ABI, capability, budget, alias, and
+- [x] Vela calls a Rust free function.
+- [x] Vela calls a Rust `&self` method.
+- [x] Vela calls a Rust `&mut self` method.
+- [x] Rust calls a Vela free function through generated binding.
+- [x] Vela -> Rust -> Vela re-entry uses one session.
+- [x] Rust -> Vela -> Rust nested dispatch uses one session.
+- [x] Every direction reports equivalent ABI, capability, budget, alias, and
   cancellation error classes.
-- [ ] A nested binding whose effect set exceeds its Rust parent's effective
+- [x] A nested binding whose effect set exceeds its Rust parent's effective
   ceiling fails before the child body runs.
 
 ### 16.4 Reload and generation behavior
 
-- [ ] Compatible Vela body reload keeps generated Rust bindings valid through
+- [x] Compatible Vela body reload keeps generated Rust bindings valid through
   stable re-resolution.
-- [ ] Incompatible parameter, mode, return, effect, or async change is rejected
+- [x] Incompatible parameter, mode, return, effect, or async change is rejected
   before invocation.
-- [ ] Changing active Runtime grants or allowlists is handled as policy
+- [x] Changing active Runtime grants or allowlists is handled as policy
   validation or restaging, not interop callable/binding ABI incompatibility.
-- [ ] An active nested call tree retains one linked artifact generation.
-- [ ] Optional handler/function/method activation changes future host roots
+- [x] An active nested call tree retains one linked artifact generation.
+- [x] Optional handler/function/method activation changes future host roots
   only.
-- [ ] Optional handler/function/method rollback does not retry or rewind an
+- [x] Optional handler/function/method rollback does not retry or rewind an
   in-flight call.
-- [ ] Suspended async calls retain their pinned artifact and optional dispatch
+- [x] Suspended async calls retain their pinned artifact and optional dispatch
   generation.
-- [ ] A root call never mixes targets from different dispatch generations.
-- [ ] An annotated public entry performs its generated interception check;
+- [x] A root call never mixes targets from different dispatch generations.
+- [x] An annotated public entry performs its generated interception check;
   adjacent unannotated methods and the generated private Rust fallback remain
   direct.
-- [ ] A Vela execution error propagates without automatically invoking the
+- [x] A Vela execution error propagates without automatically invoking the
   Rust fallback.
 
 ### 16.5 Trust, reflection, and tooling
 
-- [ ] Callable capability denial occurs before a trusted Rust body runs.
-- [ ] Capability-scoped context operations cannot exceed the current Rust
+- [x] Callable capability denial occurs before a trusted Rust body runs.
+- [x] Capability-scoped context operations cannot exceed the current Rust
   callable's effective effect ceiling even when the Runtime grants more.
-- [ ] Callable contracts, generated binding schemas, and fingerprints contain
+- [x] Callable contracts, generated binding schemas, and fingerprints contain
   no arbitrary business permission strings or active deployment grants.
-- [ ] Coarse callable requirements are derived from `EffectSet`; reflection
+- [x] Coarse callable requirements are derived from `EffectSet`; reflection
   member `required_permissions` are not reused for native-call authorization.
-- [ ] Documentation explicitly states that `&mut T` grants field-level Rust
+- [x] Documentation explicitly states that `&mut T` grants field-level Rust
   authority for the invocation.
-- [ ] Direct Vela path writes retain fine-grained HostAccess checks.
-- [ ] Reflection reports callable metadata without creating references or
+- [x] Direct Vela path writes retain fine-grained HostAccess checks.
+- [x] Reflection reports callable metadata without creating references or
   mutating contracts.
-- [ ] Reflection reports stable Vela protocol identities, selected trait
+- [x] Reflection reports stable Vela protocol identities, selected trait
   methods, and implemented-protocol relationships without claiming that all
   Rust traits are Vela-visible.
-- [ ] Completion, signature help, hover, definition, and references work for
+- [x] Completion, signature help, hover, definition, and references work for
   Rust exports.
-- [ ] Generated Rust binding errors name their Vela source declaration.
+- [x] Generated Rust binding errors name their Vela source declaration.
 
 ## 17. Performance And Measurement
 

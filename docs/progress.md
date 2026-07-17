@@ -10,19 +10,18 @@ history belongs in Git.
 
 ## Current Focus
 
-The ordinary Rust/Vela interop path is accepted: Rust exports, exact lease
+The unified Rust/Vela interop path is accepted: Rust exports, exact lease
 adapters, owner-frozen borrowed returns, generated typed Rust-to-Vela bindings,
 and `NativeCallContext` sync/async re-entry use the shared execution path.
-Post-implementation review reopened the optional replaceable-dispatch layer.
 Explicit root-owned `SharedRuntime` sessions, same-session sync/async re-entry,
 remaining-budget and generation inheritance, independent root locks, coherent
 artifact publication, controller-owned generations, compile-time stable target
 linking, complete inherited contract/effect validation, return-family mapping,
 generated method slot bundles, and a p9-shaped Handler/Service host-macro
-fixture are closed. Only the final acceptance rerun/report remains. The
-corrected status and remaining closure tasks live
+fixture are closed and the complete acceptance matrix passes. The corrected
+status and final evidence live
 in [the unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17)
-and [the post-review report](archive/rust-vela-interop-post-review-2026-07-17.md).
+and [the post-review acceptance report](archive/rust-vela-interop-post-review-acceptance-2026-07-17.md).
 
 The explicit state-storage hard switch is accepted through Batch G. Exact
 qualified embedding types, linked nominal canonicalization, graph-preserving
@@ -58,7 +57,7 @@ state-storage hard switch.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Ready to resume | State-storage acceptance is complete; resume the cache-family audit. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
-| Rust/Vela interop | Acceptance rerun pending | Ordinary generated interop is accepted. Optional replacement implementation gaps are closed; final full validation and the superseding acceptance report remain. |
+| Rust/Vela interop | Complete | Ordinary generated interop and corrected optional replacement pass the complete acceptance matrix and full validation gates. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -133,9 +132,9 @@ state-storage hard switch.
 
 ## Active Gaps
 
-### Rust/Vela Replaceable Dispatch Post-Review
+### Rust/Vela Interop Acceptance
 
-Ordinary interop remains accepted. Optional replacement has closed
+Ordinary interop and optional replacement are accepted. Replacement closed
 `F-REVIEW-1` through `F-REVIEW-7`: explicit root-owned shared-image Runtime
 sessions preserve active sync/async re-entry policy without serializing
 independent roots; controller-owned opaque layout identity rejects foreign
@@ -145,17 +144,16 @@ borrowed-return, async, type, and effect metadata; and staging validates the
 complete target fingerprint plus the implementation effect subset; generated
 method groups publish their slot descriptors as one bundle, and the p9-shaped
 fixture hides authority, indices, registration, and forwarding from business
-bodies. The complete focused regression matrix is green; it must still
-complete `G-REVIEW-2` in the
-[unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17).
-Do not close final acceptance by adding a reentrant or process-global Runtime lock,
+bodies. The complete focused regression matrix, full validation gates,
+runnable examples, and replacement benchmark pass; final evidence is in the
+[post-review acceptance report](archive/rust-vela-interop-post-review-acceptance-2026-07-17.md).
+Do not regress this contract by adding a reentrant or process-global Runtime lock,
 replenishing nested budgets, accepting capability projection as full ABI,
 fabricating Rust references, or documenting manual slot indices as the final
 business surface.
 
-The currently green single-level activation, partial-delta, rollback,
-empty-slot benchmark, and runnable examples remain baseline evidence. They do
-not prove nested replacement or final acceptance.
+Nested activation, partial-delta publication, rollback, the empty-slot
+benchmark, and runnable examples are accepted baseline evidence.
 
 ### State Storage Acceptance
 
@@ -259,12 +257,12 @@ scanners, runtime execution, live host-state reads, or editor-owned analysis.
 
 ## Validation
 
-Unified Rust/Vela interop passed its complete workspace, examples, docs, site,
-benchmark-build, and fuzz-build gates on 2026-07-17. Post-review reruns of root
-formatting, all-feature workspace clippy/tests, focused dispatch tests, and the
-two runnable replacement examples also passed. Those gates establish a green
-baseline, but the optional replaceable acceptance matrix was incomplete; its
-original report is historical evidence rather than current completion proof.
+Unified Rust/Vela interop passed its corrected complete workspace, examples,
+docs, site, benchmark-build, fuzz-build, runnable replacement, focused
+regression, and quick interop benchmark gates on 2026-07-17. The final result
+is recorded in
+[the post-review acceptance report](archive/rust-vela-interop-post-review-acceptance-2026-07-17.md);
+the original report remains historical evidence for ordinary interop.
 
 State-storage Batch F's focused suites and original full acceptance gates were
 green on 2026-07-15, but the second review showed that its regression matrix
@@ -298,11 +296,10 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Close the remaining Rust/Vela replaceable-dispatch post-review tasks
-   before restoring unified-interop completion.
-2. Resume the M20 cache-family audit against the accepted state model.
-3. Resume the M20.5 editor-visible follow-up after M20 close-out.
-4. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
+1. Resume the M20 cache-family audit against the accepted state and interop
+   models.
+2. Resume the M20.5 editor-visible follow-up after M20 close-out.
+3. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
    state migration, async-frame migration, and initializer dependency reads as
    explicit non-goals.
 
