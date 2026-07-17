@@ -183,62 +183,73 @@ fn memory_suite(sampling: Sampling) -> Result<(), Box<dyn Error>> {
     );
     print_entry_sizes();
     for shape in [ArtifactShape::Small, ArtifactShape::Large] {
-        for &runtime_count in sampling.runtime_counts() {
-            let mut child = Command::new(&executable)
-                .args(["_memory-child", shape.label(), &runtime_count.to_string()])
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()?;
-            let started = Instant::now();
-            let mut peak_rss_bytes = 0_u64;
-            let mut capacity_failure = None;
-            loop {
-                if let Some(status) = child.try_wait()? {
-                    let output = child.wait_with_output()?;
-                    let stdout = String::from_utf8_lossy(&output.stdout);
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    peak_rss_bytes = peak_rss_bytes
-                        .max(output_metric(&stdout, "rss_after_bytes").unwrap_or(peak_rss_bytes));
-                    print!("{stdout}");
-                    if !status.success() {
-                        println!(
-                            "memory_result shape={} runtimes={} status=child_error exit={status} peak_rss_bytes={} stderr={:?}",
-                            shape.label(),
-                            runtime_count,
-                            peak_rss_bytes,
-                            stderr.trim()
-                        );
-                    } else {
-                        println!(
-                            "memory_result shape={} runtimes={} status=ok peak_rss_bytes={}",
-                            shape.label(),
-                            runtime_count,
-                            peak_rss_bytes
-                        );
-                    }
-                    break;
-                }
-                peak_rss_bytes = peak_rss_bytes.max(process_rss_bytes(child.id()).unwrap_or(0));
-                if peak_rss_bytes > rss_ceiling_bytes {
-                    capacity_failure = Some("rss_ceiling");
-                } else if started.elapsed() > time_ceiling {
-                    capacity_failure = Some("time_ceiling");
-                }
-                if let Some(reason) = capacity_failure {
-                    child.kill()?;
-                    let output = child.wait_with_output()?;
-                    println!(
-                        "memory_result shape={} runtimes={} status=capacity_failure reason={} peak_rss_bytes={} elapsed_ms={} stderr={:?}",
+        for profile_label in ["disabled", "enabled"] {
+            for &runtime_count in sampling.runtime_counts() {
+                let mut child = Command::new(&executable)
+                    .args([
+                        "_memory-child",
                         shape.label(),
-                        runtime_count,
-                        reason,
-                        peak_rss_bytes,
-                        started.elapsed().as_millis(),
-                        String::from_utf8_lossy(&output.stderr).trim()
-                    );
-                    break;
+                        &runtime_count.to_string(),
+                        profile_label,
+                    ])
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()?;
+                let started = Instant::now();
+                let mut peak_rss_bytes = 0_u64;
+                let mut capacity_failure = None;
+                loop {
+                    if let Some(status) = child.try_wait()? {
+                        let output = child.wait_with_output()?;
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        peak_rss_bytes = peak_rss_bytes.max(
+                            output_metric(&stdout, "rss_after_bytes").unwrap_or(peak_rss_bytes),
+                        );
+                        print!("{stdout}");
+                        if !status.success() {
+                            println!(
+                                "memory_result shape={} profile={} runtimes={} status=child_error exit={status} peak_rss_bytes={} stderr={:?}",
+                                shape.label(),
+                                profile_label,
+                                runtime_count,
+                                peak_rss_bytes,
+                                stderr.trim()
+                            );
+                        } else {
+                            println!(
+                                "memory_result shape={} profile={} runtimes={} status=ok peak_rss_bytes={}",
+                                shape.label(),
+                                profile_label,
+                                runtime_count,
+                                peak_rss_bytes
+                            );
+                        }
+                        break;
+                    }
+                    peak_rss_bytes = peak_rss_bytes.max(process_rss_bytes(child.id()).unwrap_or(0));
+                    if peak_rss_bytes > rss_ceiling_bytes {
+                        capacity_failure = Some("rss_ceiling");
+                    } else if started.elapsed() > time_ceiling {
+                        capacity_failure = Some("time_ceiling");
+                    }
+                    if let Some(reason) = capacity_failure {
+                        child.kill()?;
+                        let output = child.wait_with_output()?;
+                        println!(
+                            "memory_result shape={} profile={} runtimes={} status=capacity_failure reason={} peak_rss_bytes={} elapsed_ms={} stderr={:?}",
+                            shape.label(),
+                            profile_label,
+                            runtime_count,
+                            reason,
+                            peak_rss_bytes,
+                            started.elapsed().as_millis(),
+                            String::from_utf8_lossy(&output.stderr).trim()
+                        );
+                        break;
+                    }
+                    thread::sleep(Duration::from_millis(5));
                 }
-                thread::sleep(Duration::from_millis(5));
             }
         }
     }
@@ -264,6 +275,12 @@ fn memory_child(args: &[String]) -> Result<(), Box<dyn Error>> {
         .get(2)
         .ok_or("missing Runtime count")?
         .parse::<usize>()?;
+    let profile_label = args.get(3).ok_or("missing profile mode")?;
+    let profile_enabled = match profile_label.as_str() {
+        "disabled" => false,
+        "enabled" => true,
+        value => return Err(format!("unknown profile mode `{value}`").into()),
+    };
     let engine = Engine::builder().build()?;
     let version = engine.compile_hot_reload_initial(&memory_source(shape))?;
     let cache_sites = version.linked_artifact().cache_layout().len();
@@ -274,14 +291,22 @@ fn memory_child(args: &[String]) -> Result<(), Box<dyn Error>> {
     let allocation_region = Region::new(GLOBAL);
     let started = Instant::now();
     let runtimes = (0..runtime_count)
-        .map(|_| Runtime::from_hot_reload_version(engine.clone(), version.clone()))
+        .map(|_| {
+            let builder = Runtime::builder_from_hot_reload_version(engine.clone(), version.clone());
+            if profile_enabled {
+                builder.with_bytecode_profiling().build()
+            } else {
+                builder.build()
+            }
+        })
         .collect::<Result<Vec<_>, _>>()?;
     let construction = started.elapsed();
     let allocation = allocation_region.change();
     let rss_after = process_rss_bytes(std::process::id()).unwrap_or(rss_before);
     println!(
-        "memory_child shape={} runtimes={} construction_ns={} retained_rss_bytes={} rss_before_bytes={} rss_after_bytes={} allocation_count={} allocated_bytes={} deallocated_bytes={} cache_sites={} instruction_count={} state_schema_count={} actor_state_payload_bytes={}",
+        "memory_child shape={} profile={} runtimes={} construction_ns={} retained_rss_bytes={} rss_before_bytes={} rss_after_bytes={} allocation_count={} allocated_bytes={} deallocated_bytes={} cache_sites={} instruction_count={} state_schema_count={} actor_state_payload_bytes={}",
         shape.label(),
+        profile_label,
         runtimes.len(),
         construction.as_nanos(),
         rss_after.saturating_sub(rss_before),
@@ -497,7 +522,7 @@ fn report_concurrency(
     samples.sort_unstable();
     let calls = samples.len();
     println!(
-        "concurrency_result mode={} workers={} calls={} throughput_per_sec={:.3} p50_ns={} p95_ns={} p99_ns={} allocation_count={} allocated_bytes={} deallocated_bytes={} lock_wait_ns=0 lock_wait_source=structural_no_shared_runtime_or_cache_lock checksum={}",
+        "concurrency_result mode={} workers={} calls={} throughput_per_sec={:.3} p50_ns={} p95_ns={} p99_ns={} allocation_count={} allocated_bytes={} deallocated_bytes={} lock_wait_ns=0 lock_wait_source=workload_has_no_mutable_cache_site checksum={}",
         mode,
         workers,
         calls,
