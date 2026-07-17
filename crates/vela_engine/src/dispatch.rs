@@ -8,14 +8,16 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use parking_lot::{Mutex, RwLock};
-use vela_bytecode::{RustBindingBoundaryMode, RustBindingCallable, RustBindingType};
+use vela_bytecode::{
+    RustBindingBoundaryMode, RustBindingCallable, RustBindingEffectSet, RustBindingType,
+};
 use vela_common::{DispatchGenerationId, InterceptSlotIndex, ReplaceableSlotId, Span, stable_id};
 use vela_def::FunctionId;
 
 use crate::args::FromScriptArg;
 use crate::binding::VmResult;
 use crate::interop::{BoundaryMode, CallableContract};
-use crate::native::TypeHint;
+use crate::native::{EffectSet, TypeHint};
 use crate::runtime::handles::StableVelaFunction;
 use crate::runtime::{CallArgs, CallOptions, Runtime};
 
@@ -428,7 +430,8 @@ fn validate_override(
     if callable.asyncness != slot.contract.asyncness {
         return Err(incompatible(slot, callable, "sync/async shape"));
     }
-    if callable.required_capabilities != slot.contract.required_capabilities() {
+    let implementation_effects = binding_effects(callable.effects);
+    if !slot.contract.effects.contains_all(implementation_effects) {
         return Err(incompatible(slot, callable, "effective effects"));
     }
     let expected = slot
@@ -466,6 +469,27 @@ fn validate_override(
         return Err(incompatible(slot, callable, "return type"));
     }
     Ok(())
+}
+
+fn binding_effects(effects: RustBindingEffectSet) -> EffectSet {
+    let mut boundary = EffectSet::pure();
+    for (present, effect) in [
+        (effects.host_read, EffectSet::host_read()),
+        (effects.host_write, EffectSet::host_write()),
+        (effects.reflection_read, EffectSet::reflection_read()),
+        (effects.reflection_write, EffectSet::reflection_write()),
+        (effects.reflection_call, EffectSet::reflection_call()),
+        (effects.emits_event, EffectSet::event_emit()),
+        (effects.reads_time, EffectSet::time()),
+        (effects.uses_random, EffectSet::random()),
+        (effects.reads_io, EffectSet::io_read()),
+        (effects.writes_io, EffectSet::io_write()),
+    ] {
+        if present {
+            boundary = boundary.union(effect);
+        }
+    }
+    boundary
 }
 
 fn compatible_mode(expected: RustBindingBoundaryMode, inferred: RustBindingBoundaryMode) -> bool {
@@ -558,7 +582,6 @@ mod tests {
         CallableAccess, CallableIdentity, CallableKind, CallableLanguage, CallableOrigin,
         CallableParameter, CallableReturn, ErrorMode, ReturnMode,
     };
-    use crate::native::EffectSet;
     use std::task::{Context, Poll, Waker};
     use vela_common::{CallableAsyncness, SourceId, Span};
     use vela_macros::{ScriptHost, ScriptReflect, methods, replaceable};
@@ -736,6 +759,70 @@ pub fn patched(value: i64) -> i64 { return value + 2; }
             assert!(error.to_string().contains(expected), "{error}");
             assert!(error.source().is_some());
         }
+    }
+
+    #[test]
+    fn staging_accepts_effect_subsets_and_rejects_effect_expansion() {
+        let engine = crate::engine::Engine::builder()
+            .register_host_type::<ActorContext>()
+            .register_exports(ActorContext::vela_inherent_exports())
+            .capability(vela_common::Capability::HostRead)
+            .capability(vela_common::Capability::HostWrite)
+            .build()
+            .expect("engine");
+        let read_program = engine
+            .compile_source(
+                r#"
+#[override(host::game::inspect)]
+pub fn inspect(context: ActorContext) -> i64 {
+    return context.call_count();
+}
+"#,
+            )
+            .expect("read-only override program");
+        let read_runtime = Arc::new(Mutex::new(
+            Runtime::new(engine.clone(), read_program).expect("read runtime"),
+        ));
+        let write_ceiling = DispatchController::new(vec![ReplaceableSlotDescriptor::new(
+            0,
+            host_contract(
+                "host::game::inspect",
+                BoundaryMode::ExclusiveHost,
+                EffectSet::host_write(),
+            ),
+        )])
+        .expect("write ceiling controller");
+        write_ceiling
+            .stage_current(&read_runtime)
+            .expect("host-read implementation is within a host-write ceiling");
+
+        let write_program = engine
+            .compile_source(
+                r#"
+#[override(host::game::inspect)]
+pub fn inspect(context: ActorContext) -> i64 {
+    context.calls += 1;
+    return context.calls;
+}
+"#,
+            )
+            .expect("write override program");
+        let write_runtime = Arc::new(Mutex::new(
+            Runtime::new(engine, write_program).expect("write runtime"),
+        ));
+        let read_ceiling = DispatchController::new(vec![ReplaceableSlotDescriptor::new(
+            0,
+            host_contract(
+                "host::game::inspect",
+                BoundaryMode::SharedHost,
+                EffectSet::host_read(),
+            ),
+        )])
+        .expect("read ceiling controller");
+        let error = read_ceiling
+            .stage_current(&write_runtime)
+            .expect_err("host-write implementation must exceed a host-read ceiling");
+        assert!(error.to_string().contains("effective effects"), "{error}");
     }
 
     #[test]
@@ -977,6 +1064,35 @@ pub fn patched(service: GameService, context: ActorContext, value: i64) -> i64 {
             ),
             asyncness: CallableAsyncness::Sync,
             effects: EffectSet::pure(),
+            access: CallableAccess::default(),
+            docs: None,
+            origin: CallableOrigin {
+                language: CallableLanguage::Rust,
+                source_span: Some(Span::new(SourceId::new(1), 0, 1)),
+            },
+        }
+    }
+
+    fn host_contract(path: &str, mode: BoundaryMode, effects: EffectSet) -> CallableContract {
+        CallableContract {
+            identity: CallableIdentity::new(CallableKind::RustFunction, 2),
+            public_path: path.to_owned(),
+            parameters: vec![CallableParameter::new(
+                1,
+                "context",
+                TypeHint::Host(vela_reflect::registry::TypeKey::new(
+                    ActorContext::vela_type_id(),
+                    "ActorContext",
+                )),
+                mode,
+            )],
+            returns: CallableReturn::new(
+                TypeHint::i64(),
+                ReturnMode::OwnedValue,
+                ErrorMode::RuntimeResult,
+            ),
+            asyncness: CallableAsyncness::Sync,
+            effects,
             access: CallableAccess::default(),
             docs: None,
             origin: CallableOrigin {
