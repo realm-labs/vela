@@ -132,8 +132,12 @@ state-storage hard switch.
 
 ### Rust/Vela Replaceable Dispatch Post-Review
 
-Ordinary interop remains accepted. Optional replacement must complete
-`F-REVIEW-1` through `F-REVIEW-7` and `G-REVIEW-1` through `G-REVIEW-2` in the
+Ordinary interop remains accepted. Optional replacement has closed
+`F-REVIEW-3`: controller-owned opaque layout identity now rejects foreign
+bases, candidates, and rollback generations even for same-shaped slot tables,
+and target lookup validates the exact slot identity. It must still complete
+`F-REVIEW-1`, `F-REVIEW-2`, `F-REVIEW-4` through `F-REVIEW-7`, and
+`G-REVIEW-1` through `G-REVIEW-2` in the
 [unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17).
 The closure requires one session-aware invocation authority, inherited runtime
 policy and remaining budgets, controller/layout-owned generations, statically
@@ -289,12 +293,11 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Complete state-storage Batch G and restore its final acceptance.
-2. Schedule and close the Rust/Vela replaceable-dispatch post-review tasks
+1. Close the remaining Rust/Vela replaceable-dispatch post-review tasks
    before restoring unified-interop completion.
-3. Resume the M20 cache-family audit against the accepted state model.
-4. Resume the M20.5 editor-visible follow-up after M20 close-out.
-5. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
+2. Resume the M20 cache-family audit against the accepted state model.
+3. Resume the M20.5 editor-visible follow-up after M20 close-out.
+4. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
    state migration, async-frame migration, and initializer dependency reads as
    explicit non-goals.
 

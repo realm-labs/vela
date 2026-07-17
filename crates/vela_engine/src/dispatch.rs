@@ -78,7 +78,13 @@ impl Eq for VelaOverrideTarget {}
 #[derive(Clone, Debug)]
 pub struct DispatchGeneration {
     id: DispatchGenerationId,
+    layout: Arc<DispatchLayoutIdentity>,
     targets: Box<[Option<VelaOverrideTarget>]>,
+}
+
+#[derive(Debug)]
+struct DispatchLayoutIdentity {
+    slot_ids: Box<[ReplaceableSlotId]>,
 }
 
 impl DispatchGeneration {
@@ -89,7 +95,8 @@ impl DispatchGeneration {
 
     #[must_use]
     pub fn target(&self, index: InterceptSlotIndex) -> Option<VelaOverrideTarget> {
-        self.targets.get(index.get()).cloned().flatten()
+        let target = self.targets.get(index.get())?.as_ref()?;
+        (self.layout.slot_ids.get(index.get()) == Some(&target.slot)).then(|| target.clone())
     }
 
     #[must_use]
@@ -111,6 +118,7 @@ pub struct DispatchController {
 struct DispatchControllerInner {
     slots: Box<[ReplaceableSlotDescriptor]>,
     by_path: BTreeMap<String, usize>,
+    layout: Arc<DispatchLayoutIdentity>,
     current: RwLock<Arc<DispatchGeneration>>,
     next_generation: AtomicU64,
 }
@@ -144,14 +152,19 @@ impl DispatchController {
                 ));
             }
         }
+        let layout = Arc::new(DispatchLayoutIdentity {
+            slot_ids: slots.iter().map(|slot| slot.id).collect(),
+        });
         let initial = Arc::new(DispatchGeneration {
             id: DispatchGenerationId::new(0),
+            layout: Arc::clone(&layout),
             targets: vec![None; slots.len()].into_boxed_slice(),
         });
         Ok(Self {
             inner: Arc::new(DispatchControllerInner {
                 slots: slots.into_boxed_slice(),
                 by_path,
+                layout,
                 current: RwLock::new(initial),
                 next_generation: AtomicU64::new(1),
             }),
@@ -175,10 +188,10 @@ impl DispatchController {
         runtime: &SharedDispatchRuntime,
         base: Arc<DispatchGeneration>,
     ) -> Result<DispatchCandidate, DispatchStageError> {
-        if base.len() != self.inner.slots.len() {
+        if !Arc::ptr_eq(&base.layout, &self.inner.layout) {
             return Err(DispatchStageError::new(
                 DispatchStageErrorCode::BaseLayoutMismatch,
-                "dispatch base belongs to another slot layout",
+                "dispatch base belongs to another controller",
                 None,
             ));
         }
@@ -221,16 +234,46 @@ impl DispatchController {
             id: DispatchGenerationId::new(
                 self.inner.next_generation.fetch_add(1, Ordering::Relaxed),
             ),
+            layout: Arc::clone(&self.inner.layout),
             targets: targets.into_boxed_slice(),
         })))
     }
 
-    pub fn activate(&self, candidate: DispatchCandidate) -> Arc<DispatchGeneration> {
-        std::mem::replace(&mut *self.inner.current.write(), candidate.0)
+    pub fn activate(
+        &self,
+        candidate: DispatchCandidate,
+    ) -> Result<Arc<DispatchGeneration>, DispatchStageError> {
+        self.ensure_owned_generation(&candidate.0, "dispatch candidate")?;
+        Ok(std::mem::replace(
+            &mut *self.inner.current.write(),
+            candidate.0,
+        ))
     }
 
-    pub fn rollback(&self, generation: Arc<DispatchGeneration>) -> Arc<DispatchGeneration> {
-        std::mem::replace(&mut *self.inner.current.write(), generation)
+    pub fn rollback(
+        &self,
+        generation: Arc<DispatchGeneration>,
+    ) -> Result<Arc<DispatchGeneration>, DispatchStageError> {
+        self.ensure_owned_generation(&generation, "rollback generation")?;
+        Ok(std::mem::replace(
+            &mut *self.inner.current.write(),
+            generation,
+        ))
+    }
+
+    fn ensure_owned_generation(
+        &self,
+        generation: &DispatchGeneration,
+        subject: &str,
+    ) -> Result<(), DispatchStageError> {
+        if Arc::ptr_eq(&generation.layout, &self.inner.layout) {
+            return Ok(());
+        }
+        Err(DispatchStageError::new(
+            DispatchStageErrorCode::BaseLayoutMismatch,
+            format!("{subject} belongs to another controller"),
+            None,
+        ))
     }
 }
 
@@ -604,7 +647,7 @@ pub fn patched(value: i64) -> i64 { return value + 2; }
         let candidate = controller
             .stage_current(&runtime)
             .expect("compatible override");
-        let previous = controller.activate(candidate);
+        let previous = controller.activate(candidate).expect("activate candidate");
         let active = DispatchRoot::pin(&controller);
 
         assert!(before.target(InterceptSlotIndex::new(0)).is_none());
@@ -618,10 +661,49 @@ pub fn patched(value: i64) -> i64 { return value + 2; }
             Ok(42)
         );
 
-        controller.rollback(previous);
+        controller.rollback(previous).expect("rollback generation");
         let rolled_back = DispatchRoot::pin(&controller);
         assert!(rolled_back.target(InterceptSlotIndex::new(0)).is_none());
         assert_eq!(active.target(InterceptSlotIndex::new(0)), Some(target));
+    }
+
+    #[test]
+    fn same_shaped_controllers_reject_foreign_generations_and_candidates() {
+        let engine = crate::engine::Engine::builder().build().expect("engine");
+        let program = engine
+            .compile_source(
+                r#"
+#[override(host::math::increment)]
+pub fn patched(value: i64) -> i64 { return value + 2; }
+"#,
+            )
+            .expect("override program");
+        let runtime = Arc::new(Mutex::new(Runtime::new(engine, program).expect("runtime")));
+        let first = DispatchController::new(vec![slot(0, "host::math::increment")]).expect("first");
+        let second =
+            DispatchController::new(vec![slot(0, "host::math::increment")]).expect("second");
+
+        let foreign_base = first.current();
+        let error = second
+            .stage_from(&runtime, Arc::clone(&foreign_base))
+            .expect_err("foreign base must be rejected");
+        assert_eq!(error.code(), DispatchStageErrorCode::BaseLayoutMismatch);
+        assert!(error.to_string().contains("another controller"));
+
+        let foreign_candidate = first
+            .stage_current(&runtime)
+            .expect("first controller candidate");
+        let error = second
+            .activate(foreign_candidate)
+            .expect_err("foreign candidate must be rejected");
+        assert_eq!(error.code(), DispatchStageErrorCode::BaseLayoutMismatch);
+        assert!(error.to_string().contains("another controller"));
+
+        let error = second
+            .rollback(foreign_base)
+            .expect_err("foreign rollback generation must be rejected");
+        assert_eq!(error.code(), DispatchStageErrorCode::BaseLayoutMismatch);
+        assert!(error.to_string().contains("another controller"));
     }
 
     #[test]
@@ -691,11 +773,11 @@ fn second(value: i64) -> i64 { return value + 2; }
         let first = controller
             .stage_current(&first_runtime)
             .expect("first candidate");
-        controller.activate(first);
+        controller.activate(first).expect("activate first delta");
         let second = controller
             .stage_current(&second_runtime)
             .expect("second delta over first generation");
-        controller.activate(second);
+        controller.activate(second).expect("activate second delta");
         let root = DispatchRoot::pin(&controller);
         let first_target = root
             .target(InterceptSlotIndex::new(0))
@@ -754,7 +836,7 @@ pub async fn patched_async(context: ActorContext, value: i64) -> i64 {
         assert_eq!(replaceable_increment(&mut old_context, 40), Ok(41));
 
         let candidate = controller.stage_current(&runtime).expect("override stage");
-        controller.activate(candidate);
+        controller.activate(candidate).expect("activate candidate");
         let mut active_context = ActorContext {
             calls: 0,
             root: DispatchRoot::pin(&controller),
@@ -802,7 +884,7 @@ pub fn broken(context: ActorContext, value: i64) -> i64 {
         ])
         .expect("controller");
         let candidate = controller.stage_current(&runtime).expect("override stage");
-        controller.activate(candidate);
+        controller.activate(candidate).expect("activate candidate");
         let mut context = ActorContext {
             calls: 0,
             root: DispatchRoot::pin(&controller),
@@ -852,7 +934,7 @@ pub fn patched(service: GameService, context: ActorContext, value: i64) -> i64 {
         let candidate = controller
             .stage_current(&runtime)
             .expect("service override stage");
-        let previous = controller.activate(candidate);
+        let previous = controller.activate(candidate).expect("activate candidate");
         let mut active_context = ActorContext {
             calls: 0,
             root: DispatchRoot::pin(&controller),
@@ -865,7 +947,7 @@ pub fn patched(service: GameService, context: ActorContext, value: i64) -> i64 {
         assert_eq!(active_context.calls, 11);
         assert_eq!(service.compute(&mut old_context, 40), Ok(41));
 
-        controller.rollback(previous);
+        controller.rollback(previous).expect("rollback generation");
         let mut rolled_back_context = ActorContext {
             calls: 0,
             root: DispatchRoot::pin(&controller),

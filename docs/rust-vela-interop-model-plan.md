@@ -177,7 +177,7 @@ The following closure tasks reopen the replaceable portions of Batches E-G:
   or observe a newer artifact inside one root operation. Staging must publish a
   coherent immutable artifact or artifact set for the selected delta instead
   of retaining a separately executing mutable Runtime per target.
-- [ ] F-REVIEW-3. Give every `DispatchGeneration` and `DispatchCandidate` an
+- [x] F-REVIEW-3. Give every `DispatchGeneration` and `DispatchCandidate` an
   unforgeable controller/layout identity. `stage_from`, activation, rollback,
   and target lookup must reject a base or candidate from another controller,
   even when the two layouts have the same length; target slot identity must be

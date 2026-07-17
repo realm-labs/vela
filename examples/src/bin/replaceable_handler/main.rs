@@ -76,7 +76,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let fallback = handler.handle(&mut fallback_context, 40)?;
 
     let candidate = controller.stage_current(&runtime)?;
-    let previous = controller.activate(candidate);
+    let previous = controller.activate(candidate)?;
     let mut active_context = TurnContext {
         calls: 0,
         dispatch: DispatchRoot::pin(&controller),
@@ -84,7 +84,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let active = handler.handle(&mut active_context, 40)?;
     let adjacent = handler.adjacent(40);
 
-    controller.rollback(previous);
+    controller.rollback(previous)?;
     let mut rolled_back_context = TurnContext {
         calls: 0,
         dispatch: DispatchRoot::pin(&controller),

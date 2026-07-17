@@ -162,7 +162,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         vela_replaceable_slot_replaceable_other(),
     ])?;
     let dispatch_candidate = dispatch_controller.stage_current(&dispatch_runtime)?;
-    dispatch_controller.activate(dispatch_candidate);
+    dispatch_controller
+        .activate(dispatch_candidate)
+        .expect("activate dispatch candidate");
     let active_context = DispatchContext {
         marker: 1,
         root: DispatchRoot::pin(&dispatch_controller),
@@ -211,7 +213,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         iterations,
         || {
             let candidate = dispatch_controller.stage_current(&dispatch_runtime)?;
-            dispatch_controller.activate(candidate);
+            dispatch_controller
+                .activate(candidate)
+                .expect("activate dispatch candidate");
             let context = DispatchContext {
                 marker: 1,
                 root: DispatchRoot::pin(&dispatch_controller),

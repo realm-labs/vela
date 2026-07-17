@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let fallback = fallback_service.quote(40)?;
 
     let candidate = controller.stage_current(&runtime)?;
-    let previous = controller.activate(candidate);
+    let previous = controller.activate(candidate)?;
     let active_service = PricingService {
         base: 1,
         dispatch: DispatchRoot::pin(&controller),
@@ -66,7 +66,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let active = active_service.quote(40)?;
     let adjacent = active_service.adjacent(40);
 
-    controller.rollback(previous);
+    controller.rollback(previous)?;
     let rolled_back_service = PricingService {
         base: 1,
         dispatch: DispatchRoot::pin(&controller),
