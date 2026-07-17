@@ -1,14 +1,141 @@
 # Actor-Owned Runtime And Cache Model Hard-Switch Plan
 
-> Status: queued behind state-storage Batch G and the Rust/Vela replaceable
-> post-review closure.
+> Status: active M20 execution plan. State-storage Batch G and the Rust/Vela
+> replaceable post-review closure are accepted.
 >
-> Execution order: finish state-storage Batch G, complete `F-REVIEW-1..7` and
-> `G-REVIEW-1..2` in
-> [rust-vela-interop-model-plan.md](rust-vela-interop-model-plan.md), then run
-> Batches A-F in this document.
+> Execution order: the prerequisite reports are accepted; run Batches A-F in
+> this document.
 >
 > Last updated: 2026-07-17.
+
+## 0. Codex Goal
+
+Use this prompt only after state-storage Batch G and the Rust/Vela replaceable
+post-review closure have both published accepted reports:
+
+```text
+/goal Execute docs/actor-runtime-cache-execution-plan.md end to end as a
+breaking, deletion-first hard switch. Treat docs/goal.md as the product
+roadmap, docs/architecture.md and docs/architecture/*.md as the architecture
+contract, docs/decisions.md as durable design decisions, docs/progress.md as
+the rolling status source, docs/performance.md as the durable benchmark source,
+and this plan as the complete implementation and acceptance contract.
+
+This is one persistent, multi-turn goal. Continue across turns and context
+compactions until Batches A-F, every acceptance-matrix row, every
+never-complete condition, the final acceptance report, documentation updates,
+validation, and coherent commits are complete. Finishing the inventory,
+disabling profiling, moving one cache family, making a focused test pass, or
+publishing a generation owner while old Runtime sidecars still execute is
+progress only and is not a valid stopping condition.
+
+Before implementation, verify from current code, tests, docs/progress.md, and
+the acceptance reports that state-storage Batch G is accepted and
+F-REVIEW-1..7 plus G-REVIEW-1..2 in
+docs/rust-vela-interop-model-plan.md are closed. In particular, prove override
+execution already uses the current Actor Runtime and active ExecutionSession,
+and that no target owns Arc<Mutex<Runtime>>. If either prerequisite is open,
+keep this plan queued, report the exact prerequisite, and do not begin Batch A
+or mutate cache/profile ownership. Do not duplicate or bypass the prerequisite
+plans inside this goal.
+
+Once the gates are closed, preserve the fixed architecture throughout:
+
+1. One Actor owns one logical Vela Runtime, its Vela state, heap, roots, extern
+   bindings, retained values, HostRef leases, suspended session, and adopted
+   generation. One Actor remains sequential; independent Actors must execute
+   the same generation and override concurrently.
+2. DeploymentGeneration owns immutable code, verified MIR, schemas, callable
+   and type metadata, source maps, layouts, and statically resolved targets.
+   Actor business state and script heap values never enter shared generation or
+   execution-lane storage.
+3. Cache/profile ownership follows identity: link exact facts immutably; place
+   generation-stable facts in generation-qualified shared execution data; use
+   Actor-local sparse/lazy storage only for truly Actor-dependent facts; add an
+   explicit execution-lane sidecar only after repeatable contention or
+   polymorphic-thrashing evidence.
+4. Full per-instruction profiling is disabled by default. An ordinary Actor
+   Runtime must not allocate instruction-counter arrays or complete cache
+   vectors sized to the shared program.
+5. Hot reload publishes a new immutable generation and new
+   generation-qualified execution data. Old frames, closures, suspended calls,
+   and pinned roots retain their original code and metadata until their owners
+   are gone.
+6. Cache miss, guard failure, unsupported caching, and cache-disabled
+   measurement use the one canonical generic VM operation. This permanent
+   correctness path preserves budgets, GC roots, HostAccess, effects,
+   reflection policy, diagnostics, cancellation, and return values; it is not
+   a legacy compatibility path.
+
+Execute the batches in order:
+
+- Batch A: read-only ownership inventory plus bounded Actor memory,
+  concurrency, pending-async, cache/profile, and lock-wait baselines.
+- Batch B: hard-switch profiling and shareable state-name/schema metadata to
+  the permanent generation owner; delete displaced per-Runtime counters,
+  accessors, construction, and Actor-local immutable copies in the same
+  verified ownership cuts.
+- Batch C: finish every cache-family identity proof, then hard-switch all
+  production cache consumers to the final generation execution-data view in
+  one coherent implementation batch; delete per-Runtime InlineCaches, full
+  vectors, old RuntimeSidecars cache delegation, accessors, and old/new
+  selection plumbing before committing the cut.
+- Batch D: introduce only measured, retained execution-lane optimizations. If
+  no family satisfies the evidence gate, complete the batch with no
+  WorkerExecutionSidecars implementation.
+- Batch E: close reload, old-generation lifetime, cancellation, panic,
+  multi-Actor isolation, and reclamation proofs.
+- Batch F: rerun stable memory, throughput, latency, contention, profile,
+  cache, reload, host, callback, interop, workspace, example, docs, bench-build,
+  fuzz-build, and relevant safe-Rust/Miri gates; publish the final ownership
+  table and acceptance report.
+
+This is not a compatibility-preserving migration. Do not add legacy aliases,
+wrapper types, adapter traits, forwarding methods, migration feature flags,
+environment switches, OldOrNew modes, dual reads or writes, shadow counters,
+mirrored cache population, old-owner fallback, parallel root/reentry/provider/
+callback/override wiring, or temporary locking, serialization, and cloning to
+bridge the cut. Do not commit a checkpoint in which the final owner is active
+while the displaced owner remains a functioning production path. Intermediate
+local compile failures are allowed while an ownership cut is in progress; keep
+and continue that dirty hard-switch work across turns rather than resetting it
+or adding compatibility code to make an intermediate shape green.
+
+At the start of every turn, follow AGENTS.md: read docs/goal.md,
+docs/architecture.md, docs/progress.md, this complete plan, and the current git
+diff; inspect the active batch and run or inspect its most relevant failing
+test or benchmark. Work on the smallest verifiable piece that completes the
+active hard-switch checkpoint without creating a transitional production
+architecture. Preserve unrelated user changes. Update docs/decisions.md when a
+classification becomes implemented truth, docs/progress.md when the active
+checkpoint changes, and docs/performance.md only for durable baseline or exit
+conclusions. Archive raw measurements and acceptance detail instead of
+inflating current status docs.
+
+Use Conventional Commits for coherent verified checkpoints. Batch A
+measurement may be committed independently. Once a Batch B or Batch C
+ownership cut begins, do not commit its half-migrated state; update all
+producers, consumers, tests, examples, and benchmarks and delete the displaced
+production owner before that cut's breaking checkpoint commit. Run focused
+tests during the cut as useful, then run the plan's full validation gates at
+the required acceptance boundary.
+
+Never mark this goal complete while a prerequisite is unaccepted, an unchecked
+batch or acceptance row remains, independent Actors serialize through a shared
+Runtime/cache lock, a pending Actor blocks another Actor using the same code,
+default Actor construction allocates full-program cache/profile arrays, a
+cache/profile identity can be read against the wrong generation, Actor state
+enters shared storage, old generation execution data leaks, a migration-only
+compatibility surface remains, an obsolete owner is deferred to a later
+cleanup, required measurements or validations are missing, the final
+acceptance report is unpublished, the completed work is uncommitted, or the
+final worktree is dirty.
+
+Do not report blocked merely because the hard switch is broad or temporarily
+does not compile. Report blocked only when an external decision or prerequisite
+prevents meaningful repository-local progress after the available alternatives
+have been exhausted.
+```
 
 ## 1. Objective
 
@@ -82,16 +209,16 @@ a production migration toggle.
 
 ### Gate S: state-storage acceptance
 
-State-storage Batch G remains the current project prerequisite. Cache movement
-must not hide or work around unresolved state identity, graph preservation, or
-generation lifetime defects.
+State-storage Batch G is accepted. Its exact type resolution, nominal
+canonicalization, graph preservation, external-owner reclamation, and nested
+initializer fingerprint proofs remain the prerequisite baseline; cache
+movement must not weaken or bypass them.
 
 ### Gate I: Rust/Vela replaceable post-review acceptance
 
-Complete the existing interop review before changing cache ownership. In
-particular, override execution must already use the current Actor Runtime and
-the active `ExecutionSession`; target-owned `Mutex<Runtime>` execution must be
-gone.
+The existing interop review is accepted. Override execution uses the current
+Actor Runtime and active `ExecutionSession`; target-owned `Mutex<Runtime>`
+execution is gone.
 
 This ordering is mandatory because same-session re-entry determines which
 generation, cache view, profile sink, budget, heap, state, and cancellation
@@ -110,8 +237,7 @@ Gate I must prove at least:
 - remaining budgets, leases, cancellation, tracing, artifact, and dispatch
   generation are inherited.
 
-Only after Gate I has a replacement acceptance report does Batch A become
-active.
+The replacement acceptance report closes Gate I, so Batch A is active.
 
 ## 4. Current Implementation Audit
 
