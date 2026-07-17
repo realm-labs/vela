@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use vela_bytecode::{
-    ProgramImage, StateDescriptor, StateStorage, StateVisibility, UnlinkedCodeObject,
-    UnlinkedInstructionKind,
+    FunctionIndex, ProgramImage, StateDescriptor, StateStorage, StateVisibility,
+    UnlinkedCodeObject, UnlinkedInstructionKind,
 };
 use vela_def::{FunctionId, StateId};
 use vela_mir::MirTypeContract;
@@ -122,9 +122,7 @@ fn initializer_changed(
     new_state: &StateDescriptor,
 ) -> bool {
     match (old_state.initializer, new_state.initializer) {
-        (Some(old), Some(new)) => {
-            !same_initializer_call_graph(previous, old, next, new, &mut BTreeSet::new())
-        }
+        (Some(old), Some(new)) => !same_initializer_call_graph(previous, old, next, new),
         (old, new) => old != new,
     }
 }
@@ -134,13 +132,36 @@ fn same_initializer_call_graph(
     old_id: FunctionId,
     next: &ProgramImage,
     new_id: FunctionId,
-    visited: &mut BTreeSet<(FunctionId, FunctionId)>,
 ) -> bool {
-    if !visited.insert((old_id, new_id)) {
+    same_executable_call_graph(
+        previous,
+        ExecutableTarget::Function(old_id),
+        next,
+        ExecutableTarget::Function(new_id),
+        &mut BTreeSet::new(),
+    )
+}
+
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+enum ExecutableTarget {
+    Function(FunctionId),
+    Nested(FunctionIndex),
+}
+
+fn same_executable_call_graph(
+    previous: &ProgramImage,
+    old_target: ExecutableTarget,
+    next: &ProgramImage,
+    new_target: ExecutableTarget,
+    visited: &mut BTreeSet<(ExecutableTarget, ExecutableTarget)>,
+) -> bool {
+    if !visited.insert((old_target, new_target)) {
         return true;
     }
-    let (Some(old), Some(new)) = (previous.function_by_id(old_id), next.function_by_id(new_id))
-    else {
+    let (Some(old), Some(new)) = (
+        executable(previous, old_target),
+        executable(next, new_target),
+    ) else {
         return false;
     };
     if !same_executable_body(old, new) {
@@ -153,20 +174,45 @@ fn same_initializer_call_graph(
         && old_calls
             .into_iter()
             .zip(new_calls)
-            .all(|(old, new)| same_initializer_call_graph(previous, old, next, new, visited))
+            .all(|(old, new)| same_executable_call_graph(previous, old, next, new, visited))
 }
 
-fn script_call_targets(code: &UnlinkedCodeObject) -> Vec<FunctionId> {
-    let mut targets = Vec::new();
-    for instruction in &code.instructions {
-        collect_script_call_targets(&instruction.kind, &mut targets);
+fn executable(image: &ProgramImage, target: ExecutableTarget) -> Option<&UnlinkedCodeObject> {
+    match target {
+        ExecutableTarget::Function(id) => image.function_by_id(id),
+        ExecutableTarget::Nested(index) => image.function(index),
     }
+}
+
+fn script_call_targets(code: &UnlinkedCodeObject) -> Vec<ExecutableTarget> {
+    let mut targets = Vec::new();
+    collect_code_object_script_call_targets(code, &mut targets);
     targets
 }
 
-fn collect_script_call_targets(kind: &UnlinkedInstructionKind, targets: &mut Vec<FunctionId>) {
+fn collect_code_object_script_call_targets(
+    code: &UnlinkedCodeObject,
+    targets: &mut Vec<ExecutableTarget>,
+) {
+    for instruction in &code.instructions {
+        collect_script_call_targets(&instruction.kind, targets);
+    }
+    for nested in &code.nested_functions {
+        collect_code_object_script_call_targets(nested, targets);
+    }
+}
+
+fn collect_script_call_targets(
+    kind: &UnlinkedInstructionKind,
+    targets: &mut Vec<ExecutableTarget>,
+) {
     match kind {
-        UnlinkedInstructionKind::CallFunction { target, .. } => targets.push(*target),
+        UnlinkedInstructionKind::CallFunction { target, .. } => {
+            targets.push(ExecutableTarget::Function(*target));
+        }
+        UnlinkedInstructionKind::MakeClosure { function, .. } => {
+            targets.push(ExecutableTarget::Nested(*function));
+        }
         UnlinkedInstructionKind::AwaitCall { operation, .. } => {
             collect_script_call_targets(operation, targets);
         }
@@ -196,5 +242,36 @@ fn same_executable_body(old: &UnlinkedCodeObject, new: &UnlinkedCodeObject) -> b
             .instructions
             .iter()
             .zip(&new.instructions)
-            .all(|(old, new)| old.kind == new.kind && old.execution_units == new.execution_units)
+            .all(|(old, new)| {
+                same_instruction_kind(&old.kind, &new.kind)
+                    && old.execution_units == new.execution_units
+            })
+}
+
+fn same_instruction_kind(old: &UnlinkedInstructionKind, new: &UnlinkedInstructionKind) -> bool {
+    match (old, new) {
+        (
+            UnlinkedInstructionKind::MakeClosure {
+                dst: old_dst,
+                captures: old_captures,
+                ..
+            },
+            UnlinkedInstructionKind::MakeClosure {
+                dst: new_dst,
+                captures: new_captures,
+                ..
+            },
+        ) => old_dst == new_dst && old_captures == new_captures,
+        (
+            UnlinkedInstructionKind::AwaitCall {
+                operation: old_operation,
+                resume: old_resume,
+            },
+            UnlinkedInstructionKind::AwaitCall {
+                operation: new_operation,
+                resume: new_resume,
+            },
+        ) => old_resume == new_resume && same_instruction_kind(old_operation, new_operation),
+        _ => old == new,
+    }
 }
