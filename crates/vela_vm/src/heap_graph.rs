@@ -10,6 +10,50 @@ use crate::script_set::ScriptSet;
 use crate::small_storage::SmallStorage;
 use crate::value::{ClosureValue, Value};
 
+impl ScriptHeap {
+    /// Counts linked-artifact owners that are reachable only from `roots`.
+    ///
+    /// Owners also reachable from `external_roots` are deliberately excluded so
+    /// runtime generation reclamation can distinguish self-rooting state values
+    /// from closures retained by callers or by the active generation.
+    #[must_use]
+    pub fn linked_owner_counts_exclusive_to_roots(
+        &self,
+        roots: &[Value],
+        external_roots: &[Value],
+    ) -> BTreeMap<vela_bytecode::ExecutableGenerationId, usize> {
+        let internal = reachable_from_values(self, roots);
+        let external = reachable_from_values(self, external_roots);
+        let mut counts = BTreeMap::new();
+
+        for reference in internal.difference(&external) {
+            let Some(HeapValue::Closure(closure)) = self.get(*reference) else {
+                continue;
+            };
+            *counts.entry(closure.owner.generation()).or_insert(0) += 1;
+        }
+
+        counts
+    }
+}
+
+fn reachable_from_values(heap: &ScriptHeap, roots: &[Value]) -> BTreeSet<GcRef> {
+    let mut pending = Vec::new();
+    roots
+        .iter()
+        .for_each(|value| value.trace_heap_refs(&mut pending));
+    let mut reachable = BTreeSet::new();
+    while let Some(reference) = pending.pop() {
+        if !reachable.insert(reference) {
+            continue;
+        }
+        if let Some(value) = heap.get(reference) {
+            value.trace_refs(&mut pending);
+        }
+    }
+    reachable
+}
+
 pub fn copy_persistent_value_graph(
     roots: &[Value],
     source: &ScriptHeap,

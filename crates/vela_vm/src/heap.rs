@@ -701,48 +701,6 @@ impl ScriptHeap {
         }
     }
 
-    /// Counts linked-artifact owners that are reachable only from `roots`.
-    ///
-    /// Owners also reachable from `external_roots` are deliberately excluded so
-    /// runtime generation reclamation can distinguish self-rooting state values
-    /// from closures retained by callers or by the active generation.
-    #[must_use]
-    pub fn linked_owner_counts_exclusive_to_roots(
-        &self,
-        roots: &[Value],
-        external_roots: &[Value],
-    ) -> BTreeMap<vela_bytecode::ExecutableGenerationId, usize> {
-        let internal = self.reachable_from_values(roots);
-        let external = self.reachable_from_values(external_roots);
-        let mut counts = BTreeMap::new();
-
-        for reference in internal.difference(&external) {
-            let Some(HeapValue::Closure(closure)) = self.get(*reference) else {
-                continue;
-            };
-            *counts.entry(closure.owner.generation()).or_insert(0) += 1;
-        }
-
-        counts
-    }
-
-    fn reachable_from_values(&self, roots: &[Value]) -> BTreeSet<GcRef> {
-        let mut pending = Vec::new();
-        roots
-            .iter()
-            .for_each(|value| value.trace_heap_refs(&mut pending));
-        let mut reachable = BTreeSet::new();
-        while let Some(reference) = pending.pop() {
-            if !reachable.insert(reference) {
-                continue;
-            }
-            if let Some(value) = self.get(reference) {
-                value.trace_refs(&mut pending);
-            }
-        }
-        reachable
-    }
-
     pub(crate) fn mark_incremental_roots(&mut self, roots: &[GcRef]) -> usize {
         if self.incremental_gc.is_none() {
             return 0;
