@@ -82,7 +82,7 @@ fn linked_standard_value_method_caches_set_self_extend_target() {
         method_id,
         StandardMethodInlineCacheTarget::Extend,
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -103,7 +103,7 @@ fn linked_standard_value_method_caches_set_empty_extend_target() {
         method_id,
         StandardMethodInlineCacheTarget::Extend,
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -128,7 +128,7 @@ fn linked_standard_value_method_caches_set_pair_extend_target() {
         method_id,
         StandardMethodInlineCacheTarget::Extend,
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -153,7 +153,7 @@ fn linked_standard_value_method_caches_set_duplicate_extend_target() {
         method_id,
         StandardMethodInlineCacheTarget::Extend,
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -251,13 +251,13 @@ fn assert_set_owned_cache(
         expected
     );
     assert_set_cache_entry(&caches, site, dispatch, method_id, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_set_cache_owned_program(&program, &caches),
         expected
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn assert_set_runtime_cache(
@@ -276,7 +276,7 @@ fn assert_set_runtime_cache(
         expected
     );
     assert_set_cache_entry(&caches, site, dispatch, method_id, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
@@ -284,7 +284,7 @@ fn assert_set_runtime_cache(
         run_linked_set_cache_program(&program, &caches, &mut heap_execution),
         expected
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn assert_set_cache_entry(

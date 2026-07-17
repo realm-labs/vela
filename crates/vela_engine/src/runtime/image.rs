@@ -7,12 +7,13 @@ use vela_hot_reload::symbol::ProgramVersionId;
 use vela_hot_reload::version::ProgramVersion;
 
 use crate::engine::Engine;
+use crate::runtime::execution_data::SharedGenerationExecutionData;
 
 pub struct RuntimeImage {
     engine: Engine,
     artifact: Arc<LinkedArtifact>,
+    execution_data: SharedGenerationExecutionData,
     version_id: Option<ProgramVersionId>,
-    layout: RuntimeImageLayout,
 }
 
 pub struct OwnedImage {
@@ -27,10 +28,6 @@ pub struct SharedImage {
 pub trait RuntimeImageStorage: Deref<Target = RuntimeImage> + Send {
     #[doc(hidden)]
     fn from_runtime_image(image: RuntimeImage) -> Self;
-}
-
-pub(super) struct RuntimeImageLayout {
-    states: Box<[StateDescriptor]>,
 }
 
 impl OwnedImage {
@@ -83,12 +80,12 @@ impl RuntimeImageStorage for SharedImage {
 impl RuntimeImage {
     #[must_use]
     pub fn from_linked_artifact(engine: Engine, artifact: Arc<LinkedArtifact>) -> Self {
-        let layout = RuntimeImageLayout::from_states(artifact.image().states());
+        let execution_data = engine.generation_execution_data(&artifact);
         Self {
             engine,
             artifact,
+            execution_data,
             version_id: None,
-            layout,
         }
     }
 
@@ -110,12 +107,12 @@ impl RuntimeImage {
     pub fn from_program_version(engine: Engine, version: &ProgramVersion) -> Self {
         let version_id = Some(version.id);
         let artifact = Arc::clone(version.linked_artifact());
-        let layout = RuntimeImageLayout::from_states(artifact.image().states());
+        let execution_data = engine.generation_execution_data(&artifact);
         Self {
             engine,
             artifact,
+            execution_data,
             version_id,
-            layout,
         }
     }
 
@@ -136,7 +133,16 @@ impl RuntimeImage {
     }
 
     pub(super) fn states(&self) -> &[StateDescriptor] {
-        self.layout.states()
+        self.artifact.image().states()
+    }
+
+    pub(super) fn state_by_name(&self, name: &str) -> Option<&StateDescriptor> {
+        let slot = self.artifact.image().state_slot(name)?;
+        self.artifact.image().state(slot)
+    }
+
+    pub(super) fn execution_data(&self) -> &SharedGenerationExecutionData {
+        &self.execution_data
     }
 
     #[cfg(test)]
@@ -151,18 +157,6 @@ impl RuntimeImage {
     #[must_use]
     pub fn into_shared(self) -> SharedImage {
         SharedImage::from_arc(Arc::new(self))
-    }
-}
-
-impl RuntimeImageLayout {
-    fn from_states(states: &[StateDescriptor]) -> Self {
-        Self {
-            states: states.to_vec().into_boxed_slice(),
-        }
-    }
-
-    fn states(&self) -> &[StateDescriptor] {
-        &self.states
     }
 }
 

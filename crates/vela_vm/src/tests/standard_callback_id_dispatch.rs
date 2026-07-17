@@ -146,13 +146,13 @@ fn main() {
     assert_eq!(method_id, std_method_id("Array", "any"));
     assert_eq!(callback_method.receiver, StandardMethodReceiver::Array);
     assert_eq!(callback_method.target, CallbackMethodInlineCacheTarget::Any);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_program(&linked, &caches),
         Ok(Value::Bool(true))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -195,13 +195,13 @@ fn main() {
         StandardMethodReceiver::Array,
         CallbackMethodInlineCacheTarget::Any,
     );
-    assert_eq!(caches.set_count_for(call.cache_site), 2);
+    assert_eq!(caches.set_count_for(call.cache_site), 1);
 
     assert_eq!(
         run_linked_method_cache_program(&linked, &caches),
         Ok(Value::Bool(true))
     );
-    assert_eq!(caches.set_count_for(call.cache_site), 2);
+    assert_eq!(caches.set_count_for(call.cache_site), 1);
 }
 
 #[test]
@@ -254,13 +254,13 @@ fn main() {
         StandardMethodReceiver::Array,
         CallbackMethodInlineCacheTarget::Any,
     );
-    assert_eq!(caches.set_count_for(call.cache_site), 2);
+    assert_eq!(caches.set_count_for(call.cache_site), 1);
 
     assert_eq!(
         run_linked_method_cache_program(&linked, &caches),
         Ok(Value::Bool(true))
     );
-    assert_eq!(caches.set_count_for(call.cache_site), 2);
+    assert_eq!(caches.set_count_for(call.cache_site), 1);
 }
 
 #[test]

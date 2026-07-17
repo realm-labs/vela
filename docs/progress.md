@@ -22,24 +22,26 @@ Handler/Service integration, runnable examples, and the complete validation
 gates are recorded in the
 [reconciliation acceptance report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md).
 
-The Actor Runtime/cache plan is active. Batch A's ownership inventory and
-stable memory, allocation, concurrency, pending-Actor, profile, and cache
-baselines are accepted in the
-[Batch A report](archive/actor-runtime-cache-batch-a-baseline-2026-07-18.md).
-The current large-artifact design exceeds the bounded 1,536 MiB ceiling before
-constructing 10,000 Actors because every Runtime eagerly duplicates six dense
-cache vectors and every instruction counter. Batch B is the active
-deletion-first cut: profiling becomes disabled by default with opt-in
-generation-qualified aggregation, and immutable state-name/schema lookup moves
-out of Actor storage. No compatibility layer, dual owner, or execution-lane
-implementation is permitted.
+The Actor Runtime/cache plan is active. Batch A's baseline is accepted in the
+[Batch A report](archive/actor-runtime-cache-batch-a-baseline-2026-07-18.md),
+and the deletion-first profile/metadata/cache hard switch in Batches B-C is
+accepted in the
+[ownership-cut report](archive/actor-runtime-cache-batches-b-c-acceptance-2026-07-18.md).
+Actors retain no instruction-counter arrays or cache-site vectors. One exact
+Engine deployment shares weakly registered generation execution data; caches
+use one typed synchronized slot per linked site, profiling is default-off
+aggregate atomic data, and immutable state/ABI/method facts remain with linked
+generation metadata. Batch D is active: shared-cache contention must be
+measured before deciding whether any explicit execution-lane sidecar is
+justified.
 
 The explicit state-storage hard switch is accepted through Batch G. Exact
 qualified embedding types, linked nominal canonicalization, graph-preserving
 budgeted reload staging, external-owner generation reclamation, and nested
-initializer-call fingerprints have focused and workspace-wide proof. M20 cache
-close-out remains blocked only by the interop authority correction; M20.5
-remains the next editor follow-up after M20.
+initializer-call fingerprints have focused and workspace-wide proof. The Actor
+authority prerequisite and cache ownership cuts are closed; M20 now requires
+the measured lane decision plus reload/lifetime and final performance gates.
+M20.5 remains the next editor follow-up after M20.
 
 The executor-neutral async implementation from Batches A-D is landed: Vela has
 one explicit frame driver, scoped `Send` Runtime/native futures, direct typed
@@ -67,7 +69,7 @@ state-storage hard switch.
 | M8-M18 | Complete enough | HIR, executable language surface, script metadata, host bridge, reflection, stdlib, embedding, reload, diagnostics, examples, and benchmark foundations satisfy their checkpoints. |
 | M19 | Complete enough | The non-JIT interpreter and heap optimization checkpoint is closed; remaining measured costs belong to cache, value-layout, or later backend work. |
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
-| M20 | In progress | Actor Runtime/cache Batch A is accepted; Batch B profiling and immutable metadata ownership is active. |
+| M20 | In progress | Actor Runtime/cache Batches A-C are accepted; Batch D's evidence-gated lane decision is active. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
 | Rust/Vela interop | Accepted | Ordinary and optional replacement interop use Actor-turn-scoped Runtime authority with no Runtime mutex boundary. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |

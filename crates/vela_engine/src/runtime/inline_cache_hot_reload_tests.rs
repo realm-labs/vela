@@ -37,7 +37,8 @@ fn read_value() {
     );
     assert!(
         runtime
-            .state
+            .image
+            .execution_data()
             .inline_caches()
             .record_field(initial_site)
             .is_some(),
@@ -68,7 +69,11 @@ fn read_value() {
 
     let reloaded_site = record_field_read_site(&runtime, "read_value");
     assert_eq!(
-        runtime.state.inline_caches().record_field(reloaded_site),
+        runtime
+            .image
+            .execution_data()
+            .inline_caches()
+            .record_field(reloaded_site),
         None
     );
 
@@ -81,7 +86,8 @@ fn read_value() {
     );
     assert!(
         runtime
-            .state
+            .image
+            .execution_data()
             .inline_caches()
             .record_field(reloaded_site)
             .is_some(),
@@ -116,7 +122,8 @@ fn call_dynamic(value) {
     assert_eq!(runtime.value_to_owned(&first), Ok(OwnedValue::Bool(true)));
     assert!(
         runtime
-            .state
+            .image
+            .execution_data()
             .inline_caches()
             .dynamic_method_dispatch(initial_site)
             .is_some(),
@@ -142,7 +149,8 @@ fn call_dynamic(value) {
     let reloaded_site = method_call_site(&runtime, "call_dynamic");
     assert_eq!(
         runtime
-            .state
+            .image
+            .execution_data()
             .inline_caches()
             .dynamic_method_dispatch(reloaded_site),
         None
@@ -158,7 +166,8 @@ fn call_dynamic(value) {
     assert_eq!(runtime.value_to_owned(&second), Ok(OwnedValue::Bool(true)));
     assert!(
         runtime
-            .state
+            .image
+            .execution_data()
             .inline_caches()
             .dynamic_method_dispatch(reloaded_site)
             .is_some(),

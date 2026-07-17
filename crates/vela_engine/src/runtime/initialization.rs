@@ -115,7 +115,24 @@ where
     where
         T: ScriptHostObject + Send + 'static,
     {
-        self.runtime.state.extern_states.bind_host(name, value)
+        let name = name.into();
+        let (state, expected) =
+            super::extern_state_bindings::extern_state_schema(&self.runtime.image, &name)?;
+        self.runtime
+            .state
+            .extern_states
+            .bind_host(state, expected, value)
+    }
+
+    /// Enables generation-qualified aggregate instruction profiling.
+    ///
+    /// Every Runtime sharing this Engine deployment and executable generation
+    /// contributes to the same saturating atomic counters. Accepted reloads
+    /// receive a fresh profile for the new generation.
+    #[must_use]
+    pub fn with_bytecode_profiling(self) -> Self {
+        self.runtime.image.engine().enable_bytecode_profile();
+        self
     }
 
     #[must_use]
@@ -194,7 +211,7 @@ where
                 hot_reload: self.hot_reload.as_ref(),
                 extern_states: &mut runtime_state.extern_states,
                 vm_states: &mut runtime_state.vm_states,
-                sidecars: &mut runtime_state.sidecars,
+                generations: &mut runtime_state.generations,
                 target,
                 args: CallArgs::new(),
                 budget,
@@ -335,7 +352,6 @@ where
         staging: ReloadStateStaging,
     ) {
         self.state.extern_states.commit_layout(states);
-        self.state.vm_states.set_state_layout(states);
         for (state, value) in staging.vm_values {
             self.state.vm_states.insert_prepared(state, value);
         }

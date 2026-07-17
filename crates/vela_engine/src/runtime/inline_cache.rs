@@ -1,111 +1,134 @@
-use std::cell::{Cell, RefCell};
+use std::sync::RwLock;
 
-use vela_bytecode::CacheSiteId;
-use vela_common::StateSlot;
+use vela_bytecode::{CacheSiteDesc, CacheSiteId, CacheSiteKind};
 use vela_vm::{
     DynamicMethodInlineCacheEntry, HostInlineCacheEntry, MethodInlineCacheEntry,
     NativeInlineCacheEntry, RecordFieldInlineCacheEntry,
 };
 
-#[derive(Debug, Default)]
-pub(super) struct InlineCaches {
-    state_reads: Vec<Cell<Option<StateSlot>>>,
-    host_accesses: Vec<Cell<Option<HostInlineCacheEntry>>>,
-    record_fields: Vec<Cell<Option<RecordFieldInlineCacheEntry>>>,
-    method_dispatches: Vec<Cell<Option<MethodInlineCacheEntry>>>,
-    dynamic_method_dispatches: RefCell<Vec<Option<DynamicMethodInlineCacheEntry>>>,
-    native_calls: RefCell<Vec<Option<NativeInlineCacheEntry>>>,
+/// Generation-qualified cache storage shared by every Runtime using one exact
+/// Engine deployment and linked artifact.
+pub(super) struct GenerationInlineCaches {
+    slots: Box<[GenerationCacheSlot]>,
 }
 
-impl InlineCaches {
-    #[cfg(test)]
-    pub(super) fn for_image(image: &super::image::RuntimeImage) -> Self {
-        Self::with_len(image.cache_site_count())
-    }
+enum GenerationCacheSlot {
+    Empty,
+    HostAccess(RwLock<Option<HostInlineCacheEntry>>),
+    RecordField(RwLock<Option<RecordFieldInlineCacheEntry>>),
+    Method {
+        linked: RwLock<Option<MethodInlineCacheEntry>>,
+        dynamic: RwLock<Option<DynamicMethodInlineCacheEntry>>,
+    },
+    NativeCall(RwLock<Option<NativeInlineCacheEntry>>),
+}
 
-    #[cfg(test)]
-    pub(super) fn clear_for_image(&mut self, image: &super::image::RuntimeImage) {
-        *self = Self::for_image(image);
-    }
-
-    pub(super) fn for_program(program: &vela_bytecode::LinkedProgram) -> Self {
-        let len = program
-            .functions()
-            .flat_map(|(_, code)| code.cache_sites.sites())
-            .map(|site| site.id.index() + 1)
-            .max()
-            .unwrap_or(0);
-        Self::with_len(len)
-    }
-
-    fn with_len(len: usize) -> Self {
-        Self {
-            state_reads: empty_cell_cache(len),
-            host_accesses: empty_cell_cache(len),
-            record_fields: empty_cell_cache(len),
-            method_dispatches: empty_cell_cache(len),
-            dynamic_method_dispatches: RefCell::new(vec![None; len]),
-            native_calls: RefCell::new(vec![None; len]),
-        }
+impl GenerationInlineCaches {
+    pub(super) fn for_layout(layout: &[CacheSiteDesc]) -> Self {
+        let slots = layout
+            .iter()
+            .enumerate()
+            .map(|(index, site)| {
+                assert_eq!(
+                    site.id.index(),
+                    index,
+                    "linked cache layout must be dense and site-indexed"
+                );
+                match site.kind {
+                    CacheSiteKind::StateRead
+                    | CacheSiteKind::ExternStateRead
+                    | CacheSiteKind::StateWrite => GenerationCacheSlot::Empty,
+                    CacheSiteKind::RecordFieldRead | CacheSiteKind::RecordFieldWrite => {
+                        GenerationCacheSlot::RecordField(RwLock::new(None))
+                    }
+                    CacheSiteKind::MethodCall => GenerationCacheSlot::Method {
+                        linked: RwLock::new(None),
+                        dynamic: RwLock::new(None),
+                    },
+                    CacheSiteKind::HostPathRead
+                    | CacheSiteKind::HostPathWrite
+                    | CacheSiteKind::HostPathMutate
+                    | CacheSiteKind::HostPathRemove
+                    | CacheSiteKind::HostPathCall => {
+                        GenerationCacheSlot::HostAccess(RwLock::new(None))
+                    }
+                    CacheSiteKind::NativeCall => GenerationCacheSlot::NativeCall(RwLock::new(None)),
+                }
+            })
+            .collect();
+        Self { slots }
     }
 
     pub(super) fn len(&self) -> usize {
-        self.state_reads.len()
+        self.slots.len()
     }
 
+    #[cfg(test)]
     pub(super) fn is_empty(&self) -> bool {
-        self.state_reads.is_empty()
-    }
-
-    pub(super) fn state_read_slot(&self, site: CacheSiteId) -> Option<StateSlot> {
-        self.state_reads.get(site.index()).and_then(Cell::get)
-    }
-
-    pub(super) fn set_state_read_slot(&self, site: CacheSiteId, slot: StateSlot) {
-        if let Some(entry) = self.state_reads.get(site.index()) {
-            entry.set(Some(slot));
-        }
+        self.slots.is_empty()
     }
 
     pub(super) fn host_access(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {
-        self.host_accesses.get(site.index()).and_then(Cell::get)
+        let GenerationCacheSlot::HostAccess(slot) = self.slots.get(site.index())? else {
+            return None;
+        };
+        *slot.read().unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     pub(super) fn set_host_access(&self, site: CacheSiteId, entry: HostInlineCacheEntry) {
-        if let Some(slot) = self.host_accesses.get(site.index()) {
-            slot.set(Some(entry));
-        }
+        let Some(GenerationCacheSlot::HostAccess(slot)) = self.slots.get(site.index()) else {
+            return;
+        };
+        *slot
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(entry);
     }
 
     pub(super) fn record_field(&self, site: CacheSiteId) -> Option<RecordFieldInlineCacheEntry> {
-        self.record_fields.get(site.index()).and_then(Cell::get)
+        let GenerationCacheSlot::RecordField(slot) = self.slots.get(site.index())? else {
+            return None;
+        };
+        *slot.read().unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     pub(super) fn set_record_field(&self, site: CacheSiteId, entry: RecordFieldInlineCacheEntry) {
-        if let Some(slot) = self.record_fields.get(site.index()) {
-            slot.set(Some(entry));
-        }
+        let Some(GenerationCacheSlot::RecordField(slot)) = self.slots.get(site.index()) else {
+            return;
+        };
+        *slot
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(entry);
     }
 
     pub(super) fn method_dispatch(&self, site: CacheSiteId) -> Option<MethodInlineCacheEntry> {
-        self.method_dispatches.get(site.index()).and_then(Cell::get)
+        let GenerationCacheSlot::Method { linked, .. } = self.slots.get(site.index())? else {
+            return None;
+        };
+        *linked
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     pub(super) fn set_method_dispatch(&self, site: CacheSiteId, entry: MethodInlineCacheEntry) {
-        if let Some(slot) = self.method_dispatches.get(site.index()) {
-            slot.set(Some(entry));
-        }
+        let Some(GenerationCacheSlot::Method { linked, .. }) = self.slots.get(site.index()) else {
+            return;
+        };
+        *linked
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(entry);
     }
 
     pub(super) fn dynamic_method_dispatch(
         &self,
         site: CacheSiteId,
     ) -> Option<DynamicMethodInlineCacheEntry> {
-        self.dynamic_method_dispatches
-            .borrow()
-            .get(site.index())
-            .cloned()
-            .flatten()
+        let GenerationCacheSlot::Method { dynamic, .. } = self.slots.get(site.index())? else {
+            return None;
+        };
+        dynamic
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone()
     }
 
     pub(super) fn set_dynamic_method_dispatch(
@@ -113,49 +136,36 @@ impl InlineCaches {
         site: CacheSiteId,
         entry: DynamicMethodInlineCacheEntry,
     ) {
-        if let Some(slot) = self
-            .dynamic_method_dispatches
-            .borrow_mut()
-            .get_mut(site.index())
-        {
-            *slot = Some(entry);
-        }
+        let Some(GenerationCacheSlot::Method { dynamic, .. }) = self.slots.get(site.index()) else {
+            return;
+        };
+        *dynamic
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(entry);
     }
 
     pub(super) fn native_call(&self, site: CacheSiteId) -> Option<NativeInlineCacheEntry> {
-        self.native_calls
-            .borrow()
-            .get(site.index())
-            .cloned()
-            .flatten()
+        let GenerationCacheSlot::NativeCall(slot) = self.slots.get(site.index())? else {
+            return None;
+        };
+        slot.read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone()
     }
 
     pub(super) fn set_native_call(&self, site: CacheSiteId, entry: NativeInlineCacheEntry) {
-        if let Some(slot) = self.native_calls.borrow_mut().get_mut(site.index()) {
-            *slot = Some(entry);
-        }
+        let Some(GenerationCacheSlot::NativeCall(slot)) = self.slots.get(site.index()) else {
+            return;
+        };
+        *slot
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(entry);
     }
 }
 
-fn empty_cell_cache<T: Copy>(len: usize) -> Vec<Cell<Option<T>>> {
-    (0..len).map(|_| Cell::new(None)).collect()
-}
-
-impl vela_vm::VmInlineCaches for InlineCaches {
+impl vela_vm::VmInlineCaches for GenerationInlineCaches {
     fn len(&self) -> usize {
         self.len()
-    }
-
-    fn is_empty(&self) -> bool {
-        self.is_empty()
-    }
-
-    fn state_read_slot(&self, site: CacheSiteId) -> Option<StateSlot> {
-        self.state_read_slot(site)
-    }
-
-    fn set_state_read_slot(&self, site: CacheSiteId, slot: StateSlot) {
-        self.set_state_read_slot(site, slot);
     }
 
     fn host_access(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {

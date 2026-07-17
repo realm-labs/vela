@@ -2,7 +2,7 @@ use super::linked_standard_method_cache_support::RecordingMethodCaches;
 use super::*;
 
 #[test]
-fn linked_host_method_cache_misses_wrong_method_target_guard() {
+fn linked_host_method_uses_immutable_target_and_ignores_mutable_entry() {
     let host_ref = player_ref(3);
     let method_id = HostMethodId::new(8);
     let stale_method_id = HostMethodId::new(9);
@@ -101,13 +101,15 @@ fn linked_host_method_cache_misses_wrong_method_target_guard() {
             vec![HostValue::Scalar(vela_common::ScalarValue::I64(20))]
         )]
     );
-    assert_eq!(caches.set_count_for(cache_site), 1);
+    assert_eq!(caches.set_count_for(cache_site), 0);
     assert_eq!(
         caches.entry(cache_site),
         Some(MethodInlineCacheEntry {
             dispatch: method,
             debug_name: method_name,
-            target: MethodInlineCacheTarget::Host { method_id },
+            target: MethodInlineCacheTarget::Host {
+                method_id: stale_method_id,
+            },
         })
     );
     let host_entry = caches
@@ -152,7 +154,7 @@ fn linked_host_method_cache_misses_wrong_method_target_guard() {
     };
 
     assert_eq!(second, Ok(Value::I64(12)));
-    assert_eq!(caches.set_count_for(cache_site), 1);
+    assert_eq!(caches.set_count_for(cache_site), 0);
     assert_eq!(caches.host_set_count_for(cache_site), 1);
 
     adapter.set_schema_epoch(vela_host::resolved::HostSchemaEpoch::new(1));
@@ -183,7 +185,7 @@ fn linked_host_method_cache_misses_wrong_method_target_guard() {
     };
 
     assert_eq!(third, Ok(Value::I64(12)));
-    assert_eq!(caches.set_count_for(cache_site), 1);
+    assert_eq!(caches.set_count_for(cache_site), 0);
     assert_eq!(caches.host_set_count_for(cache_site), 2);
     assert_eq!(
         caches

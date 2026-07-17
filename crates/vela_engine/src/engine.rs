@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::{LinkError, LinkedArtifact, Linker, ProgramImage, UnlinkedProgram};
@@ -48,6 +48,7 @@ pub struct Engine {
     reflection_policy: Option<ReflectPolicy>,
     hot_reload_policy: HotReloadPolicy,
     standard_natives: bool,
+    execution_data: crate::runtime::execution_data::SharedGenerationExecutionRegistry,
 }
 
 pub(crate) struct EngineParts {
@@ -197,7 +198,28 @@ impl Engine {
             reflection_policy: parts.reflection_policy,
             hot_reload_policy: parts.hot_reload_policy,
             standard_natives: parts.standard_natives,
+            execution_data: Arc::new(Mutex::new(
+                crate::runtime::execution_data::GenerationExecutionRegistry::new(),
+            )),
         }
+    }
+
+    pub(crate) fn generation_execution_data(
+        &self,
+        artifact: &Arc<LinkedArtifact>,
+    ) -> crate::runtime::execution_data::SharedGenerationExecutionData {
+        let mut registry = self
+            .execution_data
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        registry.data_for(artifact)
+    }
+
+    pub(crate) fn enable_bytecode_profile(&self) {
+        self.execution_data
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .enable_bytecode_profile();
     }
 
     #[must_use]

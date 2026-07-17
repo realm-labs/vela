@@ -41,7 +41,7 @@ pub(super) struct ActiveNativeReentry<'execution, 'heap> {
     pub(super) budget: &'execution mut ExecutionBudget,
     pub(super) vm_state_values: &'execution mut VmStateValues,
     pub(super) retained_values: std::sync::Arc<std::sync::Mutex<RuntimeValueRoots>>,
-    pub(super) sidecars: &'execution mut state::RuntimeSidecars,
+    pub(super) generations: &'execution mut state::RuntimeGenerations,
 }
 
 impl ActiveNativeReentry<'_, '_> {
@@ -151,8 +151,8 @@ impl ActiveNativeReentry<'_, '_> {
                 artifact: self.artifact,
                 function: target.function,
                 args: &entry_args,
-                inline_caches: Some(&*self.sidecars),
-                bytecode_profiler: Some(&*self.sidecars),
+                inline_caches: Some(&*self.generations),
+                bytecode_profiler: self.generations.bytecode_profiler(),
             },
             self.heap,
             self.budget,
@@ -169,8 +169,8 @@ impl ActiveNativeReentry<'_, '_> {
                     Some(&mut host),
                     self.heap,
                     self.budget,
-                    Some(&*self.sidecars),
-                    Some(&*self.sidecars),
+                    Some(&*self.generations),
+                    self.generations.bytecode_profiler(),
                 ) {
                     Ok(outcome) => outcome,
                     Err(error) => {
@@ -212,7 +212,7 @@ impl ActiveNativeReentry<'_, '_> {
                             budget: self.budget,
                             vm_state_values: &mut *self.vm_state_values,
                             retained_values: std::sync::Arc::clone(&self.retained_values),
-                            sidecars: self.sidecars,
+                            generations: self.generations,
                         };
                         invoke_prepared_context(&prepared, &mut nested)
                     };
@@ -262,8 +262,8 @@ impl ActiveNativeReentry<'_, '_> {
                 artifact: self.artifact,
                 function: target.function,
                 args: &entry_args,
-                inline_caches: Some(&*self.sidecars),
-                bytecode_profiler: Some(&*self.sidecars),
+                inline_caches: Some(&*self.generations),
+                bytecode_profiler: self.generations.bytecode_profiler(),
             },
             self.heap,
             self.budget,
@@ -281,8 +281,8 @@ impl ActiveNativeReentry<'_, '_> {
                     Some(&mut host),
                     self.heap,
                     self.budget,
-                    Some(&*self.sidecars),
-                    Some(&*self.sidecars),
+                    Some(&*self.generations),
+                    self.generations.bytecode_profiler(),
                 ) {
                     Ok(outcome) => outcome,
                     Err(error) => {
@@ -323,7 +323,7 @@ impl ActiveNativeReentry<'_, '_> {
                             budget: self.budget,
                             vm_state_values: &mut *self.vm_state_values,
                             retained_values: std::sync::Arc::clone(&self.retained_values),
-                            sidecars: self.sidecars,
+                            generations: self.generations,
                         };
                         invoke_prepared_async(&prepared, &mut nested).await
                     };
@@ -354,7 +354,7 @@ impl ActiveNativeReentry<'_, '_> {
                             budget: self.budget,
                             vm_state_values: &mut *self.vm_state_values,
                             retained_values: std::sync::Arc::clone(&self.retained_values),
-                            sidecars: self.sidecars,
+                            generations: self.generations,
                         };
                         invoke_prepared_context(&prepared, &mut nested)
                     };
@@ -431,7 +431,7 @@ impl NativeReentry for ActiveNativeReentry<'_, '_> {
         let heap = &mut *self.heap;
         let budget = &mut *self.budget;
         let vm_state_values = &mut *self.vm_state_values;
-        let sidecars = &mut *self.sidecars;
+        let generations = &mut *self.generations;
         self.host
             .with_execution_host_leases(requests, &mut |leases, leased_host| {
                 let mut nested_reentry = ActiveNativeReentry {
@@ -448,7 +448,7 @@ impl NativeReentry for ActiveNativeReentry<'_, '_> {
                     budget: &mut *budget,
                     vm_state_values: &mut *vm_state_values,
                     retained_values: std::sync::Arc::clone(&retained_values),
-                    sidecars: &mut *sidecars,
+                    generations: &mut *generations,
                 };
                 let mut context =
                     NativeCallContext::new_reentry(engine, &mut nested_reentry, effect_ceiling);
@@ -535,7 +535,7 @@ struct RuntimeDirectContextInvoker<'execution, 'heap> {
     pub(super) budget: &'execution mut ExecutionBudget,
     pub(super) vm_state_values: &'execution mut VmStateValues,
     pub(super) retained_values: std::sync::Arc<std::sync::Mutex<RuntimeValueRoots>>,
-    pub(super) sidecars: &'execution mut state::RuntimeSidecars,
+    pub(super) generations: &'execution mut state::RuntimeGenerations,
     root: HostRef,
     args: Vec<OwnedValue>,
     function: crate::method::AsyncContextDirectNativeMethodFunction,
@@ -566,7 +566,7 @@ impl DirectContextInvoker for RuntimeDirectContextInvoker<'_, '_> {
                 budget: self.budget,
                 vm_state_values: &mut *self.vm_state_values,
                 retained_values: self.retained_values,
-                sidecars: self.sidecars,
+                generations: self.generations,
             };
             let engine = self.engine.clone();
             let mut context =
@@ -646,7 +646,7 @@ pub(super) async fn invoke_prepared_async(
             budget: &mut *active.budget,
             vm_state_values: &mut *active.vm_state_values,
             retained_values: std::sync::Arc::clone(&active.retained_values),
-            sidecars: &mut *active.sidecars,
+            generations: &mut *active.generations,
             root,
             args: prepared.args().to_vec(),
             function: std::sync::Arc::clone(function),

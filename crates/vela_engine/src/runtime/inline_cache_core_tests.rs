@@ -1,5 +1,8 @@
-use vela_bytecode::{CacheSiteId, CacheSiteKind, DebugNameId, FieldSlot, MethodDispatchHandle};
-use vela_common::{HostMethodId, HostTypeId, ShapeId, SourceId, StateSlot};
+use vela_bytecode::{
+    CacheSiteDesc, CacheSiteId, CacheSiteKind, DebugNameId, FieldSlot, InstructionOffset,
+    MethodDispatchHandle, linked::InstructionKind,
+};
+use vela_common::{HostMethodId, HostTypeId, ShapeId, SourceId};
 use vela_def::TypeId;
 use vela_host::resolved::{HostAccessOp, HostSchemaEpoch, ResolvedHostAccess};
 use vela_vm::{
@@ -10,10 +13,10 @@ use vela_vm::{
 use crate::engine::Engine;
 use crate::runtime::{CallArgs, CallOptions, Runtime, RuntimeImage};
 
-use super::InlineCaches;
+use super::GenerationInlineCaches;
 
 #[test]
-fn inline_caches_allocate_from_image_cache_site_count() {
+fn generation_caches_allocate_one_typed_slot_per_linked_cache_site() {
     let engine = Engine::builder().build().expect("engine should build");
     let cached_program = engine
         .compile_source_with_id(
@@ -28,7 +31,7 @@ fn main() {
         )
         .expect("program should compile");
     let cached_image = RuntimeImage::new_compiled(engine.clone(), cached_program);
-    let mut caches = InlineCaches::for_image(&cached_image);
+    let caches = cached_image.execution_data().inline_caches();
 
     assert!(cached_image.cache_site_count() > 0);
     assert!(!caches.is_empty());
@@ -38,15 +41,15 @@ fn main() {
         .compile_source_with_id(SourceId::new(2), "fn main() { return 1; }")
         .expect("program should compile");
     let empty_image = RuntimeImage::new_compiled(engine, empty_program);
-    caches.clear_for_image(&empty_image);
+    let empty_caches = empty_image.execution_data().inline_caches();
 
     assert_eq!(empty_image.cache_site_count(), 0);
-    assert!(caches.is_empty());
-    assert_eq!(caches.len(), 0);
+    assert!(empty_caches.is_empty());
+    assert_eq!(empty_caches.len(), 0);
 }
 
 #[test]
-fn state_read_inline_cache_is_runtime_local_and_site_indexed() {
+fn declared_state_reads_use_linked_slots_without_mutable_cache_entries() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
         .compile_source_with_id(
@@ -73,29 +76,8 @@ fn read_second() {
         .expect("second state should have slot");
 
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
-    let first_site = runtime
-        .image
-        .program_image()
-        .function_by_name("read_first")
-        .expect("read_first should exist")
-        .cache_sites
-        .sites()
-        .iter()
-        .find(|site| site.kind == CacheSiteKind::StateRead)
-        .expect("read_first should have state read site")
-        .id;
-    let second_site = runtime
-        .image
-        .program_image()
-        .function_by_name("read_second")
-        .expect("read_second should exist")
-        .cache_sites
-        .sites()
-        .iter()
-        .find(|site| site.kind == CacheSiteKind::StateRead)
-        .expect("read_second should have state read site")
-        .id;
-    assert_ne!(first_site, second_site);
+    assert_eq!(linked_state_slot(&runtime, "read_first"), first_slot);
+    assert_eq!(linked_state_slot(&runtime, "read_second"), second_slot);
     runtime
         .set_state(
             "main::first",
@@ -109,11 +91,6 @@ fn read_second() {
         )
         .expect("second global should insert");
 
-    assert_eq!(
-        runtime.state.inline_caches().state_read_slot(first_site),
-        None
-    );
-
     let first = runtime
         .call("read_first", CallArgs::new(), CallOptions::unbounded())
         .expect("read_first should run");
@@ -121,11 +98,6 @@ fn read_second() {
         runtime.value_to_owned(&first),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
-    assert_eq!(
-        runtime.state.inline_caches().state_read_slot(first_site),
-        Some(first_slot)
-    );
-
     let second = runtime
         .call("read_second", CallArgs::new(), CallOptions::unbounded())
         .expect("read_second should run");
@@ -133,15 +105,6 @@ fn read_second() {
         runtime.value_to_owned(&second),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(20)))
     );
-    assert_eq!(
-        runtime.state.inline_caches().state_read_slot(second_site),
-        Some(second_slot)
-    );
-    assert_eq!(
-        runtime.state.inline_caches().state_read_slot(first_site),
-        Some(first_slot)
-    );
-
     runtime
         .set_state(
             "main::first",
@@ -172,8 +135,13 @@ fn main() {
 "#,
         )
         .expect("program should compile");
-    let image = RuntimeImage::new_compiled(engine, program);
-    let caches = InlineCaches::for_image(&image);
+    let _image = RuntimeImage::new_compiled(engine, program);
+    let caches = GenerationInlineCaches::for_layout(&[CacheSiteDesc::new(
+        CacheSiteId::new(0),
+        CacheSiteKind::RecordFieldRead,
+        "main",
+        InstructionOffset(0),
+    )]);
     let site = CacheSiteId::new(0);
     let entry = RecordFieldInlineCacheEntry {
         type_id: TypeId::new(1),
@@ -187,7 +155,7 @@ fn main() {
 }
 
 #[test]
-fn inline_cache_families_do_not_evict_same_site_entries() {
+fn generation_cache_slots_reject_entries_from_the_wrong_family() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
         .compile_source_with_id(
@@ -201,9 +169,23 @@ fn main() {
 "#,
         )
         .expect("program should compile");
-    let image = RuntimeImage::new_compiled(engine, program);
-    let caches = InlineCaches::for_image(&image);
-    let site = CacheSiteId::new(0);
+    let _image = RuntimeImage::new_compiled(engine, program);
+    let caches = GenerationInlineCaches::for_layout(&[
+        CacheSiteDesc::new(
+            CacheSiteId::new(0),
+            CacheSiteKind::MethodCall,
+            "main",
+            InstructionOffset(0),
+        ),
+        CacheSiteDesc::new(
+            CacheSiteId::new(1),
+            CacheSiteKind::HostPathCall,
+            "main",
+            InstructionOffset(1),
+        ),
+    ]);
+    let method_site = CacheSiteId::new(0);
+    let host_site = CacheSiteId::new(1);
     let method_id = HostMethodId::new(7);
     let method_entry = MethodInlineCacheEntry {
         dispatch: MethodDispatchHandle::new(0),
@@ -218,15 +200,17 @@ fn main() {
         resolved: ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
     };
 
-    caches.set_method_dispatch(site, method_entry);
-    caches.set_host_access(site, host_entry);
+    caches.set_method_dispatch(method_site, method_entry);
+    caches.set_host_access(method_site, host_entry);
+    caches.set_host_access(host_site, host_entry);
 
-    assert_eq!(caches.method_dispatch(site), Some(method_entry));
-    assert_eq!(caches.host_access(site), Some(host_entry));
+    assert_eq!(caches.method_dispatch(method_site), Some(method_entry));
+    assert_eq!(caches.host_access(method_site), None);
+    assert_eq!(caches.host_access(host_site), Some(host_entry));
 }
 
 #[test]
-fn accepted_hot_reload_clears_runtime_inline_caches() {
+fn accepted_hot_reload_uses_the_new_generation_linked_state_slot() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_with_id(
@@ -241,31 +225,14 @@ fn read_value() {
 "#,
         )
         .expect("initial hot reload source should compile");
-    let first_slot = initial
-        .states()
-        .iter()
-        .position(|state| state.qualified_name == "main::first")
-        .map(StateSlot)
-        .expect("first global should have a slot");
     let second_slot = initial
         .states()
         .iter()
         .position(|state| state.qualified_name == "main::second")
-        .map(StateSlot)
+        .map(vela_common::StateSlot)
         .expect("second global should have a slot");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let initial_site = runtime
-        .image
-        .program_image()
-        .function_by_name("read_value")
-        .expect("read_value should exist")
-        .cache_sites
-        .sites()
-        .iter()
-        .find(|site| site.kind == CacheSiteKind::StateRead)
-        .expect("read_value should have an initial global read site")
-        .id;
     runtime
         .set_state(
             "main::first",
@@ -286,11 +253,6 @@ fn read_value() {
         runtime.value_to_owned(&first),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
-    assert_eq!(
-        runtime.state.inline_caches().state_read_slot(initial_site),
-        Some(first_slot)
-    );
-
     let update = runtime
         .compile_hot_reload_update_with_id(
             SourceId::new(2),
@@ -310,21 +272,7 @@ fn read_value() {
         .expect("hot reload update should apply");
 
     assert!(report.accepted);
-    let reloaded_site = runtime
-        .image
-        .program_image()
-        .function_by_name("read_value")
-        .expect("reloaded read_value should exist")
-        .cache_sites
-        .sites()
-        .iter()
-        .find(|site| site.kind == CacheSiteKind::StateRead)
-        .expect("reloaded read_value should have a global read site")
-        .id;
-    assert_eq!(
-        runtime.state.inline_caches().state_read_slot(reloaded_site),
-        None
-    );
+    assert_eq!(linked_state_slot(&runtime, "read_value"), second_slot);
 
     let second = runtime
         .call("read_value", CallArgs::new(), CallOptions::unbounded())
@@ -333,8 +281,22 @@ fn read_value() {
         runtime.value_to_owned(&second),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(20)))
     );
-    assert_eq!(
-        runtime.state.inline_caches().state_read_slot(reloaded_site),
-        Some(second_slot)
-    );
+}
+
+fn linked_state_slot(runtime: &Runtime, function: &str) -> vela_common::StateSlot {
+    let program = runtime.image.linked_program();
+    runtime
+        .image
+        .linked_program()
+        .functions()
+        .find(|(_, code)| program.debug_name(code.debug_name) == function)
+        .map(|(_, code)| code)
+        .expect("linked function should exist")
+        .instructions
+        .iter()
+        .find_map(|instruction| match instruction.kind {
+            InstructionKind::LoadState { slot, .. } => Some(slot),
+            _ => None,
+        })
+        .expect("function should contain a linked state load")
 }

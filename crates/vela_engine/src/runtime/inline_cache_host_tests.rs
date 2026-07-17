@@ -54,7 +54,8 @@ fn read_level(player: ReloadHostPlayer) {
     assert_eq!(first, OwnedValue::Scalar(ScalarValue::I64(12)));
     assert!(
         runtime
-            .state
+            .image
+            .execution_data()
             .inline_caches()
             .host_access(initial_site)
             .is_some(),
@@ -79,7 +80,11 @@ fn read_level(player: ReloadHostPlayer) {
 
     let reloaded_site = host_read_site(&runtime, "read_level");
     assert_eq!(
-        runtime.state.inline_caches().host_access(reloaded_site),
+        runtime
+            .image
+            .execution_data()
+            .inline_caches()
+            .host_access(reloaded_site),
         None
     );
 
@@ -96,7 +101,8 @@ fn read_level(player: ReloadHostPlayer) {
     assert_eq!(second, OwnedValue::Scalar(ScalarValue::I64(13)));
     assert!(
         runtime
-            .state
+            .image
+            .execution_data()
             .inline_caches()
             .host_access(reloaded_site)
             .is_some(),

@@ -59,7 +59,14 @@ fn read_level(player: CachedHostPlayer) {
     );
     let mut access = HostAccess::new();
 
-    assert_eq!(runtime.state.inline_caches().host_access(cache_site), None);
+    assert_eq!(
+        runtime
+            .image
+            .execution_data()
+            .inline_caches()
+            .host_access(cache_site),
+        None
+    );
 
     let value = runtime
         .call_raw(
@@ -73,7 +80,8 @@ fn read_level(player: CachedHostPlayer) {
 
     assert_eq!(value, OwnedValue::Scalar(vela_common::ScalarValue::I64(12)));
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .host_access(cache_site)
         .expect("host read should populate cache");
@@ -144,7 +152,8 @@ fn read_level(player: EpochHostPlayer) {
     assert_eq!(value, OwnedValue::Scalar(vela_common::ScalarValue::I64(12)));
     assert_eq!(
         runtime
-            .state
+            .image
+            .execution_data()
             .inline_caches()
             .host_access(cache_site)
             .expect("host read should populate cache")
@@ -169,7 +178,8 @@ fn read_level(player: EpochHostPlayer) {
 
     assert_eq!(value, OwnedValue::Scalar(vela_common::ScalarValue::I64(21)));
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .host_access(cache_site)
         .expect("host read should refresh cache");
@@ -230,7 +240,8 @@ fn write_level(player: EpochWriteHostPlayer, value: i64) {
         Ok(HostValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .host_access(cache_site)
         .expect("host write should populate cache");
@@ -261,7 +272,8 @@ fn write_level(player: EpochWriteHostPlayer, value: i64) {
         Ok(HostValue::Scalar(vela_common::ScalarValue::I64(21)))
     );
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .host_access(cache_site)
         .expect("host write should refresh cache");
@@ -301,16 +313,20 @@ fn write_level(player: GuardedHostPlayer, value: i64) {
         .expect("write_level should have host write site")
         .id;
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
-    runtime.state.inline_caches().set_host_access(
-        cache_site,
-        HostInlineCacheEntry {
-            root_type: HostTypeId::new(1),
-            target: HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0)),
-            op: HostAccessOp::Read,
-            schema_epoch: HostSchemaEpoch::new(0),
-            resolved: ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
-        },
-    );
+    runtime
+        .image
+        .execution_data()
+        .inline_caches()
+        .set_host_access(
+            cache_site,
+            HostInlineCacheEntry {
+                root_type: HostTypeId::new(1),
+                target: HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0)),
+                op: HostAccessOp::Read,
+                schema_epoch: HostSchemaEpoch::new(0),
+                resolved: ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
+            },
+        );
 
     let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let host_path = HostPath::new(host_ref).field(FieldId::new(1));
@@ -335,7 +351,8 @@ fn write_level(player: GuardedHostPlayer, value: i64) {
         Ok(HostValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .host_access(cache_site)
         .expect("wrong-op cache entry should be replaced");
@@ -385,16 +402,20 @@ fn write_level(player: TargetGuardHostPlayer, value: i64) {
     let mut adapter = MockStateAdapter::new();
     let mut access = HostAccess::new();
 
-    runtime.state.inline_caches().set_host_access(
-        cache_site,
-        HostInlineCacheEntry {
-            root_type: HostTypeId::new(2),
-            target: HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0)),
-            op: HostAccessOp::Write,
-            schema_epoch: HostSchemaEpoch::new(0),
-            resolved: ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
-        },
-    );
+    runtime
+        .image
+        .execution_data()
+        .inline_caches()
+        .set_host_access(
+            cache_site,
+            HostInlineCacheEntry {
+                root_type: HostTypeId::new(2),
+                target: HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(0)),
+                op: HostAccessOp::Write,
+                schema_epoch: HostSchemaEpoch::new(0),
+                resolved: ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
+            },
+        );
     runtime
         .call_raw(
             "write_level",
@@ -412,7 +433,8 @@ fn write_level(player: TargetGuardHostPlayer, value: i64) {
         Ok(HostValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .host_access(cache_site)
         .expect("wrong-root cache entry should be replaced");
@@ -423,16 +445,20 @@ fn write_level(player: TargetGuardHostPlayer, value: i64) {
     );
     assert_eq!(entry.op, HostAccessOp::Write);
 
-    runtime.state.inline_caches().set_host_access(
-        cache_site,
-        HostInlineCacheEntry {
-            root_type: HostTypeId::new(1),
-            target: HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(1)),
-            op: HostAccessOp::Write,
-            schema_epoch: HostSchemaEpoch::new(0),
-            resolved: ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
-        },
-    );
+    runtime
+        .image
+        .execution_data()
+        .inline_caches()
+        .set_host_access(
+            cache_site,
+            HostInlineCacheEntry {
+                root_type: HostTypeId::new(1),
+                target: HostInlineCacheTarget::TargetPlan(HostTargetPlanId::new(1)),
+                op: HostAccessOp::Write,
+                schema_epoch: HostSchemaEpoch::new(0),
+                resolved: ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
+            },
+        );
     runtime
         .call_raw(
             "write_level",
@@ -451,7 +477,8 @@ fn write_level(player: TargetGuardHostPlayer, value: i64) {
         Ok(HostValue::Scalar(vela_common::ScalarValue::I64(21)))
     );
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .host_access(cache_site)
         .expect("wrong-plan cache entry should be replaced");
@@ -522,7 +549,8 @@ fn gain_level(player: EpochMutateHostPlayer, amount: i64) {
         Ok(HostValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .host_access(cache_site)
         .expect("host mutate should populate cache");
@@ -553,7 +581,8 @@ fn gain_level(player: EpochMutateHostPlayer, amount: i64) {
         Ok(HostValue::Scalar(vela_common::ScalarValue::I64(15)))
     );
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .host_access(cache_site)
         .expect("host mutate should refresh cache");
@@ -619,7 +648,8 @@ fn award(player: EpochCallHostPlayer, amount: i64) {
         )]
     );
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .host_access(cache_site)
         .expect("host call should populate cache");
@@ -656,7 +686,8 @@ fn award(player: EpochCallHostPlayer, amount: i64) {
         )
     );
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .host_access(cache_site)
         .expect("host call should refresh cache");
@@ -726,7 +757,8 @@ fn remove_item(player: EpochRemoveHostPlayer, item_id: String) {
         .expect("first remove_item should run");
     assert!(adapter.read_diagnostic_path(&host_path).is_err());
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .host_access(cache_site)
         .expect("host remove should populate cache");
@@ -755,7 +787,8 @@ fn remove_item(player: EpochRemoveHostPlayer, item_id: String) {
 
     assert!(adapter.read_diagnostic_path(&host_path).is_err());
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .host_access(cache_site)
         .expect("host remove should refresh cache");

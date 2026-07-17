@@ -18,7 +18,10 @@ where
     where
         T: ScriptHostObject + Send + 'static,
     {
-        self.state.extern_states.bind_host(name, value)
+        let name = name.into();
+        let (state, expected) =
+            super::extern_state_bindings::extern_state_schema(&self.image, &name)?;
+        self.state.extern_states.bind_host(state, expected, value)
     }
 
     /// Stages a host object for an `extern state` declaration in a pending
@@ -37,7 +40,9 @@ where
 
     #[must_use]
     pub fn extern_state_ref(&self, name: &str) -> Option<HostRef> {
-        self.state.extern_states.host_ref(name)
+        let (state, _) =
+            super::extern_state_bindings::extern_state_schema(&self.image, name).ok()?;
+        self.state.extern_states.host_ref(state)
     }
 
     pub fn set_state(
@@ -49,7 +54,10 @@ where
     }
 
     pub fn state(&mut self, name: &str) -> VmResult<Option<OwnedValue>> {
-        self.state.vm_states.value(name)
+        let Some(state) = self.vm_state_id(name) else {
+            return Ok(None);
+        };
+        self.state.vm_states.value(state)
     }
 
     pub fn update_state(
@@ -57,7 +65,12 @@ where
         name: &str,
         update: impl FnOnce(&mut OwnedValue),
     ) -> VmResult<()> {
-        let mut value = self.state.vm_states.value(name)?.ok_or_else(|| {
+        let state = self.vm_state_id(name).ok_or_else(|| {
+            VmError::new(VmErrorKind::MissingVmState {
+                name: name.to_owned(),
+            })
+        })?;
+        let mut value = self.state.vm_states.value(state)?.ok_or_else(|| {
             VmError::new(VmErrorKind::MissingVmState {
                 name: name.to_owned(),
             })
@@ -71,18 +84,17 @@ where
     where
         T: serde::de::DeserializeOwned,
     {
-        self.state.vm_states.value_as(name)
+        let Some(state) = self.vm_state_id(name) else {
+            return Ok(None);
+        };
+        self.state.vm_states.value_as(state)
     }
 
     pub(super) fn set_owned_state(&mut self, name: String, value: OwnedValue) -> VmResult<()> {
         let state = self
             .image
-            .linked_program()
-            .states()
-            .iter()
-            .find(|state| {
-                state.qualified_name == name && state.storage == vela_bytecode::StateStorage::Vm
-            })
+            .state_by_name(&name)
+            .filter(|state| state.storage == vela_bytecode::StateStorage::Vm)
             .ok_or_else(|| VmError::new(VmErrorKind::MissingVmState { name: name.clone() }))?;
         let value = vela_vm::canonicalize_owned_value_contract(
             value,
@@ -95,5 +107,12 @@ where
         self.state.vm_states.insert_prepared(state.id, value);
         self.state.vm_states.collect();
         Ok(())
+    }
+
+    fn vm_state_id(&self, name: &str) -> Option<vela_def::StateId> {
+        self.image
+            .state_by_name(name)
+            .filter(|state| state.storage == vela_bytecode::StateStorage::Vm)
+            .map(|state| state.id)
     }
 }

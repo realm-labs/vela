@@ -37,6 +37,7 @@ mod bytecode_profile;
 mod bytecode_profile_tests;
 mod call_args;
 mod call_future;
+pub(crate) mod execution_data;
 mod execution_host;
 mod extern_state_bindings;
 pub(crate) mod handles;
@@ -53,6 +54,7 @@ mod state_api;
 mod tests;
 mod vm_states;
 
+pub use bytecode_profile::{BytecodeProfileSnapshot, FunctionBytecodeProfile};
 pub use call_args::{CallArgs, DirectHostIdentity};
 pub use call_future::RuntimeCallFuture;
 pub use extern_state_bindings::RuntimeExternStateBindings;
@@ -198,6 +200,22 @@ impl<I> RuntimeImpl<I>
 where
     I: RuntimeImageStorage,
 {
+    /// Returns the active generation's aggregate instruction profile.
+    ///
+    /// Profiling is disabled by default, so ordinary Runtimes return `None`
+    /// and allocate no instruction counters.
+    #[must_use]
+    pub fn bytecode_profile_snapshot(&self) -> Option<BytecodeProfileSnapshot> {
+        self.state.bytecode_profile_snapshot()
+    }
+
+    /// Resets the active generation's aggregate profile using relaxed atomic
+    /// stores. Concurrent snapshots or execution may observe the reset in
+    /// progress; no instruction count can wrap.
+    pub fn reset_bytecode_profile(&self) -> bool {
+        self.state.reset_bytecode_profile()
+    }
+
     #[must_use]
     pub fn engine(&self) -> &Engine {
         self.image.engine()
@@ -530,7 +548,7 @@ where
             hot_reload: self.hot_reload.as_ref(),
             extern_states: &mut state.extern_states,
             vm_states: &mut state.vm_states,
-            sidecars: &mut state.sidecars,
+            generations: &mut state.generations,
             target,
             args,
             budget: &mut budget,
@@ -574,7 +592,7 @@ where
             hot_reload: self.hot_reload.as_ref(),
             extern_states: &mut state.extern_states,
             vm_states: &mut state.vm_states,
-            sidecars: &mut state.sidecars,
+            generations: &mut state.generations,
             target,
             args,
             budget: &mut budget,
@@ -669,8 +687,8 @@ where
                     roots: &roots,
                 },
                 budget: &mut budget,
-                inline_caches: Some(&self.state.sidecars),
-                bytecode_profiler: Some(&self.state.sidecars),
+                inline_caches: Some(&self.state.generations),
+                bytecode_profiler: self.state.generations.bytecode_profiler(),
             })
         } else {
             vm.run_linked_program_host_budget_call(LinkedProgramHostBudgetCall {
@@ -679,8 +697,8 @@ where
                 args,
                 host: &mut host,
                 budget: &mut budget,
-                inline_caches: Some(&self.state.sidecars),
-                bytecode_profiler: Some(&self.state.sidecars),
+                inline_caches: Some(&self.state.generations),
+                bytecode_profiler: self.state.generations.bytecode_profiler(),
             })
         }
     }
@@ -762,8 +780,8 @@ where
                 roots: &roots,
             },
             budget: &mut budget,
-            inline_caches: Some(&self.state.sidecars),
-            bytecode_profiler: Some(&self.state.sidecars),
+            inline_caches: Some(&self.state.generations),
+            bytecode_profiler: self.state.generations.bytecode_profiler(),
         })?;
         persistent_value_to_owned(&value, &mut self.state.vm_states.heap)
     }
@@ -801,8 +819,8 @@ where
                 function: call.target.function,
                 args: &entry_args,
                 roots: &roots,
-                inline_caches: Some(&*call.sidecars),
-                bytecode_profiler: Some(&*call.sidecars),
+                inline_caches: Some(&*call.generations),
+                bytecode_profiler: call.generations.bytecode_profiler(),
             },
             &mut heap,
             budget,
@@ -821,8 +839,8 @@ where
                     Some(&mut host),
                     &mut heap,
                     budget,
-                    Some(&*call.sidecars),
-                    Some(&*call.sidecars),
+                    Some(&*call.generations),
+                    call.generations.bytecode_profiler(),
                 )?
             };
             match outcome {
@@ -861,7 +879,7 @@ where
                             budget,
                             vm_state_values,
                             retained_values: std::sync::Arc::clone(&retained_values),
-                            sidecars: &mut *call.sidecars,
+                            generations: &mut *call.generations,
                         };
                         invoke_prepared_context(&prepared, &mut active)
                     };
@@ -911,8 +929,8 @@ where
                 function: call.target.function,
                 args: &entry_args,
                 roots: &roots,
-                inline_caches: Some(&*call.sidecars),
-                bytecode_profiler: Some(&*call.sidecars),
+                inline_caches: Some(&*call.generations),
+                bytecode_profiler: call.generations.bytecode_profiler(),
             },
             &mut heap,
             budget,
@@ -931,8 +949,8 @@ where
                     Some(&mut host),
                     &mut heap,
                     budget,
-                    Some(&*call.sidecars),
-                    Some(&*call.sidecars),
+                    Some(&*call.generations),
+                    call.generations.bytecode_profiler(),
                 )?
             };
             match outcome {
@@ -966,7 +984,7 @@ where
                             budget,
                             vm_state_values,
                             retained_values: std::sync::Arc::clone(&retained_values),
-                            sidecars: &mut *call.sidecars,
+                            generations: &mut *call.generations,
                         };
                         invoke_prepared_async(&prepared, &mut active).await
                     };
@@ -993,7 +1011,7 @@ where
                             budget,
                             vm_state_values,
                             retained_values: std::sync::Arc::clone(&retained_values),
-                            sidecars: &mut *call.sidecars,
+                            generations: &mut *call.generations,
                         };
                         invoke_prepared_context(&prepared, &mut active)
                     };

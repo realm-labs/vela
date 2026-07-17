@@ -124,13 +124,13 @@ fn assert_option_result_owned_cache(
         expected
     );
     assert_option_result_cache_entry(&caches, site, dispatch, method_id, receiver, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         expected
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn assert_option_result_cache_entry(

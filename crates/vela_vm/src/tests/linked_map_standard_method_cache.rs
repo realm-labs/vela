@@ -105,7 +105,7 @@ fn linked_cached_map_merge_limit_counts_unique_value_keys() {
         run_linked_method_cache_owned_program_with_budget(&program, &caches, &mut budget),
         expected
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -151,13 +151,13 @@ fn linked_standard_value_method_cache_uses_i64_map_keys() {
         remove_method,
         StandardMethodInlineCacheTarget::Remove,
     );
-    assert_eq!(caches.set_count(), 4);
+    assert_eq!(caches.set_count(), 2);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         expected
     );
-    assert_eq!(caches.set_count(), 4);
+    assert_eq!(caches.set_count(), 2);
 }
 
 #[test]
@@ -198,7 +198,7 @@ fn linked_standard_value_method_caches_map_single_extend_target() {
         method_id,
         StandardMethodInlineCacheTarget::Extend,
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -218,7 +218,7 @@ fn linked_standard_value_method_caches_map_self_extend_target() {
         method_id,
         StandardMethodInlineCacheTarget::Extend,
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn assert_map_owned_cache(
@@ -235,13 +235,13 @@ fn assert_map_owned_cache(
         expected
     );
     assert_map_cache_entry(&caches, site, dispatch, method_id, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         expected
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn assert_map_bool_cache(
@@ -255,10 +255,10 @@ fn assert_map_bool_cache(
 
     assert_eq!(run_linked_method_cache_program(&program, &caches), expected);
     assert_map_cache_entry(&caches, site, dispatch, method_id, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(run_linked_method_cache_program(&program, &caches), expected);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn assert_map_cache_entry(

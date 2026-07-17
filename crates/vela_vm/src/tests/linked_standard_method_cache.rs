@@ -16,7 +16,7 @@ fn linked_standard_value_method_populates_readonly_inline_cache() {
         .entry(site)
         .expect("standard method cache should populate");
     assert_eq!(entry.dispatch, dispatch);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
     let MethodInlineCacheTarget::Value {
         method_id: cached_method,
         standard_method: Some(standard_method),
@@ -32,7 +32,7 @@ fn linked_standard_value_method_populates_readonly_inline_cache() {
         run_linked_method_cache_program(&program, &caches),
         Ok(RuntimeValue::i64(4))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -135,7 +135,7 @@ fn linked_standard_value_method_refreshes_wrong_method_guard() {
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
     assert_eq!(standard_method.target, StandardMethodInlineCacheTarget::Len);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn assert_iterator_adapter_cache(
@@ -165,13 +165,13 @@ fn assert_iterator_adapter_cache(
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, StandardMethodReceiver::Iterator);
     assert_eq!(standard_method.target, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         expected
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -211,7 +211,7 @@ fn linked_standard_value_method_refreshes_wrong_debug_name_guard() {
         .entry(site)
         .expect("wrong debug-name cache should refresh");
     assert_eq!(entry.debug_name, debug_name);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -294,13 +294,13 @@ fn linked_standard_value_method_cache_set_has_uses_record_identity() {
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, StandardMethodReceiver::Set);
     assert_eq!(standard_method.target, StandardMethodInlineCacheTarget::Has);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_program_with_standard_natives(&program, &caches),
         Ok(RuntimeValue::Bool(false))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn assert_membership_cache(
@@ -329,13 +329,13 @@ fn assert_membership_cache(
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, receiver);
     assert_eq!(standard_method.target, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_program_with_standard_natives(&program, &caches),
         Ok(RuntimeValue::Bool(true))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -361,13 +361,13 @@ fn linked_standard_value_method_caches_bytes_accessor_target() {
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, StandardMethodReceiver::Bytes);
     assert_eq!(standard_method.target, StandardMethodInlineCacheTarget::Get);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_program(&program, &caches),
         Ok(RuntimeValue::U8(21))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -406,13 +406,13 @@ fn assert_bytes_read_cache(method: &str, target: StandardMethodInlineCacheTarget
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, StandardMethodReceiver::Bytes);
     assert_eq!(standard_method.target, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_program(&program, &caches),
         Ok(RuntimeValue::U32(expected))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -441,13 +441,13 @@ fn linked_standard_value_method_caches_bytes_slice_target() {
         standard_method.target,
         StandardMethodInlineCacheTarget::Slice
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         Ok(OwnedValue::Bytes(vec![21, 34]))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -499,13 +499,13 @@ fn linked_standard_value_method_caches_bytes_to_hex_target() {
         standard_method.target,
         StandardMethodInlineCacheTarget::ToHex
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         Ok(OwnedValue::String("0d1522".to_owned()))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -567,13 +567,13 @@ fn assert_enum_predicate_cache(
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, receiver);
     assert_eq!(standard_method.target, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_program(&program, &caches),
         Ok(RuntimeValue::Bool(expected))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -623,13 +623,13 @@ fn assert_unwrap_or_cache(
         standard_method.target,
         StandardMethodInlineCacheTarget::UnwrapOr
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_program(&program, &caches),
         Ok(expected)
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -658,13 +658,13 @@ fn linked_standard_value_method_caches_map_get_or_target() {
         standard_method.target,
         StandardMethodInlineCacheTarget::GetOr
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_program(&program, &caches),
         Ok(RuntimeValue::i64(8))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -692,7 +692,7 @@ fn linked_standard_value_method_caches_map_get_target() {
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, StandardMethodReceiver::Map);
     assert_eq!(standard_method.target, StandardMethodInlineCacheTarget::Get);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
@@ -700,7 +700,7 @@ fn linked_standard_value_method_caches_map_get_target() {
             vela_common::ScalarValue::I64(8)
         )))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -753,11 +753,11 @@ fn assert_set_relation_cache(
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, StandardMethodReceiver::Set);
     assert_eq!(standard_method.target, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_program_with_standard_natives(&program, &caches),
         Ok(RuntimeValue::Bool(true))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }

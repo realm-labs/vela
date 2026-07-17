@@ -25,7 +25,7 @@ pub struct RestrictedJitInput<'a> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProgramVersion {
     pub id: ProgramVersionId,
-    pub(crate) abi: HotReloadAbi,
+    pub(crate) abi: Arc<HotReloadAbi>,
     pub(crate) artifact: Arc<LinkedArtifact>,
 }
 
@@ -35,7 +35,11 @@ impl ProgramVersion {
         abi: HotReloadAbi,
         artifact: Arc<LinkedArtifact>,
     ) -> Self {
-        Self { id, abi, artifact }
+        Self {
+            id,
+            abi: Arc::new(abi),
+            artifact,
+        }
     }
 
     #[must_use]

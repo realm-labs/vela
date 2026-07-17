@@ -110,7 +110,7 @@ use vela_bytecode::{
 };
 #[cfg(test)]
 use vela_bytecode::{Register, UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgram};
-use vela_common::{HostMethodId, HostTypeId, ShapeId, StateSlot};
+use vela_common::{HostMethodId, HostTypeId, ShapeId};
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::resolved::{HostAccessOp, HostSchemaEpoch, ResolvedHostAccess};
@@ -328,12 +328,6 @@ pub trait VmInlineCaches {
     fn is_empty(&self) -> bool {
         self.len() == 0
     }
-
-    fn state_read_slot(&self, _site: CacheSiteId) -> Option<StateSlot> {
-        None
-    }
-
-    fn set_state_read_slot(&self, _site: CacheSiteId, _slot: StateSlot) {}
 
     fn host_access(&self, _site: CacheSiteId) -> Option<HostInlineCacheEntry> {
         None

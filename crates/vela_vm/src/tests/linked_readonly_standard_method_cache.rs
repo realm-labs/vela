@@ -89,10 +89,10 @@ fn linked_standard_value_method_cache_get_or_uses_i64_map_keys() {
         standard_method.target,
         StandardMethodInlineCacheTarget::GetOr
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(run_linked_method_cache_program(&program, &caches), expected);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn assert_no_arg_bool_cache(
@@ -120,10 +120,10 @@ fn assert_no_arg_bool_cache(
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, receiver);
     assert_eq!(standard_method.target, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(run_linked_method_cache_program(&program, &caches), expected);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn assert_no_arg_i64_cache(
@@ -159,10 +159,10 @@ fn assert_no_arg_i64_cache(
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, receiver);
     assert_eq!(standard_method.target, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(run(&program, &caches), expected);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn linked_bytes_no_arg_cache_program(method: &str, receiver: Vec<u8>) -> LinkedMethodCacheFixture {

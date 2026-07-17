@@ -302,8 +302,9 @@ Neither lease wrapper is a Vela value or reflection type.
 An active `NativeCallContext` can call a sync child with `call`, call a sync or
 async child with `call_async`, and bind a script method target. Reentry pushes a
 marker and child frame on the same session, so it inherits the pinned artifact,
-heap, VM/extern state, host boundary, sidecars, remaining budgets, capabilities, and
-cancellation state. Child `CallArgs` receive new HostRefs from the execution's
+heap, VM/extern state, host boundary, exact generation execution-data view,
+remaining budgets, capabilities, and cancellation state. Child `CallArgs`
+receive new HostRefs from the execution's
 single allocator and are invalid after the child scope exits. A mutable method
 must explicitly reborrow its lease into child arguments; the raw parent HostRef
 remains busy while the exclusive lease is live.
@@ -430,8 +431,12 @@ background IO that returns copied data or HostRef handles to later script calls
 ```
 
 The shared deployment generation contains immutable code, metadata, schemas,
-source maps, and cache/profile layouts. A host may additionally use
-generation-shared synchronized caches or measured execution-lane sidecars.
+source maps, cache/profile layouts, and the shared hot-reload ABI. Each exact
+Engine deployment weakly registers generation-qualified execution data. That
+data owns one typed synchronized cache slot per linked cache site and optional
+aggregate atomic instruction counters; Actor Runtimes retain only handles for
+generations they can still execute. A host may additionally use measured
+execution-lane sidecars.
 `WorkerExecutionSidecars` is an optional performance implementation, not a
 semantic layer and not a requirement that an actor remain on one worker. It is
 valid only when benchmarks show that generation-shared slots contend and the

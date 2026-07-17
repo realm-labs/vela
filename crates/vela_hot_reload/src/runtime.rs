@@ -110,7 +110,7 @@ impl HotReloadRuntime {
         } = update;
         let next = Arc::new(ProgramVersion {
             id: ProgramVersionId(self.current.id.0.saturating_add(1)),
-            abi,
+            abi: Arc::new(abi),
             artifact,
         });
         self.current = Arc::clone(&next);

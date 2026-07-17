@@ -1424,20 +1424,6 @@ impl Vm {
                                     (*cache_site, call.inline_caches)
                                 {
                                     let existing = caches.method_dispatch(site);
-                                    let generic_valid = existing.is_some_and(|entry| {
-                                        entry.dispatch == *dispatch
-                                            && entry.debug_name == dispatch_target.debug_name
-                                            && matches!(
-                                                entry.target,
-                                                crate::MethodInlineCacheTarget::Value {
-                                                    method_id: cached_method,
-                                                    ..
-                                                } | crate::MethodInlineCacheTarget::CallbackValue {
-                                                    method_id: cached_method,
-                                                    ..
-                                                } if cached_method == *method_id
-                                            )
-                                    });
                                     let cached = existing.is_some_and(|entry| {
                                         entry.dispatch == *dispatch
                                             && entry.debug_name == dispatch_target.debug_name
@@ -1451,19 +1437,6 @@ impl Vm {
                                             )
                                     });
                                     if !cached {
-                                        if !generic_valid {
-                                            caches.set_method_dispatch(
-                                                site,
-                                                crate::MethodInlineCacheEntry {
-                                                    dispatch: *dispatch,
-                                                    debug_name: dispatch_target.debug_name,
-                                                    target: crate::MethodInlineCacheTarget::Value {
-                                                        method_id: *method_id,
-                                                        standard_method: None,
-                                                    },
-                                                },
-                                            );
-                                        }
                                         caches.set_method_dispatch(
                                             site,
                                             crate::MethodInlineCacheEntry {
@@ -1518,19 +1491,6 @@ impl Vm {
                                         )
                                 });
                                 if !cached {
-                                    if existing.is_none() {
-                                        caches.set_method_dispatch(
-                                            site,
-                                            crate::MethodInlineCacheEntry {
-                                                dispatch: *dispatch,
-                                                debug_name: dispatch_target.debug_name,
-                                                target: crate::MethodInlineCacheTarget::Value {
-                                                    method_id: *method_id,
-                                                    standard_method: None,
-                                                },
-                                            },
-                                        );
-                                    }
                                     caches.set_method_dispatch(
                                         site,
                                         crate::MethodInlineCacheEntry {
@@ -1561,7 +1521,7 @@ impl Vm {
                         }
                     }
                     if let vela_bytecode::linked::LinkedMethodDispatchKind::Script {
-                        method_id,
+                        method_id: _,
                         function,
                     } = &dispatch_target.kind
                     {
@@ -1576,19 +1536,6 @@ impl Vm {
                                 name: program.debug_name(dispatch_target.debug_name).to_owned(),
                             })
                             .with_source_span_if_absent(instruction.span));
-                        }
-                        if let (Some(site), Some(caches)) = (*cache_site, call.inline_caches) {
-                            caches.set_method_dispatch(
-                                site,
-                                crate::MethodInlineCacheEntry {
-                                    dispatch: *dispatch,
-                                    debug_name: dispatch_target.debug_name,
-                                    target: crate::MethodInlineCacheTarget::Script {
-                                        method_id: *method_id,
-                                        function: *function,
-                                    },
-                                },
-                            );
                         }
                         let mut values = Vec::with_capacity(args.len().saturating_add(1));
                         values.push(frame.read(*receiver)?);
@@ -2224,7 +2171,7 @@ impl Vm {
                     dst,
                     slot,
                     debug_name: _,
-                    cache_site,
+                    cache_site: _,
                 } => {
                     let value = host_access::load_linked_state(
                         host_access::HostAccessRuntime {
@@ -2237,7 +2184,6 @@ impl Vm {
                         },
                         program,
                         *slot,
-                        *cache_site,
                     )?;
                     frame.write(*dst, value)?;
                 }
@@ -2265,7 +2211,7 @@ impl Vm {
                     dst,
                     slot,
                     debug_name,
-                    cache_site,
+                    cache_site: _,
                 } => {
                     let value = host_access::load_linked_cached_extern_state(
                         host_access::HostAccessRuntime {
@@ -2279,7 +2225,6 @@ impl Vm {
                         program,
                         *debug_name,
                         Some(*slot),
-                        *cache_site,
                     )?;
                     frame.write(*dst, value)?;
                 }

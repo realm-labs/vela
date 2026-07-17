@@ -2315,6 +2315,35 @@ feature flags, dual reads/writes, shadow population, and old/new Runtime modes
 are prohibited. The permanent generic VM operation on a cache miss or guard
 failure is the semantic correctness path, not a legacy compatibility path.
 
+The implemented owner is an Engine-deployment registry keyed by exact
+`ExecutableGenerationId`. Engine clones share the registry; separately built
+Engines do not, even when handed the same artifact. Registry entries are weak,
+while Runtime images and Actor-local live-generation entries retain the shared
+execution-data object. Registry locking occurs only during image construction,
+profile configuration, or reload publication, never while interpreting a
+script instruction.
+
+`GenerationExecutionData` owns one typed synchronized slot per linked cache
+site. Declared VM/extern state reads use their verified linked `StateSlot`
+directly. Script and host method targets use immutable `LinkedMethodDispatch`
+facts directly. Record fields, host access, native implementation selection,
+standard/callback method specialization, and dynamic method dispatch remain
+mutable only because they depend on runtime type/shape, schema epoch, Engine
+implementation, or receiver guards. Those entries contain no Actor values or
+host objects and are shared through per-site `RwLock<Option<T>>` slots. The
+Actor-local generation map owns only state-ID retention sets, a weak artifact
+liveness observation, and the shared execution-data handle.
+
+Full instruction profiling is disabled by default. Enabling it is an
+Engine-deployment policy and lazily creates one saturating `AtomicU64` array for
+each live or future generation. Snapshot loads and reset stores use relaxed
+ordering: snapshots are aggregate observations rather than a linearizable cut,
+and a reset racing active execution may retain a concurrent increment. Accepted
+reload creates fresh counters; old counters remain only with their exact old
+generation. Immutable hot-reload ABI data is `Arc`-shared by `ProgramVersion`
+clones so Actor memory does not scale with generation instruction/function
+metadata.
+
 ### Context Natives Use A Session-Aware VM Boundary
 
 Runtime-driven linked sessions pause synchronous context-native calls before

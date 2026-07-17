@@ -2,7 +2,9 @@
 
 > Status: in progress. Batch A is accepted in the
 > [baseline report](archive/actor-runtime-cache-batch-a-baseline-2026-07-18.md).
-> Batch B is the active deletion-first ownership cut. The Rust/Vela Actor
+> Batches B and C are accepted in the
+> [ownership-cut report](archive/actor-runtime-cache-batches-b-c-acceptance-2026-07-18.md).
+> Batch D is the active measured execution-lane decision. The Rust/Vela Actor
 > Runtime authority reconciliation closed Gate I, and state-storage Batch G
 > remains accepted.
 >
@@ -10,7 +12,7 @@
 > [interop reconciliation report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md),
 > then run Batches A-F in this document.
 >
-> Last updated: 2026-07-17.
+> Last updated: 2026-07-18.
 
 ## 0. Codex Goal
 
@@ -391,47 +393,47 @@ execution lane.
 
 ### Batch B: opt-in profiling and empty Actor footprint
 
-- [ ] B1. Finalize the permanent generation execution-data owner and its profile
+- [x] B1. Finalize the permanent generation execution-data owner and its profile
   configuration/sink contract before editing production ownership. Profiling is
   disabled by default; enabled profiling is generation-qualified aggregate or
   explicit execution-lane data with defined snapshot, reset, saturation,
   reload, and old-generation retention semantics.
-- [ ] B2. Introduce that final owner and hard-switch every root-call, re-entry,
+- [x] B2. Introduce that final owner and hard-switch every root-call, re-entry,
   provider, callback, and override profile consumer to `None` or its profile
   sink. In the same checkpoint, remove eager `RuntimeBytecodeProfile`
   construction from `GenerationRuntimeState` and delete displaced accessors and
   per-Runtime counter storage. The generation owner is retained as final
   architecture and is not temporary cache-migration scaffolding.
-- [ ] B3. Update existing profile tests directly to the final disabled/aggregate
+- [x] B3. Update existing profile tests directly to the final disabled/aggregate
   contract. Do not keep isolated per-Runtime counters as an alternate mode or
   compatibility fixture.
-- [ ] B4. When identity analysis proves immutable state-name/schema lookup data
+- [x] B4. When identity analysis proves immutable state-name/schema lookup data
   shareable, hard-switch every lookup consumer to generation metadata and
   delete the Actor-local copy in the same checkpoint. Retain only Actor values
   and heap state locally.
-- [ ] B5. Add structural allocation tests proving the default Actor footprint is
+- [x] B5. Add structural allocation tests proving the default Actor footprint is
   independent of instruction count and does not eagerly materialize cache
   storage.
 
 ### Batch C: immutable linking and generation-shared caches
 
-- [ ] C1. Finish the immutable/shared/Actor-local classification and identity
+- [x] C1. Finish the immutable/shared/Actor-local classification and identity
   proof for every existing cache family before production ownership changes.
   Remove mutable caches for facts that can be represented as verified immutable
   linked operands.
-- [ ] C2. Add final cache storage to the permanent generation execution-data
+- [x] C2. Add final cache storage to the permanent generation execution-data
   owner introduced by Batch B. Replace current `Cell`/`RefCell` storage with
   proven `Send + Sync` entries whose synchronization is local to the relevant
   site or cold population path. Do not introduce another cache migration owner.
-- [ ] C3. Hard-switch declared state, record field, linked method, native call,
+- [x] C3. Hard-switch declared state, record field, linked method, native call,
   host access, and dynamic method cache consumers to the final generation
   execution-data view in one coherent implementation batch. Root calls,
   re-entry, providers, callbacks, and overrides must change together.
-- [ ] C4. In that same checkpoint, delete the per-Runtime `InlineCaches` owner,
+- [x] C4. In that same checkpoint, delete the per-Runtime `InlineCaches` owner,
   its full vectors, old `RuntimeSidecars` cache delegation, displaced accessors,
   and any old/new selection plumbing. No production cache family may remain on
   the former authority.
-- [ ] C5. Update every family test directly to the final owner while preserving
+- [x] C5. Update every family test directly to the final owner while preserving
   hit, miss, wrong guard, concurrent first population, generic fallback, schema
   rejection, and hot-reload behavior. Do not add adapter fixtures for the old
   trait shape.

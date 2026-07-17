@@ -15,7 +15,7 @@ use crate::engine::Engine;
 use super::call_args::call_args_type_error;
 use super::{
     CallArgs, ProviderMethodTarget, RuntimeExternStateBindings, RuntimeVmStateStore, VelaValue,
-    state::RuntimeSidecars, unknown_function, unknown_method, value_type_id,
+    state::RuntimeGenerations, unknown_function, unknown_method, value_type_id,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -357,7 +357,7 @@ pub(super) struct RuntimeCallExecution<'program, 'state, 'host, 'budget> {
     pub(super) hot_reload: Option<&'program HotReloadRuntime>,
     pub(super) extern_states: &'state mut RuntimeExternStateBindings,
     pub(super) vm_states: &'state mut RuntimeVmStateStore,
-    pub(super) sidecars: &'state mut RuntimeSidecars,
+    pub(super) generations: &'state mut RuntimeGenerations,
     pub(super) target: EntryRequest,
     pub(super) args: CallArgs<'host>,
     pub(super) budget: &'budget mut vela_vm::budget::ExecutionBudget,

@@ -39,13 +39,8 @@ pub(crate) fn load_linked_cached_extern_state(
     program: &LinkedProgram,
     debug_name: DebugNameId,
     declared_slot: Option<StateSlot>,
-    cache_site: Option<CacheSiteId>,
 ) -> VmResult<Value> {
-    let inline_caches = runtime.inline_caches;
-    let cached_slot = cache_site
-        .and_then(|site| inline_caches.and_then(|caches| caches.state_read_slot(site)))
-        .or(declared_slot);
-    let slot = cached_slot.ok_or_else(|| {
+    let slot = declared_slot.ok_or_else(|| {
         VmError::new(VmErrorKind::TypeMismatch {
             operation: "extern state slot",
         })
@@ -65,11 +60,6 @@ pub(crate) fn load_linked_cached_extern_state(
         .adapter
         .extern_state_ref(ExternStateBinding { id: state.id, name })
         .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
-    if let (Some(caches), Some(cache_site), Some(slot)) = (inline_caches, cache_site, declared_slot)
-        && caches.state_read_slot(cache_site).is_none()
-    {
-        caches.set_state_read_slot(cache_site, slot);
-    }
     Ok(Value::HostRef(root))
 }
 
@@ -77,7 +67,6 @@ pub(crate) fn load_linked_state(
     runtime: HostAccessRuntime<'_, '_, '_>,
     program: &LinkedProgram,
     slot: StateSlot,
-    cache_site: Option<CacheSiteId>,
 ) -> VmResult<Value> {
     let state = program.state(slot).ok_or_else(|| {
         VmError::new(VmErrorKind::TypeMismatch {
@@ -93,11 +82,6 @@ pub(crate) fn load_linked_state(
                 operation: "uninitialized VM state",
             })
         })?;
-    if let (Some(caches), Some(cache_site)) = (runtime.inline_caches, cache_site)
-        && caches.state_read_slot(cache_site).is_none()
-    {
-        caches.set_state_read_slot(cache_site, slot);
-    }
     Ok(value)
 }
 

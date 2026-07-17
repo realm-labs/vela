@@ -1,6 +1,5 @@
 use std::cell::{Cell, RefCell};
 use vela_bytecode::{CacheSiteId, DebugNameId, InstructionOffset};
-use vela_common::StateSlot;
 use vela_vm::{
     DynamicMethodInlineCacheEntry, HostInlineCacheEntry, MethodInlineCacheEntry,
     NativeInlineCacheEntry, RecordFieldInlineCacheEntry, VmBytecodeProfiler, VmInlineCaches,
@@ -8,7 +7,6 @@ use vela_vm::{
 
 #[derive(Debug, Default)]
 pub(crate) struct BenchInlineCaches {
-    state_reads: Vec<Cell<Option<StateSlot>>>,
     host_accesses: Vec<Cell<Option<HostInlineCacheEntry>>>,
     record_fields: Vec<Cell<Option<RecordFieldInlineCacheEntry>>>,
     method_dispatches: Vec<Cell<Option<MethodInlineCacheEntry>>>,
@@ -19,8 +17,6 @@ pub(crate) struct BenchInlineCaches {
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct BenchCacheStats {
-    pub(crate) state_read_sets: usize,
-    pub(crate) state_read_hits: usize,
     pub(crate) host_access_sets: usize,
     pub(crate) host_access_hits: usize,
     pub(crate) record_field_sets: usize,
@@ -35,8 +31,7 @@ pub(crate) struct BenchCacheStats {
 
 impl BenchCacheStats {
     pub(crate) fn total_sets(self) -> usize {
-        self.state_read_sets
-            + self.host_access_sets
+        self.host_access_sets
             + self.record_field_sets
             + self.method_dispatch_sets
             + self.dynamic_method_dispatch_sets
@@ -44,8 +39,7 @@ impl BenchCacheStats {
     }
 
     pub(crate) fn total_hits(self) -> usize {
-        self.state_read_hits
-            + self.host_access_hits
+        self.host_access_hits
             + self.record_field_hits
             + self.method_dispatch_hits
             + self.dynamic_method_dispatch_hits
@@ -55,7 +49,6 @@ impl BenchCacheStats {
 
 #[derive(Clone, Copy)]
 enum BenchCacheFamily {
-    ExternStateRead,
     HostAccess,
     RecordField,
     MethodDispatch,
@@ -66,7 +59,6 @@ enum BenchCacheFamily {
 impl BenchInlineCaches {
     pub(crate) fn new(len: usize) -> Self {
         Self {
-            state_reads: empty_cell_cache(len),
             host_accesses: empty_cell_cache(len),
             record_fields: empty_cell_cache(len),
             method_dispatches: empty_cell_cache(len),
@@ -87,7 +79,6 @@ impl BenchInlineCaches {
     fn record_hit(&self, family: BenchCacheFamily) {
         let mut stats = self.stats.get();
         match family {
-            BenchCacheFamily::ExternStateRead => stats.state_read_hits += 1,
             BenchCacheFamily::HostAccess => stats.host_access_hits += 1,
             BenchCacheFamily::RecordField => stats.record_field_hits += 1,
             BenchCacheFamily::MethodDispatch => stats.method_dispatch_hits += 1,
@@ -133,7 +124,6 @@ impl BenchInlineCaches {
     fn record_set(&self, family: BenchCacheFamily) {
         let mut stats = self.stats.get();
         match family {
-            BenchCacheFamily::ExternStateRead => stats.state_read_sets += 1,
             BenchCacheFamily::HostAccess => stats.host_access_sets += 1,
             BenchCacheFamily::RecordField => stats.record_field_sets += 1,
             BenchCacheFamily::MethodDispatch => stats.method_dispatch_sets += 1,
@@ -148,24 +138,7 @@ impl BenchInlineCaches {
 
 impl VmInlineCaches for BenchInlineCaches {
     fn len(&self) -> usize {
-        self.state_reads.len()
-    }
-
-    fn state_read_slot(&self, site: CacheSiteId) -> Option<StateSlot> {
-        let entry = self.state_reads.get(site.index()).and_then(Cell::get);
-        if entry.is_some() {
-            self.record_hit(BenchCacheFamily::ExternStateRead);
-        }
-        entry
-    }
-
-    fn set_state_read_slot(&self, site: CacheSiteId, slot: StateSlot) {
-        self.record_copy_set(
-            BenchCacheFamily::ExternStateRead,
-            &self.state_reads,
-            site,
-            slot,
-        );
+        self.host_accesses.len()
     }
 
     fn host_access(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {

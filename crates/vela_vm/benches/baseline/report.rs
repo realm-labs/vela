@@ -25,7 +25,7 @@ pub(crate) fn print_row(workload: &Workload, result: &BenchResult) -> cache_delt
         result.profile_hits,
     );
     println!(
-        "bench={} mode={} measurement_kind={} min_ns={} mean_ns={} median_ns={} p95_ns={} checksum={} cache_sets={} cache_hits={} cache_global_sets={} cache_global_hits={} cache_host_sets={} cache_host_hits={} cache_record_sets={} cache_record_hits={} cache_method_sets={} cache_method_hits={} cache_dynamic_method_sets={} cache_dynamic_method_hits={} cache_native_sets={} cache_native_hits={} profile_hits={}",
+        "bench={} mode={} measurement_kind={} min_ns={} mean_ns={} median_ns={} p95_ns={} checksum={} cache_sets={} cache_hits={} cache_host_sets={} cache_host_hits={} cache_record_sets={} cache_record_hits={} cache_method_sets={} cache_method_hits={} cache_dynamic_method_sets={} cache_dynamic_method_hits={} cache_native_sets={} cache_native_hits={} profile_hits={}",
         workload.name,
         workload.mode.as_str(),
         measurement_kind,
@@ -36,8 +36,6 @@ pub(crate) fn print_row(workload: &Workload, result: &BenchResult) -> cache_delt
         result.checksum,
         cache.total_sets(),
         cache.total_hits(),
-        cache.state_read_sets,
-        cache.state_read_hits,
         cache.host_access_sets,
         cache.host_access_hits,
         cache.record_field_sets,

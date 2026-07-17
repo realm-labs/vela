@@ -97,6 +97,7 @@ fn program_version_shares_owned_artifact_and_verified_mir_generation() {
         version.verified_mir(),
         clone.verified_mir()
     ));
+    assert!(std::sync::Arc::ptr_eq(&version.abi, &clone.abi));
     assert_eq!(version.verified_mir().roots().count(), 2);
     assert!(
         std::mem::size_of::<ProgramVersion>() <= 512,

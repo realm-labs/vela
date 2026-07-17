@@ -704,7 +704,7 @@ fn linked_method_dispatch_target(
             .method_dispatch(dispatch_handle)
             .is_some_and(|dispatch| {
                 entry.debug_name == dispatch.debug_name
-                    && cached_method_target_matches_dispatch(&entry.target, &dispatch.kind)
+                    && cached_specialized_method_matches(&entry.target, &dispatch.kind)
             })
     {
         return Ok(LinkedMethodDispatchTarget {
@@ -723,22 +723,29 @@ fn linked_method_dispatch_target(
             .with_source_span_if_absent(context.call_site)
         })?;
     let target = method_inline_cache_target(&dispatch.kind);
-    if let Some(site) = context.cache_site
-        && let Some(caches) = context.inline_caches
-    {
-        caches.set_method_dispatch(
-            site,
-            MethodInlineCacheEntry {
-                dispatch: dispatch_handle,
-                debug_name: dispatch.debug_name,
-                target,
-            },
-        );
-    }
     Ok(LinkedMethodDispatchTarget {
         debug_name: dispatch.debug_name,
         target,
     })
+}
+
+fn cached_specialized_method_matches(
+    target: &MethodInlineCacheTarget,
+    kind: &LinkedMethodDispatchKind,
+) -> bool {
+    match (target, kind) {
+        (
+            MethodInlineCacheTarget::Value {
+                method_id,
+                standard_method: Some(_),
+            }
+            | MethodInlineCacheTarget::CallbackValue { method_id, .. },
+            LinkedMethodDispatchKind::Value {
+                method_id: dispatch_method,
+            },
+        ) => method_id == dispatch_method,
+        _ => false,
+    }
 }
 
 fn method_inline_cache_target(kind: &LinkedMethodDispatchKind) -> MethodInlineCacheTarget {
@@ -757,38 +764,6 @@ fn method_inline_cache_target(kind: &LinkedMethodDispatchKind) -> MethodInlineCa
         LinkedMethodDispatchKind::Host { method_id } => MethodInlineCacheTarget::Host {
             method_id: *method_id,
         },
-    }
-}
-
-fn cached_method_target_matches_dispatch(
-    target: &MethodInlineCacheTarget,
-    kind: &LinkedMethodDispatchKind,
-) -> bool {
-    match (target, kind) {
-        (
-            MethodInlineCacheTarget::Script {
-                method_id,
-                function,
-            },
-            LinkedMethodDispatchKind::Script {
-                method_id: dispatch_method,
-                function: dispatch_function,
-            },
-        ) => *method_id == *dispatch_method && *function == *dispatch_function,
-        (
-            MethodInlineCacheTarget::Value { method_id, .. }
-            | MethodInlineCacheTarget::CallbackValue { method_id, .. },
-            LinkedMethodDispatchKind::Value {
-                method_id: dispatch_method,
-            },
-        ) => *method_id == *dispatch_method,
-        (
-            MethodInlineCacheTarget::Host { method_id },
-            LinkedMethodDispatchKind::Host {
-                method_id: dispatch_method,
-            },
-        ) => *method_id == *dispatch_method,
-        _ => false,
     }
 }
 

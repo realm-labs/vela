@@ -134,7 +134,7 @@ fn linked_standard_value_method_caches_array_single_extend_target() {
         method_id,
         StandardMethodInlineCacheTarget::Extend,
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -159,7 +159,7 @@ fn linked_standard_value_method_caches_array_self_extend_target() {
         method_id,
         StandardMethodInlineCacheTarget::Extend,
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -255,10 +255,10 @@ fn assert_array_bool_cache(
 
     assert_eq!(run_linked_method_cache_program(&program, &caches), expected);
     assert_array_cache_entry(&caches, site, dispatch, method_id, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(run_linked_method_cache_program(&program, &caches), expected);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn assert_array_scalar_cache(
@@ -272,10 +272,10 @@ fn assert_array_scalar_cache(
 
     assert_eq!(run_linked_method_cache_program(&program, &caches), expected);
     assert_array_cache_entry(&caches, site, dispatch, method_id, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(run_linked_method_cache_program(&program, &caches), expected);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn assert_array_option_scalar_cache(
@@ -294,13 +294,13 @@ fn assert_array_option_scalar_cache(
         expected
     );
     assert_array_cache_entry(&caches, site, dispatch, method_id, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         expected
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn assert_array_owned_cache(
@@ -317,13 +317,13 @@ fn assert_array_owned_cache(
         expected
     );
     assert_array_cache_entry(&caches, site, dispatch, method_id, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         expected
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn assert_array_cache_entry(

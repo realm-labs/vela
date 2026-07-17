@@ -56,21 +56,25 @@ against the immutable linked owner pinned by the closure or active frame.
 Rules:
 
 ```text
-currently executing old functions continue on old CodeObject values
-new calls use new CodeObject values
+currently executing old functions continue on old generation-owned code
+new calls use the newly published generation
 old generations are released after old frames, closures, and retained values exit
 updates take effect only at safe points
 ```
 
-Each runtime keeps cache entries and profile counters in generation-keyed
-sidecars. Accepted reload activates a fresh sidecar atomically. Old sidecars
-remain available while an external old owner is retained. Liveness subtracts
+One Engine deployment weakly registers mutable execution data by exact
+`ExecutableGenerationId`. Accepted reload publishes a fresh immutable artifact
+and therefore fresh cache/profile storage; it never clears or rebases old
+slots. Actor-local generation entries retain only state ownership sets and an
+`Arc` to the matching shared execution data while old frames, closures,
+suspended calls, or retained values can still execute it. Liveness subtracts
 linked-artifact owners reachable only from inactive state roots and closes
 transitively over state reachable by live generations; a removed closure-valued
-state therefore cannot retain its own sidecar. A normal Runtime reload check
-performs reclamation even when no update is pending: it first collects released
-retained values, then prunes dead generation sidecars and their old-only
-VM/extern state roots.
+state therefore cannot retain its own generation entry. A normal Runtime
+reload check performs reclamation even when no update is pending: it first
+collects released retained values, then prunes dead generation entries and
+their old-only VM/extern state roots. The Engine's weak registry entry
+disappears when the last shared execution-data owner is gone.
 
 The same immutable artifact also maps verified MIR functions to linked handles.
 Future M22 compilation may consume the read-only restricted-JIT input on a

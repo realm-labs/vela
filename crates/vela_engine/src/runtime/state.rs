@@ -5,92 +5,95 @@ use vela_bytecode::{
     CacheSiteId, DebugNameId, ExecutableGenerationId, InstructionOffset, LinkedArtifact,
     LinkedProgram,
 };
-use vela_common::StateSlot;
 
 use super::{
-    RuntimeExternStateBindings, RuntimeVmStateStore, bytecode_profile::RuntimeBytecodeProfile,
-    image::RuntimeImage, inline_cache::InlineCaches, next_runtime_id,
+    RuntimeExternStateBindings, RuntimeVmStateStore, bytecode_profile::BytecodeProfileSnapshot,
+    execution_data::SharedGenerationExecutionData, image::RuntimeImage, next_runtime_id,
 };
 
 pub(super) struct RuntimeState {
     pub(super) id: u64,
     pub(super) extern_states: RuntimeExternStateBindings,
     pub(super) vm_states: RuntimeVmStateStore,
-    pub(super) sidecars: RuntimeSidecars,
+    pub(super) generations: RuntimeGenerations,
 }
 
-pub(super) struct RuntimeSidecars {
+/// Actor-local lifetime view of adopted generations.
+///
+/// It owns no cache or profile arrays; entries retain only state ownership sets
+/// and the shared, generation-qualified execution-data handle.
+pub(super) struct RuntimeGenerations {
     active_generation: ExecutableGenerationId,
-    generations: BTreeMap<ExecutableGenerationId, GenerationRuntimeState>,
+    entries: BTreeMap<ExecutableGenerationId, ActorGenerationState>,
 }
 
-struct GenerationRuntimeState {
+struct ActorGenerationState {
     artifact: Weak<LinkedArtifact>,
     vm_states: BTreeSet<vela_def::StateId>,
     extern_states: BTreeSet<vela_def::StateId>,
-    inline_caches: InlineCaches,
-    bytecode_profile: RuntimeBytecodeProfile,
+    execution_data: SharedGenerationExecutionData,
 }
 
 impl RuntimeState {
     pub(super) fn for_image(image: &RuntimeImage) -> Self {
         let active_generation = image.linked_program().generation();
-        let mut generations = BTreeMap::new();
-        generations.insert(active_generation, GenerationRuntimeState::for_image(image));
+        let mut entries = BTreeMap::new();
+        entries.insert(active_generation, ActorGenerationState::for_image(image));
         Self {
             id: next_runtime_id(),
-            extern_states: RuntimeExternStateBindings::with_state_layout(image.states()),
-            vm_states: RuntimeVmStateStore::with_state_layout(image.states()),
-            sidecars: RuntimeSidecars {
+            extern_states: RuntimeExternStateBindings::new(),
+            vm_states: RuntimeVmStateStore::new(),
+            generations: RuntimeGenerations {
                 active_generation,
-                generations,
+                entries,
             },
         }
     }
 
-    pub(super) fn set_state_layout(&mut self, states: &[vela_bytecode::StateDescriptor]) {
-        self.extern_states.set_state_layout(states);
-        self.vm_states.set_state_layout(states);
-    }
-
     pub(super) fn rebind_to_image(&mut self, image: &RuntimeImage) {
-        self.set_state_layout(image.states());
         let generation = image.linked_program().generation();
-        self.sidecars
-            .generations
+        self.generations
+            .entries
             .entry(generation)
-            .or_insert_with(|| GenerationRuntimeState::for_image(image));
-        self.sidecars.active_generation = generation;
+            .or_insert_with(|| ActorGenerationState::for_image(image));
+        self.generations.active_generation = generation;
         self.reclaim_dead_generations();
     }
 
     pub(super) fn reclaim_dead_generations(&mut self) {
         self.vm_states.collect();
-        self.sidecars.prune_dead_generations(&self.vm_states);
-        let (vm_states, extern_states) = self.sidecars.retained_state_ids();
+        self.generations.prune_dead_generations(&self.vm_states);
+        let (vm_states, extern_states) = self.generations.retained_state_ids();
         self.vm_states.retain_state_ids(&vm_states);
         self.extern_states.retain_state_ids(&extern_states);
     }
 
-    #[cfg(test)]
-    pub(super) fn inline_caches(&self) -> &InlineCaches {
-        &self.sidecars.active().inline_caches
+    pub(super) fn bytecode_profile_snapshot(&self) -> Option<BytecodeProfileSnapshot> {
+        let generation = self.generations.active_generation;
+        self.generations
+            .active()
+            .execution_data
+            .bytecode_profile()
+            .map(|profile| profile.snapshot(generation))
     }
 
-    #[cfg(test)]
-    pub(super) fn bytecode_profile(&self) -> &RuntimeBytecodeProfile {
-        &self.sidecars.active().bytecode_profile
+    pub(super) fn reset_bytecode_profile(&self) -> bool {
+        let Some(profile) = self.generations.active().execution_data.bytecode_profile() else {
+            return false;
+        };
+        profile.reset();
+        true
     }
 
     #[cfg(test)]
     pub(super) fn retained_generation_count(&self) -> usize {
-        self.sidecars.generation_count()
+        self.generations.generation_count()
     }
 }
 
-impl RuntimeSidecars {
-    fn active(&self) -> &GenerationRuntimeState {
-        self.generations
+impl RuntimeGenerations {
+    fn active(&self) -> &ActorGenerationState {
+        self.entries
             .get(&self.active_generation)
             .expect("active runtime generation sidecar exists")
     }
@@ -101,11 +104,11 @@ impl RuntimeSidecars {
         loop {
             let external_state_ids = live
                 .iter()
-                .filter_map(|generation| self.generations.get(generation))
+                .filter_map(|generation| self.entries.get(generation))
                 .flat_map(|state| state.vm_states.iter().copied())
                 .collect::<BTreeSet<_>>();
             let inactive_state_ids = self
-                .generations
+                .entries
                 .iter()
                 .filter(|(generation, _)| !live.contains(generation))
                 .flat_map(|(_, state)| state.vm_states.iter().copied())
@@ -118,7 +121,7 @@ impl RuntimeSidecars {
                 .linked_owner_counts_exclusive_to_roots(&internal_roots, &external_roots);
 
             let newly_live = self
-                .generations
+                .entries
                 .iter()
                 .filter(|(generation, _)| !live.contains(generation))
                 .filter_map(|(generation, state)| {
@@ -132,14 +135,14 @@ impl RuntimeSidecars {
             live.extend(newly_live);
         }
 
-        self.generations
+        self.entries
             .retain(|generation, _| live.contains(generation));
     }
 
     fn retained_state_ids(&self) -> (BTreeSet<vela_def::StateId>, BTreeSet<vela_def::StateId>) {
         let mut vm_states = BTreeSet::new();
         let mut extern_states = BTreeSet::new();
-        for state in self.generations.values() {
+        for state in self.entries.values() {
             vm_states.extend(state.vm_states.iter().copied());
             extern_states.extend(state.extern_states.iter().copied());
         }
@@ -148,16 +151,24 @@ impl RuntimeSidecars {
 
     #[cfg(test)]
     fn generation_count(&self) -> usize {
-        self.generations.len()
+        self.entries.len()
     }
 }
 
-impl GenerationRuntimeState {
+impl ActorGenerationState {
     fn for_image(image: &RuntimeImage) -> Self {
-        Self::for_program(image.linked_program(), image.linked_artifact())
+        Self::for_program(
+            image.linked_program(),
+            image.linked_artifact(),
+            image.execution_data(),
+        )
     }
 
-    fn for_program(program: &LinkedProgram, artifact: &Arc<LinkedArtifact>) -> Self {
+    fn for_program(
+        program: &LinkedProgram,
+        artifact: &Arc<LinkedArtifact>,
+        execution_data: &SharedGenerationExecutionData,
+    ) -> Self {
         Self {
             artifact: Arc::downgrade(artifact),
             vm_states: program
@@ -172,61 +183,67 @@ impl GenerationRuntimeState {
                 .filter(|state| state.storage == vela_bytecode::StateStorage::Extern)
                 .map(|state| state.id)
                 .collect(),
-            inline_caches: InlineCaches::for_program(program),
-            bytecode_profile: RuntimeBytecodeProfile::for_program(program),
+            execution_data: Arc::clone(execution_data),
         }
     }
 }
 
-impl vela_vm::VmInlineCaches for RuntimeSidecars {
+impl vela_vm::VmInlineCaches for RuntimeGenerations {
     fn for_generation(
         &self,
         generation: ExecutableGenerationId,
     ) -> Option<&dyn vela_vm::VmInlineCaches> {
-        Some(&self.generations.get(&generation)?.inline_caches)
+        Some(self.entries.get(&generation)?.execution_data.as_ref())
     }
 
     fn len(&self) -> usize {
-        self.active().inline_caches.len()
-    }
-
-    fn state_read_slot(&self, site: CacheSiteId) -> Option<StateSlot> {
-        self.active().inline_caches.state_read_slot(site)
-    }
-
-    fn set_state_read_slot(&self, site: CacheSiteId, slot: StateSlot) {
-        self.active().inline_caches.set_state_read_slot(site, slot);
+        self.active().execution_data.inline_caches().len()
     }
 
     fn host_access(&self, site: CacheSiteId) -> Option<vela_vm::HostInlineCacheEntry> {
-        self.active().inline_caches.host_access(site)
+        vela_vm::VmInlineCaches::host_access(self.active().execution_data.as_ref(), site)
     }
 
     fn set_host_access(&self, site: CacheSiteId, entry: vela_vm::HostInlineCacheEntry) {
-        self.active().inline_caches.set_host_access(site, entry);
+        vela_vm::VmInlineCaches::set_host_access(
+            self.active().execution_data.as_ref(),
+            site,
+            entry,
+        );
     }
 
     fn record_field(&self, site: CacheSiteId) -> Option<vela_vm::RecordFieldInlineCacheEntry> {
-        self.active().inline_caches.record_field(site)
+        vela_vm::VmInlineCaches::record_field(self.active().execution_data.as_ref(), site)
     }
 
     fn set_record_field(&self, site: CacheSiteId, entry: vela_vm::RecordFieldInlineCacheEntry) {
-        self.active().inline_caches.set_record_field(site, entry);
+        vela_vm::VmInlineCaches::set_record_field(
+            self.active().execution_data.as_ref(),
+            site,
+            entry,
+        );
     }
 
     fn method_dispatch(&self, site: CacheSiteId) -> Option<vela_vm::MethodInlineCacheEntry> {
-        self.active().inline_caches.method_dispatch(site)
+        vela_vm::VmInlineCaches::method_dispatch(self.active().execution_data.as_ref(), site)
     }
 
     fn set_method_dispatch(&self, site: CacheSiteId, entry: vela_vm::MethodInlineCacheEntry) {
-        self.active().inline_caches.set_method_dispatch(site, entry);
+        vela_vm::VmInlineCaches::set_method_dispatch(
+            self.active().execution_data.as_ref(),
+            site,
+            entry,
+        );
     }
 
     fn dynamic_method_dispatch(
         &self,
         site: CacheSiteId,
     ) -> Option<vela_vm::DynamicMethodInlineCacheEntry> {
-        self.active().inline_caches.dynamic_method_dispatch(site)
+        vela_vm::VmInlineCaches::dynamic_method_dispatch(
+            self.active().execution_data.as_ref(),
+            site,
+        )
     }
 
     fn set_dynamic_method_dispatch(
@@ -234,39 +251,63 @@ impl vela_vm::VmInlineCaches for RuntimeSidecars {
         site: CacheSiteId,
         entry: vela_vm::DynamicMethodInlineCacheEntry,
     ) {
-        self.active()
-            .inline_caches
-            .set_dynamic_method_dispatch(site, entry);
+        vela_vm::VmInlineCaches::set_dynamic_method_dispatch(
+            self.active().execution_data.as_ref(),
+            site,
+            entry,
+        );
     }
 
     fn native_call(&self, site: CacheSiteId) -> Option<vela_vm::NativeInlineCacheEntry> {
-        self.active().inline_caches.native_call(site)
+        vela_vm::VmInlineCaches::native_call(self.active().execution_data.as_ref(), site)
     }
 
     fn set_native_call(&self, site: CacheSiteId, entry: vela_vm::NativeInlineCacheEntry) {
-        self.active().inline_caches.set_native_call(site, entry);
+        vela_vm::VmInlineCaches::set_native_call(
+            self.active().execution_data.as_ref(),
+            site,
+            entry,
+        );
     }
 }
 
-impl vela_vm::VmBytecodeProfiler for RuntimeSidecars {
+impl vela_vm::VmBytecodeProfiler for RuntimeGenerations {
     fn for_generation(
         &self,
         generation: ExecutableGenerationId,
     ) -> Option<&dyn vela_vm::VmBytecodeProfiler> {
-        Some(&self.generations.get(&generation)?.bytecode_profile)
+        let data = self.entries.get(&generation)?.execution_data.as_ref();
+        data.bytecode_profile()
+            .map(|_| data as &dyn vela_vm::VmBytecodeProfiler)
     }
 
     fn record_instruction(&self, function: DebugNameId, offset: InstructionOffset) {
         vela_vm::VmBytecodeProfiler::record_instruction(
-            &self.active().bytecode_profile,
+            self.active().execution_data.as_ref(),
             function,
             offset,
         );
     }
 }
 
+impl RuntimeGenerations {
+    pub(super) fn bytecode_profiler(&self) -> Option<&dyn vela_vm::VmBytecodeProfiler> {
+        self.active().execution_data.bytecode_profile()?;
+        Some(self)
+    }
+
+    #[cfg(test)]
+    pub(super) fn active_bytecode_profile(
+        &self,
+    ) -> Option<&super::bytecode_profile::GenerationBytecodeProfile> {
+        self.active().execution_data.bytecode_profile()
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use crate::engine::Engine;
     use crate::runtime::RuntimeImage;
 
@@ -281,19 +322,54 @@ mod tests {
     }
 
     #[test]
-    fn generation_sidecars_are_weak_and_pruned_at_later_safe_points() {
+    fn actor_generation_entries_are_weak_and_pruned_at_later_safe_points() {
         let old_image = image("old");
         let old_lifetime = old_image.linked_program().lifetime_token();
         let mut state = RuntimeState::for_image(&old_image);
         let new_image = image("new");
 
         state.rebind_to_image(&new_image);
-        assert_eq!(state.sidecars.generation_count(), 2);
+        assert_eq!(state.generations.generation_count(), 2);
         drop(old_image);
         state.reclaim_dead_generations();
 
         assert!(old_lifetime.upgrade().is_none());
-        assert_eq!(state.sidecars.generation_count(), 1);
+        assert_eq!(state.generations.generation_count(), 1);
+    }
+
+    #[test]
+    fn actor_generation_state_retains_shared_execution_data_without_cache_arrays() {
+        let engine = Engine::builder().build().expect("engine should build");
+        let mut source = String::new();
+        for index in 0..32 {
+            source.push_str(&format!(
+                "struct Item{index} {{ value: i64 }} fn read_{index}(item: Item{index}) {{ return item.value; }}\n"
+            ));
+        }
+        let program = engine
+            .compile_source(&source)
+            .expect("large cache fixture should compile");
+        let artifact = engine
+            .link_compiled_program(program)
+            .expect("large cache fixture should link");
+        let first_image = RuntimeImage::from_linked_artifact(engine.clone(), artifact.clone());
+        let second_image = RuntimeImage::from_linked_artifact(engine, artifact);
+        let first = RuntimeState::for_image(&first_image);
+        let second = RuntimeState::for_image(&second_image);
+        let first_generation = first.generations.active();
+        let second_generation = second.generations.active();
+
+        assert!(Arc::ptr_eq(
+            &first_generation.execution_data,
+            &second_generation.execution_data
+        ));
+        assert_eq!(first_generation.vm_states.len(), 0);
+        assert_eq!(first_generation.extern_states.len(), 0);
+        assert_eq!(
+            first_generation.execution_data.inline_caches().len(),
+            first_image.cache_site_count()
+        );
+        assert!(!first_generation.execution_data.has_bytecode_profile());
     }
 
     #[test]

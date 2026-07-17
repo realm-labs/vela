@@ -2,13 +2,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex};
 
 use vela_def::StateId;
-use vela_vm::budget::ExecutionBudget;
-use vela_vm::error::{VmError, VmErrorKind, VmResult};
+use vela_vm::error::VmResult;
 use vela_vm::heap::ScriptHeap;
 use vela_vm::heap_execution::ActiveExecutionRoot;
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
-use vela_vm::{VmStateValues, owned_to_persistent_value, persistent_value_to_owned};
+use vela_vm::{VmStateValues, persistent_value_to_owned};
 
 use super::{RuntimeImageStorage, RuntimeImpl};
 
@@ -228,7 +227,6 @@ impl RuntimeValueRoots {
 pub struct RuntimeVmStateStore {
     pub(super) heap: ScriptHeap,
     pub(super) values: VmStateValues,
-    state_ids_by_name: BTreeMap<String, StateId>,
     pub(super) retained_values: Arc<Mutex<RuntimeValueRoots>>,
 }
 
@@ -239,62 +237,25 @@ impl RuntimeVmStateStore {
     }
 
     #[must_use]
-    pub fn with_state_layout(states: &[vela_bytecode::StateDescriptor]) -> Self {
-        Self {
-            heap: ScriptHeap::default(),
-            values: VmStateValues::default(),
-            state_ids_by_name: vm_state_ids_by_name(states),
-            retained_values: Arc::new(Mutex::new(RuntimeValueRoots::default())),
-        }
-    }
-
-    pub fn set_state_layout(&mut self, states: &[vela_bytecode::StateDescriptor]) {
-        self.state_ids_by_name = vm_state_ids_by_name(states);
-    }
-
-    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
-    }
-
-    pub fn insert(&mut self, name: impl Into<String>, value: OwnedValue) -> VmResult<()> {
-        let name = name.into();
-        let state = self
-            .state_ids_by_name
-            .get(&name)
-            .copied()
-            .ok_or_else(|| VmError::new(VmErrorKind::MissingVmState { name: name.clone() }))?;
-        let value = self.prepare_value(value)?;
-        self.values.insert(state, value);
-        self.collect();
-        Ok(())
-    }
-
-    pub(super) fn prepare_value(&mut self, value: OwnedValue) -> VmResult<Value> {
-        let mut budget = ExecutionBudget::unbounded();
-        self.prepare_value_with_budget(value, &mut budget)
-    }
-
-    pub(super) fn prepare_value_with_budget(
-        &mut self,
-        value: OwnedValue,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
-        owned_to_persistent_value(value, &mut self.heap, Some(budget))
     }
 
     pub(super) fn insert_prepared(&mut self, state: StateId, value: Value) {
         self.values.insert(state, value);
     }
 
+    #[cfg(test)]
+    pub(super) fn prepare_value(&mut self, value: OwnedValue) -> VmResult<Value> {
+        let mut budget = vela_vm::budget::ExecutionBudget::unbounded();
+        vela_vm::owned_to_persistent_value(value, &mut self.heap, Some(&mut budget))
+    }
+
     pub(super) fn persistent_value_by_id(&self, state: StateId) -> Option<Value> {
         self.values.get(state)
     }
 
-    pub fn value(&mut self, name: &str) -> VmResult<Option<OwnedValue>> {
-        let Some(state) = self.state_ids_by_name.get(name).copied() else {
-            return Ok(None);
-        };
+    pub fn value(&mut self, state: StateId) -> VmResult<Option<OwnedValue>> {
         let Some(value) = self.values.get(state) else {
             return Ok(None);
         };
@@ -302,13 +263,10 @@ impl RuntimeVmStateStore {
     }
 
     #[cfg(feature = "serde")]
-    pub fn value_as<T>(&self, name: &str) -> VmResult<Option<T>>
+    pub fn value_as<T>(&self, state: StateId) -> VmResult<Option<T>>
     where
         T: serde::de::DeserializeOwned,
     {
-        let Some(state) = self.state_ids_by_name.get(name).copied() else {
-            return Ok(None);
-        };
         let Some(value) = self.values.get(state) else {
             return Ok(None);
         };
@@ -357,12 +315,4 @@ impl RuntimeVmStateStore {
             .for_each(|value| value.trace_heap_refs(&mut roots));
         self.heap.collect_full(&roots);
     }
-}
-
-fn vm_state_ids_by_name(states: &[vela_bytecode::StateDescriptor]) -> BTreeMap<String, StateId> {
-    states
-        .iter()
-        .filter(|state| state.storage == vela_bytecode::StateStorage::Vm)
-        .map(|state| (state.qualified_name.clone(), state.id))
-        .collect()
 }

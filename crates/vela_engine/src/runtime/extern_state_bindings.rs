@@ -7,13 +7,32 @@ use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
 
+use super::image::RuntimeImage;
+
 const EXTERN_STATE_HOST_OBJECT_ID_BASE: u64 = 1 << 62;
+
+pub(super) fn extern_state_schema(
+    image: &RuntimeImage,
+    name: &str,
+) -> HostResult<(StateId, vela_common::HostTypeId)> {
+    let state = image
+        .state_by_name(name)
+        .filter(|state| state.storage == vela_bytecode::StateStorage::Extern)
+        .ok_or_else(|| HostError {
+            kind: HostErrorKind::MissingExternState {
+                name: name.to_owned(),
+            },
+            source_span: None,
+        })?;
+    let vela_mir::MirTypeContract::Host(expected) = state.type_contract else {
+        unreachable!("verified extern state descriptor must carry a host contract");
+    };
+    Ok((state.id, expected.runtime))
+}
 
 pub struct RuntimeExternStateBindings {
     bindings: BTreeMap<StateId, ExternStateObject>,
     pending: BTreeMap<String, ExternStateObject>,
-    state_ids_by_name: BTreeMap<String, StateId>,
-    expected_types_by_id: BTreeMap<StateId, vela_common::HostTypeId>,
     next_host_object_id: u64,
 }
 
@@ -29,57 +48,20 @@ impl RuntimeExternStateBindings {
         Self {
             bindings: BTreeMap::new(),
             pending: BTreeMap::new(),
-            state_ids_by_name: BTreeMap::new(),
-            expected_types_by_id: BTreeMap::new(),
             next_host_object_id: EXTERN_STATE_HOST_OBJECT_ID_BASE,
         }
     }
 
-    #[must_use]
-    pub fn with_state_layout(states: &[vela_bytecode::StateDescriptor]) -> Self {
-        let mut store = Self::new();
-        store.set_state_layout(states);
-        store
-    }
-
-    pub fn set_state_layout(&mut self, states: &[vela_bytecode::StateDescriptor]) {
-        self.state_ids_by_name = states
-            .iter()
-            .filter(|state| state.storage == vela_bytecode::StateStorage::Extern)
-            .filter_map(|state| match state.type_contract {
-                vela_mir::MirTypeContract::Host(_) => {
-                    Some((state.qualified_name.clone(), state.id))
-                }
-                _ => None,
-            })
-            .collect();
-        self.expected_types_by_id = states
-            .iter()
-            .filter(|state| state.storage == vela_bytecode::StateStorage::Extern)
-            .filter_map(|state| {
-                let vela_mir::MirTypeContract::Host(target) = state.type_contract else {
-                    return None;
-                };
-                Some((state.id, target.runtime))
-            })
-            .collect();
-    }
-
-    pub fn bind_host<T>(&mut self, name: impl Into<String>, value: T) -> HostResult<HostRef>
+    pub fn bind_host<T>(
+        &mut self,
+        state: StateId,
+        expected: vela_common::HostTypeId,
+        value: T,
+    ) -> HostResult<HostRef>
     where
         T: ScriptHostObject + Send + 'static,
     {
-        let name = name.into();
-        let state = self
-            .state_ids_by_name
-            .get(&name)
-            .copied()
-            .ok_or_else(|| HostError {
-                kind: HostErrorKind::MissingExternState { name: name.clone() },
-                source_span: None,
-            })?;
         let actual_type = value.host_type_id();
-        let expected = self.expected_types_by_id[&state];
         if expected != actual_type {
             return Err(HostError {
                 kind: HostErrorKind::TypeMismatch {
@@ -172,7 +154,6 @@ impl RuntimeExternStateBindings {
                 self.bindings.insert(state.id, binding);
             }
         }
-        self.set_state_layout(states);
     }
 
     pub(super) fn retain_state_ids(&mut self, retained: &BTreeSet<StateId>) {
@@ -197,11 +178,8 @@ impl RuntimeExternStateBindings {
     }
 
     #[must_use]
-    pub fn host_ref(&self, name: &str) -> Option<HostRef> {
-        self.state_ids_by_name
-            .get(name)
-            .and_then(|state| self.bindings.get(state))
-            .map(|binding| binding.host_ref)
+    pub fn host_ref(&self, state: StateId) -> Option<HostRef> {
+        self.bindings.get(&state).map(|binding| binding.host_ref)
     }
 
     pub(super) fn binding(&self, root: HostRef) -> Option<&ExternStateObject> {

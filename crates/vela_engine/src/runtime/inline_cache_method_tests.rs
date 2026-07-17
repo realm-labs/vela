@@ -15,7 +15,7 @@ use crate::reload::{EngineHotReloadSourceError, EngineHotReloadSourceErrorKind};
 use crate::runtime::{CallArgs, CallOptions, Runtime};
 
 #[test]
-fn linked_method_dispatch_inline_cache_populates_for_script_methods() {
+fn linked_script_method_uses_immutable_dispatch_without_mutable_cache() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
         .compile_source_with_id(
@@ -40,7 +40,8 @@ fn read_bonus() {
 
     assert_eq!(
         runtime
-            .state
+            .image
+            .execution_data()
             .inline_caches()
             .method_dispatch(call.cache_site),
         None
@@ -54,21 +55,18 @@ fn read_bonus() {
         Ok(OwnedValue::Scalar(ScalarValue::I64(7)))
     );
 
-    let entry = runtime
-        .state
-        .inline_caches()
-        .method_dispatch(call.cache_site)
-        .expect("method call should populate inline cache");
-    assert_eq!(entry.dispatch, call.dispatch);
-    assert_eq!(entry.debug_name, call.debug_name);
-    assert!(matches!(
-        entry.target,
-        MethodInlineCacheTarget::Script { .. }
-    ));
+    assert_eq!(
+        runtime
+            .image
+            .execution_data()
+            .inline_caches()
+            .method_dispatch(call.cache_site),
+        None
+    );
 }
 
 #[test]
-fn linked_method_dispatch_inline_cache_misses_wrong_dispatch_guard() {
+fn linked_script_method_ignores_mutable_entry_with_wrong_dispatch() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
         .compile_source_with_id(
@@ -90,17 +88,21 @@ fn read_bonus() {
         .expect("program should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let call = method_call_site(&runtime, "read_bonus");
-    runtime.state.inline_caches().set_method_dispatch(
-        call.cache_site,
-        MethodInlineCacheEntry {
-            dispatch: MethodDispatchHandle::new(call.dispatch.index() + 1),
-            debug_name: call.debug_name,
-            target: MethodInlineCacheTarget::Value {
-                method_id: MethodId::new(0),
-                standard_method: None,
+    runtime
+        .image
+        .execution_data()
+        .inline_caches()
+        .set_method_dispatch(
+            call.cache_site,
+            MethodInlineCacheEntry {
+                dispatch: MethodDispatchHandle::new(call.dispatch.index() + 1),
+                debug_name: call.debug_name,
+                target: MethodInlineCacheTarget::Value {
+                    method_id: MethodId::new(0),
+                    standard_method: None,
+                },
             },
-        },
-    );
+        );
 
     let result = runtime
         .call("read_bonus", CallArgs::new(), CallOptions::unbounded())
@@ -111,20 +113,16 @@ fn read_bonus() {
     );
 
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .method_dispatch(call.cache_site)
-        .expect("wrong-dispatch entry should be replaced");
-    assert_eq!(entry.dispatch, call.dispatch);
-    assert_eq!(entry.debug_name, call.debug_name);
-    assert!(matches!(
-        entry.target,
-        MethodInlineCacheTarget::Script { .. }
-    ));
+        .expect("injected entry remains outside immutable script dispatch");
+    assert_ne!(entry.dispatch, call.dispatch);
 }
 
 #[test]
-fn linked_method_dispatch_inline_cache_misses_wrong_script_target_guard() {
+fn linked_script_method_ignores_mutable_entry_with_wrong_target() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
         .compile_source_with_id(
@@ -147,17 +145,21 @@ fn read_bonus() {
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let call = method_call_site(&runtime, "read_bonus");
     let (method_id, function) = script_method_target(&runtime, call.dispatch);
-    runtime.state.inline_caches().set_method_dispatch(
-        call.cache_site,
-        MethodInlineCacheEntry {
-            dispatch: call.dispatch,
-            debug_name: call.debug_name,
-            target: MethodInlineCacheTarget::Script {
-                method_id,
-                function: ScriptFunctionHandle::new(function.index() + 1),
+    runtime
+        .image
+        .execution_data()
+        .inline_caches()
+        .set_method_dispatch(
+            call.cache_site,
+            MethodInlineCacheEntry {
+                dispatch: call.dispatch,
+                debug_name: call.debug_name,
+                target: MethodInlineCacheTarget::Script {
+                    method_id,
+                    function: ScriptFunctionHandle::new(function.index() + 1),
+                },
             },
-        },
-    );
+        );
 
     let result = runtime
         .call("read_bonus", CallArgs::new(), CallOptions::unbounded())
@@ -168,23 +170,24 @@ fn read_bonus() {
     );
 
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .method_dispatch(call.cache_site)
-        .expect("wrong-target entry should be replaced");
+        .expect("injected entry remains outside immutable script dispatch");
     assert_eq!(entry.dispatch, call.dispatch);
     assert_eq!(entry.debug_name, call.debug_name);
-    assert_eq!(
+    assert_ne!(
         entry.target,
         MethodInlineCacheTarget::Script {
             method_id,
-            function,
+            function
         }
     );
 }
 
 #[test]
-fn accepted_hot_reload_clears_linked_method_dispatch_inline_caches() {
+fn accepted_hot_reload_publishes_new_immutable_script_method_dispatch() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_with_id(
@@ -215,13 +218,13 @@ fn read_bonus() {
         runtime.value_to_owned(&first),
         Ok(OwnedValue::Scalar(ScalarValue::I64(7)))
     );
-    assert!(
+    assert_eq!(
         runtime
-            .state
+            .image
+            .execution_data()
             .inline_caches()
-            .method_dispatch(initial_call.cache_site)
-            .is_some(),
-        "initial method call should populate its inline cache"
+            .method_dispatch(initial_call.cache_site),
+        None
     );
 
     let update = runtime
@@ -251,7 +254,8 @@ fn read_bonus() {
     let reloaded_call = method_call_site(&runtime, "read_bonus");
     assert_eq!(
         runtime
-            .state
+            .image
+            .execution_data()
             .inline_caches()
             .method_dispatch(reloaded_call.cache_site),
         None
@@ -264,18 +268,18 @@ fn read_bonus() {
         runtime.value_to_owned(&second),
         Ok(OwnedValue::Scalar(ScalarValue::I64(9)))
     );
-    assert!(
+    assert_eq!(
         runtime
-            .state
+            .image
+            .execution_data()
             .inline_caches()
-            .method_dispatch(reloaded_call.cache_site)
-            .is_some(),
-        "reloaded method call should repopulate its inline cache"
+            .method_dispatch(reloaded_call.cache_site),
+        None
     );
 }
 
 #[test]
-fn rejected_hot_reload_preserves_linked_method_dispatch_inline_caches() {
+fn rejected_hot_reload_preserves_immutable_script_method_dispatch_generation() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
         .compile_hot_reload_initial_with_id(
@@ -306,11 +310,15 @@ pub fn read_bonus() -> i64 {
         runtime.value_to_owned(&first),
         Ok(OwnedValue::Scalar(ScalarValue::I64(7)))
     );
-    let initial_entry = runtime
-        .state
-        .inline_caches()
-        .method_dispatch(initial_call.cache_site)
-        .expect("initial method call should populate its inline cache");
+    let initial_execution_data = std::sync::Arc::clone(runtime.image.execution_data());
+    assert_eq!(
+        runtime
+            .image
+            .execution_data()
+            .inline_caches()
+            .method_dispatch(initial_call.cache_site),
+        None
+    );
 
     let update = runtime
         .compile_hot_reload_update_with_id(
@@ -345,13 +353,10 @@ pub fn read_bonus() -> f64 {
 
     let active_call = method_call_site(&runtime, "read_bonus");
     assert_eq!(active_call.cache_site, initial_call.cache_site);
-    assert_eq!(
-        runtime
-            .state
-            .inline_caches()
-            .method_dispatch(active_call.cache_site),
-        Some(initial_entry)
-    );
+    assert!(std::sync::Arc::ptr_eq(
+        &initial_execution_data,
+        runtime.image.execution_data()
+    ));
 
     let second = runtime
         .call("read_bonus", CallArgs::new(), CallOptions::unbounded())
@@ -362,10 +367,11 @@ pub fn read_bonus() -> f64 {
     );
     assert_eq!(
         runtime
-            .state
+            .image
+            .execution_data()
             .inline_caches()
             .method_dispatch(active_call.cache_site),
-        Some(initial_entry)
+        None
     );
 }
 
@@ -414,7 +420,8 @@ fn read_match() {
     let reloaded_call = method_call_site(&runtime, "read_match");
     assert_eq!(
         runtime
-            .state
+            .image
+            .execution_data()
             .inline_caches()
             .method_dispatch(reloaded_call.cache_site),
         None
@@ -487,7 +494,8 @@ fn read_total() {
     let reloaded_site = dynamic_method_call_site_by_name(&runtime, "read_total", "take");
     assert_eq!(
         runtime
-            .state
+            .image
+            .execution_data()
             .inline_caches()
             .dynamic_method_dispatch(reloaded_site),
         None
@@ -548,7 +556,8 @@ fn assert_callback_value_method_cache_target(
     expected_target: CallbackMethodInlineCacheTarget,
 ) {
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .method_dispatch(site)
         .expect("callback value method call should populate inline cache");
@@ -568,7 +577,8 @@ fn assert_dynamic_iterator_value_method_cache(
     expected_target: StandardMethodInlineCacheTarget,
 ) {
     let entry = runtime
-        .state
+        .image
+        .execution_data()
         .inline_caches()
         .dynamic_method_dispatch(site)
         .expect("dynamic iterator method call should populate inline cache");

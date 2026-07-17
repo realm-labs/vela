@@ -115,13 +115,13 @@ fn assert_string_predicate_cache(
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
     assert_eq!(standard_method.target, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_program(&program, &caches),
         Ok(Value::Bool(true))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn assert_string_no_arg_transform_cache(
@@ -152,13 +152,13 @@ fn assert_string_no_arg_transform_cache(
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
     assert_eq!(standard_method.target, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         Ok(expected)
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -188,13 +188,13 @@ fn linked_standard_value_method_caches_string_transform_target() {
         standard_method.target,
         StandardMethodInlineCacheTarget::ToUpper
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         Ok(OwnedValue::String("WOLF".to_owned()))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -304,13 +304,13 @@ fn linked_standard_value_method_caches_string_split_target() {
         standard_method.target,
         StandardMethodInlineCacheTarget::Split
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         Ok(expected)
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -344,13 +344,13 @@ fn linked_standard_value_method_caches_string_slice_target() {
         standard_method.target,
         StandardMethodInlineCacheTarget::Slice
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         Ok(OwnedValue::String("ell".to_owned()))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -383,13 +383,13 @@ fn linked_standard_value_method_caches_string_repeat_target() {
         standard_method.target,
         StandardMethodInlineCacheTarget::Repeat
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         Ok(OwnedValue::String("ababab".to_owned()))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -423,13 +423,13 @@ fn linked_standard_value_method_caches_string_replace_target() {
         standard_method.target,
         StandardMethodInlineCacheTarget::Replace
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         Ok(OwnedValue::String("event_done".to_owned()))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -463,13 +463,13 @@ fn linked_standard_value_method_caches_string_split_once_target() {
         standard_method.target,
         StandardMethodInlineCacheTarget::SplitOnce
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         Ok(expected)
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -521,13 +521,13 @@ fn assert_string_no_arg_owned_cache(
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
     assert_eq!(standard_method.target, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         Ok(expected)
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 fn assert_string_no_arg_option_cache(
@@ -558,13 +558,13 @@ fn assert_string_no_arg_option_cache(
     assert_eq!(cached_method, method_id);
     assert_eq!(standard_method.receiver, StandardMethodReceiver::String);
     assert_eq!(standard_method.target, target);
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         Ok(expected)
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -596,7 +596,7 @@ fn linked_standard_value_method_caches_string_find_target() {
         standard_method.target,
         StandardMethodInlineCacheTarget::Find
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
@@ -604,7 +604,7 @@ fn linked_standard_value_method_caches_string_find_target() {
             vela_common::ScalarValue::I64(6)
         )))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -634,13 +634,13 @@ fn linked_standard_value_method_caches_string_strip_prefix_target() {
         standard_method.target,
         StandardMethodInlineCacheTarget::StripPrefix
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         Ok(owned_option_some(OwnedValue::String("quest".to_owned())))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
 
 #[test]
@@ -670,11 +670,11 @@ fn linked_standard_value_method_caches_string_strip_suffix_target() {
         standard_method.target,
         StandardMethodInlineCacheTarget::StripSuffix
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 
     assert_eq!(
         run_linked_method_cache_owned_program(&program, &caches),
         Ok(owned_option_some(OwnedValue::String("quest".to_owned())))
     );
-    assert_eq!(caches.set_count(), 2);
+    assert_eq!(caches.set_count(), 1);
 }
