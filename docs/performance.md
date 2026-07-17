@@ -39,7 +39,11 @@ large artifacts in bounded subprocesses with a 1,536 MiB RSS ceiling and a
 cache sites, instruction count, schema count, and logical Actor-state payload
 separately. `actor_concurrency` uses the system allocator and measures 1, 2,
 and available-core workers, cache-cold/cache-hot same-generation overrides,
-P50/P95/P99 latency, throughput, and deterministic pending-Actor overlap.
+P50/P95/P99 latency, throughput, and deterministic pending-Actor overlap. It
+also compares generation-shared versus independently registered execution data
+for a cross-Actor dynamic-method site where each worker is monomorphic but
+adjacent workers use different receiver types; this is the durable execution-
+lane contention gate.
 Allocation counts are calibrated in the separate single-worker
 `actor_memory -- allocations` process because a global counting allocator
 distorts concurrent throughput.
@@ -125,10 +129,10 @@ bytecode-profiler overhead. Host-boundary `_hot_offsets` rows run in
 carry bytecode profile counters without enabling inline caches.
 Method-dispatch aggregate rows use the `method_dispatch` prefix so filtered
 quick runs include interpreter, profile-only, and cache-enabled rows together.
-Cache-enabled benchmark rows use the same `Cell`-backed storage shape as the
-engine runtime for copyable state-read, host-access, record-field, and
-resolved method-dispatch entries. Dynamic method-dispatch and native-call
-entries use cloneable target storage.
+Cache-enabled VM benchmark rows use local measurement storage and report
+family hit/set activity; Engine concurrency rows exercise the production
+generation-shared synchronized slots. Declared state and linked method facts
+are immutable operands and no longer appear as mutable Engine cache families.
 
 Tracked workload groups:
 

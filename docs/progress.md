@@ -31,9 +31,12 @@ Actors retain no instruction-counter arrays or cache-site vectors. One exact
 Engine deployment shares weakly registered generation execution data; caches
 use one typed synchronized slot per linked site, profiling is default-off
 aggregate atomic data, and immutable state/ABI/method facts remain with linked
-generation metadata. Batch D is active: shared-cache contention must be
-measured before deciding whether any explicit execution-lane sidecar is
-justified.
+generation metadata. Batch D's repeated shared-versus-isolated dynamic-method
+measurement found no material lane-local benefit and closed with no execution
+lane in the
+[lane-gate report](archive/actor-runtime-cache-batch-d-lane-gate-2026-07-18.md).
+Batch E is active: reload, old-generation lifetime, Actor isolation, and
+cancellation/panic/reclamation proofs must now close.
 
 The explicit state-storage hard switch is accepted through Batch G. Exact
 qualified embedding types, linked nominal canonicalization, graph-preserving
@@ -69,7 +72,7 @@ state-storage hard switch.
 | M8-M18 | Complete enough | HIR, executable language surface, script metadata, host bridge, reflection, stdlib, embedding, reload, diagnostics, examples, and benchmark foundations satisfy their checkpoints. |
 | M19 | Complete enough | The non-JIT interpreter and heap optimization checkpoint is closed; remaining measured costs belong to cache, value-layout, or later backend work. |
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
-| M20 | In progress | Actor Runtime/cache Batches A-C are accepted; Batch D's evidence-gated lane decision is active. |
+| M20 | In progress | Actor Runtime/cache Batches A-D are accepted without an execution lane; Batch E lifetime/correctness proof is active. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
 | Rust/Vela interop | Accepted | Ordinary and optional replacement interop use Actor-turn-scoped Runtime authority with no Runtime mutex boundary. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
@@ -187,7 +190,7 @@ or provider-specific public execution methods.
 The detailed ownership, memory, concurrency, profiling, reload, and cache
 execution batches are defined in
 [actor-runtime-cache-execution-plan.md](actor-runtime-cache-execution-plan.md).
-Its Gate I prerequisite is closed and Batch A is accepted. Batch B is active.
+Its Gate I prerequisite and Batches A-D are accepted. Batch E is active.
 State-storage Batch G remains accepted. No cache/profile ownership work was
 included in the interop reconciliation.
 

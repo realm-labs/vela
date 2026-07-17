@@ -2344,6 +2344,15 @@ generation. Immutable hot-reload ABI data is `Arc`-shared by `ProgramVersion`
 clones so Actor memory does not scale with generation instruction/function
 metadata.
 
+The measured execution-lane gate retains no lane sidecar. Three stable runs of
+the cross-Actor dynamic-method workload found shared execution data within
+normal variance of independently registered data at 1, 2, and 10 workers. The
+slower deliberately polymorphic and guard-miss VM rows also thrash within one
+Actor, so worker-local storage would not address their cause. Lane identity is
+therefore absent from execution setup; generation-shared slots plus the generic
+fallback remain the final contract unless a future named family supplies new
+repeatable evidence.
+
 ### Context Natives Use A Session-Aware VM Boundary
 
 Runtime-driven linked sessions pause synchronous context-native calls before

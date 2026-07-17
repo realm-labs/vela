@@ -4,7 +4,9 @@
 > [baseline report](archive/actor-runtime-cache-batch-a-baseline-2026-07-18.md).
 > Batches B and C are accepted in the
 > [ownership-cut report](archive/actor-runtime-cache-batches-b-c-acceptance-2026-07-18.md).
-> Batch D is the active measured execution-lane decision. The Rust/Vela Actor
+> Batch D closed without an execution lane in the
+> [lane-gate report](archive/actor-runtime-cache-batch-d-lane-gate-2026-07-18.md).
+> Batch E is the active lifetime/correctness proof. The Rust/Vela Actor
 > Runtime authority reconciliation closed Gate I, and state-storage Batch G
 > remains accepted.
 >
@@ -440,20 +442,24 @@ execution lane.
 
 ### Batch D: measured execution-lane specialization
 
-- [ ] D1. Run the shared-generation contention and polymorphism benchmarks
+- [x] D1. Run the shared-generation contention and polymorphism benchmarks
   before adding lane-local data.
-- [ ] D2. Add an execution-lane sidecar only for a named family whose shared
+- [x] D2. Add an execution-lane sidecar only for a named family whose shared
   design shows repeatable material contention or cache thrashing and whose
   lane-local candidate improves the stable benchmark without excessive memory.
-- [ ] D3. Pass lane identity explicitly through host execution setup. Actor
+- [x] D3. Pass lane identity explicitly through host execution setup. Actor
   migration between lanes must be correct and must not move Actor semantic
   state into the lane.
-- [ ] D4. Keep the generation-shared or generic path available when no stable
+- [x] D4. Keep the generation-shared or generic path available when no stable
   lane identity exists. Do not require a host to pin Actors to workers.
-- [ ] D5. If no family meets the evidence threshold, close Batch D with no
+- [x] D5. If no family meets the evidence threshold, close Batch D with no
   `WorkerExecutionSidecars` implementation. Any lane representation that is
   accepted is a retained final optimization, not a temporary bridge that a
   later cleanup batch removes.
+
+D2-D4 were conditional gates. No family met D2, so no lane identity or storage
+was added; the generation-shared and generic paths remain the complete runtime
+contract.
 
 ### Batch E: reload, lifetime, and multi-Actor correctness
 

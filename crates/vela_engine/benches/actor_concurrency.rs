@@ -13,13 +13,17 @@ use vela_engine::dispatch::{
     DispatchAuthority, DispatchController, DispatchInvocation, DispatchRoot,
 };
 use vela_engine::engine::Engine;
-use vela_engine::runtime::{SharedImage, SharedRuntime};
+use vela_engine::runtime::{
+    CallArgs, CallOptions, Runtime, RuntimeImage, SharedImage, SharedRuntime,
+};
 use vela_macros::{ScriptHost, ScriptReflect, export, replaceable};
 
 const STABLE_HOT_CALLS_PER_WORKER: usize = 5_000;
 const QUICK_HOT_CALLS_PER_WORKER: usize = 200;
 const STABLE_COLD_ACTORS_PER_WORKER: usize = 128;
 const QUICK_COLD_ACTORS_PER_WORKER: usize = 16;
+const STABLE_CONTENTION_CALLS_PER_WORKER: usize = 2_000;
+const QUICK_CONTENTION_CALLS_PER_WORKER: usize = 100;
 
 static PENDING_RELEASED: AtomicBool = AtomicBool::new(false);
 
@@ -56,6 +60,13 @@ impl Sampling {
         match self {
             Self::Quick => QUICK_COLD_ACTORS_PER_WORKER,
             Self::Stable => STABLE_COLD_ACTORS_PER_WORKER,
+        }
+    }
+
+    fn contention_calls_per_worker(self) -> usize {
+        match self {
+            Self::Quick => QUICK_CONTENTION_CALLS_PER_WORKER,
+            Self::Stable => STABLE_CONTENTION_CALLS_PER_WORKER,
         }
     }
 }
@@ -115,16 +126,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     worker_counts.sort_unstable();
     worker_counts.dedup();
     println!(
-        "suite=actor_concurrency sampling={} allocator=system available_workers={} hot_calls_per_worker={} cold_actors_per_worker={}",
+        "suite=actor_concurrency sampling={} allocator=system available_workers={} hot_calls_per_worker={} cold_actors_per_worker={} contention_calls_per_worker={}",
         sampling.label(),
         available_workers,
         sampling.hot_calls_per_worker(),
-        sampling.cold_actors_per_worker()
+        sampling.cold_actors_per_worker(),
+        sampling.contention_calls_per_worker()
     );
     pending_actor_overlap(&fixture)?;
     for workers in worker_counts {
         concurrent_hot(&fixture, workers, sampling.hot_calls_per_worker())?;
         concurrent_cold(&fixture, workers, sampling.cold_actors_per_worker())?;
+        dynamic_cache_contention(workers, sampling.contention_calls_per_worker())?;
     }
     Ok(())
 }
@@ -187,7 +200,7 @@ fn pending_actor_overlap(fixture: &ConcurrencyFixture) -> Result<(), Box<dyn Err
     PENDING_RELEASED.store(true, Ordering::Release);
     let pending_result = poll_pinned_to_completion(pending.as_mut())?;
     println!(
-        "concurrency_result mode=pending_overlap workers=2 calls=2 throughput_per_sec={:.3} p50_ns={} p95_ns={} p99_ns={} allocation_count_source=actor_memory_calibration lock_wait_ns=0 lock_wait_source=structural_no_shared_runtime_or_cache_lock independent_result={} pending_result={} overlapped=true",
+        "concurrency_result mode=pending_overlap workers=2 calls=2 throughput_per_sec={:.3} p50_ns={} p95_ns={} p99_ns={} allocation_count_source=actor_memory_calibration lock_wait_ns=0 lock_wait_source=workload_has_no_mutable_cache_site independent_result={} pending_result={} overlapped=true",
         2.0 / independent_latency.as_secs_f64(),
         independent_latency.as_nanos(),
         independent_latency.as_nanos(),
@@ -309,7 +322,7 @@ fn report_concurrency(mode: &str, workers: usize, elapsed: Duration, results: Ve
     samples.sort_unstable();
     let calls = samples.len();
     println!(
-        "concurrency_result mode={} workers={} calls={} throughput_per_sec={:.3} p50_ns={} p95_ns={} p99_ns={} allocation_count_source=actor_memory_calibration lock_wait_ns=0 lock_wait_source=structural_no_shared_runtime_or_cache_lock checksum={}",
+        "concurrency_result mode={} workers={} calls={} throughput_per_sec={:.3} p50_ns={} p95_ns={} p99_ns={} allocation_count_source=actor_memory_calibration lock_wait_ns=0 lock_wait_source=workload_has_no_mutable_cache_site checksum={}",
         mode,
         workers,
         calls,
@@ -319,6 +332,163 @@ fn report_concurrency(mode: &str, workers: usize, elapsed: Duration, results: Ve
         percentile_ns(&samples, 99),
         checksum
     );
+}
+
+const DYNAMIC_CONTENTION_SOURCE: &str = r#"
+struct Label {
+    text: String,
+}
+
+impl Label {
+    fn starts_with(self, prefix: String) -> bool {
+        return self.text.starts_with(prefix);
+    }
+}
+
+fn matches_prefix(value) {
+    return value.starts_with("q");
+}
+
+fn string_worker() {
+    let total = 0;
+    for tick in 0..32 {
+        if matches_prefix("quest") {
+            total += 1;
+        }
+        total += tick - tick;
+    }
+    return total;
+}
+
+fn label_worker() {
+    let total = 0;
+    for tick in 0..32 {
+        if matches_prefix(Label { text: "quick" }) {
+            total += 1;
+        }
+        total += tick - tick;
+    }
+    return total;
+}
+"#;
+
+fn dynamic_cache_contention(workers: usize, calls_per_worker: usize) -> Result<(), Box<dyn Error>> {
+    let engine = Engine::builder().build()?;
+    let program = engine.compile_source(DYNAMIC_CONTENTION_SOURCE)?;
+    let artifact = engine.link_compiled_program(program)?;
+    let shared_image =
+        RuntimeImage::from_linked_artifact(engine, Arc::clone(&artifact)).into_shared();
+    let shared = (0..workers)
+        .map(|_| SharedRuntime::from_shared_image(shared_image.clone()))
+        .collect::<Result<Vec<_>, _>>()?;
+    let isolated = (0..workers)
+        .map(|_| {
+            Runtime::from_linked_artifact(
+                Engine::builder()
+                    .build()
+                    .expect("isolated Engine should build"),
+                Arc::clone(&artifact),
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let shared_result = run_dynamic_workers(shared, calls_per_worker)?;
+    let isolated_result = run_dynamic_workers(isolated, calls_per_worker)?;
+    let delta =
+        (shared_result.throughput_per_sec / isolated_result.throughput_per_sec - 1.0) * 100.0;
+    println!(
+        "contention_result family=dynamic_method workers={} calls={} shared_throughput_per_sec={:.3} isolated_throughput_per_sec={:.3} shared_vs_isolated_pct={:.3} shared_p95_ns={} isolated_p95_ns={} shared_checksum={} isolated_checksum={} lock_wait_ns=unmeasured contention_signal=shared_vs_isolated_execution_data",
+        workers,
+        workers * calls_per_worker,
+        shared_result.throughput_per_sec,
+        isolated_result.throughput_per_sec,
+        delta,
+        shared_result.p95_ns,
+        isolated_result.p95_ns,
+        shared_result.checksum,
+        isolated_result.checksum,
+    );
+    Ok(())
+}
+
+fn run_dynamic_workers<I>(
+    mut runtimes: Vec<vela_engine::runtime::RuntimeImpl<I>>,
+    calls_per_worker: usize,
+) -> Result<ContentionResult, Box<dyn Error>>
+where
+    I: vela_engine::runtime::RuntimeImageStorage + Send,
+{
+    for (worker, runtime) in runtimes.iter_mut().enumerate() {
+        black_box(call_dynamic(runtime, dynamic_entry(worker))?);
+    }
+    let barrier = Arc::new(Barrier::new(runtimes.len()));
+    let wall_started = Instant::now();
+    let results = thread::scope(|scope| {
+        let handles = runtimes
+            .into_iter()
+            .enumerate()
+            .map(|(worker, mut runtime)| {
+                let barrier = Arc::clone(&barrier);
+                scope.spawn(move || -> Result<WorkerResult, String> {
+                    let mut samples = Vec::with_capacity(calls_per_worker);
+                    let mut checksum = 0_i64;
+                    barrier.wait();
+                    for _ in 0..calls_per_worker {
+                        let started = Instant::now();
+                        let value = call_dynamic(&mut runtime, dynamic_entry(worker))
+                            .map_err(|error| error.to_string())?;
+                        samples.push(started.elapsed());
+                        checksum = checksum.wrapping_add(value);
+                    }
+                    Ok(WorkerResult { samples, checksum })
+                })
+            })
+            .collect::<Vec<_>>();
+        join_workers(handles, "dynamic-method-contention")
+    })
+    .map_err(|error| -> Box<dyn Error> { error.into() })?;
+    let elapsed = wall_started.elapsed();
+    let checksum = results
+        .iter()
+        .fold(0_i64, |sum, result| sum.wrapping_add(result.checksum));
+    let mut samples = results
+        .into_iter()
+        .flat_map(|result| result.samples)
+        .collect::<Vec<_>>();
+    samples.sort_unstable();
+    Ok(ContentionResult {
+        throughput_per_sec: samples.len() as f64 / elapsed.as_secs_f64(),
+        p95_ns: percentile_ns(&samples, 95),
+        checksum,
+    })
+}
+
+fn dynamic_entry(worker: usize) -> &'static str {
+    if worker.is_multiple_of(2) {
+        "string_worker"
+    } else {
+        "label_worker"
+    }
+}
+
+fn call_dynamic<I>(
+    runtime: &mut vela_engine::runtime::RuntimeImpl<I>,
+    target: &str,
+) -> Result<i64, Box<dyn Error>>
+where
+    I: vela_engine::runtime::RuntimeImageStorage,
+{
+    let value = runtime.call(target, CallArgs::new(), CallOptions::unbounded())?;
+    let owned = runtime.value_to_owned(&value)?;
+    Ok(<i64 as vela_engine::args::FromScriptArg>::from_script_arg(
+        &owned,
+    )?)
+}
+
+struct ContentionResult {
+    throughput_per_sec: f64,
+    p95_ns: u128,
+    checksum: i64,
 }
 
 fn poll_to_completion<T>(future: impl Future<Output = VmResult<T>>) -> VmResult<T> {
