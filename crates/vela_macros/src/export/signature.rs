@@ -109,6 +109,7 @@ pub(super) enum HostAccess {
 pub(super) enum ReturnMode {
     Owned,
     Structured,
+    Boundary,
     ScopedHost {
         origin: BorrowOrigin,
         child: HostAccess,
@@ -266,6 +267,8 @@ fn classify_signature(
         }
     } else if return_shape.is_structured() {
         ReturnMode::Structured
+    } else if matches!(return_shape, TypeShape::Value(_)) {
+        ReturnMode::Boundary
     } else {
         ReturnMode::Owned
     };
@@ -504,10 +507,7 @@ fn classify_owned_type(ty: &Type) -> Result<TypeShape> {
             ))
         }
         _ if args.is_empty() => Ok(TypeShape::Value(ty.clone())),
-        _ => Err(syn::Error::new_spanned(
-            ty,
-            "generic Rust types are unsupported unless they are an approved Vela boundary container",
-        )),
+        _ => Ok(TypeShape::Value(ty.clone())),
     }
 }
 
@@ -708,7 +708,7 @@ impl ClassifiedSignature {
         !self.is_async
             && matches!(
                 self.returns.mode,
-                ReturnMode::Owned | ReturnMode::Structured
+                ReturnMode::Owned | ReturnMode::Structured | ReturnMode::Boundary
             )
             && self.parameters.iter().all(|parameter| {
                 matches!(
@@ -732,7 +732,7 @@ impl ClassifiedSignature {
             && !self.has_hidden_context()
             && matches!(
                 self.returns.mode,
-                ReturnMode::Owned | ReturnMode::Structured
+                ReturnMode::Owned | ReturnMode::Structured | ReturnMode::Boundary
             )
             && self.parameters.iter().all(|parameter| {
                 matches!(
@@ -828,7 +828,7 @@ impl ClassifiedSignature {
         self.is_async
             && matches!(
                 self.returns.mode,
-                ReturnMode::Owned | ReturnMode::Structured
+                ReturnMode::Owned | ReturnMode::Structured | ReturnMode::Boundary
             )
             && self
                 .parameters

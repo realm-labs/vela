@@ -33,7 +33,7 @@ pub(crate) fn function_contract(
             }
         });
     let return_hint = hint_tokens(&signature.returns.ty);
-    let return_mode = return_mode_tokens(signature.returns.mode);
+    let return_mode = return_mode_tokens(signature.returns.mode, &signature.returns.ty);
     let error_mode = match signature.returns.error_mode {
         ErrorMode::Value => quote! { ::vela_engine::interop::ErrorMode::Value },
         ErrorMode::RuntimeResult => quote! { ::vela_engine::interop::ErrorMode::RuntimeResult },
@@ -911,7 +911,7 @@ pub(crate) fn protocol_contract(
             }
         });
         let return_hint = hint_tokens(&signature.returns.ty);
-        let return_mode = return_mode_tokens(signature.returns.mode);
+        let return_mode = return_mode_tokens(signature.returns.mode, &signature.returns.ty);
         let error_mode = match signature.returns.error_mode {
             ErrorMode::Value => quote! { ::vela_engine::interop::ErrorMode::Value },
             ErrorMode::RuntimeResult => quote! { ::vela_engine::interop::ErrorMode::RuntimeResult },
@@ -983,10 +983,16 @@ fn parameter_mode_tokens(mode: ParameterMode) -> TokenStream {
     }
 }
 
-fn return_mode_tokens(mode: ReturnMode) -> TokenStream {
+fn return_mode_tokens(mode: ReturnMode, shape: &TypeShape) -> TokenStream {
     match mode {
         ReturnMode::Owned => quote! { ::vela_engine::interop::ReturnMode::OwnedValue },
         ReturnMode::Structured => quote! { ::vela_engine::interop::ReturnMode::StructuredValue },
+        ReturnMode::Boundary => {
+            let TypeShape::Value(ty) = shape else {
+                unreachable!("boundary return mode requires a value boundary type");
+            };
+            quote! { <#ty as ::vela_engine::interop::VelaValueBoundary>::vela_return_mode() }
+        }
         ReturnMode::ScopedHost {
             origin,
             child,

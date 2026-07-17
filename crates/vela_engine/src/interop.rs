@@ -87,6 +87,10 @@ impl ExportBundle {
 /// `Any` when no stable type contract exists.
 pub trait VelaValueBoundary {
     fn vela_type_hint() -> TypeHint;
+
+    fn vela_return_mode() -> ReturnMode {
+        ReturnMode::OwnedValue
+    }
 }
 
 /// Deterministic metadata proof for an exact registered host type.
@@ -262,6 +266,10 @@ impl<T: VelaValueBoundary> VelaValueBoundary for Option<T> {
 impl<T: VelaValueBoundary, E: VelaValueBoundary> VelaValueBoundary for Result<T, E> {
     fn vela_type_hint() -> TypeHint {
         TypeHint::result_of(T::vela_type_hint(), E::vela_type_hint())
+    }
+
+    fn vela_return_mode() -> ReturnMode {
+        ReturnMode::StructuredValue
     }
 }
 

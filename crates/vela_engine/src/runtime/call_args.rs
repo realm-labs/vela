@@ -24,6 +24,21 @@ pub struct CallArgs<'a> {
     fallback: Option<&'a mut (dyn ScriptStateAdapter + Send)>,
 }
 
+/// Captures the call-scoped HostRef assigned to one direct host argument.
+///
+/// Generated adapters use this token to prove that a returned HostRef is the
+/// exact direct Rust origin before returning that already-live Rust borrow.
+#[doc(hidden)]
+#[derive(Clone, Default)]
+pub struct DirectHostIdentity(Arc<parking_lot::Mutex<Option<HostRef>>>);
+
+impl DirectHostIdentity {
+    #[must_use]
+    pub fn host_ref(&self) -> Option<HostRef> {
+        *self.0.lock()
+    }
+}
+
 impl<'a> CallArgs<'a> {
     #[must_use]
     pub fn new() -> Self {
@@ -117,6 +132,7 @@ impl<'a> CallArgs<'a> {
         self.entries.push(CallArg::NamedHost {
             name: name.into(),
             host_ref: None,
+            identity: None,
             type_id: value.host_type_id(),
             binding: HostArgBinding::Shared {
                 object: value,
@@ -133,6 +149,7 @@ impl<'a> CallArgs<'a> {
     {
         self.entries.push(CallArg::PositionalHost {
             host_ref: None,
+            identity: None,
             type_id: value.host_type_id(),
             binding: HostArgBinding::Shared {
                 object: value,
@@ -140,6 +157,24 @@ impl<'a> CallArgs<'a> {
             },
         });
         self
+    }
+
+    #[doc(hidden)]
+    pub fn push_tracked_positional_host_ref<T>(&mut self, value: &'a T) -> DirectHostIdentity
+    where
+        T: ScriptHostObject + Sync + 'a,
+    {
+        let identity = DirectHostIdentity::default();
+        self.entries.push(CallArg::PositionalHost {
+            host_ref: None,
+            identity: Some(identity.clone()),
+            type_id: value.host_type_id(),
+            binding: HostArgBinding::Shared {
+                object: value,
+                leases: Arc::new(AtomicUsize::new(0)),
+            },
+        });
+        identity
     }
 
     /// Adds writable call-scoped host state.
@@ -154,6 +189,7 @@ impl<'a> CallArgs<'a> {
         self.entries.push(CallArg::NamedHost {
             name: name.into(),
             host_ref: None,
+            identity: None,
             type_id: value.host_type_id(),
             binding: HostArgBinding::Mutable {
                 object: Arc::new(parking_lot::RwLock::new(value)),
@@ -169,12 +205,30 @@ impl<'a> CallArgs<'a> {
     {
         self.entries.push(CallArg::PositionalHost {
             host_ref: None,
+            identity: None,
             type_id: value.host_type_id(),
             binding: HostArgBinding::Mutable {
                 object: Arc::new(parking_lot::RwLock::new(value)),
             },
         });
         self
+    }
+
+    #[doc(hidden)]
+    pub fn push_tracked_positional_host_mut<T>(&mut self, value: &'a mut T) -> DirectHostIdentity
+    where
+        T: ScriptHostObject + Send + Sync + 'a,
+    {
+        let identity = DirectHostIdentity::default();
+        self.entries.push(CallArg::PositionalHost {
+            host_ref: None,
+            identity: Some(identity.clone()),
+            type_id: value.host_type_id(),
+            binding: HostArgBinding::Mutable {
+                object: Arc::new(parking_lot::RwLock::new(value)),
+            },
+        });
+        identity
     }
 
     pub(crate) fn push_reborrowed_host_ref<T>(
@@ -189,6 +243,7 @@ impl<'a> CallArgs<'a> {
         self.entries.push(CallArg::NamedHost {
             name: name.into(),
             host_ref: Some(host_ref),
+            identity: None,
             type_id: value.host_type_id(),
             binding: HostArgBinding::Shared {
                 object: value,
@@ -210,6 +265,7 @@ impl<'a> CallArgs<'a> {
         self.entries.push(CallArg::NamedHost {
             name: name.into(),
             host_ref: Some(host_ref),
+            identity: None,
             type_id: value.host_type_id(),
             binding: HostArgBinding::Mutable {
                 object: Arc::new(parking_lot::RwLock::new(value)),
@@ -403,18 +459,25 @@ impl<'a> CallArgs<'a> {
     pub(super) fn assign_direct_host_refs(&mut self, next_object_id: &mut u64) {
         for entry in &mut self.entries {
             if let CallArg::NamedHost {
-                host_ref, type_id, ..
+                host_ref,
+                identity,
+                type_id,
+                ..
             }
             | CallArg::PositionalHost {
-                host_ref, type_id, ..
+                host_ref,
+                identity,
+                type_id,
+                ..
             } = entry
                 && host_ref.is_none()
             {
-                *host_ref = Some(HostRef::new(
-                    *type_id,
-                    vela_common::HostObjectId::new(*next_object_id),
-                    1,
-                ));
+                let assigned =
+                    HostRef::new(*type_id, vela_common::HostObjectId::new(*next_object_id), 1);
+                *host_ref = Some(assigned);
+                if let Some(identity) = identity {
+                    *identity.0.lock() = Some(assigned);
+                }
                 *next_object_id = next_object_id.saturating_add(1);
             }
         }
@@ -558,11 +621,13 @@ pub(super) enum CallArg<'a> {
     NamedHost {
         name: String,
         host_ref: Option<HostRef>,
+        identity: Option<DirectHostIdentity>,
         type_id: vela_common::HostTypeId,
         binding: HostArgBinding<'a>,
     },
     PositionalHost {
         host_ref: Option<HostRef>,
+        identity: Option<DirectHostIdentity>,
         type_id: vela_common::HostTypeId,
         binding: HostArgBinding<'a>,
     },

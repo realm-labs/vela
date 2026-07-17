@@ -1,5 +1,7 @@
 //! Optional immutable-generation dispatch for explicitly replaceable Rust entries.
 
+mod returning;
+
 use std::collections::BTreeMap;
 use std::fmt;
 use std::future::Future;
@@ -20,6 +22,11 @@ use crate::interop::{BoundaryMode, CallableContract};
 use crate::native::{EffectSet, TypeHint};
 use crate::runtime::handles::StableVelaFunction;
 use crate::runtime::{CallArgs, CallOptions, Runtime};
+
+pub use returning::{
+    BusinessResultReturn, FromDispatchReturn, RuntimeResultReturn, ValueReturn,
+    scoped_exclusive_origin, scoped_shared_origin,
+};
 
 const DEFAULT_EXECUTION_UNITS: u64 = 1_000_000;
 const DEFAULT_MEMORY_BYTES: usize = 8 * 1024 * 1024;
@@ -370,10 +377,11 @@ pub trait DispatchAuthority {
 pub struct DispatchInvocation;
 
 impl DispatchInvocation {
-    pub fn call<R>(&self, target: VelaOverrideTarget, args: CallArgs<'_>) -> VmResult<R>
-    where
-        R: FromScriptArg,
-    {
+    pub fn call_owned(
+        &self,
+        target: VelaOverrideTarget,
+        args: CallArgs<'_>,
+    ) -> VmResult<vela_vm::owned_value::OwnedValue> {
         let mut runtime = target.runtime.lock();
         let value = runtime.call(
             StableVelaFunction {
@@ -383,18 +391,22 @@ impl DispatchInvocation {
             args,
             dispatch_call_options(),
         )?;
-        let owned = runtime.value_to_owned(&value)?;
+        runtime.value_to_owned(&value)
+    }
+
+    pub fn call<R>(&self, target: VelaOverrideTarget, args: CallArgs<'_>) -> VmResult<R>
+    where
+        R: FromScriptArg,
+    {
+        let owned = self.call_owned(target, args)?;
         R::from_script_arg(&owned)
     }
 
-    pub fn call_async<'call, R>(
+    pub fn call_owned_async<'call>(
         &'call self,
         target: VelaOverrideTarget,
         args: CallArgs<'call>,
-    ) -> DispatchCallFuture<'call, R>
-    where
-        R: FromScriptArg + Send + 'call,
-    {
+    ) -> DispatchCallFuture<'call, vela_vm::owned_value::OwnedValue> {
         let runtime = Arc::clone(&target.runtime);
         let function = target.function;
         Box::pin(async move {
@@ -409,7 +421,20 @@ impl DispatchInvocation {
                     dispatch_call_options(),
                 )
                 .await?;
-            let owned = runtime.value_to_owned(&value)?;
+            runtime.value_to_owned(&value)
+        })
+    }
+
+    pub fn call_async<'call, R>(
+        &'call self,
+        target: VelaOverrideTarget,
+        args: CallArgs<'call>,
+    ) -> DispatchCallFuture<'call, R>
+    where
+        R: FromScriptArg + Send + 'call,
+    {
+        Box::pin(async move {
+            let owned = self.call_owned_async(target, args).await?;
             R::from_script_arg(&owned)
         })
     }
@@ -528,7 +553,14 @@ fn validate_override_contract(
         }
     }
     if !compatible_type(&slot.contract.returns.ty, &callable.returns.ty) {
-        return Err(incompatible(slot, callable, "return type"));
+        return Err(incompatible(
+            slot,
+            callable,
+            &format!(
+                "return type (expected {:?}, found {:?})",
+                slot.contract.returns.ty, callable.returns.ty
+            ),
+        ));
     }
     if inherited {
         if callable.returns.mode != binding_return_mode(slot.contract.returns.mode) {
@@ -628,7 +660,17 @@ fn compatible_type(expected: &TypeHint, actual: &RustBindingType) -> bool {
                 segments,
                 arguments,
             },
-        ) => arguments.is_empty() && segments.len() == 1 && segments[0] == tag.name(),
+        ) => {
+            arguments.is_empty()
+                && segments.len() == 1
+                && (segments[0] == tag.name()
+                    || matches!(
+                        (tag, segments[0].as_str()),
+                        (vela_common::PrimitiveTag::String, "String")
+                            | (vela_common::PrimitiveTag::Bytes, "Bytes")
+                            | (vela_common::PrimitiveTag::Unit, "Unit")
+                    ))
+        }
         (
             TypeHint::Host(key),
             RustBindingType::Host {

@@ -35,6 +35,12 @@ pub fn free_entry(context: &mut Context, value: i64) -> VmResult<i64> {
     Ok(value)
 }
 
+#[replaceable(path = "host::plain", authority = "context", index = 2)]
+pub fn plain_entry(context: &mut Context, value: i64) -> i64 {
+    let _ = context;
+    value
+}
+
 #[methods(path = "host::Service")]
 impl Service {
     #[replaceable(
@@ -55,4 +61,5 @@ impl Service {
 fn main() {
     let _ = vela_replaceable_slot_free_entry();
     let _ = Service::vela_replaceable_slot_method_entry();
+    let _ = vela_replaceable_slot_plain_entry();
 }

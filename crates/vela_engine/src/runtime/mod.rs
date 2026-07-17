@@ -53,7 +53,7 @@ mod state_api;
 mod tests;
 mod vm_states;
 
-pub use call_args::CallArgs;
+pub use call_args::{CallArgs, DirectHostIdentity};
 pub use call_future::RuntimeCallFuture;
 pub use extern_state_bindings::RuntimeExternStateBindings;
 pub use handles::{

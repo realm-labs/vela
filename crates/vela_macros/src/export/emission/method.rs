@@ -37,7 +37,7 @@ pub(crate) fn method_contract(
         }
     });
     let return_hint = hint_tokens(&signature.returns.ty);
-    let return_mode = return_mode_tokens(signature.returns.mode);
+    let return_mode = return_mode_tokens(signature.returns.mode, &signature.returns.ty);
     let error_mode = match signature.returns.error_mode {
         ErrorMode::Value => quote! { ::vela_engine::interop::ErrorMode::Value },
         ErrorMode::RuntimeResult => quote! { ::vela_engine::interop::ErrorMode::RuntimeResult },

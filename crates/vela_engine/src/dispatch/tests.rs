@@ -7,6 +7,37 @@ use std::task::{Context, Poll, Waker};
 use vela_common::{CallableAsyncness, SourceId, Span};
 use vela_macros::{ScriptHost, ScriptReflect, methods, replaceable};
 
+#[derive(Debug, Eq, PartialEq)]
+struct GameError(String);
+
+type GameResult<T> = Result<T, GameError>;
+
+impl From<vela_vm::error::VmError> for GameError {
+    fn from(error: vela_vm::error::VmError) -> Self {
+        Self(error.to_string())
+    }
+}
+
+impl crate::args::IntoScriptArg for GameError {
+    fn into_script_arg(self) -> vela_vm::owned_value::OwnedValue {
+        crate::args::IntoScriptArg::into_script_arg(self.0)
+    }
+}
+
+impl crate::args::FromScriptArg for GameError {
+    const TYPE_NAME: &'static str = "game error";
+
+    fn from_script_arg(value: &vela_vm::owned_value::OwnedValue) -> VmResult<Self> {
+        String::from_script_arg(value).map(Self)
+    }
+}
+
+impl crate::interop::VelaValueBoundary for GameError {
+    fn vela_type_hint() -> TypeHint {
+        TypeHint::string()
+    }
+}
+
 #[derive(ScriptHost, ScriptReflect)]
 #[script(path = "host::ActorContext")]
 pub struct ActorContext {
@@ -63,6 +94,27 @@ pub fn replaceable_increment(context: &mut ActorContext, value: i64) -> VmResult
 pub async fn replaceable_increment_async(context: &mut ActorContext, value: i64) -> VmResult<i64> {
     context.calls += 10;
     Ok(value + 1)
+}
+
+#[replaceable(path = "host::game::plain", authority = "context", index = 0)]
+pub fn replaceable_plain(context: &mut ActorContext, value: i64) -> i64 {
+    context.calls += 10;
+    value + 1
+}
+
+#[replaceable(path = "host::game::business", authority = "context", index = 1)]
+pub fn replaceable_business(
+    context: &mut ActorContext,
+    value: GameResult<i64>,
+    _divisor: i64,
+) -> GameResult<i64> {
+    context.calls += 10;
+    value
+}
+
+#[replaceable(path = "host::game::borrow_context", authority = "context", index = 0)]
+pub fn replaceable_borrow_context(context: &ActorContext) -> VmResult<&ActorContext> {
+    Ok(context)
 }
 
 fn direct_helper(value: i64) -> i64 {
@@ -511,6 +563,128 @@ return value / 0;
 
     assert!(replaceable_increment(&mut context, 40).is_err());
     assert_eq!(context.calls, 1);
+}
+
+#[test]
+fn replaceable_entries_preserve_plain_and_business_result_returns() {
+    let slots = vec![
+        vela_replaceable_slot_replaceable_plain(),
+        vela_replaceable_slot_replaceable_business(),
+    ];
+    let engine = crate::engine::Engine::builder()
+        .register_host_type::<ActorContext>()
+        .register_replaceable_slots(slots.clone())
+        .capability(vela_common::Capability::HostRead)
+        .capability(vela_common::Capability::HostWrite)
+        .build()
+        .expect("engine");
+    let program = engine
+        .compile_source(
+            r#"
+#[override(host::game::plain)]
+pub fn patched_plain(context: ActorContext, value: i64) -> i64 {
+context.calls += 1;
+return value + 2;
+}
+
+#[override(host::game::business)]
+pub fn patched_business(
+    context: ActorContext,
+    value: Result<i64, String>,
+    divisor: i64,
+) -> Result<i64, String> {
+context.calls += 1;
+let checked = 1 / divisor;
+return value;
+}
+"#,
+        )
+        .expect("override program");
+    let failure_engine = engine.clone();
+    let failure_slots = slots.clone();
+    let runtime = Arc::new(Mutex::new(Runtime::new(engine, program).expect("runtime")));
+    let controller = DispatchController::new(slots).expect("controller");
+    let candidate = controller.stage_current(&runtime).expect("override stage");
+    controller.activate(candidate).expect("activate candidate");
+    let mut context = ActorContext {
+        calls: 0,
+        root: DispatchRoot::pin(&controller),
+    };
+
+    assert_eq!(replaceable_plain(&mut context, 40), 42);
+    assert_eq!(replaceable_business(&mut context, Ok(43), 1), Ok(43));
+    assert_eq!(context.calls, 2);
+
+    let failure_program = failure_engine
+        .compile_source(
+            r#"
+#[override(host::game::business)]
+pub fn patched_business(
+    context: ActorContext,
+    value: Result<i64, String>,
+    divisor: i64,
+) -> Result<i64, String> {
+context.calls += 1;
+let checked = 1 / divisor;
+return value;
+}
+"#,
+        )
+        .expect("failing business override program");
+    let failure_runtime = Arc::new(Mutex::new(
+        Runtime::new(failure_engine, failure_program).expect("failure runtime"),
+    ));
+    let failure_controller = DispatchController::new(failure_slots).expect("failure controller");
+    let candidate = failure_controller
+        .stage_current(&failure_runtime)
+        .expect("failure override stage");
+    failure_controller
+        .activate(candidate)
+        .expect("activate failure candidate");
+    let mut failure_context = ActorContext {
+        calls: 0,
+        root: DispatchRoot::pin(&failure_controller),
+    };
+    let error = replaceable_business(&mut failure_context, Ok(43), 0)
+        .expect_err("VM failures map into the business error family");
+    assert!(
+        error.0.to_ascii_lowercase().contains("zero")
+            || error.0.to_ascii_lowercase().contains("division"),
+        "{error:?}"
+    );
+    assert_eq!(failure_context.calls, 1);
+}
+
+#[test]
+fn replaceable_borrowed_return_reuses_the_proven_direct_origin() {
+    let slots = vec![vela_replaceable_slot_replaceable_borrow_context()];
+    let engine = crate::engine::Engine::builder()
+        .register_host_type::<ActorContext>()
+        .register_replaceable_slots(slots.clone())
+        .capability(vela_common::Capability::HostRead)
+        .build()
+        .expect("engine");
+    let program = engine
+        .compile_source(
+            r#"
+#[override(host::game::borrow_context)]
+pub fn borrow_context(context: ActorContext) -> ActorContext {
+return context;
+}
+"#,
+        )
+        .expect("borrowed override program");
+    let runtime = Arc::new(Mutex::new(Runtime::new(engine, program).expect("runtime")));
+    let controller = DispatchController::new(slots).expect("controller");
+    let candidate = controller.stage_current(&runtime).expect("override stage");
+    controller.activate(candidate).expect("activate candidate");
+    let context = ActorContext {
+        calls: 0,
+        root: DispatchRoot::pin(&controller),
+    };
+
+    let borrowed = replaceable_borrow_context(&context).expect("borrowed origin");
+    assert!(std::ptr::eq(borrowed, &context));
 }
 
 #[test]

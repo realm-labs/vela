@@ -5,8 +5,8 @@ use quote::{format_ident, quote};
 use syn::ext::IdentExt;
 use syn::parse::Parser;
 use syn::{
-    AngleBracketedGenericArguments, Attribute, FnArg, GenericArgument, ImplItemFn, ItemFn, LitInt,
-    LitStr, Pat, PathArguments, Result, ReturnType, Type, Visibility, parse2,
+    Attribute, FnArg, ImplItemFn, ItemFn, LitInt, LitStr, Pat, Result, ReturnType, Type,
+    Visibility, parse2,
 };
 
 use crate::attrs::parse_qualified_name;
@@ -16,7 +16,10 @@ use crate::signature::{
 
 use super::attrs::ExportAttrs;
 use super::emission;
-use super::signature::{EffectName, ParameterMode, classify_function};
+use super::signature::{
+    BorrowOrigin, EffectName, ErrorMode, HostAccess, ParameterMode, ReturnMode, TypeShape,
+    classify_function,
+};
 
 pub(crate) struct ReplaceableAttrs {
     path: String,
@@ -49,7 +52,6 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         ));
     }
     let attrs = parse_attrs(attr)?;
-    let return_type = vm_result_ok_type(&item.sig.output)?;
     let authority = authority_parameter(&item, &attrs.authority)?;
     let classified = classify_function(&item.sig, &attrs.effects)?;
     if classified
@@ -99,11 +101,25 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             )),
         })
         .collect::<Result<Vec<_>>>()?;
+    let call_argument_tokens = call_arguments
+        .iter()
+        .map(|argument| quote! { #argument })
+        .collect::<Vec<_>>();
+    let return_adapter =
+        dispatch_return_adapter(&item.sig.output, &classified.returns, &call_argument_tokens)?;
+    let tracked_origin = borrowed_origin_index(&classified.returns);
     let arg_bindings = classified
         .parameters
         .iter()
         .zip(&call_arguments)
-        .map(|(parameter, argument)| argument_binding(parameter.mode, &quote! { #argument }))
+        .enumerate()
+        .map(|(index, (parameter, argument))| {
+            argument_binding(
+                parameter.mode,
+                &quote! { #argument },
+                tracked_origin == Some(index),
+            )
+        })
         .collect::<Vec<_>>();
 
     let target_lookup = quote! {
@@ -121,9 +137,10 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 .invocation();
             let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
             #(#arg_bindings)*
-            return __vela_invocation
-                .call_async::<#return_type>(__vela_target, __vela_args)
+            let __vela_result = __vela_invocation
+                .call_owned_async(__vela_target, __vela_args)
                 .await;
+            return #return_adapter;
         }
     } else {
         quote! {
@@ -134,7 +151,8 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 .invocation();
             let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
             #(#arg_bindings)*
-            return __vela_invocation.call::<#return_type>(__vela_target, __vela_args);
+            let __vela_result = __vela_invocation.call_owned(__vela_target, __vela_args);
+            return #return_adapter;
         }
     };
     let fallback_call = if item.sig.asyncness.is_some() {
@@ -210,7 +228,6 @@ pub(crate) fn rewrite_method(
             "replaceable methods must be public",
         ));
     }
-    let return_type = vm_result_ok_type(&method.sig.output)?;
     let authority = method_authority(method, &attrs.authority)?;
     let method_ident = method.sig.ident.clone();
     let fallback_ident = format_ident!("__vela_rust_{method_ident}");
@@ -240,11 +257,17 @@ pub(crate) fn rewrite_method(
             },
         }
     }
+    let return_adapter =
+        dispatch_return_adapter(&method.sig.output, &classified.returns, &call_arguments)?;
+    let tracked_origin = borrowed_origin_index(&classified.returns);
     let arg_bindings = classified
         .parameters
         .iter()
         .zip(&call_arguments)
-        .map(|(parameter, argument)| argument_binding(parameter.mode, argument))
+        .enumerate()
+        .map(|(index, (parameter, argument))| {
+            argument_binding(parameter.mode, argument, tracked_origin == Some(index))
+        })
         .collect::<Vec<_>>();
     let target_lookup = quote! {
         <_ as ::vela_engine::dispatch::DispatchAuthority>::vela_dispatch_root(
@@ -261,9 +284,10 @@ pub(crate) fn rewrite_method(
                 .invocation();
             let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
             #(#arg_bindings)*
-            return __vela_invocation
-                .call_async::<#return_type>(__vela_target, __vela_args)
+            let __vela_result = __vela_invocation
+                .call_owned_async(__vela_target, __vela_args)
                 .await;
+            return #return_adapter;
         }
     } else {
         quote! {
@@ -274,7 +298,8 @@ pub(crate) fn rewrite_method(
                 .invocation();
             let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
             #(#arg_bindings)*
-            return __vela_invocation.call::<#return_type>(__vela_target, __vela_args);
+            let __vela_result = __vela_invocation.call_owned(__vela_target, __vela_args);
+            return #return_adapter;
         }
     };
     let ordinary_arguments = method
@@ -350,7 +375,20 @@ fn method_authority(method: &ImplItemFn, authority: &syn::Ident) -> Result<Token
     Ok(quote! { &*#authority })
 }
 
-fn argument_binding(mode: ParameterMode, argument: &TokenStream) -> TokenStream {
+fn argument_binding(mode: ParameterMode, argument: &TokenStream, tracked: bool) -> TokenStream {
+    if tracked {
+        return match mode {
+            ParameterMode::SharedHost => quote! {
+                let __vela_return_origin_identity = __vela_args
+                    .push_tracked_positional_host_ref(&*#argument);
+            },
+            ParameterMode::ExclusiveHost => quote! {
+                let __vela_return_origin_identity = __vela_args
+                    .push_tracked_positional_host_mut(&mut *#argument);
+            },
+            _ => unreachable!("borrowed return origins are direct host parameters"),
+        };
+    }
     match mode {
         ParameterMode::Value | ParameterMode::ReadOnlyValueBorrow => quote! {
             __vela_args.push(
@@ -448,31 +486,92 @@ fn authority_parameter_in_inputs(
     ))
 }
 
-fn vm_result_ok_type(output: &ReturnType) -> Result<Type> {
-    let ReturnType::Type(_, ty) = output else {
-        return Err(syn::Error::new_spanned(
-            output,
-            "replaceable entries must return VmResult<T>",
-        ));
-    };
-    let Type::Path(path) = ty.as_ref() else {
-        return Err(syn::Error::new_spanned(ty, "expected VmResult<T>"));
-    };
-    let Some(segment) = path.path.segments.last() else {
-        return Err(syn::Error::new_spanned(ty, "expected VmResult<T>"));
-    };
-    if segment.ident != "VmResult" {
-        return Err(syn::Error::new_spanned(ty, "expected VmResult<T>"));
+fn dispatch_return_adapter(
+    output: &ReturnType,
+    returns: &super::signature::ClassifiedReturn,
+    arguments: &[TokenStream],
+) -> Result<TokenStream> {
+    if let ReturnMode::ScopedHost { origin, child, .. } = returns.mode {
+        if !matches!(returns.ty, TypeShape::Host(_, _)) {
+            return Err(syn::Error::new_spanned(
+                output,
+                "replaceable borrowed returns currently require one direct host reference",
+            ));
+        }
+        let index = match origin {
+            BorrowOrigin::Receiver => 0,
+            BorrowOrigin::Parameter(index) => usize::from(index),
+        };
+        let argument = arguments.get(index).ok_or_else(|| {
+            syn::Error::new_spanned(output, "borrowed return origin is not an entry argument")
+        })?;
+        let conversion = match child {
+            HostAccess::Shared => quote! {
+                ::vela_engine::dispatch::scoped_shared_origin(
+                    __vela_result,
+                    &__vela_return_origin_identity,
+                    &*#argument,
+                )
+            },
+            HostAccess::Exclusive => quote! {
+                ::vela_engine::dispatch::scoped_exclusive_origin(
+                    __vela_result,
+                    &__vela_return_origin_identity,
+                    &mut *#argument,
+                )
+            },
+        };
+        return Ok(match returns.error_mode {
+            ErrorMode::RuntimeResult => conversion,
+            ErrorMode::Value => quote! {
+                #conversion.unwrap_or_else(|error| {
+                    panic!("Vela override for a borrowed Rust entry failed: {error}")
+                })
+            },
+        });
     }
-    let PathArguments::AngleBracketed(AngleBracketedGenericArguments { args, .. }) =
-        &segment.arguments
-    else {
-        return Err(syn::Error::new_spanned(ty, "expected VmResult<T>"));
+    let declared = match output {
+        ReturnType::Default => quote! { () },
+        ReturnType::Type(_, ty) => quote! { #ty },
     };
-    let [GenericArgument::Type(ok)] = args.iter().collect::<Vec<_>>().as_slice() else {
-        return Err(syn::Error::new_spanned(ty, "expected VmResult<T>"));
+    let mode = match returns.error_mode {
+        ErrorMode::RuntimeResult => quote! { ::vela_engine::dispatch::RuntimeResultReturn },
+        ErrorMode::Value if is_business_result(&returns.ty) => {
+            quote! { ::vela_engine::dispatch::BusinessResultReturn }
+        }
+        ErrorMode::Value => quote! { ::vela_engine::dispatch::ValueReturn },
     };
-    Ok((*ok).clone())
+    Ok(quote! {
+        <#declared as ::vela_engine::dispatch::FromDispatchReturn<#mode>>::from_dispatch_return(
+            __vela_result,
+        )
+    })
+}
+
+fn borrowed_origin_index(returns: &super::signature::ClassifiedReturn) -> Option<usize> {
+    match returns.mode {
+        ReturnMode::ScopedHost {
+            origin: BorrowOrigin::Receiver,
+            ..
+        } => Some(0),
+        ReturnMode::ScopedHost {
+            origin: BorrowOrigin::Parameter(index),
+            ..
+        } => Some(usize::from(index)),
+        _ => None,
+    }
+}
+
+fn is_business_result(shape: &TypeShape) -> bool {
+    match shape {
+        TypeShape::Result(_, _) => true,
+        TypeShape::Value(Type::Path(path)) => path
+            .path
+            .segments
+            .last()
+            .is_some_and(|segment| segment.ident.to_string().ends_with("Result")),
+        _ => false,
+    }
 }
 
 #[cfg(test)]
@@ -500,5 +599,21 @@ mod tests {
         assert!(output.contains("VELA_INTERCEPT_SLOT_LEVEL"));
         assert!(output.contains("push_positional_host_mut"));
         assert!(output.contains("__vela_rust_level (context , player , amount)"));
+    }
+
+    #[test]
+    fn expansion_accepts_an_ordinary_value_return() {
+        let expanded = expand_result(
+            quote! { path = "host::game::level", authority = "context", index = 0 },
+            quote! {
+                pub fn level(context: &mut ActorContext, amount: i64) -> i64 {
+                    amount
+                }
+            },
+        )
+        .expect("ordinary replaceable return");
+        let output = expanded.to_string();
+        assert!(output.contains("ValueReturn"));
+        assert!(output.contains("call_owned"));
     }
 }
