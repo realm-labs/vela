@@ -26,6 +26,7 @@ vela_vm = { workspace = true }
 serde = ["dep:serde", "vela_vm/serde"]
 
 [dev-dependencies]
+stats_alloc = "0.1"
 vela_bytecode = { workspace = true, features = ["test-support"] }
 vela_macros = { workspace = true }
 vela_language_service = { workspace = true }
@@ -36,6 +37,14 @@ harness = false
 
 [[bench]]
 name = "generation_memory"
+harness = false
+
+[[bench]]
+name = "actor_memory"
+harness = false
+
+[[bench]]
+name = "actor_concurrency"
 harness = false
 
 [[bench]]

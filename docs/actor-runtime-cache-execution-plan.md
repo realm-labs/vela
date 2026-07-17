@@ -1,8 +1,10 @@
 # Actor-Owned Runtime And Cache Model Hard-Switch Plan
 
-> Status: ready. The Rust/Vela Actor Runtime authority reconciliation closed
-> Gate I, and state-storage Batch G remains accepted. No cache/profile
-> ownership work was performed by the reconciliation.
+> Status: in progress. Batch A is accepted in the
+> [baseline report](archive/actor-runtime-cache-batch-a-baseline-2026-07-18.md).
+> Batch B is the active deletion-first ownership cut. The Rust/Vela Actor
+> Runtime authority reconciliation closed Gate I, and state-storage Batch G
+> remains accepted.
 >
 > Execution order: begin Batch A as a new checkpoint after the
 > [interop reconciliation report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md),
@@ -363,24 +365,24 @@ shared metadata contention is measured and localized by cache family
 
 ### Batch A: ownership inventory and baselines
 
-- [ ] A1. Inventory every field in `RuntimeState`, `RuntimeSidecars`,
+- [x] A1. Inventory every field in `RuntimeState`, `RuntimeSidecars`,
   `GenerationRuntimeState`, `InlineCaches`, and `RuntimeBytecodeProfile`.
   Record semantic owner, identity inputs, mutation frequency, invalidation
   event, entry size, and current allocation shape.
-- [ ] A2. Inventory every `VmInlineCaches` and `VmBytecodeProfiler` call site and
+- [x] A2. Inventory every `VmInlineCaches` and `VmBytecodeProfiler` call site and
   identify which operations are already statically linked.
-- [ ] A3. Add an Actor Runtime memory harness for 1, 100, and 10,000 Runtimes
+- [x] A3. Add an Actor Runtime memory harness for 1, 100, and 10,000 Runtimes
   sharing small and large artifacts. Report construction time, retained bytes,
   peak RSS, cache-site count, instruction count, state-schema count, and Actor
   state bytes separately. Run large rows in a bounded subprocess with an
   explicit RSS/time ceiling so a capacity failure is reported instead of
   exhausting the validation host.
-- [ ] A4. Add a concurrent Actor throughput harness for 1, 2, and available-core
+- [x] A4. Add a concurrent Actor throughput harness for 1, 2, and available-core
   worker counts. Include the same override, a long-pending override, cache-cold
   and cache-hot execution, P50/P95/P99 latency, throughput, allocation count,
   and observable lock-wait time. The pending case uses a bounded test latch and
   deterministic release; it is not an unbounded future.
-- [ ] A5. Capture interpreter-only, current-cache, and current-profile baselines
+- [x] A5. Capture interpreter-only, current-cache, and current-profile baselines
   without changing semantics. Archive detailed raw data; keep only durable
   conclusions in `docs/performance.md`.
 

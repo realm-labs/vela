@@ -27,7 +27,30 @@ cargo bench -p vela_vm --bench external_compare -- --quick
 cargo bench -p vela_engine --bench hot_reload -- --quick
 cargo bench -p vela_engine --bench async_execution -- --quick
 cargo bench -p vela_engine --bench interop -- --quick
+cargo bench -p vela_engine --bench actor_memory -- memory
+cargo bench -p vela_engine --bench actor_memory -- allocations
+cargo bench -p vela_engine --bench actor_concurrency
 ```
+
+The Actor Runtime/cache Batch A harnesses freeze the before/after workload for
+M20. `actor_memory` measures 1, 100, and 10,000 Runtimes sharing small and
+large artifacts in bounded subprocesses with a 1,536 MiB RSS ceiling and a
+90-second time ceiling; it reports construction time, RSS, allocation traffic,
+cache sites, instruction count, schema count, and logical Actor-state payload
+separately. `actor_concurrency` uses the system allocator and measures 1, 2,
+and available-core workers, cache-cold/cache-hot same-generation overrides,
+P50/P95/P99 latency, throughput, and deterministic pending-Actor overlap.
+Allocation counts are calibrated in the separate single-worker
+`actor_memory -- allocations` process because a global counting allocator
+distorts concurrent throughput.
+
+The 2026-07-18 Batch A checkpoint found that 10,000 small-artifact Actors
+retain about 176 MiB RSS, while the 10,000-Actor/512-cache-site large row
+crosses the 1,536 MiB ceiling and is terminated. Ten-worker hot overrides
+reached about 592k calls/s with 10.8/25.9/45.5 us P50/P95/P99, and a pending
+Actor did not block an independent Actor on the same override generation.
+Detailed inventory, raw rows, and cache/profile deltas live in the
+[Batch A archive report](archive/actor-runtime-cache-batch-a-baseline-2026-07-18.md).
 
 The `interop` harness isolates the direct Rust lower bound, Vela-to-Rust scalar,
 shared-host and exclusive-host exports, a schema-backed generated Rust-to-Vela

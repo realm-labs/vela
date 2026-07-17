@@ -22,17 +22,17 @@ Handler/Service integration, runnable examples, and the complete validation
 gates are recorded in the
 [reconciliation acceptance report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md).
 
-The runtime ownership contract is now explicit: one actor owns one logical
-Vela Runtime and its persistent script state; immutable deployment generations
-are shared. The current eager per-Runtime inline-cache vectors and
-per-instruction profiling counters do not satisfy the intended many-actor
-footprint and are an M20 ownership/measurement gap. Worker-local sidecars are
-an optional measured optimization, not the default architecture. The ordered
-implementation and acceptance work now lives in the dedicated
-[Actor Runtime/cache execution plan](actor-runtime-cache-execution-plan.md).
-Gate I is closed, so that plan is ready as the next separate execution track.
-Its cache/profile ownership work has not begun and remains a breaking internal
-hard switch without compatibility layers or dual ownership.
+The Actor Runtime/cache plan is active. Batch A's ownership inventory and
+stable memory, allocation, concurrency, pending-Actor, profile, and cache
+baselines are accepted in the
+[Batch A report](archive/actor-runtime-cache-batch-a-baseline-2026-07-18.md).
+The current large-artifact design exceeds the bounded 1,536 MiB ceiling before
+constructing 10,000 Actors because every Runtime eagerly duplicates six dense
+cache vectors and every instruction counter. Batch B is the active
+deletion-first cut: profiling becomes disabled by default with opt-in
+generation-qualified aggregation, and immutable state-name/schema lookup moves
+out of Actor storage. No compatibility layer, dual owner, or execution-lane
+implementation is permitted.
 
 The explicit state-storage hard switch is accepted through Batch G. Exact
 qualified embedding types, linked nominal canonicalization, graph-preserving
@@ -67,7 +67,7 @@ state-storage hard switch.
 | M8-M18 | Complete enough | HIR, executable language surface, script metadata, host bridge, reflection, stdlib, embedding, reload, diagnostics, examples, and benchmark foundations satisfy their checkpoints. |
 | M19 | Complete enough | The non-JIT interpreter and heap optimization checkpoint is closed; remaining measured costs belong to cache, value-layout, or later backend work. |
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
-| M20 | Ready | Gate I is closed; begin the dedicated Actor Runtime/cache plan in a separate checkpoint. |
+| M20 | In progress | Actor Runtime/cache Batch A is accepted; Batch B profiling and immutable metadata ownership is active. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
 | Rust/Vela interop | Accepted | Ordinary and optional replacement interop use Actor-turn-scoped Runtime authority with no Runtime mutex boundary. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
@@ -185,9 +185,9 @@ or provider-specific public execution methods.
 The detailed ownership, memory, concurrency, profiling, reload, and cache
 execution batches are defined in
 [actor-runtime-cache-execution-plan.md](actor-runtime-cache-execution-plan.md).
-Its Gate I prerequisite is closed; Batch A is the next separate implementation
-checkpoint. State-storage Batch G is already accepted. No cache/profile
-ownership work was included in the interop reconciliation.
+Its Gate I prerequisite is closed and Batch A is accepted. Batch B is active.
+State-storage Batch G remains accepted. No cache/profile ownership work was
+included in the interop reconciliation.
 
 Existing cache or measured families include declared state, script record
 fields, host access, native calls, linked method dispatch, dynamic method

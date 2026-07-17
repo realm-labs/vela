@@ -814,13 +814,14 @@ fn run_host_access(
 ) -> Result<OwnedValue, Box<dyn Error>> {
     let player = HostRef::new(PLAYER_TYPE, PLAYER_OBJECT, PLAYER_GENERATION);
     let mut adapter = MockStateAdapter::new();
-    let state = program
+    if let Some(state) = program
         .program()
         .states()
         .iter()
         .find(|state| state.qualified_name == "main::state")
-        .expect("host access benchmark state descriptor");
-    adapter.insert_extern_state_ref(state.id, player);
+    {
+        adapter.insert_extern_state_ref(state.id, player);
+    }
     adapter.insert_diagnostic_path_value(
         HostPath::new(player).field(LEVEL_FIELD),
         HostValue::Scalar(vela_common::ScalarValue::I64(10)),
