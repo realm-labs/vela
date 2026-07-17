@@ -17,8 +17,8 @@ use crate::signature::{
 use super::attrs::ExportAttrs;
 use super::emission;
 use super::signature::{
-    BorrowOrigin, EffectName, ErrorMode, HostAccess, ParameterMode, ReturnMode, TypeShape,
-    classify_function,
+    BorrowOrigin, EffectName, ErrorMode, HostAccess, ParameterMode, ReturnMode,
+    ScopedReturnContainer, TypeShape, classify_function,
 };
 
 pub(crate) struct ReplaceableAttrs {
@@ -96,8 +96,12 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         .iter()
         .map(|argument| quote! { #argument })
         .collect::<Vec<_>>();
-    let return_adapter =
-        dispatch_return_adapter(&item.sig.output, &classified.returns, &call_argument_tokens)?;
+    let return_adapter = dispatch_return_adapter(
+        &item.sig.output,
+        &classified.returns,
+        &classified.parameters,
+        &call_argument_tokens,
+    )?;
     let tracked_origin = borrowed_origin_index(&classified.returns);
     let arg_bindings = classified
         .parameters
@@ -267,8 +271,12 @@ pub(crate) fn rewrite_method(
             },
         }
     }
-    let return_adapter =
-        dispatch_return_adapter(&method.sig.output, &classified.returns, &call_arguments)?;
+    let return_adapter = dispatch_return_adapter(
+        &method.sig.output,
+        &classified.returns,
+        &classified.parameters,
+        &call_arguments,
+    )?;
     let tracked_origin = borrowed_origin_index(&classified.returns);
     let arg_bindings = classified
         .parameters
@@ -518,15 +526,10 @@ fn authority_parameter_in_inputs(
 fn dispatch_return_adapter(
     output: &ReturnType,
     returns: &super::signature::ClassifiedReturn,
+    parameters: &[super::signature::ClassifiedParameter],
     arguments: &[TokenStream],
 ) -> Result<TokenStream> {
     if let ReturnMode::ScopedHost { origin, child, .. } = returns.mode {
-        if !matches!(returns.ty, TypeShape::Host(_, _)) {
-            return Err(syn::Error::new_spanned(
-                output,
-                "replaceable borrowed returns currently require one direct host reference",
-            ));
-        }
         let index = match origin {
             BorrowOrigin::Receiver => 0,
             BorrowOrigin::Parameter(index) => usize::from(index),
@@ -534,29 +537,67 @@ fn dispatch_return_adapter(
         let argument = arguments.get(index).ok_or_else(|| {
             syn::Error::new_spanned(output, "borrowed return origin is not an entry argument")
         })?;
-        let conversion = match child {
-            HostAccess::Shared => quote! {
-                ::vela_engine::dispatch::scoped_shared_origin(
+        let parameter = parameters.get(index).ok_or_else(|| {
+            syn::Error::new_spanned(output, "borrowed return origin has no callable parameter")
+        })?;
+        let payload = scoped_payload_shape(&returns.ty);
+        validate_direct_origin_types(output, payload, &parameter.ty)?;
+        let payload_type = dispatch_origin_payload_type(output, payload)?;
+        let success = dispatch_origin_success(output, payload, child, argument)?;
+        let container = scoped_return_container(&returns.ty).ok_or_else(|| {
+            syn::Error::new_spanned(output, "unsupported replaceable borrowed return container")
+        })?;
+        return Ok(match (container, returns.error_mode) {
+            (ScopedReturnContainer::Direct, ErrorMode::RuntimeResult) => quote! {
+                match ::vela_engine::dispatch::validate_dispatch_origin_payload::<#payload_type>(
                     __vela_result,
                     &__vela_return_origin_identity,
-                    &*#argument,
-                )
+                ) {
+                    Ok(()) => Ok(#success),
+                    Err(error) => Err(error),
+                }
             },
-            HostAccess::Exclusive => quote! {
-                ::vela_engine::dispatch::scoped_exclusive_origin(
+            (ScopedReturnContainer::Direct, ErrorMode::Value) => quote! {{
+                ::vela_engine::dispatch::validate_dispatch_origin_payload::<#payload_type>(
                     __vela_result,
                     &__vela_return_origin_identity,
-                    &mut *#argument,
                 )
-            },
-        };
-        return Ok(match returns.error_mode {
-            ErrorMode::RuntimeResult => conversion,
-            ErrorMode::Value => quote! {
-                #conversion.unwrap_or_else(|error| {
+                .unwrap_or_else(|error| {
                     panic!("Vela override for a borrowed Rust entry failed: {error}")
-                })
+                });
+                #success
+            }},
+            (ScopedReturnContainer::Option, ErrorMode::Value) => quote! {
+                if ::vela_engine::dispatch::validate_optional_dispatch_origin_payload::<#payload_type>(
+                    __vela_result,
+                    &__vela_return_origin_identity,
+                )
+                .unwrap_or_else(|error| {
+                    panic!("Vela override for a borrowed Rust entry failed: {error}")
+                }) {
+                    Some(#success)
+                } else {
+                    None
+                }
             },
+            (ScopedReturnContainer::Result, ErrorMode::Value) => quote! {
+                match ::vela_engine::dispatch::validate_business_dispatch_origin_payload::<
+                    #payload_type,
+                    _,
+                >(
+                    __vela_result,
+                    &__vela_return_origin_identity,
+                ) {
+                    Ok(()) => Ok(#success),
+                    Err(error) => Err(error),
+                }
+            },
+            (_, ErrorMode::RuntimeResult) => {
+                return Err(syn::Error::new_spanned(
+                    output,
+                    "VmResult may wrap a direct borrowed return, not Option/Result borrowed containers",
+                ));
+            }
         });
     }
     let declared = match output {
@@ -575,6 +616,106 @@ fn dispatch_return_adapter(
             __vela_result,
         )
     })
+}
+
+fn scoped_payload_shape(shape: &TypeShape) -> &TypeShape {
+    match shape {
+        TypeShape::Option(inner) | TypeShape::Result(inner, _) => inner,
+        _ => shape,
+    }
+}
+
+fn scoped_return_container(shape: &TypeShape) -> Option<ScopedReturnContainer> {
+    match shape {
+        TypeShape::Host(_, _) | TypeShape::Tuple(_) => Some(ScopedReturnContainer::Direct),
+        TypeShape::Option(_) => Some(ScopedReturnContainer::Option),
+        TypeShape::Result(_, _) => Some(ScopedReturnContainer::Result),
+        _ => None,
+    }
+}
+
+fn dispatch_origin_payload_type(output: &ReturnType, shape: &TypeShape) -> Result<TokenStream> {
+    match shape {
+        TypeShape::Host(_, _) => Ok(quote! { ::vela_host::path::HostRef }),
+        TypeShape::Tuple(elements) if (2..=4).contains(&elements.len()) => {
+            let hosts = elements
+                .iter()
+                .map(|element| match element {
+                    TypeShape::Host(_, _) => Ok(quote! { ::vela_host::path::HostRef }),
+                    _ => Err(syn::Error::new_spanned(
+                        output,
+                        "borrowed return tuples may contain only host references",
+                    )),
+                })
+                .collect::<Result<Vec<_>>>()?;
+            Ok(quote! { (#(#hosts),*) })
+        }
+        TypeShape::Tuple(_) => Err(syn::Error::new_spanned(
+            output,
+            "replaceable borrowed return tuples support two through four references",
+        )),
+        _ => Err(syn::Error::new_spanned(
+            output,
+            "unsupported replaceable borrowed return payload",
+        )),
+    }
+}
+
+fn dispatch_origin_success(
+    output: &ReturnType,
+    shape: &TypeShape,
+    child: HostAccess,
+    argument: &TokenStream,
+) -> Result<TokenStream> {
+    let one = match child {
+        HostAccess::Shared => quote! { &*#argument },
+        HostAccess::Exclusive => quote! { &mut *#argument },
+    };
+    match shape {
+        TypeShape::Host(_, _) => Ok(one),
+        TypeShape::Tuple(elements) if child == HostAccess::Shared => {
+            let values = elements.iter().map(|_| one.clone());
+            Ok(quote! { (#(#values),*) })
+        }
+        TypeShape::Tuple(_) => Err(syn::Error::new_spanned(
+            output,
+            "one direct origin cannot produce multiple exclusive Rust references",
+        )),
+        _ => Err(syn::Error::new_spanned(
+            output,
+            "unsupported replaceable borrowed return payload",
+        )),
+    }
+}
+
+fn validate_direct_origin_types(
+    output: &ReturnType,
+    payload: &TypeShape,
+    origin: &TypeShape,
+) -> Result<()> {
+    let TypeShape::Host(origin_ty, _) = origin else {
+        if matches!(origin, TypeShape::ReceiverHost) {
+            return Ok(());
+        }
+        return Err(syn::Error::new_spanned(
+            output,
+            "replaceable borrowed returns require a direct host origin",
+        ));
+    };
+    let matches_origin = |shape: &TypeShape| matches!(shape, TypeShape::Host(ty, _) if quote!(#ty).to_string() == quote!(#origin_ty).to_string());
+    let valid = match payload {
+        TypeShape::Host(_, _) => matches_origin(payload),
+        TypeShape::Tuple(elements) => elements.iter().all(matches_origin),
+        _ => false,
+    };
+    if valid {
+        Ok(())
+    } else {
+        Err(syn::Error::new_spanned(
+            output,
+            "replaceable borrowed returns must reuse the declared direct origin type",
+        ))
+    }
 }
 
 fn borrowed_origin_index(returns: &super::signature::ClassifiedReturn) -> Option<usize> {

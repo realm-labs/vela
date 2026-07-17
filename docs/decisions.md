@@ -2248,8 +2248,12 @@ same-session sync/async re-entry now close the identity, validation, deadlock,
 fresh-budget, and target-owned Runtime findings. Independent roots may share
 one immutable `SharedImage` while retaining separate Runtime locks and state.
 The return adapter supports ordinary values, business Result aliases, and
-direct borrowed origins; borrowed containers and the business-macro authoring
-surface remain implementation gaps rather than accepted compatibility paths.
+direct borrowed origins in direct, Option, Result, and shared-tuple containers.
+Every returned HostRef must match the tracked origin before safe Rust rebuilds
+the authored references; different child projections and multiple exclusive
+aliases are rejected rather than fabricated. The business-macro authoring
+surface remains an implementation gap rather than an accepted compatibility
+path.
 
 ### Context Natives Use A Session-Aware VM Boundary
 

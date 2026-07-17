@@ -193,7 +193,7 @@ The following closure tasks reopen the replaceable portions of Batches E-G:
   effect ceiling. A strict effect subset is allowed; an effect outside the
   target ceiling is rejected even when capability projection loses the
   distinction.
-- [ ] F-REVIEW-6. Reuse the ordinary generated return/error adapter for
+- [x] F-REVIEW-6. Reuse the ordinary generated return/error adapter for
   replaceable entries. Ordinary values, boundary-safe `Result<T, E>`, host
   business result aliases, and supported borrowed host returns must not be
   narrowed to `VmResult<T>` or converted through `FromScriptArg for &T`.

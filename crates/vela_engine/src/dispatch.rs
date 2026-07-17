@@ -24,8 +24,9 @@ use crate::runtime::handles::StableVelaFunction;
 use crate::runtime::{CallArgs, CallOptions, SharedImage, SharedRuntime};
 
 pub use returning::{
-    BusinessResultReturn, FromDispatchReturn, RuntimeResultReturn, ValueReturn,
-    scoped_exclusive_origin, scoped_shared_origin,
+    BusinessResultReturn, DispatchOriginPayload, FromDispatchReturn, RuntimeResultReturn,
+    ValueReturn, validate_business_dispatch_origin_payload, validate_dispatch_origin_payload,
+    validate_optional_dispatch_origin_payload,
 };
 
 const DEFAULT_EXECUTION_UNITS: u64 = 1_000_000;
@@ -929,3 +930,7 @@ fn incompatible(
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "dispatch/returning_tests.rs"]
+mod returning_tests;

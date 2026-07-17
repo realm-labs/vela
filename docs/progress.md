@@ -14,8 +14,7 @@ The ordinary Rust/Vela interop path is accepted: Rust exports, exact lease
 adapters, owner-frozen borrowed returns, generated typed Rust-to-Vela bindings,
 and `NativeCallContext` sync/async re-entry use the shared execution path.
 Post-implementation review reopened the optional replaceable-dispatch layer:
-its remaining return adapter does not yet cover the full borrowed-container
-surface, and it still exposes low-level slot ceremony to business authors.
+its remaining low-level slot ceremony is still exposed to business authors.
 Explicit root-owned `SharedRuntime` sessions, same-session sync/async re-entry,
 remaining-budget and generation inheritance, independent root locks, coherent
 artifact publication, controller-owned generations, compile-time stable target
@@ -58,7 +57,7 @@ state-storage hard switch.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Ready to resume | State-storage acceptance is complete; resume the cache-family audit. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
-| Rust/Vela interop | Partially complete; replaceable reopened | Ordinary generated interop is accepted. Optional replacement must close borrowed-container return mapping, business-macro integration, and final acceptance gaps. |
+| Rust/Vela interop | Partially complete; replaceable reopened | Ordinary generated interop is accepted. Optional replacement must close business-macro integration and final acceptance gaps. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -111,8 +110,8 @@ state-storage hard switch.
   sessions and same-session native re-entry. They prove stable dense slots,
   independent root locks over shared immutable code, remaining-budget and
   generation inheritance, async cancellation, coherent activation, rollback,
-  and no fallback retry. Their low-level authoring surface and remaining
-  borrowed-container return gap are not the accepted final interop surface.
+  ordinary/business/direct-origin container returns, and no fallback retry.
+  Their low-level authoring surface is not the accepted final interop surface.
 
 ### Standard Library, Tooling, And Proof
 
@@ -143,11 +142,10 @@ generations; Engine compilation resolves override declarations to stable
 registered slots; target contracts supply exact parameter, return/error,
 borrowed-return, async, type, and effect metadata; and staging validates the
 complete target fingerprint plus the implementation effect subset. It must
-still complete `F-REVIEW-6`, `F-REVIEW-7`, and
+still complete `F-REVIEW-7` and
 `G-REVIEW-1` through `G-REVIEW-2` in the
 [unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17).
-The closure requires complete borrowed-container return propagation/release
-and a p9-lattice-shaped business macro fixture. Do not close it by
+The closure requires a p9-lattice-shaped business macro fixture. Do not close it by
 adding a reentrant or process-global Runtime lock,
 replenishing nested budgets, accepting capability projection as full ABI,
 fabricating Rust references, or documenting manual slot indices as the final
