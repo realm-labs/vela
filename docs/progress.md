@@ -22,10 +22,11 @@ slot ceremony to business authors. The corrected status and closure tasks live
 in [the unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17)
 and [the post-review report](archive/rust-vela-interop-post-review-2026-07-17.md).
 
-The explicit state-storage hard switch has Batches A-F landed, and its final
-Batch G is now the active execution object. Its five open
-graph/identity/lifetime proofs remain unchanged. M20 cache close-out waits for
-state-storage acceptance; M20.5 remains the next editor follow-up after M20.
+The explicit state-storage hard switch is accepted through Batch G. Exact
+qualified embedding types, linked nominal canonicalization, graph-preserving
+budgeted reload staging, external-owner generation reclamation, and nested
+initializer-call fingerprints have focused and workspace-wide proof. M20 cache
+close-out is unblocked; M20.5 remains the next editor follow-up after M20.
 
 The executor-neutral async implementation from Batches A-D is landed: Vela has
 one explicit frame driver, scoped `Send` Runtime/native futures, direct typed
@@ -42,8 +43,8 @@ one provider resolver are implemented without compatibility paths. Full
 features, examples, benches, Rust docs, fuzz build, site gates, audits, and
 performance/memory comparison passed; the result is recorded in
 [the Batch E acceptance report](archive/async-execution-batch-e-acceptance-2026-07-14.md).
-M20 cache close-out and the M20.5 LSP follow-up remain valid after state
-storage Batch G reaches final acceptance.
+M20 cache close-out and the M20.5 LSP follow-up remain valid after the accepted
+state-storage hard switch.
 
 ## Milestone Snapshot
 
@@ -53,7 +54,7 @@ storage Batch G reaches final acceptance.
 | M8-M18 | Complete enough | HIR, executable language surface, script metadata, host bridge, reflection, stdlib, embedding, reload, diagnostics, examples, and benchmark foundations satisfy their checkpoints. |
 | M19 | Complete enough | The non-JIT interpreter and heap optimization checkpoint is closed; remaining measured costs belong to cache, value-layout, or later backend work. |
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
-| M20 | Paused behind Batch G | Resume the cache-family audit after state-storage final acceptance. |
+| M20 | Ready to resume | State-storage acceptance is complete; resume the cache-family audit. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
 | Rust/Vela interop | Partially complete; replaceable reopened | Ordinary generated interop is accepted. Optional replacement must close same-session execution, generation ownership, exact contract, return mapping, static linking, and business-macro integration gaps. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
@@ -147,19 +148,18 @@ The currently green single-level activation, partial-delta, rollback,
 empty-slot benchmark, and runnable examples remain baseline evidence. They do
 not prove nested replacement or final acceptance.
 
-### State Storage Batch G
+### State Storage Acceptance
 
-Batch G is active. Its tasks, in order, are
-`STATE-G1-EXACT-TYPE-RESOLUTION`, `STATE-G2-NOMINAL-CANONICALIZATION`,
-`STATE-G3-GRAPH-PRESERVING-STAGING`, `STATE-G4-EXTERNAL-OWNER-RECLAIM`, and
-`STATE-G5-NESTED-INIT-FINGERPRINT`. The required behavior and focused
-regression matrix live in
-[state-storage-model-plan.md](state-storage-model-plan.md#127-batch-g-graph-identity-and-lifetime-closure).
-
-Do not close these gaps with qualified-name leaf fallback, shallow nominal
-validation, identity-free insertion, an unbudgeted detached value tree,
-permanent generation roots, a second reload requirement, or whole-program
-initializer fingerprints.
+No state-storage correctness gap remains from Batches A-G. Runtime embedding
+resolves canonical qualified types exactly, recursively validates and stamps
+linked record/enum identities, and preserves those identities through
+`set_state` and `update_state`. Reload copies added-state graphs with one shared
+transaction budget while preserving aliases and cycles. Old generations are
+pinned only by owners reachable outside inactive state roots and reclaim at an
+ordinary safe point. Initializer reports traverse only their reachable script
+call graph, including nested closure and parameter-default executables, with
+recursive termination. The accepted contract and proof matrix live in
+[state-storage-model-plan.md](state-storage-model-plan.md).
 
 ### Async Post-Review Closure
 

@@ -64,11 +64,13 @@ updates take effect only at safe points
 
 Each runtime keeps cache entries and profile counters in generation-keyed
 sidecars. Accepted reload activates a fresh sidecar atomically. Old sidecars
-remain available while an old owner is retained and are pruned through weak
-generation tokens at later safe points; a sidecar never retains executable
-code by itself. A normal Runtime reload check performs this reclamation even
-when no update is pending: it first collects released retained values, then
-prunes dead generation sidecars and their old-only VM/extern state roots.
+remain available while an external old owner is retained. Liveness subtracts
+linked-artifact owners reachable only from inactive state roots and closes
+transitively over state reachable by live generations; a removed closure-valued
+state therefore cannot retain its own sidecar. A normal Runtime reload check
+performs reclamation even when no update is pending: it first collects released
+retained values, then prunes dead generation sidecars and their old-only
+VM/extern state roots.
 
 The same immutable artifact also maps verified MIR functions to linked handles.
 Future M22 compilation may consume the read-only restricted-JIT input on a
@@ -133,12 +135,17 @@ contract. Existing compatible cells and extern bindings are preserved without
 rerunning initializers. Added VM state is initialized in a temporary staging
 runtime; added extern state must have a staged, type-compatible host binding.
 Storage or type changes reject. A rename is reported as remove plus add, and an
-initializer edit is reported even when it does not reject. State preservation
+initializer edit is reported even when it does not reject. Added-state values
+move from staging to the live heap through one transaction-budgeted graph copy
+that preserves aliases and cycles across all staged roots. State preservation
 is separate from export compatibility: private removal and private-to-public
 promotion are compatible, while removing an existing public state export or
 downgrading it to private rejects the update. Initializer change reporting
-fingerprints the transitive statically called script-function graph, so edits
-to permitted pure helpers are reported as new-Runtime-only behavior.
+fingerprints the transitive statically called script-function graph, including
+calls reached through nested closure and parameter-default executables. Paired
+visited nodes terminate recursive graphs, and unrelated helpers remain outside
+the fingerprint, so edits to permitted reachable helpers are reported as
+new-Runtime-only behavior.
 
 Activation is transactional per Runtime: the candidate image, slot maps,
 staged cells, extern bindings, and sidecar are published together only after

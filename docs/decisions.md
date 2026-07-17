@@ -72,6 +72,15 @@ provider, reflection, capability, IO, event, time, random, and async effects.
 Initialization and reload publication are transactional from script-visible
 state.
 
+Rust-side VM-state replacement resolves an exact canonical qualified type
+first. Qualified spellings never fall back to a leaf name; unqualified names
+are accepted only when the linked generation has one permitted candidate. The
+same linked-aware boundary recursively validates record fields and enum
+variants/payloads, then materializes canonical `RecordIdentity` or
+`EnumIdentity`. Validation and insertion are one operation, so accepted
+`set_state` and `update_state` values retain ordinary field, guard, and pattern
+semantics.
+
 Hot reload preserves an existing value or extern binding only when the same
 `StateId` has the same storage kind and exact normalized type contract. It does
 not rerun a preserved initializer. Storage or type changes reject; rename is
@@ -80,6 +89,22 @@ by a live old frame, closure, value, or suspended execution generation and is
 reclaimed only after the final such owner is gone. This preserves old
 generation execution without migrating suspended frames or introducing state
 schema/value migration.
+
+Added-state reload staging copies the persistent heap graph directly. One
+transaction budget is charged before each allocation, aliases and cycles are
+preserved across all staged roots, and failure publishes neither the candidate
+image nor any state cell. Generation liveness excludes linked-artifact owners
+reachable only from inactive state roots, then closes transitively over state
+needed by genuinely external frames, suspensions, closures, iterators, active
+state, and retained runtime values. Thus a closure-valued removed state cannot
+self-root its generation, while an external old owner still pins it until the
+next ordinary safe point after release.
+
+Initializer change reporting compares only the permitted reachable executable
+graph. Direct script calls and `MakeClosure` targets, including nested closure
+and parameter-default executables, are traversed with paired visited nodes so
+recursive graphs terminate. Unrelated functions are not included in the
+fingerprint.
 
 ### Linked-Only VM Execution
 
@@ -1617,8 +1642,9 @@ artifact. The linker is the only authority for flattened executable handles,
 ProgramImage indexes, generation-global cache-site IDs, and immutable
 cache/profile layouts. RuntimeState owns generation-keyed mutable sidecars for
 cache entries, profile counters, hotness, and active tier selection, plus heap,
-roots, and VM/extern state. Sidecars never index a different generation's layout and
-are pruned through weak generation ownership at safe points.
+roots, and VM/extern state. Sidecars never index a different generation's
+layout and are pruned at safe points according to external linked-artifact
+ownership after excluding owners reachable only from inactive state roots.
 
 Dense executable identities such as `ScriptFunctionHandle`, `CacheSiteId`, and
 profile slots are valid only with their owner generation. Stable semantic IDs

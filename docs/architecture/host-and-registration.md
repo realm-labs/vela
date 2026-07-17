@@ -220,6 +220,13 @@ no cells unless every initializer succeeds. Rust may inspect or replace a VM
 cell through `state`, `state_as`, `set_state`, and `update_state`; values remain
 script-GC roots owned by that Runtime.
 
+Rust replacement resolves exact canonical qualified type names and performs
+linked-aware recursive canonicalization before insertion. Qualified names do
+not fall back to leaf matching; an unqualified name is valid only when it has
+one permitted linked candidate. Record fields and enum variants/payloads must
+match their linked descriptors, and accepted values receive canonical runtime
+identities so Vela field access, guards, and pattern matching remain nominal.
+
 `extern state` declares a host-owned root and never allocates a script value.
 The host binds it with `RuntimeBuilder::bind_extern_state` before construction,
 or replaces/stages a binding through `replace_extern_state` and
