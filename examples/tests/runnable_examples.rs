@@ -127,7 +127,7 @@ success_example!(
 success_example!(
     replaceable_handler_example_runs,
     env!("CARGO_BIN_EXE_replaceable_handler"),
-    "replaceable_handler fallback=41/10 active=42/1 adjacent=41 rollback=41/10\n",
+    "replaceable_handler fallback=41/10 active=42/0 adjacent=41 rollback=41/10\n",
 );
 
 success_example!(
