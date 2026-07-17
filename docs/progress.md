@@ -22,7 +22,7 @@ Handler/Service integration, runnable examples, and the complete validation
 gates are recorded in the
 [reconciliation acceptance report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md).
 
-The Actor Runtime/cache plan is active. Batch A's baseline is accepted in the
+The Actor Runtime/cache plan is accepted through Batch F. Batch A's baseline is recorded in the
 [Batch A report](archive/actor-runtime-cache-batch-a-baseline-2026-07-18.md),
 and the deletion-first profile/metadata/cache hard switch in Batches B-C is
 accepted in the
@@ -38,16 +38,18 @@ lane in the
 Batch E's reload, old-generation lifetime, Actor isolation, and
 cancellation/panic/reclamation proofs are accepted in the
 [lifetime report](archive/actor-runtime-cache-batch-e-lifetime-2026-07-18.md).
-Batch F is active: stable exit measurements and the complete validation matrix
-must close before M20 acceptance.
+Batch F's stable memory, concurrency, cache/profile, callback, reload, host,
+async, interop, examples, workspace, documentation, benchmark-build, fuzz,
+site, and safe-Rust gates close M20 in the
+[final acceptance report](archive/actor-runtime-cache-acceptance-2026-07-18.md).
+The completed execution plan is archived beside that report.
 
 The explicit state-storage hard switch is accepted through Batch G. Exact
 qualified embedding types, linked nominal canonicalization, graph-preserving
 budgeted reload staging, external-owner generation reclamation, and nested
 initializer-call fingerprints have focused and workspace-wide proof. The Actor
-authority prerequisite and cache ownership/lifetime cuts are closed; M20 now
-requires only the final performance and validation gates.
-M20.5 remains the next editor follow-up after M20.
+authority prerequisite and cache ownership/lifetime cuts are closed. M20.5 is
+now the active editor follow-up.
 
 The executor-neutral async implementation from Batches A-D is landed: Vela has
 one explicit frame driver, scoped `Send` Runtime/native futures, direct typed
@@ -75,8 +77,8 @@ state-storage hard switch.
 | M8-M18 | Complete enough | HIR, executable language surface, script metadata, host bridge, reflection, stdlib, embedding, reload, diagnostics, examples, and benchmark foundations satisfy their checkpoints. |
 | M19 | Complete enough | The non-JIT interpreter and heap optimization checkpoint is closed; remaining measured costs belong to cache, value-layout, or later backend work. |
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
-| M20 | In progress | Actor Runtime/cache Batches A-E are accepted without an execution lane; Batch F final performance/validation is active. |
-| M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
+| M20 | Complete enough | Actor Runtime/cache Batches A-F are accepted with shared generation execution data, no eager Actor vectors, and no execution lane. |
+| M20.5 | In progress | Resume the concrete editor-visible follow-up after M20 close-out. |
 | Rust/Vela interop | Accepted | Ordinary and optional replacement interop use Actor-turn-scoped Runtime authority with no Runtime mutex boundary. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
@@ -180,9 +182,9 @@ recursive termination. The accepted contract and proof matrix live in
 
 Batch E closed `ASYNC-ROOT-1`, `ASYNC-LEASE-1`, `ASYNC-REFLECT-1`,
 `ASYNC-VM-MOD-1`, `ASYNC-PROVIDER-1`, and `ASYNC-DOC-1`. No async correctness
-or final-acceptance gap remains. Named performance follow-up
-`ASYNC-LEASE-PERF-1` belongs to M20: profile the measured owned-guard exclusive
-lease cost without weakening exact state, safe Rust, scoped `Send`, or RAII.
+or final-acceptance gap remains. Named post-M20 performance follow-up
+`ASYNC-LEASE-PERF-1` may profile the measured owned-guard exclusive lease cost
+without weakening exact state, safe Rust, scoped `Send`, or RAII.
 
 Do not solve these with a permanent-root leak, an exclusive lease labeled
 shared, reflection aliases, navigation-only source splits, duplicated drivers,
@@ -190,19 +192,20 @@ or provider-specific public execution methods.
 
 ### M20 Cache Close-Out
 
-The detailed ownership, memory, concurrency, profiling, reload, and cache
-execution batches are defined in
-[actor-runtime-cache-execution-plan.md](actor-runtime-cache-execution-plan.md).
-Its Gate I prerequisite and Batches A-E are accepted. Batch F is active.
-State-storage Batch G remains accepted. No cache/profile ownership work was
-included in the interop reconciliation.
+The ownership, memory, concurrency, profiling, reload, and cache execution
+batches are complete in the archived
+[execution plan](archive/actor-runtime-cache-execution-plan.md). Gate I,
+Batches A-F, and state-storage Batch G are accepted. The final ownership table,
+measurements, proof matrix, and validation live in the
+[acceptance report](archive/actor-runtime-cache-acceptance-2026-07-18.md).
 
 Existing cache or measured families include declared state, script record
 fields, host access, native calls, linked method dispatch, dynamic method
 dispatch, stdlib value methods, callbacks, strings/bytes, Option/Result, and
 selected array/map/set paths.
 
-A remaining task is valid only when it names one missing proof:
+A future cache task is valid only when it names one concrete regression or
+new measured gap:
 
 - coverage: a measured hot path has no cache entry;
 - correctness: hit, miss, wrong-guard, fallback, reload, schema, or version
@@ -212,15 +215,12 @@ A remaining task is valid only when it names one missing proof:
 - decision: a flat or slower result has not been accepted, assigned to a named
   follow-up, or deferred.
 
-Close-out requirements:
+The accepted contract remains:
 
-- Publish the cache-family audit before adding another family.
-- Execute Batches A-F in the dedicated plan; classify every cache/profile
-  family, remove eager per-Actor full-program metadata, and prove Actor memory
-  and concurrent same-generation scaling before M20 acceptance. Each ownership
-  cut updates all production callers and deletes the displaced owner in the
-  same verified checkpoint; do not add migration flags, adapters, or dual
-  read/write paths.
+- Preserve the published cache-family ownership classification before adding
+  another family.
+- Do not restore eager per-Actor full-program metadata, migration flags,
+  adapters, dual owners, or dual read/write paths.
 - Preserve generic fallback behavior, budgets, GC roots, HostAccess policy,
   reflection permissions, hot-reload ownership, schema invalidation, and
   source-spanned diagnostics.

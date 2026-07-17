@@ -1,19 +1,20 @@
 # Actor-Owned Runtime And Cache Model Hard-Switch Plan
 
-> Status: in progress. Batch A is accepted in the
-> [baseline report](archive/actor-runtime-cache-batch-a-baseline-2026-07-18.md).
+> Status: accepted and archived. Batch A is accepted in the
+> [baseline report](actor-runtime-cache-batch-a-baseline-2026-07-18.md).
 > Batches B and C are accepted in the
-> [ownership-cut report](archive/actor-runtime-cache-batches-b-c-acceptance-2026-07-18.md).
+> [ownership-cut report](actor-runtime-cache-batches-b-c-acceptance-2026-07-18.md).
 > Batch D closed without an execution lane in the
-> [lane-gate report](archive/actor-runtime-cache-batch-d-lane-gate-2026-07-18.md).
+> [lane-gate report](actor-runtime-cache-batch-d-lane-gate-2026-07-18.md).
 > Batch E is accepted in the
-> [lifetime report](archive/actor-runtime-cache-batch-e-lifetime-2026-07-18.md).
-> Batch F is the active final acceptance pass. The Rust/Vela Actor
+> [lifetime report](actor-runtime-cache-batch-e-lifetime-2026-07-18.md).
+> Batch F and M20 are accepted in the
+> [final report](actor-runtime-cache-acceptance-2026-07-18.md). The Rust/Vela Actor
 > Runtime authority reconciliation closed Gate I, and state-storage Batch G
 > remains accepted.
 >
 > Execution order: begin Batch A as a new checkpoint after the
-> [interop reconciliation report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md),
+> [interop reconciliation report](rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md),
 > then run Batches A-F in this document.
 >
 > Last updated: 2026-07-18.
@@ -25,7 +26,7 @@ Rust/Vela Actor Runtime authority reconciliation has published an accepted
 report:
 
 ```text
-/goal Execute docs/actor-runtime-cache-execution-plan.md end to end as a
+/goal Execute docs/archive/actor-runtime-cache-execution-plan.md end to end as a
 breaking, deletion-first hard switch. Treat docs/goal.md as the product
 roadmap, docs/architecture.md and docs/architecture/*.md as the architecture
 contract, docs/decisions.md as durable design decisions, docs/progress.md as
@@ -228,7 +229,7 @@ movement must not weaken or bypass them.
 ### Gate I: Rust/Vela Actor Runtime authority reconciliation
 
 Gate I is closed by the
-[interop reconciliation report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md).
+[interop reconciliation report](rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md).
 `DispatchRoot` owns immutable generation selection only, and replacement
 borrows the current Actor turn's `&mut SharedRuntime` through a scoped
 invocation. The former `SharedDispatchRuntime` alias, Runtime-bearing roots,
@@ -480,17 +481,17 @@ contract.
 
 ### Batch F: performance acceptance and close-out
 
-- [ ] F1. Rerun 1/100/10,000 Actor memory scaling for small and large artifacts
+- [x] F1. Rerun 1/100/10,000 Actor memory scaling for small and large artifacts
   with profiling disabled and enabled.
-- [ ] F2. Rerun concurrent same-generation and same-override throughput for
+- [x] F2. Rerun concurrent same-generation and same-override throughput for
   1/2/available-core workers, including one long-pending Actor.
-- [ ] F3. Rerun interpreter-only, profile-only, cache-enabled, reload, host
+- [x] F3. Rerun interpreter-only, profile-only, cache-enabled, reload, host
   access, callback, and interop benchmark groups with stable sampling.
-- [ ] F4. Publish a cache-family ownership table with final immutable/shared/
+- [x] F4. Publish a cache-family ownership table with final immutable/shared/
   lane/Actor-local classification and the evidence for each non-static family.
-- [ ] F5. Run complete workspace, examples, documentation, benchmark-build,
+- [x] F5. Run complete workspace, examples, documentation, benchmark-build,
   fuzz-build, and relevant Miri/unsafe-code gates.
-- [ ] F6. Publish an acceptance report, update `docs/progress.md` and
+- [x] F6. Publish an acceptance report, update `docs/progress.md` and
   `docs/performance.md`, and archive this plan only after every never-complete
   condition is false.
 

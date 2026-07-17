@@ -1704,7 +1704,7 @@ serialization boundary.
 Cache and profiling storage are not part of dispatch selection or Actor
 semantics. Their implementation and acceptance are intentionally deferred to
 the separate
-[Actor Runtime/cache execution plan](actor-runtime-cache-execution-plan.md)
+[Actor Runtime/cache execution plan](archive/actor-runtime-cache-execution-plan.md)
 after this plan's replaceable post-review closure is accepted.
 
 ### 10.7 Staging, activation, and rollback

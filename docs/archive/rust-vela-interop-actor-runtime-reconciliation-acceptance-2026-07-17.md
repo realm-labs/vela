@@ -141,5 +141,5 @@ no `unsafe`, and the drop/cancellation/unwind behavior is exercised directly.
 `I-RECON-1` through `I-RECON-6` are complete. Optional replacement again
 meets the production interop contract, Gate I is closed, and M20 may proceed
 with the separate
-[Actor Runtime/cache execution plan](../actor-runtime-cache-execution-plan.md).
+[Actor Runtime/cache execution plan](actor-runtime-cache-execution-plan.md).
 No cache/profile ownership work began during this reconciliation.

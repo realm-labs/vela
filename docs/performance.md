@@ -56,6 +56,16 @@ Actor did not block an independent Actor on the same override generation.
 Detailed inventory, raw rows, and cache/profile deltas live in the
 [Batch A archive report](archive/actor-runtime-cache-batch-a-baseline-2026-07-18.md).
 
+The 2026-07-18 M20 exit reran the frozen stable shapes after moving caches and
+opt-in aggregate profiles to exact generation execution data. The large
+10,000-Actor row now retains about 93 MiB RSS with profiling off or on instead
+of crossing 1,536 MiB; the small row retains about 95 MiB. Ten-worker hot and
+cold overrides reached about 684k and 523k calls/s, and a pending Actor still
+did not block another Actor on the same generation. Three repeated dynamic-site
+contention runs did not justify an execution lane. Exact memory, allocation,
+latency, cache/profile, callback, reload, host, async, and interop rows live in
+the [M20 acceptance report](archive/actor-runtime-cache-acceptance-2026-07-18.md).
+
 The `interop` harness isolates the direct Rust lower bound, Vela-to-Rust scalar,
 shared-host and exclusive-host exports, a schema-backed generated Rust-to-Vela
 root call, a same-session Vela-to-Rust-to-Vela round trip, the optional
@@ -198,8 +208,9 @@ The 2026-07-14 post-review closure is recorded in
 Its same-machine stable comparison found no ordinary entry/provider or memory
 regression after making the dynamic-root registry lazy and retaining active
 tokens in a sparse sidecar. Exact owned read/write guards raise the exclusive
-lease row by 23.4%; named M20 follow-up `ASYNC-LEASE-PERF-1` may optimize that
-boundary only while preserving true `shared(n)`, exclusive exclusion, and RAII.
+lease row by 23.4%; named post-M20 follow-up `ASYNC-LEASE-PERF-1` may optimize
+that boundary only while preserving true `shared(n)`, exclusive exclusion, and
+RAII.
 
 ## Perf Optimization Loop
 

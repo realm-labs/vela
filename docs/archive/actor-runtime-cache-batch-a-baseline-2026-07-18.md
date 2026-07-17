@@ -1,7 +1,7 @@
 # Actor Runtime/Cache Batch A Baseline — 2026-07-18
 
 This report closes Batch A of the
-[Actor Runtime/cache hard-switch plan](../actor-runtime-cache-execution-plan.md).
+[Actor Runtime/cache hard-switch plan](actor-runtime-cache-execution-plan.md).
 It records the pre-switch ownership inventory and the commands that Batch F
 must rerun with the same workload shapes. Measurements used parent checkpoint
 `66577eac4` plus the measurement-only harness in this Batch A checkpoint, Rust

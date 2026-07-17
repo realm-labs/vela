@@ -751,7 +751,7 @@ safe fallback paths.
 
 Detailed Actor Runtime ownership, cache/profile placement, concurrency, memory,
 reload, and acceptance work is sequenced in
-[actor-runtime-cache-execution-plan.md](actor-runtime-cache-execution-plan.md).
+[archived Actor Runtime/cache execution plan](archive/actor-runtime-cache-execution-plan.md).
 That execution begins only after the state-storage and Rust/Vela replaceable
 post-review prerequisites named there are accepted.
 

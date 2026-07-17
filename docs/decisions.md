@@ -1936,8 +1936,8 @@ pre-release capability correction: non-`Sync` mutable origins no longer enter
 Batch E performance keeps ordinary entry/provider and suspended-memory costs
 within the accepted comparison, and creates no eager dynamic-root allocation.
 The safe owned-guard lease representation raises the measured exclusive lease
-row by 23.4%; `ASYNC-LEASE-PERF-1` is the M20 follow-up for profiling and
-reducing that boundary cost without weakening exact lease state or RAII.
+row by 23.4%; post-M20 follow-up `ASYNC-LEASE-PERF-1` may profile and reduce
+that boundary cost without weakening exact lease state or RAII.
 
 ### Executor-Neutral Async Execution
 
@@ -2301,11 +2301,10 @@ generation. Override selection names linked code to run in the current actor
 Runtime and never owns a second mutable Runtime.
 
 Implementation order, cache-family classification, Actor memory/concurrency
-baselines, optional execution-lane evidence, and final acceptance are defined
-in `docs/actor-runtime-cache-execution-plan.md`. State-storage is accepted and
-the interop reconciliation closes its Gate I prerequisite. The cache plan is
-the next separate execution track; no cache/profile ownership change is part
-of this reconciliation.
+baselines, execution-lane evidence, and final acceptance are recorded in the
+archived `docs/archive/actor-runtime-cache-execution-plan.md` and its final
+acceptance report. State-storage and the interop Gate I prerequisite remain
+accepted.
 
 The Actor Runtime/cache ownership change is a pre-release breaking hard switch.
 Each cut updates every producer, consumer, test, and benchmark to the final
