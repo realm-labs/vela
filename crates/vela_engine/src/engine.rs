@@ -42,6 +42,7 @@ pub struct Engine {
     context_host_native_functions: BTreeMap<FunctionId, ContextHostNativeFunctionEntry>,
     native_methods: BTreeMap<HostMethodId, NativeMethodEntry>,
     async_native_methods: BTreeMap<HostMethodId, AsyncNativeMethodEntry>,
+    replaceable_slots: BTreeMap<String, crate::dispatch::ReplaceableSlotDescriptor>,
     native_function_names: BTreeMap<String, FunctionId>,
     capabilities: CapabilitySet,
     reflection_policy: Option<ReflectPolicy>,
@@ -62,6 +63,7 @@ pub(crate) struct EngineParts {
     pub(crate) context_host_native_functions: Vec<ContextHostNativeFunctionEntry>,
     pub(crate) native_methods: Vec<NativeMethodEntry>,
     pub(crate) async_native_methods: Vec<AsyncNativeMethodEntry>,
+    pub(crate) replaceable_slots: Vec<crate::dispatch::ReplaceableSlotDescriptor>,
     pub(crate) capabilities: CapabilitySet,
     pub(crate) reflection_policy: Option<ReflectPolicy>,
     pub(crate) hot_reload_policy: HotReloadPolicy,
@@ -170,6 +172,11 @@ impl Engine {
             )
             .map(|desc| (desc.name.clone(), desc.id))
             .collect();
+        let replaceable_slots = parts
+            .replaceable_slots
+            .into_iter()
+            .map(|slot| (slot.contract.public_path.clone(), slot))
+            .collect();
 
         Self {
             registry: Arc::new(parts.registry),
@@ -184,6 +191,7 @@ impl Engine {
             context_host_native_functions,
             native_methods,
             async_native_methods,
+            replaceable_slots,
             native_function_names,
             capabilities: parts.capabilities,
             reflection_policy: parts.reflection_policy,
@@ -200,6 +208,14 @@ impl Engine {
     #[must_use]
     pub(crate) fn compiler_registry(&self) -> RegistryCompileView<'_> {
         self.definition_registry.compile_view()
+    }
+
+    #[must_use]
+    pub(crate) fn replaceable_slot(
+        &self,
+        path: &str,
+    ) -> Option<&crate::dispatch::ReplaceableSlotDescriptor> {
+        self.replaceable_slots.get(path)
     }
 
     #[must_use]

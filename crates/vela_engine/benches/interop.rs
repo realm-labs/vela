@@ -143,24 +143,23 @@ fn main() -> Result<(), Box<dyn Error>> {
     let generated_target = BindingCallable::new(generated_schema, 0);
     let mut shared_player = Player { value: 41 };
     let mut exclusive_player = Player { value: 0 };
-    let fallback_controller = DispatchController::new(vec![
+    let dispatch_slots = vec![
         vela_replaceable_slot_replaceable_scalar(),
         vela_replaceable_slot_replaceable_other(),
-    ])?;
+    ];
+    let fallback_controller = DispatchController::new(dispatch_slots.clone())?;
     let fallback_context = DispatchContext {
         marker: 1,
         root: DispatchRoot::pin(&fallback_controller),
     };
     let dispatch_engine = Engine::builder()
         .register_host_type::<DispatchContext>()
+        .register_replaceable_slots(dispatch_slots.clone())
         .capability(Capability::HostRead)
         .build()?;
     let dispatch_program = dispatch_engine.compile_source(DISPATCH_SOURCE)?;
     let dispatch_runtime = Arc::new(Mutex::new(Runtime::new(dispatch_engine, dispatch_program)?));
-    let dispatch_controller = DispatchController::new(vec![
-        vela_replaceable_slot_replaceable_scalar(),
-        vela_replaceable_slot_replaceable_other(),
-    ])?;
+    let dispatch_controller = DispatchController::new(dispatch_slots)?;
     let dispatch_candidate = dispatch_controller.stage_current(&dispatch_runtime)?;
     dispatch_controller
         .activate(dispatch_candidate)

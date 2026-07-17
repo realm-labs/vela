@@ -6,7 +6,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::{CallableAsyncness, Capability, CapabilitySet, Span, stable_id};
+use vela_common::{
+    CallableAsyncness, Capability, CapabilitySet, ReplaceableSlotId, Span, stable_id,
+};
 use vela_def::{FunctionId, MethodId, TypeId};
 use vela_hir::attributes::schema_id_attr;
 use vela_hir::ids::HirDeclId;
@@ -125,9 +127,56 @@ pub struct RustBindingCallable {
     pub effects: RustBindingEffectSet,
     pub required_capabilities: CapabilitySet,
     pub contract_fingerprint: u64,
-    pub override_target: Option<String>,
+    pub override_target: Option<RustBindingOverrideTarget>,
     pub docs: Option<String>,
     pub source: Span,
+}
+
+impl RustBindingCallable {
+    #[doc(hidden)]
+    pub fn refresh_contract_fingerprint(&mut self) {
+        self.contract_fingerprint = contract_fingerprint(
+            self.identity,
+            &self.public_path,
+            &self.parameters,
+            &self.returns,
+            self.asyncness,
+            self.effects,
+        );
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum RustBindingOverrideTarget {
+    Unresolved {
+        public_path: String,
+    },
+    Resolved {
+        public_path: String,
+        slot: ReplaceableSlotId,
+        contract_fingerprint: u64,
+    },
+}
+
+impl RustBindingOverrideTarget {
+    #[must_use]
+    pub fn public_path(&self) -> &str {
+        match self {
+            Self::Unresolved { public_path } | Self::Resolved { public_path, .. } => public_path,
+        }
+    }
+
+    #[must_use]
+    pub const fn resolved(&self) -> Option<(ReplaceableSlotId, u64)> {
+        match self {
+            Self::Unresolved { .. } => None,
+            Self::Resolved {
+                slot,
+                contract_fingerprint,
+                ..
+            } => Some((*slot, *contract_fingerprint)),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -245,12 +294,31 @@ impl RustBindingType {
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RustBindingReturnMode {
-    Value,
+    OwnedValue,
+    StructuredValue,
+    ScopedHost {
+        origin: RustBindingBorrowedReturnOrigin,
+        child_access: RustBindingScopedHostAccess,
+        parent_freeze: RustBindingScopedHostAccess,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RustBindingErrorMode {
-    VmResult,
+    Value,
+    RuntimeResult,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum RustBindingBorrowedReturnOrigin {
+    Receiver,
+    Parameter(u16),
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum RustBindingScopedHostAccess {
+    Shared,
+    Exclusive,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -379,6 +447,19 @@ impl RustBindingSchema {
             .iter()
             .flat_map(|package| &package.modules)
             .flat_map(|module| &module.callables)
+    }
+
+    #[doc(hidden)]
+    pub fn callables_mut(&mut self) -> impl Iterator<Item = &mut RustBindingCallable> {
+        self.packages
+            .iter_mut()
+            .flat_map(|package| &mut package.modules)
+            .flat_map(|module| &mut module.callables)
+    }
+
+    #[doc(hidden)]
+    pub fn refresh_checksum(&mut self) {
+        self.checksum = schema_checksum(&self.packages);
     }
 
     pub fn types(&self) -> impl Iterator<Item = &RustBindingTypeDefinition> {
@@ -655,8 +736,17 @@ pub(crate) fn build_rust_binding_schema(
         })
         .collect::<Vec<_>>()
         .into_boxed_slice();
+    let checksum = schema_checksum(&packages);
+    Ok(RustBindingSchema {
+        version: RUST_BINDING_SCHEMA_VERSION,
+        checksum,
+        packages,
+    })
+}
+
+fn schema_checksum(packages: &[RustBindingPackage]) -> u64 {
     let mut canonical_parts = Vec::new();
-    for package in &packages {
+    for package in packages {
         for module in &package.modules {
             let prefix = format!("{}:{}", package.id, module.path.join());
             for definition in &module.types {
@@ -678,17 +768,26 @@ pub(crate) fn build_rust_binding_schema(
                     "{prefix}:{}:{:016x}:override={}",
                     callable.identity.abi_name(),
                     callable.contract_fingerprint,
-                    callable.override_target.as_deref().unwrap_or("")
+                    callable
+                        .override_target
+                        .as_ref()
+                        .map_or("", RustBindingOverrideTarget::public_path)
                 ));
+                if let Some((slot, fingerprint)) = callable
+                    .override_target
+                    .as_ref()
+                    .and_then(RustBindingOverrideTarget::resolved)
+                {
+                    canonical_parts.push(format!(
+                        "{prefix}:override-link:{:032x}:{fingerprint:016x}",
+                        slot.get()
+                    ));
+                }
             }
         }
     }
     let canonical = canonical_parts.join("|");
-    Ok(RustBindingSchema {
-        version: RUST_BINDING_SCHEMA_VERSION,
-        checksum: stable_id("vela_rust_binding_schema_v4", "", &canonical),
-        packages,
-    })
+    stable_id("vela_rust_binding_schema_v4", "", &canonical)
 }
 
 fn binding_field(
@@ -768,7 +867,7 @@ fn callable(
     type_symbols: &BTreeMap<HirDeclId, String>,
     runtime_signature: Option<&vela_mir::CompileSignature>,
     effect: MirEffect,
-    override_target: Option<String>,
+    override_target: Option<RustBindingOverrideTarget>,
     docs: Option<String>,
     source: Span,
 ) -> RustBindingCallable {
@@ -827,8 +926,8 @@ fn callable(
     let effects = RustBindingEffectSet::from(effect);
     let returns = RustBindingReturn {
         ty: RustBindingType::from_hint(graph, module, type_symbols, signature.return_type.as_ref()),
-        mode: RustBindingReturnMode::Value,
-        error_mode: RustBindingErrorMode::VmResult,
+        mode: RustBindingReturnMode::OwnedValue,
+        error_mode: RustBindingErrorMode::RuntimeResult,
     };
     let contract_fingerprint = contract_fingerprint(
         identity,
@@ -856,7 +955,9 @@ fn callable(
     }
 }
 
-fn override_target(attrs: &[vela_hir::attributes::HirAttribute]) -> Result<Option<String>, String> {
+fn override_target(
+    attrs: &[vela_hir::attributes::HirAttribute],
+) -> Result<Option<RustBindingOverrideTarget>, String> {
     let overrides = attrs
         .iter()
         .filter(|attribute| attribute.name == "override")
@@ -879,7 +980,9 @@ fn override_target(attrs: &[vela_hir::attributes::HirAttribute]) -> Result<Optio
     if segments.first().map(String::as_str) != Some("host") || segments.len() < 2 {
         return Err("`override` target path must begin with `host::`".to_owned());
     }
-    Ok(Some(segments.join("::")))
+    Ok(Some(RustBindingOverrideTarget::Unresolved {
+        public_path: segments.join("::"),
+    }))
 }
 
 fn binding_parameter_type(

@@ -119,7 +119,7 @@ pub struct DispatchController {
 
 struct DispatchControllerInner {
     slots: Box<[ReplaceableSlotDescriptor]>,
-    by_path: BTreeMap<String, usize>,
+    by_id: BTreeMap<ReplaceableSlotId, usize>,
     layout: Arc<DispatchLayoutIdentity>,
     current: RwLock<Arc<DispatchGeneration>>,
     next_generation: AtomicU64,
@@ -127,32 +127,11 @@ struct DispatchControllerInner {
 
 impl DispatchController {
     pub fn new(mut slots: Vec<ReplaceableSlotDescriptor>) -> Result<Self, DispatchStageError> {
+        validate_slot_layout(&slots)?;
         slots.sort_by_key(|slot| slot.index);
-        let mut by_path = BTreeMap::new();
-        for (expected, slot) in slots.iter().enumerate() {
-            if slot.index.get() != expected {
-                return Err(DispatchStageError::new(
-                    DispatchStageErrorCode::InvalidSlotLayout,
-                    format!(
-                        "replaceable slot indices must be dense from zero; expected {expected}, got {}",
-                        slot.index.get()
-                    ),
-                    None,
-                ));
-            }
-            if by_path
-                .insert(slot.contract.public_path.clone(), expected)
-                .is_some()
-            {
-                return Err(DispatchStageError::new(
-                    DispatchStageErrorCode::InvalidSlotLayout,
-                    format!(
-                        "duplicate replaceable slot path `{}`",
-                        slot.contract.public_path
-                    ),
-                    None,
-                ));
-            }
+        let mut by_id = BTreeMap::new();
+        for (index, slot) in slots.iter().enumerate() {
+            by_id.insert(slot.id, index);
         }
         let layout = Arc::new(DispatchLayoutIdentity {
             slot_ids: slots.iter().map(|slot| slot.id).collect(),
@@ -165,7 +144,7 @@ impl DispatchController {
         Ok(Self {
             inner: Arc::new(DispatchControllerInner {
                 slots: slots.into_boxed_slice(),
-                by_path,
+                by_id,
                 layout,
                 current: RwLock::new(initial),
                 next_generation: AtomicU64::new(1),
@@ -201,15 +180,27 @@ impl DispatchController {
         let mut seen = BTreeMap::<usize, String>::new();
         let runtime_guard = runtime.lock();
         for callable in runtime_guard.active_binding_schema().callables() {
-            let Some(path) = callable.override_target.as_deref() else {
+            let Some(override_target) = callable.override_target.as_ref() else {
                 continue;
             };
-            let Some(index) = self.inner.by_path.get(path).copied() else {
+            let path = override_target.public_path();
+            let Some((slot_id, contract_fingerprint)) = override_target.resolved() else {
                 return Err(DispatchStageError::new(
                     DispatchStageErrorCode::UnknownTarget,
                     format!(
-                        "Vela override `{}` names unknown replaceable target `{path}`",
+                        "Vela override `{}` target `{path}` was not linked by Engine compilation",
                         callable.public_path
+                    ),
+                    Some(callable.source),
+                ));
+            };
+            let Some(index) = self.inner.by_id.get(&slot_id).copied() else {
+                return Err(DispatchStageError::new(
+                    DispatchStageErrorCode::UnknownTarget,
+                    format!(
+                        "Vela override `{}` links unknown replaceable slot {} (`{path}`)",
+                        callable.public_path,
+                        slot_id.get()
                     ),
                     Some(callable.source),
                 ));
@@ -225,6 +216,13 @@ impl DispatchController {
                 ));
             }
             let slot = &self.inner.slots[index];
+            if slot.contract.abi_fingerprint().get() != contract_fingerprint {
+                return Err(incompatible(
+                    slot,
+                    callable,
+                    "linked target contract fingerprint",
+                ));
+            }
             validate_override(slot, callable)?;
             targets[index] = Some(VelaOverrideTarget {
                 slot: slot.id,
@@ -277,6 +275,52 @@ impl DispatchController {
             None,
         ))
     }
+}
+
+pub(crate) fn validate_slot_layout(
+    slots: &[ReplaceableSlotDescriptor],
+) -> Result<(), DispatchStageError> {
+    let mut ordered = slots.iter().collect::<Vec<_>>();
+    ordered.sort_by_key(|slot| slot.index);
+    let mut by_path = BTreeMap::new();
+    let mut by_id = BTreeMap::new();
+    for (expected, slot) in ordered.into_iter().enumerate() {
+        if slot.index.get() != expected {
+            return Err(DispatchStageError::new(
+                DispatchStageErrorCode::InvalidSlotLayout,
+                format!(
+                    "replaceable slot indices must be dense from zero; expected {expected}, got {}",
+                    slot.index.get()
+                ),
+                None,
+            ));
+        }
+        if by_path
+            .insert(slot.contract.public_path.as_str(), slot.index)
+            .is_some()
+        {
+            return Err(DispatchStageError::new(
+                DispatchStageErrorCode::InvalidSlotLayout,
+                format!(
+                    "duplicate replaceable slot path `{}`",
+                    slot.contract.public_path
+                ),
+                None,
+            ));
+        }
+        if let Some(existing) = by_id.insert(slot.id, slot.contract.public_path.as_str()) {
+            return Err(DispatchStageError::new(
+                DispatchStageErrorCode::InvalidSlotLayout,
+                format!(
+                    "replaceable slots `{existing}` and `{}` share stable id {}",
+                    slot.contract.public_path,
+                    slot.id.get()
+                ),
+                None,
+            ));
+        }
+    }
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -423,9 +467,24 @@ fn dispatch_call_options() -> CallOptions {
     )
 }
 
-fn validate_override(
+pub(crate) fn validate_override(
     slot: &ReplaceableSlotDescriptor,
     callable: &RustBindingCallable,
+) -> Result<(), DispatchStageError> {
+    validate_override_contract(slot, callable, true)
+}
+
+pub(crate) fn validate_override_source(
+    slot: &ReplaceableSlotDescriptor,
+    callable: &RustBindingCallable,
+) -> Result<(), DispatchStageError> {
+    validate_override_contract(slot, callable, false)
+}
+
+fn validate_override_contract(
+    slot: &ReplaceableSlotDescriptor,
+    callable: &RustBindingCallable,
+    inherited: bool,
 ) -> Result<(), DispatchStageError> {
     if callable.asyncness != slot.contract.asyncness {
         return Err(incompatible(slot, callable, "sync/async shape"));
@@ -452,8 +511,11 @@ fn validate_override(
             BoundaryMode::ExclusiveHost => RustBindingBoundaryMode::ExclusiveHost,
             BoundaryMode::HiddenContext => unreachable!("hidden contexts were filtered"),
         };
-        if !compatible_mode(expected_mode, actual.mode)
-            || !compatible_type(&expected.ty, &actual.ty)
+        if !(if inherited {
+            expected_mode == actual.mode
+        } else {
+            compatible_source_mode(expected_mode, actual.mode)
+        }) || !compatible_type(&expected.ty, &actual.ty)
         {
             return Err(incompatible(
                 slot,
@@ -467,6 +529,20 @@ fn validate_override(
     }
     if !compatible_type(&slot.contract.returns.ty, &callable.returns.ty) {
         return Err(incompatible(slot, callable, "return type"));
+    }
+    if inherited {
+        if callable.returns.mode != binding_return_mode(slot.contract.returns.mode) {
+            return Err(incompatible(slot, callable, "return mode"));
+        }
+        let expected_error_mode = match slot.contract.returns.error_mode {
+            crate::interop::ErrorMode::Value => vela_bytecode::RustBindingErrorMode::Value,
+            crate::interop::ErrorMode::RuntimeResult => {
+                vela_bytecode::RustBindingErrorMode::RuntimeResult
+            }
+        };
+        if callable.returns.error_mode != expected_error_mode {
+            return Err(incompatible(slot, callable, "error mode"));
+        }
     }
     Ok(())
 }
@@ -492,17 +568,54 @@ fn binding_effects(effects: RustBindingEffectSet) -> EffectSet {
     boundary
 }
 
-fn compatible_mode(expected: RustBindingBoundaryMode, inferred: RustBindingBoundaryMode) -> bool {
+fn compatible_source_mode(
+    expected: RustBindingBoundaryMode,
+    inferred: RustBindingBoundaryMode,
+) -> bool {
     match expected {
         RustBindingBoundaryMode::Value => inferred == RustBindingBoundaryMode::Value,
-        // Vela source does not spell Rust borrow modes. An override inherits
-        // shared versus exclusive authority from its replaceable slot. The
-        // binding schema can only conservatively classify every host
-        // parameter as exclusive when the function has any host write.
         RustBindingBoundaryMode::SharedHost | RustBindingBoundaryMode::ExclusiveHost => matches!(
             inferred,
             RustBindingBoundaryMode::SharedHost | RustBindingBoundaryMode::ExclusiveHost
         ),
+    }
+}
+
+fn binding_return_mode(mode: crate::interop::ReturnMode) -> vela_bytecode::RustBindingReturnMode {
+    match mode {
+        crate::interop::ReturnMode::OwnedValue => vela_bytecode::RustBindingReturnMode::OwnedValue,
+        crate::interop::ReturnMode::StructuredValue => {
+            vela_bytecode::RustBindingReturnMode::StructuredValue
+        }
+        crate::interop::ReturnMode::ScopedHost {
+            origin,
+            child_access,
+            parent_freeze,
+        } => vela_bytecode::RustBindingReturnMode::ScopedHost {
+            origin: match origin {
+                crate::interop::BorrowedReturnOrigin::Receiver => {
+                    vela_bytecode::RustBindingBorrowedReturnOrigin::Receiver
+                }
+                crate::interop::BorrowedReturnOrigin::Parameter(index) => {
+                    vela_bytecode::RustBindingBorrowedReturnOrigin::Parameter(index)
+                }
+            },
+            child_access: binding_scoped_access(child_access),
+            parent_freeze: binding_scoped_access(parent_freeze),
+        },
+    }
+}
+
+fn binding_scoped_access(
+    access: crate::interop::ScopedHostAccess,
+) -> vela_bytecode::RustBindingScopedHostAccess {
+    match access {
+        crate::interop::ScopedHostAccess::Shared => {
+            vela_bytecode::RustBindingScopedHostAccess::Shared
+        }
+        crate::interop::ScopedHostAccess::Exclusive => {
+            vela_bytecode::RustBindingScopedHostAccess::Exclusive
+        }
     }
 }
 
@@ -523,12 +636,39 @@ fn compatible_type(expected: &TypeHint, actual: &RustBindingType) -> bool {
             },
         ) => key.id == *semantic_type_id,
         (
+            TypeHint::Host(key),
+            RustBindingType::Path {
+                segments,
+                arguments,
+            },
+        ) => arguments.is_empty() && segments.last().is_some_and(|name| name == &key.name),
+        (
             TypeHint::Record(key) | TypeHint::Enum(key),
             RustBindingType::Definition { type_id, .. },
         ) => key.id == *type_id,
         (TypeHint::ArrayOf(expected), actual) => compatible_unary("Array", expected, actual),
+        (TypeHint::Array, actual) => compatible_named("Array", 0, actual),
+        (TypeHint::Map, actual) => compatible_named("Map", 0, actual),
+        (TypeHint::MapOf { key, value }, actual) => compatible_binary("Map", key, value, actual),
+        (TypeHint::Set, actual) => compatible_named("Set", 0, actual),
         (TypeHint::OptionOf(expected), actual) => compatible_unary("Option", expected, actual),
         (TypeHint::SetOf(expected), actual) => compatible_unary("Set", expected, actual),
+        (TypeHint::Iterator, actual) => compatible_named("Iterator", 0, actual),
+        (TypeHint::IteratorOf(expected), actual) => compatible_unary("Iterator", expected, actual),
+        (
+            TypeHint::TupleOf(expected),
+            RustBindingType::Path {
+                segments,
+                arguments,
+            },
+        ) => {
+            segments.last().is_some_and(|segment| segment == "Tuple")
+                && expected.len() == arguments.len()
+                && expected
+                    .iter()
+                    .zip(arguments.iter())
+                    .all(|(expected, actual)| compatible_type(expected, actual))
+        }
         (
             TypeHint::ResultOf { ok, err },
             RustBindingType::Path {
@@ -541,8 +681,52 @@ fn compatible_type(expected: &TypeHint, actual: &RustBindingType) -> bool {
                 && compatible_type(ok, &arguments[0])
                 && compatible_type(err, &arguments[1])
         }
+        (TypeHint::PathProxy, actual) => compatible_named("PathProxy", 0, actual),
+        (
+            TypeHint::Trait(expected),
+            RustBindingType::Path {
+                segments,
+                arguments,
+            },
+        ) => arguments.is_empty() && segments.last() == Some(expected),
+        (TypeHint::Function, actual) => compatible_named("Function", 0, actual),
         _ => false,
     }
+}
+
+fn compatible_named(expected_name: &str, arity: usize, actual: &RustBindingType) -> bool {
+    let RustBindingType::Path {
+        segments,
+        arguments,
+    } = actual
+    else {
+        return false;
+    };
+    segments
+        .last()
+        .is_some_and(|segment| segment == expected_name)
+        && arguments.len() == arity
+}
+
+fn compatible_binary(
+    expected_name: &str,
+    first: &TypeHint,
+    second: &TypeHint,
+    actual: &RustBindingType,
+) -> bool {
+    let RustBindingType::Path {
+        segments,
+        arguments,
+    } = actual
+    else {
+        return false;
+    };
+    segments
+        .last()
+        .is_some_and(|segment| segment == expected_name)
+        && arguments.len() == 2
+        && compatible_type(first, &arguments[0])
+        && compatible_type(second, &arguments[1])
 }
 
 fn compatible_unary(expected_name: &str, expected: &TypeHint, actual: &RustBindingType) -> bool {
@@ -576,539 +760,4 @@ fn incompatible(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::interop::{
-        CallableAccess, CallableIdentity, CallableKind, CallableLanguage, CallableOrigin,
-        CallableParameter, CallableReturn, ErrorMode, ReturnMode,
-    };
-    use std::task::{Context, Poll, Waker};
-    use vela_common::{CallableAsyncness, SourceId, Span};
-    use vela_macros::{ScriptHost, ScriptReflect, methods, replaceable};
-
-    #[derive(ScriptHost, ScriptReflect)]
-    #[script(path = "host::ActorContext")]
-    pub struct ActorContext {
-        #[script(get, set)]
-        calls: i64,
-        #[script(skip)]
-        root: DispatchRoot,
-    }
-
-    #[methods]
-    impl ActorContext {
-        pub fn call_count(&self) -> i64 {
-            self.calls
-        }
-    }
-
-    #[derive(ScriptHost, ScriptReflect)]
-    #[script(path = "host::GameService")]
-    pub struct GameService {
-        #[script(get)]
-        offset: i64,
-    }
-
-    #[methods(path = "host::game::GameService")]
-    impl GameService {
-        #[replaceable(
-            path = "host::game::GameService::compute",
-            authority = "context",
-            index = 2
-        )]
-        pub fn compute(&self, context: &mut ActorContext, value: i64) -> VmResult<i64> {
-            context.calls += 10;
-            Ok(self.adjacent(value))
-        }
-
-        pub fn adjacent(&self, value: i64) -> i64 {
-            value + self.offset
-        }
-    }
-
-    impl DispatchAuthority for ActorContext {
-        fn vela_dispatch_root(&self) -> &DispatchRoot {
-            &self.root
-        }
-    }
-
-    #[replaceable(path = "host::game::increment", authority = "context", index = 0)]
-    pub fn replaceable_increment(context: &mut ActorContext, value: i64) -> VmResult<i64> {
-        context.calls += 10;
-        Ok(value + 1)
-    }
-
-    #[replaceable(path = "host::game::increment_async", authority = "context", index = 1)]
-    pub async fn replaceable_increment_async(
-        context: &mut ActorContext,
-        value: i64,
-    ) -> VmResult<i64> {
-        context.calls += 10;
-        Ok(value + 1)
-    }
-
-    fn direct_helper(value: i64) -> i64 {
-        value + 1
-    }
-
-    #[test]
-    fn staged_generation_pins_activation_and_rollback_per_root() {
-        let engine = crate::engine::Engine::builder().build().expect("engine");
-        let program = engine
-            .compile_source(
-                r#"
-#[override(host::math::increment)]
-pub fn patched(value: i64) -> i64 { return value + 2; }
-"#,
-            )
-            .expect("override program");
-        let runtime = Arc::new(Mutex::new(Runtime::new(engine, program).expect("runtime")));
-        let controller =
-            DispatchController::new(vec![slot(0, "host::math::increment")]).expect("controller");
-
-        let before = DispatchRoot::pin(&controller);
-        let candidate = controller
-            .stage_current(&runtime)
-            .expect("compatible override");
-        let previous = controller.activate(candidate).expect("activate candidate");
-        let active = DispatchRoot::pin(&controller);
-
-        assert!(before.target(InterceptSlotIndex::new(0)).is_none());
-        let target = active
-            .target(InterceptSlotIndex::new(0))
-            .expect("active override");
-        assert_eq!(
-            active
-                .invocation()
-                .call::<i64>(target.clone(), CallArgs::new().with(40_i64)),
-            Ok(42)
-        );
-
-        controller.rollback(previous).expect("rollback generation");
-        let rolled_back = DispatchRoot::pin(&controller);
-        assert!(rolled_back.target(InterceptSlotIndex::new(0)).is_none());
-        assert_eq!(active.target(InterceptSlotIndex::new(0)), Some(target));
-    }
-
-    #[test]
-    fn same_shaped_controllers_reject_foreign_generations_and_candidates() {
-        let engine = crate::engine::Engine::builder().build().expect("engine");
-        let program = engine
-            .compile_source(
-                r#"
-#[override(host::math::increment)]
-pub fn patched(value: i64) -> i64 { return value + 2; }
-"#,
-            )
-            .expect("override program");
-        let runtime = Arc::new(Mutex::new(Runtime::new(engine, program).expect("runtime")));
-        let first = DispatchController::new(vec![slot(0, "host::math::increment")]).expect("first");
-        let second =
-            DispatchController::new(vec![slot(0, "host::math::increment")]).expect("second");
-
-        let foreign_base = first.current();
-        let error = second
-            .stage_from(&runtime, Arc::clone(&foreign_base))
-            .expect_err("foreign base must be rejected");
-        assert_eq!(error.code(), DispatchStageErrorCode::BaseLayoutMismatch);
-        assert!(error.to_string().contains("another controller"));
-
-        let foreign_candidate = first
-            .stage_current(&runtime)
-            .expect("first controller candidate");
-        let error = second
-            .activate(foreign_candidate)
-            .expect_err("foreign candidate must be rejected");
-        assert_eq!(error.code(), DispatchStageErrorCode::BaseLayoutMismatch);
-        assert!(error.to_string().contains("another controller"));
-
-        let error = second
-            .rollback(foreign_base)
-            .expect_err("foreign rollback generation must be rejected");
-        assert_eq!(error.code(), DispatchStageErrorCode::BaseLayoutMismatch);
-        assert!(error.to_string().contains("another controller"));
-    }
-
-    #[test]
-    fn staging_rejects_unknown_duplicate_and_incompatible_overrides() {
-        let controller =
-            DispatchController::new(vec![slot(0, "host::math::increment")]).expect("controller");
-        for (source, expected) in [
-            (
-                r#"#[override(host::missing)] pub fn patched(value: i64) -> i64 { return value; }"#,
-                "unknown replaceable target",
-            ),
-            (
-                r#"
-#[override(host::math::increment)] pub fn first(value: i64) -> i64 { return value; }
-#[override(host::math::increment)] pub fn second(value: i64) -> i64 { return value; }
-"#,
-                "both target",
-            ),
-            (
-                r#"#[override(host::math::increment)] pub fn patched(value: String) -> i64 { return 1; }"#,
-                "parameter `value`",
-            ),
-        ] {
-            let engine = crate::engine::Engine::builder().build().expect("engine");
-            let program = engine.compile_source(source).expect("override program");
-            let runtime = Arc::new(Mutex::new(Runtime::new(engine, program).expect("runtime")));
-            let error = controller
-                .stage_current(&runtime)
-                .expect_err("stage must reject invalid override");
-            assert!(error.to_string().contains(expected), "{error}");
-            assert!(error.source().is_some());
-        }
-    }
-
-    #[test]
-    fn staging_accepts_effect_subsets_and_rejects_effect_expansion() {
-        let engine = crate::engine::Engine::builder()
-            .register_host_type::<ActorContext>()
-            .register_exports(ActorContext::vela_inherent_exports())
-            .capability(vela_common::Capability::HostRead)
-            .capability(vela_common::Capability::HostWrite)
-            .build()
-            .expect("engine");
-        let read_program = engine
-            .compile_source(
-                r#"
-#[override(host::game::inspect)]
-pub fn inspect(context: ActorContext) -> i64 {
-    return context.call_count();
-}
-"#,
-            )
-            .expect("read-only override program");
-        let read_runtime = Arc::new(Mutex::new(
-            Runtime::new(engine.clone(), read_program).expect("read runtime"),
-        ));
-        let write_ceiling = DispatchController::new(vec![ReplaceableSlotDescriptor::new(
-            0,
-            host_contract(
-                "host::game::inspect",
-                BoundaryMode::ExclusiveHost,
-                EffectSet::host_write(),
-            ),
-        )])
-        .expect("write ceiling controller");
-        write_ceiling
-            .stage_current(&read_runtime)
-            .expect("host-read implementation is within a host-write ceiling");
-
-        let write_program = engine
-            .compile_source(
-                r#"
-#[override(host::game::inspect)]
-pub fn inspect(context: ActorContext) -> i64 {
-    context.calls += 1;
-    return context.calls;
-}
-"#,
-            )
-            .expect("write override program");
-        let write_runtime = Arc::new(Mutex::new(
-            Runtime::new(engine, write_program).expect("write runtime"),
-        ));
-        let read_ceiling = DispatchController::new(vec![ReplaceableSlotDescriptor::new(
-            0,
-            host_contract(
-                "host::game::inspect",
-                BoundaryMode::SharedHost,
-                EffectSet::host_read(),
-            ),
-        )])
-        .expect("read ceiling controller");
-        let error = read_ceiling
-            .stage_current(&write_runtime)
-            .expect_err("host-write implementation must exceed a host-read ceiling");
-        assert!(error.to_string().contains("effective effects"), "{error}");
-    }
-
-    #[test]
-    fn staged_delta_preserves_targets_and_their_owning_runtimes() {
-        let first_engine = crate::engine::Engine::builder().build().expect("engine");
-        let first_program = first_engine
-            .compile_source(
-                r#"
-#[override(host::math::first)]
-fn first(value: i64) -> i64 { return value + 1; }
-"#,
-            )
-            .expect("first delta");
-        let first_runtime = Arc::new(Mutex::new(
-            Runtime::new(first_engine, first_program).expect("first runtime"),
-        ));
-        let second_engine = crate::engine::Engine::builder().build().expect("engine");
-        let second_program = second_engine
-            .compile_source(
-                r#"
-#[override(host::math::second)]
-fn second(value: i64) -> i64 { return value + 2; }
-"#,
-            )
-            .expect("second delta");
-        let second_runtime = Arc::new(Mutex::new(
-            Runtime::new(second_engine, second_program).expect("second runtime"),
-        ));
-        let controller = DispatchController::new(vec![
-            slot(0, "host::math::first"),
-            slot(1, "host::math::second"),
-        ])
-        .expect("controller");
-
-        let first = controller
-            .stage_current(&first_runtime)
-            .expect("first candidate");
-        controller.activate(first).expect("activate first delta");
-        let second = controller
-            .stage_current(&second_runtime)
-            .expect("second delta over first generation");
-        controller.activate(second).expect("activate second delta");
-        let root = DispatchRoot::pin(&controller);
-        let first_target = root
-            .target(InterceptSlotIndex::new(0))
-            .expect("preserved first target");
-        let second_target = root
-            .target(InterceptSlotIndex::new(1))
-            .expect("new second target");
-
-        assert_eq!(
-            root.invocation()
-                .call::<i64>(first_target, CallArgs::new().with(40_i64)),
-            Ok(41)
-        );
-        assert_eq!(
-            root.invocation()
-                .call::<i64>(second_target, CallArgs::new().with(40_i64)),
-            Ok(42)
-        );
-    }
-
-    #[test]
-    fn macro_entry_intercepts_while_old_roots_and_private_fallback_stay_direct() {
-        let engine = crate::engine::Engine::builder()
-            .register_host_type::<ActorContext>()
-            .capability(vela_common::Capability::HostRead)
-            .capability(vela_common::Capability::HostWrite)
-            .build()
-            .expect("engine");
-        let program = engine
-            .compile_source(
-                r#"
-#[override(host::game::increment)]
-pub fn patched(context: ActorContext, value: i64) -> i64 {
-    context.calls += 1;
-    return value + 2;
-}
-
-#[override(host::game::increment_async)]
-pub async fn patched_async(context: ActorContext, value: i64) -> i64 {
-    context.calls += 1;
-    return value + 3;
-}
-"#,
-            )
-            .expect("override program");
-        let runtime = Arc::new(Mutex::new(Runtime::new(engine, program).expect("runtime")));
-        let controller = DispatchController::new(vec![
-            vela_replaceable_slot_replaceable_increment(),
-            vela_replaceable_slot_replaceable_increment_async(),
-        ])
-        .expect("controller");
-        let mut old_context = ActorContext {
-            calls: 0,
-            root: DispatchRoot::pin(&controller),
-        };
-        assert_eq!(replaceable_increment(&mut old_context, 40), Ok(41));
-
-        let candidate = controller.stage_current(&runtime).expect("override stage");
-        controller.activate(candidate).expect("activate candidate");
-        let mut active_context = ActorContext {
-            calls: 0,
-            root: DispatchRoot::pin(&controller),
-        };
-        assert_eq!(replaceable_increment(&mut active_context, 40), Ok(42));
-        assert_eq!(
-            ready(replaceable_increment_async(&mut active_context, 40)),
-            Ok(43)
-        );
-        assert_eq!(active_context.call_count(), 2);
-
-        assert_eq!(replaceable_increment(&mut old_context, 40), Ok(41));
-        assert_eq!(
-            __vela_rust_replaceable_increment(&mut active_context, 40),
-            Ok(41)
-        );
-        assert_eq!(direct_helper(40), 41);
-        assert_eq!(old_context.calls, 20);
-        assert_eq!(active_context.calls, 12);
-    }
-
-    #[test]
-    fn override_error_propagates_without_fallback_retry() {
-        let engine = crate::engine::Engine::builder()
-            .register_host_type::<ActorContext>()
-            .capability(vela_common::Capability::HostRead)
-            .capability(vela_common::Capability::HostWrite)
-            .build()
-            .expect("engine");
-        let program = engine
-            .compile_source(
-                r#"
-#[override(host::game::increment)]
-pub fn broken(context: ActorContext, value: i64) -> i64 {
-    context.calls += 1;
-    return value / 0;
-}
-"#,
-            )
-            .expect("override program");
-        let runtime = Arc::new(Mutex::new(Runtime::new(engine, program).expect("runtime")));
-        let controller = DispatchController::new(vec![
-            vela_replaceable_slot_replaceable_increment(),
-            vela_replaceable_slot_replaceable_increment_async(),
-        ])
-        .expect("controller");
-        let candidate = controller.stage_current(&runtime).expect("override stage");
-        controller.activate(candidate).expect("activate candidate");
-        let mut context = ActorContext {
-            calls: 0,
-            root: DispatchRoot::pin(&controller),
-        };
-
-        assert!(replaceable_increment(&mut context, 40).is_err());
-        assert_eq!(context.calls, 1);
-    }
-
-    #[test]
-    fn replaceable_service_method_preserves_receiver_and_adjacent_rust_method() {
-        let engine = crate::engine::Engine::builder()
-            .register_host_type::<ActorContext>()
-            .register_host_type::<GameService>()
-            .register_exports(GameService::vela_inherent_exports())
-            .capability(vela_common::Capability::HostRead)
-            .capability(vela_common::Capability::HostWrite)
-            .build()
-            .expect("engine");
-        let program = engine
-            .compile_source(
-                r#"
-#[override(host::game::GameService::compute)]
-pub fn patched(service: GameService, context: ActorContext, value: i64) -> i64 {
-    context.calls += 1;
-    return service.adjacent(value) + 1;
-}
-"#,
-            )
-            .expect("service override program");
-        let runtime = Arc::new(Mutex::new(Runtime::new(engine, program).expect("runtime")));
-        let controller = DispatchController::new(vec![
-            vela_replaceable_slot_replaceable_increment(),
-            vela_replaceable_slot_replaceable_increment_async(),
-            GameService::vela_replaceable_slot_compute(),
-        ])
-        .expect("controller");
-        let service = GameService { offset: 1 };
-        let mut old_context = ActorContext {
-            calls: 0,
-            root: DispatchRoot::pin(&controller),
-        };
-
-        assert_eq!(service.compute(&mut old_context, 40), Ok(41));
-        assert_eq!(service.adjacent(40), 41);
-
-        let candidate = controller
-            .stage_current(&runtime)
-            .expect("service override stage");
-        let previous = controller.activate(candidate).expect("activate candidate");
-        let mut active_context = ActorContext {
-            calls: 0,
-            root: DispatchRoot::pin(&controller),
-        };
-
-        assert_eq!(service.compute(&mut active_context, 40), Ok(42));
-        assert_eq!(active_context.calls, 1);
-        assert_eq!(service.adjacent(40), 41);
-        assert_eq!(service.__vela_rust_compute(&mut active_context, 40), Ok(41));
-        assert_eq!(active_context.calls, 11);
-        assert_eq!(service.compute(&mut old_context, 40), Ok(41));
-
-        controller.rollback(previous).expect("rollback generation");
-        let mut rolled_back_context = ActorContext {
-            calls: 0,
-            root: DispatchRoot::pin(&controller),
-        };
-        assert_eq!(service.compute(&mut rolled_back_context, 40), Ok(41));
-        assert_eq!(rolled_back_context.calls, 10);
-    }
-
-    fn slot(index: usize, path: &str) -> ReplaceableSlotDescriptor {
-        ReplaceableSlotDescriptor::new(index, contract(path))
-    }
-
-    fn contract(path: &str) -> CallableContract {
-        CallableContract {
-            identity: CallableIdentity::new(CallableKind::RustFunction, 1),
-            public_path: path.to_owned(),
-            parameters: vec![CallableParameter::new(
-                1,
-                "value",
-                TypeHint::i64(),
-                BoundaryMode::Value,
-            )],
-            returns: CallableReturn::new(
-                TypeHint::i64(),
-                ReturnMode::OwnedValue,
-                ErrorMode::RuntimeResult,
-            ),
-            asyncness: CallableAsyncness::Sync,
-            effects: EffectSet::pure(),
-            access: CallableAccess::default(),
-            docs: None,
-            origin: CallableOrigin {
-                language: CallableLanguage::Rust,
-                source_span: Some(Span::new(SourceId::new(1), 0, 1)),
-            },
-        }
-    }
-
-    fn host_contract(path: &str, mode: BoundaryMode, effects: EffectSet) -> CallableContract {
-        CallableContract {
-            identity: CallableIdentity::new(CallableKind::RustFunction, 2),
-            public_path: path.to_owned(),
-            parameters: vec![CallableParameter::new(
-                1,
-                "context",
-                TypeHint::Host(vela_reflect::registry::TypeKey::new(
-                    ActorContext::vela_type_id(),
-                    "ActorContext",
-                )),
-                mode,
-            )],
-            returns: CallableReturn::new(
-                TypeHint::i64(),
-                ReturnMode::OwnedValue,
-                ErrorMode::RuntimeResult,
-            ),
-            asyncness: CallableAsyncness::Sync,
-            effects,
-            access: CallableAccess::default(),
-            docs: None,
-            origin: CallableOrigin {
-                language: CallableLanguage::Rust,
-                source_span: Some(Span::new(SourceId::new(1), 0, 1)),
-            },
-        }
-    }
-
-    fn ready<T>(future: impl Future<Output = T>) -> T {
-        let mut future = std::pin::pin!(future);
-        let mut context = Context::from_waker(Waker::noop());
-        loop {
-            if let Poll::Ready(value) = future.as_mut().poll(&mut context) {
-                return value;
-            }
-        }
-    }
-}
+mod tests;

@@ -57,16 +57,18 @@ impl MessageHandler {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let slots = vec![MessageHandler::vela_replaceable_slot_handle()];
     let engine = Engine::builder()
         .register_host_type::<TurnContext>()
         .register_host_type::<MessageHandler>()
         .register_exports(MessageHandler::vela_inherent_exports())
+        .register_replaceable_slots(slots.clone())
         .capability(vela_common::Capability::HostRead)
         .capability(vela_common::Capability::HostWrite)
         .build()?;
     let program = engine.compile_source(include_str!("main.vela"))?;
     let runtime = Arc::new(Mutex::new(Runtime::new(engine, program)?));
-    let controller = DispatchController::new(vec![MessageHandler::vela_replaceable_slot_handle()])?;
+    let controller = DispatchController::new(slots)?;
     let handler = MessageHandler { bonus: 1 };
 
     let mut fallback_context = TurnContext {

@@ -23,11 +23,12 @@ pub mod verification;
 pub use artifact::test_support;
 pub use artifact::{LinkedArtifact, MirExecutableLayout, ProfileFunctionLayout, ProfileLayout};
 pub use binding_schema::{
-    RUST_BINDING_SCHEMA_VERSION, RustBindingBoundaryMode, RustBindingCallable,
-    RustBindingCallableIdentity, RustBindingEffectSet, RustBindingEnum, RustBindingErrorMode,
-    RustBindingField, RustBindingMethodOwner, RustBindingModule, RustBindingPackage,
-    RustBindingParameter, RustBindingParameterDefault, RustBindingRecord, RustBindingReturn,
-    RustBindingReturnMode, RustBindingSchema, RustBindingType, RustBindingTypeDefinition,
+    RUST_BINDING_SCHEMA_VERSION, RustBindingBorrowedReturnOrigin, RustBindingBoundaryMode,
+    RustBindingCallable, RustBindingCallableIdentity, RustBindingEffectSet, RustBindingEnum,
+    RustBindingErrorMode, RustBindingField, RustBindingMethodOwner, RustBindingModule,
+    RustBindingOverrideTarget, RustBindingPackage, RustBindingParameter,
+    RustBindingParameterDefault, RustBindingRecord, RustBindingReturn, RustBindingReturnMode,
+    RustBindingSchema, RustBindingScopedHostAccess, RustBindingType, RustBindingTypeDefinition,
     RustBindingVariant, RustBindingVariantFields,
 };
 pub use budget_metadata::MirBudgetCharge;

@@ -182,12 +182,12 @@ The following closure tasks reopen the replaceable portions of Batches E-G:
   and target lookup must reject a base or candidate from another controller,
   even when the two layouts have the same length; target slot identity must be
   validated rather than stored only as diagnostic metadata.
-- [ ] F-REVIEW-4. Resolve `#[override(host::path::target)]` against the host
+- [x] F-REVIEW-4. Resolve `#[override(host::path::target)]` against the host
   symbol registry during compilation/linking and import the target
   `CallableContract`. Unknown targets and incompatible optional type hints must
   fail before a stage candidate exists; runtime strings must not be the linked
   target identity.
-- [ ] F-REVIEW-5. Validate the complete inherited callable contract at staging:
+- [x] F-REVIEW-5. Validate the complete inherited callable contract at staging:
   exact parameter modes, return mode, error mode, borrowed-return origin,
   parent freeze, child access, sync/async shape, types, and the normalized
   effect ceiling. A strict effect subset is allowed; an effect outside the

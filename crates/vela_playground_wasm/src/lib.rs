@@ -137,6 +137,9 @@ fn source_error_response(error: EngineSourceError) -> PlaygroundResponse {
                 .collect(),
         },
         EngineSourceErrorKind::Backend(error) => compile_error_response(error),
+        EngineSourceErrorKind::OverrideLink { message, source } => {
+            diagnostic_response(Diagnostic::error(message).with_span(source))
+        }
         EngineSourceErrorKind::Io { path, message } => {
             single_error_response(format!("failed to read source {path}: {message}"))
         }

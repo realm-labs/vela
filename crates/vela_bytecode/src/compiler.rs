@@ -104,6 +104,11 @@ impl CompiledProgram {
         &self.binding_schema
     }
 
+    #[doc(hidden)]
+    pub fn binding_schema_mut(&mut self) -> &mut crate::RustBindingSchema {
+        Arc::make_mut(&mut self.binding_schema)
+    }
+
     #[must_use]
     pub const fn package_metadata(&self) -> Option<&crate::PackageCompilationMetadata> {
         self.package_metadata.as_ref()

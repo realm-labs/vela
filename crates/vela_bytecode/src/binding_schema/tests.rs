@@ -244,7 +244,10 @@ fn patched(value: i64) -> i64 { return value + 1; }
         .expect("private override is an explicit callable");
 
     assert_eq!(
-        override_callable.override_target.as_deref(),
+        override_callable
+            .override_target
+            .as_ref()
+            .map(super::RustBindingOverrideTarget::public_path),
         Some("host::game::increment")
     );
     assert_eq!(

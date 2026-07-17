@@ -42,14 +42,16 @@ impl PricingService {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let slots = vec![PricingService::vela_replaceable_slot_quote()];
     let engine = Engine::builder()
         .register_host_type::<PricingService>()
         .register_exports(PricingService::vela_inherent_exports())
+        .register_replaceable_slots(slots.clone())
         .capability(vela_common::Capability::HostRead)
         .build()?;
     let program = engine.compile_source(include_str!("main.vela"))?;
     let runtime = Arc::new(Mutex::new(Runtime::new(engine, program)?));
-    let controller = DispatchController::new(vec![PricingService::vela_replaceable_slot_quote()])?;
+    let controller = DispatchController::new(slots)?;
 
     let fallback_service = PricingService {
         base: 1,

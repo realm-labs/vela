@@ -15,10 +15,11 @@ adapters, owner-frozen borrowed returns, generated typed Rust-to-Vela bindings,
 and `NativeCallContext` sync/async re-entry use the shared execution path.
 Post-implementation review reopened the optional replaceable-dispatch layer:
 its current target-owned Runtime starts a second execution with fresh budgets,
-can deadlock on same-Runtime nesting, lacks controller-owned generation proof,
-performs incomplete ABI/effect validation, narrows returns to `VmResult<T>`,
-resolves override targets at staging by string, and still exposes low-level
-slot ceremony to business authors. The corrected status and closure tasks live
+can deadlock on same-Runtime nesting, narrows returns to `VmResult<T>`, and
+still exposes low-level slot ceremony to business authors. Controller-owned
+generations, compile-time stable target
+linking, and complete inherited contract/effect validation are closed. The
+corrected status and remaining closure tasks live
 in [the unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17)
 and [the post-review report](archive/rust-vela-interop-post-review-2026-07-17.md).
 
@@ -133,17 +134,19 @@ state-storage hard switch.
 ### Rust/Vela Replaceable Dispatch Post-Review
 
 Ordinary interop remains accepted. Optional replacement has closed
-`F-REVIEW-3`: controller-owned opaque layout identity now rejects foreign
-bases, candidates, and rollback generations even for same-shaped slot tables,
-and target lookup validates the exact slot identity. It must still complete
-`F-REVIEW-1`, `F-REVIEW-2`, `F-REVIEW-4` through `F-REVIEW-7`, and
+`F-REVIEW-3` through `F-REVIEW-5`: controller-owned opaque layout identity
+rejects foreign generations; Engine compilation resolves override declarations
+to stable registered slots; target contracts supply exact parameter,
+return/error, borrowed-return, async, type, and effect metadata; and staging
+validates the complete target fingerprint plus the implementation effect
+subset. It must still complete `F-REVIEW-1`, `F-REVIEW-2`, `F-REVIEW-6`,
+`F-REVIEW-7`, and
 `G-REVIEW-1` through `G-REVIEW-2` in the
 [unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17).
 The closure requires one session-aware invocation authority, inherited runtime
-policy and remaining budgets, controller/layout-owned generations, statically
-linked override targets, complete callable-contract validation, ordinary
-return/error/borrowed-return mapping, and a p9-lattice-shaped business macro
-fixture. Do not close it by adding a reentrant or process-global Runtime lock,
+policy and remaining budgets, ordinary return/error/borrowed-return execution
+mapping, and a p9-lattice-shaped business macro fixture. Do not close it by
+adding a reentrant or process-global Runtime lock,
 replenishing nested budgets, accepting capability projection as full ABI,
 fabricating Rust references, or documenting manual slot indices as the final
 business surface.

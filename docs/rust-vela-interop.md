@@ -106,10 +106,11 @@ should use generated bindings.
 > **Post-review status:** the current API is an experimental mechanism slice,
 > not the completed production replacement contract. Single-level activation,
 > partial deltas, rollback, error propagation, and the empty-slot fast path are
-> demonstrated. Same-Runtime nested replacement, same-session budget/policy
-> inheritance, controller-owned generations, complete ABI/borrowed-return
-> validation, static override linking, ordinary business result mapping, and
-> host-business-macro ergonomics remain open in the
+> demonstrated. Controller-owned generations, static override linking, and
+> complete inherited contract validation are now implemented. Same-Runtime
+> nested replacement, same-session budget/policy inheritance, ordinary
+> business and borrowed-return execution mapping, and host-business-macro
+> ergonomics remain open in the
 > [unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17).
 
 Replacement is an explicit extension. A selected public entry keeps its normal
@@ -146,7 +147,7 @@ let controller = DispatchController::new(vec![
     Service::vela_replaceable_slot_quote(),
 ])?;
 let candidate = controller.stage_current(&override_runtime)?;
-let previous = controller.activate(candidate);
+let previous = controller.activate(candidate)?;
 
 let service = Service {
     dispatch: DispatchRoot::pin(&controller),
@@ -154,7 +155,7 @@ let service = Service {
 };
 let result = service.quote(40)?;
 
-controller.rollback(previous);
+controller.rollback(previous)?;
 ```
 
 Pin a `DispatchRoot` at the host operation boundary, such as an actor mailbox

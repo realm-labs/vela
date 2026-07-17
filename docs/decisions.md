@@ -2241,11 +2241,12 @@ lease, Runtime call target, execution session, policy, and diagnostics continue
 to use the common interop paths.
 
 The 2026-07-17 post-implementation review found that the first mechanism slice
-does not yet satisfy the preceding decision: it uses target-owned Runtime
-locks, staging-time path strings, lossy contract checks, and a
-`VmResult<T>`-only replaceable macro. Those shapes are implementation gaps, not
-accepted compatibility contracts, and may be replaced outright during the
-post-review closure.
+did not satisfy the preceding decision. Controller-owned generation identity,
+Engine-registered compile-time target linking, authoritative contract import,
+and exact staging fingerprints now close the path-string and lossy-validation
+findings. Target-owned Runtime locks and the `VmResult<T>`-only replaceable
+macro remain implementation gaps, not accepted compatibility contracts, and
+may be replaced outright during the post-review closure.
 
 ### Context Natives Use A Session-Aware VM Boundary
 
