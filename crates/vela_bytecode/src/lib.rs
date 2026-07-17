@@ -10,6 +10,7 @@ pub mod cache_site;
 pub mod compiler;
 pub mod linked;
 pub mod linker;
+mod nominal;
 mod package_metadata;
 pub mod program_image;
 mod script_metadata;
@@ -52,6 +53,9 @@ pub use linked::{
     ScriptFunctionHandle, TypeGuard, TypeGuardPlan, TypeGuardPlanId, TypeHandle, VariantHandle,
 };
 pub use linker::{LinkError, Linker};
+pub use nominal::{
+    NominalFieldDescriptor, NominalTypeDescriptor, NominalTypeKind, NominalVariantDescriptor,
+};
 pub use package_metadata::{
     CompiledPackageMetadata, InstalledProviderSet, LinkedProviderEntry, PackageArtifactMetadata,
     PackageCompilationInput, PackageCompilationMetadata, PackageCompileRequestFingerprint,
@@ -73,6 +77,7 @@ pub struct UnlinkedProgram {
     states: Vec<StateDescriptor>,
     state_slots_by_name: BTreeMap<String, StateSlot>,
     state_slots_by_id: BTreeMap<StateId, StateSlot>,
+    nominal_types: Vec<NominalTypeDescriptor>,
     script_methods: ScriptMethodTable,
     script_metadata: Option<ModuleGraph>,
 }
@@ -130,6 +135,16 @@ impl UnlinkedProgram {
             self.state_slots_by_id.entry(state.id).or_insert(slot);
             self.states.push(state);
         }
+    }
+
+    pub fn set_nominal_types(&mut self, types: impl IntoIterator<Item = NominalTypeDescriptor>) {
+        self.nominal_types = types.into_iter().collect();
+        self.nominal_types.sort_by_key(|descriptor| descriptor.id);
+    }
+
+    #[must_use]
+    pub fn nominal_types(&self) -> &[NominalTypeDescriptor] {
+        &self.nominal_types
     }
 
     #[must_use]

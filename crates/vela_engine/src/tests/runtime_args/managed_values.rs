@@ -586,7 +586,7 @@ struct Player {
 
 enum Status {
     Ready,
-    Waiting,
+    Waiting { code: i64 },
 }
 
 state array: Array<i64> = [1];
@@ -596,6 +596,17 @@ state option: Option<i64> = Option::Some(1);
 state result: Result<i64, String> = Result::Ok(1);
 state player: Player = Player { level: 1 };
 state status: Status = Status::Ready {};
+
+fn player_level() {
+    return player.level;
+}
+
+fn status_code() {
+    return match status {
+        Status::Ready {} => 1,
+        Status::Waiting { code } => code,
+    };
+}
 "#,
         )
         .expect("program should compile");
@@ -629,17 +640,13 @@ state status: Status = Status::Ready {};
         ),
         (
             "main::player",
-            OwnedValue::record("main::Player", [("level", 2_i64)]),
-            OwnedValue::record("main::Player", [("name", 2_i64)]),
+            OwnedValue::record("Player", [("level", 2_i64)]),
+            OwnedValue::record("Player", [("level", "wrong")]),
         ),
         (
             "main::status",
-            OwnedValue::enum_variant("main::Status", "Waiting", Vec::<(&str, OwnedValue)>::new()),
-            OwnedValue::enum_variant(
-                "main::MissingStatus",
-                "Waiting",
-                Vec::<(&str, OwnedValue)>::new(),
-            ),
+            OwnedValue::enum_variant("Status", "Waiting", [("code", 2_i64)]),
+            OwnedValue::enum_variant("Status", "Missing", Vec::<(&str, OwnedValue)>::new()),
         ),
     ];
 
@@ -652,6 +659,28 @@ state status: Status = Status::Ready {};
             .expect_err("malformed recursive value should fail");
         assert_eq!(runtime.state(name), Ok(Some(valid)));
     }
+
+    runtime
+        .set_state(
+            "main::status",
+            OwnedValue::enum_variant("Status", "Waiting", [("code", "wrong")]),
+        )
+        .expect_err("malformed enum payload should fail before replacement");
+
+    runtime
+        .update_state("main::player", |_| {})
+        .expect("no-op record update should retain linked identity");
+    runtime
+        .update_state("main::status", |_| {})
+        .expect("no-op enum update should retain linked identity");
+    let level = runtime
+        .call("player_level", CallArgs::new(), CallOptions::unbounded())
+        .expect("canonical record should pass linked guards and field access");
+    let status = runtime
+        .call("status_code", CallArgs::new(), CallOptions::unbounded())
+        .expect("canonical enum should retain pattern-match identity");
+    assert_eq!(runtime.value_to_owned(&level), Ok(OwnedValue::from(2_i64)));
+    assert_eq!(runtime.value_to_owned(&status), Ok(OwnedValue::from(2_i64)));
 }
 
 #[test]

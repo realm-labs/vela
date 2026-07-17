@@ -416,6 +416,9 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         if let Some(metadata) = program.script_metadata() {
             self.linked.set_script_metadata(metadata.clone());
         }
+        for descriptor in program.nominal_types() {
+            self.linked.insert_nominal_type(descriptor.clone());
+        }
         let mut functions = Vec::with_capacity(program.function_count());
         for (_, code) in program.functions() {
             functions.push(self.link_code(program, code)?);

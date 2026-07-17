@@ -25,13 +25,16 @@ use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::ModuleSource;
 use vela_hir::module_graph::{ModuleGraph, Visibility};
 use vela_hir::source_ingestion::{HirSourceFunction, HirSourceSet, HirSourceSetKind};
-use vela_mir::CompileStateStorage;
+use vela_mir::{CompileStateStorage, CompileTypeClass, MirTargetTable};
 use vela_package::PackageId;
 use vela_registry::RegistryCompileView;
 
 #[cfg(test)]
 use crate::{Constant, UnlinkedTypeGuardPlan};
-use crate::{StateDescriptor, StateStorage, StateVisibility, UnlinkedCodeObject, UnlinkedProgram};
+use crate::{
+    NominalFieldDescriptor, NominalTypeDescriptor, NominalTypeKind, NominalVariantDescriptor,
+    StateDescriptor, StateStorage, StateVisibility, UnlinkedCodeObject, UnlinkedProgram,
+};
 use error::{CompilationRequestError, CompileError, CompileErrorKind, CompileResult};
 use options::CompilerOptions;
 use semantic::SemanticCompilation;
@@ -244,6 +247,7 @@ fn compile_program_inner(
 
     let mut program = UnlinkedProgram::new();
     program.set_states(state_descriptors(graph, &input, &state_symbols)?);
+    program.set_nominal_types(nominal_type_descriptors(input.targets().target_table())?);
     let (mut code, verified_mir) = compile_mir_roots(&input, graph)?;
     let binding_schema = Arc::new(
         crate::binding_schema::build_rust_binding_schema(
@@ -823,6 +827,78 @@ fn state_descriptors(
         .collect::<CompileResult<Vec<_>>>()?;
     descriptors.sort_by(|left, right| left.qualified_name.cmp(&right.qualified_name));
     Ok(descriptors)
+}
+
+fn nominal_type_descriptors(targets: &MirTargetTable) -> CompileResult<Vec<NominalTypeDescriptor>> {
+    targets
+        .types()
+        .filter(|(_, ty)| {
+            matches!(
+                ty.class,
+                CompileTypeClass::ScriptRecord | CompileTypeClass::ScriptEnum
+            )
+        })
+        .map(|(_, ty)| {
+            let fields = ty
+                .fields
+                .iter()
+                .map(|field| nominal_field_descriptor(targets, *field))
+                .collect::<CompileResult<Vec<_>>>()?;
+            let variants = ty
+                .variants
+                .iter()
+                .map(|variant| {
+                    let descriptor = targets.variant(*variant).ok_or_else(|| {
+                        missing_nominal_metadata(format!(
+                            "missing variant target {variant:?} for `{}`",
+                            ty.runtime_name
+                        ))
+                    })?;
+                    let fields = descriptor
+                        .fields
+                        .iter()
+                        .map(|field| nominal_field_descriptor(targets, *field))
+                        .collect::<CompileResult<Vec<_>>>()?;
+                    Ok(NominalVariantDescriptor {
+                        id: descriptor.id,
+                        name: descriptor.name.clone(),
+                        fields,
+                    })
+                })
+                .collect::<CompileResult<Vec<_>>>()?;
+            Ok(NominalTypeDescriptor {
+                id: ty.id,
+                canonical_name: ty.canonical_name.clone(),
+                runtime_name: ty.runtime_name.clone(),
+                kind: match ty.class {
+                    CompileTypeClass::ScriptRecord => NominalTypeKind::Record,
+                    CompileTypeClass::ScriptEnum => NominalTypeKind::Enum,
+                    _ => unreachable!("filtered to script nominal types"),
+                },
+                shape: ty.shape,
+                fields,
+                variants,
+            })
+        })
+        .collect()
+}
+
+fn nominal_field_descriptor(
+    targets: &MirTargetTable,
+    field: vela_def::FieldId,
+) -> CompileResult<NominalFieldDescriptor> {
+    let descriptor = targets.field(field).ok_or_else(|| {
+        missing_nominal_metadata(format!("missing field target {field:?} for nominal type"))
+    })?;
+    Ok(NominalFieldDescriptor {
+        id: descriptor.id,
+        name: descriptor.name.clone(),
+        contract: descriptor.contract.clone(),
+    })
+}
+
+fn missing_nominal_metadata(message: String) -> CompileError {
+    CompileError::new(CompileErrorKind::RegistrySnapshot(message))
 }
 
 fn verify_program(program: UnlinkedProgram) -> CompileResult<UnlinkedProgram> {

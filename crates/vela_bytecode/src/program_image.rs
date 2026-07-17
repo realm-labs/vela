@@ -7,8 +7,8 @@ use vela_hir::module_graph::ModuleGraph;
 use crate::script_methods::ScriptMethodTable;
 use crate::{
     CacheSiteDesc, CacheSiteId, CacheSiteInstruction, CacheSiteLayout, FunctionIndex,
-    StateDescriptor, UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgram,
-    UnlinkedProgramCode,
+    NominalTypeDescriptor, StateDescriptor, UnlinkedCodeObject, UnlinkedInstructionKind,
+    UnlinkedProgram, UnlinkedProgramCode,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -19,6 +19,7 @@ pub struct ProgramImage {
     states: Box<[StateDescriptor]>,
     state_slots_by_name: BTreeMap<String, StateSlot>,
     state_slots_by_id: BTreeMap<StateId, StateSlot>,
+    nominal_types: Box<[NominalTypeDescriptor]>,
     cache_sites: Box<[CacheSiteDesc]>,
     script_methods: ScriptMethodTable,
     script_metadata: Option<ModuleGraph>,
@@ -30,6 +31,7 @@ impl ProgramImage {
         Self::from_parts(
             program.functions().cloned(),
             program.states().iter().cloned(),
+            program.nominal_types().iter().cloned(),
             program.script_methods().clone(),
             program.script_metadata().cloned(),
         )
@@ -39,6 +41,7 @@ impl ProgramImage {
     pub(crate) fn from_parts(
         functions: impl IntoIterator<Item = UnlinkedCodeObject>,
         states: impl IntoIterator<Item = StateDescriptor>,
+        nominal_types: impl IntoIterator<Item = NominalTypeDescriptor>,
         script_methods: ScriptMethodTable,
         script_metadata: Option<ModuleGraph>,
     ) -> Self {
@@ -84,6 +87,7 @@ impl ProgramImage {
             states: states.into_boxed_slice(),
             state_slots_by_name,
             state_slots_by_id,
+            nominal_types: nominal_types.into_iter().collect(),
             cache_sites,
             script_methods,
             script_metadata,
@@ -148,6 +152,11 @@ impl ProgramImage {
     #[must_use]
     pub fn states(&self) -> &[StateDescriptor] {
         &self.states
+    }
+
+    #[must_use]
+    pub fn nominal_types(&self) -> &[NominalTypeDescriptor] {
+        &self.nominal_types
     }
 
     #[must_use]

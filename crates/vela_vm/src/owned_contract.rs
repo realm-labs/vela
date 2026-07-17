@@ -1,10 +1,25 @@
-use vela_bytecode::LinkedProgram;
-use vela_common::{PrimitiveTag, script_shape_id};
+use vela_bytecode::{LinkedProgram, NominalTypeDescriptor, NominalTypeKind};
+use vela_common::PrimitiveTag;
 use vela_def::{TypeId, VariantId};
 use vela_mir::{MirCallableKind, MirTypeContract};
 
+use crate::budget::ExecutionBudget;
 use crate::error::{VmError, VmErrorKind, VmResult};
+use crate::heap::ScriptHeap;
 use crate::owned_value::OwnedValue;
+use crate::value::Value;
+
+pub fn canonicalize_owned_value_contract(
+    value: OwnedValue,
+    contract: &MirTypeContract,
+    program: &LinkedProgram,
+    heap: &mut ScriptHeap,
+    budget: Option<&mut ExecutionBudget>,
+    debug_name: &str,
+) -> VmResult<Value> {
+    validate_owned_value_contract(&value, contract, program, debug_name)?;
+    crate::heap_values::owned_to_linked_persistent_value(value, program, heap, budget)
+}
 
 pub fn validate_owned_value_contract(
     value: &OwnedValue,
@@ -28,7 +43,7 @@ fn owned_value_matches_contract(
     program: &LinkedProgram,
 ) -> bool {
     match contract {
-        MirTypeContract::Any => true,
+        MirTypeContract::Any => unconstrained_value_is_well_formed(value, program),
         MirTypeContract::Primitive(expected) => owned_primitive_tag(value) == Some(*expected),
         MirTypeContract::Range => matches!(value, OwnedValue::Range(_)),
         MirTypeContract::Array(element) => match value {
@@ -87,29 +102,20 @@ fn owned_value_matches_contract(
             _ => false,
         },
         MirTypeContract::Definition(expected) => {
-            owned_script_type_id(value, program) == Some(*expected)
+            nominal_value_matches(value, *expected, None, program)
         }
         MirTypeContract::Shape { type_id, shape } => match value {
-            OwnedValue::Record { type_name, fields }
-                if resolve_owned_type_id(type_name, program) == Some(*type_id) =>
-            {
-                linked_type_name(program, *type_id).is_some_and(|owner| {
-                    script_shape_id(owner, fields.iter().map(|(name, _)| name)) == *shape
-                })
+            OwnedValue::Record { .. } => {
+                nominal_value_matches(value, *type_id, None, program)
+                    && program
+                        .nominal_type(*type_id)
+                        .is_some_and(|descriptor| descriptor.shape == Some(*shape))
             }
             _ => false,
         },
-        MirTypeContract::Variant { type_id, variant } => match value {
-            OwnedValue::Enum {
-                enum_name,
-                variant: variant_name,
-                ..
-            } => {
-                resolve_owned_type_id(enum_name, program) == Some(*type_id)
-                    && linked_variant_matches(program, *type_id, *variant, variant_name)
-            }
-            _ => false,
-        },
+        MirTypeContract::Variant { type_id, variant } => {
+            nominal_value_matches(value, *type_id, Some(*variant), program)
+        }
         MirTypeContract::Host(expected) => {
             matches!(value, OwnedValue::HostRef(host) if host.type_id == expected.runtime)
         }
@@ -132,6 +138,85 @@ fn optional_contract_matches(
     program: &LinkedProgram,
 ) -> bool {
     contract.is_none_or(|contract| owned_value_matches_contract(value, contract, program))
+}
+
+fn unconstrained_value_is_well_formed(value: &OwnedValue, program: &LinkedProgram) -> bool {
+    match value {
+        OwnedValue::Tuple(values) | OwnedValue::Array(values) | OwnedValue::Set(values) => values
+            .iter()
+            .all(|value| unconstrained_value_is_well_formed(value, program)),
+        OwnedValue::Map(entries) => entries.iter().all(|entry| {
+            unconstrained_value_is_well_formed(&entry.key, program)
+                && unconstrained_value_is_well_formed(&entry.value, program)
+        }),
+        OwnedValue::Record { type_name, .. }
+        | OwnedValue::Enum {
+            enum_name: type_name,
+            ..
+        } => resolve_nominal_type(type_name, program)
+            .is_none_or(|descriptor| nominal_value_matches(value, descriptor.id, None, program)),
+        OwnedValue::Iterator(iterator) => iterator
+            .values()
+            .iter()
+            .all(|value| unconstrained_value_is_well_formed(value, program)),
+        OwnedValue::Closure(closure) => closure
+            .captures
+            .iter()
+            .all(|value| unconstrained_value_is_well_formed(value, program)),
+        _ => true,
+    }
+}
+
+fn nominal_value_matches(
+    value: &OwnedValue,
+    expected: TypeId,
+    expected_variant: Option<VariantId>,
+    program: &LinkedProgram,
+) -> bool {
+    let Some(descriptor) = program.nominal_type(expected) else {
+        return false;
+    };
+    match (descriptor.kind, value) {
+        (NominalTypeKind::Record, OwnedValue::Record { type_name, fields }) => {
+            resolve_nominal_type(type_name, program).map(|ty| ty.id) == Some(expected)
+                && fields_match(fields, &descriptor.fields, program)
+        }
+        (
+            NominalTypeKind::Enum,
+            OwnedValue::Enum {
+                enum_name,
+                variant,
+                fields,
+            },
+        ) => {
+            if resolve_nominal_type(enum_name, program).map(|ty| ty.id) != Some(expected) {
+                return false;
+            }
+            let Some(variant_descriptor) = descriptor
+                .variants
+                .iter()
+                .find(|candidate| candidate.name == *variant)
+            else {
+                return false;
+            };
+            expected_variant.is_none_or(|expected| expected == variant_descriptor.id)
+                && fields_match(fields, &variant_descriptor.fields, program)
+        }
+        _ => false,
+    }
+}
+
+fn fields_match(
+    fields: &crate::script_object::ScriptFields<OwnedValue>,
+    descriptors: &[vela_bytecode::NominalFieldDescriptor],
+    program: &LinkedProgram,
+) -> bool {
+    fields.len() == descriptors.len()
+        && descriptors.iter().all(|descriptor| {
+            fields.get(&descriptor.name).is_some_and(|value| {
+                optional_contract_matches(value, descriptor.contract.as_ref(), program)
+            })
+        })
 }
 
 fn option_matches(
@@ -190,53 +275,27 @@ fn result_matches(
     }
 }
 
-fn owned_script_type_id(value: &OwnedValue, program: &LinkedProgram) -> Option<TypeId> {
-    match value {
-        OwnedValue::Record { type_name, .. } => resolve_owned_type_id(type_name, program),
-        OwnedValue::Enum { enum_name, .. } => resolve_owned_type_id(enum_name, program),
-        _ => None,
-    }
-}
-
-fn resolve_owned_type_id(type_name: &str, program: &LinkedProgram) -> Option<TypeId> {
+pub(crate) fn resolve_nominal_type<'a>(
+    type_name: &str,
+    program: &'a LinkedProgram,
+) -> Option<&'a NominalTypeDescriptor> {
     let exact = program
-        .types()
-        .find_map(|(_, ty)| (program.debug_name(ty.debug_name) == type_name).then_some(ty.id));
+        .nominal_types()
+        .find(|descriptor| descriptor.runtime_name == type_name);
     if exact.is_some() || type_name.contains("::") {
         return exact;
     }
-
     let mut matches = program
-        .types()
-        .filter_map(|(_, ty)| {
-            let linked_name = program.debug_name(ty.debug_name);
-            (linked_name.rsplit("::").next() == Some(type_name)).then_some(ty.id)
-        })
-        .collect::<Vec<_>>();
-    matches.sort_unstable();
-    matches.dedup();
-    (matches.len() == 1).then(|| matches[0])
+        .nominal_types()
+        .filter(|descriptor| descriptor.runtime_name.rsplit("::").next() == Some(type_name));
+    let first = matches.next()?;
+    matches.next().is_none().then_some(first)
 }
 
 fn linked_type_name(program: &LinkedProgram, expected: TypeId) -> Option<&str> {
     program
         .types()
         .find_map(|(_, ty)| (ty.id == expected).then(|| program.debug_name(ty.debug_name)))
-}
-
-fn linked_variant_matches(
-    program: &LinkedProgram,
-    expected_type: TypeId,
-    expected_variant: VariantId,
-    variant_name: &str,
-) -> bool {
-    program.variants().any(|(_, variant)| {
-        variant.id == expected_variant
-            && program
-                .ty(variant.owner)
-                .is_some_and(|ty| ty.id == expected_type)
-            && program.debug_name(variant.debug_name).rsplit("::").next() == Some(variant_name)
-    })
 }
 
 fn owned_primitive_tag(value: &OwnedValue) -> Option<PrimitiveTag> {
@@ -341,9 +400,12 @@ fn owned_value_type_name(value: &OwnedValue) -> String {
 
 #[cfg(test)]
 mod tests {
-    use vela_bytecode::{LinkedProgram, LinkedType, LinkedVariant};
+    use vela_bytecode::{
+        LinkedProgram, LinkedType, LinkedVariant, NominalFieldDescriptor, NominalTypeDescriptor,
+        NominalTypeKind, NominalVariantDescriptor,
+    };
     use vela_common::{PrimitiveTag, script_shape_id};
-    use vela_def::{TypeId, VariantId};
+    use vela_def::{FieldId, TypeId, VariantId};
     use vela_mir::MirTypeContract;
 
     use super::validate_owned_value_contract;
@@ -421,10 +483,37 @@ mod tests {
         program.push_type(LinkedType::new(player_id, player_name));
         let status = program.push_type(LinkedType::new(status_id, status_name));
         program.push_variant(LinkedVariant::new(ready_id, status, ready_name));
+        let player_shape = script_shape_id("game::Player", ["level"].into_iter());
+        program.insert_nominal_type(NominalTypeDescriptor {
+            id: player_id,
+            canonical_name: "type::game::Player".to_owned(),
+            runtime_name: "game::Player".to_owned(),
+            kind: NominalTypeKind::Record,
+            shape: Some(player_shape),
+            fields: vec![NominalFieldDescriptor {
+                id: FieldId::new(44),
+                name: "level".to_owned(),
+                contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
+            }],
+            variants: Vec::new(),
+        });
+        program.insert_nominal_type(NominalTypeDescriptor {
+            id: status_id,
+            canonical_name: "type::game::Status".to_owned(),
+            runtime_name: "game::Status".to_owned(),
+            kind: NominalTypeKind::Enum,
+            shape: None,
+            fields: Vec::new(),
+            variants: vec![NominalVariantDescriptor {
+                id: ready_id,
+                name: "Ready".to_owned(),
+                fields: Vec::new(),
+            }],
+        });
 
         let player_contract = MirTypeContract::Shape {
             type_id: player_id,
-            shape: script_shape_id("game::Player", ["level"].into_iter()),
+            shape: player_shape,
         };
         let valid_player = OwnedValue::record("game::Player", [("level", 1_i64)]);
         let invalid_player = OwnedValue::record("game::Player", [("name", "wrong")]);
@@ -484,6 +573,17 @@ mod tests {
         let beta_name = program.intern_debug_name("beta::Player");
         program.push_type(LinkedType::new(alpha_id, alpha_name));
         program.push_type(LinkedType::new(beta_id, beta_name));
+        for (id, name) in [(alpha_id, "alpha::Player"), (beta_id, "beta::Player")] {
+            program.insert_nominal_type(NominalTypeDescriptor {
+                id,
+                canonical_name: format!("type::{name}"),
+                runtime_name: name.to_owned(),
+                kind: NominalTypeKind::Record,
+                shape: Some(script_shape_id(name, std::iter::empty())),
+                fields: Vec::new(),
+                variants: Vec::new(),
+            });
+        }
         let alpha_contract = MirTypeContract::Definition(alpha_id);
         let beta_contract = MirTypeContract::Definition(beta_id);
 

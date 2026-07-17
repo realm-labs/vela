@@ -1379,6 +1379,7 @@ fn program_image_verify_rejects_out_of_bounds_closure_function_index() {
     let image = ProgramImage::from_parts(
         [code],
         Vec::<crate::StateDescriptor>::new(),
+        Vec::<crate::NominalTypeDescriptor>::new(),
         crate::script_methods::ScriptMethodTable::default(),
         None,
     );
@@ -1410,6 +1411,7 @@ fn program_image_verify_rejects_out_of_bounds_cache_site_index() {
     let image = ProgramImage::from_parts(
         [code],
         Vec::<crate::StateDescriptor>::new(),
+        Vec::<crate::NominalTypeDescriptor>::new(),
         crate::script_methods::ScriptMethodTable::default(),
         None,
     );

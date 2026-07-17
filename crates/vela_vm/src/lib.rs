@@ -92,7 +92,7 @@ use heap_values::{
 pub use heap_values::{
     allocate_zero_field_record, owned_to_persistent_value, persistent_value_to_owned,
 };
-pub use owned_contract::validate_owned_value_contract;
+pub use owned_contract::{canonicalize_owned_value_contract, validate_owned_value_contract};
 use owned_value::OwnedValue;
 pub(crate) use reflection_values::{
     runtime_value_to_reflect, value_from_reflect, value_to_reflect,

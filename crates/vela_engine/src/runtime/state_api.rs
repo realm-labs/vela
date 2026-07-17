@@ -84,12 +84,16 @@ where
                 state.qualified_name == name && state.storage == vela_bytecode::StateStorage::Vm
             })
             .ok_or_else(|| VmError::new(VmErrorKind::MissingVmState { name: name.clone() }))?;
-        vela_vm::validate_owned_value_contract(
-            &value,
+        let value = vela_vm::canonicalize_owned_value_contract(
+            value,
             &state.type_contract,
             self.image.linked_program(),
+            &mut self.state.vm_states.heap,
+            None,
             &name,
         )?;
-        self.state.vm_states.insert(name, value)
+        self.state.vm_states.insert_prepared(state.id, value);
+        self.state.vm_states.collect();
+        Ok(())
     }
 }

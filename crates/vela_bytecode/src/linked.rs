@@ -76,6 +76,7 @@ pub struct LinkedProgram {
     method_dispatches: Vec<LinkedMethodDispatch>,
     types: Vec<LinkedType>,
     variants: Vec<LinkedVariant>,
+    nominal_types: BTreeMap<TypeId, crate::NominalTypeDescriptor>,
     states: Vec<crate::LinkedStateDescriptor>,
     functions: Vec<LinkedCodeObject>,
     entry_points: BTreeMap<DebugNameId, ScriptFunctionHandle>,
@@ -240,6 +241,19 @@ impl LinkedProgram {
             .iter()
             .enumerate()
             .map(|(index, variant)| (VariantHandle::new(index), variant))
+    }
+
+    pub fn insert_nominal_type(&mut self, descriptor: crate::NominalTypeDescriptor) {
+        self.nominal_types.insert(descriptor.id, descriptor);
+    }
+
+    #[must_use]
+    pub fn nominal_type(&self, id: TypeId) -> Option<&crate::NominalTypeDescriptor> {
+        self.nominal_types.get(&id)
+    }
+
+    pub fn nominal_types(&self) -> impl Iterator<Item = &crate::NominalTypeDescriptor> {
+        self.nominal_types.values()
     }
 
     pub(crate) fn push_state(&mut self, state: crate::LinkedStateDescriptor) {

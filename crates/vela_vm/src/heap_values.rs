@@ -25,6 +25,16 @@ pub fn owned_to_persistent_value(
     owned_to_value(value, &mut heap_execution, budget)
 }
 
+pub(crate) fn owned_to_linked_persistent_value(
+    value: OwnedValue,
+    program: &vela_bytecode::LinkedProgram,
+    heap: &mut ScriptHeap,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    let mut heap_execution = HeapExecution::new(heap);
+    owned_to_value_inner(value, &mut heap_execution, budget, Some(program))
+}
+
 pub fn persistent_value_to_owned(value: &Value, heap: &mut ScriptHeap) -> VmResult<OwnedValue> {
     let heap_execution = HeapExecution::new(heap);
     value_to_owned(value, Some(&heap_execution))
@@ -197,7 +207,16 @@ pub(crate) fn enum_variant_owner(enum_name: &str, variant: &str) -> String {
 pub(crate) fn owned_to_value(
     value: OwnedValue,
     heap: &mut HeapExecution<'_>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    owned_to_value_inner(value, heap, budget, None)
+}
+
+fn owned_to_value_inner(
+    value: OwnedValue,
+    heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
+    program: Option<&vela_bytecode::LinkedProgram>,
 ) -> VmResult<Value> {
     match value {
         OwnedValue::Unit => Ok(Value::Unit),
@@ -215,21 +234,21 @@ pub(crate) fn owned_to_value(
         OwnedValue::Tuple(values) => {
             let values = values
                 .into_iter()
-                .map(|value| owned_to_value(value, heap, budget.as_deref_mut()))
+                .map(|value| owned_to_value_inner(value, heap, budget.as_deref_mut(), program))
                 .collect::<VmResult<Vec<_>>>()?;
             allocate_heap_value(HeapValue::Tuple(values), heap, budget)
         }
         OwnedValue::Array(values) => {
             let values = values
                 .into_iter()
-                .map(|value| owned_to_value(value, heap, budget.as_deref_mut()))
+                .map(|value| owned_to_value_inner(value, heap, budget.as_deref_mut(), program))
                 .collect::<VmResult<Vec<_>>>()?;
             allocate_heap_value(HeapValue::Array(values), heap, budget)
         }
         OwnedValue::Set(values) => {
             let values = values
                 .into_iter()
-                .map(|value| owned_to_value(value, heap, budget.as_deref_mut()))
+                .map(|value| owned_to_value_inner(value, heap, budget.as_deref_mut(), program))
                 .collect::<VmResult<Vec<_>>>()?;
             let values = ScriptSet::from_values(values, Some(&*heap), "owned set")?;
             allocate_heap_value(HeapValue::Set(values), heap, budget)
@@ -239,8 +258,8 @@ pub(crate) fn owned_to_value(
                 .into_iter()
                 .map(|entry| {
                     Ok((
-                        owned_to_value(entry.key, heap, budget.as_deref_mut())?,
-                        owned_to_value(entry.value, heap, budget.as_deref_mut())?,
+                        owned_to_value_inner(entry.key, heap, budget.as_deref_mut(), program)?,
+                        owned_to_value_inner(entry.value, heap, budget.as_deref_mut(), program)?,
                     ))
                 })
                 .collect::<VmResult<Vec<_>>>()?;
@@ -248,15 +267,29 @@ pub(crate) fn owned_to_value(
             allocate_heap_value(HeapValue::Map(values), heap, budget)
         }
         OwnedValue::Record { type_name, fields } => {
+            let nominal = program.and_then(|program| {
+                crate::owned_contract::resolve_nominal_type(&type_name, program)
+            });
+            let canonical_name =
+                nominal.map_or_else(|| type_name.clone(), |ty| ty.runtime_name.clone());
+            let identity = nominal.and_then(|ty| {
+                ty.shape
+                    .map(|shape| crate::heap::RecordIdentity::new(ty.id, shape))
+            });
             let fields = fields
                 .into_pairs()
-                .map(|(key, value)| Ok((key, owned_to_value(value, heap, budget.as_deref_mut())?)))
+                .map(|(key, value)| {
+                    Ok((
+                        key,
+                        owned_to_value_inner(value, heap, budget.as_deref_mut(), program)?,
+                    ))
+                })
                 .collect::<VmResult<Vec<_>>>()?;
             allocate_heap_value(
                 HeapValue::Record {
-                    fields: ScriptFields::from_pairs(&type_name, fields),
-                    identity: None,
-                    type_name,
+                    fields: ScriptFields::from_pairs(&canonical_name, fields),
+                    identity,
+                    type_name: canonical_name,
                 },
                 heap,
                 budget,
@@ -267,16 +300,33 @@ pub(crate) fn owned_to_value(
             variant,
             fields,
         } => {
-            let owner = enum_variant_owner(&enum_name, &variant);
-            let identity = std_enum_identity_for_names(&enum_name, &variant);
+            let nominal = program.and_then(|program| {
+                crate::owned_contract::resolve_nominal_type(&enum_name, program)
+            });
+            let canonical_name =
+                nominal.map_or_else(|| enum_name.clone(), |ty| ty.runtime_name.clone());
+            let owner = enum_variant_owner(&canonical_name, &variant);
+            let identity = nominal
+                .and_then(|ty| {
+                    ty.variants
+                        .iter()
+                        .find(|candidate| candidate.name == variant)
+                        .map(|candidate| crate::heap::EnumIdentity::new(ty.id, candidate.id, None))
+                })
+                .or_else(|| std_enum_identity_for_names(&canonical_name, &variant));
             let fields = fields
                 .into_pairs()
-                .map(|(key, value)| Ok((key, owned_to_value(value, heap, budget.as_deref_mut())?)))
+                .map(|(key, value)| {
+                    Ok((
+                        key,
+                        owned_to_value_inner(value, heap, budget.as_deref_mut(), program)?,
+                    ))
+                })
                 .collect::<VmResult<Vec<_>>>()?;
             allocate_heap_value(
                 HeapValue::Enum {
                     fields: ScriptFields::from_pairs(&owner, fields),
-                    enum_name,
+                    enum_name: canonical_name,
                     variant,
                     identity,
                 },
@@ -286,7 +336,7 @@ pub(crate) fn owned_to_value(
         }
         OwnedValue::Closure(closure) => {
             let captures = SmallStorage::try_from_slice_map(&closure.captures, 4, |capture| {
-                owned_to_value(capture.clone(), heap, budget.as_deref_mut())
+                owned_to_value_inner(capture.clone(), heap, budget.as_deref_mut(), program)
             })?;
             allocate_heap_value(
                 HeapValue::Closure(ClosureValue {
@@ -303,7 +353,7 @@ pub(crate) fn owned_to_value(
                 .values()
                 .iter()
                 .cloned()
-                .map(|value| owned_to_value(value, heap, budget.as_deref_mut()))
+                .map(|value| owned_to_value_inner(value, heap, budget.as_deref_mut(), program))
                 .collect::<VmResult<Vec<_>>>()?;
             allocate_heap_value(
                 HeapValue::Iterator(crate::iteration::IteratorState::from_values_at(
