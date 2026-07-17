@@ -9,17 +9,37 @@ availability, and the backend-neutral execution schedule.
 
 Generation-owned immutable data consists of verified MIR, linked code,
 `ProgramImage` indexes, executable handles, cache/profile layouts, source maps,
-and future compiled artifacts. Runtime-local mutable data consists of heap,
-VM state cells, extern state bindings, cache entries, profile counters, hotness, active tier selection, and
-budget counters. A mutable sidecar is always qualified by its executable
-generation and is never stored in a shared `ProgramVersion`.
+and future compiled artifacts. Actor-local mutable data consists of the script
+heap, roots, persistent Vela `state`, extern-state bindings, active/suspended
+execution state, HostRef leases, and the actor's adopted generation. Per-call
+budget counters, capabilities, cancellation, and tracing belong to the active
+`ExecutionSession`.
+
+Cache entries, profile counters, hotness, and tier selection are execution
+metadata rather than actor semantics. Their ownership is selected by what each
+entry depends on:
+
+```text
+statically resolvable fact       -> immutable linked artifact
+generation-stable shared fact   -> generation-shared synchronized slot
+measured polymorphic hot site    -> optional execution-lane sidecar
+actor-identity-dependent fact   -> actor-local sparse or lazy state
+```
+
+Every mutable execution-metadata slot is qualified by its executable
+generation. A default actor Runtime must not eagerly allocate arrays sized to
+all cache sites or every bytecode instruction merely because it references a
+large shared program. Full instruction profiling is opt-in and is aggregated
+per generation or execution lane unless a concrete diagnostic explicitly
+requires actor-local counters.
 
 The linker emits one `LinkedArtifact`. Its canonical flattened records allocate
 `ProgramImage` indexes, linked function handles, generation-global cache IDs,
 and profile layout together. `RuntimeImage` references that artifact; it does
-not rebuild or rebase cache operands by function name. Multiple runtimes may
-share the immutable artifact, while each owns isolated heap/state/cache/profile
-state.
+not rebuild or rebase cache operands by function name. Multiple actor runtimes
+share the immutable artifact while retaining isolated heap, roots, Vela state,
+extern bindings, leases, and active executions. Sharing an artifact does not
+imply sharing script-visible mutable state.
 
 Unlinked bytecode is a compiler, verifier, linker, and test-fixture format. It
 is never interpreted. Every runtime entry links first, then executes through
@@ -369,11 +389,17 @@ arrays, maps, or sets.
 ## Threading Model
 
 Vela is a single-threaded scripting language from the script author's point of
-view. A single `Runtime` executes one script call at a time on one OS thread,
-with one VM stack, one active `HostAccess`, and one script heap/GC context.
-`Runtime` is `Send` so a host can move it into an actor or worker thread, but
-the runtime API still requires mutable access for execution and does not make a
-single runtime concurrently callable.
+view. The primary embedding contract is one logical Vela `Runtime` owned by one
+actor. That Runtime contains the actor's Vela state and heap and executes at
+most one actor turn at a time. The actor mailbox already supplies exclusive
+ownership, so ordinary execution uses `&mut Runtime` directly and must not put
+the Runtime behind `Arc<Mutex<Runtime>>`.
+
+An actor Runtime is not an OS-thread-local Runtime. `Runtime` is `Send`, so the
+host scheduler may move the actor between workers, and a scoped
+`RuntimeCallFuture` may be polled by different executor workers while the actor
+turn remains exclusively borrowed. Correctness must therefore never depend on
+OS thread-local cache state or a stable worker assignment.
 
 The language does not expose:
 
@@ -386,23 +412,32 @@ channels
 parallel iterators
 ```
 
-If a host application needs concurrency, the Rust host owns it. The host may run
-multiple independent Vela runtimes on different threads, shard actors across
-workers, schedule events on an async runtime, or perform IO in background tasks.
-Each script invocation still observes a single-threaded VM boundary. Vela
-`async fn` and `.await` preserve sequential script semantics; suspension does
-not make a Runtime concurrently callable and does not expose threads or shared
-memory to scripts.
+If a host application needs concurrency, the Rust host owns it. Many actors and
+therefore many independent actor Runtimes may execute concurrently on different
+workers. Each actor invocation still observes a single-threaded VM boundary.
+Vela `async fn` and `.await` preserve sequential script semantics; suspension
+keeps the actor turn exclusively owned and does not make its Runtime
+concurrently callable or expose threads or shared memory to scripts.
 
 Allowed host-level concurrency models:
 
 ```text
-one Runtime per actor worker
-one Runtime per shard, tenant, or worker
-runtime pool with no concurrent use of the same Runtime
+one logical Runtime per actor
+many actor Runtimes scheduled on one worker or execution lane
+an actor Runtime moved between workers only under exclusive actor ownership
 host async tasks that call into Vela only at explicit scheduling points
 background IO that returns copied data or HostRef handles to later script calls
 ```
+
+The shared deployment generation contains immutable code, metadata, schemas,
+source maps, and cache/profile layouts. A host may additionally use
+generation-shared synchronized caches or measured execution-lane sidecars.
+`WorkerExecutionSidecars` is an optional performance implementation, not a
+semantic layer and not a requirement that an actor remain on one worker. It is
+valid only when benchmarks show that generation-shared slots contend and the
+host can provide an explicit stable execution-lane identity. Reload publishes
+a new immutable generation and new generation-qualified metadata instead of
+clearing or rebasing old slots in place.
 
 Required boundaries:
 
@@ -423,9 +458,9 @@ host handles such as `HostRef`. Cross-thread conflict resolution, ordering,
 locking, database transactions, actor mailboxes, and network IO are host
 responsibilities, not Vela language features.
 
-Hot reload follows the same rule: the host may coordinate update distribution
-across worker threads, but each runtime swaps `ProgramVersion` only at its own
-safe points.
+Hot reload follows the same rule: the host publishes a deployment generation,
+and each actor Runtime adopts it only at its own safe point. Existing actor
+turns and suspended sessions retain their prior generation.
 
 ## GC
 

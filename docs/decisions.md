@@ -1640,10 +1640,14 @@ Post-hard-switch execution uses one explicit immutable generation boundary.
 ProgramVersion owns same-generation verified MIR and one linker-produced linked
 artifact. The linker is the only authority for flattened executable handles,
 ProgramImage indexes, generation-global cache-site IDs, and immutable
-cache/profile layouts. RuntimeState owns generation-keyed mutable sidecars for
-cache entries, profile counters, hotness, and active tier selection, plus heap,
-roots, and VM/extern state. Sidecars never index a different generation's
-layout and are pruned at safe points according to external linked-artifact
+cache/profile layouts. Actor RuntimeState owns heap, roots, persistent Vela
+state, extern bindings, leases, and active/suspended execution. Cache entries,
+profile counters, hotness, and active tier selection are generation-qualified
+execution metadata: static facts are linked, shareable facts may use
+generation-shared synchronized slots, and measured polymorphic sites may use an
+execution-lane sidecar. They are actor-local only when actor identity affects
+the result. No sidecar indexes a different generation's layout. Generation-keyed
+sidecars are pruned at safe points according to external linked-artifact
 ownership after excluding owners reachable only from inactive state roots.
 
 Dense executable identities such as `ScriptFunctionHandle`, `CacheSiteId`, and
@@ -1773,9 +1777,10 @@ result. Eligibility reads no HIR, analysis service, source text, or current
 registry state.
 
 M22 may publish an immutable compiled artifact only into its owning
-ProgramVersion generation. Runtime-local tier selection, hotness, counters,
-and caches remain RuntimeState sidecars. Reload activates a new generation and
-never rebases compiled handles. Compiled frames must report GC roots from the
+ProgramVersion generation. Tier selection, hotness, counters, and caches remain
+generation-qualified execution metadata under the ownership classification
+above; they are not unconditionally duplicated in every actor RuntimeState.
+Reload activates a new generation and never rebases compiled handles. Compiled frames must report GC roots from the
 verified root-live map, preserve debugger/source side exits, and exit through
 the same HostAccess, reflection, budget, and diagnostic helpers. This track
 does not create a compiled-artifact store or a JIT runtime option.
@@ -2256,6 +2261,34 @@ replaceable-slot bundle per inherent or trait group, and host business macros
 may combine those group bundles while generating paths, indices, authority,
 registration, and any trait forwarding. Business bodies and callers retain
 their ordinary Handler/Service shapes without a handwritten proxy.
+
+### Actor-Owned Runtime And Execution-Metadata Ownership
+
+The embedding model is one logical Vela Runtime per actor. Persistent Vela
+`state`, the script heap and roots, extern bindings, HostRef leases,
+VelaValue handles, suspended sessions, and the adopted deployment generation
+belong to that actor. An actor mailbox or equivalent turn owner supplies
+exclusive access; a whole-Runtime mutex is neither required nor permitted as
+the ordinary call or override boundary. `Runtime: Send` allows scheduling the
+actor on different workers but does not make one Runtime concurrently callable.
+
+Immutable code, callable/type metadata, schemas, source maps, cache/profile
+layouts, and statically resolved targets belong to a shared deployment
+generation. Mutable caches and profiling are classified by dependency rather
+than assigned to every worker or actor by default. Prefer linked static facts,
+then generation-shared write-once or synchronized slots. Use an explicit
+execution-lane sidecar only after contention or polymorphic thrashing is
+measured, and actor-local sparse/lazy state only when the fact depends on actor
+identity. OS thread-local state cannot be a correctness dependency because
+scoped Runtime futures are `Send` and may migrate between executor workers.
+
+Consequently, the default empty actor Runtime must not eagerly allocate storage
+proportional to every instruction or cache site in the shared program. Full
+instruction profiling is opt-in or aggregated outside actor state. Hot reload
+publishes a new immutable generation with generation-qualified execution
+metadata; actors adopt it at safe points, while active turns keep their pinned
+generation. Override selection names linked code to run in the current actor
+Runtime and never owns a second mutable Runtime.
 
 ### Context Natives Use A Session-Aware VM Boundary
 

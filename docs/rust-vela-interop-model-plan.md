@@ -167,10 +167,13 @@ completion.
 The following closure tasks completed the replaceable portions of Batches E-G:
 
 - [x] F-REVIEW-1. Replace target-owned `Mutex<Runtime>` execution with an
-  explicit session-aware invocation authority. A host root may enter a Runtime
-  once; an override reached from an active Vela execution must push a child on
-  the current `ExecutionSession`. Nested replaceable calls must neither
-  deadlock nor serialize unrelated host roots through one package-global lock.
+  actor-owned, session-aware invocation authority. One actor owns one logical
+  Vela Runtime and enters it through an exclusive actor turn; an override
+  reached from an active Vela execution must push a child on the current
+  `ExecutionSession`. The mailbox supplies exclusivity, so neither the actor
+  Runtime nor an override target is wrapped in `Arc<Mutex<Runtime>>`. Nested
+  replaceable calls must neither deadlock nor serialize unrelated actors
+  through one package-global lock.
 - [x] F-REVIEW-2. Inherit the pinned linked artifact, heap, state view,
   HostAccess, remaining budgets, effect ceiling, capabilities, tracing,
   cancellation, lease provenance, and dispatch generation across every
@@ -1624,6 +1627,21 @@ a mixture of pre-activation and post-activation targets.
 The dispatch generation owns selection only. It does not duplicate VM state,
 heap, HostAccess, budgets, capabilities, tracing, or cancellation.
 
+One actor owns one logical Vela Runtime, including that actor's Vela `state`,
+heap, roots, extern bindings, and suspended execution. The selected override is
+linked code executed by this actor Runtime; it is not a target-owned Runtime
+and does not carry package-global mutable script state. Immutable deployment
+artifacts may be shared across all actors, while each actor adopts a published
+generation at a safe point. The mailbox's exclusive actor turn is the Runtime
+serialization boundary.
+
+Cache and profiling storage are not part of dispatch selection or actor
+semantics. Static facts belong in the linked artifact, generation-stable cache
+facts should prefer generation-shared synchronized slots, and an execution-lane
+sidecar is permitted only for measured contention or polymorphism. No default
+per-actor Runtime may eagerly allocate full-program cache-site or
+per-instruction profiling arrays.
+
 ### 10.7 Staging, activation, and rollback
 
 A staged package is a delta containing only its declared overrides. Staging
@@ -2187,6 +2205,9 @@ Record reproducible baselines before optimization:
 | optional replaceable slot local hit | dense target resolution and Vela adapter entry |
 | first replaceable call after activation | new-generation cache behavior |
 | arbitrary multi-slot patch activation | immutable delta materialization and atomic publication |
+| empty actor Runtime footprint | fixed actor-local state without eager full-program cache/profile arrays |
+| N actors sharing one generation | actor-state isolation and sublinear shared-code metadata growth |
+| shared-generation cache contention | global synchronized slots versus optional execution-lane sidecars |
 
 Measure allocation, conversion, target resolution, lease acquisition, VM
 instructions, and end-to-end latency where the harness permits it. Do not set
@@ -2195,6 +2216,14 @@ the same safety and policy semantics and have fallback-equivalence tests.
 Ordinary authorization stays on the fixed-bitset path derived from
 `EffectSet`; benchmarks and cache designs must not introduce dynamic string or
 reflection-permission lookups into each native call.
+
+Actor-scaling measurements must separate actor-owned semantic state from shared
+generation metadata. Record empty-Runtime bytes for 1, 100, and a
+representative production actor count against both a small and a large linked
+artifact. Full instruction profiling is disabled in the default rows. An
+execution-lane cache is adopted only when the shared-generation alternative has
+measured contention or cache thrashing; it is never required merely because
+the host has workers.
 
 ## 18. Explicit Non-Goals
 

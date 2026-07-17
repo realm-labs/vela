@@ -135,8 +135,8 @@ fn patched(service: Service, value: i64) -> i64 {
 }
 ```
 
-The host constructs a deterministic slot bundle, stages the override Runtime,
-and publishes the candidate for future roots:
+The current experimental API constructs a deterministic slot bundle, stages an
+override Runtime, and publishes the candidate for future roots:
 
 ```rust,ignore
 let controller = DispatchController::new(Service::vela_replaceable_slots())?;

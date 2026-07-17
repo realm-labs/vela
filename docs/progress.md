@@ -23,6 +23,13 @@ status and final evidence live
 in [the unified plan](rust-vela-interop-model-plan.md#post-implementation-review-correction--2026-07-17)
 and [the post-review acceptance report](archive/rust-vela-interop-post-review-acceptance-2026-07-17.md).
 
+The runtime ownership contract is now explicit: one actor owns one logical
+Vela Runtime and its persistent script state; immutable deployment generations
+are shared. The current eager per-Runtime inline-cache vectors and
+per-instruction profiling counters do not satisfy the intended many-actor
+footprint and are an M20 ownership/measurement gap. Worker-local sidecars are
+an optional measured optimization, not the default architecture.
+
 The explicit state-storage hard switch is accepted through Batch G. Exact
 qualified embedding types, linked nominal canonicalization, graph-preserving
 budgeted reload staging, external-owner generation reclamation, and nested
@@ -200,6 +207,13 @@ A remaining task is valid only when it names one missing proof:
 Close-out requirements:
 
 - Publish the cache-family audit before adding another family.
+- Classify each cache/profile family as immutable linked data,
+  generation-shared synchronized data, optional execution-lane data, or truly
+  actor-local data. Do not preserve eager per-actor full-program arrays by
+  default.
+- Measure empty actor Runtime memory for small and large artifacts and N actors
+  sharing one generation. Keep full instruction profiling off in default rows,
+  and require contention evidence before introducing execution-lane sidecars.
 - Preserve generic fallback behavior, budgets, GC roots, HostAccess policy,
   reflection permissions, hot-reload ownership, schema invalidation, and
   source-spanned diagnostics.
