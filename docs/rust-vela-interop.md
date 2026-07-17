@@ -103,11 +103,12 @@ should use generated bindings.
 
 ## Optional Single-Callable Replacement
 
-> **Status:** accepted in full, including
-> same-session sync/async nesting, policy inheritance, return-family mapping,
-> coherent artifacts, and host-business-macro integration. The full validation
-> and replacement acceptance evidence are recorded in the
-> [post-review acceptance report](archive/rust-vela-interop-post-review-acceptance-2026-07-17.md).
+> **Status:** ordinary interop remains accepted. Optional replacement is
+> reopened for Actor Runtime authority reconciliation: its current per-root
+> `Arc<Mutex<SharedRuntime>>` mechanism is available as provisional code but is
+> not the final production contract. See the
+> [correction plan](rust-vela-interop-model-plan.md#post-acceptance-actor-runtime-authority-reconciliation--2026-07-17)
+> and [review report](archive/rust-vela-interop-actor-runtime-review-2026-07-17.md).
 
 Replacement is an explicit extension. A selected public entry keeps its normal
 call shape while the macro moves its body to a private Rust fallback:
@@ -135,8 +136,8 @@ fn patched(service: Service, value: i64) -> i64 {
 }
 ```
 
-The host constructs a deterministic slot bundle, stages the override Runtime,
-and publishes the candidate for future roots:
+The current provisional API constructs a deterministic slot bundle, stages the
+override Runtime, and publishes the candidate for future roots:
 
 ```rust,ignore
 let controller = DispatchController::new(Service::vela_replaceable_slots())?;
@@ -152,16 +153,15 @@ let result = service.quote(40)?;
 controller.rollback(previous)?;
 ```
 
-Pin a `DispatchRoot` with an explicit `SharedRuntime` at the host operation
-boundary, such as an actor mailbox turn. Active roots retain their immutable
-target selection while activation changes future roots. Nested replaceable
-calls re-enter the active session and inherit its remaining budgets, artifact,
-heap, state, HostAccess, capabilities, cancellation, and generation. Separate
-host roots may use distinct `SharedRuntime` instances over one immutable
-`SharedImage`, so package code sharing does not impose one global Runtime lock.
-A staged package is a coherent partial delta, rollback republishes a prior
-generation, and a Vela error propagates without retrying the displaced Rust
-body.
+In the current mechanism, pinning a `DispatchRoot` with an explicit
+`SharedRuntime` gives separate host roots independent locks over one immutable
+`SharedImage`. Nested replaceable calls re-enter the active session and inherit
+its remaining budgets, artifact, heap, state, HostAccess, capabilities,
+cancellation, and generation. A staged package is a coherent partial delta,
+rollback republishes a prior generation, and a Vela error propagates without
+retrying the displaced Rust body. This is baseline behavior, not the final
+authority model: the accepted architecture requires the Actor turn to lend its
+already-exclusive mutable Runtime directly, with no Actor Runtime mutex.
 
 The explicit `#[replaceable(...)]` spelling is the low-level mechanism a host
 framework macro may emit. `#[methods]` generates `vela_replaceable_slots()`
@@ -176,9 +176,10 @@ global lock, allocation, serialization, or dynamic trait dispatch.
 
 ## Deployment Checklist
 
-The ordinary generated interop and optional replacement checklist below is
-production-oriented. Optional replacement remains opt-in and should be used
-only for callables whose deployment policy requires runtime replacement.
+The ordinary generated interop checklist below is production-oriented.
+Optional replacement remains provisional until the Actor Runtime authority
+reconciliation passes; do not treat the lock-based API as the stable deployment
+contract.
 
 1. Generate bindings from the exact package/source graph used for deployment.
 2. Register export bundles, host types, capabilities, and policy explicitly.

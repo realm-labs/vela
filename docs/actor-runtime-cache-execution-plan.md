@@ -1,17 +1,19 @@
 # Actor-Owned Runtime And Cache Model Hard-Switch Plan
 
-> Status: active M20 execution plan. State-storage Batch G and the Rust/Vela
-> replaceable post-review closure are accepted.
+> Status: queued behind the Rust/Vela Actor Runtime authority reconciliation.
+> State-storage Batch G is accepted; `I-RECON-1..6` remain open.
 >
-> Execution order: the prerequisite reports are accepted; run Batches A-F in
-> this document.
+> Execution order: complete `I-RECON-1..6` in
+> [rust-vela-interop-model-plan.md](rust-vela-interop-model-plan.md), publish its
+> acceptance report, then run Batches A-F in this document.
 >
 > Last updated: 2026-07-17.
 
 ## 0. Codex Goal
 
-Use this prompt only after state-storage Batch G and the Rust/Vela replaceable
-post-review closure have both published accepted reports:
+Use this prompt only after state-storage Batch G remains accepted and the
+Rust/Vela Actor Runtime authority reconciliation has published an accepted
+report:
 
 ```text
 /goal Execute docs/actor-runtime-cache-execution-plan.md end to end as a
@@ -30,14 +32,14 @@ publishing a generation owner while old Runtime sidecars still execute is
 progress only and is not a valid stopping condition.
 
 Before implementation, verify from current code, tests, docs/progress.md, and
-the acceptance reports that state-storage Batch G is accepted and
-F-REVIEW-1..7 plus G-REVIEW-1..2 in
-docs/rust-vela-interop-model-plan.md are closed. In particular, prove override
-execution already uses the current Actor Runtime and active ExecutionSession,
-and that no target owns Arc<Mutex<Runtime>>. If either prerequisite is open,
-keep this plan queued, report the exact prerequisite, and do not begin Batch A
-or mutate cache/profile ownership. Do not duplicate or bypass the prerequisite
-plans inside this goal.
+the acceptance reports that state-storage Batch G remains accepted and
+`I-RECON-1..6` in docs/rust-vela-interop-model-plan.md are closed. In
+particular, prove override execution borrows the current Actor Runtime from the
+exclusive Actor turn, nested calls re-enter the active ExecutionSession, and
+neither the Actor Runtime nor an override target is wrapped in
+Arc<Mutex<Runtime>>. If either prerequisite is open, keep this plan queued,
+report the exact prerequisite, and do not begin Batch A or mutate cache/profile
+ownership. Do not duplicate or bypass the prerequisite plans inside this goal.
 
 Once the gates are closed, preserve the fixed architecture throughout:
 
@@ -214,11 +216,15 @@ canonicalization, graph preservation, external-owner reclamation, and nested
 initializer fingerprint proofs remain the prerequisite baseline; cache
 movement must not weaken or bypass them.
 
-### Gate I: Rust/Vela replaceable post-review acceptance
+### Gate I: Rust/Vela Actor Runtime authority reconciliation
 
-The existing interop review is accepted. Override execution uses the current
-Actor Runtime and active `ExecutionSession`; target-owned `Mutex<Runtime>`
-execution is gone.
+Gate I is reopened. The current production alias
+`SharedDispatchRuntime = Arc<Mutex<SharedRuntime>>` stores mutable Runtime
+authority in `DispatchRoot` and locks it during override entry. Separate roots
+own separate locks, but that mechanism does not satisfy the actor-turn-owned
+`&mut Runtime` threading contract. The correction and evidence requirements
+are owned by `I-RECON-1..6` in the Rust/Vela interop plan, not by this cache
+plan.
 
 This ordering is mandatory because same-session re-entry determines which
 generation, cache view, profile sink, budget, heap, state, and cancellation
@@ -237,7 +243,9 @@ Gate I must prove at least:
 - remaining budgets, leases, cancellation, tracing, artifact, and dispatch
   generation are inherited.
 
-The replacement acceptance report closes Gate I, so Batch A is active.
+Batch A remains inactive until a new reconciliation acceptance report closes
+Gate I. Cache/profile work must not preserve, optimize, or route around the
+provisional lock-based replacement authority.
 
 ## 4. Current Implementation Audit
 

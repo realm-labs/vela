@@ -2248,10 +2248,14 @@ to use the common interop paths.
 The 2026-07-17 post-implementation review found that the first mechanism slice
 did not satisfy the preceding decision. Controller-owned generation identity,
 Engine-registered compile-time target linking, authoritative contract import,
-exact staging fingerprints, explicit root-owned `SharedRuntime` sessions, and
-same-session sync/async re-entry now close the identity, validation, deadlock,
-fresh-budget, and target-owned Runtime findings. Independent roots may share
-one immutable `SharedImage` while retaining separate Runtime locks and state.
+exact staging fingerprints, and same-session sync/async re-entry close the
+identity, validation, fresh-budget, and second-execution findings. A later
+architecture reconciliation found that the resulting root-owned
+`SharedDispatchRuntime = Arc<Mutex<SharedRuntime>>` still contradicts the
+Actor-owned Runtime decision below. Independent root locks are useful baseline
+proof against a package-global lock, but they are not the final invocation
+authority. The interop plan is reopened to remove that mutex boundary without
+weakening the accepted generation, contract, return, or business-macro proofs.
 The return adapter supports ordinary values, business Result aliases, and
 direct borrowed origins in direct, Option, Result, and shared-tuple containers.
 Every returned HostRef must match the tracked origin before safe Rust rebuilds
@@ -2292,9 +2296,9 @@ Runtime and never owns a second mutable Runtime.
 
 Implementation order, cache-family classification, Actor memory/concurrency
 baselines, optional execution-lane evidence, and final acceptance are defined
-in `docs/actor-runtime-cache-execution-plan.md`. Its state-storage and Rust/Vela
-replaceable post-review prerequisites now prove current-Actor same-session
-execution without a target-owned Runtime lock.
+in `docs/actor-runtime-cache-execution-plan.md`. State-storage is accepted, but
+the cache plan remains queued until `I-RECON-1..6` restore actor-turn-scoped
+replacement authority without an Actor Runtime or target-owned Runtime lock.
 
 The Actor Runtime/cache ownership change is a pre-release breaking hard switch.
 Each cut updates every producer, consumer, test, and benchmark to the final

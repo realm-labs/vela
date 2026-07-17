@@ -1,6 +1,13 @@
 # Rust/Vela Interop Post-Review Acceptance — 2026-07-17
 
-This report closes the correction tasks in
+> **Superseded in part:** the later
+> [Actor Runtime authority review](rust-vela-interop-actor-runtime-review-2026-07-17.md)
+> reopens the optional replacement authority conclusion. This report remains
+> historical evidence for ordinary interop and the unaffected replacement
+> generation, linking, contract, return, macro, activation, rollback, and
+> no-retry proofs; it is not current final acceptance for optional replacement.
+
+This report originally closed the correction tasks in
 [`rust-vela-interop-model-plan.md`](../rust-vela-interop-model-plan.md) and
 supersedes the incomplete completion conclusion recorded by
 [`rust-vela-interop-post-review-2026-07-17.md`](rust-vela-interop-post-review-2026-07-17.md).
@@ -107,6 +114,7 @@ size advisory.
 
 ## Final status
 
-`F-REVIEW-1` through `F-REVIEW-7` and `G-REVIEW-1` through `G-REVIEW-2` are
-complete. Ordinary and optional replaceable Rust/Vela interop are accepted as
-one production contract, and the unified plan is complete.
+At the time of this report, `F-REVIEW-1` through `F-REVIEW-7` and
+`G-REVIEW-1` through `G-REVIEW-2` were recorded complete. The later Actor
+Runtime authority review supersedes the optional replacement final-acceptance
+conclusion and opens `I-RECON-1..6`. Ordinary interop remains accepted.

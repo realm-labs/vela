@@ -4,22 +4,25 @@
 > bundles, generated bidirectional bindings, unified call execution,
 > host-reference lease safety, and optional hot-replaceable dispatch
 >
-> Status: accepted in full, including the corrected optional replaceable
-> dispatch contract
+> Status: ordinary interop accepted; optional replaceable Actor Runtime
+> authority reopened through `I-RECON-1..6`
 >
 > Evidence: the original ordinary-interop report is preserved in
 > [`rust-vela-interop-acceptance-2026-07-17.md`](archive/rust-vela-interop-acceptance-2026-07-17.md),
 > the corrective review is preserved in
 > [`rust-vela-interop-post-review-2026-07-17.md`](archive/rust-vela-interop-post-review-2026-07-17.md),
-> and final corrected acceptance is recorded in
-> [`rust-vela-interop-post-review-acceptance-2026-07-17.md`](archive/rust-vela-interop-post-review-acceptance-2026-07-17.md)
+> the superseded-in-part corrected acceptance is recorded in
+> [`rust-vela-interop-post-review-acceptance-2026-07-17.md`](archive/rust-vela-interop-post-review-acceptance-2026-07-17.md),
+> and the current authority finding is recorded in
+> [`rust-vela-interop-actor-runtime-review-2026-07-17.md`](archive/rust-vela-interop-actor-runtime-review-2026-07-17.md)
 >
 > Baseline: `master` at `bf524975e` on 2026-07-16
 >
 > Execution: coherent pre-release batches; reuse the existing VM call, native,
 > method, provider, and re-entry paths
 >
-> Roadmap: Batches A-G and all post-review correction tasks are accepted
+> Roadmap: Batches A-G and the first post-review correction remain baseline;
+> `I-RECON-1..6` are the active closure tasks
 
 This document defines a general Rust/Vela interoperability model. Its primary
 goal is not service replacement. Its primary goal is that explicitly exported
@@ -164,7 +167,10 @@ interop. Full formatting, lint, workspace tests, and the two runnable override
 examples remain green, but they are not sufficient evidence for final
 completion.
 
-The following closure tasks completed the replaceable portions of Batches E-G:
+The following closure tasks were recorded as complete for the replaceable
+portions of Batches E-G. The later Actor Runtime authority reconciliation below
+supersedes the completion conclusion for `F-REVIEW-1` without invalidating the
+other accepted proofs:
 
 - [x] F-REVIEW-1. Replace target-owned `Mutex<Runtime>` execution with an
   actor-owned, session-aware invocation authority. One actor owns one logical
@@ -218,6 +224,64 @@ The following closure tasks completed the replaceable portions of Batches E-G:
 All tasks above pass. The no-override fast path, nested execution contract,
 activation/rollback behavior, and business-macro surface are accepted as the
 optional replacement production contract.
+
+### Post-acceptance Actor Runtime authority reconciliation — 2026-07-17
+
+The Actor-owned Runtime architecture was not present in the execution context
+used for the preceding correction. A later cross-document and code audit found
+that the accepted implementation still defines `SharedDispatchRuntime` as
+`Arc<Mutex<SharedRuntime>>`, stores it in `DispatchRoot`, and locks it for sync
+and async override entry. Independent roots own independent locks, so the
+existing tests prove absence of one package-global Runtime lock, but they do
+not prove the required actor-turn-owned `&mut Runtime` authority.
+
+This contradicts the threading contract in `architecture/runtime.md` and the
+durable Actor-owned Runtime decision: the actor mailbox or equivalent turn
+already owns exclusive Runtime access, and neither the Actor Runtime nor an
+override target may be wrapped in `Arc<Mutex<Runtime>>` as the ordinary
+execution boundary. The detailed finding is recorded in
+[the Actor Runtime authority review](archive/rust-vela-interop-actor-runtime-review-2026-07-17.md).
+
+The following correction tasks reopen the replaceable portion of Batches E-G:
+
+- [ ] `I-RECON-1`. Freeze one actor-turn-scoped invocation authority for sync
+  and async replacement. `DispatchRoot` owns immutable generation selection
+  only; mutable Runtime authority comes from the current Actor turn, and nested
+  overrides re-enter the active `ExecutionSession` without reacquiring a
+  Runtime lock.
+- [ ] `I-RECON-2`. Hard-switch every production replaceable caller, generated
+  entry, `DispatchInvocation`, example, test, and benchmark to the final
+  authority. Delete `SharedDispatchRuntime`, the mutable Runtime field on
+  `DispatchRoot`/`DispatchInvocation`, and displaced lock-based constructors and
+  call paths in the same verified checkpoint. Do not retain an adapter or dual
+  execution path.
+- [ ] `I-RECON-3`. Preserve the pinned artifact and dispatch generation, heap,
+  state view, HostAccess, remaining budgets, effect ceiling, capabilities,
+  tracing, cancellation, lease provenance, return mapping, and error behavior
+  across sync, async, nested Rust/Vela, callback, provider, and replacement
+  transitions.
+- [ ] `I-RECON-4`. Keep the generated Handler/Service business surface natural.
+  Framework macros may derive the actor-turn authority from an existing actor,
+  context, or explicit framework parameter, but business authors must not pass
+  `Runtime`, `ExecutionSession`, `HostRef`, lease guards, or dense slots by
+  hand, and no ambient or process-global Runtime lookup is allowed.
+- [ ] `I-RECON-5`. Add structural and behavioral regression proof: production
+  replaceable dispatch contains no Actor Runtime mutex; independent Actors
+  overlap on the same override; one pending Actor does not block another;
+  Actor Vela state remains isolated; nested sync/async calls share remaining
+  budgets and generation; cancellation, panic, and dropped futures release all
+  call-scoped authority.
+- [ ] `I-RECON-6`. Rerun focused interop, complete workspace, examples, docs,
+  site, benchmark-build, fuzz-build, runnable replacement, and relevant
+  safe-Rust/Miri gates. Publish a new reconciliation acceptance report, update
+  current docs, and reopen M20 only after every task above passes.
+
+Until `I-RECON-1` through `I-RECON-6` pass, ordinary generated interop remains
+accepted but optional replacement is not the final production contract. The
+Actor Runtime/cache plan remains queued behind this correction. Do not close
+the reconciliation by renaming the per-root mutex, moving it behind another
+wrapper, introducing an ambient Runtime, creating a second mutable Runtime, or
+weakening the Actor-owned threading contract to match the provisional code.
 
 ### Never-complete conditions
 
