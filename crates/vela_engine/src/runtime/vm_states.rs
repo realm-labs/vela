@@ -287,11 +287,8 @@ impl RuntimeVmStateStore {
         self.values.insert(state, value);
     }
 
-    pub(super) fn value_by_id(&mut self, state: StateId) -> VmResult<Option<OwnedValue>> {
-        let Some(value) = self.values.get(state) else {
-            return Ok(None);
-        };
-        persistent_value_to_owned(&value, &mut self.heap).map(Some)
+    pub(super) fn persistent_value_by_id(&self, state: StateId) -> Option<Value> {
+        self.values.get(state)
     }
 
     pub fn value(&mut self, name: &str) -> VmResult<Option<OwnedValue>> {

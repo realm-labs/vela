@@ -98,6 +98,72 @@ pub(crate) enum IteratorPollStep {
 }
 
 impl IteratorState {
+    pub(crate) fn remap_heap_refs(
+        &mut self,
+        references: &std::collections::BTreeMap<GcRef, GcRef>,
+    ) -> VmResult<()> {
+        fn remap_value(
+            value: &mut Value,
+            references: &std::collections::BTreeMap<GcRef, GcRef>,
+        ) -> VmResult<()> {
+            if let Value::HeapRef(reference) = value {
+                *reference = references.get(reference).copied().ok_or_else(|| {
+                    VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "iterator heap graph copy",
+                    })
+                })?;
+            }
+            Ok(())
+        }
+
+        fn remap_source(
+            source: &mut GcRef,
+            references: &std::collections::BTreeMap<GcRef, GcRef>,
+        ) -> VmResult<()> {
+            *source = references.get(source).copied().ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "iterator source graph copy",
+                })
+            })?;
+            Ok(())
+        }
+
+        match &mut self.cursor {
+            IteratorCursor::Values { values, .. } => {
+                for value in values {
+                    remap_value(value, references)?;
+                }
+            }
+            IteratorCursor::Array { source, .. }
+            | IteratorCursor::Set { source, .. }
+            | IteratorCursor::StringChars { source, .. }
+            | IteratorCursor::StringBytes { source, .. }
+            | IteratorCursor::Bytes { source, .. } => remap_source(source, references)?,
+            IteratorCursor::MapValues { source, keys, .. }
+            | IteratorCursor::MapKeys { source, keys, .. }
+            | IteratorCursor::MapEntries { source, keys, .. } => {
+                remap_source(source, references)?;
+                for key in keys {
+                    key.remap_heap_refs(references)?;
+                }
+            }
+            IteratorCursor::Range(_) => {}
+            IteratorCursor::Map {
+                source, callback, ..
+            }
+            | IteratorCursor::Filter {
+                source, callback, ..
+            } => {
+                source.remap_heap_refs(references)?;
+                remap_value(callback, references)?;
+            }
+            IteratorCursor::Take { source, .. } | IteratorCursor::Skip { source, .. } => {
+                source.remap_heap_refs(references)?;
+            }
+        }
+        Ok(())
+    }
+
     #[must_use]
     pub fn from_values(values: Vec<Value>) -> Self {
         Self::values_at(values, 0)

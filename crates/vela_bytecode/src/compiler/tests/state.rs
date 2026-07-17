@@ -63,6 +63,22 @@ fn read() { return counter; }
 }
 
 #[test]
+fn compiler_allows_budgeted_collection_mutation_in_state_initializers() {
+    compile_test_program(
+        SourceId::new(57),
+        r#"
+fn graph() -> Array {
+    let values = [];
+    values.push(values);
+    return values;
+}
+state value: Array = graph();
+"#,
+    )
+    .expect("script-heap collection mutation should remain initializer-safe");
+}
+
+#[test]
 fn compiler_rejects_every_non_host_extern_state_contract_class() {
     for source in [
         "extern state value: i64;",

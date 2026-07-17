@@ -101,7 +101,7 @@ impl EnumIdentity {
 }
 
 impl HeapValue {
-    fn trace_refs(&self, refs: &mut Vec<GcRef>) {
+    pub(crate) fn trace_refs(&self, refs: &mut Vec<GcRef>) {
         match self {
             Self::String(_) | Self::Bytes(_) | Self::PathProxy(_) => {}
             Self::Tuple(values) | Self::Array(values) => {

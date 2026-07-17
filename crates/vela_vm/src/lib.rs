@@ -23,6 +23,7 @@ mod format_strings;
 mod frame;
 pub mod heap;
 pub mod heap_execution;
+mod heap_graph;
 mod heap_values;
 mod host_access;
 mod host_values;
@@ -85,6 +86,7 @@ use error::{VmError, VmErrorKind, VmResult};
 pub(crate) use frame::CallFrame;
 use heap::{HeapValue, ScriptHeap};
 use heap_execution::HeapExecution;
+pub use heap_graph::copy_persistent_value_graph;
 use heap_values::{
     allocate_heap_value, enum_variant_owner, owned_to_value, store_runtime_value,
     store_value_in_heap_if_needed, stored_runtime_value, value_from_constant, value_to_owned,

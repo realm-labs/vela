@@ -24,6 +24,20 @@ pub(crate) enum ValueKey {
 }
 
 impl ValueKey {
+    pub(crate) fn remap_heap_refs(
+        &mut self,
+        references: &std::collections::BTreeMap<crate::heap::GcRef, crate::heap::GcRef>,
+    ) -> VmResult<()> {
+        if let Self::HeapIdentity(reference) = self {
+            *reference = references.get(reference).copied().ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "iterator heap key graph copy",
+                })
+            })?;
+        }
+        Ok(())
+    }
+
     pub(crate) fn from_value(
         value: &Value,
         heap: Option<&HeapExecution<'_>>,

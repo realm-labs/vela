@@ -461,6 +461,9 @@ fn validate_initializer_root(
                             "async or method calls are not allowed",
                         ));
                     }
+                    vela_mir::MirCall::ValueMethod {
+                        owner, debug_name, ..
+                    } if initializer_collection_method_allowed(*owner, debug_name) => {}
                     _ => {
                         return Err(invalid_state_initializer(
                             state,
@@ -494,6 +497,19 @@ fn validate_initializer_root(
     visiting.remove(&function);
     validated.insert(function);
     Ok(())
+}
+
+fn initializer_collection_method_allowed(owner: vela_def::TypeId, debug_name: &str) -> bool {
+    let method = debug_name.rsplit("::").next().unwrap_or(debug_name);
+    [
+        ("Array", &["push", "pop", "insert", "extend", "clear"][..]),
+        ("Map", &["set", "remove", "extend", "clear"][..]),
+        ("Set", &["add", "remove", "extend", "clear"][..]),
+    ]
+    .into_iter()
+    .any(|(type_name, methods)| {
+        vela_stdlib::std_type_id(type_name) == Some(owner) && methods.contains(&method)
+    })
 }
 
 fn reject_initializer_effect(

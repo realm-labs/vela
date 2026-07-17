@@ -290,6 +290,49 @@ fn reload_charges_live_heap_staging_to_the_initializer_transaction() {
     assert_eq!(runtime.state("main::added"), Ok(None));
 }
 
+#[test]
+fn reload_staging_preserves_initializer_aliases_and_cycles() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_with_id(
+            SourceId::new(803),
+            "state existing: i64 = 3; fn graph_ok() { return false; }",
+        )
+        .expect("initial generation compiles");
+    let update = engine
+        .compile_hot_reload_update_with_id(
+            &initial,
+            SourceId::new(804),
+            r#"
+fn build_graph() -> Array {
+    let shared = [7];
+    let root = [];
+    root.push(shared);
+    root.push(shared);
+    root.push(root);
+    return root;
+}
+
+state existing: i64 = 3;
+state graph: Array = build_graph();
+
+fn graph_ok() {
+    return graph[0] === graph[1] && graph[2] === graph;
+}
+"#,
+        )
+        .expect("cyclic state update compiles");
+    let mut runtime =
+        Runtime::from_hot_reload_version(engine, initial).expect("runtime initializes");
+
+    let report = runtime.apply_hot_update(update).expect("reload applies");
+    assert!(report.accepted, "{report:?}");
+    let result = runtime
+        .call("graph_ok", CallArgs::new(), CallOptions::unbounded())
+        .expect("copied graph remains usable");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+}
+
 fn linked_only_runtime() -> RuntimeImpl<OwnedImage> {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine

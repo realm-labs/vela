@@ -288,41 +288,43 @@ where
                 },
             })?;
 
-        let mut vm_values = Vec::with_capacity(added.len());
-        for state in added {
-            let value = staging
-                .state
-                .vm_states
-                .value_by_id(state)
-                .map_err(|error| HotReloadError {
-                    kind: HotReloadErrorKind::StateInitializerFailed {
-                        state: next_states
-                            .iter()
-                            .find(|descriptor| descriptor.id == state)
-                            .map(|descriptor| descriptor.qualified_name.clone())
-                            .unwrap_or_else(|| format!("state#{}", state.get())),
-                        reason: error.to_string(),
-                        source_span: None,
-                    },
-                })?
-                .expect("selected state initializer published a staging value");
-            let value = self
-                .state
-                .vm_states
-                .prepare_value_with_budget(value, &mut budget)
-                .map_err(|error| HotReloadError {
-                    kind: HotReloadErrorKind::StateInitializerFailed {
-                        state: next_states
-                            .iter()
-                            .find(|descriptor| descriptor.id == state)
-                            .map(|descriptor| descriptor.qualified_name.clone())
-                            .unwrap_or_else(|| format!("state#{}", state.get())),
-                        reason: error.to_string(),
-                        source_span: None,
-                    },
-                })?;
-            vm_values.push((state, value));
-        }
+        let added = added.into_iter().collect::<Vec<_>>();
+        let roots = added
+            .iter()
+            .map(|state| {
+                staging
+                    .state
+                    .vm_states
+                    .persistent_value_by_id(*state)
+                    .expect("selected state initializer published a staging value")
+            })
+            .collect::<Vec<_>>();
+        let copied = vela_vm::copy_persistent_value_graph(
+            &roots,
+            &staging.state.vm_states.heap,
+            &mut self.state.vm_states.heap,
+            &mut budget,
+        )
+        .map_err(|error| {
+            let state = added.first().and_then(|state| {
+                next_states
+                    .iter()
+                    .find(|descriptor| descriptor.id == *state)
+            });
+            HotReloadError {
+                kind: HotReloadErrorKind::StateInitializerFailed {
+                    state: state.map_or_else(
+                        || "<added state graph>".to_owned(),
+                        |descriptor| descriptor.qualified_name.clone(),
+                    ),
+                    reason: error.to_string(),
+                    source_span: state
+                        .and_then(|descriptor| descriptor.source_span)
+                        .map(Box::new),
+                },
+            }
+        })?;
+        let vm_values = added.into_iter().zip(copied).collect();
         Ok(ReloadStateStaging { vm_values })
     }
 
