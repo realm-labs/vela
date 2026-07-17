@@ -2344,6 +2344,12 @@ generation. Immutable hot-reload ABI data is `Arc`-shared by `ProgramVersion`
 clones so Actor memory does not scale with generation instruction/function
 metadata.
 
+Actor generation entries retain old execution data only while the old
+artifact remains reachable from frames, closures, suspended calls, dispatch
+roots, or retained values. The Engine registry is weak. Once the last owner is
+released, the next ordinary reload safe point prunes the Actor entry and drops
+the execution data without requiring another reload publication.
+
 The measured execution-lane gate retains no lane sidecar. Three stable runs of
 the cross-Actor dynamic-method workload found shared execution data within
 normal variance of independently registered data at 1, 2, and 10 workers. The

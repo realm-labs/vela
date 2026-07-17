@@ -515,6 +515,53 @@ fn read_total() {
     );
 }
 
+#[test]
+fn failed_dynamic_cache_population_leaves_slot_available() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source_with_id(
+            SourceId::new(1),
+            "fn call(value) { return value.starts_with(\"q\"); }",
+        )
+        .expect("dynamic method fixture should compile");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+    let site = dynamic_method_call_site_by_name(&runtime, "call", "starts_with");
+
+    runtime
+        .call(
+            "call",
+            CallArgs::from_positional([OwnedValue::i64(1)]),
+            CallOptions::unbounded(),
+        )
+        .expect_err("i64 receiver should fail dynamic method resolution");
+    assert!(
+        runtime
+            .image
+            .execution_data()
+            .inline_caches()
+            .dynamic_method_dispatch(site)
+            .is_none(),
+        "failed resolution must not publish a partial cache entry"
+    );
+
+    let value = runtime
+        .call(
+            "call",
+            CallArgs::from_positional([OwnedValue::String("quest".to_owned())]),
+            CallOptions::unbounded(),
+        )
+        .expect("same cache slot should remain usable after failure");
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::Bool(true)));
+    assert!(
+        runtime
+            .image
+            .execution_data()
+            .inline_caches()
+            .dynamic_method_dispatch(site)
+            .is_some()
+    );
+}
+
 #[derive(Clone, Copy)]
 struct LinkedMethodCallSite {
     cache_site: CacheSiteId,

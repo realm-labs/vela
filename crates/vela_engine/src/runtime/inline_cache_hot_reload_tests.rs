@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use vela_bytecode::{CacheSiteId, CacheSiteKind};
 use vela_common::SourceId;
 use vela_vm::owned_value::OwnedValue;
@@ -175,6 +177,96 @@ fn call_dynamic(value) {
     );
 }
 
+#[test]
+fn retained_old_closure_uses_exact_cache_profile_and_reclaims_execution_data() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let initial = engine
+        .compile_hot_reload_initial_with_id(
+            SourceId::new(1),
+            r#"
+fn make() { return |value: String| value.starts_with("old"); }
+fn invoke(callback, value: String) -> bool { return callback(value); }
+"#,
+        )
+        .expect("initial closure source should compile");
+    let mut runtime = Runtime::builder_from_hot_reload_version(engine, initial)
+        .with_bytecode_profiling()
+        .build()
+        .expect("runtime should initialize");
+    let old_data = Arc::clone(runtime.image.execution_data());
+    let old_lifetime = Arc::downgrade(&old_data);
+    let old_generation = runtime.image.linked_program().generation();
+    let old_site = first_method_call_site(&runtime);
+    let old_closure = runtime
+        .call("make", CallArgs::new(), CallOptions::unbounded())
+        .expect("old closure should be retained");
+    assert!(old_data.inline_caches().method_dispatch(old_site).is_none());
+
+    let update = runtime
+        .compile_hot_reload_update_with_id(
+            SourceId::new(2),
+            r#"
+fn make() { return |value: String| value.ends_with("new"); }
+fn invoke(callback, value: String) -> bool { return callback(value); }
+"#,
+        )
+        .expect("runtime should compile closure update")
+        .expect("closure update should be compatible");
+    runtime
+        .apply_hot_update(update)
+        .expect("closure update should apply");
+    let new_site = first_method_call_site(&runtime);
+    assert!(!Arc::ptr_eq(&old_data, runtime.image.execution_data()));
+    assert_ne!(old_generation, runtime.image.linked_program().generation());
+    assert_eq!(runtime.retained_generation_count(), 2);
+    assert!(
+        runtime
+            .image
+            .execution_data()
+            .inline_caches()
+            .method_dispatch(new_site)
+            .is_none()
+    );
+    let old_profile_before = profile_total(&old_data, old_generation);
+
+    let mut args = CallArgs::from_values([old_closure.clone()]);
+    args.push("old-value".to_owned());
+    let result = runtime
+        .call("invoke", args, CallOptions::unbounded())
+        .expect("retained closure should execute its creation generation");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    assert!(
+        old_data.inline_caches().method_dispatch(old_site).is_some(),
+        "old closure must populate its original generation cache"
+    );
+    assert!(
+        runtime
+            .image
+            .execution_data()
+            .inline_caches()
+            .method_dispatch(new_site)
+            .is_none(),
+        "old closure must not populate the active generation cache"
+    );
+    assert!(profile_total(&old_data, old_generation) > old_profile_before);
+
+    drop(result);
+    drop(old_closure);
+    drop(old_data);
+    assert!(old_lifetime.upgrade().is_some());
+    assert_eq!(
+        runtime
+            .check_reload()
+            .expect("ordinary safe point succeeds"),
+        None
+    );
+    assert_eq!(runtime.retained_generation_count(), 1);
+    assert!(
+        old_lifetime.upgrade().is_none(),
+        "one ordinary safe point must reclaim dead old execution data"
+    );
+}
+
 fn record_field_read_site(runtime: &Runtime, function_name: &str) -> CacheSiteId {
     runtime
         .image
@@ -201,4 +293,29 @@ fn method_call_site(runtime: &Runtime, function_name: &str) -> CacheSiteId {
         .find(|site| site.kind == CacheSiteKind::MethodCall)
         .unwrap_or_else(|| panic!("{function_name} should have a method call site"))
         .id
+}
+
+fn first_method_call_site(runtime: &Runtime) -> CacheSiteId {
+    runtime
+        .image
+        .linked_artifact()
+        .cache_layout()
+        .iter()
+        .find(|site| site.kind == CacheSiteKind::MethodCall)
+        .expect("fixture should have a method call site")
+        .id
+}
+
+fn profile_total(
+    data: &crate::runtime::execution_data::GenerationExecutionData,
+    generation: vela_bytecode::ExecutableGenerationId,
+) -> u64 {
+    data.bytecode_profile()
+        .expect("profiling should be enabled")
+        .snapshot(generation)
+        .functions()
+        .iter()
+        .flat_map(|function| function.instruction_hits())
+        .copied()
+        .sum()
 }

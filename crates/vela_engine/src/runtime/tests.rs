@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use vela_bytecode::CacheSiteKind;
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_hot_reload::error::HotReloadErrorKind;
@@ -71,6 +74,85 @@ fn increment() { counter += 1; return counter; }
     assert_eq!(
         second.state("main::counter"),
         Ok(Some(OwnedValue::from(7_i64)))
+    );
+}
+
+#[test]
+fn shared_actor_runtimes_share_execution_data_but_isolate_mutable_owners() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source(
+            r#"
+state counter: i64 = 0;
+fn make_value() { return [1, 2, 3]; }
+fn echo(value) { return value; }
+fn cached(value) { return value.starts_with("q"); }
+"#,
+        )
+        .expect("fixture compiles");
+    let image = RuntimeImage::new_compiled(engine, program).into_shared();
+    let mut first = SharedRuntime::from_shared_image(image.clone()).expect("first runtime");
+    let mut second = SharedRuntime::from_shared_image(image).expect("second runtime");
+
+    assert!(Arc::ptr_eq(
+        first.image.execution_data(),
+        second.image.execution_data()
+    ));
+    assert!(!std::ptr::eq(
+        &first.state.vm_states.heap,
+        &second.state.vm_states.heap
+    ));
+    assert!(!Arc::ptr_eq(
+        &first.state.vm_states.retained_values,
+        &second.state.vm_states.retained_values
+    ));
+    assert!(!std::ptr::eq(
+        &first.state.extern_states,
+        &second.state.extern_states
+    ));
+    assert_ne!(first.state.id, second.state.id);
+
+    let first_value = first
+        .call("make_value", CallArgs::new(), CallOptions::unbounded())
+        .expect("first Runtime retains its heap value");
+    let error = second
+        .call(
+            "echo",
+            CallArgs::from_values([first_value]),
+            CallOptions::unbounded(),
+        )
+        .expect_err("retained values must not cross Actor Runtime ownership");
+    assert!(matches!(
+        error.kind(),
+        vela_vm::error::VmErrorKind::TypeMismatch { .. }
+    ));
+
+    let site = first
+        .image
+        .linked_artifact()
+        .cache_layout()
+        .iter()
+        .find(|site| site.kind == CacheSiteKind::MethodCall)
+        .expect("cached fixture should have a method site")
+        .id;
+    first
+        .call(
+            "cached",
+            CallArgs::from_positional([OwnedValue::String("quest".to_owned())]),
+            CallOptions::unbounded(),
+        )
+        .expect("first Runtime populates shared cache metadata");
+    assert!(
+        second
+            .image
+            .execution_data()
+            .inline_caches()
+            .dynamic_method_dispatch(site)
+            .is_some()
+    );
+    assert_eq!(
+        second.state("main::counter"),
+        Ok(Some(OwnedValue::from(0_i64)))
     );
 }
 

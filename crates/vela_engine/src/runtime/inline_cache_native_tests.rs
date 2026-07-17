@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Barrier};
 
 use vela_bytecode::{CacheSiteId, CacheSiteKind};
@@ -159,6 +160,50 @@ fn concurrent_owned_runtimes_share_safe_first_native_cache_population() {
             .native_call(site)
             .is_some_and(|entry| entry.native_id() == native_id)
     }));
+}
+
+#[test]
+fn native_panic_leaves_populated_shared_cache_slot_available() {
+    let native_id = NativeFunctionId::new(93);
+    let first_call = Arc::new(AtomicBool::new(true));
+    let panic_flag = Arc::clone(&first_call);
+    let engine = Engine::builder()
+        .register_native_fn(
+            NativeFunctionDesc::new("game::sometimes", native_id).returns(TypeHint::i64()),
+            move |_| {
+                if panic_flag.swap(false, Ordering::SeqCst) {
+                    panic!("intentional native cache unwind proof");
+                }
+                Ok(OwnedValue::i64(42))
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = engine
+        .compile_source_with_id(SourceId::new(1), "fn main() { return game::sometimes(); }")
+        .expect("source should compile");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+    let site = native_call_site(&runtime, "main");
+
+    let unwind = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _ = runtime.call("main", CallArgs::new(), CallOptions::unbounded());
+    }));
+    assert!(unwind.is_err());
+    assert_eq!(
+        runtime
+            .image
+            .execution_data()
+            .inline_caches()
+            .native_call(site)
+            .expect("target resolution precedes native invocation")
+            .native_id(),
+        native_id
+    );
+
+    let value = runtime
+        .call("main", CallArgs::new(), CallOptions::unbounded())
+        .expect("same Runtime and cache slot remain usable after unwind");
+    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(42)));
 }
 
 fn native_call_site(runtime: &Runtime, function_name: &str) -> CacheSiteId {

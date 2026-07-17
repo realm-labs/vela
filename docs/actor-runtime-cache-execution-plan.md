@@ -6,7 +6,9 @@
 > [ownership-cut report](archive/actor-runtime-cache-batches-b-c-acceptance-2026-07-18.md).
 > Batch D closed without an execution lane in the
 > [lane-gate report](archive/actor-runtime-cache-batch-d-lane-gate-2026-07-18.md).
-> Batch E is the active lifetime/correctness proof. The Rust/Vela Actor
+> Batch E is accepted in the
+> [lifetime report](archive/actor-runtime-cache-batch-e-lifetime-2026-07-18.md).
+> Batch F is the active final acceptance pass. The Rust/Vela Actor
 > Runtime authority reconciliation closed Gate I, and state-storage Batch G
 > remains accepted.
 >
@@ -463,17 +465,17 @@ contract.
 
 ### Batch E: reload, lifetime, and multi-Actor correctness
 
-- [ ] E1. Publish fresh immutable generation metadata and fresh
+- [x] E1. Publish fresh immutable generation metadata and fresh
   generation-qualified execution data on accepted reload. Never clear or
   rebase old cache slots for new code.
-- [ ] E2. Prove old frames, closures, suspended calls, and pinned dispatch roots
+- [x] E2. Prove old frames, closures, suspended calls, and pinned dispatch roots
   continue using their original generation and cache/profile view.
-- [ ] E3. Reclaim old execution data only after every generation owner is gone;
+- [x] E3. Reclaim old execution data only after every generation owner is gone;
   do not leak generations or require a second reload for collection.
-- [ ] E4. Prove two Actors sharing one generation keep Vela state, heaps, roots,
+- [x] E4. Prove two Actors sharing one generation keep Vela state, heaps, roots,
   leases, retained values, and suspended sessions isolated while safely sharing
   eligible execution metadata.
-- [ ] E5. Prove cancellation, panic, failed cache population, and dropped futures
+- [x] E5. Prove cancellation, panic, failed cache population, and dropped futures
   leave no held cache lock, Actor lease, or permanent generation owner.
 
 ### Batch F: performance acceptance and close-out
