@@ -216,6 +216,7 @@ contract before changing that subsystem:
 - [Clean identity refactor](architecture/clean-identity-refactor.md)
 - [Executor-neutral async execution plan](async-execution-model-plan.md)
 - [State storage model execution plan](state-storage-model-plan.md)
+- [Actor-owned Runtime and cache model execution plan](actor-runtime-cache-execution-plan.md)
 
 Keep this file as the entrypoint and cross-subsystem contract. Subsystem files
 carry the detailed rules so active architecture docs remain reviewable and stay

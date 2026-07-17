@@ -749,6 +749,12 @@ docs/progress.md marks M19.5 complete before M20 inline-cache work becomes the a
 Goal: specialize common dynamic operations while preserving VM semantics and
 safe fallback paths.
 
+Detailed Actor Runtime ownership, cache/profile placement, concurrency, memory,
+reload, and acceptance work is sequenced in
+[actor-runtime-cache-execution-plan.md](actor-runtime-cache-execution-plan.md).
+That execution begins only after the state-storage and Rust/Vela replaceable
+post-review prerequisites named there are accepted.
+
 Scope:
 
 ```text

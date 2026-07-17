@@ -28,7 +28,10 @@ Vela Runtime and its persistent script state; immutable deployment generations
 are shared. The current eager per-Runtime inline-cache vectors and
 per-instruction profiling counters do not satisfy the intended many-actor
 footprint and are an M20 ownership/measurement gap. Worker-local sidecars are
-an optional measured optimization, not the default architecture.
+an optional measured optimization, not the default architecture. The ordered
+implementation and acceptance work now lives in the dedicated
+[Actor Runtime/cache execution plan](actor-runtime-cache-execution-plan.md),
+whose state-storage and replaceable-dispatch prerequisites are now accepted.
 
 The explicit state-storage hard switch is accepted through Batch G. Exact
 qualified embedding types, linked nominal canonicalization, graph-preserving
@@ -62,7 +65,7 @@ state-storage hard switch.
 | M8-M18 | Complete enough | HIR, executable language surface, script metadata, host bridge, reflection, stdlib, embedding, reload, diagnostics, examples, and benchmark foundations satisfy their checkpoints. |
 | M19 | Complete enough | The non-JIT interpreter and heap optimization checkpoint is closed; remaining measured costs belong to cache, value-layout, or later backend work. |
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
-| M20 | Ready to resume | State-storage acceptance is complete; resume the cache-family audit. |
+| M20 | Ready to execute | Run the dedicated Actor Runtime/cache plan; its state-storage and replaceable-dispatch prerequisites are accepted. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
 | Rust/Vela interop | Complete | Ordinary generated interop and corrected optional replacement pass the complete acceptance matrix and full validation gates. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
@@ -189,6 +192,12 @@ or provider-specific public execution methods.
 
 ### M20 Cache Close-Out
 
+The detailed ownership, memory, concurrency, profiling, reload, and cache
+execution batches are defined in
+[actor-runtime-cache-execution-plan.md](actor-runtime-cache-execution-plan.md).
+Do not begin its Batch A until state-storage Batch G and the Rust/Vela
+replaceable post-review acceptance gates are closed.
+
 Existing cache or measured families include declared state, script record
 fields, host access, native calls, linked method dispatch, dynamic method
 dispatch, stdlib value methods, callbacks, strings/bytes, Option/Result, and
@@ -207,13 +216,9 @@ A remaining task is valid only when it names one missing proof:
 Close-out requirements:
 
 - Publish the cache-family audit before adding another family.
-- Classify each cache/profile family as immutable linked data,
-  generation-shared synchronized data, optional execution-lane data, or truly
-  actor-local data. Do not preserve eager per-actor full-program arrays by
-  default.
-- Measure empty actor Runtime memory for small and large artifacts and N actors
-  sharing one generation. Keep full instruction profiling off in default rows,
-  and require contention evidence before introducing execution-lane sidecars.
+- Execute Batches A-F in the dedicated plan; classify every cache/profile
+  family, remove eager per-Actor full-program metadata, and prove Actor memory
+  and concurrent same-generation scaling before M20 acceptance.
 - Preserve generic fallback behavior, budgets, GC roots, HostAccess policy,
   reflection permissions, hot-reload ownership, schema invalidation, and
   source-spanned diagnostics.
@@ -310,8 +315,8 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Resume the M20 cache-family audit against the accepted state and interop
-   models.
+1. Execute the dedicated Actor Runtime/cache plan,
+   beginning with its ownership audit and baselines.
 2. Resume the M20.5 editor-visible follow-up after M20 close-out.
 3. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
    state migration, async-frame migration, and initializer dependency reads as

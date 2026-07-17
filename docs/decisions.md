@@ -2290,6 +2290,12 @@ metadata; actors adopt it at safe points, while active turns keep their pinned
 generation. Override selection names linked code to run in the current actor
 Runtime and never owns a second mutable Runtime.
 
+Implementation order, cache-family classification, Actor memory/concurrency
+baselines, optional execution-lane evidence, and final acceptance are defined
+in `docs/actor-runtime-cache-execution-plan.md`. That plan starts only after the
+Rust/Vela replaceable post-review closure proves current-Actor same-session
+execution without a target-owned Runtime lock.
+
 ### Context Natives Use A Session-Aware VM Boundary
 
 Runtime-driven linked sessions pause synchronous context-native calls before

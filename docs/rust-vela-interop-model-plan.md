@@ -1635,12 +1635,11 @@ artifacts may be shared across all actors, while each actor adopts a published
 generation at a safe point. The mailbox's exclusive actor turn is the Runtime
 serialization boundary.
 
-Cache and profiling storage are not part of dispatch selection or actor
-semantics. Static facts belong in the linked artifact, generation-stable cache
-facts should prefer generation-shared synchronized slots, and an execution-lane
-sidecar is permitted only for measured contention or polymorphism. No default
-per-actor Runtime may eagerly allocate full-program cache-site or
-per-instruction profiling arrays.
+Cache and profiling storage are not part of dispatch selection or Actor
+semantics. Their implementation and acceptance are intentionally deferred to
+the separate
+[Actor Runtime/cache execution plan](actor-runtime-cache-execution-plan.md)
+after this plan's replaceable post-review closure is accepted.
 
 ### 10.7 Staging, activation, and rollback
 
@@ -2205,9 +2204,6 @@ Record reproducible baselines before optimization:
 | optional replaceable slot local hit | dense target resolution and Vela adapter entry |
 | first replaceable call after activation | new-generation cache behavior |
 | arbitrary multi-slot patch activation | immutable delta materialization and atomic publication |
-| empty actor Runtime footprint | fixed actor-local state without eager full-program cache/profile arrays |
-| N actors sharing one generation | actor-state isolation and sublinear shared-code metadata growth |
-| shared-generation cache contention | global synchronized slots versus optional execution-lane sidecars |
 
 Measure allocation, conversion, target resolution, lease acquisition, VM
 instructions, and end-to-end latency where the harness permits it. Do not set
@@ -2216,14 +2212,6 @@ the same safety and policy semantics and have fallback-equivalence tests.
 Ordinary authorization stays on the fixed-bitset path derived from
 `EffectSet`; benchmarks and cache designs must not introduce dynamic string or
 reflection-permission lookups into each native call.
-
-Actor-scaling measurements must separate actor-owned semantic state from shared
-generation metadata. Record empty-Runtime bytes for 1, 100, and a
-representative production actor count against both a small and a large linked
-artifact. Full instruction profiling is disabled in the default rows. An
-execution-lane cache is adopted only when the shared-generation alternative has
-measured contention or cache thrashing; it is never required merely because
-the host has workers.
 
 ## 18. Explicit Non-Goals
 
