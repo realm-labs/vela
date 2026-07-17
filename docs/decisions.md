@@ -2292,9 +2292,17 @@ Runtime and never owns a second mutable Runtime.
 
 Implementation order, cache-family classification, Actor memory/concurrency
 baselines, optional execution-lane evidence, and final acceptance are defined
-in `docs/actor-runtime-cache-execution-plan.md`. That plan starts only after the
-Rust/Vela replaceable post-review closure proves current-Actor same-session
+in `docs/actor-runtime-cache-execution-plan.md`. Its state-storage and Rust/Vela
+replaceable post-review prerequisites now prove current-Actor same-session
 execution without a target-owned Runtime lock.
+
+The Actor Runtime/cache ownership change is a pre-release breaking hard switch.
+Each cut updates every producer, consumer, test, and benchmark to the final
+owner and deletes the displaced fields, accessors, and construction path in the
+same verified checkpoint. Migration-only aliases, wrappers, adapter traits,
+feature flags, dual reads/writes, shadow population, and old/new Runtime modes
+are prohibited. The permanent generic VM operation on a cache miss or guard
+failure is the semantic correctness path, not a legacy compatibility path.
 
 ### Context Natives Use A Session-Aware VM Boundary
 

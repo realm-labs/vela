@@ -1,4 +1,4 @@
-# Actor-Owned Runtime And Cache Model Execution Plan
+# Actor-Owned Runtime And Cache Model Hard-Switch Plan
 
 > Status: queued behind state-storage Batch G and the Rust/Vela replaceable
 > post-review closure.
@@ -31,7 +31,54 @@ This is an execution and storage-ownership plan. It does not add script-level
 threads, concurrent execution inside one Actor, async-frame migration, JIT, or
 a second interpreter route.
 
-## 2. Prerequisite Order
+## 2. Hard-Switch Contract
+
+This migration is one pre-release breaking internal hard switch. It does not
+preserve the current per-Runtime cache/profile ownership as a compatibility
+surface.
+
+Every ownership cut must land as one coherent verified checkpoint:
+
+```text
+define the final owner and final internal API
+update every production producer and consumer
+update tests, examples, and benchmarks to the final contract
+delete the displaced fields, types, accessors, and construction paths
+restore a green build and commit the completed cut
+```
+
+The local working tree may be temporarily uncompilable while the cut is being
+made. That is preferable to committing transitional production architecture.
+No intermediate compatibility checkpoint is required.
+
+Prohibited migration mechanisms:
+
+- legacy aliases, wrapper types, adapter traits, or forwarding methods whose
+  only purpose is keeping the old cache/profile API compiling;
+- feature flags, environment switches, or `OldOrNew` modes selecting the old
+  versus new ownership model;
+- dual reads, dual writes, shadow counters, mirrored cache population, or a
+  fallback from the new owner to the displaced owner;
+- keeping per-Runtime vectors alive until a later cleanup batch after the final
+  generation owner is active;
+- parallel root-call, re-entry, provider, callback, or override wiring for old
+  and new execution metadata;
+- temporary serialization or cloning introduced only to bridge the cut.
+
+Permanent semantic fallback is different from migration compatibility. A cache
+miss, guard failure, unsupported cache family, or intentionally cache-disabled
+benchmark continues through the canonical generic VM operation. That generic
+path is the correctness definition and remains after migration; it never reads
+the old cache owner. Likewise, hot-reload ABI/schema compatibility remains a
+product contract, not an excuse to retain obsolete internal storage APIs.
+
+Stable benchmark modes may keep cache-disabled and profile-disabled execution
+when those modes remain intentional product/measurement surfaces. They must
+select `None` or the final owner, never resurrect the old Runtime sidecars.
+Before/after comparisons use Git checkpoints and recorded artifacts rather than
+a production migration toggle.
+
+## 3. Prerequisite Order
 
 ### Gate S: state-storage acceptance
 
@@ -66,7 +113,7 @@ Gate I must prove at least:
 Only after Gate I has a replacement acceptance report does Batch A become
 active.
 
-## 3. Current Implementation Audit
+## 4. Current Implementation Audit
 
 The implementation already has a useful separation between `RuntimeImage` and
 `RuntimeState`, but its mutable sidecars are currently too coarse for one
@@ -83,8 +130,8 @@ Runtime per Actor:
 - `RuntimeVmStateStore` correctly owns the Actor's heap and values, but also
   rebuilds a state-name lookup map whose shareability must be audited;
 - the VM already receives caches and profiling through optional trait-object
-  boundaries, which is the migration seam rather than a reason to add a second
-  execution loop.
+  boundaries, which may be changed directly into the final injection contract
+  rather than wrapped in a compatibility adapter or duplicated execution loop.
 
 The existing shared-image state test proves that two Runtimes can share an
 immutable image while keeping Vela state isolated. Existing profile tests prove
@@ -92,7 +139,7 @@ the current per-Runtime counter semantics; those tests must be updated to prove
 the selected opt-in aggregation contract rather than retained as accidental
 product requirements.
 
-## 4. Target Ownership Model
+## 5. Target Ownership Model
 
 | Owner | Required contents | Must not contain by default |
 | --- | --- | --- |
@@ -112,7 +159,7 @@ state. A `Send` Runtime future may migrate between executor workers, so OS
 thread identity cannot determine correctness or select an Actor's semantic
 state.
 
-## 5. Cache And Profile Classification Rules
+## 6. Cache And Profile Classification Rules
 
 Every existing and proposed family must be classified from its dependency
 proof before its storage is changed.
@@ -148,7 +195,7 @@ population, and guard failures must execute the same generic path and preserve
 budgets, GC roots, HostAccess, reflection policy, diagnostics, effects, and
 return values.
 
-## 6. Synchronization And Throughput Contract
+## 7. Synchronization And Throughput Contract
 
 The design forbids:
 
@@ -177,7 +224,7 @@ no shared Runtime lock limits throughput to one override call at a time
 shared metadata contention is measured and localized by cache family
 ```
 
-## 7. Execution Batches
+## 8. Execution Batches
 
 ### Batch A: ownership inventory and baselines
 
@@ -207,38 +254,50 @@ execution lane.
 
 ### Batch B: opt-in profiling and empty Actor footprint
 
-- [ ] B1. Make full per-instruction profiling disabled by default so an ordinary
-  Actor Runtime allocates no instruction-counter arrays.
-- [ ] B2. Define an explicit profile sink/configuration selected at Runtime or
-  deployment setup. Disabled execution must pass `None` through the existing VM
-  boundary and avoid profile branches or allocations beyond the existing
-  option check.
-- [ ] B3. Implement generation-qualified aggregate or execution-lane profiling
-  only for enabled runs. Define snapshot, reset, saturation, reload, and old
-  generation retention semantics.
-- [ ] B4. Move immutable state-name/schema lookup data out of Actor-local stores
-  when identity analysis proves it safe; retain only Actor values and heap state
-  locally.
+- [ ] B1. Finalize the permanent generation execution-data owner and its profile
+  configuration/sink contract before editing production ownership. Profiling is
+  disabled by default; enabled profiling is generation-qualified aggregate or
+  explicit execution-lane data with defined snapshot, reset, saturation,
+  reload, and old-generation retention semantics.
+- [ ] B2. Introduce that final owner and hard-switch every root-call, re-entry,
+  provider, callback, and override profile consumer to `None` or its profile
+  sink. In the same checkpoint, remove eager `RuntimeBytecodeProfile`
+  construction from `GenerationRuntimeState` and delete displaced accessors and
+  per-Runtime counter storage. The generation owner is retained as final
+  architecture and is not temporary cache-migration scaffolding.
+- [ ] B3. Update existing profile tests directly to the final disabled/aggregate
+  contract. Do not keep isolated per-Runtime counters as an alternate mode or
+  compatibility fixture.
+- [ ] B4. When identity analysis proves immutable state-name/schema lookup data
+  shareable, hard-switch every lookup consumer to generation metadata and
+  delete the Actor-local copy in the same checkpoint. Retain only Actor values
+  and heap state locally.
 - [ ] B5. Add structural allocation tests proving the default Actor footprint is
   independent of instruction count and does not eagerly materialize cache
   storage.
 
 ### Batch C: immutable linking and generation-shared caches
 
-- [ ] C1. Remove mutable caches for facts that can be represented as verified
-  immutable linked operands.
-- [ ] C2. Introduce one generation-qualified execution-data owner separate from
-  `ActorRuntimeState`. Do not copy it into each Runtime. Replace current
-  `Cell`/`RefCell` storage for migrated shared families with a proven `Send +
-  Sync` representation whose synchronization is local to the relevant site or
-  cold population path.
-- [ ] C3. Migrate one cache family at a time in this order unless Batch A data
-  justifies a different order: declared state, record fields, linked method,
-  native call, host access, dynamic method.
-- [ ] C4. For every migrated family, preserve hit, miss, wrong guard, concurrent
-  first population, generic fallback, schema rejection, and hot-reload tests.
-- [ ] C5. Remove obsolete per-Runtime vectors and compatibility accessors as
-  soon as their final family migrates; do not retain two cache authorities.
+- [ ] C1. Finish the immutable/shared/Actor-local classification and identity
+  proof for every existing cache family before production ownership changes.
+  Remove mutable caches for facts that can be represented as verified immutable
+  linked operands.
+- [ ] C2. Add final cache storage to the permanent generation execution-data
+  owner introduced by Batch B. Replace current `Cell`/`RefCell` storage with
+  proven `Send + Sync` entries whose synchronization is local to the relevant
+  site or cold population path. Do not introduce another cache migration owner.
+- [ ] C3. Hard-switch declared state, record field, linked method, native call,
+  host access, and dynamic method cache consumers to the final generation
+  execution-data view in one coherent implementation batch. Root calls,
+  re-entry, providers, callbacks, and overrides must change together.
+- [ ] C4. In that same checkpoint, delete the per-Runtime `InlineCaches` owner,
+  its full vectors, old `RuntimeSidecars` cache delegation, displaced accessors,
+  and any old/new selection plumbing. No production cache family may remain on
+  the former authority.
+- [ ] C5. Update every family test directly to the final owner while preserving
+  hit, miss, wrong guard, concurrent first population, generic fallback, schema
+  rejection, and hot-reload behavior. Do not add adapter fixtures for the old
+  trait shape.
 
 ### Batch D: measured execution-lane specialization
 
@@ -253,7 +312,9 @@ execution lane.
 - [ ] D4. Keep the generation-shared or generic path available when no stable
   lane identity exists. Do not require a host to pin Actors to workers.
 - [ ] D5. If no family meets the evidence threshold, close Batch D with no
-  `WorkerExecutionSidecars` implementation.
+  `WorkerExecutionSidecars` implementation. Any lane representation that is
+  accepted is a retained final optimization, not a temporary bridge that a
+  later cleanup batch removes.
 
 ### Batch E: reload, lifetime, and multi-Actor correctness
 
@@ -286,7 +347,7 @@ execution lane.
   `docs/performance.md`, and archive this plan only after every never-complete
   condition is false.
 
-## 8. Acceptance Matrix
+## 9. Acceptance Matrix
 
 | Area | Required proof |
 | --- | --- |
@@ -310,7 +371,7 @@ Concurrency acceptance is also structural. Tests must show overlapping calls
 for independent Actors and must audit that no package-global Runtime lock is
 held. A noisy throughput improvement alone is not sufficient proof.
 
-## 9. Never-Complete Conditions
+## 10. Never-Complete Conditions
 
 Do not declare this plan complete while any of the following remains true:
 
@@ -330,9 +391,13 @@ Do not declare this plan complete while any of the following remains true:
   shared generation or lane storage;
 - reload clears shared slots in place or leaks old execution data permanently;
 - the final report omits multi-Actor memory, concurrent same-override, pending
-  async, or cache contention measurements.
+  async, or cache contention measurements;
+- a migration-only compatibility alias, adapter, feature flag, dual read/write,
+  shadow counter, mirrored cache, or old/new execution-metadata path remains;
+- an accepted checkpoint leaves obsolete ownership in production for a later
+  cleanup batch.
 
-## 10. Expected Implementation Map
+## 11. Expected Implementation Map
 
 | Area | Expected responsibility |
 | --- | --- |
@@ -348,7 +413,7 @@ interop-only execution-data store. Root calls, nested re-entry, providers,
 callbacks, and overrides use the same storage selection and linked execution
 path.
 
-## 11. Validation
+## 12. Validation
 
 Focused commands will evolve with the harness names, but final acceptance must
 include at least:

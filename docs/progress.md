@@ -31,7 +31,9 @@ footprint and are an M20 ownership/measurement gap. Worker-local sidecars are
 an optional measured optimization, not the default architecture. The ordered
 implementation and acceptance work now lives in the dedicated
 [Actor Runtime/cache execution plan](actor-runtime-cache-execution-plan.md),
-whose state-storage and replaceable-dispatch prerequisites are now accepted.
+whose state-storage and replaceable-dispatch prerequisites are now accepted,
+and which performs a breaking internal hard switch without compatibility
+layers or dual ownership.
 
 The explicit state-storage hard switch is accepted through Batch G. Exact
 qualified embedding types, linked nominal canonicalization, graph-preserving
@@ -218,7 +220,10 @@ Close-out requirements:
 - Publish the cache-family audit before adding another family.
 - Execute Batches A-F in the dedicated plan; classify every cache/profile
   family, remove eager per-Actor full-program metadata, and prove Actor memory
-  and concurrent same-generation scaling before M20 acceptance.
+  and concurrent same-generation scaling before M20 acceptance. Each ownership
+  cut updates all production callers and deletes the displaced owner in the
+  same verified checkpoint; do not add migration flags, adapters, or dual
+  read/write paths.
 - Preserve generic fallback behavior, budgets, GC roots, HostAccess policy,
   reflection permissions, hot-reload ownership, schema invalidation, and
   source-spanned diagnostics.
