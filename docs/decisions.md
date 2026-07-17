@@ -2245,17 +2245,23 @@ calls share one generation. Conversion, borrowed-return provenance/freeze,
 lease, Runtime call target, execution session, policy, and diagnostics continue
 to use the common interop paths.
 
-The 2026-07-17 post-implementation review found that the first mechanism slice
-did not satisfy the preceding decision. Controller-owned generation identity,
-Engine-registered compile-time target linking, authoritative contract import,
-exact staging fingerprints, and same-session sync/async re-entry close the
-identity, validation, fresh-budget, and second-execution findings. A later
-architecture reconciliation found that the resulting root-owned
-`SharedDispatchRuntime = Arc<Mutex<SharedRuntime>>` still contradicts the
-Actor-owned Runtime decision below. Independent root locks are useful baseline
-proof against a package-global lock, but they are not the final invocation
-authority. The interop plan is reopened to remove that mutex boundary without
-weakening the accepted generation, contract, return, or business-macro proofs.
+The 2026-07-17 Actor Runtime reconciliation completes that mechanism.
+`DispatchRoot` owns only immutable generation selection and call options;
+`DispatchInvocation<'turn>` borrows the current Actor turn's
+`&mut SharedRuntime`. Staging reads a borrowed Runtime only to seal the
+candidate image and callable table. The named low-level dispatch-authority
+parameter is hidden from the Vela callable ABI, while framework macros split
+their actor turn from script-visible business state and retain natural Handler
+and Service call shapes. An active `NativeCallContext` remains the only nested
+re-entry authority and pushes onto the same `ExecutionSession`. There is no
+`SharedDispatchRuntime`, Runtime field in a root or target, ambient lookup,
+compatibility adapter, or Runtime mutex execution boundary.
+
+Focused proof keeps one Actor pending while another completes on the same
+immutable override generation, demonstrates isolated persistent Vela state,
+and releases the actor-turn borrow after suspension cancellation, an unpolled
+future drop, and panic unwind. The previously accepted generation, contract,
+return, activation, rollback, and no-retry proofs remain unchanged.
 The return adapter supports ordinary values, business Result aliases, and
 direct borrowed origins in direct, Option, Result, and shared-tuple containers.
 Every returned HostRef must match the tracked origin before safe Rust rebuilds
@@ -2296,9 +2302,10 @@ Runtime and never owns a second mutable Runtime.
 
 Implementation order, cache-family classification, Actor memory/concurrency
 baselines, optional execution-lane evidence, and final acceptance are defined
-in `docs/actor-runtime-cache-execution-plan.md`. State-storage is accepted, but
-the cache plan remains queued until `I-RECON-1..6` restore actor-turn-scoped
-replacement authority without an Actor Runtime or target-owned Runtime lock.
+in `docs/actor-runtime-cache-execution-plan.md`. State-storage is accepted and
+the interop reconciliation closes its Gate I prerequisite. The cache plan is
+the next separate execution track; no cache/profile ownership change is part
+of this reconciliation.
 
 The Actor Runtime/cache ownership change is a pre-release breaking hard switch.
 Each cut updates every producer, consumer, test, and benchmark to the final

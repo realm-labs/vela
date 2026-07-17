@@ -10,16 +10,17 @@ history belongs in Git.
 
 ## Current Focus
 
-Ordinary Rust/Vela interop remains accepted: Rust exports, exact lease adapters,
-owner-frozen borrowed returns, generated typed Rust-to-Vela bindings, and
-`NativeCallContext` sync/async re-entry use the shared execution path. Optional
-replacement is reopened for Actor Runtime authority reconciliation. Its current
-`SharedDispatchRuntime = Arc<Mutex<SharedRuntime>>` proves independent root
-locks, but contradicts the actor-turn-owned `&mut Runtime` architecture and the
-recorded completion of `F-REVIEW-1`. The correction tasks live in
-[the unified plan](rust-vela-interop-model-plan.md#post-acceptance-actor-runtime-authority-reconciliation--2026-07-17),
-and the finding is recorded in
-[the Actor Runtime authority review](archive/rust-vela-interop-actor-runtime-review-2026-07-17.md).
+Rust/Vela interop is accepted through the Actor Runtime authority
+reconciliation. Rust exports, exact lease adapters, owner-frozen borrowed
+returns, generated typed bindings, optional replacement, and
+`NativeCallContext` sync/async re-entry use the shared execution path.
+`DispatchRoot` owns immutable generation selection only; replacement borrows
+the current Actor turn's `&mut SharedRuntime` through a scoped
+`DispatchInvocation`. Overlapping pending Actors, isolated Vela state,
+same-session policy inheritance, cancellation/drop, panic unwind, natural
+Handler/Service integration, runnable examples, and the complete validation
+gates are recorded in the
+[reconciliation acceptance report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md).
 
 The runtime ownership contract is now explicit: one actor owns one logical
 Vela Runtime and its persistent script state; immutable deployment generations
@@ -28,9 +29,9 @@ per-instruction profiling counters do not satisfy the intended many-actor
 footprint and are an M20 ownership/measurement gap. Worker-local sidecars are
 an optional measured optimization, not the default architecture. The ordered
 implementation and acceptance work now lives in the dedicated
-[Actor Runtime/cache execution plan](actor-runtime-cache-execution-plan.md),
-which remains queued until the replaceable Actor Runtime authority correction
-passes. Its later cache/profile ownership work is still a breaking internal
+[Actor Runtime/cache execution plan](actor-runtime-cache-execution-plan.md).
+Gate I is closed, so that plan is ready as the next separate execution track.
+Its cache/profile ownership work has not begun and remains a breaking internal
 hard switch without compatibility layers or dual ownership.
 
 The explicit state-storage hard switch is accepted through Batch G. Exact
@@ -66,9 +67,9 @@ state-storage hard switch.
 | M8-M18 | Complete enough | HIR, executable language surface, script metadata, host bridge, reflection, stdlib, embedding, reload, diagnostics, examples, and benchmark foundations satisfy their checkpoints. |
 | M19 | Complete enough | The non-JIT interpreter and heap optimization checkpoint is closed; remaining measured costs belong to cache, value-layout, or later backend work. |
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
-| M20 | Paused behind interop reconciliation | Run the dedicated Actor Runtime/cache plan after `I-RECON-1..6` restore the Actor-owned replacement authority. |
+| M20 | Ready | Gate I is closed; begin the dedicated Actor Runtime/cache plan in a separate checkpoint. |
 | M20.5 | Queued follow-up | Resume concrete editor-visible follow-up after M20 close-out. |
-| Rust/Vela interop | Partially complete; replacement authority reopened | Ordinary generated interop is accepted. Optional replacement must remove the Actor Runtime mutex and restore actor-turn-scoped authority. |
+| Rust/Vela interop | Accepted | Ordinary and optional replacement interop use Actor-turn-scoped Runtime authority with no Runtime mutex boundary. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -143,25 +144,16 @@ state-storage hard switch.
 
 ## Active Gaps
 
-### Rust/Vela Actor Runtime Authority Reconciliation
+### Rust/Vela Interop Acceptance
 
-Ordinary interop and the replacement generation, linking, contract, return,
-macro, activation, rollback, and no-retry proofs remain accepted baseline.
-Replacement authority is reopened because production dispatch still stores and
-locks an Actor Runtime through `SharedDispatchRuntime`. Independent per-root
-locks avoid a package-global lock, but they do not satisfy the architecture in
-which an Actor turn already owns the mutable Runtime directly.
-
-Complete `I-RECON-1` through `I-RECON-6` in the
-[unified plan](rust-vela-interop-model-plan.md#post-acceptance-actor-runtime-authority-reconciliation--2026-07-17).
-The correction must remove the lock-based Runtime owner without creating an
-ambient Runtime, a second execution path, fresh nested budgets, compatibility
-adapters, or business-facing authority plumbing. Focused proof must cover
-overlapping Actors, pending async isolation, current-Actor Vela state,
-same-session policy inheritance, cancellation, and dropped futures.
-
-Nested activation, partial-delta publication, rollback, the empty-slot
-benchmark, and runnable examples are accepted baseline evidence.
+No interop reconciliation gap remains. `DispatchRoot` and override targets own
+no mutable Runtime. The Actor turn supplies the only root `&mut Runtime`
+authority, while nested replacement uses the active `NativeCallContext`
+re-entry session. Generation/linking, complete contract validation, HostAccess,
+remaining budgets, capabilities/effect ceilings, tracing, cancellation,
+borrowed and business returns, activation, rollback, and no-retry behavior
+remain accepted. The structural and behavioral proof matrix lives in the
+[reconciliation report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md).
 
 ### State Storage Acceptance
 
@@ -193,8 +185,9 @@ or provider-specific public execution methods.
 The detailed ownership, memory, concurrency, profiling, reload, and cache
 execution batches are defined in
 [actor-runtime-cache-execution-plan.md](actor-runtime-cache-execution-plan.md).
-Do not begin its Batch A until `I-RECON-1..6` restore the Rust/Vela replaceable
-Actor Runtime authority gate. State-storage Batch G is already accepted.
+Its Gate I prerequisite is closed; Batch A is the next separate implementation
+checkpoint. State-storage Batch G is already accepted. No cache/profile
+ownership work was included in the interop reconciliation.
 
 Existing cache or measured families include declared state, script record
 fields, host access, native calls, linked method dispatch, dynamic method
@@ -277,12 +270,11 @@ scanners, runtime execution, live host-state reads, or editor-owned analysis.
 
 ## Validation
 
-The 2026-07-17 Rust/Vela interop gates remain historical green baseline for
-ordinary interop and the unaffected replacement families. The post-review
-report's final Actor Runtime authority conclusion is superseded by the
-[Actor Runtime authority review](archive/rust-vela-interop-actor-runtime-review-2026-07-17.md);
-`I-RECON-1..6` must rerun the relevant gates before optional replacement returns
-to accepted status.
+The 2026-07-17 Rust/Vela interop reconciliation gates pass. Ordinary interop
+and the unaffected replacement families retain their historical baseline; the
+new report adds direct Actor Runtime borrowing, overlapping Actor/state
+isolation, cancellation/drop/unwind, runnable replacement, structural audit,
+and complete repository validation evidence.
 
 State-storage Batch G's exact resolution, nominal canonicalization,
 graph-preserving staging, external-owner reclamation, and nested initializer
@@ -313,11 +305,10 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Complete `I-RECON-1..6` and restore Actor-owned replacement authority.
-2. Execute the dedicated Actor Runtime/cache plan, beginning with its ownership
+1. Execute the dedicated Actor Runtime/cache plan, beginning with its ownership
    audit and baselines.
-3. Resume the M20.5 editor-visible follow-up after M20 close-out.
-4. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
+2. Resume the M20.5 editor-visible follow-up after M20 close-out.
+3. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
    state migration, async-frame migration, and initializer dependency reads as
    explicit non-goals.
 

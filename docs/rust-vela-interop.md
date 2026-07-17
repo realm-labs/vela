@@ -103,12 +103,9 @@ should use generated bindings.
 
 ## Optional Single-Callable Replacement
 
-> **Status:** ordinary interop remains accepted. Optional replacement is
-> reopened for Actor Runtime authority reconciliation: its current per-root
-> `Arc<Mutex<SharedRuntime>>` mechanism is available as provisional code but is
-> not the final production contract. See the
-> [correction plan](rust-vela-interop-model-plan.md#post-acceptance-actor-runtime-authority-reconciliation--2026-07-17)
-> and [review report](archive/rust-vela-interop-actor-runtime-review-2026-07-17.md).
+> **Status:** accepted. The Actor Runtime authority reconciliation is recorded
+> in the
+> [final report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md).
 
 Replacement is an explicit extension. A selected public entry keeps its normal
 call shape while the macro moves its body to a private Rust fallback:
@@ -118,14 +115,23 @@ call shape while the macro moves its body to a private Rust fallback:
 impl Service {
     #[vela_macros::replaceable(
         path = "host::pricing::Service::quote",
-        authority = "self",
+        authority = "turn",
         index = 0
     )]
-    pub fn quote(&self, value: i64) -> VmResult<i64> {
+    pub fn quote(&self, turn: &mut ActorTurn, value: i64) -> VmResult<i64> {
+        let _ = turn;
         Ok(self.adjacent(value))
     }
 }
 ```
+
+`ActorTurn` is framework-owned authority. It holds the pinned `DispatchRoot`
+and the Actor's Runtime and implements `DispatchAuthority` by lending a scoped
+`&mut SharedRuntime` to `DispatchInvocation`. The named authority parameter is
+not part of the Vela callable ABI. A Handler/Service framework macro normally
+generates that parameter and splits its actor turn internally, so business
+authors and callers do not pass a Runtime, session, HostRef, lease, or dense
+slot.
 
 Vela implements only that callable:
 
@@ -136,32 +142,35 @@ fn patched(service: Service, value: i64) -> i64 {
 }
 ```
 
-The current provisional API constructs a deterministic slot bundle, stages the
-override Runtime, and publishes the candidate for future roots:
+The deployment API constructs a deterministic slot bundle, stages from a
+borrowed Runtime, and publishes the candidate for future roots. A root pins
+immutable generation selection only; the Actor continues to own its Runtime:
 
 ```rust,ignore
 let controller = DispatchController::new(Service::vela_replaceable_slots())?;
 let candidate = controller.stage_current(&override_runtime)?;
 let previous = controller.activate(candidate)?;
 
-let service = Service {
-    dispatch: DispatchRoot::pin(&controller, override_runtime.clone())?,
-    // business fields...
+let mut actor = Actor {
+    runtime: SharedRuntime::from_shared_image(image.clone())?,
+    dispatch: DispatchRoot::pin(&controller),
+    // actor and business state...
 };
-let result = service.quote(40)?;
+let result = actor.handle_message(40)?;
 
 controller.rollback(previous)?;
 ```
 
-In the current mechanism, pinning a `DispatchRoot` with an explicit
-`SharedRuntime` gives separate host roots independent locks over one immutable
-`SharedImage`. Nested replaceable calls re-enter the active session and inherit
-its remaining budgets, artifact, heap, state, HostAccess, capabilities,
-cancellation, and generation. A staged package is a coherent partial delta,
-rollback republishes a prior generation, and a Vela error propagates without
-retrying the displaced Rust body. This is baseline behavior, not the final
-authority model: the accepted architecture requires the Actor turn to lend its
-already-exclusive mutable Runtime directly, with no Actor Runtime mutex.
+`DispatchRoot` contains no mutable Runtime owner. On an override hit, generated
+code asks the current actor turn for a `DispatchInvocation<'turn>` that borrows
+its already-exclusive `&mut SharedRuntime`. The scoped async future retains
+that borrow across suspension. Nested replaceable calls use
+`NativeCallContext` re-entry and therefore inherit the active session's
+remaining budgets, artifact, heap, state, HostAccess, capabilities, effect
+ceiling, tracing, cancellation, and generation without reacquiring authority.
+A staged package remains a coherent partial delta, rollback republishes a prior
+generation, and a Vela error propagates without retrying the displaced Rust
+body.
 
 The explicit `#[replaceable(...)]` spelling is the low-level mechanism a host
 framework macro may emit. `#[methods]` generates `vela_replaceable_slots()`
@@ -176,10 +185,8 @@ global lock, allocation, serialization, or dynamic trait dispatch.
 
 ## Deployment Checklist
 
-The ordinary generated interop checklist below is production-oriented.
-Optional replacement remains provisional until the Actor Runtime authority
-reconciliation passes; do not treat the lock-based API as the stable deployment
-contract.
+The generated interop and optional replacement checklist below is
+production-oriented.
 
 1. Generate bindings from the exact package/source graph used for deployment.
 2. Register export bundles, host types, capabilities, and policy explicitly.
@@ -189,5 +196,7 @@ contract.
    nothing.
 5. Pin one dispatch root per host operation and retain old generations until
    their roots finish.
-6. Roll back by publishing a validated prior generation; never replay an
+6. Borrow the current Actor's Runtime directly for each invocation; do not put
+   it in a dispatch root, override target, ambient lookup, or Runtime mutex.
+7. Roll back by publishing a validated prior generation; never replay an
    in-flight call or rewind completed host effects.

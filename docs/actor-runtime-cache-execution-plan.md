@@ -1,11 +1,12 @@
 # Actor-Owned Runtime And Cache Model Hard-Switch Plan
 
-> Status: queued behind the Rust/Vela Actor Runtime authority reconciliation.
-> State-storage Batch G is accepted; `I-RECON-1..6` remain open.
+> Status: ready. The Rust/Vela Actor Runtime authority reconciliation closed
+> Gate I, and state-storage Batch G remains accepted. No cache/profile
+> ownership work was performed by the reconciliation.
 >
-> Execution order: complete `I-RECON-1..6` in
-> [rust-vela-interop-model-plan.md](rust-vela-interop-model-plan.md), publish its
-> acceptance report, then run Batches A-F in this document.
+> Execution order: begin Batch A as a new checkpoint after the
+> [interop reconciliation report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md),
+> then run Batches A-F in this document.
 >
 > Last updated: 2026-07-17.
 
@@ -218,20 +219,20 @@ movement must not weaken or bypass them.
 
 ### Gate I: Rust/Vela Actor Runtime authority reconciliation
 
-Gate I is reopened. The current production alias
-`SharedDispatchRuntime = Arc<Mutex<SharedRuntime>>` stores mutable Runtime
-authority in `DispatchRoot` and locks it during override entry. Separate roots
-own separate locks, but that mechanism does not satisfy the actor-turn-owned
-`&mut Runtime` threading contract. The correction and evidence requirements
-are owned by `I-RECON-1..6` in the Rust/Vela interop plan, not by this cache
-plan.
+Gate I is closed by the
+[interop reconciliation report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md).
+`DispatchRoot` owns immutable generation selection only, and replacement
+borrows the current Actor turn's `&mut SharedRuntime` through a scoped
+invocation. The former `SharedDispatchRuntime` alias, Runtime-bearing roots,
+and lock-based entry paths are deleted. Nested replacement re-enters the
+active Actor execution session.
 
 This ordering is mandatory because same-session re-entry determines which
 generation, cache view, profile sink, budget, heap, state, and cancellation
 context a nested override must observe. Moving caches first would risk
-optimizing the provisional target-owned Runtime that Gate I removes.
+optimizing the former target-owned Runtime that Gate I removed.
 
-Gate I must prove at least:
+Gate I proves:
 
 - unrelated Actors can concurrently execute the same override without a
   package-global Runtime lock;
@@ -243,9 +244,9 @@ Gate I must prove at least:
 - remaining budgets, leases, cancellation, tracing, artifact, and dispatch
   generation are inherited.
 
-Batch A remains inactive until a new reconciliation acceptance report closes
-Gate I. Cache/profile work must not preserve, optimize, or route around the
-provisional lock-based replacement authority.
+Batch A is now ready as a separate checkpoint. Cache/profile work must not
+resurrect, preserve, optimize, or route around the removed lock-based
+replacement authority.
 
 ## 4. Current Implementation Audit
 
