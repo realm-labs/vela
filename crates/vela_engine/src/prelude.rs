@@ -34,6 +34,7 @@ pub use crate::source::{
     ProviderSourceLocation,
 };
 pub use crate::source::{EngineSourceError, EngineSourceErrorKind};
+pub use crate::standard::{StandardTypeBinding, standard_type_binding};
 pub use crate::type_binding::{TypeBinding, TypeBindingRegistry, ValueCodec};
 pub use crate::{args, host};
 pub use vela_bytecode::{

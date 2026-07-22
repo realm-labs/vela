@@ -54,6 +54,12 @@ sync/async native results, so Vela enum `match` works on Rust-produced values.
 `#[derive(ScriptHost)]` now also emits the base Host `TypeBinding`, allowing the
 same typed registration path without a handwritten host binding adapter;
 generated method-thunk composition remains open.
+The first S3 standard binding family is also live: concrete
+`BTreeMap<K, V>` and `HashMap<K, V>` bindings synthesize stable recursive
+key/value facts, share the Vela `MapLike` surface and owned Map codec, and keep
+distinct Rust ABI identities. Service-macro closure generation and borrowed
+MapView/MapMut representations remain open, so application code does not yet
+receive automatic transitive registration.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry
@@ -218,10 +224,13 @@ substrate, manual external-type entrypoint, typed structural Value codec path,
 and type-owned Value plus Host constructor registration backed by actor-local
 Runtime storage. Structural `Value` derive generation is implemented for named
 structs plus unit/named-field enums, and `ScriptHost` emits the base Host
-binding. Method-thunk composition, standard bindings, compact root-local
-HostRef storage, prepared thunks, allocation-free common-arity preflight, and a
-post-S2 shorter owned-host reclamation policy remain open. Runtime receiver
-enforcement is live; compile-time
+binding. The owned Map portion of standard bindings now covers concrete
+`BTreeMap<K, V>` and `HashMap<K, V>` identities plus their common `MapLike`
+surface. Method-thunk composition, the rest of the standard type matrix and
+all borrowed collection views, compact root-local HostRef storage, prepared
+thunks, allocation-free common-arity preflight, and a post-S2 shorter
+owned-host reclamation policy remain open. Runtime receiver enforcement is
+live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-
 signature facts.
 

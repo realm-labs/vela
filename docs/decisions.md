@@ -2491,6 +2491,24 @@ workloads. These fast paths retain epoch, type, capability, provenance,
 HostAccess, escape, generation, and complete alias checks; prior success never
 authorizes an unchecked later call.
 
+### Standard Collection Surface And Concrete Rust ABI Are Separate Facts
+
+Standard Rust collection bindings preserve two identities at once. The Vela
+surface is the shared `Sequence`, `MapLike`, or `SetLike` protocol and its
+Array/Map/Set representation; the Rust ABI identity includes the concrete
+collection family plus its recursively normalized element, key, and value
+facts. Consequently `BTreeMap<String, i64>` and `HashMap<String, i64>` use the
+same Vela Map operations but have different stable `InteropTypeId` and
+`TypeAbiFingerprint` values.
+
+`StandardTypeBinding` is the generator-facing source for these concrete
+bindings. Service registration bundles will call it while walking their
+transitive signature graph, so business authors do not list collection
+instantiations. This internal specialization does not add user-defined or
+general script-language generics. Owned collection codecs lower directly to
+script values; View/MutView bindings remain HostRef-backed and must not reuse
+the owned codec as implicit mutable copy-in/copy-out.
+
 ### Service Deployment Supports Snapshots And Exact-Base Deltas
 
 A Snapshot describes the complete desired Vela service state and composes

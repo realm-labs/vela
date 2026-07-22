@@ -1,6 +1,8 @@
 use vela_def::{FieldId, TypeId, VariantId};
 use vela_reflect::modules::DeclOrigin;
-use vela_reflect::registry::{FieldDesc, SchemaHash, TypeDesc, TypeKey, TypeKind, VariantDesc};
+use vela_reflect::registry::{
+    FieldDesc, SchemaHash, TraitDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
+};
 
 use super::methods::{
     array_method_descs, bytes_method_descs, char_method_descs, iterator_method_descs,
@@ -179,7 +181,8 @@ fn map_type_desc() -> TypeDesc {
         required_std_type_id("Map"),
         TypeKind::Map,
         "Map collection type.",
-    );
+    )
+    .trait_impl(TraitDesc::new("MapLike"));
     for method in map_method_descs() {
         desc = desc.method(method);
     }
