@@ -79,8 +79,13 @@ Standard non-byte `Vec`, map, and set bindings now advertise shared View and
 exact growable MutView capabilities on that same identity. Those
 representation facts participate in the type ABI and project consistently
 through reflection and compiler registries.
-Service-macro signature traversal, Host/View/MutView closure registration, and
-borrowed collection type hints and HostRef runtime representations remain open.
+Callable contracts can now carry an exact binding-use proof containing the
+concrete `InteropTypeId`, `TypeAbiFingerprint`, and owned/Host/View/MutView
+representation. Engine sealing rejects unregistered, stale, unsupported, or
+boundary-mode-incompatible proofs, so an `ArrayMut` surface cannot conceal a
+fixed/growable or concrete Rust ABI mismatch. Service/export macro emission of
+those proofs, Host/View/MutView closure registration, borrowed collection type
+hints, and HostRef runtime representations remain open.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry

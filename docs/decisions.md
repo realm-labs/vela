@@ -2577,6 +2577,25 @@ must preserve leases, provenance, receiver authority, and registered methods.
 External unannotatable values continue to use explicit
 `register_rust_type::<T>(TypeBinding<T>)` leaves.
 
+### Callable ABI Carries Exact Binding Use Separately From Surface Type
+
+Each bound callable parameter or return may carry an
+`InteropBindingContract`: the registered `InteropTypeId`, its
+`TypeAbiFingerprint`, and the selected owned, shared/exclusive Host, or
+collection View/MutView representation. The surface type hint continues to
+describe what Vela code may do; it does not stand in for concrete Rust ABI.
+Consequently two Rust map families may expose the same `MapView<K, V>` surface
+without becoming ABI-compatible, while owned and borrowed uses of one concrete
+Rust type retain one identity and fingerprint.
+
+Engine sealing resolves every supplied binding contract against the sealed
+type-binding registry and rejects unknown identities, stale fingerprints,
+unsupported fixed/growable capabilities, and representations inconsistent with
+the callable boundary mode. A missing binding remains permitted only for the
+existing unconverted callable surface while generated service/export macros
+are migrated; generated exact signatures must not degrade a failed binding
+lookup to an unbound type hint.
+
 ### Service Deployment Supports Snapshots And Exact-Base Deltas
 
 A Snapshot describes the complete desired Vela service state and composes

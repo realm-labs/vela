@@ -9,9 +9,9 @@ pub mod primitive;
 
 pub use capability::{Capability, CapabilitySet};
 pub use interop_type::{
-    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, InteropTypeId,
-    ReceiverCapabilities, ReceiverCapability, StoragePolicy, TypeAbiFingerprint,
-    TypeBindingRegistryChecksum,
+    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, InteropBindingContract,
+    InteropRepresentation, InteropTypeId, ReceiverCapabilities, ReceiverCapability, StoragePolicy,
+    TypeAbiFingerprint, TypeBindingRegistryChecksum,
 };
 pub use primitive::{NumericTag, PrimitiveTag, ScalarValue};
 pub use vela_def::stable_id;

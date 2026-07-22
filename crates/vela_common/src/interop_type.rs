@@ -112,6 +112,88 @@ pub struct CollectionViewCapabilities {
     mutation: Option<CollectionViewMutation>,
 }
 
+/// The concrete representation selected when one registered Rust type crosses
+/// a callable boundary.
+///
+/// A representation never creates a second type identity. In particular,
+/// owned `Vec<T>`, `&Vec<T>`, and `&mut Vec<T>` retain one `InteropTypeId` and
+/// select `Owned`, `CollectionView`, or `CollectionMut` respectively.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum InteropRepresentation {
+    Owned,
+    SharedHost,
+    ExclusiveHost,
+    CollectionView(CollectionViewKind),
+    CollectionMut {
+        kind: CollectionViewKind,
+        mutation: CollectionViewMutation,
+    },
+}
+
+impl InteropRepresentation {
+    #[must_use]
+    pub const fn abi_name(self) -> &'static str {
+        match self {
+            Self::Owned => "owned",
+            Self::SharedHost => "shared_host",
+            Self::ExclusiveHost => "exclusive_host",
+            Self::CollectionView(CollectionViewKind::Array) => "array_view",
+            Self::CollectionView(CollectionViewKind::Map) => "map_view",
+            Self::CollectionView(CollectionViewKind::Set) => "set_view",
+            Self::CollectionMut {
+                kind: CollectionViewKind::Array,
+                mutation: CollectionViewMutation::Fixed,
+            } => "array_mut_fixed",
+            Self::CollectionMut {
+                kind: CollectionViewKind::Array,
+                mutation: CollectionViewMutation::Growable,
+            } => "array_mut_growable",
+            Self::CollectionMut {
+                kind: CollectionViewKind::Map,
+                mutation: CollectionViewMutation::Fixed,
+            } => "map_mut_fixed",
+            Self::CollectionMut {
+                kind: CollectionViewKind::Map,
+                mutation: CollectionViewMutation::Growable,
+            } => "map_mut_growable",
+            Self::CollectionMut {
+                kind: CollectionViewKind::Set,
+                mutation: CollectionViewMutation::Fixed,
+            } => "set_mut_fixed",
+            Self::CollectionMut {
+                kind: CollectionViewKind::Set,
+                mutation: CollectionViewMutation::Growable,
+            } => "set_mut_growable",
+        }
+    }
+}
+
+/// Exact type-binding proof carried by callable ABI.
+///
+/// The surface type hint answers what Vela code may do. This proof separately
+/// answers which concrete Rust binding and representation the adapter expects.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct InteropBindingContract {
+    pub type_id: InteropTypeId,
+    pub representation: InteropRepresentation,
+    pub abi_fingerprint: TypeAbiFingerprint,
+}
+
+impl InteropBindingContract {
+    #[must_use]
+    pub const fn new(
+        type_id: InteropTypeId,
+        representation: InteropRepresentation,
+        abi_fingerprint: TypeAbiFingerprint,
+    ) -> Self {
+        Self {
+            type_id,
+            representation,
+            abi_fingerprint,
+        }
+    }
+}
+
 impl CollectionViewCapabilities {
     #[must_use]
     pub const fn read_only(kind: CollectionViewKind) -> Self {

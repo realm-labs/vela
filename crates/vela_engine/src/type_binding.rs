@@ -6,9 +6,9 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use vela_common::{
-    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, InteropTypeId,
-    ReceiverCapabilities, ReceiverCapability, StoragePolicy, TypeAbiFingerprint,
-    TypeBindingRegistryChecksum, stable_id,
+    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, InteropBindingContract,
+    InteropRepresentation, InteropTypeId, ReceiverCapabilities, ReceiverCapability, StoragePolicy,
+    TypeAbiFingerprint, TypeBindingRegistryChecksum, stable_id,
 };
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeKind};
 use vela_reflect::type_binding::TypeBindingDesc;
@@ -100,7 +100,7 @@ impl<T: 'static> TypeBinding<T> {
         self.collection_views
     }
 
-    pub(crate) fn abi_fingerprint(&self) -> TypeAbiFingerprint {
+    pub fn abi_fingerprint(&self) -> TypeAbiFingerprint {
         let id = InteropTypeId::from_type_id(self.spec.type_desc().key.id);
         let constructors = self
             .constructors
@@ -118,6 +118,42 @@ impl<T: 'static> TypeBinding<T> {
             &constructors,
             self.spec.type_desc(),
         )
+    }
+
+    /// Describes one supported use of this exact binding in callable ABI.
+    ///
+    /// `None` means the requested representation was not advertised by the
+    /// binding. Generated adapters use this to fail registration rather than
+    /// silently degrading a borrowed collection to an owned value contract.
+    #[must_use]
+    pub fn interop_contract(
+        &self,
+        representation: InteropRepresentation,
+    ) -> Option<InteropBindingContract> {
+        let supported = match representation {
+            InteropRepresentation::Owned => self.capabilities.contains(ReceiverCapability::Owned),
+            InteropRepresentation::SharedHost => {
+                self.collection_views.is_none()
+                    && self.capabilities.contains(ReceiverCapability::Shared)
+            }
+            InteropRepresentation::ExclusiveHost => {
+                self.collection_views.is_none()
+                    && self.capabilities.contains(ReceiverCapability::Exclusive)
+            }
+            InteropRepresentation::CollectionView(kind) => self
+                .collection_views
+                .is_some_and(|views| views.kind() == kind),
+            InteropRepresentation::CollectionMut { kind, mutation } => self
+                .collection_views
+                .is_some_and(|views| views.kind() == kind && views.mutation() == Some(mutation)),
+        };
+        supported.then(|| {
+            InteropBindingContract::new(
+                InteropTypeId::from_type_id(self.spec.type_desc().key.id),
+                representation,
+                self.abi_fingerprint(),
+            )
+        })
     }
 
     #[must_use]
@@ -521,6 +557,14 @@ impl TypeBindingRegistry {
     #[must_use]
     pub fn get(&self, id: InteropTypeId) -> Option<&TypeBindingDesc> {
         self.by_id.get(&id)
+    }
+
+    #[must_use]
+    pub fn matches_contract(&self, contract: InteropBindingContract) -> bool {
+        self.get(contract.type_id).is_some_and(|binding| {
+            binding.abi_fingerprint == contract.abi_fingerprint
+                && binding.supports_representation(contract.representation)
+        })
     }
 
     #[must_use]

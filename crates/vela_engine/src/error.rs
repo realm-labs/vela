@@ -104,6 +104,10 @@ pub enum EngineErrorKind {
         constructor: String,
         reason: &'static str,
     },
+    InvalidCallableTypeBinding {
+        callable: String,
+        location: String,
+    },
     DuplicateFieldId {
         type_name: String,
         id: u128,
@@ -299,6 +303,12 @@ impl fmt::Display for EngineError {
                 write!(
                     formatter,
                     "invalid constructor {constructor} for type binding {type_name}: {reason}"
+                )
+            }
+            EngineErrorKind::InvalidCallableTypeBinding { callable, location } => {
+                write!(
+                    formatter,
+                    "callable {callable} has an unregistered or incompatible type binding at {location}"
                 )
             }
             EngineErrorKind::DuplicateFieldId { type_name, id } => {

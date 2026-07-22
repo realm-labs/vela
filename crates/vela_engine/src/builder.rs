@@ -660,6 +660,7 @@ impl EngineBuilder {
                 context_host: &self.context_host_native_functions,
             },
             &types,
+            &type_bindings,
             self.standard_natives,
         )?;
 

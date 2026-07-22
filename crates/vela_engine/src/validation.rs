@@ -1,13 +1,16 @@
 use std::collections::BTreeSet;
 
+use vela_common::InteropRepresentation;
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::registry::{AttrMap, MethodParamDesc, TypeDesc, TypeKind};
 
 use crate::compiler_registry::EngineFunctionEntries;
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
+use crate::interop::{BoundaryMode, ReturnMode};
 use crate::metadata::type_hint_display;
 use crate::method::{AsyncNativeMethodEntry, NativeMethodDesc, NativeMethodEntry};
 use crate::native::{NativeFunctionDesc, TypeHint};
+use crate::type_binding::TypeBindingRegistry;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct ModuleValidationOptions {
@@ -484,6 +487,7 @@ fn validate_trait_method_params(
 pub(crate) fn validate_native_functions(
     functions: EngineFunctionEntries<'_>,
     types: &[TypeDesc],
+    type_bindings: &TypeBindingRegistry,
     include_standard_natives: bool,
 ) -> EngineResult<()> {
     let mut ids = BTreeSet::new();
@@ -509,9 +513,79 @@ pub(crate) fn validate_native_functions(
         .chain(functions.context_host.iter().map(|entry| &entry.desc))
     {
         validate_native_function_desc(desc, &mut ids, &mut names, &type_hints)?;
+        validate_callable_type_bindings(desc, type_bindings)?;
     }
 
     Ok(())
+}
+
+fn validate_callable_type_bindings(
+    desc: &NativeFunctionDesc,
+    type_bindings: &TypeBindingRegistry,
+) -> EngineResult<()> {
+    let Some(contract) = &desc.callable_contract else {
+        return Ok(());
+    };
+    for parameter in &contract.parameters {
+        if let Some(binding) = parameter.binding
+            && (!type_bindings.matches_contract(binding)
+                || !parameter_mode_matches_representation(parameter.mode, binding.representation))
+        {
+            return Err(EngineError::new(
+                EngineErrorKind::InvalidCallableTypeBinding {
+                    callable: desc.name.clone(),
+                    location: format!("parameter {}", parameter.name),
+                },
+            ));
+        }
+    }
+    if let Some(binding) = contract.returns.binding
+        && (!type_bindings.matches_contract(binding)
+            || !return_mode_matches_representation(contract.returns.mode, binding.representation))
+    {
+        return Err(EngineError::new(
+            EngineErrorKind::InvalidCallableTypeBinding {
+                callable: desc.name.clone(),
+                location: "return".to_owned(),
+            },
+        ));
+    }
+    Ok(())
+}
+
+fn parameter_mode_matches_representation(
+    mode: BoundaryMode,
+    representation: InteropRepresentation,
+) -> bool {
+    match representation {
+        InteropRepresentation::Owned => matches!(
+            mode,
+            BoundaryMode::Value | BoundaryMode::ReadOnlyValueBorrow
+        ),
+        InteropRepresentation::SharedHost | InteropRepresentation::CollectionView(_) => {
+            mode == BoundaryMode::SharedHost
+        }
+        InteropRepresentation::ExclusiveHost | InteropRepresentation::CollectionMut { .. } => {
+            mode == BoundaryMode::ExclusiveHost
+        }
+    }
+}
+
+fn return_mode_matches_representation(
+    mode: ReturnMode,
+    representation: InteropRepresentation,
+) -> bool {
+    match representation {
+        InteropRepresentation::Owned => {
+            matches!(mode, ReturnMode::OwnedValue | ReturnMode::StructuredValue)
+        }
+        InteropRepresentation::SharedHost
+        | InteropRepresentation::ExclusiveHost
+        | InteropRepresentation::CollectionView(_)
+        | InteropRepresentation::CollectionMut { .. } => {
+            matches!(mode, ReturnMode::ScopedHost { .. })
+        }
+    }
 }
 
 pub(crate) fn validate_native_method_type_hints(

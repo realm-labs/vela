@@ -443,10 +443,18 @@ mod tests {
     use super::*;
     use vela_analysis::registry::RegistryFacts;
     use vela_analysis::type_fact::TypeFact;
-    use vela_common::{ScalarValue, SourceId};
+    use vela_common::{
+        CallableAsyncness, InteropBindingContract, InteropRepresentation, ScalarValue, SourceId,
+    };
     use vela_vm::owned_value::OwnedValue;
 
     use crate::engine::Engine;
+    use crate::error::EngineErrorKind;
+    use crate::interop::{
+        BoundaryMode, CallableAccess, CallableContract, CallableIdentity, CallableKind,
+        CallableLanguage, CallableOrigin, CallableParameter, CallableReturn, ErrorMode, ReturnMode,
+    };
+    use crate::native::{EffectSet, TypeHint};
     use crate::runtime::{CallArgs, CallOptions, Runtime};
 
     #[test]
@@ -731,6 +739,99 @@ fn reverse_and_increment(value: (i64, String)) -> (String, i64) {
             ))
         );
         assert_eq!(standard_type_binding::<Vec<u8>>().collection_views(), None);
+    }
+
+    #[test]
+    fn collection_binding_contracts_preserve_identity_and_exact_representation() {
+        let binding = standard_type_binding::<Vec<i64>>();
+        let owned = binding
+            .interop_contract(InteropRepresentation::Owned)
+            .expect("owned Vec representation");
+        let shared = binding
+            .interop_contract(InteropRepresentation::CollectionView(
+                CollectionViewKind::Array,
+            ))
+            .expect("shared Vec view");
+        let mutable = binding
+            .interop_contract(InteropRepresentation::CollectionMut {
+                kind: CollectionViewKind::Array,
+                mutation: CollectionViewMutation::Growable,
+            })
+            .expect("growable Vec view");
+
+        assert_eq!(owned.type_id, shared.type_id);
+        assert_eq!(shared.type_id, mutable.type_id);
+        assert_eq!(owned.abi_fingerprint, mutable.abi_fingerprint);
+        assert!(
+            binding
+                .interop_contract(InteropRepresentation::CollectionMut {
+                    kind: CollectionViewKind::Array,
+                    mutation: CollectionViewMutation::Fixed,
+                })
+                .is_none()
+        );
+        assert!(
+            standard_type_binding::<Vec<u8>>()
+                .interop_contract(InteropRepresentation::CollectionView(
+                    CollectionViewKind::Array,
+                ))
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn engine_seal_rejects_a_forged_callable_binding_representation() {
+        let binding = standard_type_binding::<Vec<i64>>();
+        let owned = binding
+            .interop_contract(InteropRepresentation::Owned)
+            .expect("owned Vec contract");
+        let forged = InteropBindingContract::new(
+            owned.type_id,
+            InteropRepresentation::CollectionMut {
+                kind: CollectionViewKind::Array,
+                mutation: CollectionViewMutation::Fixed,
+            },
+            owned.abi_fingerprint,
+        );
+        let contract = CallableContract {
+            identity: CallableIdentity::new(CallableKind::RustFunction, 901),
+            public_path: "test::fixed_vec".to_owned(),
+            parameters: vec![
+                CallableParameter::new(
+                    1,
+                    "values",
+                    TypeHint::array_of(TypeHint::i64()),
+                    BoundaryMode::ExclusiveHost,
+                )
+                .with_binding(forged),
+            ],
+            returns: CallableReturn::new(
+                TypeHint::unit(),
+                ReturnMode::OwnedValue,
+                ErrorMode::Value,
+            ),
+            asyncness: CallableAsyncness::Sync,
+            effects: EffectSet::host_write(),
+            access: CallableAccess::default(),
+            docs: None,
+            origin: CallableOrigin {
+                language: CallableLanguage::Rust,
+                source_span: None,
+            },
+        };
+
+        let result = Engine::builder()
+            .register_rust_type::<Vec<i64>>(binding)
+            .register_native_fn(contract.native_function_desc(), |_| Ok(OwnedValue::Unit))
+            .build();
+        let error = match result {
+            Ok(_) => panic!("fixed view must not match a growable Vec binding"),
+            Err(error) => error,
+        };
+        assert!(matches!(
+            error.kind,
+            EngineErrorKind::InvalidCallableTypeBinding { .. }
+        ));
     }
 
     #[test]

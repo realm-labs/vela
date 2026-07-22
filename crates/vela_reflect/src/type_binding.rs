@@ -1,8 +1,8 @@
 //! Immutable Rust/Vela type-binding facts exposed to compilation and tooling.
 
 use vela_common::{
-    CollectionViewCapabilities, InteropTypeId, ReceiverCapabilities, StoragePolicy,
-    TypeAbiFingerprint, TypeBindingRegistryChecksum,
+    CollectionViewCapabilities, InteropRepresentation, InteropTypeId, ReceiverCapabilities,
+    ReceiverCapability, StoragePolicy, TypeAbiFingerprint, TypeBindingRegistryChecksum,
 };
 use vela_def::FunctionId;
 
@@ -38,6 +38,27 @@ impl TypeBindingDesc {
             collection_views,
             constructor_ids,
             abi_fingerprint,
+        }
+    }
+
+    #[must_use]
+    pub fn supports_representation(&self, representation: InteropRepresentation) -> bool {
+        match representation {
+            InteropRepresentation::Owned => self.capabilities.contains(ReceiverCapability::Owned),
+            InteropRepresentation::SharedHost => {
+                self.collection_views.is_none()
+                    && self.capabilities.contains(ReceiverCapability::Shared)
+            }
+            InteropRepresentation::ExclusiveHost => {
+                self.collection_views.is_none()
+                    && self.capabilities.contains(ReceiverCapability::Exclusive)
+            }
+            InteropRepresentation::CollectionView(kind) => self
+                .collection_views
+                .is_some_and(|views| views.kind() == kind),
+            InteropRepresentation::CollectionMut { kind, mutation } => self
+                .collection_views
+                .is_some_and(|views| views.kind() == kind && views.mutation() == Some(mutation)),
         }
     }
 }

@@ -9,7 +9,9 @@ use std::fmt;
 use std::hash::Hash;
 use std::sync::Arc;
 
-use vela_common::{CallableAsyncness, CapabilitySet, HostTypeId, Span, stable_id};
+use vela_common::{
+    CallableAsyncness, CapabilitySet, HostTypeId, InteropBindingContract, Span, stable_id,
+};
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 
 use crate::method::NativeMethodDesc;
@@ -402,6 +404,7 @@ pub struct CallableParameter {
     pub name: String,
     pub ty: TypeHint,
     pub mode: BoundaryMode,
+    pub binding: Option<InteropBindingContract>,
 }
 
 impl CallableParameter {
@@ -412,7 +415,14 @@ impl CallableParameter {
             name: name.into(),
             ty,
             mode,
+            binding: None,
         }
+    }
+
+    #[must_use]
+    pub const fn with_binding(mut self, binding: InteropBindingContract) -> Self {
+        self.binding = Some(binding);
+        self
     }
 }
 
@@ -421,6 +431,7 @@ pub struct CallableReturn {
     pub ty: TypeHint,
     pub mode: ReturnMode,
     pub error_mode: ErrorMode,
+    pub binding: Option<InteropBindingContract>,
 }
 
 impl CallableReturn {
@@ -430,7 +441,14 @@ impl CallableReturn {
             ty,
             mode,
             error_mode,
+            binding: None,
         }
+    }
+
+    #[must_use]
+    pub const fn with_binding(mut self, binding: InteropBindingContract) -> Self {
+        self.binding = Some(binding);
+        self
     }
 }
 
@@ -697,6 +715,7 @@ impl CallableContract {
                 parameter.mode.abi_name()
             ));
             encode_hint(&parameter.ty, &mut value);
+            encode_binding(parameter.binding, &mut value);
         }
         value.push_str("|r:");
         encode_return_mode(self.returns.mode, &mut value);
@@ -707,8 +726,21 @@ impl CallableContract {
         });
         value.push(':');
         encode_hint(&self.returns.ty, &mut value);
+        encode_binding(self.returns.binding, &mut value);
         value
     }
+}
+
+fn encode_binding(binding: Option<InteropBindingContract>, output: &mut String) {
+    let Some(binding) = binding else {
+        return;
+    };
+    output.push_str(":binding:");
+    output.push_str(&format!("{:032x}", binding.type_id.get()));
+    output.push(':');
+    output.push_str(binding.representation.abi_name());
+    output.push(':');
+    output.push_str(&format!("{:016x}", binding.abi_fingerprint.get()));
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -839,7 +871,11 @@ fn encode_type_key(name: &str, key: &vela_reflect::registry::TypeKey, output: &m
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{CallableAsyncness, Capability, HostObjectId, HostTypeId};
+    use vela_common::{
+        CallableAsyncness, Capability, CollectionViewKind, CollectionViewMutation, HostObjectId,
+        HostTypeId, InteropBindingContract, InteropRepresentation, InteropTypeId,
+        TypeAbiFingerprint,
+    };
     use vela_host::lease::HostLeaseKind;
     use vela_host::path::HostRef;
     use vela_vm::error::VmErrorKind;
@@ -887,6 +923,39 @@ mod tests {
 
         assert_eq!(first.abi_fingerprint(), second.abi_fingerprint());
         assert!(first.abi_diff(&second).is_empty());
+    }
+
+    #[test]
+    fn callable_abi_includes_exact_type_binding_and_representation() {
+        let mut btree = contract(EffectSet::host_read());
+        btree.parameters[0] =
+            btree.parameters[0]
+                .clone()
+                .with_binding(InteropBindingContract::new(
+                    InteropTypeId::new(11),
+                    InteropRepresentation::CollectionView(CollectionViewKind::Map),
+                    TypeAbiFingerprint::new(101),
+                ));
+        let mut hashed = btree.clone();
+        hashed.parameters[0].binding = Some(InteropBindingContract::new(
+            InteropTypeId::new(12),
+            InteropRepresentation::CollectionView(CollectionViewKind::Map),
+            TypeAbiFingerprint::new(102),
+        ));
+        let mut mutable = btree.clone();
+        mutable.parameters[0].binding = Some(InteropBindingContract::new(
+            InteropTypeId::new(11),
+            InteropRepresentation::CollectionMut {
+                kind: CollectionViewKind::Map,
+                mutation: CollectionViewMutation::Growable,
+            },
+            TypeAbiFingerprint::new(101),
+        ));
+
+        assert_ne!(btree.abi_fingerprint(), hashed.abi_fingerprint());
+        assert_ne!(btree.abi_fingerprint(), mutable.abi_fingerprint());
+        assert_eq!(btree.abi_diff(&hashed)[0].field, "parameters");
+        assert_eq!(btree.abi_diff(&mutable)[0].field, "parameters");
     }
 
     #[test]
