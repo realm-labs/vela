@@ -2566,6 +2566,13 @@ teaching host adapters Vela standard-library IDs. This prevents implicit
 copy-in/copy-out and lets standard and user-defined Rust collections share one
 adapter model.
 
+Read-only Map `has`, `get`, and `get_or`, plus Set `has`, reuse resolved keyed
+HostAccess reads rather than introducing collection-family adapter calls. Map
+absence is represented by `MissingCollectionEntry`, distinct from a general
+`MissingPath`; only entry absence is converted to optional/fallback semantics.
+This prevents an unsupported value projection or nested adapter error from
+being silently reported as a missing key.
+
 Concrete Rust unit, bool, char, exact-width numeric, and String bindings retain
 distinct stable Rust ABI identities while using their existing native Vela
 value kinds and codecs. Concrete Rust `Option<T>` and `Result<T, E>` bindings

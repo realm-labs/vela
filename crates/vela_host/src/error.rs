@@ -59,6 +59,9 @@ pub enum HostErrorKind {
     MissingPath {
         path: HostPath,
     },
+    MissingCollectionEntry {
+        path: HostPath,
+    },
     MissingExternState {
         name: String,
     },

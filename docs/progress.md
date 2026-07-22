@@ -107,9 +107,13 @@ dynamic key boundary preserves bool, char, exact-width signed/unsigned
 integers, String, Bytes, and HostRef identity, so a `BTreeMap<i32, V>` is
 indexed by an actual `i32` rather than a serialized path string. Standard key
 implementations and the public `ScriptHostKey` conversion contract share this
-model. Complex borrowed element views, element/key methods, iteration, method
-and bulk mutation, fixed slices/arrays, user-defined collection adapters, and
-prepared index plans remain open.
+model. Read-only `MapView.has/get/get_or` and `SetView.has` now reuse the same
+resolved keyed HostAccess path without materializing the collection. A distinct
+missing-entry error ensures only absent keys become `false`, `Option::None`, or
+the caller fallback; other host errors propagate. Complex borrowed element
+views, remaining element/key methods, iteration, method and bulk mutation,
+fixed slices/arrays, user-defined collection adapters, and prepared index plans
+remain open.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry

@@ -409,6 +409,7 @@ pub struct HostInlineCacheEntry {
 pub enum HostInlineCacheTarget {
     TargetPlan(HostTargetPlanId),
     RootObject,
+    CollectionKey,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

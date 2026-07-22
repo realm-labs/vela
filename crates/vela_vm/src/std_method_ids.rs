@@ -283,6 +283,48 @@ pub(crate) fn host_collection_query(method_id: MethodId) -> Option<HostCollectio
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum HostCollectionLookup {
+    MapHas,
+    MapGet,
+    MapGetOr,
+    SetHas,
+}
+
+impl HostCollectionLookup {
+    #[must_use]
+    pub(crate) const fn name(self) -> &'static str {
+        match self {
+            Self::MapHas | Self::SetHas => "has",
+            Self::MapGet => "get",
+            Self::MapGetOr => "get_or",
+        }
+    }
+
+    #[must_use]
+    pub(crate) const fn arity(self) -> usize {
+        match self {
+            Self::MapHas | Self::MapGet | Self::SetHas => 1,
+            Self::MapGetOr => 2,
+        }
+    }
+}
+
+pub(crate) fn host_collection_lookup(method_id: MethodId) -> Option<HostCollectionLookup> {
+    let ids = std_method_ids();
+    if method_id == ids.map_has {
+        Some(HostCollectionLookup::MapHas)
+    } else if method_id == ids.map_get {
+        Some(HostCollectionLookup::MapGet)
+    } else if method_id == ids.map_get_or {
+        Some(HostCollectionLookup::MapGetOr)
+    } else if method_id == ids.set_has {
+        Some(HostCollectionLookup::SetHas)
+    } else {
+        None
+    }
+}
+
 fn standard_method_id(owner: &str, name: &str) -> MethodId {
     let Some(id) = vela_stdlib::std_method_id(owner, name) else {
         panic!("missing standard method identity for {owner}::{name}");

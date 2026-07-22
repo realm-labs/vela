@@ -1126,10 +1126,13 @@ materialized. Array positional indexing and typed Map indexing now read and
 write through HostAccess for direct and retained borrowed views; shared write
 attempts fail closed. `HostCollectionKey` preserves bool, char, exact-width
 integer, String, Bytes, and HostRef key identity, and `ScriptHostKey` performs
-the Rust-side exact conversion without string serialization. Borrowed
-complex-element views, element/key methods, iteration, method and bulk mutation
-protocols, slices/fixed arrays, richer user-defined collection adapters, full
-service-macro traversal, and prepared operations are still open.
+the Rust-side exact conversion without string serialization. Read-only
+`MapView.has/get/get_or` and `SetView.has` reuse the resolved keyed HostAccess
+path; `MissingCollectionEntry` alone becomes missing/fallback behavior, while
+other host errors propagate. Borrowed complex-element views, remaining
+element/key methods, iteration, method and bulk mutation protocols,
+slices/fixed arrays, richer user-defined collection adapters, full service
+macro traversal, and prepared operations are still open.
 
 ### S4 — Service contract and Rust-only generation
 

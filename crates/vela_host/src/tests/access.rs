@@ -1,5 +1,63 @@
 use super::*;
 
+struct FailingMapValue;
+
+impl ScriptHostFieldAccess for FailingMapValue {
+    fn script_host_type_id(&self) -> HostTypeId {
+        HostTypeId::new(0)
+    }
+
+    fn read_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        _offset: usize,
+    ) -> Result<HostValue, HostError> {
+        Err(HostError {
+            kind: HostErrorKind::MissingPath {
+                path: target.to_diagnostic_path().to_host_path(),
+            },
+            source_span: None,
+        })
+    }
+
+    fn write_host_target_from(
+        &mut self,
+        target: HostTargetInstance<'_>,
+        _offset: usize,
+        _value: HostValue,
+    ) -> Result<(), HostError> {
+        Err(HostError {
+            kind: HostErrorKind::MissingPath {
+                path: target.to_diagnostic_path().to_host_path(),
+            },
+            source_span: None,
+        })
+    }
+}
+
+#[test]
+fn map_entry_absence_is_distinct_from_value_projection_failure() {
+    let root = HostRef::new(HostTypeId::new(0), HostObjectId::new(1), 0);
+    let plan = HostTargetPlan::new(root.type_id).dyn_key(0);
+    let missing_key = [HostPathArg::Key(HostCollectionKeyRef::String("missing"))];
+    let present_key = [HostPathArg::Key(HostCollectionKeyRef::String("present"))];
+    let map = BTreeMap::from([("present".to_owned(), FailingMapValue)]);
+    let access = ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0));
+
+    let missing = map
+        .read_resolved_host(access, HostTargetInstance::new(root, &plan, &missing_key))
+        .expect_err("missing map key should use the collection-entry error");
+    assert!(matches!(
+        missing.kind,
+        HostErrorKind::MissingCollectionEntry { .. }
+    ));
+
+    let projection = map
+        .read_resolved_host(access, HostTargetInstance::new(root, &plan, &present_key))
+        .expect_err("present map value projection failure must propagate");
+    assert!(matches!(projection.kind, HostErrorKind::MissingPath { .. }));
+}
+
 #[test]
 fn read_target_reads_current_adapter_state() {
     let mut adapter = MockStateAdapter::new();

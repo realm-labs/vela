@@ -307,6 +307,12 @@ path strings. Standard Rust map keys implement `ScriptHostKey` against that
 exact representation; a user key type may implement the same conversion
 contract. Arrays interpret an exact `i64` key as a checked position. Diagnostic
 `HostPath` labels remain strings, but they are not the operational key format.
+Read-only `MapView.has/get/get_or` and `SetView.has` derive their semantics from
+the same resolved keyed HostAccess read. A missing map entry has the distinct
+`MissingCollectionEntry` error kind; only this error becomes `false`,
+`Option::None`, or the supplied fallback. Permission, stale-generation, value
+projection, and adapter errors continue to propagate. No Rust adapter receives
+or switches on Vela standard-library method IDs.
 Prepared plans replace the initial per-operation root plan as S3 advances.
 
 Low-level Rust native methods may use typed handles such as `HostRef` and

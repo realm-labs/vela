@@ -4,6 +4,7 @@ use vela_bytecode::{
 };
 use vela_common::{HostMethodId, Span, StateSlot};
 use vela_host::adapter::ExternStateBinding;
+use vela_host::error::HostErrorKind;
 use vela_host::path::HostPath;
 use vela_host::protocol::{HostCollectionKey, HostCollectionKeyRef, HostCollectionQuery};
 use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccess};
@@ -632,6 +633,91 @@ pub(crate) fn execute_host_root_collection_query(
         runtime.source_span,
     )?;
     runtime_value_from_host(value, runtime.heap, runtime.budget)
+}
+
+pub(crate) fn execute_host_root_collection_lookup(
+    mut runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    lookup: crate::std_method_ids::HostCollectionLookup,
+    args: &[Value],
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<Value> {
+    if args.len() != lookup.arity() {
+        return Err(VmError::new(VmErrorKind::ArityMismatch {
+            name: lookup.name().to_owned(),
+            expected: lookup.arity(),
+            actual: args.len(),
+        }));
+    }
+    let root = expect_host_ref(&runtime.frame.read(receiver)?, "host collection lookup")?;
+    let key =
+        runtime_collection_index(&args[0], runtime.heap.as_deref(), "host collection lookup")?;
+    let (target, arg) = key.target(root.type_id);
+    let target_args = [arg];
+    let instance = HostTargetInstance::new(root, &target, &target_args);
+    let host = runtime
+        .host
+        .as_deref_mut()
+        .ok_or_else(missing_host_context)?;
+    let resolved = if let Some(cache_site) = cache_site {
+        resolve_cached_access(
+            host.adapter,
+            runtime.inline_caches,
+            cache_site,
+            HostInlineCacheTarget::CollectionKey,
+            instance,
+            HostAccessOp::Read,
+            runtime.source_span,
+        )?
+    } else {
+        host.adapter
+            .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &target))
+            .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?
+    };
+    let payload =
+        match host
+            .access
+            .read_resolved(host.adapter, resolved, instance, runtime.source_span)
+        {
+            Ok(value) => Some(value),
+            Err(error) if matches!(&error.kind, HostErrorKind::MissingCollectionEntry { .. }) => {
+                None
+            }
+            Err(error) => return Err(error.into()),
+        };
+
+    use crate::std_method_ids::HostCollectionLookup;
+    match lookup {
+        HostCollectionLookup::MapHas => Ok(Value::Bool(payload.is_some())),
+        HostCollectionLookup::SetHas => match payload {
+            Some(HostValue::Bool(value)) => Ok(Value::Bool(value)),
+            None => Ok(Value::Bool(false)),
+            Some(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "host set has",
+            })),
+        },
+        HostCollectionLookup::MapGet => {
+            let payload = payload
+                .map(|payload| {
+                    runtime_value_from_host(
+                        payload,
+                        runtime.heap.as_deref_mut(),
+                        runtime.budget.as_deref_mut(),
+                    )
+                })
+                .transpose()?;
+            let heap = runtime.heap.as_deref_mut().ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "host map get",
+                })
+            })?;
+            crate::option_result::option_value(payload, heap, runtime.budget.as_deref_mut())
+        }
+        HostCollectionLookup::MapGetOr => match payload {
+            Some(payload) => runtime_value_from_host(payload, runtime.heap, runtime.budget),
+            None => Ok(args[1]),
+        },
+    }
 }
 
 pub(crate) fn execute_host_collection_index_read(

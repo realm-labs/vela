@@ -541,7 +541,7 @@ where
     ) -> HostResult<HostValue> {
         let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get(&key)
-            .ok_or_else(|| missing_target(target))?
+            .ok_or_else(|| missing_collection_entry(target))?
             .read_host_target_from(target, offset + 1)
     }
 
@@ -556,7 +556,7 @@ where
         }
         let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get(&key)
-            .ok_or_else(|| missing_target(target))?
+            .ok_or_else(|| missing_collection_entry(target))?
             .query_collection_host_target_from(target, offset + 1, query)
     }
 
@@ -568,7 +568,7 @@ where
     ) -> HostResult<()> {
         let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get_mut(&key)
-            .ok_or_else(|| missing_target(target))?
+            .ok_or_else(|| missing_collection_entry(target))?
             .write_host_target_from(target, offset + 1, value)
     }
 
@@ -581,7 +581,7 @@ where
     ) -> HostResult<HostValue> {
         let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get_mut(&key)
-            .ok_or_else(|| missing_target(target))?
+            .ok_or_else(|| missing_collection_entry(target))?
             .call_host_target_from(target, offset + 1, method, args)
     }
 }
@@ -604,7 +604,7 @@ where
     ) -> HostResult<HostValue> {
         let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get(&key)
-            .ok_or_else(|| missing_target(target))?
+            .ok_or_else(|| missing_collection_entry(target))?
             .read_host_target_from(target, offset + 1)
     }
 
@@ -619,7 +619,7 @@ where
         }
         let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get(&key)
-            .ok_or_else(|| missing_target(target))?
+            .ok_or_else(|| missing_collection_entry(target))?
             .query_collection_host_target_from(target, offset + 1, query)
     }
 
@@ -631,7 +631,7 @@ where
     ) -> HostResult<()> {
         let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get_mut(&key)
-            .ok_or_else(|| missing_target(target))?
+            .ok_or_else(|| missing_collection_entry(target))?
             .write_host_target_from(target, offset + 1, value)
     }
 
@@ -644,7 +644,7 @@ where
     ) -> HostResult<HostValue> {
         let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get_mut(&key)
-            .ok_or_else(|| missing_target(target))?
+            .ok_or_else(|| missing_collection_entry(target))?
             .call_host_target_from(target, offset + 1, method, args)
     }
 }
@@ -887,6 +887,15 @@ fn collection_query_result(len: usize, query: HostCollectionQuery) -> HostResult
 fn missing_target(target: HostTargetInstance<'_>) -> HostError {
     HostError {
         kind: HostErrorKind::MissingPath {
+            path: target.to_diagnostic_path().to_host_path(),
+        },
+        source_span: None,
+    }
+}
+
+fn missing_collection_entry(target: HostTargetInstance<'_>) -> HostError {
+    HostError {
+        kind: HostErrorKind::MissingCollectionEntry {
             path: target.to_diagnostic_path().to_host_path(),
         },
         source_span: None,

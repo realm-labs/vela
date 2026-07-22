@@ -1,6 +1,6 @@
 #![allow(clippy::ptr_arg)] // The boundary contract intentionally distinguishes &Vec from slices.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{CollectionViewKind, CollectionViewMutation, InteropRepresentation};
 use vela_engine::engine::Engine;
@@ -27,6 +27,11 @@ pub fn add(totals: &mut BTreeMap<String, i64>, amount: i64) -> i64 {
 #[export(path = "collections::lookup_i32")]
 pub fn lookup_i32(scores: &BTreeMap<i32, i64>, key: i32) -> i64 {
     scores[&key]
+}
+
+#[export(path = "collections::contains_i32")]
+pub fn contains_i32(values: &BTreeSet<i32>, value: i32) -> bool {
+    values.contains(&value)
 }
 
 #[export(path = "collections::merge_async")]
@@ -339,6 +344,30 @@ fn borrowed_map_indexes_preserve_exact_integer_key_types() {
 }
 
 #[test]
+fn borrowed_collection_lookup_methods_use_host_paths_without_materializing() {
+    let mut runtime = runtime(
+        "fn map_lookup(scores: MapView<i32, i64>) { return scores.has(7i32) && !scores.has(9i32) && scores.get(7i32).unwrap_or(0) == 11 && scores.get(9i32).unwrap_or(4) == 4 && scores.get_or(9i32, 6) == 6; } fn set_lookup(values: SetView<i32>) { return values.has(7i32) && !values.has(9i32); }",
+    );
+
+    let scores = BTreeMap::from([(7_i32, 11_i64)]);
+    let mut args = CallArgs::new();
+    args.push_collection_ref("scores", &scores);
+    let result = runtime
+        .call("map_lookup", args, CallOptions::unbounded())
+        .expect("borrowed map lookup methods should execute through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    drop(result);
+
+    let values = BTreeSet::from([7_i32]);
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call("set_lookup", args, CallOptions::unbounded())
+        .expect("borrowed set has should execute through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+}
+
+#[test]
 fn generated_async_adapters_hold_collection_leases_to_completion() {
     let mut runtime = runtime(
         "async fn free(values: ArrayView<i64>, totals: MapMut<String, i64>) { return collections::merge_async(values, totals).await; } async fn method(service: CollectionService, totals: MapMut<String, i64>) { return service.add_async(totals, 3).await; }",
@@ -394,6 +423,7 @@ fn runtime(source: &str) -> Runtime {
         .register_exports(vela_export_bundle_merge())
         .register_exports(vela_export_bundle_add())
         .register_exports(vela_export_bundle_lookup_i32())
+        .register_exports(vela_export_bundle_contains_i32())
         .register_exports(vela_export_bundle_merge_async())
         .register_exports(CollectionService::vela_inherent_exports())
         .register_exports(CollectionOwner::vela_inherent_exports())
