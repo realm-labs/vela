@@ -68,7 +68,7 @@ impl EngineBuilder {
 
     /// Registers one Rust type through the unified Rust/Vela binding model.
     #[must_use]
-    pub fn register_rust_type<T: 'static>(mut self, binding: TypeBinding) -> Self {
+    pub fn register_rust_type<T: 'static>(mut self, binding: TypeBinding<T>) -> Self {
         let (mut registration, type_desc, method_metadata, native_methods) = binding.into_parts();
         registration.bind_rust_type::<T>();
         self.type_bindings.push(registration);

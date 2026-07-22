@@ -2263,6 +2263,18 @@ systems. Executable adapter thunks remain Engine-owned, so dependency-light
 compiler and tooling crates never depend on Runtime closures or Rust
 `std::any::TypeId`.
 
+`TypeBinding<T>` carries the Rust type only at the host authoring boundary;
+`EngineBuilder::register_rust_type::<T>` infers and erases it while sealing the
+registry. A Value binding owns one stateless typed `ValueCodec<T>` made from
+function pointers. `ValueCodec::structural()` reuses the generated
+`IntoScriptArg`/`FromScriptArg` field and element lowering, while
+`value_with_codec` lets hosts bind an external type they cannot annotate. The
+erased registry stores the codec under Engine-local Rust `TypeId` and restores
+the exact typed function pointers on lookup, so encoding does not box the Rust
+value. Codec implementation code is executable behavior rather than structural
+ABI and therefore does not enter `TypeAbiFingerprint`; its declared record or
+enum shape already does.
+
 ### Repository Artifacts Use Domain-Neutral Host Names
 
 Vela is a reusable language library rather than an extension of one embedding

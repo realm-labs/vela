@@ -31,7 +31,10 @@ throughput, allocation, and checksum baselines are recorded. S1 is accepted;
 S2 is the active implementation checkpoint. Its first foundation is landed:
 manual `TypeBinding` registration now seals stable interop identity, explicit
 Value/Host storage, receiver capabilities, ABI fingerprints, and one registry
-checksum into Engine, reflection, compiler-analysis, and LSP-facing facts.
+checksum into Engine, reflection, compiler-analysis, and LSP-facing facts. A
+typed `ValueCodec` can now be registered manually for an unannotatable external
+Rust type and round-trip that value through real Vela execution without serde
+or JSON.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry
@@ -192,10 +195,10 @@ S1 is accepted. The deleted model has no aliases, annotations, dispatch APIs,
 examples, benchmark rows, or schema metadata. Neutral ABI, lease, re-entry,
 borrowed-return, generation-pinning, and no-retry behavior remains under its
 ordinary module ownership. S2 now has the sealed binding identity/storage/ABI
-substrate and manual external-type entrypoint. Constructors, value codecs,
-derive generation, per-method receiver enforcement, standard bindings,
-compact root-local HostRef storage, prepared thunks, and allocation-free
-common-arity preflight remain open.
+substrate, manual external-type entrypoint, and typed structural Value codec
+path. Constructors, derive-generated codecs, per-method receiver enforcement,
+standard bindings, compact root-local HostRef storage, prepared thunks, and
+allocation-free common-arity preflight remain open.
 
 ### State Storage Acceptance
 

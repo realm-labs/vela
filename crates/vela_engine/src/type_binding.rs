@@ -1,7 +1,9 @@
 //! Unified Rust type registration and its sealed Engine snapshot.
 
-use std::any::TypeId as RustTypeId;
+use std::any::{Any, TypeId as RustTypeId};
 use std::collections::{BTreeMap, HashMap};
+use std::marker::PhantomData;
+use std::sync::Arc;
 
 use vela_common::{
     InteropTypeId, ReceiverCapabilities, ReceiverCapability, StoragePolicy, TypeAbiFingerprint,
@@ -14,21 +16,34 @@ use crate::error::{EngineError, EngineErrorKind, EngineResult};
 use crate::host_type::HostTypeSpec;
 use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::typed::TypedNativeMethodFunction;
+use crate::{args::FromScriptArg, args::IntoScriptArg};
+use vela_vm::error::VmResult;
+use vela_vm::owned_value::OwnedValue;
 
 #[derive(Clone)]
-pub struct TypeBinding {
+pub struct TypeBinding<T: 'static> {
     spec: HostTypeSpec,
     storage: StoragePolicy,
     capabilities: ReceiverCapabilities,
+    value_codec: Option<ValueCodec<T>>,
 }
 
-impl TypeBinding {
+impl<T: 'static> TypeBinding<T> {
     #[must_use]
-    pub fn value(type_desc: TypeDesc) -> Self {
+    pub fn value(type_desc: TypeDesc) -> Self
+    where
+        T: IntoScriptArg + FromScriptArg,
+    {
+        Self::value_with_codec(type_desc, ValueCodec::structural())
+    }
+
+    #[must_use]
+    pub fn value_with_codec(type_desc: TypeDesc, codec: ValueCodec<T>) -> Self {
         Self {
             spec: HostTypeSpec::new(type_desc),
             storage: StoragePolicy::Value,
             capabilities: ReceiverCapabilities::OWNED_VALUE,
+            value_codec: Some(codec),
         }
     }
 
@@ -38,6 +53,7 @@ impl TypeBinding {
             spec: HostTypeSpec::new(type_desc),
             storage: StoragePolicy::Host,
             capabilities: ReceiverCapabilities::HOST_OBJECT,
+            value_codec: None,
         }
     }
 
@@ -112,8 +128,66 @@ impl TypeBinding {
             storage,
             capabilities,
             rust_type_id: None,
+            value_codec: self.value_codec.map(ErasedValueCodec::new),
         };
         (registration, type_desc, method_metadata, native_methods)
+    }
+}
+
+pub struct ValueCodec<T> {
+    encode: fn(T) -> OwnedValue,
+    decode: fn(&OwnedValue) -> VmResult<T>,
+    marker: PhantomData<fn(T) -> T>,
+}
+
+impl<T> ValueCodec<T> {
+    #[must_use]
+    pub const fn new(encode: fn(T) -> OwnedValue, decode: fn(&OwnedValue) -> VmResult<T>) -> Self {
+        Self {
+            encode,
+            decode,
+            marker: PhantomData,
+        }
+    }
+
+    #[must_use]
+    pub fn encode(self, value: T) -> OwnedValue {
+        (self.encode)(value)
+    }
+
+    pub fn decode(self, value: &OwnedValue) -> VmResult<T> {
+        (self.decode)(value)
+    }
+}
+
+impl<T> ValueCodec<T>
+where
+    T: IntoScriptArg + FromScriptArg,
+{
+    #[must_use]
+    pub const fn structural() -> Self {
+        Self::new(T::into_script_arg, T::from_script_arg)
+    }
+}
+
+impl<T> Clone for ValueCodec<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> Copy for ValueCodec<T> {}
+
+#[derive(Clone)]
+struct ErasedValueCodec(Arc<dyn Any + Send + Sync>);
+
+impl ErasedValueCodec {
+    fn new<T: 'static>(codec: ValueCodec<T>) -> Self {
+        Self(Arc::new(codec))
+    }
+
+    fn get<T: 'static>(&self) -> Option<ValueCodec<T>> {
+        self.0.downcast_ref::<ValueCodec<T>>().copied()
     }
 }
 
@@ -123,6 +197,7 @@ pub(crate) struct TypeBindingRegistration {
     key: TypeKey,
     storage: StoragePolicy,
     capabilities: ReceiverCapabilities,
+    value_codec: Option<ErasedValueCodec>,
 }
 
 impl TypeBindingRegistration {
@@ -131,10 +206,11 @@ impl TypeBindingRegistration {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct TypeBindingRegistry {
     by_id: BTreeMap<InteropTypeId, TypeBindingDesc>,
     by_rust_type: HashMap<RustTypeId, InteropTypeId>,
+    value_codecs_by_rust_type: HashMap<RustTypeId, ErasedValueCodec>,
     checksum: TypeBindingRegistryChecksum,
 }
 
@@ -149,6 +225,7 @@ impl TypeBindingRegistry {
             .collect::<BTreeMap<_, _>>();
         let mut by_id = BTreeMap::new();
         let mut by_rust_type = HashMap::new();
+        let mut value_codecs_by_rust_type = HashMap::new();
         for registration in registrations {
             let desc = types
                 .get(&registration.key)
@@ -181,6 +258,9 @@ impl TypeBindingRegistry {
                     },
                 ));
             }
+            if let Some(codec) = registration.value_codec {
+                value_codecs_by_rust_type.insert(rust_type_id, codec);
+            }
         }
         let canonical = by_id
             .values()
@@ -201,6 +281,7 @@ impl TypeBindingRegistry {
         Ok(Self {
             by_id,
             by_rust_type,
+            value_codecs_by_rust_type,
             checksum,
         })
     }
@@ -214,6 +295,13 @@ impl TypeBindingRegistry {
     pub fn get_for<T: 'static>(&self) -> Option<&TypeBindingDesc> {
         let id = self.by_rust_type.get(&RustTypeId::of::<T>())?;
         self.by_id.get(id)
+    }
+
+    #[must_use]
+    pub fn value_codec<T: 'static>(&self) -> Option<ValueCodec<T>> {
+        self.value_codecs_by_rust_type
+            .get(&RustTypeId::of::<T>())?
+            .get::<T>()
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &TypeBindingDesc> {
@@ -231,8 +319,12 @@ fn validate_representation(
     desc: &TypeDesc,
 ) -> EngineResult<()> {
     let valid_storage = match registration.storage {
-        StoragePolicy::Value => desc.host_type_id.is_none(),
-        StoragePolicy::Host => desc.host_type_id.is_some() && desc.kind == TypeKind::Host,
+        StoragePolicy::Value => desc.host_type_id.is_none() && registration.value_codec.is_some(),
+        StoragePolicy::Host => {
+            desc.host_type_id.is_some()
+                && desc.kind == TypeKind::Host
+                && registration.value_codec.is_none()
+        }
     };
     if !valid_storage {
         return Err(EngineError::new(
