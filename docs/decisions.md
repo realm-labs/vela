@@ -2293,6 +2293,23 @@ statically known View/MutView mismatch remains dependent on adding receiver
 capability to expression and service-signature facts; dynamic and embedding-
 selected capabilities are always checked at Runtime.
 
+### Type Constructors Are Type-Owned Native Functions
+
+A registered constructor is declared by its `TypeBinding<T>` but executes
+through the existing host-native function table. Its public path is a direct
+child of the exact type path, such as `host::Widget::new`; the type binding
+stores the associated stable `FunctionId` values, and reflection/compiler facts
+resolve the full callable metadata from the ordinary function registry. This
+keeps construction inside one registration, validation, capability, and
+dispatch model rather than adding a constructor-specific runtime table.
+
+The `construct` receiver capability is derived from the presence of registered
+constructors and cannot be asserted without them. Constructor signature and
+access facts enter `TypeAbiFingerprint`, while docs, source positions, and the
+Rust implementation closure do not. Value constructors synchronously return
+the exact bound record or enum. Host constructors require the separate
+host-owned factory/arena path so Rust state never enters the script GC.
+
 ### Repository Artifacts Use Domain-Neutral Host Names
 
 Vela is a reusable language library rather than an extension of one embedding

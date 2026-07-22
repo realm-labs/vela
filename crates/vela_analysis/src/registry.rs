@@ -4,7 +4,7 @@ use vela_common::{
     HostTypeId, InteropTypeId, PrimitiveTag, ReceiverCapabilities, ReceiverCapability, Span,
     StoragePolicy, TypeAbiFingerprint, TypeBindingRegistryChecksum,
 };
-use vela_def::{FieldId, TypeId};
+use vela_def::{FieldId, FunctionId, TypeId};
 use vela_reflect::access::{FunctionAccess, MethodAccess};
 use vela_reflect::modules::{DeclOrigin, ModuleDesc};
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKind, TypeRegistry};
@@ -54,11 +54,12 @@ pub struct RegistryTypeTargetFact {
     pub host_runtime: Option<HostTypeId>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RegistryTypeBindingFact {
     pub id: InteropTypeId,
     pub storage: StoragePolicy,
     pub capabilities: ReceiverCapabilities,
+    pub constructor_ids: Vec<FunctionId>,
     pub abi_fingerprint: TypeAbiFingerprint,
 }
 

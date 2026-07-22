@@ -37,6 +37,10 @@ Rust type and round-trip that value through real Vela execution without serde
 or JSON. Per-method receiver requirements now share the same reflection,
 compiler, LSP, ABI, generated-metadata, and Runtime facts; an exclusive method
 rejects a call-scoped Rust `&T` before authored code runs and accepts `&mut T`.
+Value constructors are now registered on `TypeBinding`, reuse the ordinary
+native-function execution path, derive `construct`, participate in the binding
+ABI, project their stable IDs through reflection/compiler facts, and execute
+from Vela through a qualified `host::Type::new` call.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry
@@ -197,10 +201,11 @@ S1 is accepted. The deleted model has no aliases, annotations, dispatch APIs,
 examples, benchmark rows, or schema metadata. Neutral ABI, lease, re-entry,
 borrowed-return, generation-pinning, and no-retry behavior remains under its
 ordinary module ownership. S2 now has the sealed binding identity/storage/ABI
-substrate, manual external-type entrypoint, and typed structural Value codec
-path. Constructors, derive-generated codecs, standard bindings, compact root-
-local HostRef storage, prepared thunks, and allocation-free common-arity
-preflight remain open. Runtime receiver enforcement is live; compile-time
+substrate, manual external-type entrypoint, typed structural Value codec path,
+and type-owned Value constructor registration. Host-owned constructor
+factories, derive-generated codecs, standard bindings, compact root-local
+HostRef storage, prepared thunks, and allocation-free common-arity preflight
+remain open. Runtime receiver enforcement is live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-
 signature facts.
 

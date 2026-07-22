@@ -827,26 +827,29 @@ pub struct TypeDef {
     pub binding: Option<TypeBindingDef>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TypeBindingDef {
     pub id: InteropTypeId,
     pub storage: StoragePolicy,
     pub capabilities: ReceiverCapabilities,
+    pub constructor_ids: Vec<FunctionId>,
     pub abi_fingerprint: TypeAbiFingerprint,
 }
 
 impl TypeBindingDef {
     #[must_use]
-    pub const fn new(
+    pub fn new(
         id: InteropTypeId,
         storage: StoragePolicy,
         capabilities: ReceiverCapabilities,
+        constructor_ids: Vec<FunctionId>,
         abi_fingerprint: TypeAbiFingerprint,
     ) -> Self {
         Self {
             id,
             storage,
             capabilities,
+            constructor_ids,
             abi_fingerprint,
         }
     }
@@ -904,7 +907,7 @@ impl TypeDef {
     }
 
     #[must_use]
-    pub const fn binding(mut self, binding: TypeBindingDef) -> Self {
+    pub fn binding(mut self, binding: TypeBindingDef) -> Self {
         self.binding = Some(binding);
         self
     }

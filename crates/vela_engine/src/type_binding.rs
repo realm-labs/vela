@@ -15,6 +15,7 @@ use vela_reflect::type_binding::TypeBindingDesc;
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
 use crate::host_type::HostTypeSpec;
 use crate::method::{NativeMethodDesc, NativeMethodEntry};
+use crate::native::{HostNativeFunctionEntry, NativeFunctionDesc, TypeHint};
 use crate::typed::TypedNativeMethodFunction;
 use crate::{args::FromScriptArg, args::IntoScriptArg};
 use vela_vm::error::VmResult;
@@ -26,6 +27,7 @@ pub struct TypeBinding<T: 'static> {
     storage: StoragePolicy,
     capabilities: ReceiverCapabilities,
     value_codec: Option<ValueCodec<T>>,
+    constructors: Vec<HostNativeFunctionEntry>,
 }
 
 impl<T: 'static> TypeBinding<T> {
@@ -44,6 +46,7 @@ impl<T: 'static> TypeBinding<T> {
             storage: StoragePolicy::Value,
             capabilities: ReceiverCapabilities::OWNED_VALUE,
             value_codec: Some(codec),
+            constructors: Vec::new(),
         }
     }
 
@@ -54,6 +57,7 @@ impl<T: 'static> TypeBinding<T> {
             storage: StoragePolicy::Host,
             capabilities: ReceiverCapabilities::HOST_OBJECT,
             value_codec: None,
+            constructors: Vec::new(),
         }
     }
 
@@ -81,6 +85,30 @@ impl<T: 'static> TypeBinding<T> {
     #[must_use]
     pub fn method_desc(mut self, desc: NativeMethodDesc) -> Self {
         self.spec = self.spec.method_desc(desc);
+        self
+    }
+
+    /// Registers a constructor owned by this binding.
+    ///
+    /// The callable is published through the ordinary native-function
+    /// registry. Its qualified name must be directly below the bound type,
+    /// for example `host::Widget::new`, and its declared return type must be
+    /// this exact Value binding.
+    #[must_use]
+    pub fn constructor_fn(
+        mut self,
+        desc: NativeFunctionDesc,
+        function: impl for<'host> Fn(
+            &[OwnedValue],
+            &mut vela_vm::HostExecution<'host>,
+        ) -> VmResult<OwnedValue>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.capabilities = self.capabilities.with(ReceiverCapability::Construct);
+        self.constructors
+            .push(HostNativeFunctionEntry::new(desc, function));
         self
     }
 
@@ -119,9 +147,11 @@ impl<T: 'static> TypeBinding<T> {
         TypeDesc,
         Vec<NativeMethodDesc>,
         Vec<NativeMethodEntry>,
+        Vec<HostNativeFunctionEntry>,
     ) {
         let storage = self.storage;
         let capabilities = self.capabilities;
+        let constructors = self.constructors;
         let (type_desc, method_metadata, native_methods) = self.spec.into_parts();
         let registration = TypeBindingRegistration {
             key: type_desc.key.clone(),
@@ -129,8 +159,18 @@ impl<T: 'static> TypeBinding<T> {
             capabilities,
             rust_type_id: None,
             value_codec: self.value_codec.map(ErasedValueCodec::new),
+            constructors: constructors
+                .iter()
+                .map(|entry| entry.desc.clone())
+                .collect(),
         };
-        (registration, type_desc, method_metadata, native_methods)
+        (
+            registration,
+            type_desc,
+            method_metadata,
+            native_methods,
+            constructors,
+        )
     }
 }
 
@@ -198,6 +238,7 @@ pub(crate) struct TypeBindingRegistration {
     storage: StoragePolicy,
     capabilities: ReceiverCapabilities,
     value_codec: Option<ErasedValueCodec>,
+    constructors: Vec<NativeFunctionDesc>,
 }
 
 impl TypeBindingRegistration {
@@ -233,13 +274,25 @@ impl TypeBindingRegistry {
                 .expect("registered type binding descriptor survived type validation");
             validate_representation(&registration, desc)?;
             let id = InteropTypeId::from_type_id(registration.key.id);
-            let fingerprint =
-                type_abi_fingerprint(id, registration.storage, registration.capabilities, desc);
+            let fingerprint = type_abi_fingerprint(
+                id,
+                registration.storage,
+                registration.capabilities,
+                &registration.constructors,
+                desc,
+            );
+            let mut constructor_ids = registration
+                .constructors
+                .iter()
+                .map(|constructor| constructor.id)
+                .collect::<Vec<_>>();
+            constructor_ids.sort_unstable();
             let binding = TypeBindingDesc::new(
                 id,
                 registration.key.clone(),
                 registration.storage,
                 registration.capabilities,
+                constructor_ids,
                 fingerprint,
             );
             if by_id.insert(id, binding).is_some() {
@@ -346,6 +399,7 @@ fn validate_representation(
         || registration
             .capabilities
             .contains(ReceiverCapability::Construct)
+            != !registration.constructors.is_empty()
     {
         return Err(EngineError::new(
             EngineErrorKind::InvalidTypeBindingCapabilities {
@@ -354,6 +408,7 @@ fn validate_representation(
             },
         ));
     }
+    validate_constructors(registration, desc)?;
     for method in &desc.methods {
         let valid = match method.receiver {
             ReceiverCapability::Owned => registration
@@ -384,6 +439,7 @@ fn type_abi_fingerprint(
     id: InteropTypeId,
     storage: StoragePolicy,
     capabilities: ReceiverCapabilities,
+    constructors: &[NativeFunctionDesc],
     desc: &TypeDesc,
 ) -> TypeAbiFingerprint {
     let mut parts = vec![
@@ -402,6 +458,18 @@ fn type_abi_fingerprint(
             desc.host_type_id.map_or(0, vela_common::HostTypeId::get)
         ),
     ];
+    let mut constructors = constructors.iter().collect::<Vec<_>>();
+    constructors.sort_by_key(|constructor| constructor.id);
+    for constructor in constructors {
+        parts.push(constructor_abi(constructor));
+        parts.extend(constructor.params.iter().enumerate().map(|(index, param)| {
+            format!(
+                "constructor-param={index}:{}:{}",
+                param.name,
+                crate::metadata::type_hint_display(&param.hint)
+            )
+        }));
+    }
     let mut fields = desc.fields.iter().collect::<Vec<_>>();
     fields.sort_by_key(|field| field.id);
     parts.extend(fields.into_iter().map(field_abi));
@@ -480,6 +548,86 @@ fn type_abi_fingerprint(
         ));
     }
     TypeAbiFingerprint::new(stable_id("vela_type_binding_abi_v1", "", &parts.join("|")))
+}
+
+fn validate_constructors(
+    registration: &TypeBindingRegistration,
+    desc: &TypeDesc,
+) -> EngineResult<()> {
+    for constructor in &registration.constructors {
+        let valid_owner = constructor
+            .name
+            .rsplit_once("::")
+            .is_some_and(|(owner, name)| {
+                owner == desc.key.name && !name.is_empty() && !name.contains("::")
+            });
+        if !valid_owner {
+            return Err(invalid_constructor(
+                desc,
+                constructor,
+                "qualified name is not directly owned by the bound type",
+            ));
+        }
+        if constructor.asyncness.is_async() {
+            return Err(invalid_constructor(
+                desc,
+                constructor,
+                "Value constructors must be synchronous",
+            ));
+        }
+        let expected = match (registration.storage, desc.kind) {
+            (StoragePolicy::Value, TypeKind::ScriptStruct) => TypeHint::Record(desc.key.clone()),
+            (StoragePolicy::Value, TypeKind::ScriptEnum) => TypeHint::Enum(desc.key.clone()),
+            (StoragePolicy::Value, _) => {
+                return Err(invalid_constructor(
+                    desc,
+                    constructor,
+                    "Value constructors require a script struct or enum representation",
+                ));
+            }
+            (StoragePolicy::Host, _) => {
+                return Err(invalid_constructor(
+                    desc,
+                    constructor,
+                    "Host constructors require a host-owned factory",
+                ));
+            }
+        };
+        if constructor.returns != expected {
+            return Err(invalid_constructor(
+                desc,
+                constructor,
+                "declared return type is not the bound type",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn invalid_constructor(
+    desc: &TypeDesc,
+    constructor: &NativeFunctionDesc,
+    reason: &'static str,
+) -> EngineError {
+    EngineError::new(EngineErrorKind::InvalidTypeBindingConstructor {
+        type_name: desc.key.name.clone(),
+        constructor: constructor.name.clone(),
+        reason,
+    })
+}
+
+fn constructor_abi(constructor: &NativeFunctionDesc) -> String {
+    format!(
+        "constructor={:032x}:{}:{}:{}:{}:{}:{}:{}",
+        constructor.id.get(),
+        constructor.name,
+        constructor.asyncness.is_async(),
+        constructor.effects.bits(),
+        constructor.access.public,
+        constructor.access.reflect_visible,
+        constructor.access.reflect_callable,
+        crate::metadata::type_hint_display(&constructor.returns)
+    )
 }
 
 fn field_abi(field: &FieldDesc) -> String {

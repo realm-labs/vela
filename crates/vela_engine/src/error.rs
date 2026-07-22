@@ -90,6 +90,11 @@ pub enum EngineErrorKind {
         method: String,
         receiver: String,
     },
+    InvalidTypeBindingConstructor {
+        type_name: String,
+        constructor: String,
+        reason: &'static str,
+    },
     DuplicateFieldId {
         type_name: String,
         id: u128,
@@ -259,6 +264,16 @@ impl fmt::Display for EngineError {
                 write!(
                     formatter,
                     "type binding method {type_name}::{method} cannot use {receiver} receiver"
+                )
+            }
+            EngineErrorKind::InvalidTypeBindingConstructor {
+                type_name,
+                constructor,
+                reason,
+            } => {
+                write!(
+                    formatter,
+                    "invalid constructor {constructor} for type binding {type_name}: {reason}"
                 )
             }
             EngineErrorKind::DuplicateFieldId { type_name, id } => {

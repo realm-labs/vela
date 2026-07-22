@@ -4,6 +4,7 @@ use vela_common::{
     InteropTypeId, ReceiverCapabilities, StoragePolicy, TypeAbiFingerprint,
     TypeBindingRegistryChecksum,
 };
+use vela_def::FunctionId;
 
 use crate::registry::TypeKey;
 
@@ -13,16 +14,18 @@ pub struct TypeBindingDesc {
     pub key: TypeKey,
     pub storage: StoragePolicy,
     pub capabilities: ReceiverCapabilities,
+    pub constructor_ids: Vec<FunctionId>,
     pub abi_fingerprint: TypeAbiFingerprint,
 }
 
 impl TypeBindingDesc {
     #[must_use]
-    pub const fn new(
+    pub fn new(
         id: InteropTypeId,
         key: TypeKey,
         storage: StoragePolicy,
         capabilities: ReceiverCapabilities,
+        constructor_ids: Vec<FunctionId>,
         abi_fingerprint: TypeAbiFingerprint,
     ) -> Self {
         Self {
@@ -30,6 +33,7 @@ impl TypeBindingDesc {
             key,
             storage,
             capabilities,
+            constructor_ids,
             abi_fingerprint,
         }
     }

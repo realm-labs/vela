@@ -575,6 +575,21 @@ let engine = Engine::builder()
     .build()?;
 ```
 
+Rust type constructors are authored on the same `TypeBinding<T>` that owns the
+type identity. `TypeBinding::constructor_fn` associates a constructor with the
+type, while execution, capability checks, reflection metadata, and compiler
+resolution reuse the ordinary native-function registry. Constructor names are
+direct children of the type path such as `host::Widget::new`, and their exact
+function IDs are projected through the sealed type-binding facts. Registering
+one derives the binding's `construct` capability; hosts do not set that bit
+independently.
+
+Value constructors return the exact registered record or enum representation.
+Their IDs, names, parameters, result, asyncness, effects, and access shape
+participate in `TypeAbiFingerprint`; documentation, source spans, and Rust
+closure code do not. Host-object construction additionally requires a
+host-owned factory/arena and must never place the Rust object under script GC.
+
 For macro-exposed functions, `#[script_function]`,
 `#[script_context_function]`, and `#[script_host_function]` derive the native
 function ID from the public `::` qualified function name and optional `alias`.

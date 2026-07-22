@@ -3,7 +3,7 @@ use vela_common::{
     HostMethodId, HostTypeId, InteropTypeId, ReceiverCapabilities, ReceiverCapability, SourceId,
     StoragePolicy,
 };
-use vela_def::{FieldId, TypeId};
+use vela_def::{FieldId, FunctionId, TypeId};
 use vela_host::error::HostResult;
 use vela_host::object::ScriptHostObject;
 use vela_host::target::HostTargetInstance;
@@ -62,6 +62,27 @@ fn external_value_binding(desc: TypeDesc) -> TypeBinding<ExternalValue> {
         desc,
         ValueCodec::new(encode_external_value, decode_external_value),
     )
+}
+
+fn external_value_constructor(param_hint: TypeHint) -> crate::native::NativeFunctionDesc {
+    crate::native::NativeFunctionDesc::new("host::ExternalValue::new", FunctionId::new(401))
+        .param("amount", param_hint)
+        .returns(TypeHint::Record(value_desc(102, "amount").key))
+        .effects(EffectSet::pure())
+}
+
+fn construct_external_value(
+    args: &[OwnedValue],
+    _host: &mut vela_vm::HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let [amount] = args else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host::ExternalValue::new arguments",
+        }));
+    };
+    Ok(encode_external_value(ExternalValue {
+        amount: i64::from_script_arg(amount)?,
+    }))
 }
 
 fn encode_external_value(value: ExternalValue) -> OwnedValue {
@@ -349,6 +370,143 @@ fn increase(value: host::ExternalValue) {
         codec.decode(&output).expect("output should decode"),
         ExternalValue { amount: 12 }
     );
+}
+
+#[test]
+fn registered_value_constructor_is_callable_from_vela_and_projected_as_type_fact() {
+    let engine = Engine::builder()
+        .register_rust_type::<ExternalValue>(
+            external_value_binding(value_desc(102, "amount")).constructor_fn(
+                external_value_constructor(TypeHint::i64()),
+                construct_external_value,
+            ),
+        )
+        .build()
+        .expect("value constructor binding should seal");
+    let type_bindings = engine.type_bindings();
+    let binding = type_bindings
+        .get_for::<ExternalValue>()
+        .expect("value binding");
+    assert!(binding.capabilities.contains(ReceiverCapability::Construct));
+    assert_eq!(binding.constructor_ids, [FunctionId::new(401)]);
+    assert_eq!(
+        engine
+            .registry()
+            .type_binding_for_key(&value_desc(102, "amount").key)
+            .expect("reflection binding")
+            .constructor_ids,
+        [FunctionId::new(401)]
+    );
+    let compiler_facts = RegistryFacts::from_compile_view(engine.compiler_registry())
+        .expect("compiler binding facts");
+    assert_eq!(
+        compiler_facts
+            .type_binding_fact("host::ExternalValue")
+            .expect("compiler type binding")
+            .constructor_ids,
+        [FunctionId::new(401)]
+    );
+
+    let program = engine
+        .compile_source_with_id(
+            SourceId::new(3),
+            r#"
+fn make() {
+    return host::ExternalValue::new(7);
+}
+"#,
+        )
+        .expect("qualified registered constructor should compile");
+    let codec = engine
+        .type_bindings()
+        .value_codec::<ExternalValue>()
+        .expect("registered value codec");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+    let output = runtime
+        .call("make", CallArgs::new(), CallOptions::unbounded())
+        .expect("registered constructor should execute");
+    let output = runtime
+        .value_to_owned(&output)
+        .expect("constructor output should materialize");
+
+    assert_eq!(
+        codec.decode(&output).expect("constructor output codec"),
+        ExternalValue { amount: 7 }
+    );
+}
+
+#[test]
+fn constructor_signature_participates_in_type_binding_abi() {
+    let build = |hint| {
+        Engine::builder()
+            .register_rust_type::<ExternalValue>(
+                external_value_binding(value_desc(102, "amount"))
+                    .constructor_fn(external_value_constructor(hint), construct_external_value),
+            )
+            .build()
+            .expect("constructor binding should seal")
+    };
+    let i64_binding = build(TypeHint::i64()).type_bindings();
+    let i32_binding = build(TypeHint::i32()).type_bindings();
+
+    assert_ne!(
+        i64_binding
+            .get_for::<ExternalValue>()
+            .expect("i64 constructor binding")
+            .abi_fingerprint,
+        i32_binding
+            .get_for::<ExternalValue>()
+            .expect("i32 constructor binding")
+            .abi_fingerprint
+    );
+    assert_ne!(i64_binding.checksum(), i32_binding.checksum());
+}
+
+#[test]
+fn type_binding_rejects_constructor_with_wrong_owner_or_return_type() {
+    let wrong_owner = Engine::builder()
+        .register_rust_type::<ExternalValue>(
+            external_value_binding(value_desc(102, "amount")).constructor_fn(
+                crate::native::NativeFunctionDesc::new(
+                    "host::OtherValue::new",
+                    FunctionId::new(402),
+                )
+                .returns(TypeHint::Record(value_desc(102, "amount").key)),
+                construct_external_value,
+            ),
+        )
+        .build();
+    assert!(matches!(
+        wrong_owner,
+        Err(error)
+            if error.kind == EngineErrorKind::InvalidTypeBindingConstructor {
+                type_name: "host::ExternalValue".to_owned(),
+                constructor: "host::OtherValue::new".to_owned(),
+                reason: "qualified name is not directly owned by the bound type",
+            }
+    ));
+
+    let wrong_return = Engine::builder()
+        .register_rust_type::<ExternalValue>(
+            external_value_binding(value_desc(102, "amount")).constructor_fn(
+                crate::native::NativeFunctionDesc::new(
+                    "host::ExternalValue::new",
+                    FunctionId::new(403),
+                )
+                .returns(TypeHint::i64()),
+                construct_external_value,
+            ),
+        )
+        .build();
+    assert!(matches!(
+        wrong_return,
+        Err(error)
+            if error.kind == EngineErrorKind::InvalidTypeBindingConstructor {
+                type_name: "host::ExternalValue".to_owned(),
+                constructor: "host::ExternalValue::new".to_owned(),
+                reason: "declared return type is not the bound type",
+            }
+    ));
 }
 
 #[test]

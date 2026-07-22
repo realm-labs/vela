@@ -87,7 +87,7 @@ impl<'registry> CompileViewFacts<'registry> {
             let Def::Type(definition) = definition else {
                 continue;
             };
-            let Some(binding) = definition.binding else {
+            let Some(binding) = &definition.binding else {
                 continue;
             };
             let Some(name) = self.type_names.get(&definition.id) else {
@@ -99,6 +99,7 @@ impl<'registry> CompileViewFacts<'registry> {
                     id: binding.id,
                     storage: binding.storage,
                     capabilities: binding.capabilities,
+                    constructor_ids: binding.constructor_ids.clone(),
                     abi_fingerprint: binding.abi_fingerprint,
                 },
             );

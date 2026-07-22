@@ -69,12 +69,14 @@ impl EngineBuilder {
     /// Registers one Rust type through the unified Rust/Vela binding model.
     #[must_use]
     pub fn register_rust_type<T: 'static>(mut self, binding: TypeBinding<T>) -> Self {
-        let (mut registration, type_desc, method_metadata, native_methods) = binding.into_parts();
+        let (mut registration, type_desc, method_metadata, native_methods, constructors) =
+            binding.into_parts();
         registration.bind_rust_type::<T>();
         self.type_bindings.push(registration);
         self.types.push(type_desc);
         self.host_method_metadata.extend(method_metadata);
         self.native_methods.extend(native_methods);
+        self.host_native_functions.extend(constructors);
         self
     }
 
