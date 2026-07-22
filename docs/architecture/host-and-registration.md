@@ -327,8 +327,9 @@ membership as keyed boolean reads and writes, preserving their changed/not
 changed return value without materializing the set. Types that cannot be
 constructed from a scalar `HostValue` fail closed instead of cloning a complex
 Rust value through the script heap.
-Borrowed Map `keys/values/entries/iter` and Set `values/iter` use a bounded
-`HostCollectionProjection` under the active lease. The projection preserves
+Borrowed Array `iter/values`, Map `keys/values/entries/iter`, and Set
+`values/iter` use a bounded `HostCollectionProjection` under the active lease.
+The projection preserves
 exact key/value tags, sorts unordered Rust families by their stable key
 contract, and becomes an ordinary one-shot Vela Iterator so existing
 filter/map/count/collect behavior and budgets apply. This first projection

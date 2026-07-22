@@ -16,6 +16,10 @@ use crate::{
     value::{HostValue, add_values, div_values, mul_values, rem_values, sub_values},
 };
 
+mod collection_snapshot;
+
+use collection_snapshot::{snapshot_map_entries, snapshot_set_values};
+
 pub trait ScriptHostObject {
     fn host_type_id(&self) -> HostTypeId;
 
@@ -830,6 +834,29 @@ where
             .query_collection_host_target_from(target, offset + 1, query)
     }
 
+    fn snapshot_collection_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        projection: HostCollectionProjection,
+    ) -> HostResult<HostCollectionSnapshot> {
+        if !target_is_leaf(target, offset) {
+            let index = usize::try_from(target_index(target, offset)?)
+                .map_err(|_| invalid_arg("array index"))?;
+            return self
+                .get(index)
+                .ok_or_else(|| missing_target(target))?
+                .snapshot_collection_host_target_from(target, offset + 1, projection);
+        }
+        if projection != HostCollectionProjection::Values {
+            return Err(invalid_arg(projection.name()));
+        }
+        self.iter()
+            .map(|value| value.read_host_target_from(target, offset))
+            .collect::<HostResult<Vec<_>>>()
+            .map(HostCollectionSnapshot::Items)
+    }
+
     fn write_host_target_from(
         &mut self,
         target: HostTargetInstance<'_>,
@@ -1006,59 +1033,6 @@ impl_script_host_object_via_field!(<K> HashSet<K> where K: ScriptHostKey + Hash 
 
 fn target_is_leaf(target: HostTargetInstance<'_>, offset: usize) -> bool {
     offset == target.plan.parts.len()
-}
-
-fn snapshot_map_entries<'a, K, V>(
-    entries: impl IntoIterator<Item = (&'a K, &'a V)>,
-    target: HostTargetInstance<'_>,
-    offset: usize,
-    projection: HostCollectionProjection,
-) -> HostResult<HostCollectionSnapshot>
-where
-    K: ScriptHostKey + 'a,
-    V: ScriptHostFieldAccess + 'a,
-{
-    match projection {
-        HostCollectionProjection::Keys => Ok(HostCollectionSnapshot::Items(
-            entries
-                .into_iter()
-                .map(|(key, _)| key.to_host_collection_key().into_host_value())
-                .collect(),
-        )),
-        HostCollectionProjection::Values => entries
-            .into_iter()
-            .map(|(_, value)| value.read_host_target_from(target, offset))
-            .collect::<HostResult<Vec<_>>>()
-            .map(HostCollectionSnapshot::Items),
-        HostCollectionProjection::Entries => entries
-            .into_iter()
-            .map(|(key, value)| {
-                Ok((
-                    key.to_host_collection_key().into_host_value(),
-                    value.read_host_target_from(target, offset)?,
-                ))
-            })
-            .collect::<HostResult<Vec<_>>>()
-            .map(HostCollectionSnapshot::Entries),
-    }
-}
-
-fn snapshot_set_values<'a, K>(
-    values: impl IntoIterator<Item = &'a K>,
-    projection: HostCollectionProjection,
-) -> HostResult<HostCollectionSnapshot>
-where
-    K: ScriptHostKey + 'a,
-{
-    if projection == HostCollectionProjection::Entries {
-        return Err(invalid_arg(projection.name()));
-    }
-    Ok(HostCollectionSnapshot::Items(
-        values
-            .into_iter()
-            .map(|value| value.to_host_collection_key().into_host_value())
-            .collect(),
-    ))
 }
 
 fn target_part(target: HostTargetInstance<'_>, offset: usize) -> HostResult<&HostPathPart> {

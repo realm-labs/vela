@@ -368,7 +368,9 @@ pub(crate) fn host_collection_projection(method_id: MethodId) -> Option<HostColl
     let ids = std_method_ids();
     if method_id == ids.map_keys {
         Some(HostCollectionProjection::Keys)
-    } else if method_id == ids.map_values
+    } else if method_id == ids.array_iter
+        || method_id == ids.array_values
+        || method_id == ids.map_values
         || method_id == ids.set_values
         || method_id == ids.set_iter
     {

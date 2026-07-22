@@ -397,8 +397,17 @@ fn growable_borrowed_collection_methods_write_through_host_paths() {
 #[test]
 fn borrowed_collection_projections_feed_iterator_pipelines() {
     let mut runtime = runtime(
-        "fn map_iter(scores: MapView<i32, i64>) { return scores.keys().count() + scores.entries().count() + scores.values().filter(|value| value >= 6).count(); } fn set_iter(values: SetView<i32>) { return values.iter().filter(|value| value >= 7i32).count() + values.values().count(); }",
+        "fn array_iter(values: ArrayView<i64>) { return values.iter().filter(|value| value >= 6).count() + values.values().count(); } fn map_iter(scores: MapView<i32, i64>) { return scores.keys().count() + scores.entries().count() + scores.values().filter(|value| value >= 6).count(); } fn set_iter(values: SetView<i32>) { return values.iter().filter(|value| value >= 7i32).count() + values.values().count(); }",
     );
+
+    let array = vec![4_i64, 6_i64, 11_i64];
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &array);
+    let result = runtime
+        .call("array_iter", args, CallOptions::unbounded())
+        .expect("borrowed array projections should feed iterator methods");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(5)));
+    drop(result);
 
     let scores = BTreeMap::from([(3_i32, 4_i64), (7_i32, 6_i64), (9_i32, 11_i64)]);
     let mut args = CallArgs::new();

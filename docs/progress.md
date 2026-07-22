@@ -116,11 +116,11 @@ fixed slices/arrays, user-defined collection adapters, and prepared index plans
 remain open. Growable `MapMut.set` and missing-key index assignment now insert
 scalar/String/Bytes leaves through the keyed HostAccess write, while
 `SetMut.add/remove` write membership through the same path and retain standard
-changed/not-changed results. Borrowed Map `keys/values/entries/iter` and Set
-`values/iter` now capture deterministic bounded boundary projections under the
-active lease and feed the existing Vela Iterator pipeline, including
-`filter/count/collect`; complex element handles and per-resume live host
-generation checks remain open.
+changed/not-changed results. Borrowed Array `iter/values`, Map
+`keys/values/entries/iter`, and Set `values/iter` now capture deterministic
+bounded boundary projections under the active lease and feed the existing Vela
+Iterator pipeline, including `filter/count/collect`; complex element handles
+and per-resume live host generation checks remain open.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry

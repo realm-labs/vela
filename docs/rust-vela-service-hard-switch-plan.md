@@ -1135,12 +1135,13 @@ arrays, richer user-defined collection adapters, full service macro traversal,
 and prepared operations are still open. Growable `MapMut.set` and keyed index
 assignment insert supported leaf values through HostAccess;
 `SetMut.add/remove` use keyed boolean membership writes without
-materialization. Map `keys/values/entries/iter` and Set `values/iter` now use a
-deterministic bounded `HostCollectionProjection` under the active lease and
-then reuse the ordinary Vela Iterator pipeline. This snapshot slice preserves
-exact boundary tags and supports `filter/count/collect`; live host iterators,
-complex element HostRefs, and generation validation at resumable boundaries
-remain planned prepared-operation work.
+materialization. Array `iter/values`, Map `keys/values/entries/iter`, and Set
+`values/iter` now use a deterministic bounded `HostCollectionProjection` under
+the active lease and then reuse the ordinary Vela Iterator pipeline. This
+snapshot slice preserves exact boundary tags and supports
+`filter/count/collect`; live host iterators, complex element HostRefs, and
+generation validation at resumable boundaries remain planned
+prepared-operation work.
 
 ### S4 — Service contract and Rust-only generation
 

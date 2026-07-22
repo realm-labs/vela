@@ -2656,8 +2656,8 @@ must not reinterpret it as a script-owned Array, Map, or Set.
 
 Borrowed collection traversal first crosses one bounded semantic projection,
 not a Rust iterator object or a serialized container. `HostCollectionProjection`
-captures Map keys, values, entries, or Set values while the exact lease is
-active; HashMap/HashSet projections are sorted by `ScriptHostKey` for
+captures Array values, Map keys/values/entries, or Set values while the exact
+lease is active; HashMap/HashSet projections are sorted by `ScriptHostKey` for
 determinism, and exact scalar/String/Bytes/HostRef tags are retained. The VM
 wraps the projected boundary values in its existing Iterator pipeline. This is
 an intentionally staged snapshot iterator; live resumable host iteration and
