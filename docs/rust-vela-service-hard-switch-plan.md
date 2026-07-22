@@ -1090,9 +1090,14 @@ conversion does not imply stable key semantics. Owned `Vec<T>` now supplies a
 growable Sequence/Iterable Array binding, `Vec<u8>` supplies Bytes, and
 `BTreeSet<T>`/`HashSet<T>` supply distinct SetLike/Iterable bindings. Fixed
 arrays remain open until their non-growable capability can be retained by the
-runtime representation. The remaining primitive/Option/Result/tuple matrix,
-automatic service type-closure registration, View/MutView representations,
-prepared operations, and host-backed bulk behavior are still open.
+runtime representation. Concrete `Option<T>` and `Result<T, E>` bindings now
+carry recursively specialized Rust ABI identity while their codecs use the
+existing dynamic Vela Option/Result enum values and standard behavior in both
+directions. The remaining primitive/tuple matrix, automatic service
+type-closure registration, View/MutView representations, prepared operations,
+and host-backed bulk behavior are still open. Tuple bindings remain open until
+reflection can describe their real tuple shape rather than misclassifying them
+as nominal structs or enums.
 
 ### S4 — Service contract and Rust-only generation
 

@@ -46,6 +46,25 @@ where
     }
 }
 
+impl<T> StandardTypeBinding for Option<T>
+where
+    T: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
+{
+    fn standard_type_binding() -> TypeBinding<Self> {
+        TypeBinding::value(option_type_desc::<T>())
+    }
+}
+
+impl<T, E> StandardTypeBinding for Result<T, E>
+where
+    T: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
+    E: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
+{
+    fn standard_type_binding() -> TypeBinding<Self> {
+        TypeBinding::value(result_type_desc::<T, E>())
+    }
+}
+
 impl<K, V> StandardTypeBinding for BTreeMap<K, V>
 where
     K: VelaValueKeyBoundary + IntoScriptArg + FromScriptArg + Ord + 'static,
@@ -129,6 +148,48 @@ where
     .attr("vela_collection_protocol", "Sequence,Iterable")
     .attr("vela_collection_element", element)
     .attr("vela_collection_growth", "growable")
+}
+
+fn option_type_desc<T>() -> TypeDesc
+where
+    T: VelaValueBoundary,
+{
+    let payload = type_hint_display(&T::vela_type_hint());
+    concrete_type_desc(
+        "option",
+        format!("rust::std::option::Option<{payload}>"),
+        &payload,
+        TypeKind::ScriptEnum,
+    )
+    .docs(format!(
+        "Concrete Rust Option<{payload}> value binding using Vela Option behavior."
+    ))
+    .attr("rust_standard_family", "option")
+    .attr("vela_value_shape", "Option")
+    .attr("vela_option_payload", payload)
+}
+
+fn result_type_desc<T, E>() -> TypeDesc
+where
+    T: VelaValueBoundary,
+    E: VelaValueBoundary,
+{
+    let success = type_hint_display(&T::vela_type_hint());
+    let error = type_hint_display(&E::vela_type_hint());
+    let facts = format!("{success}|{error}");
+    concrete_type_desc(
+        "result",
+        format!("rust::std::result::Result<{success}, {error}>"),
+        &facts,
+        TypeKind::ScriptEnum,
+    )
+    .docs(format!(
+        "Concrete Rust Result<{success}, {error}> value binding using Vela Result behavior."
+    ))
+    .attr("rust_standard_family", "result")
+    .attr("vela_value_shape", "Result")
+    .attr("vela_result_success", success)
+    .attr("vela_result_error", error)
 }
 
 #[derive(Clone, Copy)]
@@ -313,6 +374,137 @@ mod tests {
         assert_eq!(
             ordered.attrs.get("vela_collection_protocol"),
             Some("SetLike,Iterable")
+        );
+    }
+
+    #[test]
+    fn option_and_result_bindings_specialize_payload_identity() {
+        let integer_option = option_type_desc::<i64>();
+        let string_option = option_type_desc::<String>();
+        let string_error = result_type_desc::<i64, String>();
+        let integer_error = result_type_desc::<i64, i64>();
+
+        assert_ne!(integer_option.key, string_option.key);
+        assert_ne!(string_error.key, integer_error.key);
+        assert_eq!(integer_option.kind, TypeKind::ScriptEnum);
+        assert_eq!(string_error.kind, TypeKind::ScriptEnum);
+        assert_eq!(integer_option.attrs.get("vela_value_shape"), Some("Option"));
+        assert_eq!(string_error.attrs.get("vela_result_error"), Some("String"));
+    }
+
+    #[test]
+    fn registered_rust_option_and_result_values_use_vela_behavior() {
+        type MaybeScore = Option<i64>;
+        type ScoreResult = Result<i64, String>;
+
+        let engine = Engine::builder()
+            .with_standard_natives()
+            .register_rust_type::<MaybeScore>(standard_type_binding::<MaybeScore>())
+            .register_rust_type::<ScoreResult>(standard_type_binding::<ScoreResult>())
+            .build()
+            .expect("standard Option and Result bindings should seal together");
+        let bindings = engine.type_bindings();
+        let option_codec = bindings
+            .value_codec::<MaybeScore>()
+            .expect("Option value codec");
+        let result_codec = bindings
+            .value_codec::<ScoreResult>()
+            .expect("Result value codec");
+        assert_ne!(
+            bindings.get_for::<MaybeScore>().expect("Option binding").id,
+            bindings
+                .get_for::<ScoreResult>()
+                .expect("Result binding")
+                .id
+        );
+
+        let program = engine
+            .compile_source_with_id(
+                SourceId::new(3),
+                r#"
+fn option_total(value: Option<i64>) -> i64 {
+    return value.unwrap_or(0) + 1;
+}
+
+fn result_total(value: Result<i64, String>) -> i64 {
+    return value.unwrap_or(0) + 2;
+}
+
+fn echo_option(value: Option<i64>) -> Option<i64> {
+    return value;
+}
+
+fn echo_result(value: Result<i64, String>) -> Result<i64, String> {
+    return value;
+}
+"#,
+            )
+            .expect("shared Vela Option and Result behavior should compile");
+        drop(bindings);
+        let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+
+        let some = runtime
+            .call(
+                "option_total",
+                CallArgs::from_positional([option_codec.encode(Some(6))]),
+                CallOptions::unbounded(),
+            )
+            .expect("Rust Some should use Vela Option behavior");
+        let none = runtime
+            .call(
+                "option_total",
+                CallArgs::from_positional([option_codec.encode(None)]),
+                CallOptions::unbounded(),
+            )
+            .expect("Rust None should use Vela Option behavior");
+        let ok = runtime
+            .call(
+                "result_total",
+                CallArgs::from_positional([result_codec.encode(Ok(7))]),
+                CallOptions::unbounded(),
+            )
+            .expect("Rust Ok should use Vela Result behavior");
+        let err = runtime
+            .call(
+                "result_total",
+                CallArgs::from_positional([result_codec.encode(Err("missing".to_owned()))]),
+                CallOptions::unbounded(),
+            )
+            .expect("Rust Err should use Vela Result behavior");
+        let returned_option = runtime
+            .call(
+                "echo_option",
+                CallArgs::from_positional([option_codec.encode(Some(11))]),
+                CallOptions::unbounded(),
+            )
+            .expect("Vela should return a registered Rust Option value");
+        let returned_result = runtime
+            .call(
+                "echo_result",
+                CallArgs::from_positional([result_codec.encode(Err("retry".to_owned()))]),
+                CallOptions::unbounded(),
+            )
+            .expect("Vela should return a registered Rust Result value");
+
+        assert_eq!(runtime.value_to_owned(&some), Ok(OwnedValue::from(7_i64)));
+        assert_eq!(runtime.value_to_owned(&none), Ok(OwnedValue::from(1_i64)));
+        assert_eq!(runtime.value_to_owned(&ok), Ok(OwnedValue::from(9_i64)));
+        assert_eq!(runtime.value_to_owned(&err), Ok(OwnedValue::from(2_i64)));
+        assert_eq!(
+            option_codec.decode(
+                &runtime
+                    .value_to_owned(&returned_option)
+                    .expect("returned Option should be owned")
+            ),
+            Ok(Some(11))
+        );
+        assert_eq!(
+            result_codec.decode(
+                &runtime
+                    .value_to_owned(&returned_result)
+                    .expect("returned Result should be owned")
+            ),
+            Ok(Err("retry".to_owned()))
         );
     }
 

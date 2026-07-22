@@ -2541,6 +2541,15 @@ Arrays until the value representation can retain and enforce their fixed
 length; metadata alone must not claim that `push` or `remove` is rejected when
 the runtime value would still accept it.
 
+Concrete Rust `Option<T>` and `Result<T, E>` bindings separate Rust ABI
+specialization from the Vela value model. Their stable interop identity and ABI
+include recursively normalized payload facts, but their structural codecs
+still produce and accept the standard dynamic `Option::{Some,None}` and
+`Result::{Ok,Err}` enum values. This preserves one Vela Option/Result method and
+pattern surface without introducing script-language generics. Rust tuple
+bindings must wait for an exact reflected tuple kind; they must not be modeled
+as nominal script structs or enums merely to enter the binding registry.
+
 ### Service Deployment Supports Snapshots And Exact-Base Deltas
 
 A Snapshot describes the complete desired Vela service state and composes
