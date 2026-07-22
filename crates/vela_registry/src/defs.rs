@@ -1,7 +1,8 @@
 use std::fmt;
 
 use vela_common::{
-    InteropTypeId, PrimitiveTag, ReceiverCapabilities, StoragePolicy, TypeAbiFingerprint,
+    InteropTypeId, PrimitiveTag, ReceiverCapabilities, ReceiverCapability, StoragePolicy,
+    TypeAbiFingerprint,
 };
 use vela_def::{
     DefId, DefKind, DefPath, FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId,
@@ -761,6 +762,7 @@ pub struct MethodDef {
     pub signature: FunctionSignature,
     pub effects: EffectSet,
     pub access: MethodAccessDef,
+    pub receiver: ReceiverCapability,
     pub host_runtime_id: Option<u128>,
 }
 
@@ -777,6 +779,7 @@ impl MethodDef {
             signature,
             effects: EffectSet::default(),
             access: MethodAccessDef::default(),
+            receiver: ReceiverCapability::Shared,
             host_runtime_id: None,
         }
     }
@@ -796,6 +799,12 @@ impl MethodDef {
     #[must_use]
     pub fn access(mut self, access: MethodAccessDef) -> Self {
         self.access = access;
+        self
+    }
+
+    #[must_use]
+    pub const fn receiver(mut self, receiver: ReceiverCapability) -> Self {
+        self.receiver = receiver;
         self
     }
 

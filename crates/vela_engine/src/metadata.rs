@@ -31,6 +31,7 @@ pub(crate) fn inject_host_method_metadata(
         let mut method = MethodDesc::new(desc.id, desc.name.clone())
             .return_type(type_hint_display(&desc.returns))
             .effects(reflect_effects(&desc.effects))
+            .receiver(desc.receiver)
             .access(reflect_access(&desc.access));
         for param in &desc.params {
             method = method.param(

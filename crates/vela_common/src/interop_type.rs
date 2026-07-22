@@ -80,6 +80,18 @@ pub enum ReceiverCapability {
     Construct = 1 << 3,
 }
 
+impl ReceiverCapability {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Owned => "owned",
+            Self::Shared => "shared",
+            Self::Exclusive => "exclusive",
+            Self::Construct => "construct",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct ReceiverCapabilities(u8);

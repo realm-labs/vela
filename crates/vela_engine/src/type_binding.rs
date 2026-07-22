@@ -354,6 +354,29 @@ fn validate_representation(
             },
         ));
     }
+    for method in &desc.methods {
+        let valid = match method.receiver {
+            ReceiverCapability::Owned => registration
+                .capabilities
+                .contains(ReceiverCapability::Owned),
+            ReceiverCapability::Shared => registration
+                .capabilities
+                .contains(ReceiverCapability::Shared),
+            ReceiverCapability::Exclusive => registration
+                .capabilities
+                .contains(ReceiverCapability::Exclusive),
+            ReceiverCapability::Construct => false,
+        };
+        if !valid {
+            return Err(EngineError::new(
+                EngineErrorKind::InvalidTypeBindingMethodReceiver {
+                    type_name: desc.key.name.clone(),
+                    method: method.name.clone(),
+                    receiver: method.receiver.as_str().to_owned(),
+                },
+            ));
+        }
+    }
     Ok(())
 }
 
@@ -386,10 +409,11 @@ fn type_abi_fingerprint(
     methods.sort_by_key(|method| method.id);
     for method in methods {
         parts.push(format!(
-            "method={:032x}:{}:{}:{}:{}:{}",
+            "method={:032x}:{}:{}:{}:{}:{}:{}",
             method.id.get(),
             method.name,
             method.asyncness.is_async(),
+            method.receiver.as_str(),
             method.access.public,
             method_effect_bits(&method.effects),
             method.return_type.as_deref().unwrap_or("")

@@ -3,8 +3,10 @@ use std::sync::{Arc, Mutex};
 
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::{LinkError, LinkedArtifact, Linker, ProgramImage, UnlinkedProgram};
-use vela_common::HostMethodId;
+use vela_common::{HostMethodId, ReceiverCapability};
 use vela_def::FunctionId;
+use vela_host::error::HostErrorKind;
+use vela_host::lease::HostLeaseKind;
 use vela_host::path::HostPath;
 use vela_hot_reload::abi::HotReloadAbi;
 use vela_hot_reload::policy::HotReloadPolicy;
@@ -467,6 +469,7 @@ impl Engine {
             })
         })?;
         check_capabilities(&entry.desc.name, &entry.desc.effects, self.capabilities)?;
+        check_method_receiver(entry.desc.receiver, receiver, host)?;
         (entry.function)(receiver, args, host)
     }
 
@@ -696,10 +699,16 @@ impl Engine {
             match &entry.function {
                 AsyncNativeMethodImplementation::HostPath(function) => {
                     let function = Arc::clone(function);
+                    let receiver_capability = entry.desc.receiver;
                     vm.register_async_host_method_with_id(
                         id,
                         move |receiver, args, host, _budget| {
                             if let Err(error) = check_capabilities(&name, &effects, capabilities) {
+                                return Box::pin(async move { Err(error) });
+                            }
+                            if let Err(error) =
+                                check_method_receiver(receiver_capability, receiver, host)
+                            {
                                 return Box::pin(async move { Err(error) });
                             }
                             function(receiver, args, host)
@@ -747,9 +756,11 @@ impl Engine {
             let name = entry.desc.name.clone();
             let effects = entry.desc.effects;
             let capabilities = self.capabilities;
+            let receiver_capability = entry.desc.receiver;
             let function = Arc::clone(&entry.function);
             vm.register_host_method_with_id(id, move |receiver, args, host| {
                 check_capabilities(&name, &effects, capabilities)?;
+                check_method_receiver(receiver_capability, receiver, host)?;
                 function(receiver, args, host)
             });
         }
@@ -1119,4 +1130,32 @@ pub(crate) fn check_capabilities(
         }));
     }
     Ok(())
+}
+
+fn check_method_receiver(
+    required: ReceiverCapability,
+    receiver: &HostPath,
+    host: &HostExecution<'_>,
+) -> VmResult<()> {
+    let available = host.adapter.host_receiver_access(receiver.root);
+    let allowed = match required {
+        ReceiverCapability::Shared => true,
+        ReceiverCapability::Exclusive => available == HostLeaseKind::Exclusive,
+        ReceiverCapability::Owned | ReceiverCapability::Construct => false,
+    };
+    if allowed {
+        return Ok(());
+    }
+    let action = match required {
+        ReceiverCapability::Owned => "call owned receiver method",
+        ReceiverCapability::Shared => "call shared receiver method",
+        ReceiverCapability::Exclusive => "call exclusive receiver method",
+        ReceiverCapability::Construct => "call constructor as instance method",
+    };
+    Err(VmError::new(VmErrorKind::Host(
+        HostErrorKind::PermissionDenied {
+            path: receiver.clone(),
+            action,
+        },
+    )))
 }

@@ -50,6 +50,14 @@ pub trait ScriptStateAdapter {
         HostSchemaEpoch::new(0)
     }
 
+    /// Reports the strongest receiver access currently available for one root.
+    ///
+    /// Legacy adapters default to exclusive access; call-scoped adapters
+    /// override this with the exact Rust `&T` or `&mut T` capability.
+    fn host_receiver_access(&self, _root: HostRef) -> HostLeaseKind {
+        HostLeaseKind::Exclusive
+    }
+
     fn extern_state_ref(&self, state: ExternStateBinding<'_>) -> HostResult<HostRef> {
         Err(HostError {
             kind: HostErrorKind::MissingExternState {

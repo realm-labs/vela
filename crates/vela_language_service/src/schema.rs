@@ -6,7 +6,7 @@ use vela_analysis::registry::{
     RegistryIndexCapabilityFact, RegistryMemberFact, RegistryMethodAccessFact, RegistryModuleFact,
 };
 use vela_analysis::type_fact::TypeFact;
-use vela_common::{PrimitiveTag, SourceId, Span};
+use vela_common::{PrimitiveTag, ReceiverCapability, SourceId, Span};
 
 pub const SCHEMA_ARTIFACT_FORMAT_VERSION: u32 = 1;
 const SCHEMA_HASH_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
@@ -665,6 +665,8 @@ impl From<RegistryFieldAccessFact> for SchemaFieldAccessFact {
 struct SchemaMethodAccessFact {
     owner: String,
     name: String,
+    #[serde(default)]
+    receiver: SchemaReceiverCapability,
     public: bool,
     reflect_callable: bool,
     #[serde(default)]
@@ -676,6 +678,7 @@ impl SchemaMethodAccessFact {
         RegistryMethodAccessFact {
             owner: self.owner.clone(),
             name: self.name.clone(),
+            receiver: self.receiver.into(),
             public: self.public,
             reflect_callable: self.reflect_callable,
             required_permissions: self.required_permissions.clone(),
@@ -688,9 +691,42 @@ impl From<RegistryMethodAccessFact> for SchemaMethodAccessFact {
         Self {
             owner: value.owner,
             name: value.name,
+            receiver: value.receiver.into(),
             public: value.public,
             reflect_callable: value.reflect_callable,
             required_permissions: value.required_permissions,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+enum SchemaReceiverCapability {
+    Owned,
+    #[default]
+    Shared,
+    Exclusive,
+    Construct,
+}
+
+impl From<SchemaReceiverCapability> for ReceiverCapability {
+    fn from(value: SchemaReceiverCapability) -> Self {
+        match value {
+            SchemaReceiverCapability::Owned => Self::Owned,
+            SchemaReceiverCapability::Shared => Self::Shared,
+            SchemaReceiverCapability::Exclusive => Self::Exclusive,
+            SchemaReceiverCapability::Construct => Self::Construct,
+        }
+    }
+}
+
+impl From<ReceiverCapability> for SchemaReceiverCapability {
+    fn from(value: ReceiverCapability) -> Self {
+        match value {
+            ReceiverCapability::Owned => Self::Owned,
+            ReceiverCapability::Shared => Self::Shared,
+            ReceiverCapability::Exclusive => Self::Exclusive,
+            ReceiverCapability::Construct => Self::Construct,
         }
     }
 }

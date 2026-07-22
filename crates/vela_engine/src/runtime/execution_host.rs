@@ -516,6 +516,14 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         self.parent.host_schema_epoch()
     }
 
+    fn host_receiver_access(&self, root: HostRef) -> HostLeaseKind {
+        match self.args.direct_binding(root) {
+            Some(HostArgBinding::Shared { .. }) => HostLeaseKind::Shared,
+            Some(HostArgBinding::Mutable { .. }) => HostLeaseKind::Exclusive,
+            None => self.parent.host_receiver_access(root),
+        }
+    }
+
     fn extern_state_ref(&self, state: ExternStateBinding<'_>) -> HostResult<HostRef> {
         self.parent.extern_state_ref(state)
     }
@@ -662,6 +670,20 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
 impl ScriptStateAdapter for ExecutionHost<'_, '_> {
     fn host_schema_epoch(&self) -> HostSchemaEpoch {
         self.fallback.host_schema_epoch()
+    }
+
+    fn host_receiver_access(&self, root: HostRef) -> HostLeaseKind {
+        if self.extern_states.binding(root).is_some() {
+            return HostLeaseKind::Exclusive;
+        }
+        if let Some(binding) = self.scoped_hosts.get(&root) {
+            return binding.access;
+        }
+        match self.args.direct_binding(root) {
+            Some(HostArgBinding::Shared { .. }) => HostLeaseKind::Shared,
+            Some(HostArgBinding::Mutable { .. }) => HostLeaseKind::Exclusive,
+            None => self.fallback.host_receiver_access(root),
+        }
     }
 
     fn extern_state_ref(&self, state: ExternStateBinding<'_>) -> HostResult<HostRef> {
@@ -889,6 +911,12 @@ impl ScriptStateAdapter for FallbackAdapter<'_> {
             HostSchemaEpoch::new(0),
             ScriptStateAdapter::host_schema_epoch,
         )
+    }
+
+    fn host_receiver_access(&self, root: HostRef) -> HostLeaseKind {
+        self.adapter().map_or(HostLeaseKind::Exclusive, |adapter| {
+            adapter.host_receiver_access(root)
+        })
     }
 
     fn extern_state_ref(&self, state: ExternStateBinding<'_>) -> HostResult<HostRef> {

@@ -41,6 +41,7 @@ fn sample_facts() -> RegistryFacts {
     facts.insert_method_access(RegistryMethodAccessFact {
         owner: "Player".to_owned(),
         name: "grant_exp".to_owned(),
+        receiver: vela_common::ReceiverCapability::Exclusive,
         public: true,
         reflect_callable: true,
         required_permissions: vec!["player.reward".to_owned()],

@@ -199,6 +199,7 @@ fn method_def(desc: &TypeDesc, owner: vela_def::TypeId, method: &MethodDesc) -> 
     )
     .host_runtime_id(method.id.get())
     .effects(method_effects(&method.effects))
+    .receiver(method.receiver)
     .access(method_access(&method.access))
 }
 

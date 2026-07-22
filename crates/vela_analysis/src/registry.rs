@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{
-    HostTypeId, InteropTypeId, PrimitiveTag, ReceiverCapabilities, Span, StoragePolicy,
-    TypeAbiFingerprint, TypeBindingRegistryChecksum,
+    HostTypeId, InteropTypeId, PrimitiveTag, ReceiverCapabilities, ReceiverCapability, Span,
+    StoragePolicy, TypeAbiFingerprint, TypeBindingRegistryChecksum,
 };
 use vela_def::{FieldId, TypeId};
 use vela_reflect::access::{FunctionAccess, MethodAccess};
@@ -145,6 +145,7 @@ impl RegistryFieldAccessFact {
 pub struct RegistryMethodAccessFact {
     pub owner: String,
     pub name: String,
+    pub receiver: ReceiverCapability,
     pub public: bool,
     pub reflect_callable: bool,
     pub required_permissions: Vec<String>,
@@ -170,10 +171,16 @@ impl RegistryFunctionAccessFact {
 }
 
 impl RegistryMethodAccessFact {
-    fn new(owner: impl Into<String>, name: impl Into<String>, access: &MethodAccess) -> Self {
+    fn new(
+        owner: impl Into<String>,
+        name: impl Into<String>,
+        receiver: ReceiverCapability,
+        access: &MethodAccess,
+    ) -> Self {
         Self {
             owner: owner.into(),
             name: name.into(),
+            receiver,
             public: access.public,
             reflect_callable: access.reflect_callable,
             required_permissions: access.required_permissions().to_vec(),

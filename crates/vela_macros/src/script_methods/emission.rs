@@ -19,6 +19,14 @@ fn method_desc_expr(method: &MethodMeta) -> TokenStream {
     let returns = hint_tokens(method.returns.clone());
     let params = method.params.iter().map(param_tokens);
     let access = access_tokens(method);
+    let receiver = match (method.receiver, method.effect) {
+        (MethodReceiver::MutSelf, _) | (MethodReceiver::HostBoundary, MethodEffect::HostWrite) => {
+            quote! { ::vela_common::ReceiverCapability::Exclusive }
+        }
+        (MethodReceiver::SharedSelf | MethodReceiver::HostBoundary, _) => {
+            quote! { ::vela_common::ReceiverCapability::Shared }
+        }
+    };
     let asyncness = if method.is_async {
         quote! { ::vela_common::CallableAsyncness::Async }
     } else {
@@ -48,6 +56,7 @@ fn method_desc_expr(method: &MethodMeta) -> TokenStream {
         .effects(#effect)
         .returns(#returns)
         .access(#access)
+        .receiver(#receiver)
         .asyncness(#asyncness);
         #(
             desc = desc.param(#params);

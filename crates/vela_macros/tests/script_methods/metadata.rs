@@ -12,6 +12,7 @@ fn script_methods_generates_native_method_metadata() {
             .param("amount", TypeHint::i64())
             .returns(TypeHint::unit())
             .effects(EffectSet::host_write())
+            .receiver(vela_common::ReceiverCapability::Exclusive)
             .access(FunctionAccess::public().reflect_callable(true),)
             .attr("domain", "player")
             .docs("Grants copied experience through the host patch path."),
@@ -22,6 +23,7 @@ fn script_methods_generates_native_method_metadata() {
             .param("amount", TypeHint::i64())
             .returns(TypeHint::i64())
             .effects(EffectSet::host_write())
+            .receiver(vela_common::ReceiverCapability::Exclusive)
             .access(FunctionAccess::public().reflect_callable(true),)
             .docs("Grants copied score through a callable native method."),
     );
@@ -44,6 +46,7 @@ fn script_methods_generates_native_method_metadata() {
             .param("e", TypeHint::i64())
             .returns(TypeHint::i64())
             .effects(EffectSet::host_write())
+            .receiver(vela_common::ReceiverCapability::Exclusive)
             .access(FunctionAccess::public().reflect_callable(true),)
             .docs("Sums five copied method values through a callable native method."),
     );
@@ -58,6 +61,7 @@ fn script_methods_generates_native_method_metadata() {
             .param("f", TypeHint::i64())
             .returns(TypeHint::i64())
             .effects(EffectSet::host_write())
+            .receiver(vela_common::ReceiverCapability::Exclusive)
             .access(FunctionAccess::public().reflect_callable(true),)
             .docs("Sums six copied method values through a callable native method."),
     );

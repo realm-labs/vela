@@ -4,6 +4,10 @@ use vela_common::{
     StoragePolicy,
 };
 use vela_def::{FieldId, TypeId};
+use vela_host::error::HostResult;
+use vela_host::object::ScriptHostObject;
+use vela_host::target::HostTargetInstance;
+use vela_host::value::HostValue;
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeKind};
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
@@ -17,6 +21,20 @@ use crate::runtime::{CallArgs, CallOptions, Runtime};
 use crate::type_binding::{TypeBinding, ValueCodec};
 
 struct ExternalHost;
+
+impl ScriptHostObject for ExternalHost {
+    fn host_type_id(&self) -> HostTypeId {
+        HostTypeId::new(201)
+    }
+
+    fn read_resolved_host(
+        &self,
+        _access: vela_host::resolved::ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
+        Ok(HostValue::Unit)
+    }
+}
 
 #[derive(Debug, Eq, PartialEq)]
 struct ExternalValue {
@@ -80,6 +98,7 @@ fn unified_type_binding_is_sealed_into_engine_and_reflection_registry() {
         .register_rust_type::<ExternalHost>(
             TypeBinding::host(host_desc(101, 201)).method_desc(
                 NativeMethodDesc::new(owner.clone(), HostMethodId::new(301), "read")
+                    .receiver(ReceiverCapability::Shared)
                     .returns(TypeHint::i64())
                     .effects(EffectSet::host_read()),
             ),
@@ -140,6 +159,13 @@ fn unified_type_binding_is_sealed_into_engine_and_reflection_registry() {
     assert_eq!(
         compiler_facts.type_binding_checksum(),
         Some(bindings.checksum())
+    );
+    assert_eq!(
+        compiler_facts
+            .method_access_fact("host::ExternalHost", "read")
+            .expect("compiler method receiver fact")
+            .receiver,
+        ReceiverCapability::Shared
     );
 }
 
@@ -218,6 +244,27 @@ fn type_binding_rejects_ambiguous_storage_and_receiver_capabilities() {
                 bits: 5,
             }
     ));
+
+    let owner = host_desc(101, 201).key;
+    let method_exceeds_type = Engine::builder()
+        .register_rust_type::<ExternalHost>(
+            TypeBinding::host(host_desc(101, 201))
+                .receiver_capabilities(ReceiverCapabilities::OWNED.with(ReceiverCapability::Shared))
+                .method_desc(
+                    NativeMethodDesc::new(owner, HostMethodId::new(302), "write")
+                        .receiver(ReceiverCapability::Exclusive),
+                ),
+        )
+        .build();
+    assert!(matches!(
+        method_exceeds_type,
+        Err(error)
+            if error.kind == EngineErrorKind::InvalidTypeBindingMethodReceiver {
+                type_name: "host::ExternalHost".to_owned(),
+                method: "write".to_owned(),
+                receiver: "exclusive".to_owned(),
+            }
+    ));
 }
 
 #[test]
@@ -237,6 +284,33 @@ fn one_rust_type_cannot_map_to_two_interop_identities() {
                 second: 103,
             }
     ));
+}
+
+#[test]
+fn method_receiver_requirement_participates_in_type_abi() {
+    let build = |receiver| {
+        let owner = host_desc(101, 201).key;
+        Engine::builder()
+            .register_rust_type::<ExternalHost>(TypeBinding::host(host_desc(101, 201)).method_desc(
+                NativeMethodDesc::new(owner, HostMethodId::new(302), "touch").receiver(receiver),
+            ))
+            .build()
+            .expect("receiver-specific binding should seal")
+    };
+    let shared = build(ReceiverCapability::Shared).type_bindings();
+    let exclusive = build(ReceiverCapability::Exclusive).type_bindings();
+
+    assert_ne!(
+        shared
+            .get_for::<ExternalHost>()
+            .expect("shared binding")
+            .abi_fingerprint,
+        exclusive
+            .get_for::<ExternalHost>()
+            .expect("exclusive binding")
+            .abi_fingerprint
+    );
+    assert_ne!(shared.checksum(), exclusive.checksum());
 }
 
 #[test]
@@ -275,4 +349,56 @@ fn increase(value: host::ExternalValue) {
         codec.decode(&output).expect("output should decode"),
         ExternalValue { amount: 12 }
     );
+}
+
+#[test]
+fn exclusive_method_rejects_shared_view_and_accepts_mut_view() {
+    let owner = host_desc(101, 201).key;
+    let engine = Engine::builder()
+        .register_rust_type::<ExternalHost>(
+            TypeBinding::host(host_desc(101, 201)).native_method_fn(
+                NativeMethodDesc::new(owner, HostMethodId::new(302), "touch")
+                    .receiver(ReceiverCapability::Exclusive),
+                |_, _, _| Ok(OwnedValue::Unit),
+            ),
+        )
+        .build()
+        .expect("exclusive method binding should seal");
+    let program = engine
+        .compile_source_with_id(
+            SourceId::new(2),
+            r#"
+fn touch(value: host::ExternalHost) {
+    value.touch();
+    return true;
+}
+"#,
+        )
+        .expect("exclusive method should compile for dynamic call-bound receiver access");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+    let mut host = ExternalHost;
+
+    let shared_error = runtime
+        .call(
+            "touch",
+            CallArgs::new().with_host_ref("value", &host),
+            CallOptions::unbounded(),
+        )
+        .expect_err("shared Rust view must not enter an exclusive method");
+    assert!(matches!(
+        shared_error.kind_ref(),
+        VmErrorKind::Host(vela_host::error::HostErrorKind::PermissionDenied {
+            action: "call exclusive receiver method",
+            ..
+        })
+    ));
+
+    let output = runtime
+        .call(
+            "touch",
+            CallArgs::new().with_host_mut("value", &mut host),
+            CallOptions::unbounded(),
+        )
+        .expect("mutable Rust view should enter an exclusive method");
+    assert_eq!(runtime.value_to_owned(&output), Ok(OwnedValue::Bool(true)));
 }

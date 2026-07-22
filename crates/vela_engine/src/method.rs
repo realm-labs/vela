@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vela_common::{CallableAsyncness, HostMethodId, Span};
+use vela_common::{CallableAsyncness, HostMethodId, ReceiverCapability, Span};
 use vela_host::lease::{ErasedHostLease, HostLeaseKind};
 use vela_host::path::HostPath;
 use vela_host::path::HostRef;
@@ -22,6 +22,7 @@ pub struct NativeMethodDesc {
     pub returns: TypeHint,
     pub effects: EffectSet,
     pub asyncness: CallableAsyncness,
+    pub receiver: ReceiverCapability,
     pub access: FunctionAccess,
     pub docs: Option<String>,
     pub attrs: AttrMap,
@@ -40,6 +41,7 @@ impl NativeMethodDesc {
             returns: TypeHint::Any,
             effects: EffectSet::default(),
             asyncness: CallableAsyncness::Sync,
+            receiver: ReceiverCapability::Shared,
             access: FunctionAccess::default(),
             docs: None,
             attrs: AttrMap::new(),
@@ -72,6 +74,12 @@ impl NativeMethodDesc {
     #[must_use]
     pub fn asyncness(mut self, asyncness: CallableAsyncness) -> Self {
         self.asyncness = asyncness;
+        self
+    }
+
+    #[must_use]
+    pub const fn receiver(mut self, receiver: ReceiverCapability) -> Self {
+        self.receiver = receiver;
         self
     }
 

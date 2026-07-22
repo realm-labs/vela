@@ -94,7 +94,12 @@ impl RegistryFacts {
                     .insert(key.clone(), method_effect_fact(&method.effects));
                 facts.method_access.insert(
                     key,
-                    RegistryMethodAccessFact::new(&desc.key.name, &method.name, &method.access),
+                    RegistryMethodAccessFact::new(
+                        &desc.key.name,
+                        &method.name,
+                        method.receiver,
+                        &method.access,
+                    ),
                 );
             }
 

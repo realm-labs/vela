@@ -85,6 +85,11 @@ pub enum EngineErrorKind {
         name: String,
         bits: u8,
     },
+    InvalidTypeBindingMethodReceiver {
+        type_name: String,
+        method: String,
+        receiver: String,
+    },
     DuplicateFieldId {
         type_name: String,
         id: u128,
@@ -244,6 +249,16 @@ impl fmt::Display for EngineError {
                 write!(
                     formatter,
                     "type binding {name} has invalid receiver capabilities 0x{bits:02x}"
+                )
+            }
+            EngineErrorKind::InvalidTypeBindingMethodReceiver {
+                type_name,
+                method,
+                receiver,
+            } => {
+                write!(
+                    formatter,
+                    "type binding method {type_name}::{method} cannot use {receiver} receiver"
                 )
             }
             EngineErrorKind::DuplicateFieldId { type_name, id } => {

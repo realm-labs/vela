@@ -2275,6 +2275,24 @@ value. Codec implementation code is executable behavior rather than structural
 ABI and therefore does not enter `TypeAbiFingerprint`; its declared record or
 enum shape already does.
 
+Each registered method declares one receiver requirement: owned, shared, or
+exclusive. The requirement is projected through reflection,
+`DefinitionRegistry`, compiler analysis, and exported language-service schema,
+and participates in the type ABI fingerprint. Generated method metadata derives
+it from the Rust receiver or normalized host effect instead of asking the host
+author to repeat it.
+
+At Runtime entry, the call-scoped adapter reports the strongest access attached
+to each HostRef root. A Rust `&T` root reports shared and a Rust `&mut T` root
+reports exclusive; scoped borrowed returns preserve the access recorded when
+they were retained. Native host method dispatch checks this before authored
+Rust code runs, while direct async adapters enforce the same rule by acquiring
+their declared receiver lease. Legacy generic adapters default to exclusive to
+preserve their existing host-authority contract. Compile-time rejection for a
+statically known View/MutView mismatch remains dependent on adding receiver
+capability to expression and service-signature facts; dynamic and embedding-
+selected capabilities are always checked at Runtime.
+
 ### Repository Artifacts Use Domain-Neutral Host Names
 
 Vela is a reusable language library rather than an extension of one embedding

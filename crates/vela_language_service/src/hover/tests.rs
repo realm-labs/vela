@@ -136,6 +136,7 @@ fn hover_reports_effects_and_permissions() {
     schema.insert_method_access(vela_analysis::registry::RegistryMethodAccessFact {
         owner: "Player".to_owned(),
         name: "grant".to_owned(),
+        receiver: vela_common::ReceiverCapability::Shared,
         public: true,
         reflect_callable: true,
         required_permissions: vec!["player.reward".to_owned()],

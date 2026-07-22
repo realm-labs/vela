@@ -160,6 +160,7 @@ impl<'registry> CompileViewFacts<'registry> {
                     facts.insert_method_access(RegistryMethodAccessFact {
                         owner: owner.clone(),
                         name: method.path.name.clone(),
+                        receiver: method.receiver,
                         public: method.access.public,
                         reflect_callable: method.access.reflect_callable,
                         required_permissions: method.access.required_permissions().to_vec(),

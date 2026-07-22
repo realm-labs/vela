@@ -596,6 +596,14 @@ impl CallableContract {
 
     #[must_use]
     pub fn native_method_desc(&self, owner: vela_reflect::registry::TypeKey) -> NativeMethodDesc {
+        let receiver = match self.parameters.first().map(|parameter| parameter.mode) {
+            Some(BoundaryMode::Value) => vela_common::ReceiverCapability::Owned,
+            Some(BoundaryMode::ReadOnlyValueBorrow | BoundaryMode::SharedHost) => {
+                vela_common::ReceiverCapability::Shared
+            }
+            Some(BoundaryMode::ExclusiveHost) => vela_common::ReceiverCapability::Exclusive,
+            Some(BoundaryMode::HiddenContext) | None => vela_common::ReceiverCapability::Shared,
+        };
         let mut desc = NativeMethodDesc::new(
             owner,
             vela_common::HostMethodId::new(self.identity.stable),
@@ -607,6 +615,7 @@ impl CallableContract {
         .returns(self.returns.ty.clone())
         .effects(self.effects)
         .asyncness(self.asyncness)
+        .receiver(receiver)
         .access(crate::native::FunctionAccess {
             public: self.access.public,
             reflect_visible: self.access.reflect_visible,

@@ -372,6 +372,7 @@ pub struct MethodDesc {
     pub return_type: Option<String>,
     pub effects: MethodEffectSet,
     pub asyncness: vela_common::CallableAsyncness,
+    pub receiver: vela_common::ReceiverCapability,
     pub access: MethodAccess,
     pub origin: DeclOrigin,
     pub docs: Option<String>,
@@ -389,6 +390,7 @@ impl MethodDesc {
             return_type: None,
             effects: MethodEffectSet::default(),
             asyncness: vela_common::CallableAsyncness::Sync,
+            receiver: vela_common::ReceiverCapability::Shared,
             access: MethodAccess::default(),
             origin: DeclOrigin::Host,
             docs: None,
@@ -406,6 +408,12 @@ impl MethodDesc {
     #[must_use]
     pub fn asyncness(mut self, asyncness: vela_common::CallableAsyncness) -> Self {
         self.asyncness = asyncness;
+        self
+    }
+
+    #[must_use]
+    pub const fn receiver(mut self, receiver: vela_common::ReceiverCapability) -> Self {
+        self.receiver = receiver;
         self
     }
 
