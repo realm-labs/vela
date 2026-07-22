@@ -774,6 +774,56 @@ pub(crate) fn execute_host_root_collection_mutation(
             )?;
             Ok(args[1])
         }
+        HostCollectionMutation::MapRemove => {
+            let read = resolve_collection_key_access(
+                host,
+                runtime.inline_caches,
+                cache_site,
+                instance,
+                HostAccessOp::Read,
+                runtime.source_span,
+            )?;
+            let current =
+                match host
+                    .access
+                    .read_resolved(host.adapter, read, instance, runtime.source_span)
+                {
+                    Ok(value) => Some(value),
+                    Err(error)
+                        if matches!(&error.kind, HostErrorKind::MissingCollectionEntry { .. }) =>
+                    {
+                        None
+                    }
+                    Err(error) => return Err(error.into()),
+                };
+            if current.is_some() {
+                let remove = resolve_collection_key_access(
+                    host,
+                    runtime.inline_caches,
+                    cache_site,
+                    instance,
+                    HostAccessOp::Remove,
+                    runtime.source_span,
+                )?;
+                host.access
+                    .remove_resolved(host.adapter, remove, instance, runtime.source_span)?;
+            }
+            let current = current
+                .map(|value| {
+                    runtime_value_from_host(
+                        value,
+                        runtime.heap.as_deref_mut(),
+                        runtime.budget.as_deref_mut(),
+                    )
+                })
+                .transpose()?;
+            let heap = runtime.heap.as_deref_mut().ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "host map remove",
+                })
+            })?;
+            crate::option_result::option_value(current, heap, runtime.budget.as_deref_mut())
+        }
         HostCollectionMutation::SetAdd | HostCollectionMutation::SetRemove => {
             let read = resolve_collection_key_access(
                 host,

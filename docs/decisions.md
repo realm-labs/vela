@@ -2581,6 +2581,10 @@ binding supplies a construction policy. Borrowed Set add/remove treats
 membership as a keyed boolean value and therefore reuses the same read/write,
 permission, generation, and alias enforcement as Map access. These operations
 do not introduce container-family mutation slots.
+Borrowed Map removal is the corresponding keyed remove operation: read the
+current value, perform `HostAccessOp::Remove` only when present, and return the
+captured value as Vela `Option<V>`. It does not encode deletion as a sentinel
+write or expose the Rust entry API.
 
 Concrete Rust unit, bool, char, exact-width numeric, and String bindings retain
 distinct stable Rust ABI identities while using their existing native Vela

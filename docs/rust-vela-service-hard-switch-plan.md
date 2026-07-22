@@ -1133,7 +1133,8 @@ other host errors propagate. Borrowed complex-element views, remaining
 element/key methods, live/resumable iteration, and bulk mutation protocols, slices/fixed
 arrays, richer user-defined collection adapters, full service macro traversal,
 and prepared operations are still open. Growable `MapMut.set` and keyed index
-assignment insert supported leaf values through HostAccess;
+assignment insert supported leaf values through HostAccess; `MapMut.remove`
+uses a keyed remove and returns the prior value as `Option<V>`;
 `SetMut.add/remove` use keyed boolean membership writes without
 materialization. Array `iter/values`, Map `keys/values/entries/iter`, and Set
 `values/iter` now use a deterministic bounded `HostCollectionProjection` under

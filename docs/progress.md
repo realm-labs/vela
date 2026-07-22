@@ -115,8 +115,9 @@ views, remaining element/key methods, live/resumable iteration, bulk mutation,
 fixed slices/arrays, user-defined collection adapters, and prepared index plans
 remain open. Growable `MapMut.set` and missing-key index assignment now insert
 scalar/String/Bytes leaves through the keyed HostAccess write, while
-`SetMut.add/remove` write membership through the same path and retain standard
-changed/not-changed results. Borrowed Array `iter/values`, Map
+`MapMut.remove` uses a keyed HostAccess remove and returns the prior value as
+`Option<V>`. `SetMut.add/remove` write membership through the same path and
+retain standard changed/not-changed results. Borrowed Array `iter/values`, Map
 `keys/values/entries/iter`, and Set `values/iter` now capture deterministic
 bounded boundary projections under the active lease and feed the existing Vela
 Iterator pipeline, including `filter/count/collect`; complex element handles

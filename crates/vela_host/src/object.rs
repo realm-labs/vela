@@ -6,7 +6,6 @@ use vela_common::{HostMethodId, HostTypeId, ScalarValue};
 
 use crate::{
     error::{HostError, HostErrorKind, HostResult},
-    path::HostRef,
     protocol::{
         HostCollectionKey, HostCollectionKeyRef, HostCollectionProjection, HostCollectionQuery,
         HostCollectionSnapshot,
@@ -17,6 +16,7 @@ use crate::{
 };
 
 mod collection_snapshot;
+mod keys;
 
 use collection_snapshot::{snapshot_map_entries, snapshot_set_values};
 
@@ -195,6 +195,14 @@ pub trait ScriptHostFieldAccess {
         self.write_host_target_from(target, offset, next)
     }
 
+    fn remove_host_target_from(
+        &mut self,
+        target: HostTargetInstance<'_>,
+        _offset: usize,
+    ) -> HostResult<()> {
+        Err(missing_target(target))
+    }
+
     fn call_host_target_from(
         &mut self,
         target: HostTargetInstance<'_>,
@@ -293,6 +301,15 @@ macro_rules! impl_script_host_object_via_field {
             ) -> HostResult<()> {
                 let _ = access;
                 ScriptHostFieldAccess::mutate_host_target_from(self, target, 0, op, rhs)
+            }
+
+            fn remove_resolved_host(
+                &mut self,
+                access: ResolvedHostAccess,
+                target: HostTargetInstance<'_>,
+            ) -> HostResult<()> {
+                let _ = access;
+                ScriptHostFieldAccess::remove_host_target_from(self, target, 0)
             }
 
             fn call_resolved_host(
@@ -538,79 +555,6 @@ impl<T: HostValueInto> HostValueInto for HostResult<T> {
     }
 }
 
-impl ScriptHostKey for String {
-    fn from_host_collection_key(key: HostCollectionKeyRef<'_>) -> HostResult<Self> {
-        match key {
-            HostCollectionKeyRef::String(key) => Ok(key.to_owned()),
-            _ => Err(invalid_arg("String collection key")),
-        }
-    }
-
-    fn to_host_collection_key(&self) -> HostCollectionKey {
-        HostCollectionKey::String(self.clone())
-    }
-}
-
-macro_rules! impl_script_host_key {
-    ($($ty:ty => $variant:ident),* $(,)?) => {
-        $(
-            impl ScriptHostKey for $ty {
-                fn from_host_collection_key(
-                    key: HostCollectionKeyRef<'_>,
-                ) -> HostResult<Self> {
-                    match key {
-                        HostCollectionKeyRef::$variant(key) => Ok(key),
-                        _ => Err(invalid_arg(concat!(stringify!($ty), " collection key"))),
-                    }
-                }
-
-                fn to_host_collection_key(&self) -> HostCollectionKey {
-                    HostCollectionKey::$variant(*self)
-                }
-            }
-        )*
-    };
-}
-
-impl_script_host_key!(
-    bool => Bool,
-    char => Char,
-    i8 => I8,
-    i16 => I16,
-    i32 => I32,
-    i64 => I64,
-    u8 => U8,
-    u16 => U16,
-    u32 => U32,
-    u64 => U64,
-);
-
-impl ScriptHostKey for Vec<u8> {
-    fn from_host_collection_key(key: HostCollectionKeyRef<'_>) -> HostResult<Self> {
-        match key {
-            HostCollectionKeyRef::Bytes(key) => Ok(key.to_owned()),
-            _ => Err(invalid_arg("Bytes collection key")),
-        }
-    }
-
-    fn to_host_collection_key(&self) -> HostCollectionKey {
-        HostCollectionKey::Bytes(self.clone())
-    }
-}
-
-impl ScriptHostKey for HostRef {
-    fn from_host_collection_key(key: HostCollectionKeyRef<'_>) -> HostResult<Self> {
-        match key {
-            HostCollectionKeyRef::HostRef(key) => Ok(key),
-            _ => Err(invalid_arg("HostRef collection key")),
-        }
-    }
-
-    fn to_host_collection_key(&self) -> HostCollectionKey {
-        HostCollectionKey::HostRef(*self)
-    }
-}
-
 impl<K, V> ScriptHostFieldAccess for BTreeMap<K, V>
 where
     K: ScriptHostKey,
@@ -677,6 +621,23 @@ where
         }
         self.insert(key, V::from_host_collection_value(value)?);
         Ok(())
+    }
+
+    fn remove_host_target_from(
+        &mut self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+    ) -> HostResult<()> {
+        let key = K::from_host_collection_key(target_key(target, offset)?)?;
+        if offset + 1 == target.plan.parts.len() {
+            self.remove(&key)
+                .map(|_| ())
+                .ok_or_else(|| missing_collection_entry(target))
+        } else {
+            self.get_mut(&key)
+                .ok_or_else(|| missing_collection_entry(target))?
+                .remove_host_target_from(target, offset + 1)
+        }
     }
 
     fn call_host_target_from(
@@ -763,6 +724,23 @@ where
         }
         self.insert(key, V::from_host_collection_value(value)?);
         Ok(())
+    }
+
+    fn remove_host_target_from(
+        &mut self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+    ) -> HostResult<()> {
+        let key = K::from_host_collection_key(target_key(target, offset)?)?;
+        if offset + 1 == target.plan.parts.len() {
+            self.remove(&key)
+                .map(|_| ())
+                .ok_or_else(|| missing_collection_entry(target))
+        } else {
+            self.get_mut(&key)
+                .ok_or_else(|| missing_collection_entry(target))?
+                .remove_host_target_from(target, offset + 1)
+        }
     }
 
     fn call_host_target_from(

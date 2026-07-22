@@ -322,7 +322,9 @@ projection, and adapter errors continue to propagate. No Rust adapter receives
 or switches on Vela standard-library method IDs.
 Growable `MapMut.set` uses the keyed HostAccess write and may construct a new
 leaf through `ScriptHostFieldAccess::from_host_collection_value`; ordinary
-index assignment uses the same insertion path. `SetMut.add/remove` model
+index assignment uses the same insertion path. `MapMut.remove` first reads the
+keyed value, removes through `HostAccessOp::Remove`, and returns the captured
+value as `Option<V>`; an absent key returns `None`. `SetMut.add/remove` model
 membership as keyed boolean reads and writes, preserving their changed/not
 changed return value without materializing the set. Types that cannot be
 constructed from a scalar `HostValue` fail closed instead of cloning a complex

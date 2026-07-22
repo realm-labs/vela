@@ -328,6 +328,7 @@ pub(crate) fn host_collection_lookup(method_id: MethodId) -> Option<HostCollecti
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum HostCollectionMutation {
     MapSet,
+    MapRemove,
     SetAdd,
     SetRemove,
 }
@@ -337,8 +338,8 @@ impl HostCollectionMutation {
     pub(crate) const fn name(self) -> &'static str {
         match self {
             Self::MapSet => "set",
+            Self::MapRemove | Self::SetRemove => "remove",
             Self::SetAdd => "add",
-            Self::SetRemove => "remove",
         }
     }
 
@@ -346,7 +347,7 @@ impl HostCollectionMutation {
     pub(crate) const fn arity(self) -> usize {
         match self {
             Self::MapSet => 2,
-            Self::SetAdd | Self::SetRemove => 1,
+            Self::MapRemove | Self::SetAdd | Self::SetRemove => 1,
         }
     }
 }
@@ -355,6 +356,8 @@ pub(crate) fn host_collection_mutation(method_id: MethodId) -> Option<HostCollec
     let ids = std_method_ids();
     if method_id == ids.map_set {
         Some(HostCollectionMutation::MapSet)
+    } else if method_id == ids.map_remove {
+        Some(HostCollectionMutation::MapRemove)
     } else if method_id == ids.set_add {
         Some(HostCollectionMutation::SetAdd)
     } else if method_id == ids.set_remove {
