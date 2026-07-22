@@ -589,6 +589,11 @@ Their IDs, names, parameters, result, asyncness, effects, and access shape
 participate in `TypeAbiFingerprint`; documentation, source spans, and Rust
 closure code do not. Host-object construction additionally requires a
 host-owned factory/arena and must never place the Rust object under script GC.
+`TypeBinding::host_constructor_fn` transfers the exact Rust result into the
+calling Runtime's owned-host arena and returns only a `HostRef`. The arena is
+actor-local Runtime state, supports the same shared/exclusive lease boundary as
+other host roots, and currently retains constructed objects until Runtime drop;
+script values may keep or pass handles but never own the Rust allocation.
 
 For macro-exposed functions, `#[script_function]`,
 `#[script_context_function]`, and `#[script_host_function]` derive the native

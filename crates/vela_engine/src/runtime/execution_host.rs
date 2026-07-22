@@ -23,7 +23,7 @@ use vela_vm::value::Value;
 use vela_vm::{NativeCallFuture, PreparedAsyncCall};
 
 use super::call_args::HostArgBinding;
-use super::{CallArgs, RuntimeExternStateBindings};
+use super::{CallArgs, RuntimeExternStateBindings, RuntimeHostArena};
 
 const EXECUTION_HOST_OBJECT_ID_BASE: u64 = 1 << 63;
 
@@ -40,6 +40,7 @@ pub(super) trait DirectContextInvoker: Send {
 pub(super) struct ExecutionHost<'state, 'host> {
     args: CallArgs<'host>,
     extern_states: &'state mut RuntimeExternStateBindings,
+    host_arena: &'state mut RuntimeHostArena,
     fallback: FallbackAdapter<'host>,
     next_direct_object_id: u64,
     scoped_hosts: BTreeMap<HostRef, ScopedHostBinding<'host>>,
@@ -97,6 +98,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
     pub(super) fn new(
         mut args: CallArgs<'host>,
         extern_states: &'state mut RuntimeExternStateBindings,
+        host_arena: &'state mut RuntimeHostArena,
     ) -> Self {
         let fallback = args
             .take_fallback()
@@ -104,6 +106,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
         let mut execution_host = Self {
             args,
             extern_states,
+            host_arena,
             fallback,
             next_direct_object_id: EXECUTION_HOST_OBJECT_ID_BASE,
             scoped_hosts: BTreeMap::new(),
@@ -148,6 +151,9 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
         root: HostRef,
         kind: HostLeaseKind,
     ) -> HostResult<ErasedHostLease<'host>> {
+        if self.host_arena.contains(root) {
+            return self.host_arena.take_lease(root, kind);
+        }
         if self.extern_states.binding(root).is_some() {
             return Err(host_lease_unsupported(root));
         }
@@ -390,7 +396,7 @@ impl ExecutionHostBoundary for ExecutionHost<'_, '_> {
                     return Err(host_lease_unsupported(*root).into());
                 }
             }
-            let mut leases = self.args.take_host_leases(&requests)?;
+            let mut leases = self.take_execution_host_leases(&requests)?;
             invoke.invoke(&mut leases, self).await
         })
     }
@@ -463,7 +469,7 @@ impl ExecutionHostBoundary for ReentryExecutionHost<'_, '_> {
             });
         };
         if self.args.direct_binding(root).is_none() {
-            return Box::pin(async move { Err(host_lease_unsupported(root).into()) });
+            return self.parent.invoke_prepared_with_lease(prepared);
         }
         match self.args.take_host_leases(&[(root, kind)]) {
             Ok(mut leases) => match leases.pop() {
@@ -484,10 +490,11 @@ impl ExecutionHostBoundary for ReentryExecutionHost<'_, '_> {
                     operation: "nested async direct host function leases",
                 })
             })?;
-            for (root, _) in &requests {
-                if self.args.direct_binding(*root).is_none() {
-                    return Err(host_lease_unsupported(*root).into());
-                }
+            if requests
+                .iter()
+                .any(|(root, _)| self.args.direct_binding(*root).is_none())
+            {
+                return self.parent.invoke_prepared_with_leases(prepared).await;
             }
             let mut leases = self.args.take_host_leases(&requests)?;
             prepared.invoke_with_host_leases(&mut leases).await
@@ -500,10 +507,11 @@ impl ExecutionHostBoundary for ReentryExecutionHost<'_, '_> {
         invoke: Box<dyn DirectContextInvoker + 'call>,
     ) -> NativeCallFuture<'call> {
         Box::pin(async move {
-            for (root, _) in &requests {
-                if self.args.direct_binding(*root).is_none() {
-                    return Err(host_lease_unsupported(*root).into());
-                }
+            if requests
+                .iter()
+                .any(|(root, _)| self.args.direct_binding(*root).is_none())
+            {
+                return self.parent.invoke_direct_context(requests, invoke).await;
             }
             let mut leases = self.args.take_host_leases(&requests)?;
             invoke.invoke(&mut leases, self).await
@@ -526,6 +534,13 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
 
     fn extern_state_ref(&self, state: ExternStateBinding<'_>) -> HostResult<HostRef> {
         self.parent.extern_state_ref(state)
+    }
+
+    fn retain_owned_host(
+        &mut self,
+        object: Box<dyn ScriptHostObject + Send + Sync>,
+    ) -> HostResult<HostRef> {
+        self.parent.retain_owned_host(object)
     }
 
     fn with_host_leases(
@@ -673,6 +688,9 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
     }
 
     fn host_receiver_access(&self, root: HostRef) -> HostLeaseKind {
+        if self.host_arena.contains(root) {
+            return HostLeaseKind::Exclusive;
+        }
         if self.extern_states.binding(root).is_some() {
             return HostLeaseKind::Exclusive;
         }
@@ -690,6 +708,13 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         self.extern_states
             .host_ref_for_binding(state)
             .or_else(|_| self.fallback.extern_state_ref(state))
+    }
+
+    fn retain_owned_host(
+        &mut self,
+        object: Box<dyn ScriptHostObject + Send + Sync>,
+    ) -> HostResult<HostRef> {
+        Ok(self.host_arena.retain(object))
     }
 
     fn with_host_leases(
@@ -765,6 +790,9 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         if let Some(binding) = self.extern_states.binding_by_type(spec.plan.root_type) {
             return binding.object.resolve_host_target(spec);
         }
+        if let Some(result) = self.host_arena.resolve(spec) {
+            return result;
+        }
         match self.args.direct_binding_by_type(spec.plan.root_type) {
             Some((_, HostArgBinding::Shared { object, .. })) => object.resolve_host_target(spec),
             Some((root, HostArgBinding::Mutable { object })) => object
@@ -782,6 +810,9 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
     ) -> HostResult<HostValue> {
         if let Some(binding) = self.extern_states.binding(target.root) {
             return binding.object.read_resolved_host(access, target);
+        }
+        if let Some(result) = self.host_arena.read(access, target) {
+            return result;
         }
         match self.args.direct_binding(target.root) {
             Some(HostArgBinding::Shared { object, .. }) => {
@@ -804,6 +835,12 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         if let Some(binding) = self.extern_states.binding_mut(target.root) {
             return binding.object.write_resolved_host(access, target, value);
         }
+        if self.host_arena.contains(target.root) {
+            return self
+                .host_arena
+                .write(access, target, value)
+                .expect("owned host root remains present");
+        }
         match self.args.direct_binding_mut(target.root) {
             Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
             Some(HostArgBinding::Mutable { object }) => object
@@ -824,6 +861,12 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         if let Some(binding) = self.extern_states.binding_mut(target.root) {
             return binding.object.mutate_resolved_host(access, target, op, rhs);
         }
+        if self.host_arena.contains(target.root) {
+            return self
+                .host_arena
+                .mutate(access, target, op, rhs)
+                .expect("owned host root remains present");
+        }
         match self.args.direct_binding_mut(target.root) {
             Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
             Some(HostArgBinding::Mutable { object }) => object
@@ -841,6 +884,9 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
     ) -> HostResult<()> {
         if let Some(binding) = self.extern_states.binding_mut(target.root) {
             return binding.object.remove_resolved_host(access, target);
+        }
+        if let Some(result) = self.host_arena.remove(access, target) {
+            return result;
         }
         match self.args.direct_binding_mut(target.root) {
             Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
@@ -863,6 +909,9 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             return binding
                 .object
                 .call_resolved_host(access, target, method, args);
+        }
+        if let Some(result) = self.host_arena.call(access, target, method, args) {
+            return result;
         }
         match self.args.direct_binding_mut(target.root) {
             Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "call")),
@@ -1015,7 +1064,7 @@ mod tests {
     use vela_vm::value::Value;
 
     use super::{EXECUTION_HOST_OBJECT_ID_BASE, ExecutionHost, ReentryExecutionHost};
-    use crate::runtime::{CallArgs, RuntimeExternStateBindings};
+    use crate::runtime::{CallArgs, RuntimeExternStateBindings, RuntimeHostArena};
 
     #[test]
     fn direct_host_ids_are_allocated_by_the_execution_owner() {
@@ -1025,8 +1074,9 @@ mod tests {
             .with_host_ref("shared", &shared)
             .with_host_mut("mutable", &mut mutable);
         let mut extern_states = RuntimeExternStateBindings::new();
+        let mut host_arena = RuntimeHostArena::new();
 
-        let host = ExecutionHost::new(args, &mut extern_states);
+        let host = ExecutionHost::new(args, &mut extern_states, &mut host_arena);
 
         assert_eq!(
             host.next_direct_object_id(),
@@ -1040,7 +1090,8 @@ mod tests {
         let child_value = vec![2_i64];
         let args = CallArgs::new().with_host_ref("root", &root_value);
         let mut extern_states = RuntimeExternStateBindings::new();
-        let mut host = ExecutionHost::new(args, &mut extern_states);
+        let mut host_arena = RuntimeHostArena::new();
+        let mut host = ExecutionHost::new(args, &mut extern_states, &mut host_arena);
         let mut heap = ScriptHeap::default();
         let mut budget = ExecutionBudget::unbounded();
 

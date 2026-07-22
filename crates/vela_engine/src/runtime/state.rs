@@ -8,12 +8,14 @@ use vela_bytecode::{
 
 use super::{
     RuntimeExternStateBindings, RuntimeVmStateStore, bytecode_profile::BytecodeProfileSnapshot,
-    execution_data::SharedGenerationExecutionData, image::RuntimeImage, next_runtime_id,
+    execution_data::SharedGenerationExecutionData, host_arena::RuntimeHostArena,
+    image::RuntimeImage, next_runtime_id,
 };
 
 pub(super) struct RuntimeState {
     pub(super) id: u64,
     pub(super) extern_states: RuntimeExternStateBindings,
+    pub(super) host_arena: RuntimeHostArena,
     pub(super) vm_states: RuntimeVmStateStore,
     pub(super) generations: RuntimeGenerations,
 }
@@ -42,6 +44,7 @@ impl RuntimeState {
         Self {
             id: next_runtime_id(),
             extern_states: RuntimeExternStateBindings::new(),
+            host_arena: RuntimeHostArena::new(),
             vm_states: RuntimeVmStateStore::new(),
             generations: RuntimeGenerations {
                 active_generation,

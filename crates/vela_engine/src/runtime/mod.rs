@@ -41,6 +41,7 @@ pub(crate) mod execution_data;
 mod execution_host;
 mod extern_state_bindings;
 pub(crate) mod handles;
+mod host_arena;
 mod image;
 mod initialization;
 mod inline_cache;
@@ -73,6 +74,7 @@ use handles::{
     RuntimeCallExecution, RuntimeCallTargetKind, RuntimeMethodResolveContext,
     RuntimeMethodSelectorKind,
 };
+use host_arena::RuntimeHostArena;
 use reentry::{ActiveNativeReentry, invoke_prepared_async, invoke_prepared_context};
 use state::RuntimeState;
 use vm_states::RuntimeValueRoots;
@@ -526,6 +528,7 @@ where
             artifact: self.image.linked_artifact(),
             hot_reload: self.hot_reload.as_ref(),
             extern_states: &mut state.extern_states,
+            host_arena: &mut state.host_arena,
             vm_states: &mut state.vm_states,
             generations: &mut state.generations,
             target,
@@ -568,6 +571,7 @@ where
             artifact: self.image.linked_artifact(),
             hot_reload: self.hot_reload.as_ref(),
             extern_states: &mut state.extern_states,
+            host_arena: &mut state.host_arena,
             vm_states: &mut state.vm_states,
             generations: &mut state.generations,
             target,
@@ -634,7 +638,11 @@ where
         let mut budget = options.budget();
         let execution_args =
             CallArgs::from_positional(args.iter().cloned()).with_fallback_adapter(adapter);
-        let mut execution_host = ExecutionHost::new(execution_args, &mut self.state.extern_states);
+        let mut execution_host = ExecutionHost::new(
+            execution_args,
+            &mut self.state.extern_states,
+            &mut self.state.host_arena,
+        );
         let roots = self.state.vm_states.roots();
         let use_persistent_heap = options.managed_heap || !self.state.vm_states.is_empty();
         let mut host = HostExecution {
@@ -722,7 +730,11 @@ where
             .collect::<Vec<_>>();
         let roots = self.state.vm_states.roots();
         args.set_fallback_adapter(adapter);
-        let mut execution_host = ExecutionHost::new(args, &mut self.state.extern_states);
+        let mut execution_host = ExecutionHost::new(
+            args,
+            &mut self.state.extern_states,
+            &mut self.state.host_arena,
+        );
         let resolved = execution_host.resolve_values(
             entry,
             &params,
@@ -764,7 +776,7 @@ where
 
     fn call_runtime_args(call: RuntimeCallExecution<'_, '_, '_, '_>) -> VmResult<VelaValue> {
         let budget = call.budget;
-        let mut execution_host = ExecutionHost::new(call.args, call.extern_states);
+        let mut execution_host = ExecutionHost::new(call.args, call.extern_states, call.host_arena);
         let resolved = execution_host.resolve_values(
             &call.target.name,
             &call.target.params,
@@ -872,7 +884,7 @@ where
         call: RuntimeCallExecution<'_, '_, '_, '_>,
     ) -> VmResult<VelaValue> {
         let budget = call.budget;
-        let mut execution_host = ExecutionHost::new(call.args, call.extern_states);
+        let mut execution_host = ExecutionHost::new(call.args, call.extern_states, call.host_arena);
         let resolved = execution_host.resolve_values(
             &call.target.name,
             &call.target.params,

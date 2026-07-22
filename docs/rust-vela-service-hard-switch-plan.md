@@ -1028,10 +1028,11 @@ common-arity alias preflight allocates nothing and remains atomic
 Current S2 state: the sealed registry, manual Value codec, receiver-capability
 enforcement, and type-owned Value constructor path are implemented. A
 constructor is associated with its binding but reuses the ordinary native
-function registry and `host::Type::new` resolution. Host construction remains
-gated on the host-owned factory/arena slice; derive generation, standard
-bindings, compact HostRef storage, prepared thunks, and common-arity preflight
-remain open.
+function registry and `host::Type::new` resolution. Host factories now transfer
+exact Rust objects into actor-local Runtime-owned storage and expose only
+HostRef handles to Vela; Runtime drop is the current reclamation boundary.
+Derive generation, standard bindings, compact HostRef storage, prepared thunks,
+and common-arity preflight remain open.
 
 ### S3 — Standard Rust types, views, and collection protocols
 

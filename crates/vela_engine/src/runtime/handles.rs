@@ -356,6 +356,7 @@ pub(super) struct RuntimeCallExecution<'program, 'state, 'host, 'budget> {
     pub(super) artifact: &'program Arc<LinkedArtifact>,
     pub(super) hot_reload: Option<&'program HotReloadRuntime>,
     pub(super) extern_states: &'state mut RuntimeExternStateBindings,
+    pub(super) host_arena: &'state mut super::host_arena::RuntimeHostArena,
     pub(super) vm_states: &'state mut RuntimeVmStateStore,
     pub(super) generations: &'state mut RuntimeGenerations,
     pub(super) target: EntryRequest,

@@ -95,6 +95,7 @@ pub enum HostErrorKind {
     HostLeaseUnsupported {
         path: HostPath,
     },
+    OwnedHostStorageUnsupported,
     NotScopedBorrow {
         path: HostPath,
     },

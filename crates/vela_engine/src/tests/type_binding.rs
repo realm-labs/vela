@@ -20,7 +20,9 @@ use crate::native::{EffectSet, TypeHint};
 use crate::runtime::{CallArgs, CallOptions, Runtime};
 use crate::type_binding::{TypeBinding, ValueCodec};
 
-struct ExternalHost;
+struct ExternalHost {
+    amount: i64,
+}
 
 impl ScriptHostObject for ExternalHost {
     fn host_type_id(&self) -> HostTypeId {
@@ -32,7 +34,27 @@ impl ScriptHostObject for ExternalHost {
         _access: vela_host::resolved::ResolvedHostAccess,
         _target: HostTargetInstance<'_>,
     ) -> HostResult<HostValue> {
-        Ok(HostValue::Unit)
+        Ok(HostValue::Scalar(vela_common::ScalarValue::I64(
+            self.amount,
+        )))
+    }
+
+    fn write_resolved_host(
+        &mut self,
+        _access: vela_host::resolved::ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+        value: HostValue,
+    ) -> HostResult<()> {
+        let HostValue::Scalar(vela_common::ScalarValue::I64(amount)) = value else {
+            return Err(vela_host::error::HostError {
+                kind: vela_host::error::HostErrorKind::InvalidArgument {
+                    expected: "i64 ExternalHost value",
+                },
+                source_span: None,
+            });
+        };
+        self.amount = amount;
+        Ok(())
     }
 }
 
@@ -83,6 +105,27 @@ fn construct_external_value(
     Ok(encode_external_value(ExternalValue {
         amount: i64::from_script_arg(amount)?,
     }))
+}
+
+fn external_host_constructor() -> crate::native::NativeFunctionDesc {
+    crate::native::NativeFunctionDesc::new("host::ExternalHost::new", FunctionId::new(411))
+        .param("amount", TypeHint::i64())
+        .returns(TypeHint::Host(host_desc(101, 201).key))
+        .effects(EffectSet::pure())
+}
+
+fn construct_external_host(
+    args: &[OwnedValue],
+    _host: &mut vela_vm::HostExecution<'_>,
+) -> VmResult<ExternalHost> {
+    let [amount] = args else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host::ExternalHost::new arguments",
+        }));
+    };
+    Ok(ExternalHost {
+        amount: i64::from_script_arg(amount)?,
+    })
 }
 
 fn encode_external_value(value: ExternalValue) -> OwnedValue {
@@ -507,6 +550,91 @@ fn type_binding_rejects_constructor_with_wrong_owner_or_return_type() {
                 reason: "declared return type is not the bound type",
             }
     ));
+
+    let forged_host_ref = Engine::builder()
+        .register_rust_type::<ExternalHost>(TypeBinding::host(host_desc(101, 201)).constructor_fn(
+            external_host_constructor(),
+            |_args, _host| {
+                Ok(OwnedValue::HostRef(vela_host::path::HostRef::new(
+                    HostTypeId::new(201),
+                    vela_common::HostObjectId::new(1),
+                    1,
+                )))
+            },
+        ))
+        .build();
+    assert!(matches!(
+        forged_host_ref,
+        Err(error)
+            if error.kind == EngineErrorKind::InvalidTypeBindingConstructor {
+                type_name: "host::ExternalHost".to_owned(),
+                constructor: "host::ExternalHost::new".to_owned(),
+                reason: "a Host binding requires a host-owned factory",
+            }
+    ));
+}
+
+#[test]
+fn host_constructor_retains_rust_object_outside_gc_across_runtime_calls() {
+    let engine = Engine::builder()
+        .register_rust_type::<ExternalHost>(
+            TypeBinding::host(host_desc(101, 201))
+                .host_constructor_fn(external_host_constructor(), construct_external_host),
+        )
+        .build()
+        .expect("host factory binding should seal");
+    let type_bindings = engine.type_bindings();
+    let binding = type_bindings
+        .get_for::<ExternalHost>()
+        .expect("host binding");
+    assert!(binding.capabilities.contains(ReceiverCapability::Construct));
+    assert_eq!(binding.constructor_ids, [FunctionId::new(411)]);
+
+    let program = engine
+        .compile_source_with_id(
+            SourceId::new(4),
+            r#"
+fn make(amount: i64) {
+    return host::ExternalHost::new(amount);
+}
+
+fn add_five(value: host::ExternalHost) {
+    value.value += 5;
+    return value.value;
+}
+"#,
+        )
+        .expect("host constructor and field access should compile");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+    let handle = runtime
+        .call(
+            "make",
+            CallArgs::from_positional([OwnedValue::from(7_i64)]),
+            CallOptions::unbounded(),
+        )
+        .expect("host factory should construct into the Runtime arena");
+    let result = runtime
+        .call(
+            "add_five",
+            CallArgs::new().with_vela_value(handle.clone()),
+            CallOptions::unbounded(),
+        )
+        .expect("constructed host should remain live across calls");
+    assert_eq!(
+        runtime.value_to_owned(&result),
+        Ok(OwnedValue::from(12_i64))
+    );
+    let result = runtime
+        .call(
+            "add_five",
+            CallArgs::new().with_vela_value(handle),
+            CallOptions::unbounded(),
+        )
+        .expect("the same host handle should preserve Rust-side mutations");
+    assert_eq!(
+        runtime.value_to_owned(&result),
+        Ok(OwnedValue::from(17_i64))
+    );
 }
 
 #[test]
@@ -534,7 +662,7 @@ fn touch(value: host::ExternalHost) {
         )
         .expect("exclusive method should compile for dynamic call-bound receiver access");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
-    let mut host = ExternalHost;
+    let mut host = ExternalHost { amount: 0 };
 
     let shared_error = runtime
         .call(

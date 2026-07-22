@@ -42,6 +42,10 @@ pub type ScopedHostLeaseSlot<'host> = Arc<RwLock<ScopedHostLeaseObject<'host>>>;
 pub type SharedScopedHostLease<'host> = ArcRwLockReadGuard<RawRwLock, ScopedHostLeaseObject<'host>>;
 pub type ExclusiveScopedHostLease<'host> =
     ArcRwLockWriteGuard<RawRwLock, ScopedHostLeaseObject<'host>>;
+pub type OwnedHostLeaseObject = Box<dyn ScriptHostObject + Send + Sync + 'static>;
+pub type OwnedHostLeaseSlot = Arc<RwLock<OwnedHostLeaseObject>>;
+pub type SharedOwnedHostLease = ArcRwLockReadGuard<RawRwLock, OwnedHostLeaseObject>;
+pub type ExclusiveOwnedHostLease = ArcRwLockWriteGuard<RawRwLock, OwnedHostLeaseObject>;
 
 pub enum ErasedHostLease<'host> {
     Vacant,
@@ -61,6 +65,12 @@ pub enum ErasedHostLease<'host> {
     ScopedExclusive {
         object: ExclusiveScopedHostLease<'host>,
     },
+    OwnedShared {
+        object: SharedOwnedHostLease,
+    },
+    OwnedExclusive {
+        object: ExclusiveOwnedHostLease,
+    },
 }
 
 impl ErasedHostLease<'_> {
@@ -73,6 +83,8 @@ impl ErasedHostLease<'_> {
             Self::Exclusive { object } => &***object,
             Self::ScopedShared { object } => &***object,
             Self::ScopedExclusive { object } => &***object,
+            Self::OwnedShared { object } => &***object,
+            Self::OwnedExclusive { object } => &***object,
         }
     }
 
@@ -81,15 +93,20 @@ impl ErasedHostLease<'_> {
             Self::Vacant
             | Self::SharedBorrowed { .. }
             | Self::SharedMutable { .. }
-            | Self::ScopedShared { .. } => None,
+            | Self::ScopedShared { .. }
+            | Self::OwnedShared { .. } => None,
             Self::Exclusive { object } => Some(&mut ***object),
             Self::ScopedExclusive { object } => Some(&mut ***object),
+            Self::OwnedExclusive { object } => Some(&mut ***object),
         }
     }
 
     #[must_use]
     pub const fn is_exclusive(&self) -> bool {
-        matches!(self, Self::Exclusive { .. } | Self::ScopedExclusive { .. })
+        matches!(
+            self,
+            Self::Exclusive { .. } | Self::ScopedExclusive { .. } | Self::OwnedExclusive { .. }
+        )
     }
 
     #[must_use]

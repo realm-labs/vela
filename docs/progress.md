@@ -41,6 +41,10 @@ Value constructors are now registered on `TypeBinding`, reuse the ordinary
 native-function execution path, derive `construct`, participate in the binding
 ABI, project their stable IDs through reflection/compiler facts, and execute
 from Vela through a qualified `host::Type::new` call.
+Host factories now use `host_constructor_fn` to transfer exact Rust objects
+into actor-local Runtime-owned storage. Vela receives only a `HostRef`; the
+object remains outside script GC, supports HostAccess and shared/exclusive
+leases, and survives across Runtime calls until its Runtime is dropped.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry
@@ -202,10 +206,11 @@ examples, benchmark rows, or schema metadata. Neutral ABI, lease, re-entry,
 borrowed-return, generation-pinning, and no-retry behavior remains under its
 ordinary module ownership. S2 now has the sealed binding identity/storage/ABI
 substrate, manual external-type entrypoint, typed structural Value codec path,
-and type-owned Value constructor registration. Host-owned constructor
-factories, derive-generated codecs, standard bindings, compact root-local
-HostRef storage, prepared thunks, and allocation-free common-arity preflight
-remain open. Runtime receiver enforcement is live; compile-time
+and type-owned Value plus Host constructor registration backed by actor-local
+Runtime storage. Derive-generated codecs, standard bindings, compact root-local
+HostRef storage, prepared thunks, allocation-free common-arity preflight, and a
+post-S2 shorter owned-host reclamation policy remain open. Runtime receiver
+enforcement is live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-
 signature facts.
 

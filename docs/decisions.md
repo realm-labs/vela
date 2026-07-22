@@ -2309,6 +2309,12 @@ access facts enter `TypeAbiFingerprint`, while docs, source positions, and the
 Rust implementation closure do not. Value constructors synchronously return
 the exact bound record or enum. Host constructors require the separate
 host-owned factory/arena path so Rust state never enters the script GC.
+`host_constructor_fn` transfers the factory result into actor-local Runtime
+storage, validates its exact registered `HostTypeId`, and returns a compact
+handle. The arena participates in HostAccess and exact shared/exclusive leases;
+constructed objects are retained until Runtime drop in S2. Future explicit
+release or reachability-based reclamation may shorten that lifetime, but the
+script collector must never become the Rust object's owner.
 
 ### Repository Artifacts Use Domain-Neutral Host Names
 

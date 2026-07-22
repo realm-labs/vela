@@ -7,6 +7,7 @@ use crate::{
         ErasedHostLease, HostLeaseKind, ScopedBorrowedHostCell, ScopedBorrowedHostGroupCell,
         host_lease_unsupported,
     },
+    object::ScriptHostObject,
     path::HostRef,
     resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess},
     target::HostTargetInstance,
@@ -65,6 +66,18 @@ pub trait ScriptStateAdapter {
             },
             source_span: None,
         })
+    }
+
+    /// Transfers a newly constructed host object into the adapter's durable
+    /// host-owned storage and returns its stable handle.
+    ///
+    /// Generic adapters fail closed. Runtime adapters that opt in own the Rust
+    /// object independently of the script GC.
+    fn retain_owned_host(
+        &mut self,
+        _object: Box<dyn ScriptHostObject + Send + Sync>,
+    ) -> HostResult<HostRef> {
+        Err(HostError::new(HostErrorKind::OwnedHostStorageUnsupported))
     }
 
     fn resolve_host_access(&self, _spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {

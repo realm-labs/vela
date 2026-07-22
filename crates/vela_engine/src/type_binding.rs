@@ -27,7 +27,19 @@ pub struct TypeBinding<T: 'static> {
     storage: StoragePolicy,
     capabilities: ReceiverCapabilities,
     value_codec: Option<ValueCodec<T>>,
-    constructors: Vec<HostNativeFunctionEntry>,
+    constructors: Vec<TypeConstructorEntry>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ConstructorStorage {
+    Value,
+    Host,
+}
+
+#[derive(Clone)]
+struct TypeConstructorEntry {
+    storage: ConstructorStorage,
+    native: HostNativeFunctionEntry,
 }
 
 impl<T: 'static> TypeBinding<T> {
@@ -107,8 +119,47 @@ impl<T: 'static> TypeBinding<T> {
         + 'static,
     ) -> Self {
         self.capabilities = self.capabilities.with(ReceiverCapability::Construct);
-        self.constructors
-            .push(HostNativeFunctionEntry::new(desc, function));
+        self.constructors.push(TypeConstructorEntry {
+            storage: ConstructorStorage::Value,
+            native: HostNativeFunctionEntry::new(desc, function),
+        });
+        self
+    }
+
+    /// Registers a factory that transfers its Rust result into Runtime-owned
+    /// host storage and returns only a `HostRef` to Vela.
+    #[must_use]
+    pub fn host_constructor_fn(
+        mut self,
+        desc: NativeFunctionDesc,
+        factory: impl for<'host> Fn(&[OwnedValue], &mut vela_vm::HostExecution<'host>) -> VmResult<T>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self
+    where
+        T: vela_host::object::ScriptHostObject + Send + Sync,
+    {
+        let expected_type = self.spec.type_desc().host_type_id;
+        self.capabilities = self.capabilities.with(ReceiverCapability::Construct);
+        self.constructors.push(TypeConstructorEntry {
+            storage: ConstructorStorage::Host,
+            native: HostNativeFunctionEntry::new(desc, move |args, host| {
+                let object = factory(args, host)?;
+                let actual = object.host_type_id();
+                let expected = expected_type
+                    .expect("host constructor executes only after its Host TypeBinding seals");
+                if actual != expected {
+                    return Err(vela_host::error::HostError {
+                        kind: vela_host::error::HostErrorKind::TypeMismatch { expected, actual },
+                        source_span: None,
+                    }
+                    .into());
+                }
+                let root = host.adapter.retain_owned_host(Box::new(object))?;
+                Ok(OwnedValue::HostRef(root))
+            }),
+        });
         self
     }
 
@@ -161,7 +212,10 @@ impl<T: 'static> TypeBinding<T> {
             value_codec: self.value_codec.map(ErasedValueCodec::new),
             constructors: constructors
                 .iter()
-                .map(|entry| entry.desc.clone())
+                .map(|entry| TypeConstructorRegistration {
+                    storage: entry.storage,
+                    desc: entry.native.desc.clone(),
+                })
                 .collect(),
         };
         (
@@ -169,7 +223,7 @@ impl<T: 'static> TypeBinding<T> {
             type_desc,
             method_metadata,
             native_methods,
-            constructors,
+            constructors.into_iter().map(|entry| entry.native).collect(),
         )
     }
 }
@@ -238,7 +292,13 @@ pub(crate) struct TypeBindingRegistration {
     storage: StoragePolicy,
     capabilities: ReceiverCapabilities,
     value_codec: Option<ErasedValueCodec>,
-    constructors: Vec<NativeFunctionDesc>,
+    constructors: Vec<TypeConstructorRegistration>,
+}
+
+#[derive(Clone)]
+struct TypeConstructorRegistration {
+    storage: ConstructorStorage,
+    desc: NativeFunctionDesc,
 }
 
 impl TypeBindingRegistration {
@@ -284,7 +344,7 @@ impl TypeBindingRegistry {
             let mut constructor_ids = registration
                 .constructors
                 .iter()
-                .map(|constructor| constructor.id)
+                .map(|constructor| constructor.desc.id)
                 .collect::<Vec<_>>();
             constructor_ids.sort_unstable();
             let binding = TypeBindingDesc::new(
@@ -439,7 +499,7 @@ fn type_abi_fingerprint(
     id: InteropTypeId,
     storage: StoragePolicy,
     capabilities: ReceiverCapabilities,
-    constructors: &[NativeFunctionDesc],
+    constructors: &[TypeConstructorRegistration],
     desc: &TypeDesc,
 ) -> TypeAbiFingerprint {
     let mut parts = vec![
@@ -459,16 +519,23 @@ fn type_abi_fingerprint(
         ),
     ];
     let mut constructors = constructors.iter().collect::<Vec<_>>();
-    constructors.sort_by_key(|constructor| constructor.id);
+    constructors.sort_by_key(|constructor| constructor.desc.id);
     for constructor in constructors {
-        parts.push(constructor_abi(constructor));
-        parts.extend(constructor.params.iter().enumerate().map(|(index, param)| {
-            format!(
-                "constructor-param={index}:{}:{}",
-                param.name,
-                crate::metadata::type_hint_display(&param.hint)
-            )
-        }));
+        parts.push(constructor_abi(&constructor.desc));
+        parts.extend(
+            constructor
+                .desc
+                .params
+                .iter()
+                .enumerate()
+                .map(|(index, param)| {
+                    format!(
+                        "constructor-param={index}:{}:{}",
+                        param.name,
+                        crate::metadata::type_hint_display(&param.hint)
+                    )
+                }),
+        );
     }
     let mut fields = desc.fields.iter().collect::<Vec<_>>();
     fields.sort_by_key(|field| field.id);
@@ -555,7 +622,8 @@ fn validate_constructors(
     desc: &TypeDesc,
 ) -> EngineResult<()> {
     for constructor in &registration.constructors {
-        let valid_owner = constructor
+        let constructor_desc = &constructor.desc;
+        let valid_owner = constructor_desc
             .name
             .rsplit_once("::")
             .is_some_and(|(owner, name)| {
@@ -564,39 +632,56 @@ fn validate_constructors(
         if !valid_owner {
             return Err(invalid_constructor(
                 desc,
-                constructor,
+                constructor_desc,
                 "qualified name is not directly owned by the bound type",
             ));
         }
-        if constructor.asyncness.is_async() {
+        if constructor_desc.asyncness.is_async() {
             return Err(invalid_constructor(
                 desc,
-                constructor,
-                "Value constructors must be synchronous",
+                constructor_desc,
+                "constructors must be synchronous",
             ));
         }
-        let expected = match (registration.storage, desc.kind) {
-            (StoragePolicy::Value, TypeKind::ScriptStruct) => TypeHint::Record(desc.key.clone()),
-            (StoragePolicy::Value, TypeKind::ScriptEnum) => TypeHint::Enum(desc.key.clone()),
-            (StoragePolicy::Value, _) => {
+        let expected = match (registration.storage, constructor.storage, desc.kind) {
+            (StoragePolicy::Value, ConstructorStorage::Value, TypeKind::ScriptStruct) => {
+                TypeHint::Record(desc.key.clone())
+            }
+            (StoragePolicy::Value, ConstructorStorage::Value, TypeKind::ScriptEnum) => {
+                TypeHint::Enum(desc.key.clone())
+            }
+            (StoragePolicy::Value, ConstructorStorage::Value, _) => {
                 return Err(invalid_constructor(
                     desc,
-                    constructor,
+                    constructor_desc,
                     "Value constructors require a script struct or enum representation",
                 ));
             }
-            (StoragePolicy::Host, _) => {
+            (StoragePolicy::Host, ConstructorStorage::Host, TypeKind::Host) => {
+                TypeHint::Host(desc.key.clone())
+            }
+            (StoragePolicy::Value, ConstructorStorage::Host, _) => {
                 return Err(invalid_constructor(
                     desc,
-                    constructor,
-                    "Host constructors require a host-owned factory",
+                    constructor_desc,
+                    "a host factory cannot construct a Value binding",
                 ));
             }
+            (StoragePolicy::Host, ConstructorStorage::Value, _) => {
+                return Err(invalid_constructor(
+                    desc,
+                    constructor_desc,
+                    "a Host binding requires a host-owned factory",
+                ));
+            }
+            (StoragePolicy::Host, ConstructorStorage::Host, _) => {
+                unreachable!("Host storage validation requires a host type representation")
+            }
         };
-        if constructor.returns != expected {
+        if constructor_desc.returns != expected {
             return Err(invalid_constructor(
                 desc,
-                constructor,
+                constructor_desc,
                 "declared return type is not the bound type",
             ));
         }

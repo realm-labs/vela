@@ -210,6 +210,7 @@ where
                 artifact: self.image.linked_artifact(),
                 hot_reload: self.hot_reload.as_ref(),
                 extern_states: &mut runtime_state.extern_states,
+                host_arena: &mut runtime_state.host_arena,
                 vm_states: &mut runtime_state.vm_states,
                 generations: &mut runtime_state.generations,
                 target,
