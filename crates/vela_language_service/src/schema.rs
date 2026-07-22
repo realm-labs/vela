@@ -6,7 +6,7 @@ use vela_analysis::registry::{
     RegistryIndexCapabilityFact, RegistryMemberFact, RegistryMethodAccessFact, RegistryModuleFact,
 };
 use vela_analysis::type_fact::TypeFact;
-use vela_common::{PrimitiveTag, ReceiverCapability, SourceId, Span};
+use vela_common::{CollectionViewMutation, PrimitiveTag, ReceiverCapability, SourceId, Span};
 
 pub const SCHEMA_ARTIFACT_FORMAT_VERSION: u32 = 1;
 const SCHEMA_HASH_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
@@ -864,12 +864,35 @@ enum SchemaTypeFact {
     Array {
         element: Box<SchemaTypeFact>,
     },
+    ArrayView {
+        element: Box<SchemaTypeFact>,
+    },
+    ArrayMut {
+        element: Box<SchemaTypeFact>,
+        mutation: SchemaCollectionMutation,
+    },
     Map {
         key: Box<SchemaTypeFact>,
         value: Box<SchemaTypeFact>,
     },
+    MapView {
+        key: Box<SchemaTypeFact>,
+        value: Box<SchemaTypeFact>,
+    },
+    MapMut {
+        key: Box<SchemaTypeFact>,
+        value: Box<SchemaTypeFact>,
+        mutation: SchemaCollectionMutation,
+    },
     Set {
         element: Box<SchemaTypeFact>,
+    },
+    SetView {
+        element: Box<SchemaTypeFact>,
+    },
+    SetMut {
+        element: Box<SchemaTypeFact>,
+        mutation: SchemaCollectionMutation,
     },
     Iterator {
         item: Box<SchemaTypeFact>,
@@ -920,6 +943,31 @@ enum SchemaTypeFact {
     },
 }
 
+#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+enum SchemaCollectionMutation {
+    Fixed,
+    Growable,
+}
+
+impl From<CollectionViewMutation> for SchemaCollectionMutation {
+    fn from(value: CollectionViewMutation) -> Self {
+        match value {
+            CollectionViewMutation::Fixed => Self::Fixed,
+            CollectionViewMutation::Growable => Self::Growable,
+        }
+    }
+}
+
+impl From<SchemaCollectionMutation> for CollectionViewMutation {
+    fn from(value: SchemaCollectionMutation) -> Self {
+        match value {
+            SchemaCollectionMutation::Fixed => Self::Fixed,
+            SchemaCollectionMutation::Growable => Self::Growable,
+        }
+    }
+}
+
 impl SchemaTypeFact {
     fn from_type_fact(fact: &TypeFact) -> Self {
         match fact {
@@ -933,12 +981,39 @@ impl SchemaTypeFact {
             TypeFact::Array { element } => Self::Array {
                 element: Box::new(Self::from_type_fact(element)),
             },
+            TypeFact::ArrayView { element } => Self::ArrayView {
+                element: Box::new(Self::from_type_fact(element)),
+            },
+            TypeFact::ArrayMut { element, mutation } => Self::ArrayMut {
+                element: Box::new(Self::from_type_fact(element)),
+                mutation: (*mutation).into(),
+            },
             TypeFact::Map { key, value } => Self::Map {
                 key: Box::new(Self::from_type_fact(key)),
                 value: Box::new(Self::from_type_fact(value)),
             },
+            TypeFact::MapView { key, value } => Self::MapView {
+                key: Box::new(Self::from_type_fact(key)),
+                value: Box::new(Self::from_type_fact(value)),
+            },
+            TypeFact::MapMut {
+                key,
+                value,
+                mutation,
+            } => Self::MapMut {
+                key: Box::new(Self::from_type_fact(key)),
+                value: Box::new(Self::from_type_fact(value)),
+                mutation: (*mutation).into(),
+            },
             TypeFact::Set { element } => Self::Set {
                 element: Box::new(Self::from_type_fact(element)),
+            },
+            TypeFact::SetView { element } => Self::SetView {
+                element: Box::new(Self::from_type_fact(element)),
+            },
+            TypeFact::SetMut { element, mutation } => Self::SetMut {
+                element: Box::new(Self::from_type_fact(element)),
+                mutation: (*mutation).into(),
             },
             TypeFact::Iterator { item } => Self::Iterator {
                 item: Box::new(Self::from_type_fact(item)),
@@ -995,8 +1070,24 @@ impl SchemaTypeFact {
             }
             Self::Range => TypeFact::Range,
             Self::Array { element } => TypeFact::array(element.to_type_fact()),
+            Self::ArrayView { element } => TypeFact::array_view(element.to_type_fact()),
+            Self::ArrayMut { element, mutation } => {
+                TypeFact::array_mut(element.to_type_fact(), (*mutation).into())
+            }
             Self::Map { key, value } => TypeFact::map(key.to_type_fact(), value.to_type_fact()),
+            Self::MapView { key, value } => {
+                TypeFact::map_view(key.to_type_fact(), value.to_type_fact())
+            }
+            Self::MapMut {
+                key,
+                value,
+                mutation,
+            } => TypeFact::map_mut(key.to_type_fact(), value.to_type_fact(), (*mutation).into()),
             Self::Set { element } => TypeFact::set(element.to_type_fact()),
+            Self::SetView { element } => TypeFact::set_view(element.to_type_fact()),
+            Self::SetMut { element, mutation } => {
+                TypeFact::set_mut(element.to_type_fact(), (*mutation).into())
+            }
             Self::Iterator { item } => TypeFact::iterator(item.to_type_fact()),
             Self::Option { some } => TypeFact::option(some.to_type_fact()),
             Self::OptionSome { some } => TypeFact::option_some(some.to_type_fact()),

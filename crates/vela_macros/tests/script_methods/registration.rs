@@ -436,12 +436,37 @@ fn type_hint_name(hint: &TypeHint) -> String {
         TypeHint::Primitive(tag) => tag.name().to_owned(),
         TypeHint::Array => "Array".to_owned(),
         TypeHint::ArrayOf(element) => format!("Array<{}>", type_hint_name(element)),
+        TypeHint::ArrayViewOf(element) => format!("ArrayView<{}>", type_hint_name(element)),
+        TypeHint::ArrayMutOf { element, mutation } => format!(
+            "ArrayMut<{}:{}>",
+            type_hint_name(element),
+            mutation.as_str()
+        ),
         TypeHint::Map => "Map".to_owned(),
         TypeHint::MapOf { key, value } => {
             format!("Map<{}, {}>", type_hint_name(key), type_hint_name(value))
         }
+        TypeHint::MapViewOf { key, value } => format!(
+            "MapView<{}, {}>",
+            type_hint_name(key),
+            type_hint_name(value)
+        ),
+        TypeHint::MapMutOf {
+            key,
+            value,
+            mutation,
+        } => format!(
+            "MapMut<{}, {}:{}>",
+            type_hint_name(key),
+            type_hint_name(value),
+            mutation.as_str()
+        ),
         TypeHint::Set => "Set".to_owned(),
         TypeHint::SetOf(element) => format!("Set<{}>", type_hint_name(element)),
+        TypeHint::SetViewOf(element) => format!("SetView<{}>", type_hint_name(element)),
+        TypeHint::SetMutOf { element, mutation } => {
+            format!("SetMut<{}:{}>", type_hint_name(element), mutation.as_str())
+        }
         TypeHint::TupleOf(elements) => format!(
             "({})",
             elements

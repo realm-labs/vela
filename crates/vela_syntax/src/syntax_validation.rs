@@ -249,9 +249,15 @@ impl TypeArgumentContract {
 
 fn type_argument_contract(path: &[String]) -> Option<TypeArgumentContract> {
     match path {
-        [name] if name == "Array" => Some(TypeArgumentContract::FixedArity(1)),
-        [name] if name == "Set" => Some(TypeArgumentContract::KeyedSet),
-        [name] if name == "Map" => Some(TypeArgumentContract::KeyedMap),
+        [name] if matches!(name.as_str(), "Array" | "ArrayView" | "ArrayMut") => {
+            Some(TypeArgumentContract::FixedArity(1))
+        }
+        [name] if matches!(name.as_str(), "Set" | "SetView" | "SetMut") => {
+            Some(TypeArgumentContract::KeyedSet)
+        }
+        [name] if matches!(name.as_str(), "Map" | "MapView" | "MapMut") => {
+            Some(TypeArgumentContract::KeyedMap)
+        }
         [name] if name == "Iterator" => Some(TypeArgumentContract::FixedArity(1)),
         [name] if name == "Option" => Some(TypeArgumentContract::FixedArity(1)),
         [name] if name == "Result" => Some(TypeArgumentContract::FixedArity(2)),

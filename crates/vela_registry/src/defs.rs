@@ -1,8 +1,8 @@
 use std::fmt;
 
 use vela_common::{
-    CollectionViewCapabilities, InteropTypeId, PrimitiveTag, ReceiverCapabilities,
-    ReceiverCapability, StoragePolicy, TypeAbiFingerprint,
+    CollectionViewCapabilities, CollectionViewMutation, InteropTypeId, PrimitiveTag,
+    ReceiverCapabilities, ReceiverCapability, StoragePolicy, TypeAbiFingerprint,
 };
 use vela_def::{
     DefId, DefKind, DefPath, FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId,
@@ -69,6 +69,7 @@ impl TypeKindDef {
 pub struct TypeHintDef {
     pub path: Vec<String>,
     pub args: Vec<TypeHintDef>,
+    pub collection_mutation: Option<CollectionViewMutation>,
 }
 
 impl TypeHintDef {
@@ -77,6 +78,7 @@ impl TypeHintDef {
         Self {
             path: path.into_iter().map(Into::into).collect(),
             args: Vec::new(),
+            collection_mutation: None,
         }
     }
 
@@ -98,6 +100,12 @@ impl TypeHintDef {
     #[must_use]
     pub fn with_args(mut self, args: impl IntoIterator<Item = TypeHintDef>) -> Self {
         self.args = args.into_iter().collect();
+        self
+    }
+
+    #[must_use]
+    pub const fn with_collection_mutation(mut self, mutation: CollectionViewMutation) -> Self {
+        self.collection_mutation = Some(mutation);
         self
     }
 
@@ -170,6 +178,22 @@ mod type_hint_tests {
     #[test]
     fn type_hint_parser_rejects_one_element_tuple_spelling() {
         assert!(TypeHintDef::parse("(i64,)").is_none());
+    }
+
+    #[test]
+    fn type_hint_parser_preserves_restricted_collection_view_shapes() {
+        for (source, expected) in [
+            ("ArrayView<i64>", "ArrayView<i64>"),
+            ("ArrayMut<String>", "ArrayMut<String>"),
+            ("MapView<String, i64>", "MapView<String, i64>"),
+            ("MapMut<String, i64>", "MapMut<String, i64>"),
+            ("SetView<String>", "SetView<String>"),
+            ("SetMut<String>", "SetMut<String>"),
+        ] {
+            let hint = TypeHintDef::parse(source).expect("collection view hint");
+            assert_eq!(hint.display(), expected);
+            assert_eq!(hint.collection_mutation, None);
+        }
     }
 }
 
@@ -252,8 +276,14 @@ fn canonical_type_hint_path(name: String) -> Vec<String> {
         "string" => vec!["String".to_owned()],
         "bytes" => vec!["Bytes".to_owned()],
         "array" => vec!["Array".to_owned()],
+        "arrayview" => vec!["ArrayView".to_owned()],
+        "arraymut" => vec!["ArrayMut".to_owned()],
         "map" => vec!["Map".to_owned()],
+        "mapview" => vec!["MapView".to_owned()],
+        "mapmut" => vec!["MapMut".to_owned()],
         "set" => vec!["Set".to_owned()],
+        "setview" => vec!["SetView".to_owned()],
+        "setmut" => vec!["SetMut".to_owned()],
         "range" => vec!["Range".to_owned()],
         "iterator" => vec!["Iterator".to_owned()],
         "function" => vec!["Function".to_owned()],
@@ -306,6 +336,7 @@ impl<'a> TypeHintParser<'a> {
         Some(TypeHintDef {
             path: canonical_type_hint_path(path.join("::")),
             args,
+            collection_mutation: None,
         })
     }
 

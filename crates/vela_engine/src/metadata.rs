@@ -214,6 +214,10 @@ pub(crate) fn type_hint_display(hint: &TypeHint) -> String {
         TypeHint::Primitive(tag) => tag.name().to_owned(),
         TypeHint::Array => "Array".to_owned(),
         TypeHint::ArrayOf(element) => format!("Array<{}>", type_hint_display(element)),
+        TypeHint::ArrayViewOf(element) => format!("ArrayView<{}>", type_hint_display(element)),
+        TypeHint::ArrayMutOf { element, .. } => {
+            format!("ArrayMut<{}>", type_hint_display(element))
+        }
         TypeHint::Map => "Map".to_owned(),
         TypeHint::MapOf { key, value } => {
             format!(
@@ -222,8 +226,26 @@ pub(crate) fn type_hint_display(hint: &TypeHint) -> String {
                 type_hint_display(value)
             )
         }
+        TypeHint::MapViewOf { key, value } => {
+            format!(
+                "MapView<{}, {}>",
+                type_hint_display(key),
+                type_hint_display(value)
+            )
+        }
+        TypeHint::MapMutOf { key, value, .. } => {
+            format!(
+                "MapMut<{}, {}>",
+                type_hint_display(key),
+                type_hint_display(value)
+            )
+        }
         TypeHint::Set => "Set".to_owned(),
         TypeHint::SetOf(element) => format!("Set<{}>", type_hint_display(element)),
+        TypeHint::SetViewOf(element) => format!("SetView<{}>", type_hint_display(element)),
+        TypeHint::SetMutOf { element, .. } => {
+            format!("SetMut<{}>", type_hint_display(element))
+        }
         TypeHint::TupleOf(elements) => format!(
             "({})",
             elements

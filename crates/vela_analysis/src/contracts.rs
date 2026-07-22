@@ -494,10 +494,32 @@ fn contract_relation(actual: &TypeFact, expected: &TypeFact) -> ContractRelation
 
     match (actual, expected) {
         (TypeFact::Array { element: actual }, TypeFact::Array { element: expected })
+        | (TypeFact::ArrayView { element: actual }, TypeFact::ArrayView { element: expected })
         | (TypeFact::Set { element: actual }, TypeFact::Set { element: expected })
+        | (TypeFact::SetView { element: actual }, TypeFact::SetView { element: expected })
         | (TypeFact::Iterator { item: actual }, TypeFact::Iterator { item: expected }) => {
             contract_relation(actual, expected)
         }
+        (
+            TypeFact::ArrayMut {
+                element: actual,
+                mutation: actual_mutation,
+            },
+            TypeFact::ArrayMut {
+                element: expected,
+                mutation: expected_mutation,
+            },
+        )
+        | (
+            TypeFact::SetMut {
+                element: actual,
+                mutation: actual_mutation,
+            },
+            TypeFact::SetMut {
+                element: expected,
+                mutation: expected_mutation,
+            },
+        ) if actual_mutation == expected_mutation => contract_relation(actual, expected),
         (
             TypeFact::Map {
                 key: actual_key,
@@ -508,6 +530,34 @@ fn contract_relation(actual: &TypeFact, expected: &TypeFact) -> ContractRelation
                 value: expected_value,
             },
         ) => combine_contract_relations([
+            contract_relation(actual_key, expected_key),
+            contract_relation(actual_value, expected_value),
+        ]),
+        (
+            TypeFact::MapView {
+                key: actual_key,
+                value: actual_value,
+            },
+            TypeFact::MapView {
+                key: expected_key,
+                value: expected_value,
+            },
+        ) => combine_contract_relations([
+            contract_relation(actual_key, expected_key),
+            contract_relation(actual_value, expected_value),
+        ]),
+        (
+            TypeFact::MapMut {
+                key: actual_key,
+                value: actual_value,
+                mutation: actual_mutation,
+            },
+            TypeFact::MapMut {
+                key: expected_key,
+                value: expected_value,
+                mutation: expected_mutation,
+            },
+        ) if actual_mutation == expected_mutation => combine_contract_relations([
             contract_relation(actual_key, expected_key),
             contract_relation(actual_value, expected_value),
         ]),
@@ -597,6 +647,14 @@ fn contract_type_display(contract: &TypeFact) -> String {
         TypeFact::Range => "Range".to_owned(),
         TypeFact::Array { element } if contract_is_erased(element) => "Array".to_owned(),
         TypeFact::Array { element } => format!("Array<{}>", contract_type_display(element)),
+        TypeFact::ArrayView { element } => {
+            format!("ArrayView<{}>", contract_type_display(element))
+        }
+        TypeFact::ArrayMut { element, mutation } => format!(
+            "ArrayMut<{}> ({})",
+            contract_type_display(element),
+            mutation.as_str()
+        ),
         TypeFact::Map { key, value } if contract_is_erased(key) && contract_is_erased(value) => {
             "Map".to_owned()
         }
@@ -605,8 +663,31 @@ fn contract_type_display(contract: &TypeFact) -> String {
             contract_type_display(key),
             contract_type_display(value)
         ),
+        TypeFact::MapView { key, value } => format!(
+            "MapView<{}, {}>",
+            contract_type_display(key),
+            contract_type_display(value)
+        ),
+        TypeFact::MapMut {
+            key,
+            value,
+            mutation,
+        } => format!(
+            "MapMut<{}, {}> ({})",
+            contract_type_display(key),
+            contract_type_display(value),
+            mutation.as_str()
+        ),
         TypeFact::Set { element } if contract_is_erased(element) => "Set".to_owned(),
         TypeFact::Set { element } => format!("Set<{}>", contract_type_display(element)),
+        TypeFact::SetView { element } => {
+            format!("SetView<{}>", contract_type_display(element))
+        }
+        TypeFact::SetMut { element, mutation } => format!(
+            "SetMut<{}> ({})",
+            contract_type_display(element),
+            mutation.as_str()
+        ),
         TypeFact::Iterator { item } if contract_is_erased(item) => "Iterator".to_owned(),
         TypeFact::Iterator { item } => format!("Iterator<{}>", contract_type_display(item)),
         TypeFact::Tuple { elements } => format!(

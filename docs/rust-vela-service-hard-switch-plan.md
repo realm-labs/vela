@@ -1106,8 +1106,14 @@ Standard non-byte `Vec`, map, and set bindings now advertise shared View plus
 exact growable MutView capability on the same `InteropTypeId`; that
 representation fact participates in `TypeAbiFingerprint` and projects through
 reflection and compiler registries. Fixed array and byte-view capability,
-restricted View/MutView type hints, and HostRef-backed runtime adapters remain
-open.
+and HostRef-backed runtime adapters remain open. Restricted
+`ArrayView`/`ArrayMut`, `MapView`/`MapMut`, and `SetView`/`SetMut` hints now
+retain distinct analysis facts and exact hidden fixed/growable mutation facts.
+Their shared collection methods are visible without materialization,
+structural mutators are statically absent from shared/fixed views, and
+growable exclusive views retain them. MIR/bytecode intentionally do not lower
+these facts to owned collection contracts before the HostRef runtime adapter
+exists.
 Service-macro signature traversal, Host/View/MutView closure registration,
 prepared operations, and host-backed bulk behavior are still open.
 

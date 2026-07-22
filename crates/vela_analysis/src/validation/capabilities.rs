@@ -251,8 +251,14 @@ fn identity_capability(
         Some(
             TypeFact::Never
             | TypeFact::Array { .. }
+            | TypeFact::ArrayView { .. }
+            | TypeFact::ArrayMut { .. }
             | TypeFact::Map { .. }
+            | TypeFact::MapView { .. }
+            | TypeFact::MapMut { .. }
             | TypeFact::Set { .. }
+            | TypeFact::SetView { .. }
+            | TypeFact::SetMut { .. }
             | TypeFact::Iterator { .. }
             | TypeFact::Tuple { .. }
             | TypeFact::Option { .. }
@@ -313,8 +319,14 @@ fn comparison_capability(
             | TypeFact::Primitive(_)
             | TypeFact::Range
             | TypeFact::Array { .. }
+            | TypeFact::ArrayView { .. }
+            | TypeFact::ArrayMut { .. }
             | TypeFact::Map { .. }
+            | TypeFact::MapView { .. }
+            | TypeFact::MapMut { .. }
             | TypeFact::Set { .. }
+            | TypeFact::SetView { .. }
+            | TypeFact::SetMut { .. }
             | TypeFact::Iterator { .. }
             | TypeFact::Tuple { .. }
             | TypeFact::Option { .. }
@@ -351,7 +363,10 @@ fn array_ordering_capability(
     ) {
         return None;
     }
-    let TypeFact::Array { element } = facts.expression(field.receiver)? else {
+    let (TypeFact::Array { element }
+    | TypeFact::ArrayView { element }
+    | TypeFact::ArrayMut { element, .. }) = facts.expression(field.receiver)?
+    else {
         return None;
     };
 
@@ -434,8 +449,14 @@ fn ord_capability_for_fact(capabilities: &CapabilityIndex, fact: &TypeFact) -> C
         TypeFact::Primitive(_)
         | TypeFact::Range
         | TypeFact::Array { .. }
+        | TypeFact::ArrayView { .. }
+        | TypeFact::ArrayMut { .. }
         | TypeFact::Map { .. }
+        | TypeFact::MapView { .. }
+        | TypeFact::MapMut { .. }
         | TypeFact::Set { .. }
+        | TypeFact::SetView { .. }
+        | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
         | TypeFact::Tuple { .. }
         | TypeFact::Option { .. }

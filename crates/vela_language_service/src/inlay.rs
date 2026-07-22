@@ -352,13 +352,19 @@ fn is_stable_type_fact(fact: &TypeFact) -> bool {
     match fact {
         TypeFact::Unknown | TypeFact::Any | TypeFact::Never => false,
         TypeFact::Array { element }
+        | TypeFact::ArrayView { element }
+        | TypeFact::ArrayMut { element, .. }
         | TypeFact::Set { element }
+        | TypeFact::SetView { element }
+        | TypeFact::SetMut { element, .. }
         | TypeFact::Iterator { item: element }
         | TypeFact::Option { some: element }
         | TypeFact::OptionSome { some: element }
         | TypeFact::ResultOk { ok: element }
         | TypeFact::ResultErr { err: element } => is_stable_type_fact(element),
         TypeFact::Map { key, value }
+        | TypeFact::MapView { key, value }
+        | TypeFact::MapMut { key, value, .. }
         | TypeFact::Result {
             ok: key,
             err: value,

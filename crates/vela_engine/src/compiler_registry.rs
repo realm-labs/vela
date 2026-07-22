@@ -378,14 +378,36 @@ fn type_hint_def(hint: &crate::native::TypeHint) -> TypeHintDef {
         crate::native::TypeHint::ArrayOf(element) => {
             TypeHintDef::named("Array").with_args([type_hint_def(element)])
         }
+        crate::native::TypeHint::ArrayViewOf(element) => {
+            TypeHintDef::named("ArrayView").with_args([type_hint_def(element)])
+        }
+        crate::native::TypeHint::ArrayMutOf { element, mutation } => TypeHintDef::named("ArrayMut")
+            .with_args([type_hint_def(element)])
+            .with_collection_mutation(*mutation),
         crate::native::TypeHint::Map => TypeHintDef::named("Map"),
         crate::native::TypeHint::MapOf { key, value } => {
             TypeHintDef::named("Map").with_args([type_hint_def(key), type_hint_def(value)])
         }
+        crate::native::TypeHint::MapViewOf { key, value } => {
+            TypeHintDef::named("MapView").with_args([type_hint_def(key), type_hint_def(value)])
+        }
+        crate::native::TypeHint::MapMutOf {
+            key,
+            value,
+            mutation,
+        } => TypeHintDef::named("MapMut")
+            .with_args([type_hint_def(key), type_hint_def(value)])
+            .with_collection_mutation(*mutation),
         crate::native::TypeHint::Set => TypeHintDef::named("Set"),
         crate::native::TypeHint::SetOf(element) => {
             TypeHintDef::named("Set").with_args([type_hint_def(element)])
         }
+        crate::native::TypeHint::SetViewOf(element) => {
+            TypeHintDef::named("SetView").with_args([type_hint_def(element)])
+        }
+        crate::native::TypeHint::SetMutOf { element, mutation } => TypeHintDef::named("SetMut")
+            .with_args([type_hint_def(element)])
+            .with_collection_mutation(*mutation),
         crate::native::TypeHint::TupleOf(elements) => {
             TypeHintDef::tuple(elements.iter().map(type_hint_def))
         }

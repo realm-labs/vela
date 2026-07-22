@@ -856,11 +856,14 @@ fn structural_contract(
         TypeFact::Primitive(tag) => MirTypeContract::Primitive(*tag),
         TypeFact::Range => MirTypeContract::Range,
         TypeFact::Array { element } => MirTypeContract::Array(contract_box(element, definition)),
+        TypeFact::ArrayView { .. } | TypeFact::ArrayMut { .. } => MirTypeContract::Any,
         TypeFact::Map { key, value } => MirTypeContract::Map {
             key: contract_box(key, definition),
             value: contract_box(value, definition),
         },
+        TypeFact::MapView { .. } | TypeFact::MapMut { .. } => MirTypeContract::Any,
         TypeFact::Set { element } => MirTypeContract::Set(contract_box(element, definition)),
+        TypeFact::SetView { .. } | TypeFact::SetMut { .. } => MirTypeContract::Any,
         TypeFact::Iterator { item } => MirTypeContract::Iterator(contract_box(item, definition)),
         TypeFact::Tuple { elements } => MirTypeContract::Tuple(
             elements

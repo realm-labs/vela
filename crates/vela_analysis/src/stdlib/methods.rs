@@ -1,7 +1,7 @@
 use crate::logical_records::{LogicalRecordKind, map_entry};
 use crate::stdlib::StdlibMethodFact;
 use crate::type_fact::TypeFact;
-use vela_common::PrimitiveTag;
+use vela_common::{CollectionViewMutation, PrimitiveTag};
 
 mod collections;
 mod option_result;
@@ -185,17 +185,33 @@ pub(super) fn method_fact(
     arguments: Option<&[TypeFact]>,
 ) -> Option<StdlibMethodFact> {
     match receiver {
-        TypeFact::Array { element } => {
-            array_method_fact((**element).clone(), method, lambda_return)
-        }
-        TypeFact::Map { key, value } => map_method_fact(
-            (**key).clone(),
-            (**value).clone(),
+        TypeFact::Array { element }
+        | TypeFact::ArrayView { element }
+        | TypeFact::ArrayMut { element, .. } => bind_collection_receiver(
+            receiver,
             method,
-            lambda_return,
-            lambda_param_count,
+            array_method_fact((**element).clone(), method, lambda_return),
         ),
-        TypeFact::Set { element } => set_method_fact((**element).clone(), method, lambda_return),
+        TypeFact::Map { key, value }
+        | TypeFact::MapView { key, value }
+        | TypeFact::MapMut { key, value, .. } => bind_collection_receiver(
+            receiver,
+            method,
+            map_method_fact(
+                (**key).clone(),
+                (**value).clone(),
+                method,
+                lambda_return,
+                lambda_param_count,
+            ),
+        ),
+        TypeFact::Set { element }
+        | TypeFact::SetView { element }
+        | TypeFact::SetMut { element, .. } => bind_collection_receiver(
+            receiver,
+            method,
+            set_method_fact((**element).clone(), method, lambda_return),
+        ),
         TypeFact::Iterator { item } => {
             iterator_method_fact((**item).clone(), method, lambda_return)
         }
@@ -264,9 +280,15 @@ pub(super) fn method_facts(
 
 fn method_names(receiver: &TypeFact) -> &'static [&'static str] {
     match receiver {
-        TypeFact::Array { .. } => ARRAY_METHOD_NAMES,
-        TypeFact::Map { .. } => MAP_METHOD_NAMES,
-        TypeFact::Set { .. } => SET_METHOD_NAMES,
+        TypeFact::Array { .. } | TypeFact::ArrayView { .. } | TypeFact::ArrayMut { .. } => {
+            ARRAY_METHOD_NAMES
+        }
+        TypeFact::Map { .. } | TypeFact::MapView { .. } | TypeFact::MapMut { .. } => {
+            MAP_METHOD_NAMES
+        }
+        TypeFact::Set { .. } | TypeFact::SetView { .. } | TypeFact::SetMut { .. } => {
+            SET_METHOD_NAMES
+        }
         TypeFact::Iterator { .. } => ITERATOR_METHOD_NAMES,
         TypeFact::Primitive(PrimitiveTag::String) => STRING_METHOD_NAMES,
         TypeFact::Primitive(PrimitiveTag::Bytes) => BYTES_METHOD_NAMES,
@@ -279,6 +301,60 @@ fn method_names(receiver: &TypeFact) -> &'static [&'static str] {
             RESULT_METHOD_NAMES
         }
         _ => &[],
+    }
+}
+
+fn bind_collection_receiver(
+    receiver: &TypeFact,
+    method: &str,
+    fact: Option<StdlibMethodFact>,
+) -> Option<StdlibMethodFact> {
+    if !collection_method_allowed(receiver, method) {
+        return None;
+    }
+    fact.map(|mut fact| {
+        fact.receiver = receiver.clone();
+        fact
+    })
+}
+
+fn collection_method_allowed(receiver: &TypeFact, method: &str) -> bool {
+    match receiver {
+        TypeFact::Array { .. } | TypeFact::Map { .. } | TypeFact::Set { .. } => true,
+        TypeFact::ArrayView { .. } => !matches!(
+            method,
+            "push" | "pop" | "insert" | "extend" | "clear" | "remove_at"
+        ),
+        TypeFact::ArrayMut {
+            mutation: CollectionViewMutation::Fixed,
+            ..
+        } => !matches!(
+            method,
+            "push" | "pop" | "insert" | "extend" | "clear" | "remove_at"
+        ),
+        TypeFact::ArrayMut {
+            mutation: CollectionViewMutation::Growable,
+            ..
+        } => true,
+        TypeFact::MapView { .. } => !matches!(method, "set" | "remove" | "extend" | "clear"),
+        TypeFact::MapMut {
+            mutation: CollectionViewMutation::Fixed,
+            ..
+        } => !matches!(method, "set" | "remove" | "extend" | "clear"),
+        TypeFact::MapMut {
+            mutation: CollectionViewMutation::Growable,
+            ..
+        } => true,
+        TypeFact::SetView { .. } => !matches!(method, "add" | "remove" | "extend" | "clear"),
+        TypeFact::SetMut {
+            mutation: CollectionViewMutation::Fixed,
+            ..
+        } => !matches!(method, "add" | "remove" | "extend" | "clear"),
+        TypeFact::SetMut {
+            mutation: CollectionViewMutation::Growable,
+            ..
+        } => true,
+        _ => false,
     }
 }
 

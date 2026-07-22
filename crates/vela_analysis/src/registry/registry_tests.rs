@@ -774,4 +774,51 @@ mod tests {
                     && target.owner == player
         ));
     }
+
+    #[test]
+    fn compile_view_preserves_exact_collection_view_mutation_facts() {
+        use vela_common::CollectionViewMutation;
+        use vela_def::DefPath;
+        use vela_registry::{
+            DefinitionRegistry, FunctionDef, FunctionSignature, ParamDef, TypeHintDef,
+        };
+
+        let array_fixed = TypeHintDef::named("ArrayMut")
+            .with_args([TypeHintDef::named("i64")])
+            .with_collection_mutation(CollectionViewMutation::Fixed);
+        let array_growable = TypeHintDef::named("ArrayMut")
+            .with_args([TypeHintDef::named("i64")])
+            .with_collection_mutation(CollectionViewMutation::Growable);
+        let map_view = TypeHintDef::named("MapView")
+            .with_args([TypeHintDef::named("String"), TypeHintDef::named("i64")]);
+
+        let mut registry = DefinitionRegistry::new();
+        registry
+            .register_function(FunctionDef::new(
+                DefPath::function("host", ["interop"], "inspect"),
+                FunctionSignature::new(
+                    [
+                        ParamDef::new("fixed", Some(array_fixed)),
+                        ParamDef::new("growable", Some(array_growable)),
+                        ParamDef::new("map", Some(map_view)),
+                    ],
+                    Some(TypeHintDef::named("()")),
+                ),
+            ))
+            .expect("function registration");
+
+        let facts = RegistryFacts::from_compile_view(registry.compile_view())
+            .expect("registry declaration slots");
+        assert_eq!(
+            facts.function_fact("interop::inspect"),
+            Some(&TypeFact::function(
+                vec![
+                    TypeFact::array_mut(TypeFact::I64, CollectionViewMutation::Fixed),
+                    TypeFact::array_mut(TypeFact::I64, CollectionViewMutation::Growable),
+                    TypeFact::map_view(TypeFact::STRING, TypeFact::I64),
+                ],
+                TypeFact::UNIT,
+            ))
+        );
+    }
 }

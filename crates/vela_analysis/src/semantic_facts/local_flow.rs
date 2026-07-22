@@ -316,6 +316,18 @@ pub(super) fn refine_local_fact(declared: &TypeFact, inferred: TypeFact) -> Type
         (TypeFact::Array { element }, TypeFact::Array { element: inferred }) => {
             TypeFact::array(refine_local_fact(element, *inferred))
         }
+        (TypeFact::ArrayView { element }, TypeFact::ArrayView { element: inferred }) => {
+            TypeFact::array_view(refine_local_fact(element, *inferred))
+        }
+        (
+            TypeFact::ArrayMut { element, mutation },
+            TypeFact::ArrayMut {
+                element: inferred,
+                mutation: inferred_mutation,
+            },
+        ) if mutation == &inferred_mutation => {
+            TypeFact::array_mut(refine_local_fact(element, *inferred), *mutation)
+        }
         (
             TypeFact::Map { key, value },
             TypeFact::Map {
@@ -326,8 +338,46 @@ pub(super) fn refine_local_fact(declared: &TypeFact, inferred: TypeFact) -> Type
             refine_local_fact(key, *inferred_key),
             refine_local_fact(value, *inferred_value),
         ),
+        (
+            TypeFact::MapView { key, value },
+            TypeFact::MapView {
+                key: inferred_key,
+                value: inferred_value,
+            },
+        ) => TypeFact::map_view(
+            refine_local_fact(key, *inferred_key),
+            refine_local_fact(value, *inferred_value),
+        ),
+        (
+            TypeFact::MapMut {
+                key,
+                value,
+                mutation,
+            },
+            TypeFact::MapMut {
+                key: inferred_key,
+                value: inferred_value,
+                mutation: inferred_mutation,
+            },
+        ) if mutation == &inferred_mutation => TypeFact::map_mut(
+            refine_local_fact(key, *inferred_key),
+            refine_local_fact(value, *inferred_value),
+            *mutation,
+        ),
         (TypeFact::Set { element }, TypeFact::Set { element: inferred }) => {
             TypeFact::set(refine_local_fact(element, *inferred))
+        }
+        (TypeFact::SetView { element }, TypeFact::SetView { element: inferred }) => {
+            TypeFact::set_view(refine_local_fact(element, *inferred))
+        }
+        (
+            TypeFact::SetMut { element, mutation },
+            TypeFact::SetMut {
+                element: inferred,
+                mutation: inferred_mutation,
+            },
+        ) if mutation == &inferred_mutation => {
+            TypeFact::set_mut(refine_local_fact(element, *inferred), *mutation)
         }
         (TypeFact::Iterator { item }, TypeFact::Iterator { item: inferred }) => {
             TypeFact::iterator(refine_local_fact(item, *inferred))

@@ -1,8 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{
-    CollectionViewCapabilities, HostTypeId, InteropTypeId, PrimitiveTag, ReceiverCapabilities,
-    ReceiverCapability, Span, StoragePolicy, TypeAbiFingerprint, TypeBindingRegistryChecksum,
+    CollectionViewCapabilities, CollectionViewMutation, HostTypeId, InteropTypeId, PrimitiveTag,
+    ReceiverCapabilities, ReceiverCapability, Span, StoragePolicy, TypeAbiFingerprint,
+    TypeBindingRegistryChecksum,
 };
 use vela_def::{FieldId, FunctionId, TypeId};
 use vela_reflect::access::{FunctionAccess, MethodAccess};
@@ -1222,13 +1223,35 @@ fn type_hint_def_fact(registry: &TypeRegistry, hint: &TypeHintDef) -> TypeFact {
         ("Bytes", []) => TypeFact::BYTES,
         ("Array", []) => TypeFact::array(TypeFact::Unknown),
         ("Array", [element]) => TypeFact::array(type_hint_def_fact(registry, element)),
+        ("ArrayView", [element]) => TypeFact::array_view(type_hint_def_fact(registry, element)),
+        ("ArrayMut", [element]) => TypeFact::array_mut(
+            type_hint_def_fact(registry, element),
+            hint.collection_mutation
+                .unwrap_or(CollectionViewMutation::Fixed),
+        ),
         ("Map", []) => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
         ("Map", [key, value]) => TypeFact::map(
             type_hint_def_fact(registry, key),
             type_hint_def_fact(registry, value),
         ),
+        ("MapView", [key, value]) => TypeFact::map_view(
+            type_hint_def_fact(registry, key),
+            type_hint_def_fact(registry, value),
+        ),
+        ("MapMut", [key, value]) => TypeFact::map_mut(
+            type_hint_def_fact(registry, key),
+            type_hint_def_fact(registry, value),
+            hint.collection_mutation
+                .unwrap_or(CollectionViewMutation::Growable),
+        ),
         ("Set", []) => TypeFact::set(TypeFact::Unknown),
         ("Set", [element]) => TypeFact::set(type_hint_def_fact(registry, element)),
+        ("SetView", [element]) => TypeFact::set_view(type_hint_def_fact(registry, element)),
+        ("SetMut", [element]) => TypeFact::set_mut(
+            type_hint_def_fact(registry, element),
+            hint.collection_mutation
+                .unwrap_or(CollectionViewMutation::Growable),
+        ),
         ("Iterator", []) => TypeFact::iterator(TypeFact::Unknown),
         ("Iterator", [item]) => TypeFact::iterator(type_hint_def_fact(registry, item)),
         ("Function", []) => TypeFact::function(Vec::new(), TypeFact::Unknown),
@@ -1255,8 +1278,18 @@ fn raw_registry_hint_fact(registry: &TypeRegistry, hint: &str) -> TypeFact {
         "String" => TypeFact::STRING,
         "Bytes" => TypeFact::BYTES,
         "Array" => TypeFact::array(TypeFact::Unknown),
+        "ArrayView" => TypeFact::array_view(TypeFact::Unknown),
+        "ArrayMut" => TypeFact::array_mut(TypeFact::Unknown, CollectionViewMutation::Fixed),
         "Map" => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
+        "MapView" => TypeFact::map_view(TypeFact::Unknown, TypeFact::Unknown),
+        "MapMut" => TypeFact::map_mut(
+            TypeFact::Unknown,
+            TypeFact::Unknown,
+            CollectionViewMutation::Growable,
+        ),
         "Set" => TypeFact::set(TypeFact::Unknown),
+        "SetView" => TypeFact::set_view(TypeFact::Unknown),
+        "SetMut" => TypeFact::set_mut(TypeFact::Unknown, CollectionViewMutation::Growable),
         "Iterator" => TypeFact::iterator(TypeFact::Unknown),
         "Function" => TypeFact::function(Vec::new(), TypeFact::Unknown),
         "Closure" => TypeFact::Closure,

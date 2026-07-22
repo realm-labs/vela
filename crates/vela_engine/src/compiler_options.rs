@@ -150,10 +150,17 @@ pub(crate) fn add_native_signature_hints(
 fn add_type_hint(mut options: CompilerOptions, hint: &TypeHint) -> CompilerOptions {
     match hint {
         TypeHint::ArrayOf(item)
+        | TypeHint::ArrayViewOf(item)
         | TypeHint::SetOf(item)
+        | TypeHint::SetViewOf(item)
         | TypeHint::IteratorOf(item)
         | TypeHint::OptionOf(item) => add_type_hint(options, item),
+        TypeHint::ArrayMutOf { element, .. } | TypeHint::SetMutOf { element, .. } => {
+            add_type_hint(options, element)
+        }
         TypeHint::MapOf { key, value }
+        | TypeHint::MapViewOf { key, value }
+        | TypeHint::MapMutOf { key, value, .. }
         | TypeHint::ResultOf {
             ok: key,
             err: value,

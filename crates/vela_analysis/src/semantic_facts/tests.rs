@@ -131,6 +131,63 @@ fn missing_method_targets_require_a_closed_receiver_universe() {
 }
 
 #[test]
+fn borrowed_collection_mutation_cannot_fall_back_to_owned_registry_methods() {
+    let source = SourceId::new(86);
+    let text = r#"
+        fn inspect(shared: ArrayView<i64>, fixed: ArrayMut<i64>, growable: MapMut<String, i64>) {
+            shared.push(1);
+            fixed.push(1);
+            shared.filter(|value| value > 0);
+            growable.set("ready", 1);
+            let first = shared[0];
+            for value in fixed { let copy = value; }
+        }
+        "#;
+    let mut graph = ModuleGraph::new();
+    graph.add_source(ModuleSource::new(
+        source,
+        vela_package::PackageId::anonymous(),
+        ModulePath::from_qualified("game"),
+        text,
+    ));
+    graph.resolve_imports();
+    assert_eq!(graph.diagnostics(), &[]);
+
+    let mut schema = RegistryFacts::default();
+    schema.insert_method(
+        "Array",
+        "push",
+        TypeFact::function(vec![TypeFact::I64], TypeFact::UNIT),
+    );
+    schema.insert_method(
+        "Map",
+        "set",
+        TypeFact::function(vec![TypeFact::STRING, TypeFact::I64], TypeFact::I64),
+    );
+    let facts = AnalysisFacts::from_module_graph_and_schema(&graph, &schema);
+
+    for call in ["shared.push(1)", "fixed.push(1)"] {
+        let call = expression_exact(&graph, source, text, call);
+        assert!(matches!(
+            facts.call_target(call),
+            Some(CallTargetFact::KnownReceiverMiss { method, .. }) if method == "push"
+        ));
+    }
+    for (call, method) in [
+        ("shared.filter(|value| value > 0)", "filter"),
+        ("growable.set(\"ready\", 1)", "set"),
+    ] {
+        let call = expression_exact(&graph, source, text, call);
+        assert!(matches!(
+            facts.call_target(call),
+            Some(CallTargetFact::StdlibMethod { name }) if name == method
+        ));
+    }
+    let index = expression_exact(&graph, source, text, "shared[0]");
+    assert_eq!(facts.expression(index), Some(&TypeFact::I64));
+}
+
+#[test]
 fn nested_try_preserves_a_statically_never_payload() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(

@@ -1,5 +1,61 @@
 use super::*;
 use crate::logical_records::map_entry;
+use vela_common::CollectionViewMutation;
+
+#[test]
+fn borrowed_collection_methods_follow_view_mutation_capabilities() {
+    let array_view = TypeFact::array_view(TypeFact::I64);
+    let array_fixed = TypeFact::array_mut(TypeFact::I64, CollectionViewMutation::Fixed);
+    let array_growable = TypeFact::array_mut(TypeFact::I64, CollectionViewMutation::Growable);
+
+    for receiver in [&array_view, &array_fixed] {
+        assert!(stdlib_method_fact(receiver, "push", None).is_none());
+        assert!(stdlib_method_fact(receiver, "remove_at", None).is_none());
+        let filter = stdlib_method_fact(receiver, "filter", None).expect("read method fact");
+        assert_eq!(filter.receiver, receiver.clone());
+        assert_eq!(filter.returns, TypeFact::array(TypeFact::I64));
+    }
+    let push = stdlib_method_fact(&array_growable, "push", None).expect("growable push");
+    assert_eq!(push.receiver, array_growable);
+    assert_eq!(push.params, vec![TypeFact::I64]);
+
+    let map_view = TypeFact::map_view(TypeFact::STRING, TypeFact::I64);
+    let map_fixed = TypeFact::map_mut(
+        TypeFact::STRING,
+        TypeFact::I64,
+        CollectionViewMutation::Fixed,
+    );
+    let map_growable = TypeFact::map_mut(
+        TypeFact::STRING,
+        TypeFact::I64,
+        CollectionViewMutation::Growable,
+    );
+    for receiver in [&map_view, &map_fixed] {
+        assert!(stdlib_method_fact(receiver, "set", None).is_none());
+        assert!(stdlib_method_fact(receiver, "remove", None).is_none());
+        assert!(stdlib_method_fact(receiver, "group_by", None).is_none());
+        let values = stdlib_method_fact(receiver, "values", None).expect("read method fact");
+        assert_eq!(values.receiver, receiver.clone());
+    }
+    assert!(stdlib_method_fact(&map_growable, "set", None).is_some());
+
+    let set_view = TypeFact::set_view(TypeFact::STRING);
+    let set_fixed = TypeFact::set_mut(TypeFact::STRING, CollectionViewMutation::Fixed);
+    let set_growable = TypeFact::set_mut(TypeFact::STRING, CollectionViewMutation::Growable);
+    for receiver in [&set_view, &set_fixed] {
+        assert!(stdlib_method_fact(receiver, "add", None).is_none());
+        assert!(stdlib_method_fact(receiver, "clear", None).is_none());
+        assert!(stdlib_method_fact(receiver, "filter", None).is_some());
+    }
+    assert!(stdlib_method_fact(&set_growable, "add", None).is_some());
+
+    let completion_methods = stdlib_method_facts(&array_view, None)
+        .into_iter()
+        .map(|fact| fact.method)
+        .collect::<Vec<_>>();
+    assert!(completion_methods.contains(&"group_by"));
+    assert!(!completion_methods.contains(&"push"));
+}
 
 #[test]
 fn array_lambda_methods_expose_element_parameter_facts() {

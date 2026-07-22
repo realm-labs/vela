@@ -754,9 +754,13 @@ fn validate_type_hint(
         | TypeHint::Host(_)
         | TypeHint::Function => Ok(()),
         TypeHint::ArrayOf(element)
+        | TypeHint::ArrayViewOf(element)
+        | TypeHint::ArrayMutOf { element, .. }
         | TypeHint::IteratorOf(element)
         | TypeHint::OptionOf(element) => validate_type_hint(element, descriptor, lookup),
-        TypeHint::SetOf(element) => {
+        TypeHint::SetOf(element)
+        | TypeHint::SetViewOf(element)
+        | TypeHint::SetMutOf { element, .. } => {
             if !is_keyable_type_hint(element) {
                 return Err(EngineError::new(EngineErrorKind::InvalidTypeHintName {
                     descriptor: descriptor.to_owned(),
@@ -765,7 +769,9 @@ fn validate_type_hint(
             }
             validate_type_hint(element, descriptor, lookup)
         }
-        TypeHint::MapOf { key, value } => {
+        TypeHint::MapOf { key, value }
+        | TypeHint::MapViewOf { key, value }
+        | TypeHint::MapMutOf { key, value, .. } => {
             if !is_keyable_type_hint(key) {
                 return Err(EngineError::new(EngineErrorKind::InvalidTypeHintName {
                     descriptor: descriptor.to_owned(),
@@ -890,10 +896,16 @@ fn is_keyable_type_hint(hint: &TypeHint) -> bool {
         | TypeHint::Primitive(_)
         | TypeHint::Array
         | TypeHint::ArrayOf(_)
+        | TypeHint::ArrayViewOf(_)
+        | TypeHint::ArrayMutOf { .. }
         | TypeHint::Map
         | TypeHint::MapOf { .. }
+        | TypeHint::MapViewOf { .. }
+        | TypeHint::MapMutOf { .. }
         | TypeHint::Set
         | TypeHint::SetOf(_)
+        | TypeHint::SetViewOf(_)
+        | TypeHint::SetMutOf { .. }
         | TypeHint::Iterator
         | TypeHint::IteratorOf(_)
         | TypeHint::OptionOf(_)

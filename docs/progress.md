@@ -84,8 +84,18 @@ concrete `InteropTypeId`, `TypeAbiFingerprint`, and owned/Host/View/MutView
 representation. Engine sealing rejects unregistered, stale, unsupported, or
 boundary-mode-incompatible proofs, so an `ArrayMut` surface cannot conceal a
 fixed/growable or concrete Rust ABI mismatch. Service/export macro emission of
-those proofs, Host/View/MutView closure registration, borrowed collection type
-hints, and HostRef runtime representations remain open.
+those proofs and Host/View/MutView closure registration remain open.
+Restricted `ArrayView`/`ArrayMut`, `MapView`/`MapMut`, and
+`SetView`/`SetMut` hints now project as distinct analysis facts without adding
+general Vela generics. Hidden fixed/growable mutation capability survives
+native metadata, registry projection, exported language-service schema, and
+callable ABI fingerprinting. Standard method facts reuse the owned collection
+read/iteration/transform surface while withholding structural mutation from
+shared and fixed views; growable exclusive views retain it. MIR and linked
+type contracts deliberately keep these facts dynamic until the HostRef-backed
+runtime adapter lands, so they are never mistaken for script-owned
+Array/Map/Set values. Macro signature mapping, HostRef runtime representations,
+write-through protocol adapters, and nested scoped reborrow remain open.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry

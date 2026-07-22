@@ -2541,6 +2541,18 @@ Arrays until the value representation can retain and enforce their fixed
 length; metadata alone must not claim that `push` or `remove` is rejected when
 the runtime value would still accept it.
 
+Borrowed collection surfaces have distinct internal facts:
+`ArrayView`/`ArrayMut`, `MapView`/`MapMut`, and `SetView`/`SetMut`. These are a
+closed set of restricted builtin type hints, not a general generic type
+facility. Mut facts retain an out-of-band fixed/growable capability that is
+part of callable ABI even though ordinary Vela source does not spell that
+capability. Shared and fixed views reuse read, iteration, and transforming
+methods, but structural mutators are absent; fixed Array mutation is limited
+to indexed element replacement through the future HostAccess adapter. Until a
+HostRef-backed runtime contract is linked, MIR/bytecode treats every borrowed
+collection fact as dynamic rather than emitting an owned Array/Map/Set guard.
+This prevents metadata-only support and implicit copy-in/copy-out.
+
 Concrete Rust unit, bool, char, exact-width numeric, and String bindings retain
 distinct stable Rust ABI identities while using their existing native Vela
 value kinds and codecs. Concrete Rust `Option<T>` and `Result<T, E>` bindings

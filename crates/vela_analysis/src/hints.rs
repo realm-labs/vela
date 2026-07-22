@@ -1,4 +1,4 @@
-use vela_common::PrimitiveTag;
+use vela_common::{CollectionViewMutation, PrimitiveTag};
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
 use vela_hir::type_hint::HirTypeHint;
@@ -75,15 +75,42 @@ fn builtin_type_fact_from_hir_hint(
             module,
             &hint.args[0],
         ))),
+        "ArrayView" if hint.args.len() == 1 => Some(TypeFact::array_view(type_fact_from_arg(
+            graph,
+            module,
+            &hint.args[0],
+        ))),
+        "ArrayMut" if hint.args.len() == 1 => Some(TypeFact::array_mut(
+            type_fact_from_arg(graph, module, &hint.args[0]),
+            CollectionViewMutation::Fixed,
+        )),
         "Map" if hint.args.len() == 2 => Some(TypeFact::map(
             type_fact_from_arg(graph, module, &hint.args[0]),
             type_fact_from_arg(graph, module, &hint.args[1]),
+        )),
+        "MapView" if hint.args.len() == 2 => Some(TypeFact::map_view(
+            type_fact_from_arg(graph, module, &hint.args[0]),
+            type_fact_from_arg(graph, module, &hint.args[1]),
+        )),
+        "MapMut" if hint.args.len() == 2 => Some(TypeFact::map_mut(
+            type_fact_from_arg(graph, module, &hint.args[0]),
+            type_fact_from_arg(graph, module, &hint.args[1]),
+            CollectionViewMutation::Growable,
         )),
         "Set" if hint.args.len() == 1 => Some(TypeFact::set(type_fact_from_arg(
             graph,
             module,
             &hint.args[0],
         ))),
+        "SetView" if hint.args.len() == 1 => Some(TypeFact::set_view(type_fact_from_arg(
+            graph,
+            module,
+            &hint.args[0],
+        ))),
+        "SetMut" if hint.args.len() == 1 => Some(TypeFact::set_mut(
+            type_fact_from_arg(graph, module, &hint.args[0]),
+            CollectionViewMutation::Growable,
+        )),
         "Iterator" if hint.args.len() == 1 => Some(TypeFact::iterator(type_fact_from_arg(
             graph,
             module,
@@ -138,8 +165,24 @@ fn builtin_type_fact(name: &str) -> Option<TypeFact> {
         "String" => Some(TypeFact::primitive(PrimitiveTag::String)),
         "Bytes" => Some(TypeFact::primitive(PrimitiveTag::Bytes)),
         "Array" => Some(TypeFact::array(TypeFact::Unknown)),
+        "ArrayView" => Some(TypeFact::array_view(TypeFact::Unknown)),
+        "ArrayMut" => Some(TypeFact::array_mut(
+            TypeFact::Unknown,
+            CollectionViewMutation::Fixed,
+        )),
         "Map" => Some(TypeFact::map(TypeFact::Unknown, TypeFact::Unknown)),
+        "MapView" => Some(TypeFact::map_view(TypeFact::Unknown, TypeFact::Unknown)),
+        "MapMut" => Some(TypeFact::map_mut(
+            TypeFact::Unknown,
+            TypeFact::Unknown,
+            CollectionViewMutation::Growable,
+        )),
         "Set" => Some(TypeFact::set(TypeFact::Unknown)),
+        "SetView" => Some(TypeFact::set_view(TypeFact::Unknown)),
+        "SetMut" => Some(TypeFact::set_mut(
+            TypeFact::Unknown,
+            CollectionViewMutation::Growable,
+        )),
         "Iterator" => Some(TypeFact::iterator(TypeFact::Unknown)),
         "Function" => Some(TypeFact::function(Vec::new(), TypeFact::Unknown)),
         "Closure" => Some(TypeFact::Closure),
@@ -334,6 +377,37 @@ mod tests {
                 &hint(&["Set"], vec![hint(&["String"], Vec::new())]),
             ),
             TypeFact::set(TypeFact::STRING)
+        );
+        assert_eq!(
+            type_fact_from_hint_in_module(
+                &graph,
+                module,
+                &hint(&["ArrayView"], vec![hint(&["Player"], Vec::new())]),
+            ),
+            TypeFact::array_view(TypeFact::record("game::Player"))
+        );
+        assert_eq!(
+            type_fact_from_hint_in_module(
+                &graph,
+                module,
+                &hint(&["ArrayMut"], vec![hint(&["i64"], Vec::new())]),
+            ),
+            TypeFact::array_mut(TypeFact::I64, CollectionViewMutation::Fixed)
+        );
+        assert_eq!(
+            type_fact_from_hint_in_module(
+                &graph,
+                module,
+                &hint(
+                    &["MapMut"],
+                    vec![hint(&["String"], Vec::new()), hint(&["Player"], Vec::new()),],
+                ),
+            ),
+            TypeFact::map_mut(
+                TypeFact::STRING,
+                TypeFact::record("game::Player"),
+                CollectionViewMutation::Growable,
+            )
         );
     }
 

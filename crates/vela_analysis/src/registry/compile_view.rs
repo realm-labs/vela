@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_common::{HostTypeId, PrimitiveTag};
+use vela_common::{CollectionViewMutation, HostTypeId, PrimitiveTag};
 use vela_def::{DefPath, FieldId, TypeId, VariantId};
 use vela_reflect::modules::DeclOrigin;
 use vela_registry::{
@@ -377,12 +377,33 @@ impl<'registry> CompileViewFacts<'registry> {
             ("Bytes", []) => TypeFact::BYTES,
             ("Array", []) => TypeFact::array(TypeFact::Unknown),
             ("Array", [element]) => TypeFact::array(self.type_hint_fact(element)),
+            ("ArrayView", [element]) => TypeFact::array_view(self.type_hint_fact(element)),
+            ("ArrayMut", [element]) => TypeFact::array_mut(
+                self.type_hint_fact(element),
+                hint.collection_mutation
+                    .unwrap_or(CollectionViewMutation::Fixed),
+            ),
             ("Map", []) => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
             ("Map", [key, value]) => {
                 TypeFact::map(self.type_hint_fact(key), self.type_hint_fact(value))
             }
+            ("MapView", [key, value]) => {
+                TypeFact::map_view(self.type_hint_fact(key), self.type_hint_fact(value))
+            }
+            ("MapMut", [key, value]) => TypeFact::map_mut(
+                self.type_hint_fact(key),
+                self.type_hint_fact(value),
+                hint.collection_mutation
+                    .unwrap_or(CollectionViewMutation::Growable),
+            ),
             ("Set", []) => TypeFact::set(TypeFact::Unknown),
             ("Set", [element]) => TypeFact::set(self.type_hint_fact(element)),
+            ("SetView", [element]) => TypeFact::set_view(self.type_hint_fact(element)),
+            ("SetMut", [element]) => TypeFact::set_mut(
+                self.type_hint_fact(element),
+                hint.collection_mutation
+                    .unwrap_or(CollectionViewMutation::Growable),
+            ),
             ("Iterator", []) => TypeFact::iterator(TypeFact::Unknown),
             ("Iterator", [item]) => TypeFact::iterator(self.type_hint_fact(item)),
             ("Function", []) => TypeFact::function(Vec::new(), TypeFact::Unknown),

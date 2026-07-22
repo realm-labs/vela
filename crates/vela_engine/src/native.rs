@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vela_common::{CallableAsyncness, PrimitiveTag, Span};
+use vela_common::{CallableAsyncness, CollectionViewMutation, PrimitiveTag, Span};
 use vela_def::FunctionId;
 use vela_reflect::registry::{AttrMap, TypeKey};
 use vela_vm::AsyncDirectHostFunction;
@@ -343,13 +343,32 @@ pub enum TypeHint {
     Primitive(PrimitiveTag),
     Array,
     ArrayOf(Box<TypeHint>),
+    ArrayViewOf(Box<TypeHint>),
+    ArrayMutOf {
+        element: Box<TypeHint>,
+        mutation: CollectionViewMutation,
+    },
     Map,
     MapOf {
         key: Box<TypeHint>,
         value: Box<TypeHint>,
     },
+    MapViewOf {
+        key: Box<TypeHint>,
+        value: Box<TypeHint>,
+    },
+    MapMutOf {
+        key: Box<TypeHint>,
+        value: Box<TypeHint>,
+        mutation: CollectionViewMutation,
+    },
     Set,
     SetOf(Box<TypeHint>),
+    SetViewOf(Box<TypeHint>),
+    SetMutOf {
+        element: Box<TypeHint>,
+        mutation: CollectionViewMutation,
+    },
     TupleOf(Vec<TypeHint>),
     Iterator,
     IteratorOf(Box<TypeHint>),
@@ -458,6 +477,19 @@ impl TypeHint {
     }
 
     #[must_use]
+    pub fn array_view_of(element: TypeHint) -> Self {
+        Self::ArrayViewOf(Box::new(element))
+    }
+
+    #[must_use]
+    pub fn array_mut_of(element: TypeHint, mutation: CollectionViewMutation) -> Self {
+        Self::ArrayMutOf {
+            element: Box::new(element),
+            mutation,
+        }
+    }
+
+    #[must_use]
     pub fn map_of(key: TypeHint, value: TypeHint) -> Self {
         Self::MapOf {
             key: Box::new(key),
@@ -466,8 +498,38 @@ impl TypeHint {
     }
 
     #[must_use]
+    pub fn map_view_of(key: TypeHint, value: TypeHint) -> Self {
+        Self::MapViewOf {
+            key: Box::new(key),
+            value: Box::new(value),
+        }
+    }
+
+    #[must_use]
+    pub fn map_mut_of(key: TypeHint, value: TypeHint, mutation: CollectionViewMutation) -> Self {
+        Self::MapMutOf {
+            key: Box::new(key),
+            value: Box::new(value),
+            mutation,
+        }
+    }
+
+    #[must_use]
     pub fn set_of(element: TypeHint) -> Self {
         Self::SetOf(Box::new(element))
+    }
+
+    #[must_use]
+    pub fn set_view_of(element: TypeHint) -> Self {
+        Self::SetViewOf(Box::new(element))
+    }
+
+    #[must_use]
+    pub fn set_mut_of(element: TypeHint, mutation: CollectionViewMutation) -> Self {
+        Self::SetMutOf {
+            element: Box::new(element),
+            mutation,
+        }
     }
 
     #[must_use]

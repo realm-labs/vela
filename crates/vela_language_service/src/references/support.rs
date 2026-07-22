@@ -33,8 +33,14 @@ fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::Primitive(_)
         | TypeFact::Range
         | TypeFact::Array { .. }
+        | TypeFact::ArrayView { .. }
+        | TypeFact::ArrayMut { .. }
         | TypeFact::Map { .. }
+        | TypeFact::MapView { .. }
+        | TypeFact::MapMut { .. }
         | TypeFact::Set { .. }
+        | TypeFact::SetView { .. }
+        | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }

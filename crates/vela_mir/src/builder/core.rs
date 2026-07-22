@@ -931,8 +931,14 @@ pub(super) fn value_type(fact: Option<&TypeFact>) -> MirValueType {
             | TypeFact::Never
             | TypeFact::Any
             | TypeFact::Array { .. }
+            | TypeFact::ArrayView { .. }
+            | TypeFact::ArrayMut { .. }
             | TypeFact::Map { .. }
+            | TypeFact::MapView { .. }
+            | TypeFact::MapMut { .. }
             | TypeFact::Set { .. }
+            | TypeFact::SetView { .. }
+            | TypeFact::SetMut { .. }
             | TypeFact::Option { .. }
             | TypeFact::OptionSome { .. }
             | TypeFact::OptionNone

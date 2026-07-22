@@ -21,6 +21,11 @@ fn sample_facts() -> RegistryFacts {
         "split_name",
         TypeFact::option(TypeFact::tuple([TypeFact::STRING, TypeFact::STRING])),
     );
+    facts.insert_field(
+        "Player",
+        "scores",
+        TypeFact::array_mut(TypeFact::I64, CollectionViewMutation::Fixed),
+    );
     facts.insert_field_docs("Player", "split_name", "Split player display name.");
     facts.insert_field_access(RegistryFieldAccessFact {
         owner: "Player".to_owned(),
@@ -112,6 +117,13 @@ fn schema_export_round_trips_registry_facts() {
             TypeFact::STRING,
             TypeFact::STRING
         ])))
+    );
+    assert_eq!(
+        round_tripped.field_fact("Player", "scores"),
+        Some(&TypeFact::array_mut(
+            TypeFact::I64,
+            CollectionViewMutation::Fixed,
+        ))
     );
 }
 

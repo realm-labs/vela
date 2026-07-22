@@ -250,9 +250,11 @@ pub(crate) fn registry_callable_owner(fact: &TypeFact) -> Option<&str> {
     match fact {
         TypeFact::Primitive(primitive) => Some(primitive_registry_owner(*primitive)),
         TypeFact::Range => Some("Range"),
-        TypeFact::Array { .. } => Some("Array"),
-        TypeFact::Map { .. } => Some("Map"),
-        TypeFact::Set { .. } => Some("Set"),
+        TypeFact::Array { .. } | TypeFact::ArrayView { .. } | TypeFact::ArrayMut { .. } => {
+            Some("Array")
+        }
+        TypeFact::Map { .. } | TypeFact::MapView { .. } | TypeFact::MapMut { .. } => Some("Map"),
+        TypeFact::Set { .. } | TypeFact::SetView { .. } | TypeFact::SetMut { .. } => Some("Set"),
         TypeFact::Iterator { .. } => Some("Iterator"),
         TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone => {
             Some("Option")

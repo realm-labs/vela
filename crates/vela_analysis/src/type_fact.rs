@@ -1,6 +1,6 @@
 use std::fmt;
 
-use vela_common::PrimitiveTag;
+use vela_common::{CollectionViewMutation, PrimitiveTag};
 
 use crate::logical_records::LogicalRecordFact;
 
@@ -14,12 +14,35 @@ pub enum TypeFact {
     Array {
         element: Box<TypeFact>,
     },
+    ArrayView {
+        element: Box<TypeFact>,
+    },
+    ArrayMut {
+        element: Box<TypeFact>,
+        mutation: CollectionViewMutation,
+    },
     Map {
         key: Box<TypeFact>,
         value: Box<TypeFact>,
     },
+    MapView {
+        key: Box<TypeFact>,
+        value: Box<TypeFact>,
+    },
+    MapMut {
+        key: Box<TypeFact>,
+        value: Box<TypeFact>,
+        mutation: CollectionViewMutation,
+    },
     Set {
         element: Box<TypeFact>,
+    },
+    SetView {
+        element: Box<TypeFact>,
+    },
+    SetMut {
+        element: Box<TypeFact>,
+        mutation: CollectionViewMutation,
     },
     Iterator {
         item: Box<TypeFact>,
@@ -96,6 +119,19 @@ impl TypeFact {
         }
     }
 
+    pub fn array_view(element: TypeFact) -> Self {
+        Self::ArrayView {
+            element: Box::new(element),
+        }
+    }
+
+    pub fn array_mut(element: TypeFact, mutation: CollectionViewMutation) -> Self {
+        Self::ArrayMut {
+            element: Box::new(element),
+            mutation,
+        }
+    }
+
     pub fn map(key: TypeFact, value: TypeFact) -> Self {
         Self::Map {
             key: Box::new(key),
@@ -103,9 +139,37 @@ impl TypeFact {
         }
     }
 
+    pub fn map_view(key: TypeFact, value: TypeFact) -> Self {
+        Self::MapView {
+            key: Box::new(key),
+            value: Box::new(value),
+        }
+    }
+
+    pub fn map_mut(key: TypeFact, value: TypeFact, mutation: CollectionViewMutation) -> Self {
+        Self::MapMut {
+            key: Box::new(key),
+            value: Box::new(value),
+            mutation,
+        }
+    }
+
     pub fn set(element: TypeFact) -> Self {
         Self::Set {
             element: Box::new(element),
+        }
+    }
+
+    pub fn set_view(element: TypeFact) -> Self {
+        Self::SetView {
+            element: Box::new(element),
+        }
+    }
+
+    pub fn set_mut(element: TypeFact, mutation: CollectionViewMutation) -> Self {
+        Self::SetMut {
+            element: Box::new(element),
+            mutation,
         }
     }
 
@@ -259,10 +323,33 @@ impl TypeFact {
             Self::Primitive(tag) => tag.name().to_owned(),
             Self::Range => "Range".to_owned(),
             Self::Array { element } => format!("Array({})", element.display_name()),
+            Self::ArrayView { element } => format!("ArrayView({})", element.display_name()),
+            Self::ArrayMut { element, mutation } => format!(
+                "ArrayMut({}, {})",
+                element.display_name(),
+                mutation.as_str()
+            ),
             Self::Map { key, value } => {
                 format!("Map({}, {})", key.display_name(), value.display_name())
             }
+            Self::MapView { key, value } => {
+                format!("MapView({}, {})", key.display_name(), value.display_name())
+            }
+            Self::MapMut {
+                key,
+                value,
+                mutation,
+            } => format!(
+                "MapMut({}, {}, {})",
+                key.display_name(),
+                value.display_name(),
+                mutation.as_str()
+            ),
             Self::Set { element } => format!("Set({})", element.display_name()),
+            Self::SetView { element } => format!("SetView({})", element.display_name()),
+            Self::SetMut { element, mutation } => {
+                format!("SetMut({}, {})", element.display_name(), mutation.as_str())
+            }
             Self::Iterator { .. } => "Iterator".to_owned(),
             Self::Tuple { elements } => {
                 let elements = elements

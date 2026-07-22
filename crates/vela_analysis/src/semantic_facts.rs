@@ -1067,7 +1067,11 @@ fn infer_match_locals(
 fn iterable_item_fact(fact: &TypeFact) -> TypeFact {
     match fact {
         TypeFact::Array { element }
+        | TypeFact::ArrayView { element }
+        | TypeFact::ArrayMut { element, .. }
         | TypeFact::Set { element }
+        | TypeFact::SetView { element }
+        | TypeFact::SetMut { element, .. }
         | TypeFact::Iterator { item: element } => (**element).clone(),
         TypeFact::Range => TypeFact::I64,
         TypeFact::Primitive(PrimitiveTag::String) => TypeFact::CHAR,
