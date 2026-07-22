@@ -2319,18 +2319,26 @@ script collector must never become the Rust object's owner.
 ### Value Derive Generates The Unified Structural Binding
 
 `#[derive(Value)]` is code generation for the same `TypeBinding<T>` contract,
-not a second registration surface. For a named struct it emits one qualified
-Vela type descriptor, stable field IDs, direct field/element
+not a second registration surface. For a named struct or enum it emits one
+qualified Vela type descriptor, stable field/variant IDs, direct structural
 `IntoScriptArg`/`FromScriptArg` lowering, `ScriptValueSchema`, and
-`vela_type_binding()`. The generated path is the exact configured public path,
-so compiler schema, runtime record identity, reflection, and codec checks agree.
+`vela_type_binding()`. Enums support unit and named-field variants; tuple
+variants remain rejected until they have one explicit ABI. The generated path
+is the exact configured public path, so compiler schema, runtime nominal
+identity, reflection, and codec checks agree.
 
 All fields participate by default and may be renamed or given a stable alias.
-Skipping a field is rejected because structural decode could not reconstruct
-the exact Rust value without inventing a default. Custom partial conversion
-uses manual `ValueCodec`; generated enum support remains the next S2 macro
-slice. Neither path uses serde, JSON, runtime type reflection, or script
-generics.
+Skipping a field or variant is rejected because the exact Rust value could not
+be reconstructed or encoded without inventing behavior. Custom partial
+conversion uses manual `ValueCodec`. Neither path uses serde, JSON, runtime
+type reflection, or script generics.
+
+Registered `ScriptStruct` and `ScriptEnum` descriptors are also linked as
+nominal descriptors even though their MIR classification remains `Registry`.
+Rust-owned entry arguments and native results are materialized with the active
+linked program, including async resumes. This attaches generation-local record
+or enum identity before guards, field slots, or variant matching run; name-only
+heap values are not an acceptable substitute for static enum `match`.
 
 ### Repository Artifacts Use Domain-Neutral Host Names
 

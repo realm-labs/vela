@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use vela_bytecode::LinkedProgram;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::HostResult;
 use vela_host::lease::{
@@ -12,7 +13,7 @@ use vela_host::path::HostRef;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::heap::ScriptHeap;
-use vela_vm::owned_to_persistent_value;
+use vela_vm::owned_to_linked_persistent_value;
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 
@@ -22,6 +23,29 @@ use super::VelaValue;
 pub struct CallArgs<'a> {
     entries: Vec<CallArg<'a>>,
     fallback: Option<&'a mut (dyn ScriptStateAdapter + Send)>,
+}
+
+pub(super) struct CallArgRuntime<'program, 'heap, 'budget> {
+    runtime_id: u64,
+    program: &'program LinkedProgram,
+    heap: &'heap mut ScriptHeap,
+    budget: &'budget mut ExecutionBudget,
+}
+
+impl<'program, 'heap, 'budget> CallArgRuntime<'program, 'heap, 'budget> {
+    pub(super) fn new(
+        runtime_id: u64,
+        program: &'program LinkedProgram,
+        heap: &'heap mut ScriptHeap,
+        budget: &'budget mut ExecutionBudget,
+    ) -> Self {
+        Self {
+            runtime_id,
+            program,
+            heap,
+            budget,
+        }
+    }
 }
 
 /// Captures the call-scoped HostRef assigned to one direct host argument.
@@ -373,23 +397,21 @@ impl<'a> CallArgs<'a> {
         self.entries.is_empty()
     }
 
-    pub(crate) fn resolve_values(
+    pub(super) fn resolve_values(
         &self,
         entry: &str,
         params: &[String],
         param_defaults: &[bool],
-        runtime_id: u64,
-        heap: &mut ScriptHeap,
-        budget: &mut ExecutionBudget,
+        runtime: &mut CallArgRuntime<'_, '_, '_>,
     ) -> VmResult<Vec<Value>> {
         match self.mode()? {
             CallArgsMode::Empty | CallArgsMode::Positional => self
                 .entries
                 .iter()
-                .map(|arg| arg.runtime_value(runtime_id, heap, budget))
+                .map(|arg| arg.runtime_value(runtime))
                 .collect(),
             CallArgsMode::Named => {
-                self.resolve_named_values(entry, params, param_defaults, runtime_id, heap, budget)
+                self.resolve_named_values(entry, params, param_defaults, runtime)
             }
         }
     }
@@ -422,9 +444,7 @@ impl<'a> CallArgs<'a> {
         entry: &str,
         params: &[String],
         param_defaults: &[bool],
-        runtime_id: u64,
-        heap: &mut ScriptHeap,
-        budget: &mut ExecutionBudget,
+        runtime: &mut CallArgRuntime<'_, '_, '_>,
     ) -> VmResult<Vec<Value>> {
         let mut values = BTreeMap::new();
         for (index, arg) in self.entries.iter().enumerate() {
@@ -442,7 +462,7 @@ impl<'a> CallArgs<'a> {
         let mut resolved = Vec::with_capacity(params.len());
         for (index, param) in params.iter().enumerate() {
             if let Some(arg_index) = values.remove(param) {
-                resolved.push(self.entries[arg_index].runtime_value(runtime_id, heap, budget)?);
+                resolved.push(self.entries[arg_index].runtime_value(runtime)?);
             } else if param_defaults.get(index).copied().unwrap_or(false) {
                 resolved.push(Value::Missing);
             } else {
@@ -634,18 +654,18 @@ pub(super) enum CallArg<'a> {
 }
 
 impl CallArg<'_> {
-    fn runtime_value(
-        &self,
-        runtime_id: u64,
-        heap: &mut ScriptHeap,
-        budget: &mut ExecutionBudget,
-    ) -> VmResult<Value> {
+    fn runtime_value(&self, runtime: &mut CallArgRuntime<'_, '_, '_>) -> VmResult<Value> {
         match self {
             Self::Positional(value) | Self::Named { value, .. } => {
-                owned_to_persistent_value(value.clone(), heap, Some(budget))
+                owned_to_linked_persistent_value(
+                    value.clone(),
+                    runtime.program,
+                    runtime.heap,
+                    Some(runtime.budget),
+                )
             }
             Self::PositionalValue(value) | Self::NamedValue { value, .. } => {
-                if value.runtime_id() == runtime_id {
+                if value.runtime_id() == runtime.runtime_id {
                     Ok(value.value())
                 } else {
                     Err(call_args_type_error("VelaValue belongs to another Runtime"))

@@ -45,10 +45,12 @@ Host factories now use `host_constructor_fn` to transfer exact Rust objects
 into actor-local Runtime-owned storage. Vela receives only a `HostRef`; the
 object remains outside script GC, supports HostAccess and shared/exclusive
 leases, and survives across Runtime calls until its Runtime is dropped.
-The first generated authoring path is also live: `#[derive(Value)]` emits a
-qualified named-struct schema, stable field facts, direct structural codec, and
-the same `TypeBinding` consumed by `register_rust_type`; no handwritten Vela
-adapter or serde/JSON conversion is involved. Enum generation remains open.
+The first generated authoring path is also live: `#[derive(Value)]` emits
+qualified named-struct or enum schemas, stable field/variant facts, direct
+structural codecs, and the same `TypeBinding` consumed by
+`register_rust_type`; no handwritten Vela adapter or serde/JSON conversion is
+involved. Registered nominal values retain identity across entry arguments and
+sync/async native results, so Vela enum `match` works on Rust-produced values.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry
@@ -211,10 +213,11 @@ borrowed-return, generation-pinning, and no-retry behavior remains under its
 ordinary module ownership. S2 now has the sealed binding identity/storage/ABI
 substrate, manual external-type entrypoint, typed structural Value codec path,
 and type-owned Value plus Host constructor registration backed by actor-local
-Runtime storage. Named-struct `Value` derive generation is implemented; enum
-and Host derive integration, standard bindings, compact root-local HostRef
-storage, prepared thunks, allocation-free common-arity preflight, and a post-S2
-shorter owned-host reclamation policy remain open. Runtime receiver
+Runtime storage. Structural `Value` derive generation is implemented for named
+structs plus unit/named-field enums; Host derive integration, standard
+bindings, compact root-local HostRef storage, prepared thunks, allocation-free
+common-arity preflight, and a post-S2 shorter owned-host reclamation policy
+remain open. Runtime receiver
 enforcement is live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-
 signature facts.

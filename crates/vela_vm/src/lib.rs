@@ -87,12 +87,15 @@ pub(crate) use frame::CallFrame;
 use heap::{HeapValue, ScriptHeap};
 use heap_execution::HeapExecution;
 pub use heap_graph::copy_persistent_value_graph;
+#[cfg(test)]
+use heap_values::owned_to_value;
 use heap_values::{
-    allocate_heap_value, enum_variant_owner, owned_to_value, store_runtime_value,
+    allocate_heap_value, enum_variant_owner, owned_to_linked_value, store_runtime_value,
     store_value_in_heap_if_needed, stored_runtime_value, value_from_constant, value_to_owned,
 };
 pub use heap_values::{
-    allocate_zero_field_record, owned_to_persistent_value, persistent_value_to_owned,
+    allocate_zero_field_record, owned_to_linked_persistent_value, owned_to_persistent_value,
+    persistent_value_to_owned,
 };
 pub use owned_contract::{canonicalize_owned_value_contract, validate_owned_value_contract};
 use owned_value::OwnedValue;
@@ -993,7 +996,8 @@ impl Vm {
         let function = linked_program_entry(artifact.program(), entry)?;
         let mut heap = ScriptHeap::new();
         let mut heap_execution = HeapExecution::new(&mut heap);
-        let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
+        let args =
+            owned_args_to_runtime(args, artifact.program(), &mut heap_execution, Some(budget))?;
         let result = self.execute_linked_call(
             linked_execution::LinkedExecutionCall {
                 owner: Arc::clone(artifact),
@@ -1052,7 +1056,8 @@ impl Vm {
         let function = linked_program_entry(artifact.program(), entry)?;
         let mut heap = ScriptHeap::new();
         let mut heap_execution = HeapExecution::new(&mut heap);
-        let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
+        let args =
+            owned_args_to_runtime(args, artifact.program(), &mut heap_execution, Some(budget))?;
         let result = self.execute_linked_call(
             linked_execution::LinkedExecutionCall {
                 owner: Arc::clone(artifact),
@@ -1079,7 +1084,12 @@ impl Vm {
         let function = linked_program_entry(call.artifact.program(), call.entry)?;
         let mut heap = ScriptHeap::new();
         let mut heap_execution = HeapExecution::new(&mut heap);
-        let args = owned_args_to_runtime(call.args, &mut heap_execution, Some(call.budget))?;
+        let args = owned_args_to_runtime(
+            call.args,
+            call.artifact.program(),
+            &mut heap_execution,
+            Some(call.budget),
+        )?;
         let result = self.execute_linked_call(
             linked_execution::LinkedExecutionCall {
                 owner: Arc::clone(call.artifact),
@@ -1105,7 +1115,12 @@ impl Vm {
     ) -> VmResult<OwnedValue> {
         let function = linked_program_entry(call.artifact.program(), call.entry)?;
         let mut heap_execution = HeapExecution::new(call.persistent.heap);
-        let args = owned_args_to_runtime(call.args, &mut heap_execution, Some(call.budget))?;
+        let args = owned_args_to_runtime(
+            call.args,
+            call.artifact.program(),
+            &mut heap_execution,
+            Some(call.budget),
+        )?;
         heap_execution.protect_values(call.persistent.roots);
         let result = self.execute_linked_call(
             linked_execution::LinkedExecutionCall {
@@ -1173,12 +1188,13 @@ impl Vm {
 
 fn owned_args_to_runtime(
     args: &[OwnedValue],
+    program: &LinkedProgram,
     heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Vec<Value>> {
     args.iter()
         .cloned()
-        .map(|arg| owned_to_value(arg, heap, budget.as_deref_mut()))
+        .map(|arg| owned_to_linked_value(arg, program, heap, budget.as_deref_mut()))
         .collect::<VmResult<Vec<_>>>()
 }
 

@@ -1725,6 +1725,7 @@ impl Vm {
                             frame,
                             heap,
                             budget,
+                            program,
                             Some(*dst),
                             result,
                         )?;
@@ -2384,7 +2385,7 @@ impl Vm {
                         let result = function(&prepared.receiver, &prepared.args, host)
                             .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                         native_function_calls::write_native_result(
-                            frame, heap, budget, *dst, result,
+                            frame, heap, budget, program, *dst, result,
                         )?;
                         continue;
                     }

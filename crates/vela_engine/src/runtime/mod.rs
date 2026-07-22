@@ -739,9 +739,12 @@ where
             entry,
             &params,
             &code.param_defaults,
-            self.state.id,
-            &mut self.state.vm_states.heap,
-            &mut budget,
+            call_args::CallArgRuntime::new(
+                self.state.id,
+                linked_program,
+                &mut self.state.vm_states.heap,
+                &mut budget,
+            ),
         )?;
         let mut host = HostExecution {
             adapter: &mut execution_host,
@@ -781,9 +784,12 @@ where
             &call.target.name,
             &call.target.params,
             &call.target.param_defaults,
-            call.runtime_id,
-            &mut call.vm_states.heap,
-            budget,
+            call_args::CallArgRuntime::new(
+                call.runtime_id,
+                call.artifact.program(),
+                &mut call.vm_states.heap,
+                budget,
+            ),
         )?;
         let mut access = HostAccess::new();
         let vm = runtime_vm(call.engine, call.registry_image, call.hot_reload);
@@ -889,9 +895,12 @@ where
             &call.target.name,
             &call.target.params,
             &call.target.param_defaults,
-            call.runtime_id,
-            &mut call.vm_states.heap,
-            budget,
+            call_args::CallArgRuntime::new(
+                call.runtime_id,
+                call.artifact.program(),
+                &mut call.vm_states.heap,
+                budget,
+            ),
         )?;
         let mut access = HostAccess::new();
         let vm = runtime_vm(call.engine, call.registry_image, call.hot_reload);

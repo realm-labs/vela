@@ -232,7 +232,7 @@ fn run_linked_test_entry_with_caches(
     let function = linked_program_entry(linked.program(), entry)?;
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
-    let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
+    let args = owned_args_to_runtime(args, linked.program(), &mut heap_execution, Some(budget))?;
     let result = vm.execute_linked_call(
         crate::linked_execution::LinkedExecutionCall {
             owner: Arc::clone(linked),
@@ -264,7 +264,7 @@ fn run_linked_test_entry_with_host_and_caches(
     let function = linked_program_entry(linked.program(), entry)?;
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
-    let args = owned_args_to_runtime(args, &mut heap_execution, Some(budget))?;
+    let args = owned_args_to_runtime(args, linked.program(), &mut heap_execution, Some(budget))?;
     let result = vm.execute_linked_call(
         crate::linked_execution::LinkedExecutionCall {
             owner: Arc::clone(linked),

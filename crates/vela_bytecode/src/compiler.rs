@@ -857,7 +857,8 @@ fn nominal_type_descriptors(targets: &MirTargetTable) -> CompileResult<Vec<Nomin
             matches!(
                 ty.class,
                 CompileTypeClass::ScriptRecord | CompileTypeClass::ScriptEnum
-            )
+            ) || matches!(ty.class, CompileTypeClass::Registry)
+                && (ty.shape.is_some() || !ty.variants.is_empty())
         })
         .map(|(_, ty)| {
             let fields = ty
@@ -894,6 +895,8 @@ fn nominal_type_descriptors(targets: &MirTargetTable) -> CompileResult<Vec<Nomin
                 kind: match ty.class {
                     CompileTypeClass::ScriptRecord => NominalTypeKind::Record,
                     CompileTypeClass::ScriptEnum => NominalTypeKind::Enum,
+                    CompileTypeClass::Registry if ty.shape.is_some() => NominalTypeKind::Record,
+                    CompileTypeClass::Registry if !ty.variants.is_empty() => NominalTypeKind::Enum,
                     _ => unreachable!("filtered to script nominal types"),
                 },
                 shape: ty.shape,

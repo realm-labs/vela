@@ -16,13 +16,11 @@ use vela_host::path::HostRef;
 use vela_host::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
-use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
-use vela_vm::heap::ScriptHeap;
 use vela_vm::value::Value;
 use vela_vm::{NativeCallFuture, PreparedAsyncCall};
 
-use super::call_args::HostArgBinding;
+use super::call_args::{CallArgRuntime, HostArgBinding};
 use super::{CallArgs, RuntimeExternStateBindings, RuntimeHostArena};
 
 const EXECUTION_HOST_OBJECT_ID_BASE: u64 = 1 << 63;
@@ -123,12 +121,10 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
         entry: &str,
         params: &[String],
         param_defaults: &[bool],
-        runtime_id: u64,
-        heap: &mut ScriptHeap,
-        budget: &mut ExecutionBudget,
+        mut runtime: CallArgRuntime<'_, '_, '_>,
     ) -> VmResult<Vec<Value>> {
         self.args
-            .resolve_values(entry, params, param_defaults, runtime_id, heap, budget)
+            .resolve_values(entry, params, param_defaults, &mut runtime)
     }
 
     fn direct_access_error(target: HostTargetInstance<'_>, action: &'static str) -> HostError {
@@ -428,12 +424,10 @@ impl<'args, 'parent> ReentryExecutionHost<'args, 'parent> {
         entry: &str,
         params: &[String],
         param_defaults: &[bool],
-        runtime_id: u64,
-        heap: &mut ScriptHeap,
-        budget: &mut ExecutionBudget,
+        mut runtime: CallArgRuntime<'_, '_, '_>,
     ) -> VmResult<Vec<Value>> {
         self.args
-            .resolve_values(entry, params, param_defaults, runtime_id, heap, budget)
+            .resolve_values(entry, params, param_defaults, &mut runtime)
     }
 }
 
@@ -1063,7 +1057,9 @@ mod tests {
     use vela_vm::heap::ScriptHeap;
     use vela_vm::value::Value;
 
-    use super::{EXECUTION_HOST_OBJECT_ID_BASE, ExecutionHost, ReentryExecutionHost};
+    use super::{
+        CallArgRuntime, EXECUTION_HOST_OBJECT_ID_BASE, ExecutionHost, ReentryExecutionHost,
+    };
     use crate::runtime::{CallArgs, RuntimeExternStateBindings, RuntimeHostArena};
 
     #[test]
@@ -1094,6 +1090,7 @@ mod tests {
         let mut host = ExecutionHost::new(args, &mut extern_states, &mut host_arena);
         let mut heap = ScriptHeap::default();
         let mut budget = ExecutionBudget::unbounded();
+        let program = vela_bytecode::LinkedProgram::new();
 
         let child_ref = {
             let child_args = CallArgs::new().with_host_ref("child", &child_value);
@@ -1104,9 +1101,7 @@ mod tests {
                     "child",
                     &["child".to_owned()],
                     &[false],
-                    1,
-                    &mut heap,
-                    &mut budget,
+                    CallArgRuntime::new(1, &program, &mut heap, &mut budget),
                 )
                 .expect("child binding should resolve");
             let [Value::HostRef(child_ref)] = values.as_slice() else {

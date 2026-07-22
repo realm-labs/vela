@@ -25,7 +25,7 @@ pub fn owned_to_persistent_value(
     owned_to_value(value, &mut heap_execution, budget)
 }
 
-pub(crate) fn owned_to_linked_persistent_value(
+pub fn owned_to_linked_persistent_value(
     value: OwnedValue,
     program: &vela_bytecode::LinkedProgram,
     heap: &mut ScriptHeap,
@@ -33,6 +33,15 @@ pub(crate) fn owned_to_linked_persistent_value(
 ) -> VmResult<Value> {
     let mut heap_execution = HeapExecution::new(heap);
     owned_to_value_inner(value, &mut heap_execution, budget, Some(program))
+}
+
+pub(crate) fn owned_to_linked_value(
+    value: OwnedValue,
+    program: &vela_bytecode::LinkedProgram,
+    heap: &mut HeapExecution<'_>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    owned_to_value_inner(value, heap, budget, Some(program))
 }
 
 pub fn persistent_value_to_owned(value: &Value, heap: &mut ScriptHeap) -> VmResult<OwnedValue> {

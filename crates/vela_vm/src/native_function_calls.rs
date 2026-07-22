@@ -9,7 +9,7 @@ use crate::{
     ConditionalAsyncNativeFunction, ConditionalHostNativeFunction, ConditionalHostNativeOutcome,
     ExecutionBudget, HeapExecution, HostExecution, HostNativeFunction, NativeFunction,
     NativeInlineCacheEntry, OwnedValue, SmallStorage, Vm, VmError, VmErrorKind, VmInlineCaches,
-    VmResult, owned_to_value, value::Value, value_to_owned,
+    VmResult, value::Value, value_to_owned,
 };
 
 struct NativeFunctionCall<'a> {
@@ -108,6 +108,7 @@ pub(crate) fn dispatch_linked_native_function_call(
     context_native_boundaries: bool,
     call: LinkedNativeFunctionCall<'_>,
 ) -> VmResult<LinkedNativeDispatch> {
+    let program = call.program;
     let target = call.program.native_function(call.native).ok_or_else(|| {
         VmError::new(VmErrorKind::UnknownNative {
             name: call.program.debug_name(call.debug_name).to_owned(),
@@ -178,7 +179,7 @@ pub(crate) fn dispatch_linked_native_function_call(
             .map_err(|error| error.with_source_span_if_absent(call.call_site))?
         {
             ConditionalHostNativeOutcome::Complete(result) => {
-                write_native_result(frame, heap, budget, call.dst, result)?;
+                write_native_result(frame, heap, budget, program, call.dst, result)?;
                 Ok(LinkedNativeDispatch::Complete)
             }
             ConditionalHostNativeOutcome::Async {
@@ -217,7 +218,7 @@ pub(crate) fn dispatch_linked_native_function_call(
             })),
         };
     }
-    dispatch_resolved_native_function_call(host, heap, budget, frame, &call, target)?;
+    dispatch_resolved_native_function_call(host, heap, budget, frame, program, &call, target)?;
     Ok(LinkedNativeDispatch::Complete)
 }
 
@@ -226,6 +227,7 @@ fn dispatch_resolved_native_function_call(
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     frame: &mut CallFrame,
+    program: &LinkedProgram,
     call: &NativeFunctionCall<'_>,
     target: NativeCallTarget,
 ) -> VmResult<()> {
@@ -289,21 +291,23 @@ fn dispatch_resolved_native_function_call(
                 .map_err(|error| error.with_source_span_if_absent(call.call_site))?
         }
     };
-    write_native_result(frame, heap, budget, call.dst, result)
+    write_native_result(frame, heap, budget, program, call.dst, result)
 }
 
 pub(crate) fn write_native_result(
     frame: &mut CallFrame,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
+    program: &LinkedProgram,
     destination: Option<Register>,
     result: OwnedValue,
 ) -> VmResult<()> {
     let Some(destination) = destination else {
         return Ok(());
     };
-    let result = owned_to_value(
+    let result = crate::heap_values::owned_to_linked_value(
         result,
+        program,
         heap.as_deref_mut().ok_or_else(|| {
             VmError::new(VmErrorKind::TypeMismatch {
                 operation: "native heap",

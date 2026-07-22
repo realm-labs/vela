@@ -3,7 +3,7 @@ use crate::error::{VmError, VmErrorKind, VmResult};
 use crate::execution_session::LinkedExecutionSession;
 use crate::heap_execution::HeapExecution;
 use crate::native_function_calls;
-use crate::{HostExecution, NativeCallFuture, OwnedValue, Vm, owned_to_value};
+use crate::{HostExecution, NativeCallFuture, OwnedValue, Vm};
 
 pub struct PreparedAsyncCall {
     pub(crate) native_id: Option<vela_def::FunctionId>,
@@ -254,7 +254,17 @@ impl Vm {
             })
             .with_source_span_if_absent(pending.source_span)
         })?;
-        let value = owned_to_value(value, heap, budget)?;
+        let owner = session
+            .frames
+            .last()
+            .map(|frame| std::sync::Arc::clone(&frame.owner))
+            .ok_or_else(|| {
+                VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
+                    opcode: "native resume without an active frame",
+                })
+            })?;
+        let value =
+            crate::heap_values::owned_to_linked_value(value, owner.program(), heap, budget)?;
         if let Some(destination) = pending.destination {
             session
                 .frames

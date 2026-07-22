@@ -16,7 +16,7 @@ use crate::context::{NativeCallContext, NativeContextLeaseInvoker, NativeReentry
 use crate::engine::Engine;
 use crate::method::AsyncNativeMethodImplementation;
 
-use super::call_args::{CallArgs, call_args_type_error};
+use super::call_args::{CallArgRuntime, CallArgs, call_args_type_error};
 use super::call_future::RuntimeCallFuture;
 use super::execution_host::{DirectContextInvoker, ExecutionHostBoundary, ReentryExecutionHost};
 use super::handles::{
@@ -139,9 +139,12 @@ impl ActiveNativeReentry<'_, '_> {
             &target.name,
             &target.params,
             &target.param_defaults,
-            self.runtime_id,
-            self.heap.heap,
-            self.budget,
+            CallArgRuntime::new(
+                self.runtime_id,
+                self.artifact.program(),
+                self.heap.heap,
+                self.budget,
+            ),
         )?;
         let entry_args = reentry_entry_args(&target, &resolved);
         self.vm.push_linked_reentry(
@@ -249,9 +252,12 @@ impl ActiveNativeReentry<'_, '_> {
             &target.name,
             &target.params,
             &target.param_defaults,
-            self.runtime_id,
-            self.heap.heap,
-            self.budget,
+            CallArgRuntime::new(
+                self.runtime_id,
+                self.artifact.program(),
+                self.heap.heap,
+                self.budget,
+            ),
         )?;
         let entry_args = reentry_entry_args(&target, &resolved);
         self.vm.push_linked_reentry(
