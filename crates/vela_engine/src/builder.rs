@@ -317,10 +317,7 @@ impl EngineBuilder {
     pub fn register_async_direct_host_fn(
         mut self,
         desc: NativeFunctionDesc,
-        requests: impl Fn(
-            &[OwnedValue],
-        )
-            -> VmResult<Vec<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)>>
+        requests: impl Fn(&[OwnedValue]) -> VmResult<vela_host::lease::HostLeaseRequestSet>
         + Send
         + Sync
         + 'static,
@@ -345,10 +342,7 @@ impl EngineBuilder {
     pub fn register_scoped_host_fn(
         mut self,
         desc: NativeFunctionDesc,
-        requests: impl Fn(
-            &[OwnedValue],
-        )
-            -> VmResult<Vec<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)>>
+        requests: impl Fn(&[OwnedValue]) -> VmResult<vela_host::lease::HostLeaseRequestSet>
         + Send
         + Sync
         + 'static,

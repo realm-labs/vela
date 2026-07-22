@@ -16,6 +16,10 @@ pub enum HostLeaseKind {
     Exclusive,
 }
 
+/// Lease requests stay inline for ordinary service arities and spill only for
+/// unusually wide generated boundaries.
+pub type HostLeaseRequestSet = smallvec::SmallVec<[(HostRef, HostLeaseKind); 8]>;
+
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct BorrowLeaseId(u64);
 

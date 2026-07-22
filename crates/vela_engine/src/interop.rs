@@ -191,7 +191,7 @@ impl HostParamLeaseRequest {
 /// adapter.
 pub fn preflight_host_parameter_leases(
     requests: &[HostParamLeaseRequest],
-) -> VmResult<Vec<(HostRef, HostLeaseKind)>> {
+) -> VmResult<vela_host::lease::HostLeaseRequestSet> {
     for (index, first) in requests.iter().enumerate() {
         for second in &requests[index + 1..] {
             if first.canonical_host_identity != second.canonical_host_identity {
@@ -1067,12 +1067,15 @@ mod tests {
             host_request(0, "first", root, HostLeaseKind::Shared),
             host_request(1, "second", root, HostLeaseKind::Shared),
         ];
+        let prepared =
+            preflight_host_parameter_leases(&shared).expect("shared aliases should pass preflight");
         assert_eq!(
-            preflight_host_parameter_leases(&shared),
-            Ok(vec![
-                (root, HostLeaseKind::Shared),
-                (root, HostLeaseKind::Shared)
-            ])
+            prepared.as_slice(),
+            &[(root, HostLeaseKind::Shared), (root, HostLeaseKind::Shared)]
+        );
+        assert!(
+            !prepared.spilled(),
+            "ordinary host arities should remain inline"
         );
 
         let conflict = [

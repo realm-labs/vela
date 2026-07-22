@@ -1211,6 +1211,7 @@ version = "0.1.0"
 dependencies = [
  "parking_lot",
  "self_cell",
+ "smallvec",
  "vela_common",
  "vela_def",
 ]

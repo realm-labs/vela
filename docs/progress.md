@@ -234,10 +234,12 @@ structs plus unit/named-field enums, and `ScriptHost` emits the base Host
 binding. Owned standard collection bindings now cover concrete `Vec<T>`,
 `Vec<u8>`, `BTreeMap<K, V>`, `HashMap<K, V>`, `BTreeSet<T>`, and `HashSet<T>`
 identities plus their common Sequence/MapLike/SetLike surfaces. Method-thunk
-composition is complete for generated ScriptHost registrations. Fixed arrays,
+composition is complete for generated ScriptHost registrations. Common-arity
+host-argument preflight now uses generated request arrays and an eight-entry
+inline result set; the shared/exclusive boundary rows allocate zero times and
+still reject the complete conflict set before lease acquisition. Fixed arrays,
 the non-collection standard type matrix and all borrowed collection views,
-compact root-local HostRef storage, prepared thunks, allocation-free
-common-arity preflight, and a post-S2 shorter
+compact root-local HostRef storage, prepared thunks, and a post-S2 shorter
 owned-host reclamation policy remain open. Runtime receiver enforcement is
 live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-

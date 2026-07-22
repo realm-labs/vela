@@ -250,7 +250,7 @@ pub(crate) fn method_adapter(
                         },
                     ));
                 }
-                let mut __vela_requests = vec![
+                let __vela_requests = [
                     ::vela_engine::interop::HostParamLeaseRequest::from_argument(
                         &__vela_contract,
                         0,
@@ -259,8 +259,8 @@ pub(crate) fn method_adapter(
                         #receiver_kind,
                         &::vela_vm::owned_value::OwnedValue::HostRef(receiver.root),
                     )?,
+                    #(#additional_requests),*
                 ];
-                __vela_requests.extend([#(#additional_requests),*]);
                 let __vela_lease_requests =
                     ::vela_engine::interop::preflight_host_parameter_leases(&__vela_requests)?;
                 let mut __vela_result = None;

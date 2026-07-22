@@ -2494,6 +2494,16 @@ workloads. These fast paths retain epoch, type, capability, provenance,
 HostAccess, escape, generation, and complete alias checks; prior success never
 authorizes an unchecked later call.
 
+The canonical prepared lease-request set stores eight `(HostRef,
+HostLeaseKind)` pairs inline and spills only for wider boundaries. Generated
+exports use fixed request arrays before preflight, so ordinary arities allocate
+nothing in either request construction or the canonical result. Inline storage
+does not make acquisition incremental: every alias conflict is still validated
+before the runtime creates the first Rust reference. Async direct-host dispatch
+boxes the prepared set once when it must survive suspension; this keeps the
+inline buffer from inflating every VM async-state enum while leaving the sync
+service boundary allocation-free.
+
 ### Standard Collection Surface And Concrete Rust ABI Are Separate Facts
 
 Standard Rust collection bindings preserve two identities at once. The Vela

@@ -615,9 +615,7 @@ pub struct AsyncHostNativeFunctionEntry {
 }
 
 pub type HostLeaseRequestFactory = Arc<
-    dyn Fn(
-            &[OwnedValue],
-        ) -> VmResult<Vec<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)>>
+    dyn Fn(&[OwnedValue]) -> VmResult<vela_host::lease::HostLeaseRequestSet>
         + Send
         + Sync
         + 'static,
@@ -661,10 +659,7 @@ impl ScopedHostNativeFunctionEntry {
     #[must_use]
     pub fn new(
         desc: NativeFunctionDesc,
-        requests: impl Fn(
-            &[OwnedValue],
-        )
-            -> VmResult<Vec<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)>>
+        requests: impl Fn(&[OwnedValue]) -> VmResult<vela_host::lease::HostLeaseRequestSet>
         + Send
         + Sync
         + 'static,
@@ -688,10 +683,7 @@ impl AsyncDirectHostNativeFunctionEntry {
     #[must_use]
     pub fn new(
         mut desc: NativeFunctionDesc,
-        requests: impl Fn(
-            &[OwnedValue],
-        )
-            -> VmResult<Vec<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)>>
+        requests: impl Fn(&[OwnedValue]) -> VmResult<vela_host::lease::HostLeaseRequestSet>
         + Send
         + Sync
         + 'static,

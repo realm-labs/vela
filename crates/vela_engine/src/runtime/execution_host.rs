@@ -81,7 +81,7 @@ pub(super) trait ExecutionHostBoundary: ScriptStateAdapter + Send {
 
     fn invoke_direct_context<'call>(
         &'call mut self,
-        requests: Vec<(HostRef, HostLeaseKind)>,
+        requests: vela_host::lease::HostLeaseRequestSet,
         invoke: Box<dyn DirectContextInvoker + 'call>,
     ) -> NativeCallFuture<'call>;
 }
@@ -383,7 +383,7 @@ impl ExecutionHostBoundary for ExecutionHost<'_, '_> {
 
     fn invoke_direct_context<'call>(
         &'call mut self,
-        requests: Vec<(HostRef, HostLeaseKind)>,
+        requests: vela_host::lease::HostLeaseRequestSet,
         invoke: Box<dyn DirectContextInvoker + 'call>,
     ) -> NativeCallFuture<'call> {
         Box::pin(async move {
@@ -497,7 +497,7 @@ impl ExecutionHostBoundary for ReentryExecutionHost<'_, '_> {
 
     fn invoke_direct_context<'call>(
         &'call mut self,
-        requests: Vec<(HostRef, HostLeaseKind)>,
+        requests: vela_host::lease::HostLeaseRequestSet,
         invoke: Box<dyn DirectContextInvoker + 'call>,
     ) -> NativeCallFuture<'call> {
         Box::pin(async move {

@@ -200,7 +200,7 @@ pub enum ConditionalAsyncNativeFunction {
     },
     DirectHostFunction {
         function: AsyncDirectHostFunction,
-        requests: Vec<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)>,
+        requests: Box<vela_host::lease::HostLeaseRequestSet>,
     },
 }
 

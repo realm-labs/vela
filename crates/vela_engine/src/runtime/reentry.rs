@@ -618,7 +618,9 @@ pub(super) async fn invoke_prepared_async(
                 operation: "context direct method lease kind",
             }));
         }
-        let mut requests = Vec::with_capacity(param_leases.len().saturating_add(1));
+        let mut requests = vela_host::lease::HostLeaseRequestSet::with_capacity(
+            param_leases.len().saturating_add(1),
+        );
         requests.push((root, *lease_kind));
         for (index, kind) in param_leases {
             let Some(OwnedValue::HostRef(root)) = prepared.args().get(*index) else {

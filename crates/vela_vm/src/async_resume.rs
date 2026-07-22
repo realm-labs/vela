@@ -161,19 +161,19 @@ impl PreparedAsyncCall {
     }
 
     #[must_use]
-    pub fn host_lease_requests(
-        &self,
-    ) -> Option<Vec<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)>> {
+    pub fn host_lease_requests(&self) -> Option<vela_host::lease::HostLeaseRequestSet> {
         match &self.function {
             native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod {
                 receiver,
                 lease_kind,
                 ..
-            } if receiver.segments.is_empty() => Some(vec![(receiver.root, *lease_kind)]),
+            } if receiver.segments.is_empty() => {
+                Some(std::iter::once((receiver.root, *lease_kind)).collect())
+            }
             native_function_calls::PreparedAsyncNativeFunction::DirectHostFunction {
                 requests,
                 ..
-            } => Some(requests.clone()),
+            } => Some(requests.as_ref().clone()),
             _ => None,
         }
     }

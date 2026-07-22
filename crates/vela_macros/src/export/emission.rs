@@ -521,7 +521,7 @@ fn function_sync_scoped_host_adapter(
                             },
                         ));
                     }
-                    let __vela_requests = vec![#(#request_bindings),*];
+                    let __vela_requests = [#(#request_bindings),*];
                     ::vela_engine::interop::preflight_host_parameter_leases(&__vela_requests)
                 },
                 move |leases, args| {
@@ -652,7 +652,7 @@ fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -
                             },
                         ));
                     }
-                    let __vela_requests = vec![#(#request_bindings),*];
+                    let __vela_requests = [#(#request_bindings),*];
                     ::vela_engine::interop::preflight_host_parameter_leases(&__vela_requests)
                 },
                 move |leases, args| {
@@ -811,7 +811,7 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
                             },
                         ));
                     }
-                    let __vela_requests = vec![#(#request_bindings),*];
+                    let __vela_requests = [#(#request_bindings),*];
                     let __vela_lease_requests =
                         ::vela_engine::interop::preflight_host_parameter_leases(
                             &__vela_requests,
@@ -837,7 +837,7 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
                         },
                     ));
                 }
-                let __vela_requests = vec![#(#request_bindings),*];
+                let __vela_requests = [#(#request_bindings),*];
                 let __vela_lease_requests =
                     ::vela_engine::interop::preflight_host_parameter_leases(&__vela_requests)?;
                 let mut __vela_result = None;

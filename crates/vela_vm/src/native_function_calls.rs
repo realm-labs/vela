@@ -68,7 +68,7 @@ pub(crate) enum PreparedAsyncNativeFunction {
     },
     DirectHostFunction {
         function: crate::AsyncDirectHostFunction,
-        requests: Vec<(vela_host::path::HostRef, vela_host::lease::HostLeaseKind)>,
+        requests: Box<vela_host::lease::HostLeaseRequestSet>,
     },
 }
 

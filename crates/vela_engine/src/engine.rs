@@ -590,7 +590,7 @@ impl Engine {
                 Ok(ConditionalHostNativeOutcome::Async {
                     function: ConditionalAsyncNativeFunction::DirectHostFunction {
                         function: Arc::clone(&function),
-                        requests: requests(args)?,
+                        requests: Box::new(requests(args)?),
                     },
                     args: args.to_vec(),
                     diagnostic_name: name.clone(),
@@ -853,7 +853,7 @@ impl Engine {
                     Ok(ConditionalHostNativeOutcome::Async {
                         function: ConditionalAsyncNativeFunction::DirectHostFunction {
                             function: Arc::clone(&function),
-                            requests: requests(args)?,
+                            requests: Box::new(requests(args)?),
                         },
                         args: args.to_vec(),
                         diagnostic_name: alias.clone(),
