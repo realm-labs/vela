@@ -10,14 +10,18 @@ use std::hash::Hash;
 use std::sync::Arc;
 
 use vela_common::{CallableAsyncness, CapabilitySet, HostTypeId, Span, stable_id};
-use vela_host::lease::HostLeaseKind;
-use vela_host::path::HostRef;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
-use vela_vm::owned_value::OwnedValue;
 
 use crate::method::NativeMethodDesc;
 use crate::native::{EffectSet, TypeHint};
 use crate::schema::ScriptHostSchema;
+
+mod host_lease_plan;
+
+pub use host_lease_plan::{
+    HostLeaseArgumentSource, HostLeaseParameterPlan, HostLeaseSource, HostParamLeaseRequest,
+    PreparedHostLeasePlan, preflight_host_parameter_leases,
+};
 
 type ExportInstaller =
     dyn Fn(crate::builder::EngineBuilder) -> crate::builder::EngineBuilder + Send + Sync + 'static;
@@ -114,104 +118,6 @@ pub trait VelaHostBoundary: ScriptHostSchema {
 }
 
 impl<T: ScriptHostSchema> VelaHostBoundary for T {}
-
-/// Provenance category for an exact-object lease request. Borrowed-return and
-/// nested-reborrow sources extend this enum without changing the root export
-/// adapter contract.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum HostLeaseSource {
-    RootBinding,
-}
-
-/// One named host-parameter lease request built by a generated export adapter.
-/// It contains no Rust pointer and is safe to use in deterministic diagnostics.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct HostParamLeaseRequest {
-    pub callable_identity: CallableIdentity,
-    pub callable: String,
-    pub parameter_identity: u64,
-    pub parameter: String,
-    pub argument_index: usize,
-    pub canonical_host_identity: HostRef,
-    pub expected_concrete_type: HostTypeId,
-    pub mode: HostLeaseKind,
-    pub source: HostLeaseSource,
-}
-
-impl HostParamLeaseRequest {
-    pub fn from_argument(
-        contract: &CallableContract,
-        parameter_index: usize,
-        argument_index: usize,
-        expected_concrete_type: HostTypeId,
-        mode: HostLeaseKind,
-        argument: &OwnedValue,
-    ) -> VmResult<Self> {
-        let parameter_contract = contract.parameters.get(parameter_index).ok_or_else(|| {
-            VmError::new(VmErrorKind::ArityMismatch {
-                name: contract.public_path.clone(),
-                expected: parameter_index.saturating_add(1),
-                actual: contract.parameters.len(),
-            })
-        })?;
-        let callable = contract.public_path.clone();
-        let parameter = parameter_contract.name.clone();
-        let root = match argument {
-            OwnedValue::HostRef(root) => *root,
-            _ => {
-                return Err(VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "exported Rust host parameter",
-                }));
-            }
-        };
-        if root.type_id != expected_concrete_type {
-            return Err(VmError::new(VmErrorKind::HostArgumentTypeMismatch {
-                callable,
-                parameter,
-                expected: expected_concrete_type,
-                actual: root.type_id,
-            }));
-        }
-        Ok(Self {
-            callable_identity: contract.identity,
-            callable,
-            parameter_identity: parameter_contract.identity,
-            parameter,
-            argument_index,
-            canonical_host_identity: root,
-            expected_concrete_type,
-            mode,
-            source: HostLeaseSource::RootBinding,
-        })
-    }
-}
-
-/// Validates all pairwise alias relationships before any lease is acquired,
-/// then returns the canonical request set consumed atomically by the runtime
-/// adapter.
-pub fn preflight_host_parameter_leases(
-    requests: &[HostParamLeaseRequest],
-) -> VmResult<vela_host::lease::HostLeaseRequestSet> {
-    for (index, first) in requests.iter().enumerate() {
-        for second in &requests[index + 1..] {
-            if first.canonical_host_identity != second.canonical_host_identity {
-                continue;
-            }
-            if first.mode == HostLeaseKind::Shared && second.mode == HostLeaseKind::Shared {
-                continue;
-            }
-            return Err(VmError::new(VmErrorKind::AliasedMutableHostArguments {
-                callable: first.callable.clone(),
-                first_parameter: first.parameter.clone(),
-                second_parameter: second.parameter.clone(),
-            }));
-        }
-    }
-    Ok(requests
-        .iter()
-        .map(|request| (request.canonical_host_identity, request.mode))
-        .collect())
-}
 
 /// Applies the engine's generated-export panic policy without exposing the
 /// panic payload across the language boundary.
@@ -900,8 +806,8 @@ mod tests {
     use super::{
         BoundaryMode, CallableAccess, CallableContract, CallableIdentity, CallableKind,
         CallableLanguage, CallableOrigin, CallableParameter, CallableReturn, ErrorMode,
-        HostParamLeaseRequest, ReturnMode, VelaValueBoundary, VelaValueKeyBoundary,
-        preflight_host_parameter_leases,
+        HostLeaseParameterPlan, HostParamLeaseRequest, PreparedHostLeasePlan, ReturnMode,
+        VelaValueBoundary, VelaValueKeyBoundary, preflight_host_parameter_leases,
     };
     use crate::native::{EffectSet, TypeHint};
 
@@ -1088,5 +994,78 @@ mod tests {
                 .kind(),
             VmErrorKind::AliasedMutableHostArguments { .. }
         ));
+    }
+
+    #[test]
+    fn prepared_host_plan_reuses_registration_metadata_and_stays_inline() {
+        let first = HostRef::new(HostTypeId::new(1), HostObjectId::new(9), 3);
+        let second = HostRef::new(HostTypeId::new(1), HostObjectId::new(10), 3);
+        let contract = CallableContract {
+            parameters: vec![
+                CallableParameter::new(7, "first", TypeHint::Any, BoundaryMode::ExclusiveHost),
+                CallableParameter::new(8, "second", TypeHint::Any, BoundaryMode::SharedHost),
+            ],
+            ..contract(EffectSet::host_write())
+        };
+        let plan = PreparedHostLeasePlan::new(
+            contract,
+            2,
+            [
+                HostLeaseParameterPlan::argument(
+                    0,
+                    0,
+                    HostTypeId::new(1),
+                    HostLeaseKind::Exclusive,
+                ),
+                HostLeaseParameterPlan::argument(1, 1, HostTypeId::new(1), HostLeaseKind::Shared),
+            ],
+        );
+
+        let prepared = plan
+            .prepare(&[OwnedValue::HostRef(first), OwnedValue::HostRef(second)])
+            .expect("distinct prepared host arguments should pass");
+
+        assert_eq!(
+            prepared.as_slice(),
+            &[
+                (first, HostLeaseKind::Exclusive),
+                (second, HostLeaseKind::Shared)
+            ]
+        );
+        assert!(!prepared.spilled());
+        assert_eq!(plan.callable(), "game::grant_exp");
+    }
+
+    #[test]
+    fn prepared_method_plan_checks_receiver_alias_before_leasing() {
+        let root = HostRef::new(HostTypeId::new(1), HostObjectId::new(9), 3);
+        let contract = CallableContract {
+            parameters: vec![
+                CallableParameter::new(7, "self", TypeHint::Any, BoundaryMode::ExclusiveHost),
+                CallableParameter::new(8, "other", TypeHint::Any, BoundaryMode::SharedHost),
+            ],
+            ..contract(EffectSet::host_write())
+        };
+        let plan = PreparedHostLeasePlan::new(
+            contract,
+            1,
+            [
+                HostLeaseParameterPlan::receiver(0, HostTypeId::new(1), HostLeaseKind::Exclusive),
+                HostLeaseParameterPlan::argument(1, 0, HostTypeId::new(1), HostLeaseKind::Shared),
+            ],
+        );
+
+        let error = plan
+            .prepare_method(root, &[OwnedValue::HostRef(root)])
+            .expect_err("receiver and shared argument must conflict");
+
+        assert_eq!(
+            error.kind(),
+            VmErrorKind::AliasedMutableHostArguments {
+                callable: "game::grant_exp".to_owned(),
+                first_parameter: "self".to_owned(),
+                second_parameter: "other".to_owned(),
+            }
+        );
     }
 }

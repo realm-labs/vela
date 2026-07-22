@@ -1041,8 +1041,12 @@ descriptors plus executable thunks into the same registration consumed by
 request arrays without a temporary heap vector and returns an inline request
 set for up to eight leases; the shared and exclusive S0 benchmark rows both
 measure zero allocations while retaining the full conflict pass before lease
-acquisition. Remaining standard bindings, compact HostRef storage, and
-prepared thunks remain open.
+acquisition. Generated host functions and methods now compile parameter source,
+index, concrete type, lease mode, and diagnostic metadata into one
+registration-time `PreparedHostLeasePlan`; successful calls no longer rebuild
+their `CallableContract` or parameter request descriptions. Remaining standard
+bindings, compact HostRef storage, and dense prepared field/method adapter
+thunks remain open.
 
 ### S3 — Standard Rust types, views, and collection protocols
 

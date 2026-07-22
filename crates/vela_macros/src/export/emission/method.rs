@@ -128,7 +128,7 @@ pub(crate) fn method_adapter(
     };
     let expected = signature.parameters.len().saturating_sub(1);
     let mut runtime_argument_index = 0_usize;
-    let additional_requests = signature
+    let additional_plans = signature
         .parameters
         .iter()
         .enumerate()
@@ -146,14 +146,12 @@ pub(crate) fn method_adapter(
                 }
             };
             Some(quote! {
-                ::vela_engine::interop::HostParamLeaseRequest::from_argument(
-                    &__vela_contract,
+                ::vela_engine::interop::HostLeaseParameterPlan::argument(
                     #contract_index,
                     #argument_index,
                     <#ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_id(),
                     #kind,
-                    &args[#argument_index],
-                )?
+                )
             })
         })
         .collect::<Vec<_>>();
@@ -177,7 +175,7 @@ pub(crate) fn method_adapter(
                             .and_then(|lease| lease.object().lease_any())
                             .and_then(|object| object.downcast_ref::<#ty>())
                             .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
-                                __vela_requests[#lease_index].canonical_host_identity,
+                                __vela_lease_requests[#lease_index].0,
                             ))?;
                     }
                 }
@@ -191,7 +189,7 @@ pub(crate) fn method_adapter(
                             .and_then(|object| object.lease_any_mut())
                             .and_then(|object| object.downcast_mut::<#ty>())
                             .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
-                                __vela_requests[#lease_index].canonical_host_identity,
+                                __vela_lease_requests[#lease_index].0,
                             ))?;
                     }
                 }
@@ -237,32 +235,24 @@ pub(crate) fn method_adapter(
                     ::core::stringify!(#method_ident),
                 )),
             );
+            let __vela_callable = __vela_contract.public_path.clone();
+            let __vela_plan = ::vela_engine::interop::PreparedHostLeasePlan::new(
+                __vela_contract,
+                #expected,
+                [
+                    ::vela_engine::interop::HostLeaseParameterPlan::receiver(
+                        0,
+                        <#self_ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_id(),
+                        #receiver_kind,
+                    ),
+                    #(#additional_plans),*
+                ],
+            );
             builder.register_native_method_fn(__vela_desc, move |receiver, args, host| {
                 if !receiver.segments.is_empty() {
                     return Err(::vela_host::lease::host_lease_unsupported(receiver.root).into());
                 }
-                if args.len() != #expected {
-                    return Err(::vela_vm::error::VmError::new(
-                        ::vela_vm::error::VmErrorKind::ArityMismatch {
-                            name: __vela_contract.public_path.clone(),
-                            expected: #expected,
-                            actual: args.len(),
-                        },
-                    ));
-                }
-                let __vela_requests = [
-                    ::vela_engine::interop::HostParamLeaseRequest::from_argument(
-                        &__vela_contract,
-                        0,
-                        0,
-                        <#self_ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_id(),
-                        #receiver_kind,
-                        &::vela_vm::owned_value::OwnedValue::HostRef(receiver.root),
-                    )?,
-                    #(#additional_requests),*
-                ];
-                let __vela_lease_requests =
-                    ::vela_engine::interop::preflight_host_parameter_leases(&__vela_requests)?;
+                let __vela_lease_requests = __vela_plan.prepare_method(receiver.root, args)?;
                 let mut __vela_result = None;
                 host.adapter.with_host_leases(
                     &__vela_lease_requests,
@@ -274,7 +264,7 @@ pub(crate) fn method_adapter(
                             #receiver_binding
                             #(#argument_bindings)*
                             ::vela_engine::interop::catch_export_panic(
-                                &__vela_contract.public_path,
+                                &__vela_callable,
                                 || ::vela_engine::typed::IntoNativeReturn::into_native_return(
                                     #call_target(
                                         __vela_receiver,

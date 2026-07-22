@@ -245,7 +245,7 @@ fn function_sync_scoped_host_adapter(
         TypeShape::Tuple(elements) => elements.iter().collect::<Vec<_>>(),
         _ => unreachable!("scoped adapter requires host payloads"),
     };
-    let request_bindings = signature
+    let request_plans = signature
         .parameters
         .iter()
         .enumerate()
@@ -260,14 +260,12 @@ fn function_sync_scoped_host_adapter(
                 }
             };
             Some(quote! {
-                ::vela_engine::interop::HostParamLeaseRequest::from_argument(
-                    &__vela_contract,
+                ::vela_engine::interop::HostLeaseParameterPlan::argument(
                     #index,
                     #index,
                     <#ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_id(),
                     #kind,
-                    &args[#index],
-                )?
+                )
             })
         })
         .collect::<Vec<_>>();
@@ -508,28 +506,22 @@ fn function_sync_scoped_host_adapter(
         pub fn #register_ident(
             builder: ::vela_engine::builder::EngineBuilder,
         ) -> ::vela_engine::builder::EngineBuilder {
+            let __vela_contract = #contract_ident();
+            let __vela_desc = __vela_contract.native_function_desc();
+            let __vela_plan = ::vela_engine::interop::PreparedHostLeasePlan::new(
+                __vela_contract,
+                #expected,
+                [#(#request_plans),*],
+            );
+            let __vela_callable = __vela_plan.callable().to_owned();
             builder.register_scoped_host_fn(
-                #contract_ident().native_function_desc(),
-                move |args| {
-                    let __vela_contract = #contract_ident();
-                    if args.len() != #expected {
-                        return Err(::vela_vm::error::VmError::new(
-                            ::vela_vm::error::VmErrorKind::ArityMismatch {
-                                name: __vela_contract.public_path,
-                                expected: #expected,
-                                actual: args.len(),
-                            },
-                        ));
-                    }
-                    let __vela_requests = [#(#request_bindings),*];
-                    ::vela_engine::interop::preflight_host_parameter_leases(&__vela_requests)
-                },
+                __vela_desc,
+                move |args| __vela_plan.prepare(args),
                 move |leases, args| {
-                    let __vela_callable = #contract_ident().public_path;
                     if args.len() != #expected {
                         return Err(::vela_vm::error::VmError::new(
                             ::vela_vm::error::VmErrorKind::ArityMismatch {
-                                name: __vela_callable,
+                                name: __vela_callable.clone(),
                                 expected: #expected,
                                 actual: args.len(),
                             },
@@ -561,7 +553,7 @@ fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -
     let register_ident = format_ident!("vela_register_export_{function_ident}");
     let bundle_ident = format_ident!("vela_export_bundle_{function_ident}");
     let expected = signature.parameters.len();
-    let request_bindings = signature
+    let request_plans = signature
         .parameters
         .iter()
         .enumerate()
@@ -576,14 +568,12 @@ fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -
                 }
             };
             Some(quote! {
-                ::vela_engine::interop::HostParamLeaseRequest::from_argument(
-                    &__vela_contract,
+                ::vela_engine::interop::HostLeaseParameterPlan::argument(
                     #index,
                     #index,
                     <#ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_id(),
                     #kind,
-                    &args[#index],
-                )?
+                )
             })
         })
         .collect::<Vec<_>>();
@@ -639,24 +629,19 @@ fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -
         pub fn #register_ident(
             builder: ::vela_engine::builder::EngineBuilder,
         ) -> ::vela_engine::builder::EngineBuilder {
+            let __vela_contract = #contract_ident();
+            let __vela_desc = __vela_contract.native_function_desc();
+            let __vela_plan = ::vela_engine::interop::PreparedHostLeasePlan::new(
+                __vela_contract,
+                #expected,
+                [#(#request_plans),*],
+            );
+            let __vela_callable = __vela_plan.callable().to_owned();
             builder.register_async_direct_host_fn(
-                #contract_ident().native_function_desc(),
-                move |args| {
-                    let __vela_contract = #contract_ident();
-                    if args.len() != #expected {
-                        return Err(::vela_vm::error::VmError::new(
-                            ::vela_vm::error::VmErrorKind::ArityMismatch {
-                                name: __vela_contract.public_path,
-                                expected: #expected,
-                                actual: args.len(),
-                            },
-                        ));
-                    }
-                    let __vela_requests = [#(#request_bindings),*];
-                    ::vela_engine::interop::preflight_host_parameter_leases(&__vela_requests)
-                },
+                __vela_desc,
+                move |args| __vela_plan.prepare(args),
                 move |leases, args| {
-                    let __vela_callable = #contract_ident().public_path;
+                    let __vela_callable = __vela_callable.clone();
                     ::std::boxed::Box::pin(async move {
                         if args.len() != #expected {
                             return Err(::vela_vm::error::VmError::new(
@@ -697,7 +682,7 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
         .filter(|parameter| parameter.mode != ParameterMode::HiddenContext)
         .count();
     let mut runtime_argument_index = 0_usize;
-    let request_bindings = signature
+    let request_plans = signature
         .parameters
         .iter()
         .enumerate()
@@ -717,14 +702,12 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
                 }
             };
             Some(quote! {
-                ::vela_engine::interop::HostParamLeaseRequest::from_argument(
-                    &__vela_contract,
+                ::vela_engine::interop::HostLeaseParameterPlan::argument(
                     #contract_index,
                     #argument_index,
                     <#ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_id(),
                     #kind,
-                    &args[#argument_index],
-                )?
+                )
             })
         })
         .collect::<Vec<_>>();
@@ -750,7 +733,7 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
                             .and_then(|lease| lease.object().lease_any())
                             .and_then(|object| object.downcast_ref::<#ty>())
                             .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
-                                __vela_requests[#lease_index].canonical_host_identity,
+                                __vela_lease_requests[#lease_index].0,
                             ))?;
                     }
                 }
@@ -764,7 +747,7 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
                             .and_then(|object| object.lease_any_mut())
                             .and_then(|object| object.downcast_mut::<#ty>())
                             .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
-                                __vela_requests[#lease_index].canonical_host_identity,
+                                __vela_lease_requests[#lease_index].0,
                             ))?;
                     }
                 }
@@ -791,7 +774,7 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
         let mut __vela_leases = __vela_erased_leases.iter_mut();
         #(#argument_bindings)*
         ::vela_engine::interop::catch_export_panic(
-            &__vela_contract.public_path,
+            &__vela_callable,
             || ::vela_engine::typed::IntoNativeReturn::into_native_return(
                 #function_ident(#(#argument_names),*)
             ),
@@ -802,20 +785,7 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
             builder.register_context_host_native_fn(
                 __vela_desc,
                 move |args, __vela_outer_context| {
-                    if args.len() != #expected {
-                        return Err(::vela_vm::error::VmError::new(
-                            ::vela_vm::error::VmErrorKind::ArityMismatch {
-                                name: __vela_contract.public_path.clone(),
-                                expected: #expected,
-                                actual: args.len(),
-                            },
-                        ));
-                    }
-                    let __vela_requests = [#(#request_bindings),*];
-                    let __vela_lease_requests =
-                        ::vela_engine::interop::preflight_host_parameter_leases(
-                            &__vela_requests,
-                        )?;
+                    let __vela_lease_requests = __vela_plan.prepare(args)?;
                     __vela_outer_context.with_host_leases(
                         &__vela_lease_requests,
                         |__vela_erased_leases, __vela_context| {
@@ -828,18 +798,7 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
     } else {
         quote! {
             builder.register_host_native_fn(__vela_desc, move |args, host| {
-                if args.len() != #expected {
-                    return Err(::vela_vm::error::VmError::new(
-                        ::vela_vm::error::VmErrorKind::ArityMismatch {
-                            name: __vela_contract.public_path.clone(),
-                            expected: #expected,
-                            actual: args.len(),
-                        },
-                    ));
-                }
-                let __vela_requests = [#(#request_bindings),*];
-                let __vela_lease_requests =
-                    ::vela_engine::interop::preflight_host_parameter_leases(&__vela_requests)?;
+                let __vela_lease_requests = __vela_plan.prepare(args)?;
                 let mut __vela_result = None;
                 host.adapter.with_host_leases(
                     &__vela_lease_requests,
@@ -865,6 +824,12 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
         ) -> ::vela_engine::builder::EngineBuilder {
             let __vela_contract = #contract_ident();
             let __vela_desc = __vela_contract.native_function_desc();
+            let __vela_callable = __vela_contract.public_path.clone();
+            let __vela_plan = ::vela_engine::interop::PreparedHostLeasePlan::new(
+                __vela_contract,
+                #expected,
+                [#(#request_plans),*],
+            );
             #registration
         }
 

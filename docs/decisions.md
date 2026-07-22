@@ -2504,6 +2504,14 @@ boxes the prepared set once when it must survive suspension; this keeps the
 inline buffer from inflating every VM async-state enum while leaving the sync
 service boundary allocation-free.
 
+Generated Rust boundary thunks compile host receiver/argument source,
+positional indexes, exact concrete type, lease mode, and stable diagnostic
+metadata into a `PreparedHostLeasePlan` when the Engine is built. Successful
+calls inspect only the supplied HostRefs and the inline canonical request set;
+they do not reconstruct `CallableContract`, clone callable or parameter names,
+or allocate request descriptors. Owned diagnostic strings are created only on
+arity, type, or alias failure.
+
 ### Standard Collection Surface And Concrete Rust ABI Are Separate Facts
 
 Standard Rust collection bindings preserve two identities at once. The Vela

@@ -237,9 +237,12 @@ identities plus their common Sequence/MapLike/SetLike surfaces. Method-thunk
 composition is complete for generated ScriptHost registrations. Common-arity
 host-argument preflight now uses generated request arrays and an eight-entry
 inline result set; the shared/exclusive boundary rows allocate zero times and
-still reject the complete conflict set before lease acquisition. Fixed arrays,
-the non-collection standard type matrix and all borrowed collection views,
-compact root-local HostRef storage, prepared thunks, and a post-S2 shorter
+still reject the complete conflict set before lease acquisition. Generated
+host functions and methods now reuse registration-time prepared parameter
+plans instead of rebuilding contracts and request metadata on each call. Fixed
+arrays, the non-collection standard type matrix and all borrowed collection
+views, compact root-local HostRef storage, dense prepared field/method thunks,
+and a post-S2 shorter
 owned-host reclamation policy remain open. Runtime receiver enforcement is
 live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-

@@ -9,7 +9,10 @@ use vela_common::HostObjectId;
 use vela_engine::args::FromScriptArg;
 use vela_engine::context::NativeCallContext;
 use vela_engine::engine::Engine;
-use vela_engine::interop::{HostParamLeaseRequest, preflight_host_parameter_leases};
+use vela_engine::interop::{
+    HostLeaseParameterPlan, HostParamLeaseRequest, PreparedHostLeasePlan,
+    preflight_host_parameter_leases,
+};
 use vela_engine::permission::Capability;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_host::lease::HostLeaseKind;
@@ -202,6 +205,61 @@ fn main() -> Result<(), Box<dyn Error>> {
     )?;
     report("exclusive_argument_preflight", iterations, || {
         let requests = preflight_host_parameter_leases(black_box(&exclusive_requests))?;
+        Ok(request_checksum(&requests))
+    })?;
+
+    let shared_args = [OwnedValue::HostRef(root), OwnedValue::HostRef(root)];
+    let shared_plan = PreparedHostLeasePlan::new(
+        vela_callable_contract_shared_pair(),
+        2,
+        [
+            HostLeaseParameterPlan::argument(
+                0,
+                0,
+                BoundaryHost::vela_host_type_id(),
+                HostLeaseKind::Shared,
+            ),
+            HostLeaseParameterPlan::argument(
+                1,
+                1,
+                BoundaryHost::vela_host_type_id(),
+                HostLeaseKind::Shared,
+            ),
+        ],
+    );
+    report("prepared_shared_argument_preflight", iterations, || {
+        let requests = shared_plan.prepare(black_box(&shared_args))?;
+        Ok(request_checksum(&requests))
+    })?;
+
+    let exclusive_args = [
+        OwnedValue::HostRef(root),
+        OwnedValue::HostRef(HostRef::new(
+            BoundaryHost::vela_host_type_id(),
+            HostObjectId::new(2),
+            1,
+        )),
+    ];
+    let exclusive_plan = PreparedHostLeasePlan::new(
+        vela_callable_contract_exclusive_pair(),
+        2,
+        [
+            HostLeaseParameterPlan::argument(
+                0,
+                0,
+                BoundaryHost::vela_host_type_id(),
+                HostLeaseKind::Exclusive,
+            ),
+            HostLeaseParameterPlan::argument(
+                1,
+                1,
+                BoundaryHost::vela_host_type_id(),
+                HostLeaseKind::Exclusive,
+            ),
+        ],
+    );
+    report("prepared_exclusive_argument_preflight", iterations, || {
+        let requests = exclusive_plan.prepare(black_box(&exclusive_args))?;
         Ok(request_checksum(&requests))
     })?;
 
