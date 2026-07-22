@@ -395,6 +395,30 @@ fn growable_borrowed_collection_methods_write_through_host_paths() {
 }
 
 #[test]
+fn borrowed_collection_projections_feed_iterator_pipelines() {
+    let mut runtime = runtime(
+        "fn map_iter(scores: MapView<i32, i64>) { return scores.keys().count() + scores.entries().count() + scores.values().filter(|value| value >= 6).count(); } fn set_iter(values: SetView<i32>) { return values.iter().filter(|value| value >= 7i32).count() + values.values().count(); }",
+    );
+
+    let scores = BTreeMap::from([(3_i32, 4_i64), (7_i32, 6_i64), (9_i32, 11_i64)]);
+    let mut args = CallArgs::new();
+    args.push_collection_ref("scores", &scores);
+    let result = runtime
+        .call("map_iter", args, CallOptions::unbounded())
+        .expect("borrowed map projections should feed iterator methods");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(8)));
+    drop(result);
+
+    let values = BTreeSet::from([3_i32, 7_i32, 9_i32]);
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call("set_iter", args, CallOptions::unbounded())
+        .expect("borrowed set projections should feed iterator methods");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(5)));
+}
+
+#[test]
 fn generated_async_adapters_hold_collection_leases_to_completion() {
     let mut runtime = runtime(
         "async fn free(values: ArrayView<i64>, totals: MapMut<String, i64>) { return collections::merge_async(values, totals).await; } async fn method(service: CollectionService, totals: MapMut<String, i64>) { return service.add_async(totals, 3).await; }",

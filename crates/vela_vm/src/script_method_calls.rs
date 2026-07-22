@@ -236,6 +236,28 @@ pub(crate) fn dispatch_linked_method_call(
                 frame.write(call.dst, result)?;
                 return Ok(());
             }
+            if matches!(frame.read(call.receiver)?, Value::HostRef(_))
+                && let Some(projection) =
+                    crate::std_method_ids::host_collection_projection(method_id)
+            {
+                let result =
+                    crate::host_collection_projection::execute_host_root_collection_projection(
+                        host_access::HostAccessRuntime {
+                            frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            inline_caches: context.inline_caches,
+                            source_span: context.call_site,
+                        },
+                        call.receiver,
+                        projection,
+                        values,
+                        context.cache_site,
+                    )?;
+                frame.write(call.dst, result)?;
+                return Ok(());
+            }
             if let Some(result) = linked_standard_value_method_result(
                 &context,
                 frame,
@@ -457,6 +479,27 @@ pub(crate) fn dispatch_resolved_linked_dynamic_method_call(
                     values_storage.as_slice(),
                     context.cache_site,
                 )?;
+                return frame.write(call.dst, result);
+            }
+            if matches!(receiver, Value::HostRef(_))
+                && let Some(projection) =
+                    crate::std_method_ids::host_collection_projection(method_id)
+            {
+                let result =
+                    crate::host_collection_projection::execute_host_root_collection_projection(
+                        host_access::HostAccessRuntime {
+                            frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            inline_caches: context.inline_caches,
+                            source_span: context.call_site,
+                        },
+                        call.receiver,
+                        projection,
+                        values_storage.as_slice(),
+                        context.cache_site,
+                    )?;
                 return frame.write(call.dst, result);
             }
             let contextual_result = contextual_array_standard_value_method(

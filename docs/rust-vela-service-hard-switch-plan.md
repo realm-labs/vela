@@ -1130,12 +1130,17 @@ the Rust-side exact conversion without string serialization. Read-only
 `MapView.has/get/get_or` and `SetView.has` reuse the resolved keyed HostAccess
 path; `MissingCollectionEntry` alone becomes missing/fallback behavior, while
 other host errors propagate. Borrowed complex-element views, remaining
-element/key methods, iteration, and bulk mutation protocols, slices/fixed
+element/key methods, live/resumable iteration, and bulk mutation protocols, slices/fixed
 arrays, richer user-defined collection adapters, full service macro traversal,
 and prepared operations are still open. Growable `MapMut.set` and keyed index
 assignment insert supported leaf values through HostAccess;
 `SetMut.add/remove` use keyed boolean membership writes without
-materialization.
+materialization. Map `keys/values/entries/iter` and Set `values/iter` now use a
+deterministic bounded `HostCollectionProjection` under the active lease and
+then reuse the ordinary Vela Iterator pipeline. This snapshot slice preserves
+exact boundary tags and supports `filter/count/collect`; live host iterators,
+complex element HostRefs, and generation validation at resumable boundaries
+remain planned prepared-operation work.
 
 ### S4 — Service contract and Rust-only generation
 

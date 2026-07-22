@@ -7,7 +7,10 @@ use vela_common::{HostMethodId, HostTypeId, ScalarValue};
 use crate::{
     error::{HostError, HostErrorKind, HostResult},
     path::HostRef,
-    protocol::{HostCollectionKeyRef, HostCollectionQuery},
+    protocol::{
+        HostCollectionKey, HostCollectionKeyRef, HostCollectionProjection, HostCollectionQuery,
+        HostCollectionSnapshot,
+    },
     resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess},
     target::{HostPathArg, HostPathPart, HostTargetInstance},
     value::{HostValue, add_values, div_values, mul_values, rem_values, sub_values},
@@ -47,6 +50,20 @@ pub trait ScriptHostObject {
         let _ = access;
         Err(if target.plan.parts.is_empty() {
             unsupported_collection_query(query)
+        } else {
+            missing_target(target)
+        })
+    }
+
+    fn snapshot_collection_resolved_host(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<HostCollectionSnapshot> {
+        let _ = access;
+        Err(if target.plan.parts.is_empty() {
+            invalid_arg(projection.name())
         } else {
             missing_target(target)
         })
@@ -142,6 +159,19 @@ pub trait ScriptHostFieldAccess {
         })
     }
 
+    fn snapshot_collection_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        projection: HostCollectionProjection,
+    ) -> HostResult<HostCollectionSnapshot> {
+        Err(if target_is_leaf(target, offset) {
+            invalid_arg(projection.name())
+        } else {
+            missing_target(target)
+        })
+    }
+
     fn write_host_target_from(
         &mut self,
         target: HostTargetInstance<'_>,
@@ -187,6 +217,8 @@ pub trait HostValueFrom: Sized {
 
 pub trait ScriptHostKey: Clone + Eq + Ord {
     fn from_host_collection_key(key: HostCollectionKeyRef<'_>) -> HostResult<Self>;
+
+    fn to_host_collection_key(&self) -> HostCollectionKey;
 }
 
 macro_rules! impl_script_host_object_via_field {
@@ -221,6 +253,21 @@ macro_rules! impl_script_host_object_via_field {
             ) -> HostResult<HostValue> {
                 let _ = access;
                 ScriptHostFieldAccess::query_collection_host_target_from(self, target, 0, query)
+            }
+
+            fn snapshot_collection_resolved_host(
+                &self,
+                access: ResolvedHostAccess,
+                target: HostTargetInstance<'_>,
+                projection: HostCollectionProjection,
+            ) -> HostResult<HostCollectionSnapshot> {
+                let _ = access;
+                ScriptHostFieldAccess::snapshot_collection_host_target_from(
+                    self,
+                    target,
+                    0,
+                    projection,
+                )
             }
 
             fn write_resolved_host(
@@ -494,6 +541,10 @@ impl ScriptHostKey for String {
             _ => Err(invalid_arg("String collection key")),
         }
     }
+
+    fn to_host_collection_key(&self) -> HostCollectionKey {
+        HostCollectionKey::String(self.clone())
+    }
 }
 
 macro_rules! impl_script_host_key {
@@ -507,6 +558,10 @@ macro_rules! impl_script_host_key {
                         HostCollectionKeyRef::$variant(key) => Ok(key),
                         _ => Err(invalid_arg(concat!(stringify!($ty), " collection key"))),
                     }
+                }
+
+                fn to_host_collection_key(&self) -> HostCollectionKey {
+                    HostCollectionKey::$variant(*self)
                 }
             }
         )*
@@ -533,6 +588,10 @@ impl ScriptHostKey for Vec<u8> {
             _ => Err(invalid_arg("Bytes collection key")),
         }
     }
+
+    fn to_host_collection_key(&self) -> HostCollectionKey {
+        HostCollectionKey::Bytes(self.clone())
+    }
 }
 
 impl ScriptHostKey for HostRef {
@@ -541,6 +600,10 @@ impl ScriptHostKey for HostRef {
             HostCollectionKeyRef::HostRef(key) => Ok(key),
             _ => Err(invalid_arg("HostRef collection key")),
         }
+    }
+
+    fn to_host_collection_key(&self) -> HostCollectionKey {
+        HostCollectionKey::HostRef(*self)
     }
 }
 
@@ -577,6 +640,22 @@ where
         self.get(&key)
             .ok_or_else(|| missing_collection_entry(target))?
             .query_collection_host_target_from(target, offset + 1, query)
+    }
+
+    fn snapshot_collection_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        projection: HostCollectionProjection,
+    ) -> HostResult<HostCollectionSnapshot> {
+        if !target_is_leaf(target, offset) {
+            let key = K::from_host_collection_key(target_key(target, offset)?)?;
+            return self
+                .get(&key)
+                .ok_or_else(|| missing_collection_entry(target))?
+                .snapshot_collection_host_target_from(target, offset + 1, projection);
+        }
+        snapshot_map_entries(self.iter(), target, offset, projection)
     }
 
     fn write_host_target_from(
@@ -645,6 +724,24 @@ where
         self.get(&key)
             .ok_or_else(|| missing_collection_entry(target))?
             .query_collection_host_target_from(target, offset + 1, query)
+    }
+
+    fn snapshot_collection_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        projection: HostCollectionProjection,
+    ) -> HostResult<HostCollectionSnapshot> {
+        if !target_is_leaf(target, offset) {
+            let key = K::from_host_collection_key(target_key(target, offset)?)?;
+            return self
+                .get(&key)
+                .ok_or_else(|| missing_collection_entry(target))?
+                .snapshot_collection_host_target_from(target, offset + 1, projection);
+        }
+        let mut entries = self.iter().collect::<Vec<_>>();
+        entries.sort_by_key(|(key, _)| (*key).clone());
+        snapshot_map_entries(entries, target, offset, projection)
     }
 
     fn write_host_target_from(
@@ -805,6 +902,18 @@ where
         }
     }
 
+    fn snapshot_collection_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        projection: HostCollectionProjection,
+    ) -> HostResult<HostCollectionSnapshot> {
+        if !target_is_leaf(target, offset) {
+            return Err(missing_target(target));
+        }
+        snapshot_set_values(self.iter(), projection)
+    }
+
     fn write_host_target_from(
         &mut self,
         target: HostTargetInstance<'_>,
@@ -860,6 +969,20 @@ where
         }
     }
 
+    fn snapshot_collection_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        projection: HostCollectionProjection,
+    ) -> HostResult<HostCollectionSnapshot> {
+        if !target_is_leaf(target, offset) {
+            return Err(missing_target(target));
+        }
+        let mut values = self.iter().collect::<Vec<_>>();
+        values.sort();
+        snapshot_set_values(values, projection)
+    }
+
     fn write_host_target_from(
         &mut self,
         target: HostTargetInstance<'_>,
@@ -883,6 +1006,59 @@ impl_script_host_object_via_field!(<K> HashSet<K> where K: ScriptHostKey + Hash 
 
 fn target_is_leaf(target: HostTargetInstance<'_>, offset: usize) -> bool {
     offset == target.plan.parts.len()
+}
+
+fn snapshot_map_entries<'a, K, V>(
+    entries: impl IntoIterator<Item = (&'a K, &'a V)>,
+    target: HostTargetInstance<'_>,
+    offset: usize,
+    projection: HostCollectionProjection,
+) -> HostResult<HostCollectionSnapshot>
+where
+    K: ScriptHostKey + 'a,
+    V: ScriptHostFieldAccess + 'a,
+{
+    match projection {
+        HostCollectionProjection::Keys => Ok(HostCollectionSnapshot::Items(
+            entries
+                .into_iter()
+                .map(|(key, _)| key.to_host_collection_key().into_host_value())
+                .collect(),
+        )),
+        HostCollectionProjection::Values => entries
+            .into_iter()
+            .map(|(_, value)| value.read_host_target_from(target, offset))
+            .collect::<HostResult<Vec<_>>>()
+            .map(HostCollectionSnapshot::Items),
+        HostCollectionProjection::Entries => entries
+            .into_iter()
+            .map(|(key, value)| {
+                Ok((
+                    key.to_host_collection_key().into_host_value(),
+                    value.read_host_target_from(target, offset)?,
+                ))
+            })
+            .collect::<HostResult<Vec<_>>>()
+            .map(HostCollectionSnapshot::Entries),
+    }
+}
+
+fn snapshot_set_values<'a, K>(
+    values: impl IntoIterator<Item = &'a K>,
+    projection: HostCollectionProjection,
+) -> HostResult<HostCollectionSnapshot>
+where
+    K: ScriptHostKey + 'a,
+{
+    if projection == HostCollectionProjection::Entries {
+        return Err(invalid_arg(projection.name()));
+    }
+    Ok(HostCollectionSnapshot::Items(
+        values
+            .into_iter()
+            .map(|value| value.to_host_collection_key().into_host_value())
+            .collect(),
+    ))
 }
 
 fn target_part(target: HostTargetInstance<'_>, offset: usize) -> HostResult<&HostPathPart> {

@@ -174,6 +174,13 @@ pub trait ScriptStateAdapter {
         query: HostCollectionQuery,
     ) -> HostResult<HostValue>;
 
+    fn snapshot_collection_host(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<HostCollectionSnapshot>;
+
     fn write_host(&mut self, access: ResolvedHostAccess, target: HostTargetInstance<'_>, value: HostValue)
         -> HostResult<()>;
 
@@ -320,6 +327,13 @@ membership as keyed boolean reads and writes, preserving their changed/not
 changed return value without materializing the set. Types that cannot be
 constructed from a scalar `HostValue` fail closed instead of cloning a complex
 Rust value through the script heap.
+Borrowed Map `keys/values/entries/iter` and Set `values/iter` use a bounded
+`HostCollectionProjection` under the active lease. The projection preserves
+exact key/value tags, sorts unordered Rust families by their stable key
+contract, and becomes an ordinary one-shot Vela Iterator so existing
+filter/map/count/collect behavior and budgets apply. This first projection
+slice snapshots boundary values; resumable live host iterators with
+per-resume generation validation remain a later prepared-operation step.
 Prepared plans replace the initial per-operation root plan as S3 advances.
 
 Low-level Rust native methods may use typed handles such as `HostRef` and

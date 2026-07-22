@@ -13,7 +13,7 @@ use vela_host::lease::{
 };
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
-use vela_host::protocol::HostCollectionQuery;
+use vela_host::protocol::{HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot};
 use vela_host::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
@@ -626,6 +626,26 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         }
     }
 
+    fn snapshot_collection_host(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<HostCollectionSnapshot> {
+        match self.args.direct_binding(target.root) {
+            Some(HostArgBinding::Shared { object, .. }) => {
+                object.snapshot_collection_resolved_host(access, target, projection)
+            }
+            Some(HostArgBinding::Mutable { object }) => object
+                .try_read()
+                .ok_or_else(|| host_object_busy(target.root))?
+                .snapshot_collection_resolved_host(access, target, projection),
+            None => self
+                .parent
+                .snapshot_collection_host(access, target, projection),
+        }
+    }
+
     fn write_host(
         &mut self,
         access: ResolvedHostAccess,
@@ -886,6 +906,42 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 .ok_or_else(|| host_object_busy(target.root))?
                 .query_collection_resolved_host(access, target, query),
             None => self.fallback.query_collection_host(access, target, query),
+        }
+    }
+
+    fn snapshot_collection_host(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<HostCollectionSnapshot> {
+        if let Some(binding) = self.extern_states.binding(target.root) {
+            return binding
+                .object
+                .snapshot_collection_resolved_host(access, target, projection);
+        }
+        if let Some(result) = self
+            .host_arena
+            .snapshot_collection(access, target, projection)
+        {
+            return result;
+        }
+        if let Some(result) = self.inspect_scoped_host(target.root, |object| {
+            object.snapshot_collection_resolved_host(access, target, projection)
+        }) {
+            return result;
+        }
+        match self.args.direct_binding(target.root) {
+            Some(HostArgBinding::Shared { object, .. }) => {
+                object.snapshot_collection_resolved_host(access, target, projection)
+            }
+            Some(HostArgBinding::Mutable { object }) => object
+                .try_read()
+                .ok_or_else(|| host_object_busy(target.root))?
+                .snapshot_collection_resolved_host(access, target, projection),
+            None => self
+                .fallback
+                .snapshot_collection_host(access, target, projection),
         }
     }
 

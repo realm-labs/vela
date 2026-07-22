@@ -7,7 +7,7 @@ use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::lease::{ErasedHostLease, HostLeaseKind, OwnedHostLeaseSlot, host_object_busy};
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
-use vela_host::protocol::HostCollectionQuery;
+use vela_host::protocol::{HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot};
 use vela_host::resolved::{HostAccessSpec, HostMutationOp, ResolvedHostAccess};
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
@@ -107,6 +107,23 @@ impl RuntimeHostArena {
                 .try_read()
                 .ok_or_else(|| host_object_busy(target.root))
                 .and_then(|object| object.query_collection_resolved_host(access, target, query)),
+        )
+    }
+
+    pub(super) fn snapshot_collection(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> Option<HostResult<HostCollectionSnapshot>> {
+        let object = self.objects.get(&target.root)?;
+        Some(
+            object
+                .try_read()
+                .ok_or_else(|| host_object_busy(target.root))
+                .and_then(|object| {
+                    object.snapshot_collection_resolved_host(access, target, projection)
+                }),
         )
     }
 

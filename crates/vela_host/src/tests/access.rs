@@ -59,6 +59,29 @@ fn map_entry_absence_is_distinct_from_value_projection_failure() {
 }
 
 #[test]
+fn hash_map_collection_snapshots_are_deterministic_and_exactly_typed() {
+    let root = HostRef::new(HostTypeId::new(0), HostObjectId::new(1), 0);
+    let plan = HostTargetPlan::new(root.type_id);
+    let target = HostTargetInstance::new(root, &plan, &[]);
+    let access = ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0));
+    let map = HashMap::from([(9_i32, 11_i64), (3_i32, 4_i64)]);
+
+    assert_eq!(
+        map.snapshot_collection_resolved_host(access, target, HostCollectionProjection::Entries,),
+        Ok(HostCollectionSnapshot::Entries(vec![
+            (
+                HostValue::Scalar(ScalarValue::I32(3)),
+                HostValue::Scalar(ScalarValue::I64(4)),
+            ),
+            (
+                HostValue::Scalar(ScalarValue::I32(9)),
+                HostValue::Scalar(ScalarValue::I64(11)),
+            ),
+        ]))
+    );
+}
+
+#[test]
 fn read_target_reads_current_adapter_state() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();

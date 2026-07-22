@@ -1,6 +1,7 @@
 use vela_common::ScalarValue;
 
 use crate::path::HostRef;
+use crate::value::HostValue;
 
 /// Read-only collection operations understood by the host boundary.
 ///
@@ -11,6 +12,35 @@ use crate::path::HostRef;
 pub enum HostCollectionQuery {
     Len,
     IsEmpty,
+}
+
+/// One bounded projection of a host-backed collection.
+///
+/// The projection is captured while the host lease is active, then consumed by
+/// the VM as a script iterator. It deliberately carries only boundary values;
+/// Rust container storage never moves under the script heap.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum HostCollectionProjection {
+    Keys,
+    Values,
+    Entries,
+}
+
+impl HostCollectionProjection {
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Keys => "host collection keys projection",
+            Self::Values => "host collection values projection",
+            Self::Entries => "host collection entries projection",
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum HostCollectionSnapshot {
+    Items(Vec<HostValue>),
+    Entries(Vec<(HostValue, HostValue)>),
 }
 
 /// An owned, exact key crossing the Vela/Rust collection boundary.
@@ -39,6 +69,25 @@ impl HostCollectionKey {
     #[must_use]
     pub fn as_ref(&self) -> HostCollectionKeyRef<'_> {
         self.into()
+    }
+
+    #[must_use]
+    pub fn into_host_value(self) -> HostValue {
+        match self {
+            Self::Bool(value) => HostValue::Bool(value),
+            Self::Char(value) => HostValue::Char(value),
+            Self::I8(value) => HostValue::Scalar(ScalarValue::I8(value)),
+            Self::I16(value) => HostValue::Scalar(ScalarValue::I16(value)),
+            Self::I32(value) => HostValue::Scalar(ScalarValue::I32(value)),
+            Self::I64(value) => HostValue::Scalar(ScalarValue::I64(value)),
+            Self::U8(value) => HostValue::Scalar(ScalarValue::U8(value)),
+            Self::U16(value) => HostValue::Scalar(ScalarValue::U16(value)),
+            Self::U32(value) => HostValue::Scalar(ScalarValue::U32(value)),
+            Self::U64(value) => HostValue::Scalar(ScalarValue::U64(value)),
+            Self::String(value) => HostValue::String(value),
+            Self::Bytes(value) => HostValue::Bytes(value),
+            Self::HostRef(value) => HostValue::HostRef(value),
+        }
     }
 }
 

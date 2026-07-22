@@ -297,6 +297,16 @@ macro_rules! impl_scoped_host_common {
         ) -> crate::error::HostResult<HostValue> {
             self.0.query_collection_resolved_host(access, target, query)
         }
+
+        fn snapshot_collection_resolved_host(
+            &self,
+            access: ResolvedHostAccess,
+            target: HostTargetInstance<'_>,
+            projection: crate::protocol::HostCollectionProjection,
+        ) -> crate::error::HostResult<crate::protocol::HostCollectionSnapshot> {
+            self.0
+                .snapshot_collection_resolved_host(access, target, projection)
+        }
     };
 }
 
@@ -428,6 +438,16 @@ impl ScriptHostObject for ScopedBorrowedHostCell<'_> {
     ) -> crate::error::HostResult<HostValue> {
         self.borrow_dependent()
             .query_collection_resolved_host(access, target, query)
+    }
+
+    fn snapshot_collection_resolved_host(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: crate::protocol::HostCollectionProjection,
+    ) -> crate::error::HostResult<crate::protocol::HostCollectionSnapshot> {
+        self.borrow_dependent()
+            .snapshot_collection_resolved_host(access, target, projection)
     }
 
     fn write_resolved_host(

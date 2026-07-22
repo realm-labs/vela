@@ -9,7 +9,7 @@ use crate::{
     },
     object::ScriptHostObject,
     path::HostRef,
-    protocol::HostCollectionQuery,
+    protocol::{HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot},
     resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess},
     target::HostTargetInstance,
     value::HostValue,
@@ -137,6 +137,17 @@ pub trait ScriptStateAdapter {
     ) -> HostResult<HostValue> {
         Err(HostError::new(HostErrorKind::UnsupportedCollectionQuery {
             query,
+        }))
+    }
+
+    fn snapshot_collection_host(
+        &self,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<HostCollectionSnapshot> {
+        Err(HostError::new(HostErrorKind::InvalidArgument {
+            expected: projection.name(),
         }))
     }
 

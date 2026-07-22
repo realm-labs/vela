@@ -3,7 +3,7 @@ mod permissions;
 mod proxy;
 mod write_through;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, ScalarValue, SourceId, Span};
 use vela_def::FieldId;
@@ -15,7 +15,7 @@ use crate::{
     mock::MockStateAdapter,
     object::{HostValueFrom, HostValueInto, ScriptHostFieldAccess, ScriptHostObject},
     path::{HostPath, HostRef},
-    protocol::HostCollectionKeyRef,
+    protocol::{HostCollectionKeyRef, HostCollectionProjection, HostCollectionSnapshot},
     proxy::PathProxy,
     resolved::{HostMutationOp, HostSchemaEpoch, ResolvedHostAccess},
     target::{HostPathArg, HostTargetInstance, HostTargetPlan},

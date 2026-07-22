@@ -4,7 +4,7 @@ use crate::{
     adapter::ScriptStateAdapter,
     error::{HostError, HostErrorKind, HostResult},
     path::{HostPath, HostRef},
-    protocol::HostCollectionQuery,
+    protocol::{HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot},
     resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccess},
     target::{HostTargetInstance, HostTargetPlan},
     value::HostValue,
@@ -79,6 +79,19 @@ impl HostAccess {
     ) -> HostResult<HostValue> {
         adapter
             .query_collection_host(access, target, query)
+            .map_err(|error| error.with_source_span_if_absent(source_span))
+    }
+
+    pub fn snapshot_collection_resolved(
+        &self,
+        adapter: &(impl ScriptStateAdapter + ?Sized),
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+        source_span: Option<Span>,
+    ) -> HostResult<HostCollectionSnapshot> {
+        adapter
+            .snapshot_collection_host(access, target, projection)
             .map_err(|error| error.with_source_span_if_absent(source_span))
     }
 

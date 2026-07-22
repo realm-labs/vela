@@ -3,7 +3,7 @@ use vela_host::adapter::{ExternStateBinding, ScriptStateAdapter};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::lease::HostLeaseKind;
 use vela_host::path::HostRef;
-use vela_host::protocol::HostCollectionQuery;
+use vela_host::protocol::{HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot};
 use vela_host::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
@@ -91,6 +91,25 @@ impl ScriptStateAdapter for FallbackAdapter<'_> {
                 })
             },
             |adapter| adapter.query_collection_host(access, target, query),
+        )
+    }
+
+    fn snapshot_collection_host(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<HostCollectionSnapshot> {
+        self.adapter().map_or_else(
+            || {
+                Err(HostError {
+                    kind: HostErrorKind::InvalidArgument {
+                        expected: projection.name(),
+                    },
+                    source_span: None,
+                })
+            },
+            |adapter| adapter.snapshot_collection_host(access, target, projection),
         )
     }
 

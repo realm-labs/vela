@@ -947,7 +947,6 @@ fn execute_host_collection_index_write_target(
 }
 
 struct RuntimeCollectionIndex(HostCollectionKey);
-
 impl RuntimeCollectionIndex {
     fn target(&self, root_type: vela_common::HostTypeId) -> (HostTargetPlan, HostPathArg<'_>) {
         (
@@ -956,7 +955,6 @@ impl RuntimeCollectionIndex {
         )
     }
 }
-
 fn runtime_collection_index(
     index: &Value,
     heap: Option<&HeapExecution<'_>>,
@@ -986,13 +984,13 @@ fn runtime_collection_index(
     Ok(RuntimeCollectionIndex(key))
 }
 
-fn missing_host_context() -> VmError {
+pub(crate) fn missing_host_context() -> VmError {
     VmError::new(VmErrorKind::TypeMismatch {
         operation: "host context",
     })
 }
 
-fn resolve_cached_access(
+pub(crate) fn resolve_cached_access(
     adapter: &dyn vela_host::adapter::ScriptStateAdapter,
     inline_caches: Option<&dyn VmInlineCaches>,
     cache_site: CacheSiteId,
@@ -1042,7 +1040,7 @@ pub(crate) fn code_host_target(
     })
 }
 
-fn runtime_value_from_host(
+pub(crate) fn runtime_value_from_host(
     value: HostValue,
     heap: Option<&mut HeapExecution<'_>>,
     budget: Option<&mut ExecutionBudget>,

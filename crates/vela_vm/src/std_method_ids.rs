@@ -1,7 +1,7 @@
 use std::sync::OnceLock;
 
 use vela_def::MethodId;
-use vela_host::protocol::HostCollectionQuery;
+use vela_host::protocol::{HostCollectionProjection, HostCollectionQuery};
 
 #[derive(Clone, Copy)]
 pub(crate) struct StdMethodIds {
@@ -359,6 +359,22 @@ pub(crate) fn host_collection_mutation(method_id: MethodId) -> Option<HostCollec
         Some(HostCollectionMutation::SetAdd)
     } else if method_id == ids.set_remove {
         Some(HostCollectionMutation::SetRemove)
+    } else {
+        None
+    }
+}
+
+pub(crate) fn host_collection_projection(method_id: MethodId) -> Option<HostCollectionProjection> {
+    let ids = std_method_ids();
+    if method_id == ids.map_keys {
+        Some(HostCollectionProjection::Keys)
+    } else if method_id == ids.map_values
+        || method_id == ids.set_values
+        || method_id == ids.set_iter
+    {
+        Some(HostCollectionProjection::Values)
+    } else if method_id == ids.map_entries || method_id == ids.map_iter {
+        Some(HostCollectionProjection::Entries)
     } else {
         None
     }

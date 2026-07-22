@@ -2654,6 +2654,16 @@ lease. Exclusive views mutate the original collection immediately. Vela-side
 collection protocols must dispatch through this HostRef representation and
 must not reinterpret it as a script-owned Array, Map, or Set.
 
+Borrowed collection traversal first crosses one bounded semantic projection,
+not a Rust iterator object or a serialized container. `HostCollectionProjection`
+captures Map keys, values, entries, or Set values while the exact lease is
+active; HashMap/HashSet projections are sorted by `ScriptHostKey` for
+determinism, and exact scalar/String/Bytes/HostRef tags are retained. The VM
+wraps the projected boundary values in its existing Iterator pipeline. This is
+an intentionally staged snapshot iterator; live resumable host iteration and
+complex element HostRefs remain open and must add generation checks rather
+than silently changing this snapshot into an escaping Rust borrow.
+
 ### Service Deployment Supports Snapshots And Exact-Base Deltas
 
 A Snapshot describes the complete desired Vela service state and composes
