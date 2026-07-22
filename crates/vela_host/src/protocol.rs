@@ -31,16 +31,42 @@ pub enum HostCollectionProjection {
 /// These operations are semantic protocol identities rather than Vela
 /// standard-library method IDs. One operation may therefore be shared by
 /// standard and user-defined Rust collection bindings.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum HostCollectionMutation {
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum HostCollectionMutation<'a> {
     Clear,
+    ExtendSequence(&'a [HostValue]),
+    ExtendMap(&'a [(HostCollectionKey, HostValue)]),
+    ExtendSet(&'a [HostCollectionKey]),
 }
 
-impl HostCollectionMutation {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum HostCollectionMutationKind {
+    Clear,
+    ExtendSequence,
+    ExtendMap,
+    ExtendSet,
+}
+
+impl HostCollectionMutation<'_> {
+    #[must_use]
+    pub const fn kind(self) -> HostCollectionMutationKind {
+        match self {
+            Self::Clear => HostCollectionMutationKind::Clear,
+            Self::ExtendSequence(_) => HostCollectionMutationKind::ExtendSequence,
+            Self::ExtendMap(_) => HostCollectionMutationKind::ExtendMap,
+            Self::ExtendSet(_) => HostCollectionMutationKind::ExtendSet,
+        }
+    }
+}
+
+impl HostCollectionMutationKind {
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Self::Clear => "clear",
+            Self::ExtendSequence => "extend sequence",
+            Self::ExtendMap => "extend map",
+            Self::ExtendSet => "extend set",
         }
     }
 }

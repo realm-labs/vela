@@ -133,7 +133,7 @@ impl RuntimeHostArena {
         &mut self,
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
-        mutation: HostCollectionMutation,
+        mutation: HostCollectionMutation<'_>,
     ) -> Option<HostResult<()>> {
         let object = self.objects.get(&target.root)?;
         Some(

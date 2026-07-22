@@ -125,8 +125,14 @@ and per-resume live host generation checks remain open. Growable borrowed
 collection `clear` now precharges its size and performs one semantic
 `HostCollectionMutation::Clear` through HostAccess for standard Vec, Map, and
 Set host objects; budget failure occurs before mutation and adapters never see
-Vela method IDs. Batched extend, retain/filter, grouping, and prepared live
-traversal remain open.
+Vela method IDs. Growable borrowed collection `extend` now converts one owned
+Vela Array/Map/Set into an exact borrowed mutation batch, charges one execution
+unit per input, and performs one HostAccess mutation. Standard Vec, Map, and
+Set adapters validate the complete batch before changing Rust state, so a
+conversion or budget failure cannot partially extend the host collection.
+Scalar, String, Bytes, and HostRef boundary leaves are supported; complex
+element handles, borrowed-source extension, retain/filter, grouping, and
+prepared live traversal remain open.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry

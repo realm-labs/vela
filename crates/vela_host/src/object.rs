@@ -22,7 +22,8 @@ mod mutation;
 mod target;
 
 use collection_protocol::{
-    collection_query_result, unsupported_collection_mutation, unsupported_collection_query,
+    collection_query_result, mutate_btree_map, mutate_btree_set, mutate_hash_map, mutate_hash_set,
+    mutate_vec, unsupported_collection_mutation, unsupported_collection_query,
 };
 use collection_snapshot::{snapshot_map_entries, snapshot_set_values};
 pub use mutation::mutate_host_value;
@@ -85,7 +86,7 @@ pub trait ScriptHostObject {
         &mut self,
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
-        mutation: HostCollectionMutation,
+        mutation: HostCollectionMutation<'_>,
     ) -> HostResult<()> {
         let _ = access;
         Err(if target.plan.parts.is_empty() {
@@ -202,7 +203,7 @@ pub trait ScriptHostFieldAccess {
         &mut self,
         target: HostTargetInstance<'_>,
         offset: usize,
-        mutation: HostCollectionMutation,
+        mutation: HostCollectionMutation<'_>,
     ) -> HostResult<()> {
         Err(if target_is_leaf(target, offset) {
             unsupported_collection_mutation(mutation)
@@ -321,7 +322,7 @@ macro_rules! impl_script_host_object_via_field {
                 &mut self,
                 access: ResolvedHostAccess,
                 target: HostTargetInstance<'_>,
-                mutation: HostCollectionMutation,
+                mutation: HostCollectionMutation<'_>,
             ) -> HostResult<()> {
                 let _ = access;
                 ScriptHostFieldAccess::mutate_collection_host_target_from(
@@ -660,15 +661,10 @@ where
         &mut self,
         target: HostTargetInstance<'_>,
         offset: usize,
-        mutation: HostCollectionMutation,
+        mutation: HostCollectionMutation<'_>,
     ) -> HostResult<()> {
         if target_is_leaf(target, offset) {
-            return match mutation {
-                HostCollectionMutation::Clear => {
-                    self.clear();
-                    Ok(())
-                }
-            };
+            return mutate_btree_map(self, mutation);
         }
         let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get_mut(&key)
@@ -783,15 +779,10 @@ where
         &mut self,
         target: HostTargetInstance<'_>,
         offset: usize,
-        mutation: HostCollectionMutation,
+        mutation: HostCollectionMutation<'_>,
     ) -> HostResult<()> {
         if target_is_leaf(target, offset) {
-            return match mutation {
-                HostCollectionMutation::Clear => {
-                    self.clear();
-                    Ok(())
-                }
-            };
+            return mutate_hash_map(self, mutation);
         }
         let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get_mut(&key)
@@ -929,15 +920,10 @@ where
         &mut self,
         target: HostTargetInstance<'_>,
         offset: usize,
-        mutation: HostCollectionMutation,
+        mutation: HostCollectionMutation<'_>,
     ) -> HostResult<()> {
         if target_is_leaf(target, offset) {
-            return match mutation {
-                HostCollectionMutation::Clear => {
-                    self.clear();
-                    Ok(())
-                }
-            };
+            return mutate_vec(self, mutation);
         }
         let index = usize::try_from(target_index(target, offset)?)
             .map_err(|_| invalid_arg("array index"))?;
@@ -1034,15 +1020,12 @@ where
         &mut self,
         target: HostTargetInstance<'_>,
         offset: usize,
-        mutation: HostCollectionMutation,
+        mutation: HostCollectionMutation<'_>,
     ) -> HostResult<()> {
         if !target_is_leaf(target, offset) {
             return Err(missing_target(target));
         }
-        match mutation {
-            HostCollectionMutation::Clear => self.clear(),
-        }
-        Ok(())
+        mutate_btree_set(self, mutation)
     }
 
     fn write_host_target_from(
@@ -1118,15 +1101,12 @@ where
         &mut self,
         target: HostTargetInstance<'_>,
         offset: usize,
-        mutation: HostCollectionMutation,
+        mutation: HostCollectionMutation<'_>,
     ) -> HostResult<()> {
         if !target_is_leaf(target, offset) {
             return Err(missing_target(target));
         }
-        match mutation {
-            HostCollectionMutation::Clear => self.clear(),
-        }
-        Ok(())
+        mutate_hash_set(self, mutation)
     }
 
     fn write_host_target_from(

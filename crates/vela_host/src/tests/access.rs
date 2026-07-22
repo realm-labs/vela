@@ -1,4 +1,5 @@
 use super::*;
+use crate::protocol::{HostCollectionKey, HostCollectionMutation};
 
 struct FailingMapValue;
 
@@ -79,6 +80,62 @@ fn hash_map_collection_snapshots_are_deterministic_and_exactly_typed() {
             ),
         ]))
     );
+}
+
+#[test]
+fn batch_map_extension_converts_every_entry_before_mutating_host_state() {
+    let root = HostRef::new(HostTypeId::new(0), HostObjectId::new(1), 0);
+    let plan = HostTargetPlan::new(root.type_id);
+    let target = HostTargetInstance::new(root, &plan, &[]);
+    let access = ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0));
+    let mut map = BTreeMap::from([(1_i32, 2_i64)]);
+    let entries = [
+        (
+            HostCollectionKey::I32(3),
+            HostValue::Scalar(ScalarValue::I64(5)),
+        ),
+        (
+            HostCollectionKey::I32(8),
+            HostValue::String("not an i64".to_owned()),
+        ),
+    ];
+
+    let error = map
+        .mutate_collection_resolved_host(
+            access,
+            target,
+            HostCollectionMutation::ExtendMap(&entries),
+        )
+        .expect_err("one invalid value must reject the complete host mutation batch");
+
+    assert_eq!(
+        error.kind,
+        HostErrorKind::InvalidArgument { expected: "i64" }
+    );
+    assert_eq!(map, BTreeMap::from([(1_i32, 2_i64)]));
+}
+
+#[test]
+fn batch_sequence_extension_writes_exact_values_to_standard_vec() {
+    let root = HostRef::new(HostTypeId::new(0), HostObjectId::new(1), 0);
+    let plan = HostTargetPlan::new(root.type_id);
+    let target = HostTargetInstance::new(root, &plan, &[]);
+    let access = ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0));
+    let mut values = vec![2_i64];
+    let extension = [
+        HostValue::Scalar(ScalarValue::I64(3)),
+        HostValue::Scalar(ScalarValue::I64(5)),
+    ];
+
+    values
+        .mutate_collection_resolved_host(
+            access,
+            target,
+            HostCollectionMutation::ExtendSequence(&extension),
+        )
+        .expect("exact sequence values should extend a standard Vec in one batch");
+
+    assert_eq!(values, vec![2, 3, 5]);
 }
 
 #[test]

@@ -158,10 +158,12 @@ pub trait ScriptStateAdapter {
         &mut self,
         _access: ResolvedHostAccess,
         _target: HostTargetInstance<'_>,
-        mutation: HostCollectionMutation,
+        mutation: HostCollectionMutation<'_>,
     ) -> HostResult<()> {
         Err(HostError::new(
-            HostErrorKind::UnsupportedCollectionMutation { mutation },
+            HostErrorKind::UnsupportedCollectionMutation {
+                mutation: mutation.kind(),
+            },
         ))
     }
 

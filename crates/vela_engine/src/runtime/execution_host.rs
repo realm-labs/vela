@@ -652,7 +652,7 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         &mut self,
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
-        mutation: HostCollectionMutation,
+        mutation: HostCollectionMutation<'_>,
     ) -> HostResult<()> {
         match self.args.direct_binding_mut(target.root) {
             Some(HostArgBinding::Shared { .. }) => {
@@ -969,7 +969,7 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         &mut self,
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
-        mutation: HostCollectionMutation,
+        mutation: HostCollectionMutation<'_>,
     ) -> HostResult<()> {
         if let Some(binding) = self.extern_states.binding_mut(target.root) {
             return binding

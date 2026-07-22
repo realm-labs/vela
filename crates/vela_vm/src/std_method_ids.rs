@@ -328,10 +328,13 @@ pub(crate) fn host_collection_lookup(method_id: MethodId) -> Option<HostCollecti
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum HostCollectionMutation {
     Clear,
+    ArrayExtend,
     MapSet,
     MapRemove,
+    MapExtend,
     SetAdd,
     SetRemove,
+    SetExtend,
 }
 
 impl HostCollectionMutation {
@@ -339,6 +342,7 @@ impl HostCollectionMutation {
     pub(crate) const fn name(self) -> &'static str {
         match self {
             Self::Clear => "clear",
+            Self::ArrayExtend | Self::MapExtend | Self::SetExtend => "extend",
             Self::MapSet => "set",
             Self::MapRemove | Self::SetRemove => "remove",
             Self::SetAdd => "add",
@@ -350,7 +354,12 @@ impl HostCollectionMutation {
         match self {
             Self::Clear => 0,
             Self::MapSet => 2,
-            Self::MapRemove | Self::SetAdd | Self::SetRemove => 1,
+            Self::ArrayExtend
+            | Self::MapRemove
+            | Self::MapExtend
+            | Self::SetAdd
+            | Self::SetRemove
+            | Self::SetExtend => 1,
         }
     }
 }
@@ -359,14 +368,20 @@ pub(crate) fn host_collection_mutation(method_id: MethodId) -> Option<HostCollec
     let ids = std_method_ids();
     if method_id == ids.array_clear || method_id == ids.map_clear || method_id == ids.set_clear {
         Some(HostCollectionMutation::Clear)
+    } else if method_id == ids.array_extend {
+        Some(HostCollectionMutation::ArrayExtend)
     } else if method_id == ids.map_set {
         Some(HostCollectionMutation::MapSet)
     } else if method_id == ids.map_remove {
         Some(HostCollectionMutation::MapRemove)
+    } else if method_id == ids.map_extend {
+        Some(HostCollectionMutation::MapExtend)
     } else if method_id == ids.set_add {
         Some(HostCollectionMutation::SetAdd)
     } else if method_id == ids.set_remove {
         Some(HostCollectionMutation::SetRemove)
+    } else if method_id == ids.set_extend {
+        Some(HostCollectionMutation::SetExtend)
     } else {
         None
     }

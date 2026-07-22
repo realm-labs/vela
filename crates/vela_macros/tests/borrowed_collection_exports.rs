@@ -471,6 +471,88 @@ fn borrowed_collection_clear_charges_size_before_mutation() {
 }
 
 #[test]
+fn growable_borrowed_collections_extend_from_owned_values_in_one_batch() {
+    let mut runtime = runtime(
+        "fn extend_map(values: MapMut<i32, i64>) { let extension = [MapEntry { key: 3i32, value: 8 }, MapEntry { key: 5i32, value: 13 }].iter().collect_map(); values.extend(extension); return values[3i32] + values[5i32] + values.len(); } fn extend_set(values: SetMut<i32>) { values.extend(set::from_array([3i32, 5i32])); return values.has(2i32) && values.has(3i32) && values.has(5i32) && values.len() == 3; }",
+    );
+
+    let mut map = BTreeMap::from([(3_i32, 5_i64)]);
+    let mut args = CallArgs::new();
+    args.push_collection_mut("values", &mut map);
+    let result = runtime
+        .call("extend_map", args, CallOptions::unbounded())
+        .expect("borrowed map extend should cross one host mutation batch");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(23)));
+    drop(result);
+    assert_eq!(map, BTreeMap::from([(3, 8), (5, 13)]));
+
+    let mut set = BTreeSet::from([2_i32, 3]);
+    let mut args = CallArgs::new();
+    args.push_collection_mut("values", &mut set);
+    let result = runtime
+        .call("extend_set", args, CallOptions::unbounded())
+        .expect("borrowed set extend should cross one host mutation batch");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    drop(result);
+    assert_eq!(set, BTreeSet::from([2, 3, 5]));
+}
+
+#[test]
+fn borrowed_collection_extend_charges_batch_size_before_mutation() {
+    let mut runtime = runtime(
+        "fn extend_map(values: MapMut<i32, i64>, extension: Map<i32, i64>) { values.extend(extension); }",
+    );
+    let base_limit = (0..64)
+        .find(|limit| {
+            let mut values = BTreeMap::<i32, i64>::new();
+            let mut args = CallArgs::new();
+            args.push_collection_mut("values", &mut values);
+            args.push_value("extension", OwnedValue::map(Vec::<(i32, i64)>::new()));
+            runtime
+                .call(
+                    "extend_map",
+                    args,
+                    CallOptions::new(*limit, usize::MAX, usize::MAX),
+                )
+                .is_ok()
+        })
+        .expect("empty host extension should fit a small bounded call");
+
+    let extension = || OwnedValue::map([(3_i32, 5_i64), (8, 13), (21, 34)]);
+    let mut values = BTreeMap::from([(1_i32, 2_i64)]);
+    let expected = values.clone();
+    let mut args = CallArgs::new();
+    args.push_collection_mut("values", &mut values);
+    args.push_value("extension", extension());
+    assert!(
+        runtime
+            .call(
+                "extend_map",
+                args,
+                CallOptions::new(base_limit + 2, usize::MAX, usize::MAX),
+            )
+            .is_err(),
+        "three inserted entries must cost three execution units"
+    );
+    assert_eq!(
+        values, expected,
+        "budget failure must precede host extension"
+    );
+
+    let mut args = CallArgs::new();
+    args.push_collection_mut("values", &mut values);
+    args.push_value("extension", extension());
+    runtime
+        .call(
+            "extend_map",
+            args,
+            CallOptions::new(base_limit + 3, usize::MAX, usize::MAX),
+        )
+        .expect("exact size-aware extension budget should succeed");
+    assert_eq!(values, BTreeMap::from([(1, 2), (3, 5), (8, 13), (21, 34)]));
+}
+
+#[test]
 fn borrowed_collection_projections_feed_iterator_pipelines() {
     let mut runtime = runtime(
         "fn array_iter(values: ArrayView<i64>) { return values.iter().filter(|value| value >= 6).count() + values.values().count(); } fn map_iter(scores: MapView<i32, i64>) { return scores.keys().count() + scores.entries().count() + scores.values().filter(|value| value >= 6).count(); } fn set_iter(values: SetView<i32>) { return values.iter().filter(|value| value >= 7i32).count() + values.values().count(); }",

@@ -2593,9 +2593,17 @@ adapters. VM execution queries the current length and charges one execution
 unit per removed element before calling the mutation once. A budget failure
 therefore cannot partially clear host state; successful mutation still writes
 through immediately, and shared/fixed capability enforcement remains at the
-ordinary method-fact and HostAccess boundaries. Later extend, retain/filter,
-and grouping operations extend this protocol instead of looping over dynamic
-host calls or materializing the Rust container.
+ordinary method-fact and HostAccess boundaries. Bulk operations extend this
+protocol instead of looping over dynamic host calls or materializing the Rust
+container. `ExtendSequence`, `ExtendMap`, and `ExtendSet` now carry borrowed
+exact boundary batches for one synchronous
+HostAccess call. The VM converts a script-owned Array/Map/Set and precharges
+one execution unit per item; each Rust adapter then converts the entire batch
+to its concrete element/key/value types before applying one collection
+mutation. This deliberately allocates a temporary prepared Rust batch to
+guarantee that conversion failure cannot partially modify host state. Existing
+Map keys are replaced and Set uniqueness follows the Rust container. Retain,
+filter, and grouping will reuse the same semantic bulk boundary.
 
 Concrete Rust unit, bool, char, exact-width numeric, and String bindings retain
 distinct stable Rust ABI identities while using their existing native Vela

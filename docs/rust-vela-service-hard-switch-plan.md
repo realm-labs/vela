@@ -1148,8 +1148,14 @@ growable collection `clear` precharges one execution unit per removed element
 and then performs one domain-neutral `HostCollectionMutation::Clear` through
 HostAccess. Standard Vec, Map, and Set host objects implement the same
 operation; budget failure precedes mutation, shared/fixed method facts remain
-non-mutating, and Rust adapters do not receive Vela method IDs. Batched extend,
-retain/filter, grouping, and prepared live traversal remain open.
+non-mutating, and Rust adapters do not receive Vela method IDs. Batched
+`extend` is now live for owned Vela Array/Map/Set sources: the VM preserves
+exact boundary tags, precharges one unit per input, and submits one borrowed
+sequence/map/set mutation request. Standard Vec, Map, and Set adapters prepare
+all concrete Rust values before applying the batch, so type conversion and
+budget failures are non-mutating. Map replacement and Set uniqueness follow
+their Rust container semantics. Complex element HostRefs, borrowed-source
+extension, retain/filter, grouping, and prepared live traversal remain open.
 
 ### S4 — Service contract and Rust-only generation
 

@@ -739,6 +739,16 @@ pub(crate) fn execute_host_root_collection_mutation(
             runtime, receiver, cache_site,
         );
     }
+    if matches!(
+        mutation,
+        crate::std_method_ids::HostCollectionMutation::ArrayExtend
+            | crate::std_method_ids::HostCollectionMutation::MapExtend
+            | crate::std_method_ids::HostCollectionMutation::SetExtend
+    ) {
+        return crate::host_collection_mutation::execute_host_root_collection_extend(
+            runtime, receiver, mutation, &args[0], cache_site,
+        );
+    }
     let root = expect_host_ref(&runtime.frame.read(receiver)?, "host collection mutation")?;
     let key = runtime_collection_index(
         &args[0],
@@ -761,7 +771,12 @@ pub(crate) fn execute_host_root_collection_mutation(
 
     use crate::std_method_ids::HostCollectionMutation;
     match mutation {
-        HostCollectionMutation::Clear => unreachable!("clear dispatches before keyed mutations"),
+        HostCollectionMutation::Clear
+        | HostCollectionMutation::ArrayExtend
+        | HostCollectionMutation::MapExtend
+        | HostCollectionMutation::SetExtend => {
+            unreachable!("bulk mutations dispatch before keyed mutations")
+        }
         HostCollectionMutation::MapSet => {
             let resolved = resolve_collection_key_access(
                 host,
@@ -1011,11 +1026,11 @@ impl RuntimeCollectionIndex {
         )
     }
 }
-fn runtime_collection_index(
+pub(crate) fn runtime_collection_key(
     index: &Value,
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
-) -> VmResult<RuntimeCollectionIndex> {
+) -> VmResult<HostCollectionKey> {
     let key = match index {
         Value::Bool(value) => HostCollectionKey::Bool(*value),
         Value::Char(value) => HostCollectionKey::Char(*value),
@@ -1037,7 +1052,15 @@ fn runtime_collection_index(
             return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
         }
     };
-    Ok(RuntimeCollectionIndex(key))
+    Ok(key)
+}
+
+fn runtime_collection_index(
+    index: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<RuntimeCollectionIndex> {
+    runtime_collection_key(index, heap, operation).map(RuntimeCollectionIndex)
 }
 
 pub(crate) fn missing_host_context() -> VmError {

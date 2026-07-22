@@ -119,12 +119,14 @@ impl ScriptStateAdapter for FallbackAdapter<'_> {
         &mut self,
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
-        mutation: HostCollectionMutation,
+        mutation: HostCollectionMutation<'_>,
     ) -> HostResult<()> {
         self.adapter_mut().map_or_else(
             || {
                 Err(HostError {
-                    kind: HostErrorKind::UnsupportedCollectionMutation { mutation },
+                    kind: HostErrorKind::UnsupportedCollectionMutation {
+                        mutation: mutation.kind(),
+                    },
                     source_span: None,
                 })
             },

@@ -185,7 +185,7 @@ pub trait ScriptStateAdapter {
         &mut self,
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
-        mutation: HostCollectionMutation,
+        mutation: HostCollectionMutation<'_>,
     ) -> HostResult<()>;
 
     fn write_host(&mut self, access: ResolvedHostAccess, target: HostTargetInstance<'_>, value: HostValue)
@@ -351,6 +351,15 @@ execution cost before invoking the mutation, so a budget failure leaves the
 host collection unchanged. Vec, Map, Set, and user-defined adapters share this
 protocol while HostAccess still enforces write capability and immediate
 write-through.
+Growable `extend` uses the same boundary as one semantic request, never a VM
+loop of dynamic host calls. `ExtendSequence`, `ExtendMap`, and `ExtendSet`
+borrow exact boundary batches only for the duration of one HostAccess call.
+The VM converts a script-owned source and charges one execution unit per input
+before mutation. Standard Rust adapters then convert the complete batch to
+the target element/key/value types before applying it, so conversion and
+budget failures cannot partially change host state. Map replacement and Set
+uniqueness follow the concrete Rust container semantics; the adapter cannot
+retain the borrowed request.
 Prepared plans replace the initial per-operation root plan as S3 advances.
 
 Low-level Rust native methods may use typed handles such as `HostRef` and

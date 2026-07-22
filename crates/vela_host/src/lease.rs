@@ -320,7 +320,7 @@ where
         &mut self,
         _access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
-        _mutation: crate::protocol::HostCollectionMutation,
+        _mutation: crate::protocol::HostCollectionMutation<'_>,
     ) -> crate::error::HostResult<()> {
         Err(scoped_read_only_error(target, "write"))
     }
@@ -377,7 +377,7 @@ where
         &mut self,
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
-        mutation: crate::protocol::HostCollectionMutation,
+        mutation: crate::protocol::HostCollectionMutation<'_>,
     ) -> crate::error::HostResult<()> {
         self.0
             .mutate_collection_resolved_host(access, target, mutation)
@@ -473,7 +473,7 @@ impl ScriptHostObject for ScopedBorrowedHostCell<'_> {
         &mut self,
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
-        mutation: crate::protocol::HostCollectionMutation,
+        mutation: crate::protocol::HostCollectionMutation<'_>,
     ) -> crate::error::HostResult<()> {
         self.with_dependent_mut(|_, object| {
             object.mutate_collection_resolved_host(access, target, mutation)

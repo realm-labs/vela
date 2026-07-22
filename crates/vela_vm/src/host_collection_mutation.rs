@@ -1,11 +1,14 @@
 use vela_bytecode::{CacheSiteId, Register};
 use vela_common::ScalarValue;
-use vela_host::protocol::{HostCollectionMutation, HostCollectionQuery};
+use vela_host::protocol::{HostCollectionKey, HostCollectionMutation, HostCollectionQuery};
 use vela_host::resolved::{HostAccessOp, HostAccessSpec};
 use vela_host::target::{HostTargetInstance, HostTargetPlan};
 use vela_host::value::HostValue;
 
-use crate::host_access::{HostAccessRuntime, missing_host_context, resolve_cached_access};
+use crate::host_access::{
+    HostAccessRuntime, missing_host_context, resolve_cached_access, runtime_collection_key,
+};
+use crate::host_values::value_to_host;
 use crate::{HostInlineCacheTarget, Value, VmError, VmErrorKind, VmResult, expect_host_ref};
 
 pub(crate) fn execute_host_root_collection_clear(
@@ -64,6 +67,101 @@ pub(crate) fn execute_host_root_collection_clear(
         runtime.source_span,
     )?;
     Ok(Value::Unit)
+}
+
+enum PreparedCollectionExtension {
+    Sequence(Vec<HostValue>),
+    Map(Vec<(HostCollectionKey, HostValue)>),
+    Set(Vec<HostCollectionKey>),
+}
+
+impl PreparedCollectionExtension {
+    fn len(&self) -> usize {
+        match self {
+            Self::Sequence(values) => values.len(),
+            Self::Map(entries) => entries.len(),
+            Self::Set(values) => values.len(),
+        }
+    }
+
+    fn mutation(&self) -> HostCollectionMutation<'_> {
+        match self {
+            Self::Sequence(values) => HostCollectionMutation::ExtendSequence(values),
+            Self::Map(entries) => HostCollectionMutation::ExtendMap(entries),
+            Self::Set(values) => HostCollectionMutation::ExtendSet(values),
+        }
+    }
+}
+
+pub(crate) fn execute_host_root_collection_extend(
+    mut runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    mutation: crate::std_method_ids::HostCollectionMutation,
+    extension: &Value,
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<Value> {
+    use crate::std_method_ids::HostCollectionMutation as VmMutation;
+
+    let operation = "host collection extend";
+    let extension = match mutation {
+        VmMutation::ArrayExtend => {
+            crate::array_methods::array_values(extension, runtime.heap.as_deref(), operation)?
+                .iter()
+                .map(|value| value_to_host(value, operation, runtime.heap.as_deref()))
+                .collect::<VmResult<Vec<_>>>()?
+                .into()
+        }
+        VmMutation::MapExtend => PreparedCollectionExtension::Map(
+            crate::map_methods::map_entries(extension, runtime.heap.as_deref(), operation)?
+                .iter()
+                .map(|(key, value)| {
+                    Ok((
+                        runtime_collection_key(key, runtime.heap.as_deref(), operation)?,
+                        value_to_host(value, operation, runtime.heap.as_deref())?,
+                    ))
+                })
+                .collect::<VmResult<Vec<_>>>()?,
+        ),
+        VmMutation::SetExtend => PreparedCollectionExtension::Set(
+            crate::set_methods::set_values(extension, runtime.heap.as_deref(), operation)?
+                .iter()
+                .map(|value| runtime_collection_key(value, runtime.heap.as_deref(), operation))
+                .collect::<VmResult<Vec<_>>>()?,
+        ),
+        _ => unreachable!("only extend mutations reach bulk extension"),
+    };
+    if let Some(budget) = runtime.budget.as_deref_mut() {
+        budget.charge_execution_units(u64::try_from(extension.len()).unwrap_or(u64::MAX))?;
+    }
+    let root = expect_host_ref(&runtime.frame.read(receiver)?, operation)?;
+    let target = HostTargetPlan::new(root.type_id);
+    let instance = HostTargetInstance::new(root, &target, &[]);
+    let host = runtime
+        .host
+        .as_deref_mut()
+        .ok_or_else(missing_host_context)?;
+    let write = resolve_access(
+        host.adapter,
+        runtime.inline_caches,
+        cache_site,
+        instance,
+        HostAccessOp::Write,
+        runtime.source_span,
+    )?;
+    host.access.mutate_collection_resolved(
+        host.adapter,
+        write,
+        instance,
+        extension.mutation(),
+        runtime.source_span,
+    )?;
+    Ok(Value::Unit)
+}
+
+impl From<Vec<HostValue>> for PreparedCollectionExtension {
+    fn from(values: Vec<HostValue>) -> Self {
+        Self::Sequence(values)
+    }
 }
 
 fn resolve_access(

@@ -103,7 +103,7 @@ impl HostAccess {
         adapter: &mut (impl ScriptStateAdapter + ?Sized),
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
-        mutation: HostCollectionMutation,
+        mutation: HostCollectionMutation<'_>,
         source_span: Option<Span>,
     ) -> HostResult<()> {
         adapter
