@@ -2505,9 +2505,13 @@ same Vela Map operations but have different stable `InteropTypeId` and
 bindings. Service registration bundles will call it while walking their
 transitive signature graph, so business authors do not list collection
 instantiations. This internal specialization does not add user-defined or
-general script-language generics. Owned collection codecs lower directly to
-script values; View/MutView bindings remain HostRef-backed and must not reuse
-the owned codec as implicit mutable copy-in/copy-out.
+general script-language generics. Map keys and Set elements additionally
+require `VelaValueKeyBoundary`; structural value conversion alone never
+implies deterministic key semantics, and user-defined stable keys must opt in.
+Owned collection codecs lower directly to script values; View/MutView bindings
+remain HostRef-backed and must not reuse the owned codec as implicit mutable
+copy-in/copy-out. `Vec<u8>` is the standard owned bytes representation rather
+than an `Array<u8>` specialization.
 
 ### Service Deployment Supports Snapshots And Exact-Base Deltas
 

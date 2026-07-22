@@ -57,7 +57,9 @@ generated method-thunk composition remains open.
 The first S3 standard binding family is also live: concrete
 `BTreeMap<K, V>` and `HashMap<K, V>` bindings synthesize stable recursive
 key/value facts, share the Vela `MapLike` surface and owned Map codec, and keep
-distinct Rust ABI identities. Service-macro closure generation and borrowed
+distinct Rust ABI identities. Their keys now require the explicit
+`VelaValueKeyBoundary` proof, and `Vec<u8>` consistently reports the Bytes
+boundary fact. Service-macro closure generation and borrowed
 MapView/MapMut representations remain open, so application code does not yet
 receive automatic transitive registration.
 

@@ -1074,7 +1074,9 @@ Current S3 state: the first owned collection family is implemented.
 `StandardTypeBinding` synthesizes concrete `BTreeMap<K, V>` and
 `HashMap<K, V>` bindings from stable recursive key/value facts. Both lower
 directly to Vela Map values and declare the same `MapLike` protocol, while
-their concrete family remains part of stable interop identity and ABI. The
+their concrete family remains part of stable interop identity and ABI. Keys
+must implement the explicit `VelaValueKeyBoundary`; ordinary structural value
+conversion does not imply stable key semantics. The
 remaining primitive/Option/Result/tuple/Array/Set matrix, automatic service
 type-closure registration, View/MutView representations, prepared operations,
 and host-backed bulk behavior are still open.

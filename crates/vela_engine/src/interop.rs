@@ -93,6 +93,13 @@ pub trait VelaValueBoundary {
     }
 }
 
+/// Proves that an owned Rust value has Vela's deterministic key semantics.
+///
+/// Standard Map and Set bindings require this stronger contract instead of
+/// accepting every structurally convertible value. User-defined stable value
+/// keys opt in explicitly; ordinary `Value` derivation does not imply it.
+pub trait VelaValueKeyBoundary: VelaValueBoundary {}
+
 /// Deterministic metadata proof for an exact registered host type.
 pub trait VelaHostBoundary: ScriptHostSchema {
     fn vela_host_type_hint() -> TypeHint {
@@ -245,9 +252,38 @@ primitive_boundary!(
     String => string,
 );
 
-impl<T: VelaValueBoundary> VelaValueBoundary for Vec<T> {
+macro_rules! primitive_key_boundary {
+    ($($ty:ty),* $(,)?) => {
+        $(impl VelaValueKeyBoundary for $ty {})*
+    };
+}
+
+primitive_key_boundary!(
+    (),
+    bool,
+    char,
+    i8,
+    i16,
+    i32,
+    i64,
+    u8,
+    u16,
+    u32,
+    u64,
+    f32,
+    f64,
+    String,
+);
+
+impl VelaValueKeyBoundary for Vec<u8> {}
+
+impl<T: VelaValueBoundary + 'static> VelaValueBoundary for Vec<T> {
     fn vela_type_hint() -> TypeHint {
-        TypeHint::array_of(T::vela_type_hint())
+        if std::any::TypeId::of::<T>() == std::any::TypeId::of::<u8>() {
+            TypeHint::bytes()
+        } else {
+            TypeHint::array_of(T::vela_type_hint())
+        }
     }
 }
 
@@ -864,7 +900,8 @@ mod tests {
     use super::{
         BoundaryMode, CallableAccess, CallableContract, CallableIdentity, CallableKind,
         CallableLanguage, CallableOrigin, CallableParameter, CallableReturn, ErrorMode,
-        HostParamLeaseRequest, ReturnMode, preflight_host_parameter_leases,
+        HostParamLeaseRequest, ReturnMode, VelaValueBoundary, VelaValueKeyBoundary,
+        preflight_host_parameter_leases,
     };
     use crate::native::{EffectSet, TypeHint};
 
@@ -946,6 +983,20 @@ mod tests {
 
         assert_eq!(first, second);
         assert_ne!(first.stable, renamed.stable);
+    }
+
+    #[test]
+    fn byte_vectors_have_bytes_facts_and_supported_values_prove_stable_keys() {
+        fn assert_stable_key<T: VelaValueKeyBoundary>() {}
+
+        assert_eq!(Vec::<u8>::vela_type_hint(), TypeHint::bytes());
+        assert_eq!(
+            Vec::<i64>::vela_type_hint(),
+            TypeHint::array_of(TypeHint::i64())
+        );
+        assert_stable_key::<i64>();
+        assert_stable_key::<String>();
+        assert_stable_key::<Vec<u8>>();
     }
 
     fn host_request(

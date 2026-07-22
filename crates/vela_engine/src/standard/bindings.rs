@@ -9,7 +9,7 @@ use vela_reflect::registry::{
 };
 
 use crate::args::{FromScriptArg, IntoScriptArg};
-use crate::interop::VelaValueBoundary;
+use crate::interop::{VelaValueBoundary, VelaValueKeyBoundary};
 use crate::metadata::type_hint_display;
 use crate::type_binding::TypeBinding;
 
@@ -38,7 +38,7 @@ where
 
 impl<K, V> StandardTypeBinding for BTreeMap<K, V>
 where
-    K: VelaValueBoundary + IntoScriptArg + FromScriptArg + Ord + 'static,
+    K: VelaValueKeyBoundary + IntoScriptArg + FromScriptArg + Ord + 'static,
     V: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
 {
     fn standard_type_binding() -> TypeBinding<Self> {
@@ -48,7 +48,7 @@ where
 
 impl<K, V> StandardTypeBinding for HashMap<K, V>
 where
-    K: VelaValueBoundary + IntoScriptArg + FromScriptArg + Eq + Hash + 'static,
+    K: VelaValueKeyBoundary + IntoScriptArg + FromScriptArg + Eq + Hash + 'static,
     V: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
 {
     fn standard_type_binding() -> TypeBinding<Self> {
