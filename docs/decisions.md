@@ -2340,6 +2340,17 @@ linked program, including async resumes. This attaches generation-local record
 or enum identity before guards, field slots, or variant matching run; name-only
 heap values are not an acceptable substitute for static enum `match`.
 
+### ScriptHost Derive Generates The Base Host Binding
+
+`#[derive(ScriptHost)]` generates `vela_type_binding()` from its existing
+schema through `ScriptHostSchema::script_host_binding()`. This is a Host-storage
+`TypeBinding<T>` and enters the same typed registry as generated Value
+bindings; it does not create a host-only registry or move Rust object ownership
+under script GC. `#[script_methods]` continues to generate method descriptors
+and thunks independently in this slice. The later service bundle generator
+will compose those artifacts in one generated registration transaction rather
+than requiring handwritten per-method setup.
+
 ### Repository Artifacts Use Domain-Neutral Host Names
 
 Vela is a reusable language library rather than an extension of one embedding

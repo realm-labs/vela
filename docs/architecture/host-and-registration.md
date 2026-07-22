@@ -613,6 +613,14 @@ native result is materialized against that table before script execution, so
 record shape checks and enum `match` use the same generation-local
 `TypeId`/`VariantId` identity as script constructors.
 
+For host-owned objects, `#[derive(ScriptHost)]` emits
+`vela_type_binding()` through `ScriptHostSchema::script_host_binding()`. The
+binding carries the generated Host descriptor and Host storage/capabilities
+into the same `register_rust_type::<T>` path as Value types; the object itself
+still enters execution only through a call-scoped or Runtime-owned `HostRef`.
+Generated method thunks remain separate macro output until the service bundle
+composition slice folds them into the same registration transaction.
+
 For macro-exposed functions, `#[script_function]`,
 `#[script_context_function]`, and `#[script_host_function]` derive the native
 function ID from the public `::` qualified function name and optional `alias`.

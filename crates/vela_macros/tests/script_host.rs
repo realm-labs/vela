@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::{HostObjectId, stable_id};
+use vela_common::{HostObjectId, StoragePolicy, stable_id};
 use vela_def::{FieldId, TypeId};
 use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
@@ -181,6 +181,21 @@ fn script_host_derive_generates_type_metadata() {
         <Player as vela_engine::schema::ScriptHostSchema>::script_host_type_desc(),
         desc,
     );
+}
+
+#[test]
+fn script_host_derive_generates_unified_type_binding() {
+    let engine = vela_engine::engine::Engine::builder()
+        .register_rust_type::<Player>(Player::vela_type_binding())
+        .build()
+        .expect("derived host TypeBinding should seal");
+    let type_bindings = engine.type_bindings();
+    let binding = type_bindings
+        .get_for::<Player>()
+        .expect("derived host binding should use typed lookup");
+
+    assert_eq!(binding.storage, StoragePolicy::Host);
+    assert_eq!(binding.key, Player::vela_host_type_desc().key);
 }
 
 #[test]

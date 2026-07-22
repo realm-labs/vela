@@ -5,8 +5,12 @@ use crate::method::NativeMethodDesc;
 use crate::type_binding::TypeBinding;
 use crate::{args::FromScriptArg, args::IntoScriptArg};
 
-pub trait ScriptHostSchema {
+pub trait ScriptHostSchema: Sized + 'static {
     fn script_host_type_desc() -> TypeDesc;
+
+    fn script_host_binding() -> TypeBinding<Self> {
+        TypeBinding::host(Self::script_host_type_desc())
+    }
 }
 
 pub trait ScriptReflectSchema {

@@ -51,6 +51,9 @@ structural codecs, and the same `TypeBinding` consumed by
 `register_rust_type`; no handwritten Vela adapter or serde/JSON conversion is
 involved. Registered nominal values retain identity across entry arguments and
 sync/async native results, so Vela enum `match` works on Rust-produced values.
+`#[derive(ScriptHost)]` now also emits the base Host `TypeBinding`, allowing the
+same typed registration path without a handwritten host binding adapter;
+generated method-thunk composition remains open.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry
@@ -214,10 +217,10 @@ ordinary module ownership. S2 now has the sealed binding identity/storage/ABI
 substrate, manual external-type entrypoint, typed structural Value codec path,
 and type-owned Value plus Host constructor registration backed by actor-local
 Runtime storage. Structural `Value` derive generation is implemented for named
-structs plus unit/named-field enums; Host derive integration, standard
-bindings, compact root-local HostRef storage, prepared thunks, allocation-free
-common-arity preflight, and a post-S2 shorter owned-host reclamation policy
-remain open. Runtime receiver
+structs plus unit/named-field enums, and `ScriptHost` emits the base Host
+binding. Method-thunk composition, standard bindings, compact root-local
+HostRef storage, prepared thunks, allocation-free common-arity preflight, and a
+post-S2 shorter owned-host reclamation policy remain open. Runtime receiver
 enforcement is live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-
 signature facts.

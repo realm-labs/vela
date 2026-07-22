@@ -171,6 +171,11 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
             pub const fn vela_stable_type_path() -> &'static str {
                 #stable_path
             }
+
+            #[must_use]
+            pub fn vela_type_binding() -> ::vela_engine::type_binding::TypeBinding<Self> {
+                <Self as ::vela_engine::schema::ScriptHostSchema>::script_host_binding()
+            }
         },
         GeneratedMethod::Reflect => quote! {},
     };

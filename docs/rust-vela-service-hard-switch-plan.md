@@ -1034,8 +1034,9 @@ HostRef handles to Vela; Runtime drop is the current reclamation boundary.
 Structural `Value` derive generation now emits the same qualified schema,
 direct codec, and `TypeBinding` for named structs plus unit/named-field enums.
 Rust arguments and native results are linked to nominal identity before script
-guards and enum matching. Host derive integration, standard bindings, compact
-HostRef storage, prepared thunks, and common-arity preflight remain open.
+guards and enum matching. `ScriptHost` now derives the base Host TypeBinding;
+generated method-thunk composition, standard bindings, compact HostRef storage,
+prepared thunks, and common-arity preflight remain open.
 
 ### S3 — Standard Rust types, views, and collection protocols
 
