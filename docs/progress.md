@@ -71,9 +71,12 @@ bool, char, exact-width numeric scalars, and String now also have concrete ABI
 bindings over their native Vela value representations. Rust tuples of arity
 two through four now have ordered concrete bindings, an exact reflected Tuple
 kind, and element facts that survive both reflection and compiler-registry
-projection. Service-macro closure generation and borrowed MapView/MapMut
-representations remain open, so application code does not yet receive
-automatic transitive registration.
+projection. `RustValueType` and `register_rust_value_closure::<T>()` now
+recursively install concrete standard containers, shared leaves, and nested
+`#[derive(Value)]` field/variant types from one owned root; exact duplicates
+are idempotent while conflicting manual bindings remain seal errors.
+Service-macro signature traversal, Host/View/MutView closure registration, and
+borrowed collection representations remain open.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry
@@ -244,13 +247,16 @@ binding. Owned standard bindings now cover concrete `Vec<T>`, `Vec<u8>`,
 numeric, and String identities. Collections expose their common
 Sequence/MapLike/SetLike surfaces, while Option/Result reuse the standard Vela
 dynamic enum behavior. Method-thunk composition is complete for generated
-ScriptHost registrations. Common-arity host-argument preflight now uses
+ScriptHost registrations. Owned Value roots now recursively register their
+concrete standard and `derive(Value)` dependency closure with exact duplicate
+handling. Common-arity host-argument preflight now uses
 generated request arrays and an eight-entry inline result set; the
 shared/exclusive boundary rows allocate zero times and still reject the
 complete conflict set before lease acquisition. Generated host functions and
 methods now reuse registration-time prepared parameter plans instead of
-rebuilding contracts and request metadata on each call. Fixed arrays, all
-borrowed collection views, compact root-local HostRef storage, dense prepared
+rebuilding contracts and request metadata on each call. Service-signature and
+Host/View/MutView closure traversal, fixed arrays, all borrowed collection
+views, compact root-local HostRef storage, dense prepared
 field/method thunks, and a post-S2 shorter
 owned-host reclamation policy remain open. Runtime receiver enforcement is
 live; compile-time

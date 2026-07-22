@@ -2560,6 +2560,23 @@ tuple elements. The initial Rust boundary matches the existing supported codec
 surface at arities two through four; each ordered specialization has a distinct
 stable interop identity and ABI fingerprint.
 
+### Owned Value Registration Is A Recursive Concrete Closure
+
+`RustValueType` is the common generated contract for supported standard Rust
+values and `#[derive(Value)]` DTOs. Registering one root recursively registers
+its real Rust field, variant-payload, element, key, value, Option/Result, and
+tuple dependencies before the root. The Engine builder deduplicates only an
+exact Rust `TypeId`, stable binding key, and pending ABI-fingerprint match. It
+deliberately retains a different manual binding so registry sealing rejects the
+conflict instead of silently selecting an implementation.
+
+This closure contains concrete Rust instantiations only and introduces no Vela
+generics. It is the owned-Value half of future service-signature traversal;
+Host/View/MutView capability closure remains separate because those entries
+must preserve leases, provenance, receiver authority, and registered methods.
+External unannotatable values continue to use explicit
+`register_rust_type::<T>(TypeBinding<T>)` leaves.
+
 ### Service Deployment Supports Snapshots And Exact-Base Deltas
 
 A Snapshot describes the complete desired Vela service state and composes

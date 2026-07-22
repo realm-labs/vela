@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll, Waker};
@@ -28,6 +29,14 @@ enum GrantDecision {
         count: i64,
         item: String,
     },
+}
+
+#[derive(Debug, Eq, PartialEq, Value)]
+#[script(path = "host::GrantBundle")]
+struct GrantBundle {
+    grants: Vec<ItemGrant>,
+    decisions: BTreeMap<String, Option<GrantDecision>>,
+    summary: (i64, bool),
 }
 
 #[script_function(name = "host::current_decision", effect = "pure")]
@@ -78,6 +87,66 @@ fn value_derive_generates_schema_codec_and_unified_binding() {
         .expect("derived binding should use typed lookup");
     assert_eq!(binding.storage, StoragePolicy::Value);
     assert_eq!(binding.key, desc.key);
+}
+
+#[test]
+fn value_derive_registers_its_complete_nested_type_closure() {
+    let engine = Engine::builder()
+        .register_rust_value_closure::<GrantBundle>()
+        .build()
+        .expect("derived Value should recursively register all concrete dependencies");
+    let bindings = engine.type_bindings();
+
+    assert!(bindings.get_for::<GrantBundle>().is_some());
+    assert!(bindings.get_for::<ItemGrant>().is_some());
+    assert!(bindings.get_for::<GrantDecision>().is_some());
+    assert!(bindings.get_for::<Vec<ItemGrant>>().is_some());
+    assert!(bindings.get_for::<Option<GrantDecision>>().is_some());
+    assert!(
+        bindings
+            .get_for::<BTreeMap<String, Option<GrantDecision>>>()
+            .is_some()
+    );
+    assert!(bindings.get_for::<(i64, bool)>().is_some());
+    assert!(bindings.get_for::<String>().is_some());
+    assert!(bindings.get_for::<i64>().is_some());
+    assert!(bindings.get_for::<bool>().is_some());
+
+    let codec = bindings
+        .value_codec::<GrantBundle>()
+        .expect("root derived Value codec");
+    let value = GrantBundle {
+        grants: vec![ItemGrant {
+            count: 4,
+            name: "token".to_owned(),
+        }],
+        decisions: BTreeMap::from([(
+            "token".to_owned(),
+            Some(GrantDecision::Granted {
+                count: 4,
+                item: "token".to_owned(),
+            }),
+        )]),
+        summary: (4, true),
+    };
+    let owned = codec.encode(value);
+    assert_eq!(
+        codec.decode(&owned),
+        Ok(GrantBundle {
+            grants: vec![ItemGrant {
+                count: 4,
+                name: "token".to_owned(),
+            }],
+            decisions: BTreeMap::from([(
+                "token".to_owned(),
+                Some(GrantDecision::Granted {
+                    count: 4,
+                    item: "token".to_owned(),
+                }),
+            )]),
+            summary: (4, true),
+        })
+    );
 }
 
 #[test]

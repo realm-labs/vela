@@ -604,8 +604,20 @@ explicit structural ABI. `#[script(name = "...")]` changes a public name and
 `alias` preserves stable identity. Fields and variants cannot be skipped
 because decoding and encoding must cover the exact Rust value; hosts with
 partial/private representations use a manual `ValueCodec`. The generated
-binding still enters only `register_rust_type::<T>` and does not create a
+binding still enters the ordinary `TypeBinding` registry and does not create a
 macro-specific registry.
+
+`RustValueType` is the generated registration-closure contract for owned
+values. `EngineBuilder::register_rust_value_closure::<T>()` recursively installs
+the exact concrete standard containers and derived Value field/variant types
+reachable from `T`, then installs `T` itself. Shared dependencies are
+idempotent only when their Rust `TypeId`, stable binding key, and complete
+pending ABI fingerprint agree; a different manual binding for the same Rust
+type remains a sealing error. This is Rust-side monomorphized registration of
+concrete ABI entries, not Vela
+generics. Manual `register_rust_type::<T>(binding)` remains the escape hatch for
+external types and custom codecs; generated service bundles will combine those
+explicit leaves with the same recursive owned-Value closure.
 
 Registered structural types used by a linked program are emitted into its
 nominal descriptor table. Every Rust-owned argument and every sync or async

@@ -32,6 +32,7 @@ pub mod schema;
 pub mod source;
 pub mod standard;
 pub mod type_binding;
+pub mod type_registration;
 pub mod typed;
 mod validation;
 

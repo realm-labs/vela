@@ -1,7 +1,11 @@
+use std::any::TypeId as RustTypeId;
+use std::collections::HashMap;
+
+use vela_common::TypeAbiFingerprint;
 use vela_hot_reload::policy::HotReloadPolicy;
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::permissions::{ReflectPermissionSet, ReflectPolicy};
-use vela_reflect::registry::{TypeDesc, TypeRegistry};
+use vela_reflect::registry::{TypeDesc, TypeKey, TypeRegistry};
 use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
@@ -32,6 +36,7 @@ use crate::{metadata, validation};
 pub struct EngineBuilder {
     types: Vec<TypeDesc>,
     type_bindings: Vec<TypeBindingRegistration>,
+    rust_type_bindings: HashMap<RustTypeId, (TypeKey, TypeAbiFingerprint)>,
     modules: Vec<ModuleDesc>,
     native_functions: Vec<NativeFunctionEntry>,
     async_native_functions: Vec<AsyncNativeFunctionEntry>,
@@ -68,7 +73,42 @@ impl EngineBuilder {
 
     /// Registers one Rust type through the unified Rust/Vela binding model.
     #[must_use]
-    pub fn register_rust_type<T: 'static>(mut self, binding: TypeBinding<T>) -> Self {
+    pub fn register_rust_type<T: 'static>(self, binding: TypeBinding<T>) -> Self {
+        self.push_rust_type::<T>(binding)
+    }
+
+    /// Registers the complete owned-Value dependency closure rooted at `T`.
+    ///
+    /// Generated service bundles use this entrypoint so a signature such as
+    /// `BTreeMap<String, Vec<Dto>>` installs every concrete nested binding
+    /// without application-authored registration calls.
+    #[must_use]
+    pub fn register_rust_value_closure<T>(self) -> Self
+    where
+        T: crate::type_registration::RustValueType,
+    {
+        T::register_value_type_closure(self)
+    }
+
+    /// Installs one generated member of a recursive Value type closure.
+    ///
+    /// This remains public only because derive and service macros expand in
+    /// downstream crates. Exact prior registrations are retained; a different
+    /// binding for the same Rust type is deliberately kept as a duplicate so
+    /// Engine sealing reports the conflict instead of silently choosing one.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn register_generated_rust_value<T: 'static>(self, binding: TypeBinding<T>) -> Self {
+        let rust_type_id = RustTypeId::of::<T>();
+        let identity = (binding.type_desc().key.clone(), binding.abi_fingerprint());
+        if self.rust_type_bindings.get(&rust_type_id) == Some(&identity) {
+            return self;
+        }
+        self.push_rust_type::<T>(binding)
+    }
+
+    fn push_rust_type<T: 'static>(mut self, binding: TypeBinding<T>) -> Self {
+        let binding_identity = (binding.type_desc().key.clone(), binding.abi_fingerprint());
         let (
             mut registration,
             type_desc,
@@ -78,6 +118,8 @@ impl EngineBuilder {
             constructors,
         ) = binding.into_parts();
         registration.bind_rust_type::<T>();
+        self.rust_type_bindings
+            .insert(RustTypeId::of::<T>(), binding_identity);
         self.type_bindings.push(registration);
         self.types.push(type_desc);
         self.host_method_metadata.extend(method_metadata);

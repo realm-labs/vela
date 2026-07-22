@@ -1097,9 +1097,13 @@ directions. Unit, bool, char, exact-width numeric scalars, and String now carry
 concrete Rust ABI bindings over their existing Vela value representations.
 Rust tuples of arity two through four now preserve ordered recursive element
 facts in a real reflected Tuple kind, project those facts through both registry
-views, and round-trip through ordinary Vela tuple projections. Automatic
-service type-closure registration, View/MutView representations, prepared
-operations, and host-backed bulk behavior are still open.
+views, and round-trip through ordinary Vela tuple projections.
+`RustValueType` now gives supported standard values and `#[derive(Value)]`
+DTOs one recursive concrete registration contract. Registering an owned root
+installs nested field/variant, collection, Option/Result, tuple, and scalar
+bindings once, while a conflicting manual binding still fails during sealing.
+Service-macro signature traversal, Host/View/MutView closure registration,
+prepared operations, and host-backed bulk behavior are still open.
 
 ### S4 — Service contract and Rust-only generation
 

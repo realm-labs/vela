@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use syn::{Data, DataEnum, DataStruct, DeriveInput, Fields, Result, parse2};
+use syn::{Data, DataEnum, DataStruct, DeriveInput, Fields, Result, Type, parse2};
 
 use crate::attrs::{ScriptAttrs, error, inferred_type_hint, parse_script_attrs, spanned_error};
 use crate::hash::StableHasher;
@@ -10,6 +10,7 @@ use crate::script_host::{TypeIdentity, type_identity};
 
 struct ValueField {
     rust_ident: Ident,
+    rust_type: Type,
     script_name: String,
     stable_name: String,
     id: u64,
@@ -117,6 +118,12 @@ fn expand_struct(
         }
     });
     let field_count = fields.len();
+    let dependency_registrations = fields.iter().map(|field| {
+        let rust_type = &field.rust_type;
+        quote! {
+            let builder = <#rust_type as ::vela_engine::type_registration::RustValueType>::register_value_type_closure(builder);
+        }
+    });
 
     Ok(quote! {
         impl #ident {
@@ -154,6 +161,15 @@ fn expand_struct(
         impl ::vela_engine::schema::ScriptValueSchema for #ident {
             fn script_value_type_desc() -> ::vela_reflect::registry::TypeDesc {
                 Self::vela_value_type_desc()
+            }
+        }
+
+        impl ::vela_engine::type_registration::RustValueType for #ident {
+            fn register_value_type_closure(
+                builder: ::vela_engine::builder::EngineBuilder,
+            ) -> ::vela_engine::builder::EngineBuilder {
+                #(#dependency_registrations)*
+                builder.register_generated_rust_value::<Self>(Self::vela_type_binding())
             }
         }
 
@@ -291,6 +307,15 @@ fn expand_enum(
             }
         }
     });
+    let dependency_registrations = variants
+        .iter()
+        .flat_map(|variant| variant.fields.iter())
+        .map(|field| {
+            let rust_type = &field.rust_type;
+            quote! {
+                let builder = <#rust_type as ::vela_engine::type_registration::RustValueType>::register_value_type_closure(builder);
+            }
+        });
 
     Ok(quote! {
         impl #ident {
@@ -328,6 +353,15 @@ fn expand_enum(
         impl ::vela_engine::schema::ScriptValueSchema for #ident {
             fn script_value_type_desc() -> ::vela_reflect::registry::TypeDesc {
                 Self::vela_value_type_desc()
+            }
+        }
+
+        impl ::vela_engine::type_registration::RustValueType for #ident {
+            fn register_value_type_closure(
+                builder: ::vela_engine::builder::EngineBuilder,
+            ) -> ::vela_engine::builder::EngineBuilder {
+                #(#dependency_registrations)*
+                builder.register_generated_rust_value::<Self>(Self::vela_type_binding())
             }
         }
 
@@ -489,6 +523,7 @@ fn collect_named_fields(
         }
         result.push(ValueField {
             rust_ident,
+            rust_type: field.ty.clone(),
             script_name,
             stable_name,
             id,

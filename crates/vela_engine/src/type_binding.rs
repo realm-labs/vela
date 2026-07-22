@@ -91,6 +91,25 @@ impl<T: 'static> TypeBinding<T> {
         self.capabilities
     }
 
+    pub(crate) fn abi_fingerprint(&self) -> TypeAbiFingerprint {
+        let id = InteropTypeId::from_type_id(self.spec.type_desc().key.id);
+        let constructors = self
+            .constructors
+            .iter()
+            .map(|entry| TypeConstructorRegistration {
+                storage: entry.storage,
+                desc: entry.native.desc.clone(),
+            })
+            .collect::<Vec<_>>();
+        type_abi_fingerprint(
+            id,
+            self.storage,
+            self.capabilities,
+            &constructors,
+            self.spec.type_desc(),
+        )
+    }
+
     #[must_use]
     pub const fn receiver_capabilities(mut self, capabilities: ReceiverCapabilities) -> Self {
         self.capabilities = capabilities;
