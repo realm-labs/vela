@@ -15,8 +15,6 @@ cargo run --manifest-path examples/Cargo.toml --bin container_type_hints
 cargo run --manifest-path examples/Cargo.toml --bin io_stdlib
 cargo run --manifest-path examples/Cargo.toml --bin interop_round_trip
 cargo run --manifest-path examples/Cargo.toml --bin service_hard_switch_fixture
-cargo run --manifest-path examples/Cargo.toml --bin replaceable_handler
-cargo run --manifest-path examples/Cargo.toml --bin replaceable_service_method
 ```
 
 Each example directory keeps the Rust entrypoint and script source together:
@@ -52,10 +50,6 @@ Other useful embedding examples:
   exported Rust function and methods using normal syntax, while Rust calls the
   Vela entry through build-time generated typed bindings. Authored calls do not
   assemble `CallArgs`, erase values, or resolve runtime target strings.
-- `replaceable_handler` and `replaceable_service_method`: frozen historical
-  callable-slot fixtures scheduled for deletion in S1. Do not use them as new
-  integration examples; Rust hotfixable operations move to the generated
-  service contract.
 - `async_stateful_reentry`: a mutable state lease held across a Rust service
   await, followed by same-session Vela reentry with an explicit mutable
   reborrow. Its actor-shaped container keeps Runtime and host storage disjoint

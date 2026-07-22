@@ -27,6 +27,7 @@ cargo bench -p vela_vm --bench external_compare -- --quick
 cargo bench -p vela_engine --bench hot_reload -- --quick
 cargo bench -p vela_engine --bench async_execution -- --quick
 cargo bench -p vela_engine --bench interop -- --quick
+cargo bench -p vela_engine --bench service_boundary_baseline
 cargo bench -p vela_engine --bench actor_memory -- memory
 cargo bench -p vela_engine --bench actor_memory -- allocations
 cargo bench -p vela_engine --bench actor_concurrency
@@ -38,7 +39,7 @@ large artifacts in bounded subprocesses with a 1,536 MiB RSS ceiling and a
 90-second time ceiling; it reports construction time, RSS, allocation traffic,
 cache sites, instruction count, schema count, and logical Actor-state payload
 separately. `actor_concurrency` uses the system allocator and measures 1, 2,
-and available-core workers, cache-cold/cache-hot same-generation overrides,
+and available-core workers, cache-cold/cache-hot same-generation actor calls,
 P50/P95/P99 latency, throughput, and deterministic pending-Actor overlap. It
 also compares generation-shared versus independently registered execution data
 for a cross-Actor dynamic-method site where each worker is monomorphic but
@@ -50,9 +51,9 @@ distorts concurrent throughput.
 
 The 2026-07-18 Batch A checkpoint found that 10,000 small-artifact Actors
 retain about 176 MiB RSS, while the 10,000-Actor/512-cache-site large row
-crosses the 1,536 MiB ceiling and is terminated. Ten-worker hot overrides
+crosses the 1,536 MiB ceiling and is terminated. Ten-worker hot calls
 reached about 592k calls/s with 10.8/25.9/45.5 us P50/P95/P99, and a pending
-Actor did not block an independent Actor on the same override generation.
+Actor did not block an independent Actor on the same code generation.
 Detailed inventory, raw rows, and cache/profile deltas live in the
 [Batch A archive report](archive/actor-runtime-cache-batch-a-baseline-2026-07-18.md).
 
@@ -60,7 +61,7 @@ The 2026-07-18 M20 exit reran the frozen stable shapes after moving caches and
 opt-in aggregate profiles to exact generation execution data. The large
 10,000-Actor row now retains about 93 MiB RSS with profiling off or on instead
 of crossing 1,536 MiB; the small row retains about 95 MiB. Ten-worker hot and
-cold overrides reached about 684k and 523k calls/s, and a pending Actor still
+cold calls reached about 684k and 523k calls/s, and a pending Actor still
 did not block another Actor on the same generation. Three repeated dynamic-site
 contention runs did not justify an execution lane. Exact memory, allocation,
 latency, cache/profile, callback, reload, host, async, and interop rows live in
@@ -68,18 +69,12 @@ the [M20 acceptance report](archive/actor-runtime-cache-acceptance-2026-07-18.md
 
 The `interop` harness isolates the direct Rust lower bound, Vela-to-Rust scalar,
 shared-host and exclusive-host exports, a schema-backed generated Rust-to-Vela
-root call, a same-session Vela-to-Rust-to-Vela round trip, the optional
-replaceable empty-slot and local-hit paths, and partial-delta staging plus
-activation and its first call. Compilation and Runtime construction remain
-outside the ordinary call loops; the staging row intentionally includes
-candidate materialization and publication.
-
-The replaceable rows below are frozen historical baselines. The
-[Rust/Vela service hard switch](rust-vela-service-hard-switch-plan.md) removes
-their callable-slot implementation and replaces those rows with direct Rust,
-trait-object, generated Rust-default service, active Vela service,
+root call, and a same-session Vela-to-Rust-to-Vela round trip. Compilation and
+Runtime construction remain outside the ordinary call loops. The
+[Rust/Vela service hard switch](rust-vela-service-hard-switch-plan.md) adds
+direct Rust, trait-object, generated Rust-default service, active Vela service,
 same-generation nested service, collection-view, and whole-generation staging
-measurements. No new optimization work should extend the slot benchmark.
+measurements in later checkpoints.
 
 The S0 `service_boundary_baseline` harness freezes direct concrete/trait Rust,
 HostRef alias-copy, static host path, registered method, atomic argument
@@ -100,15 +95,6 @@ ns shared host, 11,889 ns exclusive host, 10,091 ns generated Rust-to-Vela,
 and 12,157 ns for the Vela-Rust-Vela round trip. Checksums were stable. These
 are boundary baselines, not optimization targets; stable multi-sample runs use
 `--stable`.
-
-The Batch F optional-dispatch quick checkpoint on 2026-07-17 used commit parent
-`4c5e36a66` with the same toolchain/profile and quick sampling rules. The empty
-dense-slot branch plus direct Rust fallback measured 2.7 ns/call, a local Vela
-override hit measured 2,853 ns/call, and partial two-slot delta staging,
-activation, root pinning, and the first override call measured 3,001 ns per
-iteration. Checksums were stable. The empty-slot result is the no-override
-fast-path baseline; the other rows are not compared to ordinary interop calls
-because they isolate different work.
 
 `baseline` accepts optional workload-name substring filters after `--`, for
 example `cargo bench -p vela_vm --bench baseline -- --quick host_field`.

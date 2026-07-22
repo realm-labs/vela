@@ -12,10 +12,6 @@ pub(crate) fn render_engine_source_error(path: &Path, error: &EngineSourceError)
             render_source_diagnostics(path, error.diagnostics())
         }
         EngineSourceErrorKind::Backend(error) => render_compile_error(path, error),
-        EngineSourceErrorKind::OverrideLink { message, source } => render_source_diagnostics(
-            path,
-            &[Diagnostic::error(message.clone()).with_span(*source)],
-        ),
         EngineSourceErrorKind::Io { .. }
         | EngineSourceErrorKind::InvalidSourcePath { .. }
         | EngineSourceErrorKind::TooManySources { .. } => error.to_string(),

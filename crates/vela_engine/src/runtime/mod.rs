@@ -190,11 +190,6 @@ impl RuntimeImpl<SharedImage> {
     pub fn from_shared_image(image: SharedImage) -> Result<Self, RuntimeBuildError> {
         Self::builder_from_shared_image(image).build()
     }
-
-    #[must_use]
-    pub(crate) fn shared_image(&self) -> SharedImage {
-        self.image.clone()
-    }
 }
 
 impl<I> RuntimeImpl<I>
@@ -515,7 +510,6 @@ where
     where
         T: RuntimeCallTarget,
     {
-        let dispatch_generation = options.dispatch_generation.clone();
         let mut budget = options.budget();
         let target = handles::call_target_sealed::Sealed::into_call_target(entry);
         let target = self.resolve_call_target(target, &mut budget)?;
@@ -537,7 +531,6 @@ where
             target,
             args,
             budget: &mut budget,
-            dispatch_generation,
         })
     }
 
@@ -564,7 +557,6 @@ where
         T: RuntimeCallTarget + Send + 'call,
         'args: 'call,
     {
-        let dispatch_generation = options.dispatch_generation.clone();
         let mut budget = options.budget();
         let target = handles::call_target_sealed::Sealed::into_call_target(entry);
         let target = self.resolve_call_target(target, &mut budget)?;
@@ -581,7 +573,6 @@ where
             target,
             args,
             budget: &mut budget,
-            dispatch_generation,
         })
         .await
     }
@@ -773,7 +764,6 @@ where
 
     fn call_runtime_args(call: RuntimeCallExecution<'_, '_, '_, '_>) -> VmResult<VelaValue> {
         let budget = call.budget;
-        let dispatch_generation = call.dispatch_generation;
         let mut execution_host = ExecutionHost::new(call.args, call.extern_states);
         let resolved = execution_host.resolve_values(
             &call.target.name,
@@ -855,7 +845,6 @@ where
                             engine: call.engine,
                             registry_image: call.registry_image,
                             artifact: call.artifact,
-                            dispatch_generation: dispatch_generation.clone(),
                             vm: &vm,
                             session: &mut session,
                             host: &mut execution_host,
@@ -883,7 +872,6 @@ where
         call: RuntimeCallExecution<'_, '_, '_, '_>,
     ) -> VmResult<VelaValue> {
         let budget = call.budget;
-        let dispatch_generation = call.dispatch_generation;
         let mut execution_host = ExecutionHost::new(call.args, call.extern_states);
         let resolved = execution_host.resolve_values(
             &call.target.name,
@@ -960,7 +948,6 @@ where
                             engine: call.engine,
                             registry_image: call.registry_image,
                             artifact: call.artifact,
-                            dispatch_generation: dispatch_generation.clone(),
                             vm: &vm,
                             session: &mut session,
                             host: &mut execution_host,
@@ -987,7 +974,6 @@ where
                             engine: call.engine,
                             registry_image: call.registry_image,
                             artifact: call.artifact,
-                            dispatch_generation: dispatch_generation.clone(),
                             vm: &vm,
                             session: &mut session,
                             host: &mut execution_host,
@@ -1131,7 +1117,6 @@ pub struct CallOptions {
     pub memory_budget: usize,
     pub call_depth: usize,
     pub managed_heap: bool,
-    pub(crate) dispatch_generation: Option<std::sync::Arc<crate::dispatch::DispatchGeneration>>,
 }
 
 impl PartialEq for CallOptions {
@@ -1140,11 +1125,6 @@ impl PartialEq for CallOptions {
             && self.memory_budget == other.memory_budget
             && self.call_depth == other.call_depth
             && self.managed_heap == other.managed_heap
-            && match (&self.dispatch_generation, &other.dispatch_generation) {
-                (None, None) => true,
-                (Some(first), Some(second)) => std::sync::Arc::ptr_eq(first, second),
-                _ => false,
-            }
     }
 }
 
@@ -1158,7 +1138,6 @@ impl CallOptions {
             memory_budget,
             call_depth,
             managed_heap: true,
-            dispatch_generation: None,
         }
     }
 
@@ -1170,14 +1149,6 @@ impl CallOptions {
     #[must_use]
     pub const fn with_managed_heap(mut self, managed_heap: bool) -> Self {
         self.managed_heap = managed_heap;
-        self
-    }
-
-    pub(crate) fn with_dispatch_generation(
-        mut self,
-        generation: std::sync::Arc<crate::dispatch::DispatchGeneration>,
-    ) -> Self {
-        self.dispatch_generation = Some(generation);
         self
     }
 

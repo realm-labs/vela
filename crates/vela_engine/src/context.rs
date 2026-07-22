@@ -23,8 +23,6 @@ use crate::runtime::{
 pub(crate) trait NativeReentry: Send {
     fn binding_schema(&self) -> &vela_bytecode::RustBindingSchema;
 
-    fn dispatch_generation(&self) -> Option<&std::sync::Arc<crate::dispatch::DispatchGeneration>>;
-
     fn value_to_owned(&mut self, value: &VelaValue) -> VmResult<OwnedValue>;
 
     fn adapter(&mut self) -> &mut dyn ScriptStateAdapter;
@@ -130,51 +128,6 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             .as_deref_mut()
             .ok_or_else(reentry_unavailable)?
             .call(target, args)
-    }
-
-    #[must_use]
-    pub fn dispatch_target(
-        &self,
-        index: vela_common::InterceptSlotIndex,
-    ) -> Option<crate::dispatch::VelaOverrideTarget> {
-        self.reentry
-            .as_deref()
-            .and_then(NativeReentry::dispatch_generation)
-            .and_then(|generation| generation.target(index))
-    }
-
-    pub fn call_dispatch_owned(
-        &mut self,
-        target: crate::dispatch::VelaOverrideTarget,
-        args: CallArgs<'_>,
-    ) -> VmResult<OwnedValue> {
-        let value = self.call(
-            crate::runtime::handles::StableVelaFunction {
-                function: target.function,
-                diagnostic_name: "Vela dispatch override",
-            },
-            args,
-        )?;
-        self.value_to_owned(&value)
-    }
-
-    pub fn call_dispatch_owned_async<'call>(
-        &'call mut self,
-        target: crate::dispatch::VelaOverrideTarget,
-        args: CallArgs<'call>,
-    ) -> crate::dispatch::DispatchCallFuture<'call, OwnedValue> {
-        Box::pin(async move {
-            let value = self
-                .call_async(
-                    crate::runtime::handles::StableVelaFunction {
-                        function: target.function,
-                        diagnostic_name: "Vela dispatch override",
-                    },
-                    args,
-                )
-                .await?;
-            self.value_to_owned(&value)
-        })
     }
 
     pub fn call_async<'call, 'args, T>(

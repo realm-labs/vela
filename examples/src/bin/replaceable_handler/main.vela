@@ -1,4 +1,0 @@
-#[override(host::handler::MessageHandler::handle)]
-fn patched(handler: MessageHandler, message: i64) -> i64 {
-    return handler.adjacent(message) + 1;
-}

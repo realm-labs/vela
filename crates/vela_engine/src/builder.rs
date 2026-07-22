@@ -42,7 +42,6 @@ pub struct EngineBuilder {
     host_method_metadata: Vec<NativeMethodDesc>,
     native_methods: Vec<NativeMethodEntry>,
     async_native_methods: Vec<AsyncNativeMethodEntry>,
-    replaceable_slots: Vec<crate::dispatch::ReplaceableSlotDescriptor>,
     capabilities: CapabilitySet,
     reflection_policy: Option<ReflectPolicy>,
     hot_reload_policy: HotReloadPolicy,
@@ -75,17 +74,6 @@ impl EngineBuilder {
     #[must_use]
     pub fn register_exports(self, bundle: crate::interop::ExportBundle) -> Self {
         bundle.install(self)
-    }
-
-    /// Registers the statically known host targets accepted by Vela
-    /// `#[override(...)]` declarations.
-    #[must_use]
-    pub fn register_replaceable_slots(
-        mut self,
-        slots: impl IntoIterator<Item = crate::dispatch::ReplaceableSlotDescriptor>,
-    ) -> Self {
-        self.replaceable_slots.extend(slots);
-        self
     }
 
     #[must_use]
@@ -554,11 +542,6 @@ impl EngineBuilder {
     }
 
     pub fn build(mut self) -> EngineResult<Engine> {
-        crate::dispatch::validate_slot_layout(&self.replaceable_slots).map_err(|error| {
-            EngineError::new(EngineErrorKind::InvalidReplaceableSlotLayout {
-                message: error.to_string(),
-            })
-        })?;
         let release_id = vela_def::host_release_function_id();
         self.host_native_functions
             .push(HostNativeFunctionEntry::new(
@@ -676,7 +659,6 @@ impl EngineBuilder {
             context_host_native_functions: self.context_host_native_functions,
             native_methods: self.native_methods,
             async_native_methods: self.async_native_methods,
-            replaceable_slots: self.replaceable_slots,
             capabilities: self.capabilities,
             reflection_policy: self.reflection_policy,
             hot_reload_policy: self.hot_reload_policy,

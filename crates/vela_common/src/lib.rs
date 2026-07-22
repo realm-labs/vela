@@ -52,9 +52,6 @@ stable_id!(StateSlot, usize);
 stable_id!(HostMethodId, u128);
 stable_id!(HostObjectId, u64);
 stable_id!(HostTypeId, u64);
-stable_id!(ReplaceableSlotId, u128);
-stable_id!(InterceptSlotIndex, usize);
-stable_id!(DispatchGenerationId, u64);
 stable_id!(ShapeId, u32);
 stable_id!(SourceId, u32);
 

@@ -1,23 +1,19 @@
 # Rust/Vela Interop
 
-> **Active direction — 2026-07-22:** the ordinary export/binding and
-> HostRef/re-entry sections remain valid. The optional single-callable
-> replacement section below is historical implementation documentation and is
-> frozen pending deletion. The sole Rust hotfix model is the generated service
-> generation in
+> **Active direction — 2026-07-23:** ordinary export/binding and
+> HostRef/re-entry remain the general Rust/Vela call model. The sole Rust
+> hotfix model is the generated service generation in
 > [rust-vela-service-hard-switch-plan.md](rust-vela-service-hard-switch-plan.md).
 
 Ordinary bidirectional interop is the default integration model. Rust exports
 ordinary functions and methods, Vela calls them with normal source syntax, and
 Rust calls public Vela declarations through generated typed bindings. A
-service trait, provider, replaceable slot, manual `CallArgs`, erased value, or
-runtime target string is not required.
+service trait, provider, manual `CallArgs`, erased value, or runtime target
+string is not required.
 
-The runnable primary example is
-`examples/src/bin/interop_round_trip`. The old `replaceable_handler` and
-`replaceable_service_method` examples are frozen deletion inputs for S1, not
-supported authoring guidance. The pure-Rust service baseline for the hard
-switch is `examples/src/bin/service_hard_switch_fixture`.
+The runnable primary example is `examples/src/bin/interop_round_trip`. The
+pure-Rust service baseline for the hard switch is
+`examples/src/bin/service_hard_switch_fixture`.
 
 ## Export Rust To Vela
 
@@ -108,104 +104,3 @@ they do not trigger a second execution path or an automatic retry.
 Low-level `Runtime::call`, `Runtime::call_async`, `CallArgs`, and runtime values
 remain available for genuinely dynamic tools. Ordinary statically known calls
 should use generated bindings.
-
-## Historical: Optional Single-Callable Replacement
-
-> **Status:** superseded and frozen pending deletion. Its Actor Runtime
-> authority reconciliation is recorded in the
-> [final report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md).
-
-Replacement is an explicit extension. A selected public entry keeps its normal
-call shape while the macro moves its body to a private Rust fallback:
-
-```rust,ignore
-#[vela_macros::methods(path = "host::pricing::Service")]
-impl Service {
-    #[vela_macros::replaceable(
-        path = "host::pricing::Service::quote",
-        authority = "turn",
-        index = 0
-    )]
-    pub fn quote(&self, turn: &mut ActorTurn, value: i64) -> VmResult<i64> {
-        let _ = turn;
-        Ok(self.adjacent(value))
-    }
-}
-```
-
-`ActorTurn` is framework-owned authority. It holds the pinned `DispatchRoot`
-and the Actor's Runtime and implements `DispatchAuthority` by lending a scoped
-`&mut SharedRuntime` to `DispatchInvocation`. The named authority parameter is
-not part of the Vela callable ABI. A Handler/Service framework macro normally
-generates that parameter and splits its actor turn internally, so business
-authors and callers do not pass a Runtime, session, HostRef, lease, or dense
-slot.
-
-Vela implements only that callable:
-
-```vela
-#[override(host::pricing::Service::quote)]
-fn patched(service: Service, value: i64) -> i64 {
-    return service.adjacent(value) + 1;
-}
-```
-
-The deployment API constructs a deterministic slot bundle, stages from a
-borrowed Runtime, and publishes the candidate for future roots. A root pins
-immutable generation selection only; the Actor continues to own its Runtime:
-
-```rust,ignore
-let controller = DispatchController::new(Service::vela_replaceable_slots())?;
-let candidate = controller.stage_current(&override_runtime)?;
-let previous = controller.activate(candidate)?;
-
-let mut actor = Actor {
-    runtime: SharedRuntime::from_shared_image(image.clone())?,
-    dispatch: DispatchRoot::pin(&controller),
-    // actor and business state...
-};
-let result = actor.handle_message(40)?;
-
-controller.rollback(previous)?;
-```
-
-`DispatchRoot` contains no mutable Runtime owner. On an override hit, generated
-code asks the current actor turn for a `DispatchInvocation<'turn>` that borrows
-its already-exclusive `&mut SharedRuntime`. The scoped async future retains
-that borrow across suspension. Nested replaceable calls use
-`NativeCallContext` re-entry and therefore inherit the active session's
-remaining budgets, artifact, heap, state, HostAccess, capabilities, effect
-ceiling, tracing, cancellation, and generation without reacquiring authority.
-A staged package remains a coherent partial delta, rollback republishes a prior
-generation, and a Vela error propagates without retrying the displaced Rust
-body.
-
-The explicit `#[replaceable(...)]` spelling is the low-level mechanism a host
-framework macro may emit. `#[methods]` generates `vela_replaceable_slots()`
-for an inherent group and a trait-specific slot bundle for an exported trait
-group. A Handler/Service host macro can therefore generate stable paths,
-indices, authority wiring, registration, and trait forwarding once; business
-bodies do not repeat those details or construct a proxy.
-
-The no-override entry performs one dense indexed lookup and empty-entry branch
-before the private Rust fallback. It does not perform a string/hash lookup,
-global lock, allocation, serialization, or dynamic trait dispatch.
-
-## Historical Callable-Replacement Deployment Checklist
-
-The checklist below records the superseded implementation and must not be used
-for new integrations. Current execution requirements live in the unified
-service hard-switch plan.
-
-1. Generate bindings from the exact package/source graph used for deployment.
-2. Register export bundles, host types, capabilities, and policy explicitly.
-3. Treat generated-schema incompatibility as an ABI deployment failure, not a
-   grant mismatch.
-4. Stage override deltas completely before activation; a failed stage changes
-   nothing.
-5. Pin one dispatch root per host operation and retain old generations until
-   their roots finish.
-6. Borrow the current Actor's Runtime directly for each invocation; do not put
-   it in a dispatch root, override target, ambient lookup, or Runtime mutex.
-7. Roll back by publishing a validated prior generation; never replay an
-   in-flight call or rewind completed host effects.

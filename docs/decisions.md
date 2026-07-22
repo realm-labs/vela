@@ -2048,7 +2048,7 @@ ordinary Rust signatures or callable ABI.
 ### Ordinary Signatures Are The Canonical Authoring Surface
 
 The accepted direction is defined by
-[rust-vela-interop-model-plan.md](rust-vela-interop-model-plan.md). Explicitly
+[rust-vela-interop.md](rust-vela-interop.md). Explicitly
 exported Rust functions and methods use ordinary copied/owned values and
 invocation-scoped `&T`/`&mut T`; Vela calls them with normal function or method
 syntax. Rust calls exported Vela items through compiler-schema-backed generated
@@ -2215,10 +2215,10 @@ Service generations never own a mutable Runtime or Runtime mutex.
 Ordinary Rust exports remain callable but are not independently replaceable.
 Handlers, rules, events, providers, and free functions receive no parallel
 hotfix API; an operation that must be hotfixable is represented as a service
-method. `ReplaceableSlotId`, `InterceptSlotIndex`, `DispatchController`,
-`DispatchRoot`, `#[replaceable]`, and `#[override]` are frozen and scheduled
-for deletion without compatibility aliases. Vela's internal CodeObject and
-ProgramVersion replacement remains its language-level hot reload mechanism.
+method. The former callable-slot identities, dispatch APIs, annotations, and
+examples were deleted in S1 without compatibility aliases. Vela's internal
+CodeObject and ProgramVersion replacement remains its language-level hot
+reload mechanism.
 
 Owned and borrowed Rust collections map to the standard Array/Map/Set surface.
 Borrowed collections are HostRef-backed capability views, pass through nested
@@ -2248,95 +2248,6 @@ project or codebase. Host-specific integration belongs in that host's own
 repository; Vela keeps only the smallest domain-neutral conformance shape
 needed to prove the language boundary.
 
-### Superseded: Callable-Level Replaceable Dispatch
-
-The following section records the accepted 2026-07-17 implementation that the
-service hard switch will delete. It is historical context, not an active
-authoring or architecture decision.
-
-Ordinary Rust/Vela calls require neither a service trait nor a dispatch slot.
-Runtime replacement is explicit at declaration time: a host business macro
-maps one selected handler, function, or method to one `ReplaceableSlotId`,
-moves the authored body into a private Rust fallback, and keeps the original
-public name and call syntax as a generated interception entry. Unannotated
-calls and generated private fallbacks remain direct. No service trait,
-complete Vela service implementation, caller-side proxy, or MVP grouping
-identity is required.
-
-The no-override path uses a dense build-local slot index into the pinned
-immutable `DispatchGeneration`; an empty entry immediately calls the private
-Rust fallback. It performs no runtime string/hash lookup, global lock,
-allocation, serialization, or hot-replacement-only trait dispatch. The host
-macro derives explicit dispatch authority from a receiver, context, or
-parameter and never consults an ambient Runtime.
-
-Vela binds one function to one statically resolved target with
-`#[override(host::path::target)]`. The target callable contract supplies its
-signature, parameter modes, return family, effects, and sync/async shape. The
-generated adapter presents the original receiver, actor/context, message, and
-business parameters while preserving HostRef and lease safety internally. A
-package may override any subset of slots; staging applies that delta to a base
-generation and atomically publishes one full immutable table for future host
-roots. Adjacent methods remain Rust. Vela errors propagate without executing
-the Rust fallback, and an explicit Vela base-call facility is deferred.
-
-An override target retains stable callable and artifact identity, but it must
-not own a mutable `Mutex<Runtime>` as a second execution authority. A host root
-uses an explicit runtime-bound dispatch authority to enter one execution;
-nested override calls use the active re-entry authority and push onto the same
-`ExecutionSession`. They inherit the pinned artifact, heap, state view,
-HostAccess, remaining budgets, effect ceiling, capabilities, tracing,
-cancellation, and lease provenance. The integration must not use an ambient
-Runtime, a reentrant global lock, or target-local default budgets. Independent
-host roots must not be serialized solely because they select functions from
-the same override package.
-
-Applying a later partial delta preserves the old slot selection and stable
-executable identity without reinterpreting an old `FunctionId` in a new
-artifact. Every candidate and generation also carries an unforgeable
-controller/layout identity; staging, activation, rollback, and target lookup
-reject cross-controller values even when layouts have equal length. Override
-adapters pass parameters positionally because Rust's synthetic receiver name
-and Vela-local parameter names are not ABI, while the imported slot contract
-supplies exact shared/exclusive modes, return/error mode, borrowed-return
-provenance/freeze/access, sync/async shape, types, and normalized effect
-ceiling. A strict effect subset is valid; exceeding the ceiling is not.
-`ProviderKey` remains a separate provider declaration identity and never
-doubles as a replaceable slot or dispatch-generation key.
-
-Host integrations may pin a dispatch root before any Vela call, such as at the
-start of an actor mailbox turn, so Rust handlers and nested Rust/Vela service
-calls share one generation. Conversion, borrowed-return provenance/freeze,
-lease, Runtime call target, execution session, policy, and diagnostics continue
-to use the common interop paths.
-
-The 2026-07-17 Actor Runtime reconciliation completes that mechanism.
-`DispatchRoot` owns only immutable generation selection and call options;
-`DispatchInvocation<'turn>` borrows the current Actor turn's
-`&mut SharedRuntime`. Staging reads a borrowed Runtime only to seal the
-candidate image and callable table. The named low-level dispatch-authority
-parameter is hidden from the Vela callable ABI, while framework macros split
-their actor turn from script-visible business state and retain natural Handler
-and Service call shapes. An active `NativeCallContext` remains the only nested
-re-entry authority and pushes onto the same `ExecutionSession`. There is no
-`SharedDispatchRuntime`, Runtime field in a root or target, ambient lookup,
-compatibility adapter, or Runtime mutex execution boundary.
-
-Focused proof keeps one Actor pending while another completes on the same
-immutable override generation, demonstrates isolated persistent Vela state,
-and releases the actor-turn borrow after suspension cancellation, an unpolled
-future drop, and panic unwind. The previously accepted generation, contract,
-return, activation, rollback, and no-retry proofs remain unchanged.
-The return adapter supports ordinary values, business Result aliases, and
-direct borrowed origins in direct, Option, Result, and shared-tuple containers.
-Every returned HostRef must match the tracked origin before safe Rust rebuilds
-the authored references; different child projections and multiple exclusive
-aliases are rejected rather than fabricated. `#[methods]` emits one generated
-replaceable-slot bundle per inherent or trait group, and host business macros
-may combine those group bundles while generating paths, indices, authority,
-registration, and any trait forwarding. Business bodies and callers retain
-their ordinary Handler/Service shapes without a handwritten proxy.
-
 ### Actor-Owned Runtime And Execution-Metadata Ownership
 
 The embedding model is one logical Vela Runtime per actor. Persistent Vela
@@ -2344,7 +2255,7 @@ The embedding model is one logical Vela Runtime per actor. Persistent Vela
 VelaValue handles, suspended sessions, and the adopted deployment generation
 belong to that actor. An actor mailbox or equivalent turn owner supplies
 exclusive access; a whole-Runtime mutex is neither required nor permitted as
-the ordinary call or override boundary. `Runtime: Send` allows scheduling the
+the ordinary call or service boundary. `Runtime: Send` allows scheduling the
 actor on different workers but does not make one Runtime concurrently callable.
 
 Immutable code, callable/type metadata, schemas, source maps, cache/profile
@@ -2362,8 +2273,8 @@ proportional to every instruction or cache site in the shared program. Full
 instruction profiling is opt-in or aggregated outside actor state. Hot reload
 publishes a new immutable generation with generation-qualified execution
 metadata; actors adopt it at safe points, while active turns keep their pinned
-generation. Override selection names linked code to run in the current actor
-Runtime and never owns a second mutable Runtime.
+generation. Service selection runs linked code in the current actor Runtime
+and never owns a second mutable Runtime.
 
 Implementation order, cache-family classification, Actor memory/concurrency
 baselines, execution-lane evidence, and final acceptance are recorded in the
@@ -2409,8 +2320,8 @@ clones so Actor memory does not scale with generation instruction/function
 metadata.
 
 Actor generation entries retain old execution data only while the old
-artifact remains reachable from frames, closures, suspended calls, dispatch
-roots, or retained values. The Engine registry is weak. Once the last owner is
+artifact remains reachable from frames, closures, suspended calls, call roots,
+or retained values. The Engine registry is weak. Once the last owner is
 released, the next ordinary reload safe point prunes the Actor entry and drops
 the execution data without requiring another reload publication.
 

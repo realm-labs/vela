@@ -9,12 +9,9 @@ use vela_engine::binding::{
     BindingSchemaSpec, RootBinding, VmResult,
 };
 use vela_engine::context::NativeCallContext;
-use vela_engine::dispatch::{
-    DispatchAuthority, DispatchController, DispatchInvocation, DispatchRoot,
-};
 use vela_engine::engine::Engine;
-use vela_engine::runtime::{CallArgs, CallOptions, Runtime, RuntimeImage, SharedRuntime};
-use vela_macros::{ScriptHost, ScriptReflect, export, methods, replaceable};
+use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
+use vela_macros::{ScriptHost, ScriptReflect, export, methods};
 
 const DEFAULT_ITERATIONS: usize = 10_000;
 const QUICK_ITERATIONS: usize = 1_000;
@@ -29,13 +26,6 @@ fn exclusive_entry(player: Player) -> i64 { return bench::write_player(player); 
 fn round_trip_entry(value: i64) -> i64 { return bench::round_trip(value); }
 "#;
 
-const DISPATCH_SOURCE: &str = r#"
-#[override(host::bench::replaceable_scalar)]
-fn replaceable_patch(value: i64) -> i64 {
-    return value + 2;
-}
-"#;
-
 #[derive(ScriptHost, ScriptReflect)]
 #[script(path = "bench::Player")]
 pub struct Player {
@@ -47,35 +37,6 @@ pub struct Player {
 impl Player {
     pub fn current(&self) -> i64 {
         self.value
-    }
-}
-
-#[derive(ScriptHost, ScriptReflect)]
-#[script(path = "bench::DispatchContext")]
-pub struct DispatchContext {
-    #[script(get)]
-    marker: i64,
-    #[script(skip)]
-    root: DispatchRoot,
-    #[script(skip)]
-    runtime: SharedRuntime,
-}
-
-impl DispatchAuthority for DispatchContext {
-    fn vela_dispatch_root(&self) -> &DispatchRoot {
-        &self.root
-    }
-
-    fn vela_dispatch_invocation(&mut self) -> VmResult<DispatchInvocation<'_>> {
-        let Self { root, runtime, .. } = self;
-        root.invocation(runtime)
-    }
-}
-
-#[methods]
-impl DispatchContext {
-    pub fn marker(&self) -> i64 {
-        self.marker
     }
 }
 
@@ -102,24 +63,6 @@ pub fn round_trip(context: &mut NativeCallContext<'_, '_>, value: i64) -> VmResu
     Ok(value + 1)
 }
 
-#[replaceable(
-    path = "host::bench::replaceable_scalar",
-    authority = "context",
-    index = 0
-)]
-pub fn replaceable_scalar(context: &mut DispatchContext, value: i64) -> VmResult<i64> {
-    Ok(context.marker + value)
-}
-
-#[replaceable(
-    path = "host::bench::replaceable_other",
-    authority = "context",
-    index = 1
-)]
-pub fn replaceable_other(context: &mut DispatchContext, value: i64) -> VmResult<i64> {
-    Ok(context.marker + value)
-}
-
 fn main() -> Result<(), Box<dyn Error>> {
     let iterations = match std::env::args().nth(1).as_deref() {
         Some("--quick") => QUICK_ITERATIONS,
@@ -130,7 +73,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let engine = Engine::builder()
         .register_host_type::<Player>()
-        .register_host_type::<DispatchContext>()
         .register_exports(vela_export_bundle_scalar())
         .register_exports(vela_export_bundle_read_player())
         .register_exports(vela_export_bundle_write_player())
@@ -150,36 +92,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let generated_target = BindingCallable::new(generated_schema, 0);
     let mut shared_player = Player { value: 41 };
     let mut exclusive_player = Player { value: 0 };
-    let dispatch_slots = vec![
-        vela_replaceable_slot_replaceable_scalar(),
-        vela_replaceable_slot_replaceable_other(),
-    ];
-    let dispatch_engine = Engine::builder()
-        .register_host_type::<DispatchContext>()
-        .register_replaceable_slots(dispatch_slots.clone())
-        .capability(Capability::HostRead)
-        .build()?;
-    let dispatch_program = dispatch_engine.compile_source(DISPATCH_SOURCE)?;
-    let dispatch_image =
-        RuntimeImage::new_compiled(dispatch_engine, dispatch_program).into_shared();
-    let dispatch_runtime = SharedRuntime::from_shared_image(dispatch_image.clone())?;
-    let fallback_controller = DispatchController::new(dispatch_slots.clone())?;
-    let mut fallback_context = DispatchContext {
-        marker: 1,
-        root: DispatchRoot::pin(&fallback_controller),
-        runtime: SharedRuntime::from_shared_image(dispatch_image.clone())?,
-    };
-    let dispatch_controller = DispatchController::new(dispatch_slots)?;
-    let dispatch_candidate = dispatch_controller.stage_current(&dispatch_runtime)?;
-    dispatch_controller
-        .activate(dispatch_candidate)
-        .expect("activate dispatch candidate");
-    let mut active_context = DispatchContext {
-        marker: 1,
-        root: DispatchRoot::pin(&dispatch_controller),
-        runtime: SharedRuntime::from_shared_image(dispatch_image.clone())?,
-    };
-
     report("direct_rust_scalar", iterations, || Ok(scalar(41)))?;
     report("vela_to_rust_scalar", iterations, || {
         call_i64(
@@ -212,28 +124,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             CallArgs::new().with(41_i64),
         )
     })?;
-    report("replaceable_empty_slot_fallback", iterations, || {
-        Ok(replaceable_scalar(&mut fallback_context, 41)?)
-    })?;
-    report("replaceable_local_override_hit", iterations, || {
-        Ok(replaceable_scalar(&mut active_context, 41)?)
-    })?;
-    report(
-        "replaceable_partial_stage_activate_first_call",
-        iterations,
-        || {
-            let candidate = dispatch_controller.stage_current(&dispatch_runtime)?;
-            dispatch_controller
-                .activate(candidate)
-                .expect("activate dispatch candidate");
-            let mut context = DispatchContext {
-                marker: 1,
-                root: DispatchRoot::pin(&dispatch_controller),
-                runtime: SharedRuntime::from_shared_image(dispatch_image.clone())?,
-            };
-            Ok(replaceable_scalar(&mut context, 41)?)
-        },
-    )?;
     Ok(())
 }
 

@@ -240,9 +240,6 @@ fn collect_modules<'schema>(
             let mut method_names = BTreeSet::new();
             let mut callables = Vec::new();
             for (index, callable) in module.callables.iter().enumerate() {
-                if callable.override_target.is_some() {
-                    continue;
-                }
                 let Some(callable_name) = rust_identifier(&callable.rust_name, NameStyle::Snake)
                 else {
                     diagnostics.push(RustBindingDiagnostic {

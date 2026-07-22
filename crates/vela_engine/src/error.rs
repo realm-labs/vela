@@ -128,9 +128,6 @@ pub enum EngineErrorKind {
     DefinitionRegistry {
         message: String,
     },
-    InvalidReplaceableSlotLayout {
-        message: String,
-    },
     DuplicateTraitMethodParamName {
         type_name: String,
         trait_name: String,
@@ -298,9 +295,6 @@ impl fmt::Display for EngineError {
             }
             EngineErrorKind::DefinitionRegistry { message } => {
                 write!(formatter, "definition registry error: {message}")
-            }
-            EngineErrorKind::InvalidReplaceableSlotLayout { message } => {
-                write!(formatter, "invalid replaceable slot layout: {message}")
             }
             EngineErrorKind::DuplicateTraitMethodParamName {
                 type_name,

@@ -155,52 +155,26 @@ pub(crate) fn classify_function(
     signature: &Signature,
     additional_effects: &BTreeSet<EffectName>,
 ) -> Result<ClassifiedSignature> {
-    classify_signature(signature, additional_effects, false, None)
+    classify_signature(signature, additional_effects, false)
 }
 
 pub(crate) fn classify_method(
     signature: &Signature,
     additional_effects: &BTreeSet<EffectName>,
 ) -> Result<ClassifiedSignature> {
-    classify_signature(signature, additional_effects, true, None)
-}
-
-pub(crate) fn classify_replaceable_function(
-    signature: &Signature,
-    additional_effects: &BTreeSet<EffectName>,
-    authority: &syn::Ident,
-) -> Result<ClassifiedSignature> {
-    classify_signature(signature, additional_effects, false, Some(authority))
-}
-
-pub(crate) fn classify_replaceable_method(
-    signature: &Signature,
-    additional_effects: &BTreeSet<EffectName>,
-    authority: &syn::Ident,
-) -> Result<ClassifiedSignature> {
-    classify_signature(signature, additional_effects, true, Some(authority))
+    classify_signature(signature, additional_effects, true)
 }
 
 fn classify_signature(
     signature: &Signature,
     additional_effects: &BTreeSet<EffectName>,
     allow_receiver: bool,
-    dispatch_authority: Option<&syn::Ident>,
 ) -> Result<ClassifiedSignature> {
     let mut parameters: Vec<ClassifiedParameter> = Vec::new();
     let mut host_origins = Vec::new();
     let mut receiver_access = None;
     for input in &signature.inputs {
         let classified = match input {
-            FnArg::Typed(parameter)
-                if dispatch_authority.is_some_and(|authority| {
-                    *authority == param_name(parameter)
-                        && !type_ident(&parameter.ty)
-                            .is_some_and(|ident| ident == "NativeCallContext")
-                }) =>
-            {
-                classify_dispatch_authority(parameter)?
-            }
             FnArg::Typed(parameter) => classify_parameter(parameter)?,
             FnArg::Receiver(receiver) if allow_receiver => {
                 if !parameters.is_empty() {
@@ -215,32 +189,16 @@ fn classify_signature(
                         "exported Rust methods require `&self` or `&mut self`",
                     ));
                 }
-                let is_dispatch_authority =
-                    dispatch_authority.is_some_and(|authority| authority == "self");
-                if is_dispatch_authority && receiver.mutability.is_none() {
-                    return Err(syn::Error::new_spanned(
-                        receiver,
-                        "dispatch authority receiver must be `&mut self`",
-                    ));
-                }
                 let access = if receiver.mutability.is_some() {
                     HostAccess::Exclusive
                 } else {
                     HostAccess::Shared
                 };
-                if !is_dispatch_authority {
-                    receiver_access = Some(access);
-                }
+                receiver_access = Some(access);
                 ClassifiedParameter {
                     name: "self".to_owned(),
-                    ty: if is_dispatch_authority {
-                        TypeShape::Unit
-                    } else {
-                        TypeShape::ReceiverHost
-                    },
-                    mode: if is_dispatch_authority {
-                        ParameterMode::HiddenContext
-                    } else if access == HostAccess::Exclusive {
+                    ty: TypeShape::ReceiverHost,
+                    mode: if access == HostAccess::Exclusive {
                         ParameterMode::ExclusiveHost
                     } else {
                         ParameterMode::SharedHost
@@ -333,28 +291,6 @@ fn classify_signature(
         },
         effects,
         is_async: signature.asyncness.is_some(),
-    })
-}
-
-fn classify_dispatch_authority(parameter: &PatType) -> Result<ClassifiedParameter> {
-    let Type::Reference(reference) = parameter.ty.as_ref() else {
-        return Err(syn::Error::new_spanned(
-            &parameter.ty,
-            "dispatch authority must be passed as a mutable reference",
-        ));
-    };
-    if reference.mutability.is_none() {
-        return Err(syn::Error::new_spanned(
-            &parameter.ty,
-            "dispatch authority must be passed as a mutable reference",
-        ));
-    }
-    reject_explicit_lifetime(reference)?;
-    Ok(ClassifiedParameter {
-        name: param_name(parameter),
-        ty: TypeShape::Unit,
-        mode: ParameterMode::HiddenContext,
-        rust_ty: Some(parameter.ty.as_ref().clone()),
     })
 }
 

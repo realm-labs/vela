@@ -12,10 +12,6 @@ pub fn render_engine_source_error(label: &str, source: &str, error: &EngineSourc
             render_source_diagnostics(label, source, error.diagnostics())
         }
         EngineSourceErrorKind::Backend(error) => render_compile_error(label, source, error),
-        EngineSourceErrorKind::OverrideLink { message, source: span } => render_diagnostics(
-            &[Diagnostic::error(message.clone()).with_span(*span)],
-            DiagnosticSource::new(SourceId::new(1), label.to_owned(), source.to_owned()),
-        ),
         EngineSourceErrorKind::Io { .. }
         | EngineSourceErrorKind::InvalidSourcePath { .. }
         | EngineSourceErrorKind::TooManySources { .. } => error.to_string(),

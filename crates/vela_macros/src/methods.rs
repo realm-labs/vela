@@ -6,8 +6,7 @@ use syn::{ImplItem, ItemImpl, LitStr, Result, Visibility, parse::Parser, parse2}
 
 use crate::attrs::parse_qualified_name;
 use crate::export::emission;
-use crate::export::replaceable;
-use crate::export::signature::{classify_method, classify_replaceable_method};
+use crate::export::signature::classify_method;
 use crate::signature::{
     docs_from_attrs, reject_extern_signature, reject_generic_signature, reject_unsafe_signature,
 };
@@ -27,57 +26,18 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let mut generated = Vec::new();
     let mut contract_functions = Vec::new();
     let mut registration_functions = Vec::new();
-    let mut fallbacks = Vec::new();
-    let mut replaceable_descriptors = Vec::new();
     for impl_item in &mut item.items {
         let ImplItem::Fn(method) = impl_item else {
             continue;
         };
-        let replaceable_attrs = replaceable::take_method_attrs(method)?;
         if trait_path.is_none() && !matches!(method.vis, Visibility::Public(_)) {
-            if replaceable_attrs.is_some() {
-                return Err(syn::Error::new_spanned(
-                    &method.vis,
-                    "replaceable methods must be public",
-                ));
-            }
             continue;
         }
         reject_generic_signature(&method.sig.generics, "#[vela::methods]")?;
         reject_unsafe_signature(&method.sig, "#[vela::methods]")?;
         reject_extern_signature(&method.sig, "#[vela::methods]")?;
-        let additional_effects = replaceable_attrs
-            .as_ref()
-            .map_or_else(BTreeSet::new, |attrs| attrs.effects.clone());
-        let signature = if let Some(attrs) = replaceable_attrs.as_ref() {
-            classify_replaceable_method(&method.sig, &additional_effects, &attrs.authority)?
-        } else {
-            classify_method(&method.sig, &additional_effects)?
-        };
-        if let Some(attrs) = replaceable_attrs.as_ref() {
-            let rewritten =
-                replaceable::rewrite_method(method, attrs, &signature, trait_path.is_some())?;
-            if trait_path.is_some() {
-                let fallback = rewritten.fallback;
-                generated.push(quote! { #fallback });
-            } else {
-                fallbacks.push(ImplItem::Fn(rewritten.fallback));
-            }
-            generated.push(rewritten.generated);
-            replaceable_descriptors.push(quote::format_ident!(
-                "vela_replaceable_slot_{}",
-                method.sig.ident
-            ));
-            let docs = docs_from_attrs(&method.attrs);
-            generated.push(emission::method_contract(
-                method,
-                &item.self_ty,
-                &owner_path,
-                docs.as_deref(),
-                &signature,
-            ));
-            continue;
-        }
+        let additional_effects = BTreeSet::new();
+        let signature = classify_method(&method.sig, &additional_effects)?;
         let docs = docs_from_attrs(&method.attrs);
         generated.push(emission::method_contract(
             method,
@@ -105,7 +65,6 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             method.sig.ident
         ));
     }
-    item.items.extend(fallbacks);
     if generated.is_empty() {
         return Err(syn::Error::new_spanned(
             &item,
@@ -149,29 +108,6 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             }
         }
     };
-    let replaceable_bundle = if let Some(trait_path) = trait_path {
-        let trait_ident = &trait_path
-            .segments
-            .last()
-            .expect("trait paths contain a final segment")
-            .ident;
-        let bundle_ident = quote::format_ident!("vela_protocol_{}_replaceable_slots", trait_ident);
-        quote! {
-            #[allow(non_snake_case)]
-            #[must_use]
-            pub fn #bundle_ident() -> Vec<::vela_engine::dispatch::ReplaceableSlotDescriptor> {
-                vec![#(Self::#replaceable_descriptors()),*]
-            }
-        }
-    } else {
-        quote! {
-            #[must_use]
-            pub fn vela_replaceable_slots(
-            ) -> Vec<::vela_engine::dispatch::ReplaceableSlotDescriptor> {
-                vec![#(Self::#replaceable_descriptors()),*]
-            }
-        }
-    };
     let self_ty = &item.self_ty;
     let host_object_impl = trait_path
         .is_none()
@@ -181,7 +117,6 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         impl #self_ty {
             #(#generated)*
             #bundle
-            #replaceable_bundle
         }
         #host_object_impl
     })
@@ -238,74 +173,5 @@ mod tests {
         assert!(!output.contains("vela_callable_contract_helper"));
         assert!(output.contains("host_read"));
         assert!(output.contains("host_write"));
-    }
-
-    #[test]
-    fn methods_rewrites_replaceable_entry_and_keeps_adjacent_methods_direct() {
-        let expanded = expand_result(
-            quote! { path = "host::game::Service" },
-            quote! {
-                impl Service {
-                    #[replaceable(
-                        path = "host::game::Service::compute",
-                        authority = "context",
-                        index = 2
-                    )]
-                    pub fn compute(
-                        &self,
-                        context: &mut ActorContext,
-                        value: i64,
-                    ) -> VmResult<i64> {
-                        Ok(self.adjacent(value))
-                    }
-
-                    pub fn adjacent(&self, value: i64) -> i64 { value + 1 }
-                }
-            },
-        )
-        .expect("replaceable method group should expand");
-        let output = expanded.to_string();
-
-        assert!(output.contains("pub fn compute"));
-        assert!(output.contains("fn __vela_rust_compute"));
-        assert!(output.contains("Self :: VELA_INTERCEPT_SLOT_COMPUTE"));
-        assert!(output.contains("Self :: vela_callable_contract_compute"));
-        assert!(output.contains("pub fn vela_replaceable_slots"));
-        assert!(output.contains("Self :: vela_replaceable_slot_compute"));
-        assert!(output.contains("push_positional_host_ref (self)"));
-        assert!(!output.contains("push_positional_host_mut (context)"));
-        assert!(output.contains("vela_dispatch_invocation"));
-        assert!(output.contains("pub fn adjacent"));
-        assert!(!output.contains("__vela_rust_adjacent"));
-    }
-
-    #[test]
-    fn methods_places_replaceable_trait_fallback_in_the_inherent_impl() {
-        let expanded = expand_result(
-            quote! { path = "host::game::Handler" },
-            quote! {
-                impl Handler for Worker {
-                    #[replaceable(
-                        path = "host::game::Handler::handle",
-                        authority = "context",
-                        index = 0
-                    )]
-                    fn handle(
-                        &self,
-                        context: &mut ActorContext,
-                        value: i64,
-                    ) -> VmResult<i64> {
-                        Ok(value)
-                    }
-                }
-            },
-        )
-        .expect("replaceable trait method should expand");
-        let output = expanded.to_string();
-
-        assert!(output.contains("impl Handler for Worker"));
-        assert!(output.contains("impl Worker"));
-        assert!(output.contains("fn __vela_rust_handle"));
-        assert!(output.contains("vela_protocol_Handler_replaceable_slots"));
     }
 }

@@ -5,14 +5,13 @@
 > publication, host-reference and collection interop, and deletion of
 > callable-level replacement
 >
-> Status: approved design direction; implementation not started
+> Status: S0-S1 accepted; S2 implementation is active
 >
 > Switch policy: pre-release hard switch; no public compatibility layer and no
 > second Rust hot-replacement model
 >
 > Supersedes: the optional `#[replaceable]` / `#[override]` slot model in
-> [rust-vela-interop-model-plan.md](rust-vela-interop-model-plan.md) and
-> [rust-vela-interop.md](rust-vela-interop.md)
+> [the archived interop plan](archive/rust-vela-interop-model-plan-superseded-2026-07-23.md)
 
 ## 0. Objective
 

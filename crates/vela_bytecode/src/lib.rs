@@ -26,10 +26,9 @@ pub use binding_schema::{
     RUST_BINDING_SCHEMA_VERSION, RustBindingBorrowedReturnOrigin, RustBindingBoundaryMode,
     RustBindingCallable, RustBindingCallableIdentity, RustBindingEffectSet, RustBindingEnum,
     RustBindingErrorMode, RustBindingField, RustBindingMethodOwner, RustBindingModule,
-    RustBindingOverrideTarget, RustBindingPackage, RustBindingParameter,
-    RustBindingParameterDefault, RustBindingRecord, RustBindingReturn, RustBindingReturnMode,
-    RustBindingSchema, RustBindingScopedHostAccess, RustBindingType, RustBindingTypeDefinition,
-    RustBindingVariant, RustBindingVariantFields,
+    RustBindingPackage, RustBindingParameter, RustBindingParameterDefault, RustBindingRecord,
+    RustBindingReturn, RustBindingReturnMode, RustBindingSchema, RustBindingScopedHostAccess,
+    RustBindingType, RustBindingTypeDefinition, RustBindingVariant, RustBindingVariantFields,
 };
 pub use budget_metadata::MirBudgetCharge;
 pub(crate) use cache_policy::{CacheSiteInstruction, CacheSiteStorage};

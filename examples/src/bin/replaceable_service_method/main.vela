@@ -1,4 +1,0 @@
-#[override(host::pricing::PricingService::quote)]
-fn patched(service: PricingService, value: i64) -> i64 {
-    return service.adjacent(value) + 1;
-}

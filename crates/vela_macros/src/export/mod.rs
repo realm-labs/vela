@@ -1,6 +1,5 @@
 pub(crate) mod attrs;
 pub(crate) mod emission;
-pub(crate) mod replaceable;
 pub(crate) mod signature;
 
 use proc_macro2::TokenStream;

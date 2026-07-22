@@ -293,7 +293,7 @@ direct host object, acquire the complete shared/exclusive lease set atomically,
 and keep every reference invocation-scoped. Vela still receives only host
 handles; the Rust references exist solely inside the trusted native call. The
 active implementation contract is defined in
-[the unified Rust/Vela interop plan](../rust-vela-interop-model-plan.md).
+[the Rust/Vela interop guide](../rust-vela-interop.md).
 
 ### Unified Callable Boundary
 

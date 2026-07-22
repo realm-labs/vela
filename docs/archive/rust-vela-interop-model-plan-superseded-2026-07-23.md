@@ -1,4 +1,4 @@
-# Rust/Vela Unified Interop And Call Model Plan
+# Archived Rust/Vela Unified Interop And Call Model Plan
 
 > Track: ordinary Rust signatures, signature-derived effects, grouped export
 > bundles, generated bidirectional bindings, unified call execution, and

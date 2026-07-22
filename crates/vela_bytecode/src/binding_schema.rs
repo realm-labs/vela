@@ -6,9 +6,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::{
-    CallableAsyncness, Capability, CapabilitySet, ReplaceableSlotId, Span, stable_id,
-};
+use vela_common::{CallableAsyncness, Capability, CapabilitySet, Span, stable_id};
 use vela_def::{FunctionId, MethodId, TypeId};
 use vela_hir::attributes::schema_id_attr;
 use vela_hir::ids::HirDeclId;
@@ -19,7 +17,7 @@ use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature, HirTypeHint,
 use vela_mir::{MirAwaitOperation, MirCall, MirEffect, MirStatementKind, MirTerminatorKind};
 use vela_package::{ModulePath, PackageId};
 
-pub const RUST_BINDING_SCHEMA_VERSION: u32 = 4;
+pub const RUST_BINDING_SCHEMA_VERSION: u32 = 5;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RustBindingSchema {
@@ -127,7 +125,6 @@ pub struct RustBindingCallable {
     pub effects: RustBindingEffectSet,
     pub required_capabilities: CapabilitySet,
     pub contract_fingerprint: u64,
-    pub override_target: Option<RustBindingOverrideTarget>,
     pub docs: Option<String>,
     pub source: Span,
 }
@@ -143,39 +140,6 @@ impl RustBindingCallable {
             self.asyncness,
             self.effects,
         );
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum RustBindingOverrideTarget {
-    Unresolved {
-        public_path: String,
-    },
-    Resolved {
-        public_path: String,
-        slot: ReplaceableSlotId,
-        contract_fingerprint: u64,
-    },
-}
-
-impl RustBindingOverrideTarget {
-    #[must_use]
-    pub fn public_path(&self) -> &str {
-        match self {
-            Self::Unresolved { public_path } | Self::Resolved { public_path, .. } => public_path,
-        }
-    }
-
-    #[must_use]
-    pub const fn resolved(&self) -> Option<(ReplaceableSlotId, u64)> {
-        match self {
-            Self::Unresolved { .. } => None,
-            Self::Resolved {
-                slot,
-                contract_fingerprint,
-                ..
-            } => Some((*slot, *contract_fingerprint)),
-        }
     }
 }
 
@@ -487,7 +451,7 @@ impl RustBindingSchema {
     pub(crate) fn empty() -> Self {
         Self {
             version: RUST_BINDING_SCHEMA_VERSION,
-            checksum: stable_id("vela_rust_binding_schema_v4", "", ""),
+            checksum: stable_id("vela_rust_binding_schema_v5", "", ""),
             packages: Box::new([]),
         }
     }
@@ -622,8 +586,7 @@ pub(crate) fn build_rust_binding_schema(
         if metadata.kind != DeclarationKind::Function {
             continue;
         }
-        let override_target = override_target(graph.declaration_attrs(*declaration))?;
-        if metadata.visibility != Visibility::Public && override_target.is_none() {
+        if metadata.visibility != Visibility::Public {
             continue;
         }
         let package = graph
@@ -650,7 +613,6 @@ pub(crate) fn build_rust_binding_schema(
             type_symbols,
             runtime_signature(bundle, executable),
             effects.get(&executable).copied().unwrap_or(MirEffect::PURE),
-            override_target,
             docs(graph.declaration_attrs(*declaration)),
             metadata.span,
         );
@@ -695,7 +657,6 @@ pub(crate) fn build_rust_binding_schema(
             type_symbols,
             runtime_signature(bundle, executable),
             effects.get(&executable).copied().unwrap_or(MirEffect::PURE),
-            None,
             None,
             method.origin().span,
         );
@@ -765,29 +726,15 @@ fn schema_checksum(packages: &[RustBindingPackage]) -> u64 {
             }
             for callable in &module.callables {
                 canonical_parts.push(format!(
-                    "{prefix}:{}:{:016x}:override={}",
+                    "{prefix}:{}:{:016x}",
                     callable.identity.abi_name(),
-                    callable.contract_fingerprint,
-                    callable
-                        .override_target
-                        .as_ref()
-                        .map_or("", RustBindingOverrideTarget::public_path)
+                    callable.contract_fingerprint
                 ));
-                if let Some((slot, fingerprint)) = callable
-                    .override_target
-                    .as_ref()
-                    .and_then(RustBindingOverrideTarget::resolved)
-                {
-                    canonical_parts.push(format!(
-                        "{prefix}:override-link:{:032x}:{fingerprint:016x}",
-                        slot.get()
-                    ));
-                }
             }
         }
     }
     let canonical = canonical_parts.join("|");
-    stable_id("vela_rust_binding_schema_v4", "", &canonical)
+    stable_id("vela_rust_binding_schema_v5", "", &canonical)
 }
 
 fn binding_field(
@@ -867,7 +814,6 @@ fn callable(
     type_symbols: &BTreeMap<HirDeclId, String>,
     runtime_signature: Option<&vela_mir::CompileSignature>,
     effect: MirEffect,
-    override_target: Option<RustBindingOverrideTarget>,
     docs: Option<String>,
     source: Span,
 ) -> RustBindingCallable {
@@ -949,40 +895,9 @@ fn callable(
         effects,
         required_capabilities: effects.required_capabilities(),
         contract_fingerprint,
-        override_target,
         docs,
         source,
     }
-}
-
-fn override_target(
-    attrs: &[vela_hir::attributes::HirAttribute],
-) -> Result<Option<RustBindingOverrideTarget>, String> {
-    let overrides = attrs
-        .iter()
-        .filter(|attribute| attribute.name == "override")
-        .collect::<Vec<_>>();
-    let ([] | [_]) = overrides.as_slice() else {
-        return Err("Vela function has duplicate `override` attributes".to_owned());
-    };
-    let Some(attribute) = overrides.first() else {
-        return Ok(None);
-    };
-    let [argument] = attribute.arguments.as_slice() else {
-        return Err("`override` requires exactly one host callable path".to_owned());
-    };
-    if argument.name.is_some() {
-        return Err("`override` target must be a positional host callable path".to_owned());
-    }
-    let vela_hir::attributes::HirAttributeValue::Path(segments) = &argument.value else {
-        return Err("`override` target must be a host callable path".to_owned());
-    };
-    if segments.first().map(String::as_str) != Some("host") || segments.len() < 2 {
-        return Err("`override` target path must begin with `host::`".to_owned());
-    }
-    Ok(Some(RustBindingOverrideTarget::Unresolved {
-        public_path: segments.join("::"),
-    }))
 }
 
 fn binding_parameter_type(

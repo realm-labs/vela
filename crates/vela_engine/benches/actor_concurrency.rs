@@ -8,15 +8,13 @@ use std::task::{Context, Poll, Waker};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use vela_engine::args::FromScriptArg;
 use vela_engine::binding::VmResult;
-use vela_engine::dispatch::{
-    DispatchAuthority, DispatchController, DispatchInvocation, DispatchRoot,
-};
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{
     CallArgs, CallOptions, Runtime, RuntimeImage, SharedImage, SharedRuntime,
 };
-use vela_macros::{ScriptHost, ScriptReflect, export, replaceable};
+use vela_macros::export;
 
 const STABLE_HOT_CALLS_PER_WORKER: usize = 5_000;
 const QUICK_HOT_CALLS_PER_WORKER: usize = 200;
@@ -71,39 +69,28 @@ impl Sampling {
     }
 }
 
-#[derive(ScriptHost, ScriptReflect)]
-#[script(path = "bench::ActorTurn")]
 struct ActorTurn {
-    #[script(skip)]
-    root: DispatchRoot,
-    #[script(skip)]
     runtime: SharedRuntime,
 }
 
 impl ActorTurn {
-    fn new(root: DispatchRoot, image: SharedImage) -> Result<Self, Box<dyn Error>> {
+    fn new(image: SharedImage) -> Result<Self, Box<dyn Error>> {
         Ok(Self {
-            root,
             runtime: SharedRuntime::from_shared_image(image)?,
         })
     }
 }
 
-impl DispatchAuthority for ActorTurn {
-    fn vela_dispatch_root(&self) -> &DispatchRoot {
-        &self.root
-    }
-
-    fn vela_dispatch_invocation(&mut self) -> VmResult<DispatchInvocation<'_>> {
-        let Self { root, runtime } = self;
-        root.invocation(runtime)
-    }
-}
-
-#[replaceable(path = "host::bench::actor_turn", authority = "turn", index = 0)]
-pub async fn actor_turn(turn: &mut ActorTurn, value: i64) -> VmResult<i64> {
-    let _ = turn;
-    Ok(value + 1)
+async fn actor_turn(turn: &mut ActorTurn, value: i64) -> VmResult<i64> {
+    let result = turn
+        .runtime
+        .call_async(
+            "actor_turn",
+            CallArgs::new().with_value("value", value),
+            CallOptions::unbounded(),
+        )
+        .await?;
+    i64::from_script_arg(&turn.runtime.value_to_owned(&result)?)
 }
 
 #[export(path = "bench::wait_for_release")]
@@ -143,24 +130,19 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 struct ConcurrencyFixture {
-    root: DispatchRoot,
     image: SharedImage,
 }
 
 impl ConcurrencyFixture {
     fn new() -> Result<Self, Box<dyn Error>> {
-        let slots = vec![vela_replaceable_slot_actor_turn()];
         let engine = Engine::builder()
-            .register_host_type::<ActorTurn>()
             .register_exports(vela_export_bundle_wait_for_release())
-            .register_replaceable_slots(slots.clone())
             .build()?;
         let program = engine.compile_source(
             r#"
 state calls: i64 = 0;
 
-#[override(host::bench::actor_turn)]
-pub async fn patched(value: i64) -> i64 {
+pub async fn actor_turn(value: i64) -> i64 {
     if value == 0 {
         return bench::wait_for_release(41).await;
     }
@@ -170,18 +152,11 @@ pub async fn patched(value: i64) -> i64 {
 "#,
         )?;
         let image = vela_engine::runtime::RuntimeImage::new_compiled(engine, program).into_shared();
-        let staging = SharedRuntime::from_shared_image(image.clone())?;
-        let controller = DispatchController::new(slots)?;
-        let candidate = controller.stage_current(&staging)?;
-        controller.activate(candidate)?;
-        Ok(Self {
-            root: DispatchRoot::pin(&controller),
-            image,
-        })
+        Ok(Self { image })
     }
 
     fn actor(&self) -> Result<ActorTurn, Box<dyn Error>> {
-        ActorTurn::new(self.root.clone(), self.image.clone())
+        ActorTurn::new(self.image.clone())
     }
 }
 

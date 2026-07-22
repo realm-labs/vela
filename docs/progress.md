@@ -15,9 +15,9 @@ The active architecture focus is the
 Rust hotfixing will use one generated model: Rust service traits and defaults,
 sparse Vela service implementations, and one atomically published complete
 service generation. Handler, rule, event, provider, and free-function hotfixes
-do not receive separate replacement paths. The existing `#[replaceable]` /
-`#[override]` slot implementation is frozen pending deletion in S1; no new
-work may extend it. A sealed TypeBinding registry, compact root-local HostRef
+do not receive separate replacement paths. S1 has deleted the former
+callable-level replacement implementation without compatibility aliases. A
+sealed TypeBinding registry, compact root-local HostRef
 handles and borrow groups, prepared host plans/thunks, allocation-free
 common-arity preflight, standard Rust type and View/MutView protocols,
 constructors/methods, and user-defined type registration are now explicit
@@ -27,8 +27,8 @@ flatten inherited Vela code into one candidate and activate/rollback with
 conditional publication. S0 is accepted: the callable-slot deletion inventory,
 domain-neutral Rust-default migration fixture, and dedicated direct-Rust/
 HostRef/path/preflight/reborrow/borrowed-return/bulk-operation latency,
-throughput, allocation, and checksum baselines are recorded. S1 deletion is
-the active implementation checkpoint.
+throughput, allocation, and checksum baselines are recorded. S1 is accepted;
+S2 is the active implementation checkpoint.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry
@@ -94,7 +94,7 @@ state-storage hard switch.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Complete enough | Actor Runtime/cache Batches A-F are accepted with shared generation execution data, no eager Actor vectors, and no execution lane. |
 | M20.5 | Queued | Resume the concrete editor-visible follow-up after the service hard switch. |
-| Rust/Vela service interop | S0 accepted | The deletion inventory, Rust-default fixture, and boundary benchmark report are complete; S1 deletion is next. |
+| Rust/Vela service interop | S1 accepted | Callable-level replacement is deleted; S2 builds the shared type registry and HostRef hot path. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -143,11 +143,9 @@ state-storage hard switch.
   schema and build-time generated typed Rust surface. Runtime strings and
   boundary wrapper values remain low-level dynamic escape hatches, not the
   primary call workflow.
-- The historical optional `#[replaceable]` implementation still exists in the
-  tree but is frozen and is not the target public model. The hard switch will
-  retain its general ABI, lease, Actor Runtime, same-session re-entry,
-  activation, rollback, and no-retry facts while deleting slot IDs, per-entry
-  instrumentation, override syntax, and dispatch authority APIs.
+- The former callable-level replacement implementation is absent. Until the
+  generated service boundary lands, Rust/Vela integration exposes ordinary
+  exports and generated typed bindings but no Rust-logic hotfix API.
 
 ### Standard Library, Tooling, And Proof
 
@@ -170,9 +168,9 @@ state-storage hard switch.
 
 ### Rust/Vela Service Hard Switch
 
-The plan is fixed, but implementation remains open. S0 freezes the old model
-and HostRef/lease/path baselines; S1 deletes callable-level replacement. S2
-builds one TypeBinding registry plus compact root-local HostRef/borrow tables,
+The plan is fixed, but implementation remains open. S0 froze the boundary
+baselines and S1 deleted callable-level replacement. S2 builds one TypeBinding
+registry plus compact root-local HostRef/borrow tables,
 prepared typed thunks, and allocation-free common-arity preflight. S3 completes
 prepared host paths and standard collection View/MutView protocols, including
 bulk operations. Only then do S4-S7 add a zero-HostRef Rust-default generation,
@@ -187,9 +185,10 @@ to keep the old slot API.
 
 S0 is accepted in the
 [baseline report](archive/service-hard-switch-s0-baseline-2026-07-23.md).
-S1 now removes the old callable-slot surface and preserves only neutral ABI,
-lease, re-entry, borrowed-return, generation-pinning, and no-retry facts under
-their correct module ownership.
+S1 is accepted. The deleted model has no aliases, annotations, dispatch APIs,
+examples, benchmark rows, or schema metadata. Neutral ABI, lease, re-entry,
+borrowed-return, generation-pinning, and no-retry behavior remains under its
+ordinary module ownership. S2 is next.
 
 ### State Storage Acceptance
 
