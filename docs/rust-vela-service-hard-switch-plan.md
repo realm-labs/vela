@@ -1122,12 +1122,14 @@ growable exclusive views retain them. Linked calls on a HostRef-backed view now
 route `len` and `is_empty` through the domain-neutral
 `HostCollectionQuery`/HostAccess boundary for direct arguments and retained
 borrowed returns; shared views remain read-only and no collection is
-materialized. Array positional indexing and string-keyed Map indexing now read
-and write through HostAccess for direct and retained borrowed views; shared
-write attempts fail closed. Remaining typed map keys, borrowed complex-element
-views, element/key methods, iteration, method and bulk mutation protocols,
-slices/fixed arrays, user-defined collection adapters, full service-macro
-traversal, and prepared operations are still open.
+materialized. Array positional indexing and typed Map indexing now read and
+write through HostAccess for direct and retained borrowed views; shared write
+attempts fail closed. `HostCollectionKey` preserves bool, char, exact-width
+integer, String, Bytes, and HostRef key identity, and `ScriptHostKey` performs
+the Rust-side exact conversion without string serialization. Borrowed
+complex-element views, element/key methods, iteration, method and bulk mutation
+protocols, slices/fixed arrays, richer user-defined collection adapters, full
+service-macro traversal, and prepared operations are still open.
 
 ### S4 — Service contract and Rust-only generation
 

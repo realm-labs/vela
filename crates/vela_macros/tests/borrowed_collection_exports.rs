@@ -24,6 +24,11 @@ pub fn add(totals: &mut BTreeMap<String, i64>, amount: i64) -> i64 {
     totals["sum"]
 }
 
+#[export(path = "collections::lookup_i32")]
+pub fn lookup_i32(scores: &BTreeMap<i32, i64>, key: i32) -> i64 {
+    scores[&key]
+}
+
 #[export(path = "collections::merge_async")]
 pub async fn merge_async(values: &Vec<i64>, totals: &mut BTreeMap<String, i64>) -> i64 {
     merge(values, totals)
@@ -308,6 +313,32 @@ fn borrowed_collection_indexes_read_and_write_through_host_access() {
 }
 
 #[test]
+fn borrowed_map_indexes_preserve_exact_integer_key_types() {
+    let mut runtime = runtime(
+        "fn read(scores: MapView<i32, i64>) { return scores[7i32]; } fn write(scores: MapMut<i32, i64>) { scores[7i32] = scores[7i32] + 5; return scores[7i32]; }",
+    );
+
+    let scores = BTreeMap::from([(7_i32, 11_i64)]);
+    let mut args = CallArgs::new();
+    args.push_collection_ref("scores", &scores);
+    let result = runtime
+        .call("read", args, CallOptions::unbounded())
+        .expect("i32 map key should retain its exact host boundary type");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(11)));
+    drop(result);
+
+    let mut scores = scores;
+    let mut args = CallArgs::new();
+    args.push_collection_mut("scores", &mut scores);
+    let result = runtime
+        .call("write", args, CallOptions::unbounded())
+        .expect("i32 map key assignment should write through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(16)));
+    drop(result);
+    assert_eq!(scores[&7], 16);
+}
+
+#[test]
 fn generated_async_adapters_hold_collection_leases_to_completion() {
     let mut runtime = runtime(
         "async fn free(values: ArrayView<i64>, totals: MapMut<String, i64>) { return collections::merge_async(values, totals).await; } async fn method(service: CollectionService, totals: MapMut<String, i64>) { return service.add_async(totals, 3).await; }",
@@ -362,6 +393,7 @@ fn runtime(source: &str) -> Runtime {
         .register_host_type::<CollectionOwner>()
         .register_exports(vela_export_bundle_merge())
         .register_exports(vela_export_bundle_add())
+        .register_exports(vela_export_bundle_lookup_i32())
         .register_exports(vela_export_bundle_merge_async())
         .register_exports(CollectionService::vela_inherent_exports())
         .register_exports(CollectionOwner::vela_inherent_exports())

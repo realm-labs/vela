@@ -6,6 +6,7 @@ use crate::{
     adapter::ScriptStateAdapter,
     error::HostResult,
     path::{HostPath, HostRef},
+    protocol::HostCollectionKey,
     resolved::HostMutationOp,
     target::{HostPathArg, HostPathArgOwned, HostPathPart, HostTargetInstance, HostTargetPlan},
     value::HostValue,
@@ -71,7 +72,7 @@ impl PathProxy {
 
     #[must_use]
     pub fn key(mut self, key: impl Into<String>) -> Self {
-        let arg = self.push_arg(HostPathArgOwned::Key(key.into()));
+        let arg = self.push_arg(HostPathArgOwned::Key(HostCollectionKey::String(key.into())));
         self.target.parts.push(HostPathPart::DynKey { arg });
         self
     }

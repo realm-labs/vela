@@ -300,8 +300,14 @@ Borrowed collection facts use the ordinary index syntax and bytecode shape.
 When the receiver value is a `HostRef`, the VM routes the operation through a
 root-local `HostTargetPlan` and HostAccess instead of treating the handle as a
 script-owned Array or Map. Shared roots may read but cannot write; exclusive
-roots write through immediately. Prepared plans and the broader typed map-key
-protocol replace the initial per-operation root plan as S3 advances.
+roots write through immediately. Dynamic Map keys cross as
+`HostCollectionKey`, which preserves bool, char, exact-width signed/unsigned
+integers, String, Bytes, and HostRef identity instead of formatting them into
+path strings. Standard Rust map keys implement `ScriptHostKey` against that
+exact representation; a user key type may implement the same conversion
+contract. Arrays interpret an exact `i64` key as a checked position. Diagnostic
+`HostPath` labels remain strings, but they are not the operational key format.
+Prepared plans replace the initial per-operation root plan as S3 advances.
 
 Low-level Rust native methods may use typed handles such as `HostRef` and
 `PathProxy`. The approved ordinary interop target instead permits authored

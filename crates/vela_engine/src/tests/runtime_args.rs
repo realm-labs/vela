@@ -12,6 +12,7 @@ use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
 use vela_host::object::ScriptHostObject;
 use vela_host::path::{HostPath, HostRef};
+use vela_host::protocol::HostCollectionKeyRef;
 use vela_host::resolved::{
     HostAccessOp, HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess,
     ResolvedHostAccessKind,
@@ -493,8 +494,8 @@ fn direct_target_key<'a>(
     match part {
         HostPathPart::ConstKey(key) => Ok(key),
         HostPathPart::DynKey { arg } | HostPathPart::DynIndex { arg } => match target.arg(*arg) {
-            Some(HostPathArg::Key(key)) => Ok(key),
-            Some(HostPathArg::Index(_)) | None => Err(HostError {
+            Some(HostPathArg::Key(HostCollectionKeyRef::String(key))) => Ok(key),
+            Some(HostPathArg::Index(_) | HostPathArg::Key(_)) | None => Err(HostError {
                 kind: HostErrorKind::MissingPath {
                     path: target.to_diagnostic_path().to_host_path(),
                 },

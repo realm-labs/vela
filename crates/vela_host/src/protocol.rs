@@ -1,3 +1,7 @@
+use vela_common::ScalarValue;
+
+use crate::path::HostRef;
+
 /// Read-only collection operations understood by the host boundary.
 ///
 /// These operations are semantic protocol identities rather than Vela
@@ -7,6 +11,118 @@
 pub enum HostCollectionQuery {
     Len,
     IsEmpty,
+}
+
+/// An owned, exact key crossing the Vela/Rust collection boundary.
+///
+/// Unlike diagnostic `HostPath` strings, this value preserves the Rust-facing
+/// primitive width and signedness. Floating-point values are deliberately not
+/// keys because Rust's standard ordered/hash maps require total equality.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum HostCollectionKey {
+    Bool(bool),
+    Char(char),
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    String(String),
+    Bytes(Vec<u8>),
+    HostRef(HostRef),
+}
+
+impl HostCollectionKey {
+    #[must_use]
+    pub fn as_ref(&self) -> HostCollectionKeyRef<'_> {
+        self.into()
+    }
+}
+
+/// A borrowed, exact key used by one resolved host operation.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum HostCollectionKeyRef<'a> {
+    Bool(bool),
+    Char(char),
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    String(&'a str),
+    Bytes(&'a [u8]),
+    HostRef(HostRef),
+}
+
+impl HostCollectionKeyRef<'_> {
+    #[must_use]
+    pub fn to_owned_key(self) -> HostCollectionKey {
+        match self {
+            Self::Bool(value) => HostCollectionKey::Bool(value),
+            Self::Char(value) => HostCollectionKey::Char(value),
+            Self::I8(value) => HostCollectionKey::I8(value),
+            Self::I16(value) => HostCollectionKey::I16(value),
+            Self::I32(value) => HostCollectionKey::I32(value),
+            Self::I64(value) => HostCollectionKey::I64(value),
+            Self::U8(value) => HostCollectionKey::U8(value),
+            Self::U16(value) => HostCollectionKey::U16(value),
+            Self::U32(value) => HostCollectionKey::U32(value),
+            Self::U64(value) => HostCollectionKey::U64(value),
+            Self::String(value) => HostCollectionKey::String(value.to_owned()),
+            Self::Bytes(value) => HostCollectionKey::Bytes(value.to_owned()),
+            Self::HostRef(value) => HostCollectionKey::HostRef(value),
+        }
+    }
+
+    #[must_use]
+    pub fn diagnostic_label(self) -> String {
+        match self {
+            Self::Bool(value) => value.to_string(),
+            Self::Char(value) => value.to_string(),
+            Self::I8(value) => ScalarValue::I8(value).to_string(),
+            Self::I16(value) => ScalarValue::I16(value).to_string(),
+            Self::I32(value) => ScalarValue::I32(value).to_string(),
+            Self::I64(value) => ScalarValue::I64(value).to_string(),
+            Self::U8(value) => ScalarValue::U8(value).to_string(),
+            Self::U16(value) => ScalarValue::U16(value).to_string(),
+            Self::U32(value) => ScalarValue::U32(value).to_string(),
+            Self::U64(value) => ScalarValue::U64(value).to_string(),
+            Self::String(value) => value.to_owned(),
+            Self::Bytes(value) => format!("{value:?}"),
+            Self::HostRef(value) => format!(
+                "host_ref({}:{}/{})",
+                value.type_id.get(),
+                value.object_id.get(),
+                value.generation
+            ),
+        }
+    }
+}
+
+impl<'a> From<&'a HostCollectionKey> for HostCollectionKeyRef<'a> {
+    fn from(key: &'a HostCollectionKey) -> Self {
+        match key {
+            HostCollectionKey::Bool(value) => Self::Bool(*value),
+            HostCollectionKey::Char(value) => Self::Char(*value),
+            HostCollectionKey::I8(value) => Self::I8(*value),
+            HostCollectionKey::I16(value) => Self::I16(*value),
+            HostCollectionKey::I32(value) => Self::I32(*value),
+            HostCollectionKey::I64(value) => Self::I64(*value),
+            HostCollectionKey::U8(value) => Self::U8(*value),
+            HostCollectionKey::U16(value) => Self::U16(*value),
+            HostCollectionKey::U32(value) => Self::U32(*value),
+            HostCollectionKey::U64(value) => Self::U64(*value),
+            HostCollectionKey::String(value) => Self::String(value),
+            HostCollectionKey::Bytes(value) => Self::Bytes(value),
+            HostCollectionKey::HostRef(value) => Self::HostRef(*value),
+        }
+    }
 }
 
 impl HostCollectionQuery {

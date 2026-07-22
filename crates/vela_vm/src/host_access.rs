@@ -5,7 +5,7 @@ use vela_bytecode::{
 use vela_common::{HostMethodId, Span, StateSlot};
 use vela_host::adapter::ExternStateBinding;
 use vela_host::path::HostPath;
-use vela_host::protocol::HostCollectionQuery;
+use vela_host::protocol::{HostCollectionKey, HostCollectionKeyRef, HostCollectionQuery};
 use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccess};
 use vela_host::target::{HostPathArg, HostTargetInstance, HostTargetPlan};
 use vela_host::value::HostValue;
@@ -740,23 +740,14 @@ fn execute_host_collection_index_write_target(
     Ok(())
 }
 
-enum RuntimeCollectionIndex {
-    Index(u32),
-    Key(String),
-}
+struct RuntimeCollectionIndex(HostCollectionKey);
 
 impl RuntimeCollectionIndex {
     fn target(&self, root_type: vela_common::HostTypeId) -> (HostTargetPlan, HostPathArg<'_>) {
-        match self {
-            Self::Index(index) => (
-                HostTargetPlan::new(root_type).dyn_index(0),
-                HostPathArg::Index(*index),
-            ),
-            Self::Key(key) => (
-                HostTargetPlan::new(root_type).dyn_key(0),
-                HostPathArg::Key(key),
-            ),
-        }
+        (
+            HostTargetPlan::new(root_type).dyn_key(0),
+            HostPathArg::Key(self.0.as_ref()),
+        )
     }
 }
 
@@ -765,17 +756,28 @@ fn runtime_collection_index(
     heap: Option<&HeapExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<RuntimeCollectionIndex> {
-    match index {
-        Value::I64(index) if *index >= 0 => u32::try_from(*index)
-            .map(RuntimeCollectionIndex::Index)
-            .map_err(|_| VmError::new(VmErrorKind::TypeMismatch { operation })),
-        Value::I64(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+    let key = match index {
+        Value::Bool(value) => HostCollectionKey::Bool(*value),
+        Value::Char(value) => HostCollectionKey::Char(*value),
+        Value::I8(value) => HostCollectionKey::I8(*value),
+        Value::I16(value) => HostCollectionKey::I16(*value),
+        Value::I32(value) => HostCollectionKey::I32(*value),
+        Value::I64(value) => HostCollectionKey::I64(*value),
+        Value::U8(value) => HostCollectionKey::U8(*value),
+        Value::U16(value) => HostCollectionKey::U16(*value),
+        Value::U32(value) => HostCollectionKey::U32(*value),
+        Value::U64(value) => HostCollectionKey::U64(*value),
+        Value::HostRef(value) => HostCollectionKey::HostRef(*value),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::String(key)) => Ok(RuntimeCollectionIndex::Key(key.clone())),
-            _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+            Some(HeapValue::String(key)) => HostCollectionKey::String(key.clone()),
+            Some(HeapValue::Bytes(key)) => HostCollectionKey::Bytes(key.clone()),
+            _ => return Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         },
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-    }
+        Value::Missing | Value::Unit | Value::F32(_) | Value::F64(_) | Value::Range(_) => {
+            return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+        }
+    };
+    Ok(RuntimeCollectionIndex(key))
 }
 
 fn missing_host_context() -> VmError {
@@ -891,7 +893,9 @@ fn host_arg_from_value<'a>(
             Ok(HostPathArg::Index(index))
         }
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::String(value)) => Ok(HostPathArg::Key(value.as_str())),
+            Some(HeapValue::String(value)) => Ok(HostPathArg::Key(HostCollectionKeyRef::String(
+                value.as_str(),
+            ))),
             _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         },
         _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),

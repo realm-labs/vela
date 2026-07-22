@@ -6,7 +6,8 @@ use vela_common::{HostMethodId, HostTypeId, ScalarValue};
 
 use crate::{
     error::{HostError, HostErrorKind, HostResult},
-    protocol::HostCollectionQuery,
+    path::HostRef,
+    protocol::{HostCollectionKeyRef, HostCollectionQuery},
     resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess},
     target::{HostPathArg, HostPathPart, HostTargetInstance},
     value::{HostValue, add_values, div_values, mul_values, rem_values, sub_values},
@@ -178,7 +179,7 @@ pub trait HostValueFrom: Sized {
 }
 
 pub trait ScriptHostKey: Clone + Eq + Ord {
-    fn parse_host_key(key: &str) -> HostResult<Self>;
+    fn from_host_collection_key(key: HostCollectionKeyRef<'_>) -> HostResult<Self>;
 }
 
 macro_rules! impl_script_host_object_via_field {
@@ -468,14 +469,59 @@ impl<T: HostValueInto> HostValueInto for HostResult<T> {
 }
 
 impl ScriptHostKey for String {
-    fn parse_host_key(key: &str) -> HostResult<Self> {
-        Ok(key.to_owned())
+    fn from_host_collection_key(key: HostCollectionKeyRef<'_>) -> HostResult<Self> {
+        match key {
+            HostCollectionKeyRef::String(key) => Ok(key.to_owned()),
+            _ => Err(invalid_arg("String collection key")),
+        }
     }
 }
 
-impl ScriptHostKey for i64 {
-    fn parse_host_key(key: &str) -> HostResult<Self> {
-        key.parse().map_err(|_| invalid_arg("integer host key"))
+macro_rules! impl_script_host_key {
+    ($($ty:ty => $variant:ident),* $(,)?) => {
+        $(
+            impl ScriptHostKey for $ty {
+                fn from_host_collection_key(
+                    key: HostCollectionKeyRef<'_>,
+                ) -> HostResult<Self> {
+                    match key {
+                        HostCollectionKeyRef::$variant(key) => Ok(key),
+                        _ => Err(invalid_arg(concat!(stringify!($ty), " collection key"))),
+                    }
+                }
+            }
+        )*
+    };
+}
+
+impl_script_host_key!(
+    bool => Bool,
+    char => Char,
+    i8 => I8,
+    i16 => I16,
+    i32 => I32,
+    i64 => I64,
+    u8 => U8,
+    u16 => U16,
+    u32 => U32,
+    u64 => U64,
+);
+
+impl ScriptHostKey for Vec<u8> {
+    fn from_host_collection_key(key: HostCollectionKeyRef<'_>) -> HostResult<Self> {
+        match key {
+            HostCollectionKeyRef::Bytes(key) => Ok(key.to_owned()),
+            _ => Err(invalid_arg("Bytes collection key")),
+        }
+    }
+}
+
+impl ScriptHostKey for HostRef {
+    fn from_host_collection_key(key: HostCollectionKeyRef<'_>) -> HostResult<Self> {
+        match key {
+            HostCollectionKeyRef::HostRef(key) => Ok(key),
+            _ => Err(invalid_arg("HostRef collection key")),
+        }
     }
 }
 
@@ -493,8 +539,7 @@ where
         target: HostTargetInstance<'_>,
         offset: usize,
     ) -> HostResult<HostValue> {
-        let key = target_key(target, offset)?;
-        let key = K::parse_host_key(key)?;
+        let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get(&key)
             .ok_or_else(|| missing_target(target))?
             .read_host_target_from(target, offset + 1)
@@ -509,7 +554,7 @@ where
         if target_is_leaf(target, offset) {
             return collection_query_result(self.len(), query);
         }
-        let key = K::parse_host_key(target_key(target, offset)?)?;
+        let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get(&key)
             .ok_or_else(|| missing_target(target))?
             .query_collection_host_target_from(target, offset + 1, query)
@@ -521,8 +566,7 @@ where
         offset: usize,
         value: HostValue,
     ) -> HostResult<()> {
-        let key = target_key(target, offset)?;
-        let key = K::parse_host_key(key)?;
+        let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get_mut(&key)
             .ok_or_else(|| missing_target(target))?
             .write_host_target_from(target, offset + 1, value)
@@ -535,8 +579,7 @@ where
         method: HostMethodId,
         args: &[HostValue],
     ) -> HostResult<HostValue> {
-        let key = target_key(target, offset)?;
-        let key = K::parse_host_key(key)?;
+        let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get_mut(&key)
             .ok_or_else(|| missing_target(target))?
             .call_host_target_from(target, offset + 1, method, args)
@@ -559,8 +602,7 @@ where
         target: HostTargetInstance<'_>,
         offset: usize,
     ) -> HostResult<HostValue> {
-        let key = target_key(target, offset)?;
-        let key = K::parse_host_key(key)?;
+        let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get(&key)
             .ok_or_else(|| missing_target(target))?
             .read_host_target_from(target, offset + 1)
@@ -575,7 +617,7 @@ where
         if target_is_leaf(target, offset) {
             return collection_query_result(self.len(), query);
         }
-        let key = K::parse_host_key(target_key(target, offset)?)?;
+        let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get(&key)
             .ok_or_else(|| missing_target(target))?
             .query_collection_host_target_from(target, offset + 1, query)
@@ -587,8 +629,7 @@ where
         offset: usize,
         value: HostValue,
     ) -> HostResult<()> {
-        let key = target_key(target, offset)?;
-        let key = K::parse_host_key(key)?;
+        let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get_mut(&key)
             .ok_or_else(|| missing_target(target))?
             .write_host_target_from(target, offset + 1, value)
@@ -601,8 +642,7 @@ where
         method: HostMethodId,
         args: &[HostValue],
     ) -> HostResult<HostValue> {
-        let key = target_key(target, offset)?;
-        let key = K::parse_host_key(key)?;
+        let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get_mut(&key)
             .ok_or_else(|| missing_target(target))?
             .call_host_target_from(target, offset + 1, method, args)
@@ -704,8 +744,7 @@ where
         target: HostTargetInstance<'_>,
         offset: usize,
     ) -> HostResult<HostValue> {
-        let key = target_key(target, offset)?;
-        let key = K::parse_host_key(key)?;
+        let key = K::from_host_collection_key(target_key(target, offset)?)?;
         if offset + 1 == target.plan.parts.len() {
             Ok(HostValue::Bool(self.contains(&key)))
         } else {
@@ -751,8 +790,7 @@ where
         target: HostTargetInstance<'_>,
         offset: usize,
     ) -> HostResult<HostValue> {
-        let key = target_key(target, offset)?;
-        let key = K::parse_host_key(key)?;
+        let key = K::from_host_collection_key(target_key(target, offset)?)?;
         if offset + 1 == target.plan.parts.len() {
             Ok(HostValue::Bool(self.contains(&key)))
         } else {
@@ -798,9 +836,12 @@ fn target_part(target: HostTargetInstance<'_>, offset: usize) -> HostResult<&Hos
         .ok_or_else(|| missing_target(target))
 }
 
-fn target_key(target: HostTargetInstance<'_>, offset: usize) -> HostResult<&str> {
+fn target_key(
+    target: HostTargetInstance<'_>,
+    offset: usize,
+) -> HostResult<HostCollectionKeyRef<'_>> {
     match target_part(target, offset)? {
-        HostPathPart::ConstKey(key) => Ok(key),
+        HostPathPart::ConstKey(key) => Ok(HostCollectionKeyRef::String(key)),
         HostPathPart::DynKey { arg } | HostPathPart::DynIndex { arg } => match target.arg(*arg) {
             Some(HostPathArg::Key(key)) => Ok(key),
             Some(HostPathArg::Index(_)) | None => Err(missing_target(target)),
@@ -816,6 +857,9 @@ fn target_index(target: HostTargetInstance<'_>, offset: usize) -> HostResult<u32
         HostPathPart::ConstIndex(index) => Ok(*index),
         HostPathPart::DynIndex { arg } | HostPathPart::DynKey { arg } => match target.arg(*arg) {
             Some(HostPathArg::Index(index)) => Ok(index),
+            Some(HostPathArg::Key(HostCollectionKeyRef::I64(index))) if index >= 0 => {
+                u32::try_from(index).map_err(|_| missing_target(target))
+            }
             Some(HostPathArg::Key(_)) | None => Err(missing_target(target)),
         },
         HostPathPart::Field(_) | HostPathPart::VariantField(_) | HostPathPart::ConstKey(_) => {

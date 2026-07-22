@@ -101,11 +101,15 @@ and exact binding identity when passed into another Rust export, including
 immediate mutable write-through. Vela now executes `len` and `is_empty` on
 direct or retained HostRef-backed views through a domain-neutral read-only
 collection protocol and HostAccess, including shared references. Array
-positional and string-keyed Map indexing also read and write through HostAccess
-for direct and retained views; shared writes fail without changing Rust state.
-Broader typed map keys, complex borrowed element views, element/key methods,
-iteration, method and bulk mutation, fixed slices/arrays, and user-defined
-collection adapters remain open.
+positional and typed Map indexing also read and write through HostAccess for
+direct and retained views; shared writes fail without changing Rust state. The
+dynamic key boundary preserves bool, char, exact-width signed/unsigned
+integers, String, Bytes, and HostRef identity, so a `BTreeMap<i32, V>` is
+indexed by an actual `i32` rather than a serialized path string. Standard key
+implementations and the public `ScriptHostKey` conversion contract share this
+model. Complex borrowed element views, element/key methods, iteration, method
+and bulk mutation, fixed slices/arrays, user-defined collection adapters, and
+prepared index plans remain open.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry

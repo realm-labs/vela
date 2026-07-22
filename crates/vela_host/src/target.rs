@@ -1,7 +1,10 @@
 use vela_common::HostTypeId;
 use vela_def::FieldId;
 
-use crate::path::HostRef;
+use crate::{
+    path::HostRef,
+    protocol::{HostCollectionKey, HostCollectionKeyRef},
+};
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct HostTargetPlan {
@@ -251,20 +254,20 @@ pub enum HostPathPartsStorageKind {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HostPathArg<'a> {
     Index(u32),
-    Key(&'a str),
+    Key(HostCollectionKeyRef<'a>),
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum HostPathArgOwned {
     Index(u32),
-    Key(String),
+    Key(HostCollectionKey),
 }
 
 impl<'a> From<&'a HostPathArgOwned> for HostPathArg<'a> {
     fn from(arg: &'a HostPathArgOwned) -> Self {
         match arg {
             HostPathArgOwned::Index(index) => Self::Index(*index),
-            HostPathArgOwned::Key(key) => Self::Key(key),
+            HostPathArgOwned::Key(key) => Self::Key(key.as_ref()),
         }
     }
 }
@@ -274,7 +277,7 @@ impl HostPathArg<'_> {
     pub fn to_owned_arg(self) -> HostPathArgOwned {
         match self {
             Self::Index(index) => HostPathArgOwned::Index(index),
-            Self::Key(key) => HostPathArgOwned::Key(key.to_owned()),
+            Self::Key(key) => HostPathArgOwned::Key(key.to_owned_key()),
         }
     }
 }
@@ -308,6 +311,15 @@ impl<'a> HostTargetInstance<'a> {
     #[must_use]
     pub fn arg_key(&self, index: u8) -> Option<&'a str> {
         match self.arg(index) {
+            Some(HostPathArg::Key(HostCollectionKeyRef::String(value))) => Some(value),
+            Some(HostPathArg::Index(_)) | None => None,
+            Some(HostPathArg::Key(_)) => None,
+        }
+    }
+
+    #[must_use]
+    pub fn arg_collection_key(&self, index: u8) -> Option<HostCollectionKeyRef<'a>> {
+        match self.arg(index) {
             Some(HostPathArg::Key(value)) => Some(value),
             Some(HostPathArg::Index(_)) | None => None,
         }
@@ -324,7 +336,9 @@ impl<'a> HostTargetInstance<'a> {
                 HostPathPart::DynIndex { arg } | HostPathPart::DynKey { arg } => {
                     match self.arg(*arg) {
                         Some(HostPathArg::Index(index)) => HostDiagnosticSegment::Index(index),
-                        Some(HostPathArg::Key(key)) => HostDiagnosticSegment::Key(key.to_owned()),
+                        Some(HostPathArg::Key(key)) => {
+                            HostDiagnosticSegment::Key(key.diagnostic_label())
+                        }
                         None => return Err(MissingHostPathArg { index: *arg }),
                     }
                 }
@@ -491,7 +505,10 @@ mod tests {
             .dyn_index(0)
             .const_key("gold")
             .dyn_key(1);
-        let args = [HostPathArg::Index(4), HostPathArg::Key("bonus")];
+        let args = [
+            HostPathArg::Index(4),
+            HostPathArg::Key(HostCollectionKeyRef::String("bonus")),
+        ];
         let instance = HostTargetInstance::new(root(), &plan, &args);
 
         assert_eq!(
@@ -523,11 +540,17 @@ mod tests {
     fn owned_path_args_can_be_borrowed_for_instances() {
         let owned = [
             HostPathArgOwned::Index(9),
-            HostPathArgOwned::Key("score".to_owned()),
+            HostPathArgOwned::Key(HostCollectionKey::String("score".to_owned())),
         ];
         let borrowed = [HostPathArg::from(&owned[0]), HostPathArg::from(&owned[1])];
 
-        assert_eq!(borrowed, [HostPathArg::Index(9), HostPathArg::Key("score")]);
+        assert_eq!(
+            borrowed,
+            [
+                HostPathArg::Index(9),
+                HostPathArg::Key(HostCollectionKeyRef::String("score")),
+            ]
+        );
         assert_eq!(borrowed[1].to_owned_arg(), owned[1]);
     }
 }
