@@ -37,6 +37,39 @@ where
     T::standard_type_binding()
 }
 
+macro_rules! primitive_standard_binding {
+    ($($ty:ty => ($family:literal, $path:literal, $kind:ident)),* $(,)?) => {
+        $(
+            impl StandardTypeBinding for $ty {
+                fn standard_type_binding() -> TypeBinding<Self> {
+                    TypeBinding::value(primitive_type_desc::<Self>(
+                        $family,
+                        $path,
+                        TypeKind::$kind,
+                    ))
+                }
+            }
+        )*
+    };
+}
+
+primitive_standard_binding!(
+    () => ("unit", "rust::primitive::unit", Unit),
+    bool => ("bool", "rust::primitive::bool", Bool),
+    char => ("char", "rust::primitive::char", Char),
+    i8 => ("i8", "rust::primitive::i8", I8),
+    i16 => ("i16", "rust::primitive::i16", I16),
+    i32 => ("i32", "rust::primitive::i32", I32),
+    i64 => ("i64", "rust::primitive::i64", I64),
+    u8 => ("u8", "rust::primitive::u8", U8),
+    u16 => ("u16", "rust::primitive::u16", U16),
+    u32 => ("u32", "rust::primitive::u32", U32),
+    u64 => ("u64", "rust::primitive::u64", U64),
+    f32 => ("f32", "rust::primitive::f32", F32),
+    f64 => ("f64", "rust::primitive::f64", F64),
+    String => ("string", "rust::std::string::String", String),
+);
+
 impl<T> StandardTypeBinding for Vec<T>
 where
     T: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
@@ -101,6 +134,19 @@ where
     fn standard_type_binding() -> TypeBinding<Self> {
         TypeBinding::value(set_type_desc::<T>(SetFamily::Hash))
     }
+}
+
+fn primitive_type_desc<T>(family: &'static str, path: &'static str, kind: TypeKind) -> TypeDesc
+where
+    T: VelaValueBoundary,
+{
+    let value_shape = type_hint_display(&T::vela_type_hint());
+    concrete_type_desc(family, path.to_owned(), &value_shape, kind)
+        .docs(format!(
+            "Concrete Rust {value_shape} value binding using the Vela {value_shape} representation."
+        ))
+        .attr("rust_standard_family", family)
+        .attr("vela_value_shape", value_shape)
 }
 
 fn vec_type_desc<T>() -> TypeDesc
@@ -313,6 +359,131 @@ mod tests {
 
     use crate::engine::Engine;
     use crate::runtime::{CallArgs, CallOptions, Runtime};
+
+    #[test]
+    fn primitive_bindings_preserve_exact_vela_value_kinds() {
+        let bindings = [
+            (
+                standard_type_binding::<()>().type_desc().kind,
+                TypeKind::Unit,
+            ),
+            (
+                standard_type_binding::<bool>().type_desc().kind,
+                TypeKind::Bool,
+            ),
+            (
+                standard_type_binding::<char>().type_desc().kind,
+                TypeKind::Char,
+            ),
+            (standard_type_binding::<i8>().type_desc().kind, TypeKind::I8),
+            (
+                standard_type_binding::<i16>().type_desc().kind,
+                TypeKind::I16,
+            ),
+            (
+                standard_type_binding::<i32>().type_desc().kind,
+                TypeKind::I32,
+            ),
+            (
+                standard_type_binding::<i64>().type_desc().kind,
+                TypeKind::I64,
+            ),
+            (standard_type_binding::<u8>().type_desc().kind, TypeKind::U8),
+            (
+                standard_type_binding::<u16>().type_desc().kind,
+                TypeKind::U16,
+            ),
+            (
+                standard_type_binding::<u32>().type_desc().kind,
+                TypeKind::U32,
+            ),
+            (
+                standard_type_binding::<u64>().type_desc().kind,
+                TypeKind::U64,
+            ),
+            (
+                standard_type_binding::<f32>().type_desc().kind,
+                TypeKind::F32,
+            ),
+            (
+                standard_type_binding::<f64>().type_desc().kind,
+                TypeKind::F64,
+            ),
+            (
+                standard_type_binding::<String>().type_desc().kind,
+                TypeKind::String,
+            ),
+        ];
+
+        assert!(bindings.iter().all(|(actual, expected)| actual == expected));
+        assert_ne!(
+            standard_type_binding::<i64>().type_desc().key,
+            standard_type_binding::<u64>().type_desc().key
+        );
+    }
+
+    #[test]
+    fn registered_rust_primitives_round_trip_through_vela_behavior() {
+        let engine = Engine::builder()
+            .with_standard_natives()
+            .register_rust_type::<i64>(standard_type_binding::<i64>())
+            .register_rust_type::<String>(standard_type_binding::<String>())
+            .build()
+            .expect("primitive bindings should seal beside standard types");
+        let bindings = engine.type_bindings();
+        let integer_codec = bindings.value_codec::<i64>().expect("i64 value codec");
+        let string_codec = bindings
+            .value_codec::<String>()
+            .expect("String value codec");
+        let program = engine
+            .compile_source_with_id(
+                SourceId::new(4),
+                r#"
+fn increment(value: i64) -> i64 {
+    return value + 1;
+}
+
+fn echo_label(value: String) -> String {
+    return value;
+}
+"#,
+            )
+            .expect("primitive Vela behavior should compile");
+        drop(bindings);
+        let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+
+        let integer = runtime
+            .call(
+                "increment",
+                CallArgs::from_positional([integer_codec.encode(8)]),
+                CallOptions::unbounded(),
+            )
+            .expect("registered Rust i64 should use Vela numeric behavior");
+        let string = runtime
+            .call(
+                "echo_label",
+                CallArgs::from_positional([string_codec.encode("ready".to_owned())]),
+                CallOptions::unbounded(),
+            )
+            .expect("registered Rust String should use Vela string behavior");
+
+        assert_eq!(
+            integer_codec.decode(
+                &runtime
+                    .value_to_owned(&integer)
+                    .expect("returned integer should be owned")
+            ),
+            Ok(9)
+        );
+        assert_eq!(
+            string_codec.decode(
+                &runtime
+                    .value_to_owned(&string)
+                    .expect("returned string should be owned")
+            ),
+            Ok("ready".to_owned())
+        );
+    }
 
     #[test]
     fn concrete_map_families_share_surface_but_keep_stable_identity() {
