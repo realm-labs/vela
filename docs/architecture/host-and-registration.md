@@ -296,6 +296,13 @@ operation when the type schema declares index support. Missing support should
 be diagnosed as unsupported index access once the compiler has enough receiver
 type facts; dynamic fallback remains a runtime adapter error.
 
+Borrowed collection facts use the ordinary index syntax and bytecode shape.
+When the receiver value is a `HostRef`, the VM routes the operation through a
+root-local `HostTargetPlan` and HostAccess instead of treating the handle as a
+script-owned Array or Map. Shared roots may read but cannot write; exclusive
+roots write through immediately. Prepared plans and the broader typed map-key
+protocol replace the initial per-operation root plan as S3 advances.
+
 Low-level Rust native methods may use typed handles such as `HostRef` and
 `PathProxy`. The approved ordinary interop target instead permits authored
 `&T`/`&mut T` parameters when generated registration code can prove the exact

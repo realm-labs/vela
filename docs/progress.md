@@ -100,9 +100,12 @@ collection references returned from one Rust export retain their owner lease
 and exact binding identity when passed into another Rust export, including
 immediate mutable write-through. Vela now executes `len` and `is_empty` on
 direct or retained HostRef-backed views through a domain-neutral read-only
-collection protocol and HostAccess, including shared references. Indexing,
-element/key methods, iteration, mutation and bulk operations, fixed
-slices/arrays, and user-defined collection adapters remain open.
+collection protocol and HostAccess, including shared references. Array
+positional and string-keyed Map indexing also read and write through HostAccess
+for direct and retained views; shared writes fail without changing Rust state.
+Broader typed map keys, complex borrowed element views, element/key methods,
+iteration, method and bulk mutation, fixed slices/arrays, and user-defined
+collection adapters remain open.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry

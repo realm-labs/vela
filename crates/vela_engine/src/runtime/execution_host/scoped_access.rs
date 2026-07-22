@@ -9,7 +9,7 @@ impl ExecutionHost<'_, '_> {
     pub(super) fn inspect_scoped_host<T>(
         &self,
         root: HostRef,
-        mut inspect: impl FnMut(&dyn ScriptHostObject) -> HostResult<T>,
+        inspect: impl FnOnce(&dyn ScriptHostObject) -> HostResult<T>,
     ) -> Option<HostResult<T>> {
         let binding = self.scoped_hosts.get(&root)?;
         Some(match &binding.object {
@@ -25,6 +25,30 @@ impl ExecutionHost<'_, '_> {
                         .try_read()
                         .ok_or_else(|| host_object_busy(root))
                         .and_then(|object| inspect(&**object))
+                })
+            }
+        })
+    }
+
+    pub(super) fn mutate_scoped_host<T>(
+        &mut self,
+        root: HostRef,
+        mutate: impl FnOnce(&mut dyn ScriptHostObject) -> HostResult<T>,
+    ) -> Option<HostResult<T>> {
+        let binding = self.scoped_hosts.get_mut(&root)?;
+        Some(match &mut binding.object {
+            ScopedHostObjectBinding::Single(object) => object
+                .try_write()
+                .ok_or_else(|| host_object_busy(root))
+                .and_then(|mut object| mutate(&mut **object)),
+            ScopedHostObjectBinding::Group { object, index } => {
+                object.with_dependent(|_, objects| {
+                    objects
+                        .get(*index)
+                        .ok_or_else(|| host_lease_unsupported(root))?
+                        .try_write()
+                        .ok_or_else(|| host_object_busy(root))
+                        .and_then(|mut object| mutate(&mut **object))
                 })
             }
         })

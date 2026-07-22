@@ -2036,14 +2036,32 @@ impl Vm {
                     frame.write(*dst, field)?;
                 }
                 InstructionKind::GetIndex { dst, base, index } => {
-                    indexing::dispatch_get_index(frame, heap.as_deref(), *dst, *base, *index)?;
+                    indexing::dispatch_get_index(
+                        indexing::IndexRuntime {
+                            frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            source_span: instruction.span,
+                        },
+                        *dst,
+                        *base,
+                        *index,
+                    )?;
                 }
                 InstructionKind::GetStringKeyIndex { dst, base, key } => {
                     let key =
                         string_key_constant(code.constants.get(key.0), key.0, instruction.span)?;
                     indexing::dispatch_get_string_key_index(
-                        frame,
-                        heap.as_deref(),
+                        indexing::IndexRuntime {
+                            frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            source_span: instruction.span,
+                        },
                         *dst,
                         *base,
                         key,
@@ -2051,9 +2069,14 @@ impl Vm {
                 }
                 InstructionKind::SetIndex { base, index, src } => {
                     indexing::dispatch_set_index(
-                        frame,
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
+                        indexing::IndexRuntime {
+                            frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            source_span: instruction.span,
+                        },
                         *base,
                         *index,
                         *src,
@@ -2063,9 +2086,14 @@ impl Vm {
                     let key =
                         string_key_constant(code.constants.get(key.0), key.0, instruction.span)?;
                     indexing::dispatch_set_string_key_index(
-                        frame,
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
+                        indexing::IndexRuntime {
+                            frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                            host: host.as_deref_mut(),
+                            inline_caches: call.inline_caches,
+                            source_span: instruction.span,
+                        },
                         *base,
                         key,
                         *src,

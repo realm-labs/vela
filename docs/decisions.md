@@ -2552,11 +2552,13 @@ to indexed element replacement through the future HostAccess adapter.
 Borrowed collection calls keep the standard Array/Map/Set method identity in
 linked code, but a HostRef receiver routes that identity to a domain-neutral
 host protocol rather than an owned collection guard. `HostCollectionQuery`
-currently establishes this boundary for `len` and `is_empty`; later indexed,
-iteration, mutation, and bulk operations extend semantic protocols rather than
-teaching host adapters Vela standard-library IDs. This prevents implicit
-copy-in/copy-out and lets standard and user-defined Rust collections share one
-adapter model.
+establishes this boundary for `len` and `is_empty`. Ordinary index bytecode now
+also recognizes a HostRef receiver and performs Array positional or
+string-keyed Map reads/writes through HostAccess; retained borrowed children
+use the same route. Broader typed keys, iteration, method mutation, and bulk
+operations extend semantic protocols rather than teaching host adapters Vela
+standard-library IDs. This prevents implicit copy-in/copy-out and lets
+standard and user-defined Rust collections share one adapter model.
 
 Concrete Rust unit, bool, char, exact-width numeric, and String bindings retain
 distinct stable Rust ABI identities while using their existing native Vela

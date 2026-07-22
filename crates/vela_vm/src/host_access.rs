@@ -634,6 +634,156 @@ pub(crate) fn execute_host_root_collection_query(
     runtime_value_from_host(value, runtime.heap, runtime.budget)
 }
 
+pub(crate) fn execute_host_collection_index_read(
+    mut runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    index: Register,
+) -> VmResult<Value> {
+    let root = expect_host_ref(&runtime.frame.read(receiver)?, "host collection index")?;
+    let index = runtime_collection_index(
+        &runtime.frame.read(index)?,
+        runtime.heap.as_deref(),
+        "host collection index",
+    )?;
+    let (target, arg) = index.target(root.type_id);
+    let args = [arg];
+    let instance = HostTargetInstance::new(root, &target, &args);
+    let host = runtime.host.ok_or_else(missing_host_context)?;
+    let access = host
+        .adapter
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &target))
+        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    let value = host
+        .access
+        .read_resolved(host.adapter, access, instance, runtime.source_span)?;
+    runtime_value_from_host(value, runtime.heap.take(), runtime.budget.take())
+}
+
+pub(crate) fn execute_host_collection_string_key_read(
+    mut runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    key: &str,
+) -> VmResult<Value> {
+    let root = expect_host_ref(&runtime.frame.read(receiver)?, "host collection index")?;
+    let target = HostTargetPlan::new(root.type_id).const_key(key);
+    let instance = HostTargetInstance::new(root, &target, &[]);
+    let host = runtime.host.ok_or_else(missing_host_context)?;
+    let access = host
+        .adapter
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &target))
+        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    let value = host
+        .access
+        .read_resolved(host.adapter, access, instance, runtime.source_span)?;
+    runtime_value_from_host(value, runtime.heap.take(), runtime.budget.take())
+}
+
+pub(crate) fn execute_host_collection_index_write(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    index: Register,
+    src: Register,
+) -> VmResult<()> {
+    let root = expect_host_ref(
+        &runtime.frame.read(receiver)?,
+        "host collection index assignment",
+    )?;
+    let index = runtime_collection_index(
+        &runtime.frame.read(index)?,
+        runtime.heap.as_deref(),
+        "host collection index assignment",
+    )?;
+    let value = value_to_host(
+        &runtime.frame.read(src)?,
+        "host collection index assignment",
+        runtime.heap.as_deref(),
+    )?;
+    let (target, arg) = index.target(root.type_id);
+    let args = [arg];
+    execute_host_collection_index_write_target(runtime, root, &target, &args, value)
+}
+
+pub(crate) fn execute_host_collection_string_key_write(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    key: &str,
+    src: Register,
+) -> VmResult<()> {
+    let root = expect_host_ref(
+        &runtime.frame.read(receiver)?,
+        "host collection index assignment",
+    )?;
+    let value = value_to_host(
+        &runtime.frame.read(src)?,
+        "host collection index assignment",
+        runtime.heap.as_deref(),
+    )?;
+    let target = HostTargetPlan::new(root.type_id).const_key(key);
+    execute_host_collection_index_write_target(runtime, root, &target, &[], value)
+}
+
+fn execute_host_collection_index_write_target(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    root: vela_host::path::HostRef,
+    target: &HostTargetPlan,
+    args: &[HostPathArg<'_>],
+    value: HostValue,
+) -> VmResult<()> {
+    let instance = HostTargetInstance::new(root, target, args);
+    let host = runtime.host.ok_or_else(missing_host_context)?;
+    let access = host
+        .adapter
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Write, target))
+        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    host.access
+        .write_resolved(host.adapter, access, instance, value, runtime.source_span)?;
+    Ok(())
+}
+
+enum RuntimeCollectionIndex {
+    Index(u32),
+    Key(String),
+}
+
+impl RuntimeCollectionIndex {
+    fn target(&self, root_type: vela_common::HostTypeId) -> (HostTargetPlan, HostPathArg<'_>) {
+        match self {
+            Self::Index(index) => (
+                HostTargetPlan::new(root_type).dyn_index(0),
+                HostPathArg::Index(*index),
+            ),
+            Self::Key(key) => (
+                HostTargetPlan::new(root_type).dyn_key(0),
+                HostPathArg::Key(key),
+            ),
+        }
+    }
+}
+
+fn runtime_collection_index(
+    index: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<RuntimeCollectionIndex> {
+    match index {
+        Value::I64(index) if *index >= 0 => u32::try_from(*index)
+            .map(RuntimeCollectionIndex::Index)
+            .map_err(|_| VmError::new(VmErrorKind::TypeMismatch { operation })),
+        Value::I64(_) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::String(key)) => Ok(RuntimeCollectionIndex::Key(key.clone())),
+            _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+        },
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+    }
+}
+
+fn missing_host_context() -> VmError {
+    VmError::new(VmErrorKind::TypeMismatch {
+        operation: "host context",
+    })
+}
+
 fn resolve_cached_access(
     adapter: &dyn vela_host::adapter::ScriptStateAdapter,
     inline_caches: Option<&dyn VmInlineCaches>,

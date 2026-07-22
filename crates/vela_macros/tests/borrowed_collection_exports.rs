@@ -224,6 +224,90 @@ fn borrowed_collections_execute_read_only_protocols_from_vela() {
 }
 
 #[test]
+fn borrowed_collection_indexes_read_and_write_through_host_access() {
+    let mut runtime = runtime(
+        "fn array_read(values: ArrayView<i64>) { return values[1]; } fn array_write(values: ArrayMut<i64>) { values[1] = values[0] + 5; return values[1]; } fn shared_write(values: ArrayView<i64>) { values[0] = 99; } fn map_read(totals: MapView<String, i64>) { return totals[\"sum\"]; } fn map_write(totals: MapMut<String, i64>) { totals[\"sum\"] = totals[\"sum\"] + 3; return totals[\"sum\"]; } fn returned_read(owner: CollectionOwner) { let values = owner.values(); return values[1]; } fn returned_write(owner: CollectionOwner) { let totals = owner.totals_mut(); totals[\"sum\"] = totals[\"sum\"] + 4; return totals[\"sum\"]; }",
+    );
+
+    let values = vec![2_i64, 3];
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call("array_read", args, CallOptions::unbounded())
+        .expect("shared array index should read through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(3)));
+    drop(result);
+
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    assert!(
+        runtime
+            .call("shared_write", args, CallOptions::unbounded())
+            .is_err(),
+        "shared array index assignment must fail closed"
+    );
+    assert_eq!(values, vec![2, 3]);
+
+    let mut values = vec![2_i64, 3];
+    let mut args = CallArgs::new();
+    args.push_collection_mut("values", &mut values);
+    let result = runtime
+        .call("array_write", args, CallOptions::unbounded())
+        .expect("exclusive array index should write through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(7)));
+    drop(result);
+    assert_eq!(values, vec![2, 7]);
+
+    let totals = BTreeMap::from([("sum".to_owned(), 8_i64)]);
+    let mut args = CallArgs::new();
+    args.push_collection_ref("totals", &totals);
+    let result = runtime
+        .call("map_read", args, CallOptions::unbounded())
+        .expect("shared map index should read through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(8)));
+    drop(result);
+
+    let mut totals = totals;
+    let mut args = CallArgs::new();
+    args.push_collection_mut("totals", &mut totals);
+    let result = runtime
+        .call("map_write", args, CallOptions::unbounded())
+        .expect("exclusive map index should write through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(11)));
+    drop(result);
+    assert_eq!(totals["sum"], 11);
+
+    let owner = CollectionOwner {
+        values: vec![4_i64, 6],
+        totals: BTreeMap::new(),
+    };
+    let result = runtime
+        .call(
+            "returned_read",
+            CallArgs::new().with_host_ref("owner", &owner),
+            CallOptions::unbounded(),
+        )
+        .expect("retained shared collection index should read through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(6)));
+    drop(result);
+
+    let mut owner = CollectionOwner {
+        values: Vec::new(),
+        totals: BTreeMap::from([("sum".to_owned(), 2_i64)]),
+    };
+    let result = runtime
+        .call(
+            "returned_write",
+            CallArgs::new().with_host_mut("owner", &mut owner),
+            CallOptions::unbounded(),
+        )
+        .expect("retained exclusive collection index should write through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(6)));
+    drop(result);
+    assert_eq!(owner.totals["sum"], 6);
+}
+
+#[test]
 fn generated_async_adapters_hold_collection_leases_to_completion() {
     let mut runtime = runtime(
         "async fn free(values: ArrayView<i64>, totals: MapMut<String, i64>) { return collections::merge_async(values, totals).await; } async fn method(service: CollectionService, totals: MapMut<String, i64>) { return service.add_async(totals, 3).await; }",
