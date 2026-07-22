@@ -2034,10 +2034,11 @@ package/module object with ordinary typed methods and an equivalent
 ambient Runtime or requires a user-authored service trait.
 
 `VmResult<T>` denotes call failure, while a boundary-safe `Result<T, E>` is an
-ordinary Vela Result value and generates the corresponding Rust type. The
-same return/error classification applies to replaceable entries; replacement
-must not introduce a separate `VmResult<T>`-only authoring subset or attempt to
-reconstruct a Rust `&T`/`&mut T` through `FromScriptArg`. The
+ordinary Vela Result value and generates the corresponding Rust type. The same
+return/error classification applies to generated service methods; a Vela
+service implementation must not introduce a separate `VmResult<T>`-only
+authoring subset or attempt to reconstruct a Rust `&T`/`&mut T` through
+`FromScriptArg`. The
 initial trusted-native profile remains callable visibility, normalized effects
 and derived coarse capabilities, exact type/lease safety, and budgets. A
 special restricted profile is deferred until a concrete deployment requires
@@ -2187,7 +2188,60 @@ Direct script-visible method names remain unique across inherent and trait
 surfaces; unresolved collisions are registration errors rather than Rust-style
 UFCS guessing.
 
-### Hot-Replaceable Dispatch Is An Optional Interop Extension
+### Rust Hotfixes Use One Generated Service-Generation Model
+
+The active direction is defined by
+[rust-vela-service-hard-switch-plan.md](rust-vela-service-hard-switch-plan.md).
+Rust defines an explicitly exported service trait and ordinary default
+implementation. Macros generate its boundary schema, default thunks, hidden
+object-safe dispatch, partial Vela composition, type-registration closure, and
+whole-service-set generation. Business callers depend on the generated service
+contract and contain no patch branch, slot, target string, manual boundary
+value, or handwritten Vela adapter.
+
+A Vela `#[service_impl(...)]` block may implement any subset of imported
+service methods. Missing methods resolve to Rust defaults during staging. The
+lexical `base` capability calls the current service's Rust default, while
+`services` calls another service through the same root-pinned generation. A
+selected Vela error propagates and never retries the Rust body.
+
+The host publishes one complete immutable service-set generation with one
+atomic pointer exchange and pins it at an actor/request safe point. Nested
+Rust/Vela calls use that generation and the active `NativeCallContext` session,
+preserving actor-owned Runtime state, HostRef lease/reborrow provenance,
+budgets, effects, capabilities, tracing, cancellation, and async lifetime.
+Service generations never own a mutable Runtime or Runtime mutex.
+
+Ordinary Rust exports remain callable but are not independently replaceable.
+Handlers, rules, events, providers, and free functions receive no parallel
+hotfix API; an operation that must be hotfixable is represented as a service
+method. `ReplaceableSlotId`, `InterceptSlotIndex`, `DispatchController`,
+`DispatchRoot`, `#[replaceable]`, and `#[override]` are frozen and scheduled
+for deletion without compatibility aliases. Vela's internal CodeObject and
+ProgramVersion replacement remains its language-level hot reload mechanism.
+
+Owned and borrowed Rust collections map to the standard Array/Map/Set surface.
+Borrowed collections are HostRef-backed capability views, pass through nested
+services by scoped reborrow, and write through `HostAccess` when exclusive.
+Collection protocols are implemented once and concrete element/key/value facts
+are synthesized from the transitive service signature graph; this does not add
+general script-language generics.
+
+### Repository Artifacts Use Domain-Neutral Host Names
+
+Vela is a reusable language library rather than an extension of one embedding
+project. Core code, active and archived documentation, identifiers, fixtures,
+examples, diagnostics, and benchmark names use generic host, actor, request,
+service, or game-server terminology. They must not name an external host
+project or codebase. Host-specific integration belongs in that host's own
+repository; Vela keeps only the smallest domain-neutral conformance shape
+needed to prove the language boundary.
+
+### Superseded: Callable-Level Replaceable Dispatch
+
+The following section records the accepted 2026-07-17 implementation that the
+service hard switch will delete. It is historical context, not an active
+authoring or architecture decision.
 
 Ordinary Rust/Vela calls require neither a service trait nor a dispatch slot.
 Runtime replacement is explicit at declaration time: a host business macro

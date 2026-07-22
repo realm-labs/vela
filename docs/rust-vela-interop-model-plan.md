@@ -1,11 +1,11 @@
 # Rust/Vela Unified Interop And Call Model Plan
 
 > Track: ordinary Rust signatures, signature-derived effects, grouped export
-> bundles, generated bidirectional bindings, unified call execution,
-> host-reference lease safety, and optional hot-replaceable dispatch
+> bundles, generated bidirectional bindings, unified call execution, and
+> host-reference lease safety; callable replacement is historical only
 >
-> Status: accepted through the Actor Runtime authority reconciliation;
-> `I-RECON-1..6` are complete
+> Status: ordinary interop is accepted through the Actor Runtime authority
+> reconciliation; the optional callable-replacement track is superseded
 >
 > Evidence: the original ordinary-interop report is preserved in
 > [`rust-vela-interop-acceptance-2026-07-17.md`](archive/rust-vela-interop-acceptance-2026-07-17.md),
@@ -23,8 +23,16 @@
 > Execution: coherent pre-release batches; reuse the existing VM call, native,
 > method, provider, and re-entry paths
 >
-> Roadmap: Batches A-G and the first post-review correction remain baseline;
-> `I-RECON-1..6` close Gate I for the separate Actor Runtime/cache plan
+> Roadmap: Batches A-E and the ordinary-interop parts of G remain baseline;
+> historical replacement work is retained only as implementation evidence
+
+> **Superseded direction — 2026-07-22:** ordinary bidirectional interop,
+> HostRef/lease safety, generated bindings, and same-session re-entry remain
+> accepted foundations. The optional callable-level replacement parts of this
+> plan are frozen and will be deleted. Rust hotfixing now has one service-level
+> model, defined by
+> [rust-vela-service-hard-switch-plan.md](rust-vela-service-hard-switch-plan.md).
+> Do not extend `#[replaceable]`, `#[override]`, or slot dispatch.
 
 This document defines a general Rust/Vela interoperability model. Its primary
 goal is not service replacement. Its primary goal is that explicitly exported
@@ -213,7 +221,7 @@ other accepted proofs:
   integration promised by F2. Business authors must not assign dense indices,
   repeat authority plumbing, collect slot descriptors one method at a time, or
   construct a handwritten proxy. Add a Handler-trait and Service-struct
-  fixture matching the p9-lattice integration shape.
+  fixture matching a representative host-framework integration shape.
 - [x] G-REVIEW-1. Add regression tests for same-Runtime nested replaceable
   calls, async suspension and cancellation, remaining-budget inheritance,
   artifact/generation pinning, cross-controller candidate rejection, complete

@@ -10,17 +10,21 @@ history belongs in Git.
 
 ## Current Focus
 
-Rust/Vela interop is accepted through the Actor Runtime authority
-reconciliation. Rust exports, exact lease adapters, owner-frozen borrowed
-returns, generated typed bindings, optional replacement, and
-`NativeCallContext` sync/async re-entry use the shared execution path.
-`DispatchRoot` owns immutable generation selection only; replacement borrows
-the current Actor turn's `&mut SharedRuntime` through a scoped
-`DispatchInvocation`. Overlapping pending Actors, isolated Vela state,
-same-session policy inheritance, cancellation/drop, panic unwind, natural
-Handler/Service integration, runnable examples, and the complete validation
-gates are recorded in the
-[reconciliation acceptance report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md).
+The active architecture focus is the
+[Rust/Vela unified service hard switch](rust-vela-service-hard-switch-plan.md).
+Rust hotfixing will use one generated model: Rust service traits and defaults,
+sparse Vela service implementations, and one atomically published complete
+service generation. Handler, rule, event, provider, and free-function hotfixes
+do not receive separate replacement paths. The existing `#[replaceable]` /
+`#[override]` slot implementation is frozen pending deletion in S1; no new
+work may extend it. S0-S7 implementation has not started.
+
+Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
+returns, generated typed bindings, and `NativeCallContext` sync/async re-entry
+remain accepted foundations. The historical optional-replacement proof is
+recorded in the
+[reconciliation acceptance report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md),
+but it no longer defines the target authoring model.
 
 The Actor Runtime/cache plan is accepted through Batch F. Batch A's baseline is recorded in the
 [Batch A report](archive/actor-runtime-cache-batch-a-baseline-2026-07-18.md),
@@ -49,7 +53,7 @@ qualified embedding types, linked nominal canonicalization, graph-preserving
 budgeted reload staging, external-owner generation reclamation, and nested
 initializer-call fingerprints have focused and workspace-wide proof. The Actor
 authority prerequisite and cache ownership/lifetime cuts are closed. M20.5 is
-now the active editor follow-up.
+queued behind the reprioritized service hard switch.
 
 The executor-neutral async implementation from Batches A-D is landed: Vela has
 one explicit frame driver, scoped `Send` Runtime/native futures, direct typed
@@ -78,8 +82,8 @@ state-storage hard switch.
 | M19 | Complete enough | The non-JIT interpreter and heap optimization checkpoint is closed; remaining measured costs belong to cache, value-layout, or later backend work. |
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Complete enough | Actor Runtime/cache Batches A-F are accepted with shared generation execution data, no eager Actor vectors, and no execution lane. |
-| M20.5 | In progress | Resume the concrete editor-visible follow-up after M20 close-out. |
-| Rust/Vela interop | Accepted | Ordinary and optional replacement interop use Actor-turn-scoped Runtime authority with no Runtime mutex boundary. |
+| M20.5 | Queued | Resume the concrete editor-visible follow-up after the service hard switch. |
+| Rust/Vela service interop | Reopened | S0-S7 hard switch is planned; callable-level replacement is frozen pending S1 deletion. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -128,12 +132,11 @@ state-storage hard switch.
   schema and build-time generated typed Rust surface. Runtime strings and
   boundary wrapper values remain low-level dynamic escape hatches, not the
   primary call workflow.
-- Optional `#[replaceable]` entries use explicit root-owned `SharedRuntime`
-  sessions and same-session native re-entry. They prove stable dense slots,
-  independent root locks over shared immutable code, remaining-budget and
-  generation inheritance, async cancellation, coherent activation, rollback,
-  ordinary/business/direct-origin container returns, generated group slot
-  bundles, p9-shaped business-macro integration, and no fallback retry.
+- The historical optional `#[replaceable]` implementation still exists in the
+  tree but is frozen and is not the target public model. The hard switch will
+  retain its general ABI, lease, Actor Runtime, same-session re-entry,
+  activation, rollback, and no-retry facts while deleting slot IDs, per-entry
+  instrumentation, override syntax, and dispatch authority APIs.
 
 ### Standard Library, Tooling, And Proof
 
@@ -154,16 +157,20 @@ state-storage hard switch.
 
 ## Active Gaps
 
-### Rust/Vela Interop Acceptance
+### Rust/Vela Service Hard Switch
 
-No interop reconciliation gap remains. `DispatchRoot` and override targets own
-no mutable Runtime. The Actor turn supplies the only root `&mut Runtime`
-authority, while nested replacement uses the active `NativeCallContext`
-re-entry session. Generation/linking, complete contract validation, HostAccess,
-remaining budgets, capabilities/effect ceilings, tracing, cancellation,
-borrowed and business returns, activation, rollback, and no-retry behavior
-remain accepted. The structural and behavioral proof matrix lives in the
-[reconciliation report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md).
+The plan is fixed, but implementation remains open. S0 must freeze and inventory
+the old model and establish a representative domain-neutral Rust-default
+fixture. S1 deletes all callable-level replacement surface before the generated
+service contract lands. S2-S7 then add Rust-only service generations, sparse
+Vela implementations, same-generation base/cross-service calls, host-reference
+reborrows, recursive Array/Map/Set interop, async/handler integration, and final
+host-framework acceptance.
+
+The existing ordinary interop, HostRef/HostAccess lease safety, Actor-owned
+Runtime, generated bindings, same-session re-entry, staging, activation,
+rollback, and no-retry semantics are reusable constraints rather than a reason
+to keep the old slot API.
 
 ### State Storage Acceptance
 
@@ -278,11 +285,10 @@ scanners, runtime execution, live host-state reads, or editor-owned analysis.
 
 ## Validation
 
-The 2026-07-17 Rust/Vela interop reconciliation gates pass. Ordinary interop
-and the unaffected replacement families retain their historical baseline; the
-new report adds direct Actor Runtime borrowing, overlapping Actor/state
-isolation, cancellation/drop/unwind, runnable replacement, structural audit,
-and complete repository validation evidence.
+The 2026-07-17 Rust/Vela interop reconciliation gates remain historical proof
+for ordinary interop and reusable Actor Runtime/re-entry safety. They are not
+acceptance for the new service-generation model. Each S0-S7 checkpoint must add
+the focused proof required by the hard-switch plan.
 
 State-storage Batch G's exact resolution, nominal canonicalization,
 graph-preserving staging, external-owner reclamation, and nested initializer
@@ -313,10 +319,12 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Execute the dedicated Actor Runtime/cache plan, beginning with its ownership
-   audit and baselines.
-2. Resume the M20.5 editor-visible follow-up after M20 close-out.
-3. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
+1. Execute S0 of the Rust/Vela unified service hard switch: freeze/inventory the
+   old slot model, build the domain-neutral Rust-default fixture, and record
+   baselines.
+2. Execute S1 deletion before accepting a new public service replacement API.
+3. Resume the M20.5 editor-visible follow-up after the service hard switch.
+4. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
    state migration, async-frame migration, and initializer dependency reads as
    explicit non-goals.
 

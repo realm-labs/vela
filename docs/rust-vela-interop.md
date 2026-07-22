@@ -1,5 +1,12 @@
 # Rust/Vela Interop
 
+> **Active direction — 2026-07-22:** the ordinary export/binding and
+> HostRef/re-entry sections remain valid. The optional single-callable
+> replacement section below is historical implementation documentation and is
+> frozen pending deletion. The sole Rust hotfix model is the generated service
+> generation in
+> [rust-vela-service-hard-switch-plan.md](rust-vela-service-hard-switch-plan.md).
+
 Ordinary bidirectional interop is the default integration model. Rust exports
 ordinary functions and methods, Vela calls them with normal source syntax, and
 Rust calls public Vela declarations through generated typed bindings. A
@@ -101,10 +108,10 @@ Low-level `Runtime::call`, `Runtime::call_async`, `CallArgs`, and runtime values
 remain available for genuinely dynamic tools. Ordinary statically known calls
 should use generated bindings.
 
-## Optional Single-Callable Replacement
+## Historical: Optional Single-Callable Replacement
 
-> **Status:** accepted. The Actor Runtime authority reconciliation is recorded
-> in the
+> **Status:** superseded and frozen pending deletion. Its Actor Runtime
+> authority reconciliation is recorded in the
 > [final report](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md).
 
 Replacement is an explicit extension. A selected public entry keeps its normal
@@ -183,10 +190,11 @@ The no-override entry performs one dense indexed lookup and empty-entry branch
 before the private Rust fallback. It does not perform a string/hash lookup,
 global lock, allocation, serialization, or dynamic trait dispatch.
 
-## Deployment Checklist
+## Historical Callable-Replacement Deployment Checklist
 
-The generated interop and optional replacement checklist below is
-production-oriented.
+The checklist below records the superseded implementation and must not be used
+for new integrations. Current execution requirements live in the unified
+service hard-switch plan.
 
 1. Generate bindings from the exact package/source graph used for deployment.
 2. Register export bundles, host types, capabilities, and policy explicitly.

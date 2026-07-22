@@ -11,6 +11,9 @@ The core idea is:
 Scripts describe host-boundary business logic with natural syntax.
 The VM represents mutations to the Rust world as HostAccess operations.
 The runtime performs reliable function-level hot reload by replacing CodeObject mappings.
+Rust-facing hotfixes cross one generated service contract and publish one
+complete immutable service generation; there is no callable-slot replacement
+path.
 ```
 
 ## Reference Designs
@@ -211,6 +214,7 @@ contract before changing that subsystem:
 - [Tooling, performance, security, and testing](architecture/tooling-performance-security-testing.md)
 - [Native LSP architecture](architecture/lsp.md)
 - [Packages and service providers](packages-and-providers.md)
+- [Rust/Vela unified service hard-switch plan](rust-vela-service-hard-switch-plan.md)
 - [Unified Rust/Vela interop and call model plan](rust-vela-interop-model-plan.md)
 - [Rust/Vela interop authoring and deployment](rust-vela-interop.md)
 - [Clean identity refactor](architecture/clean-identity-refactor.md)

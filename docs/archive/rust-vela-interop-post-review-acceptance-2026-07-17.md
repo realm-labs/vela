@@ -27,7 +27,7 @@ All findings from the post-implementation review are closed:
 | Controller-free dispatch generations | Candidates and generations carry opaque controller/layout identity. `same_shaped_controllers_reject_foreign_generations_and_candidates` rejects cross-controller staging, activation, and rollback even for equal slot counts. |
 | Lossy override contract validation | Engine compilation resolves override declarations to stable registered slots and imports the complete callable contract. Staging compares parameter and boundary modes, return/error and borrowed-return families, asyncness, types, and normalized effects while allowing only an implementation effect subset. Compilation, coherent-artifact, and effect-subset regression tests pass. |
 | Restricted return mapping | Replaceable entries reuse the ordinary generated return adapter for plain values, boundary-safe business `Result`, and direct-origin borrowed returns inside supported `Option`, `Result`, and tuple containers. Invalid projection provenance and conflicting exclusive aliases are rejected without fabricating Rust references. |
-| Manual business integration | `#[methods]` emits deterministic replaceable slot bundles. The p9-shaped `host_business_macro_hides_slots_authority_and_handler_proxy_plumbing` fixture generates paths, authority, dense indices, registration, and trait forwarding while preserving ordinary Handler and Service call shapes and adjacent Rust methods. |
+| Manual business integration | `#[methods]` emits deterministic replaceable slot bundles. The representative `host_business_macro_hides_slots_authority_and_handler_proxy_plumbing` fixture generates paths, authority, dense indices, registration, and trait forwarding while preserving ordinary Handler and Service call shapes and adjacent Rust methods. |
 
 The corrected implementation therefore has one execution, budget, artifact,
 contract, and return-conversion model for ordinary and replaceable calls. A
@@ -40,7 +40,7 @@ roots remain pinned while activation changes only future roots.
   signatures do not mention `HostRef`, `PathProxy`, lease guards,
   `CallArgs`, or `OwnedValue`.
 - The explicit low-level replaceable attribute remains macro-generation
-  machinery; the p9-shaped fixture proves that business authors need not
+  machinery; the domain-neutral fixture proves that business authors need not
   assign paths, authority, indices, bundles, or proxies by hand.
 - No `Mutex<Runtime>` execution path, ambient process-global Runtime,
   duplicate interpreter, fresh nested budget, fallback replay, or new

@@ -6,52 +6,52 @@ use crate::engine::Engine;
 use crate::runtime::{RuntimeImage, SharedRuntime};
 
 pub trait Handler<Message> {
-    fn handle(&self, actor: &mut P9Actor, message: Message) -> VmResult<i64>;
+    fn handle(&self, actor: &mut HostActor, message: Message) -> VmResult<i64>;
 }
 
 pub trait Service {
-    fn quote(&self, actor: &mut P9Actor, value: i64) -> VmResult<i64>;
+    fn quote(&self, actor: &mut HostActor, value: i64) -> VmResult<i64>;
 }
 
 #[derive(ScriptHost, ScriptReflect)]
-#[script(path = "host::p9::Context")]
-pub struct P9Context {
+#[script(path = "host::example::Context")]
+pub struct HostContext {
     #[script(get, set)]
     calls: i64,
 }
 
-pub struct P9Turn {
+pub struct HostTurn {
     root: DispatchRoot,
     runtime: SharedRuntime,
 }
 
-pub struct P9Actor {
-    turn: P9Turn,
-    context: P9Context,
+pub struct HostActor {
+    turn: HostTurn,
+    context: HostContext,
 }
 
-#[methods(path = "host::p9::Context")]
-impl P9Context {
+#[methods(path = "host::example::Context")]
+impl HostContext {
     pub fn calls(&self) -> i64 {
         self.calls
     }
 }
 
 #[derive(ScriptHost, ScriptReflect)]
-#[script(path = "host::p9::Worker")]
+#[script(path = "host::example::Worker")]
 pub struct Worker {
     #[script(get)]
     bonus: i64,
 }
 
 #[derive(ScriptHost, ScriptReflect)]
-#[script(path = "host::p9::PricingService")]
+#[script(path = "host::example::PricingService")]
 pub struct PricingService {
     #[script(get)]
     offset: i64,
 }
 
-macro_rules! p9_lattice {
+macro_rules! host_framework {
     (
         handler $handler:ident for $message:ident |
             $handler_self:ident, $handler_context:ident, $message_value:ident
@@ -60,17 +60,17 @@ macro_rules! p9_lattice {
             $service_self:ident, $service_context:ident, $service_value:ident
         | $service_body:block;
     ) => {
-        #[vela_macros::methods(path = "host::p9::Handler")]
+        #[vela_macros::methods(path = "host::example::Handler")]
         impl $handler {
             #[vela_macros::replaceable(
-                path = "host::p9::Handler::handle",
+                path = "host::example::Handler::handle",
                 authority = "turn",
                 index = 0
             )]
             pub fn handle(
                 &self,
-                turn: &mut P9Turn,
-                context: &mut P9Context,
+                turn: &mut HostTurn,
+                context: &mut HostContext,
                 message: $message,
             ) -> VmResult<i64> {
                 let _ = turn;
@@ -82,13 +82,13 @@ macro_rules! p9_lattice {
         }
 
         impl Handler<$message> for $handler {
-            fn handle(&self, actor: &mut P9Actor, message: $message) -> VmResult<i64> {
-                let P9Actor { turn, context } = actor;
+            fn handle(&self, actor: &mut HostActor, message: $message) -> VmResult<i64> {
+                let HostActor { turn, context } = actor;
                 <$handler>::handle(self, turn, context, message)
             }
         }
 
-        impl DispatchAuthority for P9Turn {
+        impl DispatchAuthority for HostTurn {
             fn vela_dispatch_root(&self) -> &DispatchRoot {
                 &self.root
             }
@@ -99,17 +99,17 @@ macro_rules! p9_lattice {
             }
         }
 
-        #[vela_macros::methods(path = "host::p9::PricingService")]
+        #[vela_macros::methods(path = "host::example::PricingService")]
         impl $service {
             #[vela_macros::replaceable(
-                path = "host::p9::PricingService::quote",
+                path = "host::example::PricingService::quote",
                 authority = "turn",
                 index = 1
             )]
             pub fn quote(
                 &self,
-                turn: &mut P9Turn,
-                context: &mut P9Context,
+                turn: &mut HostTurn,
+                context: &mut HostContext,
                 value: i64,
             ) -> VmResult<i64> {
                 let _ = turn;
@@ -125,34 +125,34 @@ macro_rules! p9_lattice {
         }
 
         impl Service for $service {
-            fn quote(&self, actor: &mut P9Actor, value: i64) -> VmResult<i64> {
-                let P9Actor { turn, context } = actor;
+            fn quote(&self, actor: &mut HostActor, value: i64) -> VmResult<i64> {
+                let HostActor { turn, context } = actor;
                 <$service>::quote(self, turn, context, value)
             }
         }
 
-        fn p9_replaceable_slots() -> Vec<crate::dispatch::ReplaceableSlotDescriptor> {
+        fn host_replaceable_slots() -> Vec<crate::dispatch::ReplaceableSlotDescriptor> {
             let mut slots = <$handler>::vela_replaceable_slots();
             slots.extend(<$service>::vela_replaceable_slots());
             slots
         }
 
-        fn register_p9_lattice(
+        fn register_host_framework(
             builder: crate::builder::EngineBuilder,
         ) -> crate::builder::EngineBuilder {
             builder
-                .register_host_type::<P9Context>()
+                .register_host_type::<HostContext>()
                 .register_host_type::<$handler>()
                 .register_host_type::<$service>()
-                .register_exports(P9Context::vela_inherent_exports())
+                .register_exports(HostContext::vela_inherent_exports())
                 .register_exports(<$handler>::vela_inherent_exports())
                 .register_exports(<$service>::vela_inherent_exports())
-                .register_replaceable_slots(p9_replaceable_slots())
+                .register_replaceable_slots(host_replaceable_slots())
         }
     };
 }
 
-p9_lattice! {
+host_framework! {
     handler Worker for i64 |worker, context, message| {
         context.calls += 10;
         Ok(message + worker.bonus)
@@ -165,11 +165,11 @@ p9_lattice! {
 
 #[test]
 fn host_business_macro_hides_slots_authority_and_handler_proxy_plumbing() {
-    let slots = p9_replaceable_slots();
+    let slots = host_replaceable_slots();
     assert_eq!(slots.len(), 2);
     assert_eq!(slots[0].index.get(), 0);
     assert_eq!(slots[1].index.get(), 1);
-    let engine = register_p9_lattice(Engine::builder())
+    let engine = register_host_framework(Engine::builder())
         .capability(vela_common::Capability::HostRead)
         .capability(vela_common::Capability::HostWrite)
         .build()
@@ -177,32 +177,32 @@ fn host_business_macro_hides_slots_authority_and_handler_proxy_plumbing() {
     let program = engine
         .compile_source(
             r#"
-#[override(host::p9::Handler::handle)]
+#[override(host::example::Handler::handle)]
 fn handle(worker: Worker, context: Context, message: i64) -> i64 {
 context.calls += 1;
 return message + worker.bonus + 1;
 }
 
-#[override(host::p9::PricingService::quote)]
+#[override(host::example::PricingService::quote)]
 fn quote(service: PricingService, context: Context, value: i64) -> i64 {
 context.calls += 1;
 return service.adjacent(value) + 1;
 }
 "#,
         )
-        .expect("p9 override program");
+        .expect("host override program");
     let runtime = shared_runtime(engine, program);
     let controller = DispatchController::new(slots).expect("controller");
     let worker = Worker { bonus: 1 };
     let service = PricingService { offset: 1 };
 
-    let mut fallback = P9Actor {
-        turn: P9Turn {
+    let mut fallback = HostActor {
+        turn: HostTurn {
             root: DispatchRoot::pin(&controller),
             runtime: SharedRuntime::from_shared_image(runtime.shared_image())
                 .expect("actor runtime"),
         },
-        context: P9Context { calls: 0 },
+        context: HostContext { calls: 0 },
     };
     assert_eq!(
         <Worker as Handler<i64>>::handle(&worker, &mut fallback, 40),
@@ -216,13 +216,13 @@ return service.adjacent(value) + 1;
 
     let candidate = controller.stage_current(&runtime).expect("override stage");
     controller.activate(candidate).expect("activate candidate");
-    let mut active = P9Actor {
-        turn: P9Turn {
+    let mut active = HostActor {
+        turn: HostTurn {
             root: DispatchRoot::pin(&controller),
             runtime: SharedRuntime::from_shared_image(runtime.shared_image())
                 .expect("actor runtime"),
         },
-        context: P9Context { calls: 0 },
+        context: HostContext { calls: 0 },
     };
     assert_eq!(
         <Worker as Handler<i64>>::handle(&worker, &mut active, 40),

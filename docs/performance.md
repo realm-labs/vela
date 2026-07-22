@@ -74,6 +74,13 @@ activation and its first call. Compilation and Runtime construction remain
 outside the ordinary call loops; the staging row intentionally includes
 candidate materialization and publication.
 
+The replaceable rows below are frozen historical baselines. The
+[Rust/Vela service hard switch](rust-vela-service-hard-switch-plan.md) removes
+their callable-slot implementation and replaces those rows with direct Rust,
+trait-object, generated Rust-default service, active Vela service,
+same-generation nested service, collection-view, and whole-generation staging
+measurements. No new optimization work should extend the slot benchmark.
+
 The Batch E pre-optimization quick checkpoint on 2026-07-17 used parent commit
 `87e871439`, Rust/Cargo 1.97.0, macOS 26.5.2 arm64, the optimized bench profile,
 one sample, 1,000 measured iterations, and 100 warmups. It recorded 0.4 ns/call

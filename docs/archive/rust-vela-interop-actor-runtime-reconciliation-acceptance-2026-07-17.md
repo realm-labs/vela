@@ -15,7 +15,7 @@ rollback, and no-retry proofs remain accepted baseline and were not reopened.
 | I-RECON-1 | `DispatchRoot` owns only an immutable `DispatchGeneration` and `CallOptions`. `DispatchInvocation<'turn>` borrows `&'turn mut SharedRuntime` from the Actor turn. Nested replacement through `NativeCallContext` re-enters the active `ExecutionSession`. |
 | I-RECON-2 | All production generated entries, handwritten fixtures, examples, and the benchmark use the borrowed authority. `SharedDispatchRuntime`, root/invocation Runtime ownership, lock-based constructors, and compatibility paths were deleted in checkpoint `af2942012`. |
 | I-RECON-3 | Existing sync/async nested-call tests retain the active artifact, generation, heap/state view, HostAccess, remaining budget, effect ceiling, capabilities, tracing, cancellation, leases, return mapping, and error behavior. No replacement failure retries the Rust fallback. |
-| I-RECON-4 | The p9-shaped Handler/Service fixture splits `P9Actor` into a hidden `P9Turn` and script-visible `P9Context`. Business traits still take `&mut P9Actor`; authors supply no Runtime, session, HostRef, lease guard, path, or dense slot. Fallback calls mutate the context to 20 and active Vela overrides mutate it to 2. |
+| I-RECON-4 | The representative Handler/Service fixture splits `HostActor` into a hidden `HostTurn` and script-visible `HostContext`. Business traits still take `&mut HostActor`; authors supply no Runtime, session, HostRef, lease guard, path, or dense slot. Fallback calls mutate the context to 20 and active Vela overrides mutate it to 2. |
 | I-RECON-5 | Structural scans find no Actor Runtime mutex in production dispatch. Two Actor turns borrow separate Runtimes over one immutable generation, a pending Actor does not block another, their persistent Vela state remains isolated, and cancellation, unpolled drop, and panic unwind release scoped authority. |
 | I-RECON-6 | Focused interop, full workspace, examples, runnable replacement, docs/site, benchmark build/run, fuzz build, editor grammar, and safe-Rust audit gates pass. This report closes Gate I. |
 
@@ -85,7 +85,7 @@ replaceable_service_method fallback=41 active=42 adjacent=41 rollback=41
 ```
 
 The low-level handler example deliberately hides its authority context from
-the Vela ABI. The p9 business-macro proof separately demonstrates visible
+the Vela ABI. The host-framework macro proof separately demonstrates visible
 business-context mutation while retaining hidden Actor Runtime authority.
 
 ## Reproducible benchmark checkpoint

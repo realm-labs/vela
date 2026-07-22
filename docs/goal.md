@@ -20,7 +20,11 @@ The language should provide:
 1. Better host-script expression than Lua: structs, enums, `match`, method calls, rich array/map APIs, and Option/Result-style error handling.
 2. Deep Rust host integration: scripts can naturally read and write host state with syntax such as `account.balance += 1`.
 3. Safe mutable state boundaries: scripts never hold Rust `&mut T`; they use `HostRef`, `HostPath`, `PathProxy`, and `HostAccess` to read or write Rust-owned state immediately through adapters.
-4. Hot Reload First semantics: hot reload replaces function-level or module-level code objects. Existing call frames continue on old code, and new calls enter new code.
+4. Hot Reload First semantics: Vela hot reload replaces function-level or
+   module-level code objects. Rust hotfix integration uses one generated
+   service-contract model: a sparse Vela implementation is composed over Rust
+   defaults and one complete service generation is atomically published.
+   Existing call frames continue on old code, and new calls enter new code.
 5. Controlled reflection: scripts can inspect types, fields, methods, variants, traits, modules, and functions, and can perform controlled dynamic reads, writes, and calls. Runtime schema mutation is not allowed.
 6. Embeddability: Rust hosts can register types, native functions, capability profiles, execution budgets, state adapters, and hot reload policies.
 7. Executor-neutral async execution: scripts can declare `async fn`, await
@@ -42,6 +46,9 @@ The first phase does not include:
 - A Rust-style borrow checker in the script language.
 - Real Rust references exposed to script code.
 - Arbitrary monkey patching of types or methods.
+- Per-callable Rust replacement slots or separate hotfix models for handlers,
+  rules, events, providers, and functions. Hotfixable Rust operations cross the
+  unified service-contract boundary.
 - Arbitrary `eval` or runtime execution of generated source strings.
 - JIT compilation.
 - Script-level threads or shared-memory concurrency.
@@ -67,6 +74,7 @@ Comfortable syntax, but controlled runtime boundaries.
 Strong reflection for queries, weak reflection for mutation.
 Host state can be changed, but Rust &mut is never exposed.
 Hot reload is a primary design axis, not an afterthought.
+Rust hotfixing has one service-generation model, not competing patch paths.
 Performance comes from architecture, bytecode, caching, and batch boundaries before JIT.
 ```
 
@@ -104,6 +112,10 @@ Engineering principles:
     implementation notes, long benchmark logs, rejected micro-candidates, and
     per-commit before/after tables belong in commit messages, PR notes, or
     `docs/archive/` when they need to be preserved.
+14. Keep Vela repository artifacts domain-neutral. Core code, active and
+    archived docs, identifiers, fixtures, examples, diagnostics, and benchmark
+    names must not refer to an external host project or codebase. Use generic
+    host, actor, request, service, and game-server terminology instead.
 
 ## Long-Term Codex Goal
 
@@ -122,6 +134,9 @@ mutation through HostRef, HostPath, PathProxy, and HostAccess,
 reflection without runtime type-structure mutation or monkey patching, and no
 MVP JIT, async-frame hot migration, script-visible task/coroutine handles,
 moving GC, or a custom full IDE product.
+Use the unified Rust/Vela service contract and whole-generation publication as
+the sole Rust hotfix model; do not restore callable replacement slots or add
+handler/rule/event-specific replacement paths.
 Full native LSP work is allowed before the MVP when it stays behind the clean
 `vela_language_service` and `vela_lsp_server` boundaries and does not change
 language/runtime semantics. For each turn, choose the smallest
@@ -140,6 +155,9 @@ Keep the language core, stdlib, builtin APIs, and runtime contract
 domain-neutral. Game-specific or other business-specific capabilities must be
 provided by Engine host registration, native functions, schemas, or examples,
 not by builtin language features.
+Do not name Vela code, docs, fixtures, examples, diagnostics, or benchmarks
+after an external host project; repository-owned examples use generic
+domain-neutral host terminology.
 ```
 
 Post-MVP performance work is a first-class roadmap track. The initial release
@@ -752,8 +770,10 @@ safe fallback paths.
 Detailed Actor Runtime ownership, cache/profile placement, concurrency, memory,
 reload, and acceptance work is sequenced in
 [archived Actor Runtime/cache execution plan](archive/actor-runtime-cache-execution-plan.md).
-That execution begins only after the state-storage and Rust/Vela replaceable
-post-review prerequisites named there are accepted.
+That execution began only after the state-storage and historical Rust/Vela
+interop post-review prerequisites named there were accepted. The later service
+hard switch supersedes the callable-level replacement mechanism without
+reopening the completed cache result.
 
 Scope:
 
