@@ -31,6 +31,7 @@ pub mod runtime;
 pub mod schema;
 pub mod source;
 pub mod standard;
+pub mod type_binding;
 pub mod typed;
 mod validation;
 

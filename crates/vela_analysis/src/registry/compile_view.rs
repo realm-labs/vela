@@ -12,7 +12,7 @@ use super::{
     CallableParameterFact, CallableParameterRequirementFact, CallableSignatureFact,
     RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryFieldTargetFact,
     RegistryFunctionAccessFact, RegistryIndexCapabilityFact, RegistryMethodAccessFact,
-    RegistryTypeTargetFact,
+    RegistryTypeBindingFact, RegistryTypeTargetFact,
 };
 use crate::type_fact::TypeFact;
 
@@ -70,6 +70,9 @@ impl<'registry> CompileViewFacts<'registry> {
     fn build(mut self) -> Result<RegistryFacts, RegistryDeclarationSlotError> {
         self.collect_types();
         let mut facts = RegistryFacts::default();
+        if let Some(checksum) = self.registry.type_binding_checksum() {
+            facts.set_type_binding_checksum(checksum);
+        }
         for (name, fact) in &self.type_facts {
             facts.insert_type(name, fact.clone());
         }
@@ -79,6 +82,26 @@ impl<'registry> CompileViewFacts<'registry> {
                 *semantic,
                 host_runtime.map(host_type_id),
             ));
+        }
+        for definition in self.registry.definitions() {
+            let Def::Type(definition) = definition else {
+                continue;
+            };
+            let Some(binding) = definition.binding else {
+                continue;
+            };
+            let Some(name) = self.type_names.get(&definition.id) else {
+                continue;
+            };
+            facts.insert_type_binding(
+                name,
+                RegistryTypeBindingFact {
+                    id: binding.id,
+                    storage: binding.storage,
+                    capabilities: binding.capabilities,
+                    abi_fingerprint: binding.abi_fingerprint,
+                },
+            );
         }
         for definition in self.registry.definitions() {
             let Def::Type(definition) = definition else {

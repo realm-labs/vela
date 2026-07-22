@@ -4,9 +4,14 @@
 
 pub mod capability;
 pub mod diagnostic_render;
+pub mod interop_type;
 pub mod primitive;
 
 pub use capability::{Capability, CapabilitySet};
+pub use interop_type::{
+    InteropTypeId, ReceiverCapabilities, ReceiverCapability, StoragePolicy, TypeAbiFingerprint,
+    TypeBindingRegistryChecksum,
+};
 pub use primitive::{NumericTag, PrimitiveTag, ScalarValue};
 pub use vela_def::stable_id;
 

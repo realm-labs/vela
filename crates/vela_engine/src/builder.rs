@@ -20,6 +20,7 @@ use crate::native::{
 };
 use crate::permission::{Capability, CapabilitySet, ExecutionProfile};
 use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
+use crate::type_binding::{TypeBinding, TypeBindingRegistration, TypeBindingRegistry};
 use crate::typed::{
     TypedAsyncContextHostNativeFunction, TypedAsyncHostNativeFunction, TypedAsyncNativeFunction,
     TypedAsyncNativeMethodFunction, TypedContextHostNativeFunction, TypedHostNativeFunction,
@@ -30,6 +31,7 @@ use crate::{metadata, validation};
 #[derive(Clone, Default)]
 pub struct EngineBuilder {
     types: Vec<TypeDesc>,
+    type_bindings: Vec<TypeBindingRegistration>,
     modules: Vec<ModuleDesc>,
     native_functions: Vec<NativeFunctionEntry>,
     async_native_functions: Vec<AsyncNativeFunctionEntry>,
@@ -61,6 +63,18 @@ impl EngineBuilder {
     #[must_use]
     pub fn register_type(mut self, desc: TypeDesc) -> Self {
         self.types.push(desc);
+        self
+    }
+
+    /// Registers one Rust type through the unified Rust/Vela binding model.
+    #[must_use]
+    pub fn register_rust_type<T: 'static>(mut self, binding: TypeBinding) -> Self {
+        let (mut registration, type_desc, method_metadata, native_methods) = binding.into_parts();
+        registration.bind_rust_type::<T>();
+        self.type_bindings.push(registration);
+        self.types.push(type_desc);
+        self.host_method_metadata.extend(method_metadata);
+        self.native_methods.extend(native_methods);
         self
     }
 
@@ -581,6 +595,7 @@ impl EngineBuilder {
             self.standard_natives,
         )?;
         validation::validate_types(&types, self.standard_natives)?;
+        let type_bindings = TypeBindingRegistry::seal(self.type_bindings, &types)?;
         let module_options = validation::ModuleValidationOptions::default()
             .include_standard_modules(self.standard_natives)
             .include_time_module(self.time_clock)
@@ -605,6 +620,7 @@ impl EngineBuilder {
 
         let definition_registry = definition_registry_from_engine_parts(
             &types,
+            &type_bindings,
             EngineFunctionEntries {
                 native: &self.native_functions,
                 async_native: &self.async_native_functions,
@@ -628,6 +644,7 @@ impl EngineBuilder {
         for desc in types {
             registry.register(desc);
         }
+        registry.install_type_bindings(type_bindings.iter().cloned(), type_bindings.checksum());
         for module in self.modules {
             registry.register_module(module);
         }
@@ -648,6 +665,7 @@ impl EngineBuilder {
 
         Ok(Engine::new(EngineParts {
             registry,
+            type_bindings,
             definition_registry,
             native_functions: self.native_functions,
             async_native_functions: self.async_native_functions,

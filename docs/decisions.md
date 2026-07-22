@@ -2238,6 +2238,31 @@ hosts may derive or manually register external types. Service schema generation
 must reject an incomplete transitive type closure before a patch candidate can
 be staged.
 
+### Type Bindings Seal Once And Project Into Existing Metadata Views
+
+`vela_engine::TypeBinding` is the host authoring and executable-registration
+unit. `EngineBuilder::register_rust_type::<T>` binds the Rust `TypeId` only for
+Engine-local typed lookup, while `InteropTypeId` is the stable cross-process
+identity and is derived from the registered semantic `TypeId`. Rust `TypeId`
+never enters artifacts, fingerprints, deployment bundles, or script-visible
+metadata.
+
+Engine construction validates explicit `Value` versus `Host` storage and
+owned/shared/exclusive receiver capabilities, computes a deterministic
+`TypeAbiFingerprint`, and seals all entries under one registry checksum.
+Documentation, source positions, and deployment permissions are excluded from
+the ABI; stable type/field/method/variant/trait identities, structural types,
+asyncness, effects, mutation access, index behavior, storage, and receiver
+capabilities participate.
+
+The sealed entries are projected into both `TypeRegistry` and
+`DefinitionRegistry`. Reflection and tooling read the former; production
+analysis and compilation read the latter through `RegistryFacts`. These are
+views of the same sealed facts and checksum, not independent registration
+systems. Executable adapter thunks remain Engine-owned, so dependency-light
+compiler and tooling crates never depend on Runtime closures or Rust
+`std::any::TypeId`.
+
 ### Repository Artifacts Use Domain-Neutral Host Names
 
 Vela is a reusable language library rather than an extension of one embedding

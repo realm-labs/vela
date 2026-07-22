@@ -7,7 +7,9 @@ use lookup::{find_field, find_method, stable_trait_id};
 use crate::access::{FieldAccess, MethodAccess, MethodEffectSet};
 use crate::error::{ReflectError, ReflectErrorKind, ReflectResult};
 use crate::modules::{DeclOrigin, FunctionDesc, ModuleDesc, StateDesc};
+use crate::type_binding::{TypeBindingDesc, TypeBindingSnapshot};
 use vela_common::{HostMethodId, HostTypeId, Span};
+use vela_common::{InteropTypeId, TypeBindingRegistryChecksum};
 use vela_def::{FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId};
 use vela_host::path::HostRef;
 
@@ -677,6 +679,9 @@ impl VariantDesc {
 pub struct TypeRegistry {
     types_by_key: BTreeMap<TypeKey, TypeDesc>,
     host_keys: BTreeMap<HostTypeId, TypeKey>,
+    type_bindings_by_id: BTreeMap<InteropTypeId, TypeBindingDesc>,
+    type_binding_ids_by_key: BTreeMap<TypeKey, InteropTypeId>,
+    type_binding_snapshot: Option<TypeBindingSnapshot>,
     traits_by_name: BTreeMap<String, TraitDesc>,
     modules_by_name: BTreeMap<String, ModuleDesc>,
     functions_by_id: BTreeMap<FunctionId, FunctionDesc>,
@@ -696,6 +701,43 @@ impl TypeRegistry {
             self.host_keys.insert(host_type_id, desc.key.clone());
         }
         self.types_by_key.insert(desc.key.clone(), desc);
+    }
+
+    pub fn install_type_bindings(
+        &mut self,
+        bindings: impl IntoIterator<Item = TypeBindingDesc>,
+        checksum: TypeBindingRegistryChecksum,
+    ) {
+        assert!(
+            self.type_binding_snapshot.is_none(),
+            "type binding snapshot is already sealed"
+        );
+        for binding in bindings {
+            self.type_binding_ids_by_key
+                .insert(binding.key.clone(), binding.id);
+            self.type_bindings_by_id.insert(binding.id, binding);
+        }
+        self.type_binding_snapshot = Some(TypeBindingSnapshot::new(checksum));
+    }
+
+    #[must_use]
+    pub fn type_binding(&self, id: InteropTypeId) -> Option<&TypeBindingDesc> {
+        self.type_bindings_by_id.get(&id)
+    }
+
+    #[must_use]
+    pub fn type_binding_for_key(&self, key: &TypeKey) -> Option<&TypeBindingDesc> {
+        let id = self.type_binding_ids_by_key.get(key)?;
+        self.type_bindings_by_id.get(id)
+    }
+
+    pub fn type_bindings(&self) -> impl Iterator<Item = &TypeBindingDesc> {
+        self.type_bindings_by_id.values()
+    }
+
+    #[must_use]
+    pub const fn type_binding_snapshot(&self) -> Option<TypeBindingSnapshot> {
+        self.type_binding_snapshot
     }
 
     pub fn register_trait(&mut self, desc: TraitDesc) {

@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt;
 
-use vela_common::PrimitiveTag;
+use vela_common::{PrimitiveTag, TypeBindingRegistryChecksum};
 use vela_def::{
     DefId, DefKind, DefPath, FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId,
 };
@@ -17,8 +17,8 @@ use vela_def::{
 pub use declaration_slots::{RegistryDeclarationSlotError, RegistryDeclarationSlots};
 pub use defs::{
     Def, EffectSet, FieldAccessDef, FieldDef, FunctionAccessDef, FunctionDef, FunctionSignature,
-    IndexCapabilityDef, MethodAccessDef, MethodDef, ParamDef, SemanticKey, TraitDef, TypeDef,
-    TypeHintDef, TypeKindDef, VariantDef,
+    IndexCapabilityDef, MethodAccessDef, MethodDef, ParamDef, SemanticKey, TraitDef,
+    TypeBindingDef, TypeDef, TypeHintDef, TypeKindDef, VariantDef,
 };
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -29,6 +29,7 @@ pub struct DefinitionRegistry {
     primitive_type_ids: BTreeMap<PrimitiveTag, TypeId>,
     debug_names: DebugNameTable,
     debug_names_by_def: BTreeMap<DefId, DebugNameId>,
+    type_binding_checksum: Option<TypeBindingRegistryChecksum>,
 }
 
 impl DefinitionRegistry {
@@ -80,6 +81,13 @@ impl DefinitionRegistry {
     #[must_use]
     pub const fn compile_view(&self) -> RegistryCompileView<'_> {
         RegistryCompileView { registry: self }
+    }
+
+    pub fn seal_type_bindings(&mut self, checksum: TypeBindingRegistryChecksum) {
+        assert!(
+            self.type_binding_checksum.replace(checksum).is_none(),
+            "type binding checksum is already sealed"
+        );
     }
 
     pub fn insert(&mut self, def: Def) -> Result<DefId, RegistryError> {
@@ -196,6 +204,11 @@ impl<'registry> RegistryCompileView<'registry> {
     /// Iterates backend-neutral definition metadata in deterministic ID order.
     pub fn definitions(&self) -> impl Iterator<Item = &'registry Def> + 'registry {
         self.registry.defs_by_id.values()
+    }
+
+    #[must_use]
+    pub const fn type_binding_checksum(self) -> Option<TypeBindingRegistryChecksum> {
+        self.registry.type_binding_checksum
     }
 
     /// Freezes declaration metadata into contiguous, deterministic schema

@@ -1,6 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::{HostTypeId, PrimitiveTag, Span};
+use vela_common::{
+    HostTypeId, InteropTypeId, PrimitiveTag, ReceiverCapabilities, Span, StoragePolicy,
+    TypeAbiFingerprint, TypeBindingRegistryChecksum,
+};
 use vela_def::{FieldId, TypeId};
 use vela_reflect::access::{FunctionAccess, MethodAccess};
 use vela_reflect::modules::{DeclOrigin, ModuleDesc};
@@ -49,6 +52,14 @@ pub struct RegistryTypeTargetFact {
     pub name: String,
     pub semantic: TypeId,
     pub host_runtime: Option<HostTypeId>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RegistryTypeBindingFact {
+    pub id: InteropTypeId,
+    pub storage: StoragePolicy,
+    pub capabilities: ReceiverCapabilities,
+    pub abi_fingerprint: TypeAbiFingerprint,
 }
 
 impl RegistryTypeTargetFact {
@@ -376,6 +387,8 @@ impl RegistryEffectFact {
 pub struct RegistryFacts {
     types: BTreeMap<String, TypeFact>,
     type_targets: BTreeMap<String, RegistryTypeTargetFact>,
+    type_bindings: BTreeMap<String, RegistryTypeBindingFact>,
+    type_binding_checksum: Option<TypeBindingRegistryChecksum>,
     type_docs: BTreeMap<String, String>,
     traits: BTreeMap<String, TypeFact>,
     trait_docs: BTreeMap<String, String>,
@@ -419,6 +432,16 @@ impl RegistryFacts {
     #[must_use]
     pub fn type_target_fact(&self, name: &str) -> Option<&RegistryTypeTargetFact> {
         self.type_targets.get(name)
+    }
+
+    #[must_use]
+    pub fn type_binding_fact(&self, name: &str) -> Option<&RegistryTypeBindingFact> {
+        self.type_bindings.get(name)
+    }
+
+    #[must_use]
+    pub const fn type_binding_checksum(&self) -> Option<TypeBindingRegistryChecksum> {
+        self.type_binding_checksum
     }
 
     #[must_use]
@@ -897,6 +920,18 @@ impl RegistryFacts {
 
     pub fn insert_type_target(&mut self, target: RegistryTypeTargetFact) {
         self.type_targets.insert(target.name.clone(), target);
+    }
+
+    pub fn insert_type_binding(
+        &mut self,
+        name: impl Into<String>,
+        binding: RegistryTypeBindingFact,
+    ) {
+        self.type_bindings.insert(name.into(), binding);
+    }
+
+    pub fn set_type_binding_checksum(&mut self, checksum: TypeBindingRegistryChecksum) {
+        self.type_binding_checksum = Some(checksum);
     }
 
     pub fn insert_type_docs(&mut self, name: impl Into<String>, docs: impl Into<String>) {

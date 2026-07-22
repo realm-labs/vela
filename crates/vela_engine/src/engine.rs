@@ -27,10 +27,12 @@ use crate::native::{
     ScopedHostNativeFunctionEntry, ScopedHostNativeOutcome,
 };
 use crate::permission::CapabilitySet;
+use crate::type_binding::TypeBindingRegistry;
 
 #[derive(Clone)]
 pub struct Engine {
     registry: Arc<TypeRegistry>,
+    type_bindings: Arc<TypeBindingRegistry>,
     definition_registry: Arc<DefinitionRegistry>,
     native_functions: BTreeMap<FunctionId, NativeFunctionEntry>,
     async_native_functions: BTreeMap<FunctionId, AsyncNativeFunctionEntry>,
@@ -52,6 +54,7 @@ pub struct Engine {
 
 pub(crate) struct EngineParts {
     pub(crate) registry: TypeRegistry,
+    pub(crate) type_bindings: TypeBindingRegistry,
     pub(crate) definition_registry: DefinitionRegistry,
     pub(crate) native_functions: Vec<NativeFunctionEntry>,
     pub(crate) async_native_functions: Vec<AsyncNativeFunctionEntry>,
@@ -173,6 +176,7 @@ impl Engine {
             .collect();
         Self {
             registry: Arc::new(parts.registry),
+            type_bindings: Arc::new(parts.type_bindings),
             definition_registry: Arc::new(parts.definition_registry),
             native_functions,
             async_native_functions,
@@ -216,6 +220,11 @@ impl Engine {
     #[must_use]
     pub fn registry(&self) -> Arc<TypeRegistry> {
         Arc::clone(&self.registry)
+    }
+
+    #[must_use]
+    pub fn type_bindings(&self) -> Arc<TypeBindingRegistry> {
+        Arc::clone(&self.type_bindings)
     }
 
     #[must_use]

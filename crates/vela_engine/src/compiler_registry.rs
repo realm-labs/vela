@@ -1,3 +1,4 @@
+use crate::type_binding::TypeBindingRegistry;
 use vela_def::{DefPath, VariantId};
 use vela_reflect::registry::{
     FieldDesc, HostIndexCapability, MethodDesc, MethodParamDesc, TypeDesc, TypeKind, VariantDesc,
@@ -5,7 +6,8 @@ use vela_reflect::registry::{
 use vela_registry::{
     DefinitionRegistry, EffectSet as DefinitionEffectSet, FieldAccessDef, FieldDef,
     FunctionAccessDef, FunctionDef, FunctionSignature, IndexCapabilityDef, MethodAccessDef,
-    MethodDef, ParamDef, RegistryError, TypeDef, TypeHintDef, TypeKindDef, VariantDef,
+    MethodDef, ParamDef, RegistryError, TypeBindingDef, TypeDef, TypeHintDef, TypeKindDef,
+    VariantDef,
 };
 
 use crate::native::{
@@ -28,6 +30,7 @@ pub(crate) struct EngineFunctionEntries<'a> {
 
 pub(crate) fn definition_registry_from_engine_parts(
     types: &[TypeDesc],
+    type_bindings: &TypeBindingRegistry,
     functions: EngineFunctionEntries<'_>,
     include_reflection_natives: bool,
     include_stdlib: bool,
@@ -37,7 +40,7 @@ pub(crate) fn definition_registry_from_engine_parts(
         vela_stdlib::register_stdlib(&mut registry)?;
     }
     for desc in types {
-        register_type_def(&mut registry, desc)?;
+        register_type_def(&mut registry, desc, type_bindings)?;
     }
     for desc in functions
         .native
@@ -56,14 +59,16 @@ pub(crate) fn definition_registry_from_engine_parts(
     if include_reflection_natives {
         vela_stdlib::register_reflection_natives(&mut registry)?;
     }
+    registry.seal_type_bindings(type_bindings.checksum());
     Ok(registry)
 }
 
 fn register_type_def(
     registry: &mut DefinitionRegistry,
     desc: &TypeDesc,
+    type_bindings: &TypeBindingRegistry,
 ) -> Result<(), RegistryError> {
-    let type_id = registry.register_type(type_def(desc))?;
+    let type_id = registry.register_type(type_def(desc, type_bindings))?;
     for (order, field) in desc.fields.iter().enumerate() {
         registry.register_field(field_def(desc, type_id, field, declaration_order(order)))?;
     }
@@ -91,7 +96,7 @@ fn register_type_def(
     Ok(())
 }
 
-fn type_def(desc: &TypeDesc) -> TypeDef {
+fn type_def(desc: &TypeDesc, type_bindings: &TypeBindingRegistry) -> TypeDef {
     let mut def = TypeDef::new(source_type_path("host", &desc.key.name))
         .with_id(desc.key.id)
         .kind(definition_type_kind(desc.kind));
@@ -100,6 +105,15 @@ fn type_def(desc: &TypeDesc) -> TypeDef {
     }
     if let Some(capability) = &desc.index_capability {
         def = def.index_capability(index_capability_def(capability));
+    }
+    if let Some(binding) = type_bindings.get(vela_common::InteropTypeId::from_type_id(desc.key.id))
+    {
+        def = def.binding(TypeBindingDef::new(
+            binding.id,
+            binding.storage,
+            binding.capabilities,
+            binding.abi_fingerprint,
+        ));
     }
     def
 }
@@ -474,8 +488,11 @@ mod tests {
             |_| unreachable!("metadata-only native should not execute"),
         );
 
+        let type_bindings = crate::type_binding::TypeBindingRegistry::seal(Vec::new(), &[])
+            .expect("empty type binding registry");
         let registry = definition_registry_from_engine_parts(
             &[type_desc, index_desc],
+            &type_bindings,
             EngineFunctionEntries {
                 native: &[native],
                 async_native: &[],

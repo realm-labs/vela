@@ -32,6 +32,7 @@ pub use crate::source::{
     ProviderSourceLocation,
 };
 pub use crate::source::{EngineSourceError, EngineSourceErrorKind};
+pub use crate::type_binding::{TypeBinding, TypeBindingRegistry};
 pub use crate::{args, host};
 pub use vela_bytecode::{
     UnlinkedCodeObject,

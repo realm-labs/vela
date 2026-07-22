@@ -6,7 +6,8 @@ use super::{
     CallableParameterFact, CallableParameterRequirementFact, CallableSignatureFact,
     RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryFieldTargetFact,
     RegistryFunctionAccessFact, RegistryIndexCapabilityFact, RegistryMethodAccessFact,
-    RegistryModuleFact, RegistryTypeTargetFact, registry_hint_fact, type_desc_fact,
+    RegistryModuleFact, RegistryTypeBindingFact, RegistryTypeTargetFact, registry_hint_fact,
+    type_desc_fact,
 };
 use crate::type_fact::TypeFact;
 
@@ -15,6 +16,10 @@ impl RegistryFacts {
     pub fn from_registry(registry: &TypeRegistry) -> Self {
         let mut facts = Self::default();
 
+        if let Some(snapshot) = registry.type_binding_snapshot() {
+            facts.set_type_binding_checksum(snapshot.checksum());
+        }
+
         for desc in registry.types() {
             let type_fact = type_desc_fact(desc);
             facts.types.insert(desc.key.name.clone(), type_fact.clone());
@@ -22,6 +27,17 @@ impl RegistryFacts {
                 desc.key.name.clone(),
                 RegistryTypeTargetFact::new(&desc.key.name, desc.key.id, desc.host_type_id),
             );
+            if let Some(binding) = registry.type_binding_for_key(&desc.key) {
+                facts.insert_type_binding(
+                    &desc.key.name,
+                    RegistryTypeBindingFact {
+                        id: binding.id,
+                        storage: binding.storage,
+                        capabilities: binding.capabilities,
+                        abi_fingerprint: binding.abi_fingerprint,
+                    },
+                );
+            }
             if let Some(docs) = &desc.docs {
                 facts.type_docs.insert(desc.key.name.clone(), docs.clone());
             }

@@ -16,6 +16,7 @@ pub mod permissions;
 pub mod registry;
 mod script_attrs;
 pub mod script_types;
+pub mod type_binding;
 pub mod types;
 pub mod value;
 pub mod value_access;

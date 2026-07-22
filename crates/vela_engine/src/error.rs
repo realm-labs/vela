@@ -70,6 +70,21 @@ pub enum EngineErrorKind {
     DuplicateHostTypeId {
         id: u64,
     },
+    DuplicateInteropTypeId {
+        id: u128,
+    },
+    DuplicateRustTypeBinding {
+        first: u128,
+        second: u128,
+    },
+    InvalidTypeBindingStorage {
+        name: String,
+        storage: String,
+    },
+    InvalidTypeBindingCapabilities {
+        name: String,
+        bits: u8,
+    },
     DuplicateFieldId {
         type_name: String,
         id: u128,
@@ -209,6 +224,27 @@ impl fmt::Display for EngineError {
             }
             EngineErrorKind::DuplicateHostTypeId { id } => {
                 write!(formatter, "duplicate host type id {id}")
+            }
+            EngineErrorKind::DuplicateInteropTypeId { id } => {
+                write!(formatter, "duplicate interop type id {id}")
+            }
+            EngineErrorKind::DuplicateRustTypeBinding { first, second } => {
+                write!(
+                    formatter,
+                    "one Rust type cannot use two interop type ids {first} and {second}"
+                )
+            }
+            EngineErrorKind::InvalidTypeBindingStorage { name, storage } => {
+                write!(
+                    formatter,
+                    "type binding {name} cannot use {storage} storage with its registered representation"
+                )
+            }
+            EngineErrorKind::InvalidTypeBindingCapabilities { name, bits } => {
+                write!(
+                    formatter,
+                    "type binding {name} has invalid receiver capabilities 0x{bits:02x}"
+                )
             }
             EngineErrorKind::DuplicateFieldId { type_name, id } => {
                 write!(formatter, "duplicate field id {id} on type {type_name}")

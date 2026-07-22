@@ -12,6 +12,7 @@ mod runtime_args;
 mod script_identity;
 mod source_reload;
 mod strings;
+mod type_binding;
 mod typed_host;
 mod typed_native;
 mod validation;

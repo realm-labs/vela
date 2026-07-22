@@ -1,6 +1,8 @@
 use std::fmt;
 
-use vela_common::PrimitiveTag;
+use vela_common::{
+    InteropTypeId, PrimitiveTag, ReceiverCapabilities, StoragePolicy, TypeAbiFingerprint,
+};
 use vela_def::{
     DefId, DefKind, DefPath, FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId,
 };
@@ -813,6 +815,32 @@ pub struct TypeDef {
     pub primitive: Option<PrimitiveTag>,
     pub host_runtime_id: Option<u128>,
     pub index_capability: Option<IndexCapabilityDef>,
+    pub binding: Option<TypeBindingDef>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct TypeBindingDef {
+    pub id: InteropTypeId,
+    pub storage: StoragePolicy,
+    pub capabilities: ReceiverCapabilities,
+    pub abi_fingerprint: TypeAbiFingerprint,
+}
+
+impl TypeBindingDef {
+    #[must_use]
+    pub const fn new(
+        id: InteropTypeId,
+        storage: StoragePolicy,
+        capabilities: ReceiverCapabilities,
+        abi_fingerprint: TypeAbiFingerprint,
+    ) -> Self {
+        Self {
+            id,
+            storage,
+            capabilities,
+            abi_fingerprint,
+        }
+    }
 }
 
 impl TypeDef {
@@ -833,6 +861,7 @@ impl TypeDef {
             primitive: None,
             host_runtime_id: None,
             index_capability: None,
+            binding: None,
         }
     }
 
@@ -862,6 +891,12 @@ impl TypeDef {
     #[must_use]
     pub fn index_capability(mut self, capability: IndexCapabilityDef) -> Self {
         self.index_capability = Some(capability);
+        self
+    }
+
+    #[must_use]
+    pub const fn binding(mut self, binding: TypeBindingDef) -> Self {
+        self.binding = Some(binding);
         self
     }
 
