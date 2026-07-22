@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use vela_reflect::modules::ModuleDesc;
-use vela_reflect::registry::{AttrMap, MethodParamDesc, TypeDesc};
+use vela_reflect::registry::{AttrMap, MethodParamDesc, TypeDesc, TypeKind};
 
 use crate::compiler_registry::EngineFunctionEntries;
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
@@ -146,6 +146,7 @@ fn validate_type_desc(
         }));
     }
     validate_attr_names(&format!("type {}", desc.key.name), &desc.attrs)?;
+    validate_tuple_type(desc)?;
     if let Some(host_type_id) = desc.host_type_id
         && !host_ids.insert(host_type_id)
     {
@@ -190,6 +191,34 @@ fn validate_type_desc(
         )?;
     }
 
+    Ok(())
+}
+
+fn validate_tuple_type(desc: &TypeDesc) -> EngineResult<()> {
+    match (desc.kind, desc.tuple_elements.len()) {
+        (TypeKind::Tuple, count) if count < 2 => {
+            return Err(EngineError::new(EngineErrorKind::InvalidTupleType {
+                name: desc.key.name.clone(),
+                element_count: count,
+                reason: "tuple descriptors require at least two elements",
+            }));
+        }
+        (TypeKind::Tuple, _) => {}
+        (_, 0) => return Ok(()),
+        (_, count) => {
+            return Err(EngineError::new(EngineErrorKind::InvalidTupleType {
+                name: desc.key.name.clone(),
+                element_count: count,
+                reason: "only tuple descriptors may declare tuple elements",
+            }));
+        }
+    }
+    for (index, element) in desc.tuple_elements.iter().enumerate() {
+        validate_raw_type_hint(
+            &format!("tuple element {index} of {}", desc.key.name),
+            Some(element),
+        )?;
+    }
     Ok(())
 }
 

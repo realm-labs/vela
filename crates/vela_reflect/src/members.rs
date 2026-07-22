@@ -73,6 +73,7 @@ pub fn kind(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<Ref
                 TypeKind::Char => "char",
                 TypeKind::String => "string",
                 TypeKind::Bytes => "bytes",
+                TypeKind::Tuple => "tuple",
                 TypeKind::Array => "array",
                 TypeKind::Map => "map",
                 TypeKind::Set => "set",

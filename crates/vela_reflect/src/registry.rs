@@ -62,6 +62,7 @@ pub enum TypeKind {
     Char,
     String,
     Bytes,
+    Tuple,
     Array,
     Map,
     Set,
@@ -177,6 +178,7 @@ pub struct TypeDesc {
     pub kind: TypeKind,
     pub schema_hash: Option<SchemaHash>,
     pub host_type_id: Option<HostTypeId>,
+    pub tuple_elements: Vec<String>,
     pub fields: Vec<FieldDesc>,
     pub methods: Vec<MethodDesc>,
     pub traits: Vec<TraitDesc>,
@@ -196,6 +198,7 @@ impl TypeDesc {
             kind: TypeKind::Host,
             schema_hash: None,
             host_type_id: None,
+            tuple_elements: Vec::new(),
             fields: Vec::new(),
             methods: Vec::new(),
             traits: Vec::new(),
@@ -223,6 +226,13 @@ impl TypeDesc {
     #[must_use]
     pub fn host_type(mut self, host_type_id: HostTypeId) -> Self {
         self.host_type_id = Some(host_type_id);
+        self
+    }
+
+    /// Adds one positional element contract to a tuple descriptor.
+    #[must_use]
+    pub fn tuple_element(mut self, type_hint: impl Into<String>) -> Self {
+        self.tuple_elements.push(type_hint.into());
         self
     }
 

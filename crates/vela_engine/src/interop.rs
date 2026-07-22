@@ -215,6 +215,48 @@ impl<T: VelaValueBoundary, E: VelaValueBoundary> VelaValueBoundary for Result<T,
     }
 }
 
+impl<A, B> VelaValueBoundary for (A, B)
+where
+    A: VelaValueBoundary,
+    B: VelaValueBoundary,
+{
+    fn vela_type_hint() -> TypeHint {
+        TypeHint::tuple_of([A::vela_type_hint(), B::vela_type_hint()])
+    }
+}
+
+impl<A, B, C> VelaValueBoundary for (A, B, C)
+where
+    A: VelaValueBoundary,
+    B: VelaValueBoundary,
+    C: VelaValueBoundary,
+{
+    fn vela_type_hint() -> TypeHint {
+        TypeHint::tuple_of([
+            A::vela_type_hint(),
+            B::vela_type_hint(),
+            C::vela_type_hint(),
+        ])
+    }
+}
+
+impl<A, B, C, D> VelaValueBoundary for (A, B, C, D)
+where
+    A: VelaValueBoundary,
+    B: VelaValueBoundary,
+    C: VelaValueBoundary,
+    D: VelaValueBoundary,
+{
+    fn vela_type_hint() -> TypeHint {
+        TypeHint::tuple_of([
+            A::vela_type_hint(),
+            B::vela_type_hint(),
+            C::vela_type_hint(),
+            D::vela_type_hint(),
+        ])
+    }
+}
+
 impl<K, V> VelaValueBoundary for BTreeMap<K, V>
 where
     K: VelaValueBoundary,

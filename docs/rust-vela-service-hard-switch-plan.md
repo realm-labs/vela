@@ -1094,12 +1094,12 @@ runtime representation. Concrete `Option<T>` and `Result<T, E>` bindings now
 carry recursively specialized Rust ABI identity while their codecs use the
 existing dynamic Vela Option/Result enum values and standard behavior in both
 directions. Unit, bool, char, exact-width numeric scalars, and String now carry
-concrete Rust ABI bindings over their existing Vela value representations. The
-remaining tuple matrix, automatic service type-closure registration,
-View/MutView representations, prepared operations, and host-backed bulk
-behavior are still open. Tuple bindings remain open until reflection can
-describe their real tuple shape rather than misclassifying them as nominal
-structs or enums.
+concrete Rust ABI bindings over their existing Vela value representations.
+Rust tuples of arity two through four now preserve ordered recursive element
+facts in a real reflected Tuple kind, project those facts through both registry
+views, and round-trip through ordinary Vela tuple projections. Automatic
+service type-closure registration, View/MutView representations, prepared
+operations, and host-backed bulk behavior are still open.
 
 ### S4 — Service contract and Rust-only generation
 

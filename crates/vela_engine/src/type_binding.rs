@@ -614,6 +614,12 @@ fn type_abi_fingerprint(
     let mut fields = desc.fields.iter().collect::<Vec<_>>();
     fields.sort_by_key(|field| field.id);
     parts.extend(fields.into_iter().map(field_abi));
+    parts.extend(
+        desc.tuple_elements
+            .iter()
+            .enumerate()
+            .map(|(index, element)| format!("tuple-element={index}:{element}")),
+    );
     let mut methods = desc.methods.iter().collect::<Vec<_>>();
     methods.sort_by_key(|method| method.id);
     for method in methods {
@@ -818,6 +824,7 @@ const fn type_kind_name(kind: TypeKind) -> &'static str {
         TypeKind::Char => "char",
         TypeKind::String => "string",
         TypeKind::Bytes => "bytes",
+        TypeKind::Tuple => "tuple",
         TypeKind::Array => "array",
         TypeKind::Map => "map",
         TypeKind::Set => "set",

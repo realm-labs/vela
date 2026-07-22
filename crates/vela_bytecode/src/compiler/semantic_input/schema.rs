@@ -785,7 +785,11 @@ pub(super) fn registry_hint_fact(hint: &TypeHintDef, catalog: &ExternalCatalog) 
         ("Closure", []) => TypeFact::Closure,
         (name, []) => PrimitiveTag::from_name(name)
             .map(TypeFact::primitive)
-            .or_else(|| catalog.type_by_source(name).map(registered_type_fact))
+            .or_else(|| {
+                catalog
+                    .type_by_source(name)
+                    .map(|definition| registered_type_fact(definition, catalog))
+            })
             .unwrap_or(TypeFact::Unknown),
         _ => TypeFact::Unknown,
     }
@@ -915,7 +919,10 @@ fn contract_box(
     }
 }
 
-fn registered_type_fact(definition: &vela_registry::TypeDef) -> TypeFact {
+fn registered_type_fact(
+    definition: &vela_registry::TypeDef,
+    catalog: &ExternalCatalog,
+) -> TypeFact {
     if let Some(primitive) = definition.primitive {
         return TypeFact::primitive(primitive);
     }
@@ -936,6 +943,12 @@ fn registered_type_fact(definition: &vela_registry::TypeDef) -> TypeFact {
         TypeKindDef::Char => TypeFact::CHAR,
         TypeKindDef::String => TypeFact::STRING,
         TypeKindDef::Bytes => TypeFact::BYTES,
+        TypeKindDef::Tuple => TypeFact::tuple(
+            definition
+                .tuple_elements
+                .iter()
+                .map(|element| registry_hint_fact(element, catalog)),
+        ),
         TypeKindDef::Array => TypeFact::array(TypeFact::Any),
         TypeKindDef::Map => TypeFact::map(TypeFact::Any, TypeFact::Any),
         TypeKindDef::Set => TypeFact::set(TypeFact::Any),

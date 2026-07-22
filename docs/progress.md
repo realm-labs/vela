@@ -68,9 +68,12 @@ concrete ABI identities. Concrete Rust `Option<T>` and `Result<T, E>` bindings
 now specialize their recursive payload ABI while round-tripping through the
 existing dynamic Vela Option/Result values and standard methods. Rust unit,
 bool, char, exact-width numeric scalars, and String now also have concrete ABI
-bindings over their native Vela value representations. Service-macro closure
-generation and borrowed MapView/MapMut representations remain open, so
-application code does not yet receive automatic transitive registration.
+bindings over their native Vela value representations. Rust tuples of arity
+two through four now have ordered concrete bindings, an exact reflected Tuple
+kind, and element facts that survive both reflection and compiler-registry
+projection. Service-macro closure generation and borrowed MapView/MapMut
+representations remain open, so application code does not yet receive
+automatic transitive registration.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry
@@ -237,8 +240,8 @@ Runtime storage. Structural `Value` derive generation is implemented for named
 structs plus unit/named-field enums, and `ScriptHost` emits the base Host
 binding. Owned standard bindings now cover concrete `Vec<T>`, `Vec<u8>`,
 `BTreeMap<K, V>`, `HashMap<K, V>`, `BTreeSet<T>`, `HashSet<T>`, `Option<T>`,
-`Result<T, E>`, unit, bool, char, exact-width numeric, and String identities.
-Collections expose their common
+`Result<T, E>`, tuples of arity two through four, unit, bool, char, exact-width
+numeric, and String identities. Collections expose their common
 Sequence/MapLike/SetLike surfaces, while Option/Result reuse the standard Vela
 dynamic enum behavior. Method-thunk composition is complete for generated
 ScriptHost registrations. Common-arity host-argument preflight now uses
@@ -246,9 +249,9 @@ generated request arrays and an eight-entry inline result set; the
 shared/exclusive boundary rows allocate zero times and still reject the
 complete conflict set before lease acquisition. Generated host functions and
 methods now reuse registration-time prepared parameter plans instead of
-rebuilding contracts and request metadata on each call. Fixed arrays, tuple
-bindings, all borrowed collection views, compact root-local HostRef storage,
-dense prepared field/method thunks, and a post-S2 shorter
+rebuilding contracts and request metadata on each call. Fixed arrays, all
+borrowed collection views, compact root-local HostRef storage, dense prepared
+field/method thunks, and a post-S2 shorter
 owned-host reclamation policy remain open. Runtime receiver enforcement is
 live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-

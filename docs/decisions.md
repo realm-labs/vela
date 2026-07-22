@@ -2549,9 +2549,16 @@ stable interop identity and ABI include recursively normalized payload facts,
 but their structural codecs still produce and accept the standard dynamic
 `Option::{Some,None}` and `Result::{Ok,Err}` enum values. This preserves one
 Vela Option/Result method and pattern surface without introducing
-script-language generics. Rust tuple bindings must wait for an exact reflected
-tuple kind; they must not be modeled as nominal script structs or enums merely
-to enter the binding registry.
+script-language generics.
+
+Rust tuple bindings use a dedicated reflected `Tuple` kind rather than nominal
+script structs or enums. `TypeDesc` carries ordered element type hints, Engine
+projects them into backend-neutral `TypeDef` metadata, and reflection plus
+compiler registry views reconstruct the same ordered `TypeFact::Tuple`.
+Descriptors require at least two elements and non-tuple kinds cannot carry
+tuple elements. The initial Rust boundary matches the existing supported codec
+surface at arities two through four; each ordered specialization has a distinct
+stable interop identity and ABI fingerprint.
 
 ### Service Deployment Supports Snapshots And Exact-Base Deltas
 

@@ -21,6 +21,7 @@ pub(super) fn type_detail(kind: TypeKind) -> String {
         TypeKind::Char => "kind: char".to_owned(),
         TypeKind::String => "kind: String".to_owned(),
         TypeKind::Bytes => "kind: Bytes".to_owned(),
+        TypeKind::Tuple => "kind: tuple".to_owned(),
         TypeKind::Array => "kind: Array".to_owned(),
         TypeKind::Map => "kind: Map".to_owned(),
         TypeKind::Set => "kind: Set".to_owned(),

@@ -46,6 +46,11 @@ pub enum EngineErrorKind {
     InvalidTypeName {
         name: String,
     },
+    InvalidTupleType {
+        name: String,
+        element_count: usize,
+        reason: &'static str,
+    },
     InvalidSchemaMemberName {
         type_name: String,
         member_kind: String,
@@ -203,6 +208,16 @@ impl fmt::Display for EngineError {
             }
             EngineErrorKind::InvalidTypeName { name } => {
                 write!(formatter, "invalid type name {name}")
+            }
+            EngineErrorKind::InvalidTupleType {
+                name,
+                element_count,
+                reason,
+            } => {
+                write!(
+                    formatter,
+                    "invalid tuple type {name} with {element_count} elements: {reason}"
+                )
             }
             EngineErrorKind::InvalidSchemaMemberName {
                 type_name,

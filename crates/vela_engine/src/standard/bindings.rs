@@ -98,6 +98,39 @@ where
     }
 }
 
+impl<A, B> StandardTypeBinding for (A, B)
+where
+    A: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
+    B: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
+{
+    fn standard_type_binding() -> TypeBinding<Self> {
+        TypeBinding::value(tuple_type_desc::<Self>())
+    }
+}
+
+impl<A, B, C> StandardTypeBinding for (A, B, C)
+where
+    A: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
+    B: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
+    C: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
+{
+    fn standard_type_binding() -> TypeBinding<Self> {
+        TypeBinding::value(tuple_type_desc::<Self>())
+    }
+}
+
+impl<A, B, C, D> StandardTypeBinding for (A, B, C, D)
+where
+    A: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
+    B: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
+    C: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
+    D: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
+{
+    fn standard_type_binding() -> TypeBinding<Self> {
+        TypeBinding::value(tuple_type_desc::<Self>())
+    }
+}
+
 impl<K, V> StandardTypeBinding for BTreeMap<K, V>
 where
     K: VelaValueKeyBoundary + IntoScriptArg + FromScriptArg + Ord + 'static,
@@ -238,6 +271,31 @@ where
     .attr("vela_result_error", error)
 }
 
+fn tuple_type_desc<T>() -> TypeDesc
+where
+    T: VelaValueBoundary,
+{
+    let crate::native::TypeHint::TupleOf(elements) = T::vela_type_hint() else {
+        unreachable!("tuple binding must expose a tuple type hint")
+    };
+    let elements = elements.iter().map(type_hint_display).collect::<Vec<_>>();
+    let arity = elements.len();
+    let facts = format!("({})", elements.join(", "));
+    let path = format!("rust::tuple::Tuple{arity}<{}>", elements.join(", "));
+    let mut desc = concrete_type_desc("tuple", path, &facts, TypeKind::Tuple)
+        .docs(format!(
+            "Concrete Rust {arity}-element tuple value binding using the Vela tuple representation."
+        ))
+        .attr("rust_standard_family", "tuple")
+        .attr("vela_value_shape", "Tuple")
+        .attr("vela_tuple_arity", arity.to_string())
+        .attr("vela_tuple_elements", facts);
+    for element in elements {
+        desc = desc.tuple_element(element);
+    }
+    desc
+}
+
 #[derive(Clone, Copy)]
 enum MapFamily {
     BTree,
@@ -354,6 +412,8 @@ fn concrete_type_desc(family: &str, path: String, facts: &str, kind: TypeKind) -
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vela_analysis::registry::RegistryFacts;
+    use vela_analysis::type_fact::TypeFact;
     use vela_common::{ScalarValue, SourceId};
     use vela_vm::owned_value::OwnedValue;
 
@@ -482,6 +542,86 @@ fn echo_label(value: String) -> String {
                     .expect("returned string should be owned")
             ),
             Ok("ready".to_owned())
+        );
+    }
+
+    #[test]
+    fn tuple_bindings_preserve_arity_order_and_compiler_facts() {
+        type Pair = (i64, String);
+        type Reversed = (String, i64);
+        type Triple = (i64, String, bool);
+
+        let pair = tuple_type_desc::<Pair>();
+        let reversed = tuple_type_desc::<Reversed>();
+        let triple = tuple_type_desc::<Triple>();
+        assert_eq!(pair.kind, TypeKind::Tuple);
+        assert_eq!(pair.tuple_elements, ["i64", "String"]);
+        assert_eq!(triple.tuple_elements, ["i64", "String", "bool"]);
+        assert_ne!(pair.key, reversed.key);
+        assert_ne!(pair.key, triple.key);
+
+        let pair_name = pair.key.name.clone();
+        let engine = Engine::builder()
+            .register_rust_type::<Pair>(standard_type_binding::<Pair>())
+            .build()
+            .expect("tuple binding should seal");
+        let facts = RegistryFacts::from_compile_view(engine.compiler_registry())
+            .expect("tuple compiler facts");
+        assert_eq!(
+            facts.type_fact(&pair_name),
+            Some(&TypeFact::tuple([TypeFact::I64, TypeFact::STRING]))
+        );
+        let reflected = engine.registry();
+        let reflection_facts = RegistryFacts::from_registry(&reflected);
+        assert_eq!(
+            reflection_facts.type_fact(&pair_name),
+            Some(&TypeFact::tuple([TypeFact::I64, TypeFact::STRING]))
+        );
+    }
+
+    #[test]
+    fn registered_rust_tuples_round_trip_through_vela_projections() {
+        type Pair = (i64, String);
+        type Reversed = (String, i64);
+
+        let engine = Engine::builder()
+            .with_standard_natives()
+            .register_rust_type::<Pair>(standard_type_binding::<Pair>())
+            .register_rust_type::<Reversed>(standard_type_binding::<Reversed>())
+            .build()
+            .expect("ordered tuple bindings should seal together");
+        let bindings = engine.type_bindings();
+        let pair_codec = bindings.value_codec::<Pair>().expect("pair codec");
+        let reversed_codec = bindings
+            .value_codec::<Reversed>()
+            .expect("reversed pair codec");
+        let program = engine
+            .compile_source_with_id(
+                SourceId::new(5),
+                r#"
+fn reverse_and_increment(value: (i64, String)) -> (String, i64) {
+    return (value.1, value.0 + 1);
+}
+"#,
+            )
+            .expect("tuple projections should compile");
+        drop(bindings);
+        let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+
+        let output = runtime
+            .call(
+                "reverse_and_increment",
+                CallArgs::from_positional([pair_codec.encode((8, "ready".to_owned()))]),
+                CallOptions::unbounded(),
+            )
+            .expect("registered Rust tuple should use Vela tuple behavior");
+        assert_eq!(
+            reversed_codec.decode(
+                &runtime
+                    .value_to_owned(&output)
+                    .expect("returned tuple should be owned")
+            ),
+            Ok(("ready".to_owned(), 9))
         );
     }
 

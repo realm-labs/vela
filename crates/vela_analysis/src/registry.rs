@@ -1162,7 +1162,7 @@ impl RegistryFacts {
     }
 }
 
-fn type_desc_fact(desc: &TypeDesc) -> TypeFact {
+fn type_desc_fact(registry: &TypeRegistry, desc: &TypeDesc) -> TypeFact {
     if let Some(tag) = PrimitiveTag::from_name(&desc.key.name) {
         return TypeFact::primitive(tag);
     }
@@ -1183,6 +1183,11 @@ fn type_desc_fact(desc: &TypeDesc) -> TypeFact {
         TypeKind::Char => TypeFact::CHAR,
         TypeKind::String => TypeFact::STRING,
         TypeKind::Bytes => TypeFact::BYTES,
+        TypeKind::Tuple => TypeFact::tuple(
+            desc.tuple_elements
+                .iter()
+                .map(|element| registry_hint_fact(registry, element)),
+        ),
         TypeKind::Array => TypeFact::array(TypeFact::Any),
         TypeKind::Map => TypeFact::map(TypeFact::Any, TypeFact::Any),
         TypeKind::Set => TypeFact::set(TypeFact::Any),
@@ -1256,9 +1261,10 @@ fn raw_registry_hint_fact(registry: &TypeRegistry, hint: &str) -> TypeFact {
         "Closure" => TypeFact::Closure,
         "Option" => TypeFact::option(TypeFact::Unknown),
         "Result" => TypeFact::result(TypeFact::Unknown, TypeFact::Unknown),
-        name => registry
-            .type_by_name(name)
-            .map_or_else(|| trait_or_unknown(registry, name), type_desc_fact),
+        name => registry.type_by_name(name).map_or_else(
+            || trait_or_unknown(registry, name),
+            |desc| type_desc_fact(registry, desc),
+        ),
     }
 }
 

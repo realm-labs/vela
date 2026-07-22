@@ -225,22 +225,55 @@ impl<'registry> CompileViewFacts<'registry> {
                 .entry(definition.path.name.clone())
                 .or_default() += 1;
         }
-        for definition in types {
+        for definition in &types {
             let name = source_name(&definition.path);
-            let fact = registered_type_fact(definition, &name);
             self.type_names.insert(definition.id, name.clone());
-            self.type_facts.insert(name.clone(), fact.clone());
             self.type_targets
                 .insert(name.clone(), (definition.id, definition.host_runtime_id));
             if name != definition.path.name
                 && short_name_counts.get(&definition.path.name) == Some(&1)
             {
-                self.type_facts.insert(definition.path.name.clone(), fact);
                 self.type_targets.insert(
                     definition.path.name.clone(),
                     (definition.id, definition.host_runtime_id),
                 );
             }
+        }
+        for definition in types
+            .iter()
+            .copied()
+            .filter(|definition| definition.kind != TypeKindDef::Tuple)
+        {
+            let name = self.type_names[&definition.id].clone();
+            let fact = registered_type_fact(definition, &name);
+            self.insert_collected_type_fact(definition, &short_name_counts, fact);
+        }
+        for definition in types
+            .iter()
+            .copied()
+            .filter(|definition| definition.kind == TypeKindDef::Tuple)
+        {
+            let fact = TypeFact::tuple(
+                definition
+                    .tuple_elements
+                    .iter()
+                    .map(|element| self.type_hint_fact(element)),
+            );
+            self.insert_collected_type_fact(definition, &short_name_counts, fact);
+        }
+    }
+
+    fn insert_collected_type_fact(
+        &mut self,
+        definition: &TypeDef,
+        short_name_counts: &BTreeMap<String, usize>,
+        fact: TypeFact,
+    ) {
+        let name = self.type_names[&definition.id].clone();
+        self.type_facts.insert(name.clone(), fact.clone());
+        if name != definition.path.name && short_name_counts.get(&definition.path.name) == Some(&1)
+        {
+            self.type_facts.insert(definition.path.name.clone(), fact);
         }
     }
 
@@ -404,6 +437,7 @@ fn registered_type_fact(definition: &TypeDef, name: &str) -> TypeFact {
         TypeKindDef::Char => TypeFact::CHAR,
         TypeKindDef::String => TypeFact::STRING,
         TypeKindDef::Bytes => TypeFact::BYTES,
+        TypeKindDef::Tuple => unreachable!("tuple facts require collected element contracts"),
         TypeKindDef::Array => TypeFact::array(TypeFact::Any),
         TypeKindDef::Map => TypeFact::map(TypeFact::Any, TypeFact::Any),
         TypeKindDef::Set => TypeFact::set(TypeFact::Any),

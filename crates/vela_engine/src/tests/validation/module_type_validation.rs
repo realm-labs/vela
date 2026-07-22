@@ -138,6 +138,42 @@ fn engine_rejects_malformed_type_names() {
 }
 
 #[test]
+fn engine_rejects_incomplete_or_misclassified_tuple_descriptors() {
+    let incomplete = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "host::Pair"))
+                .kind(TypeKind::Tuple)
+                .tuple_element("i64"),
+        )
+        .build();
+    assert!(matches!(
+        incomplete,
+        Err(error) if error.kind == EngineErrorKind::InvalidTupleType {
+            name: "host::Pair".to_owned(),
+            element_count: 1,
+            reason: "tuple descriptors require at least two elements",
+        }
+    ));
+
+    let misclassified = Engine::builder()
+        .register_type(
+            TypeDesc::new(TypeKey::new(TypeId::new(2), "host::Pair"))
+                .kind(TypeKind::ScriptStruct)
+                .tuple_element("i64")
+                .tuple_element("String"),
+        )
+        .build();
+    assert!(matches!(
+        misclassified,
+        Err(error) if error.kind == EngineErrorKind::InvalidTupleType {
+            name: "host::Pair".to_owned(),
+            element_count: 2,
+            reason: "only tuple descriptors may declare tuple elements",
+        }
+    ));
+}
+
+#[test]
 fn engine_rejects_empty_type_attribute_names() {
     let result = Engine::builder()
         .register_type(TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).attr("", "bad"))

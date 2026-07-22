@@ -103,6 +103,9 @@ fn type_def(desc: &TypeDesc, type_bindings: &TypeBindingRegistry) -> TypeDef {
     if let Some(host_type_id) = desc.host_type_id {
         def = def.host_runtime_id(host_type_id.get().into());
     }
+    for element in &desc.tuple_elements {
+        def = def.tuple_element(raw_type_hint_def(element));
+    }
     if let Some(capability) = &desc.index_capability {
         def = def.index_capability(index_capability_def(capability));
     }
@@ -280,6 +283,7 @@ const fn definition_type_kind(kind: TypeKind) -> TypeKindDef {
         TypeKind::Char => TypeKindDef::Char,
         TypeKind::String => TypeKindDef::String,
         TypeKind::Bytes => TypeKindDef::Bytes,
+        TypeKind::Tuple => TypeKindDef::Tuple,
         TypeKind::Array => TypeKindDef::Array,
         TypeKind::Map => TypeKindDef::Map,
         TypeKind::Set => TypeKindDef::Set,

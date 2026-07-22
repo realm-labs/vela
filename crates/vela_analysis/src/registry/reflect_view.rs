@@ -21,7 +21,7 @@ impl RegistryFacts {
         }
 
         for desc in registry.types() {
-            let type_fact = type_desc_fact(desc);
+            let type_fact = type_desc_fact(registry, desc);
             facts.types.insert(desc.key.name.clone(), type_fact.clone());
             facts.type_targets.insert(
                 desc.key.name.clone(),

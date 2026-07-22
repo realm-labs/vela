@@ -29,6 +29,7 @@ pub enum TypeKindDef {
     Char,
     String,
     Bytes,
+    Tuple,
     Array,
     Map,
     Set,
@@ -822,6 +823,7 @@ pub struct TypeDef {
     pub semantic_key: SemanticKey,
     pub kind: TypeKindDef,
     pub primitive: Option<PrimitiveTag>,
+    pub tuple_elements: Vec<TypeHintDef>,
     pub host_runtime_id: Option<u128>,
     pub index_capability: Option<IndexCapabilityDef>,
     pub binding: Option<TypeBindingDef>,
@@ -871,6 +873,7 @@ impl TypeDef {
             semantic_key,
             kind,
             primitive: None,
+            tuple_elements: Vec::new(),
             host_runtime_id: None,
             index_capability: None,
             binding: None,
@@ -891,6 +894,12 @@ impl TypeDef {
     #[must_use]
     pub const fn kind(mut self, kind: TypeKindDef) -> Self {
         self.kind = kind;
+        self
+    }
+
+    #[must_use]
+    pub fn tuple_element(mut self, type_hint: TypeHintDef) -> Self {
+        self.tuple_elements.push(type_hint);
         self
     }
 
