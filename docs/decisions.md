@@ -2227,6 +2227,17 @@ Collection protocols are implemented once and concrete element/key/value facts
 are synthesized from the transitive service signature graph; this does not add
 general script-language generics.
 
+The service model depends on one sealed Rust `TypeBinding` registry. Standard
+and user-defined types use the same binding contract for stable type identity,
+`Value` versus host-owned storage, owned/shared/exclusive representations,
+constructors, receiver-qualified methods, fields, indexes, iteration,
+protocols, effects, lifetime/escape rules, and ABI. `T`, `&T`, and `&mut T`
+share one type and method catalog; capabilities determine legal calls. Vela
+supplies standard bindings for supported Rust primitives and collections, while
+hosts may derive or manually register external types. Service schema generation
+must reject an incomplete transitive type closure before a patch candidate can
+be staged.
+
 ### Repository Artifacts Use Domain-Neutral Host Names
 
 Vela is a reusable language library rather than an extension of one embedding
@@ -2422,6 +2433,56 @@ budget, and call stack across Vela-to-Rust-to-Vela nesting without a nested
 Runtime. Direct Engine/VM execution that has no re-entry session invokes the
 same registered callback normally with re-entry unavailable; context-native
 registration and capability checks remain shared rather than duplicated.
+
+### Service Borrowed-Return Refinements Follow The Hard Switch
+
+The unified service hard switch reuses the accepted owner-frozen,
+root-call-tree-scoped borrowed-return model. A returned `&T` or `&mut T`
+becomes a capability-bearing child HostRef with one unambiguous retained
+origin and may be reborrowed through nested Rust/Vela service calls in the same
+root. S0-S7 does not wait for multi-origin return sets, projection-granular
+lease domains, finer owner-conflict checks, or durable cross-root host handles.
+
+Those are later refinements and must be driven by concrete workloads. Durable
+identity, when added, is a separate `HostHandle<T>` contract; it must not
+weaken `View<T>`/`MutView<T>` escape rules. No refinement may infer provenance
+from pointer addresses, expose real Rust references to Vela, upgrade shared
+access to exclusive, weaken atomic alias preflight, or mix pinned service
+generations.
+
+### HostRef Hot-Path Work Ships With The Service Hard Switch
+
+S0-S7 includes the HostRef representation and access-path work needed by the
+unified service model. A Vela View/MutView copies a compact generational handle
+into a dense root-local host-slot table. Aliases share canonical identity,
+provenance, capability, and one borrow-group entry; copying an alias must not
+allocate, clone an `Arc`, update an atomic refcount, or acquire a new lease.
+
+The linker and sealed TypeBinding registry prepare dense host target plans and
+typed method thunks. Common-arity Rust calls preflight one complete inline
+lease-request set, nested calls reborrow from current root-local provenance,
+and Rust-default service selection bypasses HostRef and VM conversion entirely.
+Prepared bulk collection operations reduce boundary setup for host-backed
+workloads. These fast paths retain epoch, type, capability, provenance,
+HostAccess, escape, generation, and complete alias checks; prior success never
+authorizes an unchecked later call.
+
+### Service Deployment Supports Snapshots And Exact-Base Deltas
+
+A Snapshot describes the complete desired Vela service state and composes
+unmentioned methods over Rust defaults. A Delta names the exact base generation
+and linked-artifact checksum; unmentioned methods inherit that base, while an
+explicit `RustDefault` operation removes an inherited Vela implementation.
+Staging flattens either mode into one complete generation and coherent linked
+artifact. Runtime dispatch never walks a patch chain, and `base` always means
+the registered Rust default rather than the previous Vela body.
+
+Module/function code changes, service selections, and state/schema reload facts
+publish as one candidate. Activation and rollback are conditional on the
+expected current generation and reject stale operations without mutation.
+Unchanged immutable CodeObjects may be shared from the base. Normal releases
+should periodically fold accepted Deltas into a Snapshot so deployment history
+does not become a permanent source dependency.
 
 ## Validation Rules
 

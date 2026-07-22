@@ -18,7 +18,10 @@ not from builtin language or standard-library surface.
 The language should provide:
 
 1. Better host-script expression than Lua: structs, enums, `match`, method calls, rich array/map APIs, and Option/Result-style error handling.
-2. Deep Rust host integration: scripts can naturally read and write host state with syntax such as `account.balance += 1`.
+2. Deep Rust host integration: scripts can naturally read and write host state
+   with syntax such as `account.balance += 1`. Standard and user-defined Rust
+   types retain registered constructors, methods, collection protocols, and
+   owned/shared/exclusive capabilities when used from Vela.
 3. Safe mutable state boundaries: scripts never hold Rust `&mut T`; they use `HostRef`, `HostPath`, `PathProxy`, and `HostAccess` to read or write Rust-owned state immediately through adapters.
 4. Hot Reload First semantics: Vela hot reload replaces function-level or
    module-level code objects. Rust hotfix integration uses one generated
@@ -137,6 +140,9 @@ moving GC, or a custom full IDE product.
 Use the unified Rust/Vela service contract and whole-generation publication as
 the sole Rust hotfix model; do not restore callable replacement slots or add
 handler/rule/event-specific replacement paths.
+Treat one sealed TypeBinding registry, standard Rust type/view protocols, and
+user-defined type/method/constructor registration as prerequisites for that
+service model; a patch must be able to express realistic Rust-side logic.
 Full native LSP work is allowed before the MVP when it stays behind the clean
 `vela_language_service` and `vela_lsp_server` boundaries and does not change
 language/runtime semantics. For each turn, choose the smallest

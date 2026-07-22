@@ -1,8 +1,9 @@
 # Rust/Vela Unified Service Model Hard-Switch Plan
 
-> Track: one Rust/Vela service contract, generated Rust fallback and Vela
-> partial implementation, generation-coherent publication, host-reference and
-> collection interop, and deletion of callable-level replacement
+> Track: one Rust/Vela TypeBinding registry and service contract, generated
+> Rust fallback and Vela partial implementation, generation-coherent
+> publication, host-reference and collection interop, and deletion of
+> callable-level replacement
 >
 > Status: approved design direction; implementation not started
 >
@@ -44,6 +45,13 @@ changing Vela code safely. It is not a second Rust integration model. Ordinary
 exported Rust functions and methods also remain callable from Vela, but they
 are not independently replaceable. A Rust operation that must be hotfixable
 must belong to a service contract.
+
+The service model is viable only after Vela has one complete Rust type
+interaction model. Every Rust type reachable from a service signature must
+retain a registered type identity, methods, constructors, protocols, and
+ownership capabilities when it crosses into Vela. Service dispatch must not
+land before that prerequisite and leave patches unable to express the Rust
+logic they replace.
 
 ## 1. Non-Negotiable Model
 
@@ -136,6 +144,20 @@ business method ABI. They are scoped capabilities created by the generated
 service invocation. `base` prevents accidental recursion when a patch wants to
 wrap the original Rust behavior. `services` preserves the original service call
 chain and generation coherence.
+
+### 1.6 One Rust type interaction model
+
+Vela uses one `TypeBinding` contract for standard-library and user-defined Rust
+types. `T`, `&T`, and `&mut T` share one stable `InteropTypeId` and method
+catalog; only their storage and receiver capabilities differ. The binding also
+owns value conversion, HostRef views, constructors, fields, indexes,
+iteration, standard protocols, escape rules, effects, and ABI fingerprint.
+
+A Rust value does not become an untyped serialized blob. A registered value
+policy lowers it directly into typed Vela values, while a registered host
+policy keeps the exact Rust object in a host-owned arena and exposes only a
+typed handle. Rust references always become scoped shared or exclusive views.
+No real Rust reference or Rust-owned object enters the script GC.
 
 ## 2. Authoring Shape
 
@@ -316,6 +338,7 @@ ordered ServiceMethodDescriptor[]
   sync/async shape
   receiver mode
   positional parameter modes and type descriptors
+  InteropTypeId, representation capability, and TypeAbiFingerprint
   return/error family
   borrowed-return origin and freeze rules
   normalized effect ceiling
@@ -341,24 +364,54 @@ two incompatible service manifests.
 
 ### 3.2 Service candidate
 
-Compiling a patch produces a sparse, immutable `ServicePatchSet`:
+Compiling or loading a deployment update produces an immutable
+`ServiceUpdateBundle`:
 
 ```text
-ServicePatchSet
+ServiceUpdateBundle
+  UpdateMode
+    Snapshot
+    Delta { base_generation_id, base_artifact_checksum }
   package identity and checksum
-  Arc<LinkedArtifact>
+  VelaProgramUpdate
+    SnapshotArtifact
+    DeltaArtifact { FunctionId -> Replace | Remove }
   service manifest checksum
-  ServiceMethodId -> linked Vela callable
+  sealed TypeBinding registry checksum
+  ServiceMethodId -> Replace(linked Vela callable) | RustDefault
   Vela state/schema reload facts
 ```
 
-Staging composes that sparse table with every registered Rust default to create
-a complete `ServiceGenerationCandidate`. Before publication it validates:
+The two modes have different omission semantics:
+
+| Update mode | Unmentioned service method | Explicit `RustDefault` |
+|---|---|---|
+| `Snapshot` | select the registered Rust default | also select Rust default |
+| `Delta` | inherit the exact base generation selection | replace any inherited Vela implementation with Rust default |
+
+The same distinction applies to ordinary Vela modules and functions. A
+Snapshot contains the complete desired program graph. A Delta inherits
+unmentioned functions from its exact base and applies explicit replacements or
+validated removals. This covers both Vela-authored baseline logic and emergency
+service patches without publishing their code maps separately.
+
+A normal release should prefer `Snapshot`: the bundle describes the complete
+desired Vela service state and does not depend on deployment history. An
+emergency `Delta` may contain only changed Vela functions and service methods,
+but it must name the exact generation and linked-artifact checksum it was built
+against. Delta inheritance is a staging rule, never a runtime fallback chain.
+
+Staging a Snapshot composes its declarations over every registered Rust
+default. Staging a Delta composes its operations over the named complete base
+generation. Both produce one flattened `ServiceGenerationCandidate` and one
+coherent linked artifact; unchanged immutable CodeObjects may be Arc-shared
+from the base, but runtime target lookup never walks prior generations. Before
+publication staging validates:
 
 - exact host service-set identity;
 - every service and method ID;
 - complete callable ABI and effect compatibility;
-- transitive boundary type availability;
+- transitive TypeBinding availability, representation capability, and ABI;
 - host-reference parameter and borrowed-return provenance;
 - collection element/key/value descriptors and mutation mode;
 - sync/async form and cancellation-safe adapter shape;
@@ -367,19 +420,46 @@ a complete `ServiceGenerationCandidate`. Before publication it validates:
 - deployment capabilities and policy.
 
 A failed candidate changes no active state. Validation performs no business
-method invocation and no host mutation.
+method invocation and no host mutation. Vela module/function changes, service
+method selections, and state/schema reload facts belong to the same candidate;
+they cannot be staged or published as independently visible updates.
 
 ### 3.3 Service generation and publication
 
 The accepted candidate becomes an immutable `Arc<ServiceGeneration>`. The
 generated `GameServiceGeneration` holds the complete set of generated composite
-services plus its linked artifact and exact generation identity. Publication
-uses a single `ArcSwap` exchange. The returned prior `Arc` is the rollback
-token; it is accepted only by the same service-set controller and schema.
+services plus its linked artifact and exact generation identity. A candidate
+records its expected current generation. Publication uses one conditional
+ArcSwap/CAS operation and fails with `StaleBaseGeneration` if the active
+generation changed after staging; it never silently rebases or overwrites a
+concurrent release.
+
+Successful activation returns a controller/schema-bound rollback token holding
+the replaced generation and the generation that replaced it. Rollback is also
+conditional: it republishes the prior complete generation only while the
+expected replacement is still current. A later deployment makes the old token
+stale rather than allowing it to overwrite newer code.
 
 The runtime must not use one `ArcSwap` per method or per service. Such a layout
 would allow a nested call to mix generations and would reintroduce slot-like
 deployment semantics.
+
+The intended deployment API is conceptually:
+
+```rust,ignore
+let base = services.current_generation();
+let update = engine.load_service_update(bundle_bytes)?;
+let candidate = services.stage_delta(&base, update, StageOptions::default())?;
+let rollback = services.activate_if_current(candidate)?;
+
+// Only succeeds if the generation installed above is still current.
+services.rollback_if_current(rollback)?;
+```
+
+Snapshot staging has the corresponding `stage_snapshot` entry and does not
+inherit Vela method selections from `base`. Production control planes should
+compile or load and validate immutable bundles away from request execution;
+activation itself is the bounded pointer publication step.
 
 ### 3.4 Execution ownership
 
@@ -405,24 +485,80 @@ pushes onto the same session. It inherits:
 There is no target-owned `Runtime`, Runtime mutex, reentrant global lock,
 thread-local Runtime, target-local default budget, or fresh nested session.
 
-## 4. Rust/Vela Type Model
+### 3.5 Successive Vela updates
 
-### 4.1 Three boundary categories
+Suppose generation G12 selects Vela implementations for two methods and Rust
+for a third. A Delta built against G12 that replaces only the first method
+produces G13 with the new first implementation, the inherited second Vela
+implementation, and the inherited Rust third implementation. Old roots retain
+G12; new roots pin G13. An explicit `RustDefault` operation is required to
+remove the second Vela implementation in a later Delta.
 
-Every reachable service type belongs to exactly one category:
+`base.method(...)` always names the registered Rust default, never the prior
+Vela implementation. The runtime therefore does not build `patch v3 -> patch
+v2 -> patch v1 -> Rust` call chains. Shared Vela behavior that a later patch
+needs to reuse must remain an ordinary named Vela function and enter the same
+module/function update artifact. Operators should periodically fold accepted
+Deltas into a new Snapshot so deployment history is not a permanent source
+dependency even though each runtime generation is already flattened.
 
-| Category | Rust examples | Vela representation | Ownership |
+## 4. Unified Rust Type Interop Model
+
+### 4.1 `TypeBinding` is the single registration unit
+
+Every reachable Rust type has one deterministic binding:
+
+```text
+TypeBinding
+  InteropTypeId and stable Vela path
+  StoragePolicy: Value | Host
+  owned/shared/exclusive representations
+  constructors and static methods
+  instance methods with receiver capability
+  fields, indexes, iteration, and standard protocols
+  value codec or host-object adapter
+  lifetime, escape, effects, and capabilities
+  TypeAbiFingerprint and diagnostic origin
+```
+
+`T`, `&T`, and `&mut T` never create unrelated method registries. They share
+the same nominal type and method IDs. The receiver capability decides which
+methods are callable:
+
+| Rust receiver | Capability | Legal method families |
+|---|---|---|
+| owned `T` | owned + shared + exclusive | consuming, shared, and mutating |
+| `&T` | shared | shared only |
+| `&mut T` | exclusive + shared reborrow | shared and mutating |
+| type/static | construct | registered constructors and static methods |
+
+Known capability violations are compile errors; dynamic paths repeat the check
+before entering Rust. Registration rejects duplicate IDs, unsupported
+signatures, ambiguous storage policy, and methods whose declared receiver does
+not match their Rust receiver.
+
+### 4.2 Value and host storage policies
+
+Every binding selects an explicit storage policy:
+
+| Policy | Rust examples | Vela representation | Ownership |
 |---|---|---|---|
-| Scalar/value | `i32`, `i64`, `bool`, `String`, enum, owned DTO | scalar, record, enum | copied or moved into script-owned value |
-| Script collection | owned `Vec<T>`, `HashMap<K,V>`, `HashSet<T>` | `Array<T>`, `Map<K,V>`, `Set<T>` | script-owned after conversion |
-| Host-backed reference | `&T`, `&mut T`, borrowed collection | typed HostRef-backed value/view | Rust-owned, invocation-scoped capability |
+| `Value` | scalar, String, enum, DTO, owned collection | scalar, record, enum, Array/Map/Set | script-owned after direct typed lowering |
+| `Host` | identity-bearing or opaque Rust object | typed `OwnedHost<T>` / HostRef handle | external host arena owns Rust state |
+| borrowed view | `&T`, `&mut T` under either policy | typed View/MutView backed by HostRef | Rust-owned, invocation-scoped capability |
+
+Value lowering is generated field/element conversion, not JSON, bincode, or
+runtime serde reflection. A host-owned value moved into Vela remains an exact
+Rust object and may call its registered Rust methods; construction uses a
+registered host factory. The script GC may trace the handle but never owns or
+traces the Rust object. Promotion beyond a root call is an explicit host policy,
+not an accidental consequence of storing a handle.
 
 `Arc<T>`, `Rc<T>`, boxes, engine handles, ECS handles, database sessions, and
-other Rust ownership wrappers do not automatically become script-owned values.
-They require an explicit value conversion or a registered host-reference
-adapter. Rust host state is never placed under the Vela GC.
+other Rust ownership wrappers do not infer a policy automatically. Their
+binding must say whether they lower to a value or resolve to a host object.
 
-### 4.2 Value objects
+### 4.3 Value objects
 
 An owned boundary DTO derives one generated structural contract:
 
@@ -442,7 +578,7 @@ the service type closure. Cycles that require identity must use a host object
 or a future explicit graph-value contract; the initial DTO conversion does not
 invent object identity.
 
-### 4.3 Host objects and Rust references
+### 4.4 Host objects and Rust references
 
 An authored service signature may use ordinary call-scoped `&T` and `&mut T`.
 Generated adapters represent them in Vela with typed HostRefs and acquire the
@@ -466,14 +602,75 @@ state, globals, native caches, unscoped tasks, or the root result. Early
 compiler-proven release and `host::release` remain valid; GC timing is never a
 correctness dependency.
 
-### 4.4 Collection surface
+The S0-S7 hard switch deliberately keeps this accepted borrowed-return model
+conservative. It requires an unambiguous retained origin, uses owner-level
+freeze when a finer safe domain is not registered, and treats every returned
+borrow as root-call-tree scoped. The following refinements are deferred until
+the unified service path is accepted and a concrete workload demonstrates the
+need:
 
-Vela exposes one standard collection vocabulary:
+- origin sets for signatures whose result may borrow from one of several
+  declared parameters, with runtime provenance selecting the actual origin;
+- registered projection metadata and optional lease domains for proving safe
+  disjoint subobject borrows without guessing from pointer addresses or paths;
+- finer owner-conflict checks where a `TypeBinding` can prove that operations
+  touch independent lease domains; and
+- a separate durable `HostHandle<T>` contract for identity that must survive a
+  root call, rather than allowing `View<T>` or `MutView<T>` to escape.
+
+These refinements must preserve the existing rules: scripts never receive real
+Rust references, shared capability never upgrades to exclusive, conflicting
+aliases fail before Rust references exist, nested service calls keep the same
+pinned generation, and scoped borrows never become durable through GC or
+implicit promotion. They are not prerequisites for returning one
+unambiguous-origin `&T` or `&mut T` and passing it through nested Rust/Vela
+services in the same root.
+
+#### Required HostRef hot-path contract
+
+HostRef optimization is part of S0-S7, not a post-hard-switch follow-up. The
+script-visible reference is a compact, copyable generational handle into the
+current root execution's dense host-slot table. Canonical identity, type,
+capability, owner, borrow-group state, provenance, prepared adapter, and pinned
+generation live once in root-owned metadata rather than being copied into every
+Vela alias. Copying a View/MutView must not allocate, clone an `Arc`, increment
+an atomic reference count, or create another host lease.
+
+The linked fast path follows these rules:
+
+- statically resolved fields, indexes, and methods use dense IDs, prepared
+  `HostTargetPlan` data, and generated typed thunks; a successful known access
+  performs no string/hash/reflection lookup and materializes no owned
+  `HostPath` or segment vector;
+- one Rust invocation preflights its complete host-argument request set before
+  creating any reference, using allocation-free inline storage for the common
+  service arities and one canonical identity/conflict pass;
+- a same-session nested call derives a child reborrow from the active root-local
+  lease/provenance entry instead of globally reacquiring the owner, resolving a
+  business ID, or allocating a second host object;
+- all aliases of one scoped borrow share one `BorrowLeaseId`; early or explicit
+  release invalidates the group without per-alias lifetime bookkeeping;
+- a method selected to the Rust default passes ordinary Rust values and
+  references directly and does not create HostRefs or enter the VM; and
+- collection protocols expose prepared bulk operations so realistic filter,
+  grouping, iteration, and mutation do not require avoidable per-element
+  dynamic boundary setup.
+
+These are representation and preparation optimizations, not weaker semantics.
+Epoch/freshness, type, capability, provenance, escape, generation, HostAccess,
+and complete alias-conflict checks remain mandatory. They may be linked,
+hoisted, combined, or made O(1), but never skipped merely because a call site
+was previously successful.
+
+### 4.5 Collection views and standard protocols
+
+Vela exposes one standard collection vocabulary with explicit borrowed
+representations:
 
 ```text
-Array<T>
-Map<K, V>
-Set<T>
+Array<T> / ArrayView<T> / ArrayMut<T>
+Map<K, V> / MapView<K, V> / MapMut<K, V>
+Set<T> / SetView<T> / SetMut<T>
 Iterator<T>
 ```
 
@@ -487,18 +684,21 @@ Rust mapping is:
 | Rust input | Vela surface | Mutation semantics |
 |---|---|---|
 | `Vec<T>` | owned `Array<T>` | full Array mutation |
-| `&[T]`, `&Vec<T>` | host-backed `Array<T>` view | read-only |
-| `&mut [T]` | host-backed `Array<T>` view | element replacement, fixed length |
-| `&mut Vec<T>` | host-backed `Array<T>` view | write-through element and length mutation |
+| `&[T]`, `&Vec<T>` | `ArrayView<T>` | read-only |
+| `&mut [T]` | `ArrayMut<T>` | element replacement, fixed length |
+| `&mut Vec<T>` | `ArrayMut<T>` | write-through element and length mutation |
 | owned `HashMap<K,V>` / `BTreeMap<K,V>` | owned `Map<K,V>` | full Map mutation |
-| shared borrowed map | host-backed `Map<K,V>` view | read-only |
-| exclusive borrowed map | host-backed `Map<K,V>` view | write-through mutation |
+| shared borrowed map | `MapView<K,V>` | read-only |
+| exclusive borrowed map | `MapMut<K,V>` | write-through mutation |
 | owned `HashSet<T>` / `BTreeSet<T>` | owned `Set<T>` | full Set mutation |
-| borrowed set | host-backed `Set<T>` view | capability-derived |
+| shared/exclusive borrowed set | `SetView<T>` / `SetMut<T>` | capability-derived |
 
-The authored Vela type remains `Array`, `Map`, or `Set`; storage and mutation
-capability are internal facts. The compiler rejects a statically known write
-through a shared view, and the runtime repeats the check for dynamic paths.
+The owned and view types share standard `Sequence`, `Iterable`, `MapLike`, or
+`SetLike` protocols, so normal read, iteration, `filter`, `group_by`, `fold`,
+and collection syntax is identical. The explicit View/Mut type facts make
+borrow and mutation diagnostics honest. The compiler rejects a statically
+known write through a shared view, and the runtime repeats the check for
+dynamic paths.
 `&mut [T]` rejects `push`, `remove`, and every length-changing operation even
 though element writes are legal.
 
@@ -508,7 +708,7 @@ parent view lease and generation for their lifetime. Operations such as
 `map`, `filter`, `group_by`, `collect`, and sorting produce script-owned
 collections unless a method explicitly documents an in-place host mutation.
 
-### 4.5 Passing collections across services
+### 4.6 Passing collections across services
 
 The bridge follows these rules:
 
@@ -528,7 +728,7 @@ The bridge follows these rules:
 The same rules apply whether the next method is implemented in Rust or Vela.
 The caller never performs a language-direction-specific conversion.
 
-### 4.6 Map and set keys
+### 4.7 Map and set keys
 
 Map and Set identity uses Vela's deterministic `ValueKey` contract, not an
 arbitrary Rust `Hash`/`Eq` implementation. Supported keys are key-safe scalars,
@@ -537,7 +737,35 @@ NaN and mutable host identity do not silently enter the key model. Rust map
 registration fails at build time when `K` cannot supply the exact stable key
 contract.
 
-### 4.7 Registration closure, not per-instantiation boilerplate
+### 4.8 Standard and user-defined type registration
+
+Vela supplies built-in binding families for supported Rust primitives,
+`String`, `Vec`, slices, arrays, `BTreeMap`, `HashMap`, `BTreeSet`, `HashSet`,
+Option, Result, tuples, and their view forms. These bindings register Rust-like
+constructors and methods where meaningful and implement Vela standard
+protocols once. `filter` and `group_by` belong to the shared protocols rather
+than handwritten implementations for every Rust collection.
+
+Hosts register custom types through the same low-level API used by standard
+bindings:
+
+```rust,ignore
+Engine::builder().register_rust_type::<Inventory>(
+    TypeBinding::host("host::Inventory")
+        .constructor("new", Inventory::new)
+        .shared_method("contains", Inventory::contains)
+        .exclusive_method("grant", Inventory::grant)
+        .iterator(Inventory::iter),
+);
+```
+
+`#[derive(vela::Value)]`, `#[derive(vela::Host)]`, and `#[vela::methods]` are
+generators for this contract, not parallel registries. Manual registration is
+available for external types that cannot be annotated. Constructors are always
+explicit; Vela does not infer that every Rust `Default` or inherent `new`
+method is script-visible.
+
+### 4.9 Registration closure, not per-instantiation boilerplate
 
 Authors do not register `Vec<i32>`, `Vec<Item>`, `HashMap<i32, Item>`, and every
 method separately. The service macro walks the transitive signature graph and
@@ -598,7 +826,21 @@ No iterator may create an unbudgeted infinite execution path.
 
 ## 6. Macro And Tooling Responsibilities
 
-### 6.1 `#[vela::service]`
+### 6.1 Rust type bindings and derives
+
+The registry and macros must:
+
+- expose one public `register_rust_type::<T>(TypeBinding)` path for standard
+  and user-defined types;
+- generate stable identity, storage policy, conversion/view adapters,
+  constructors, receiver-qualified methods, protocols, effects, and ABI;
+- provide manual bindings for unannotatable external Rust types;
+- synthesize concrete standard collection bindings from internal element/key/
+  value facts without adding script-language generics; and
+- make the compiler, Runtime, reflection, LSP, and service schema consume the
+  same sealed binding snapshot.
+
+### 6.2 `#[vela::service]`
 
 The trait macro must:
 
@@ -612,7 +854,7 @@ The trait macro must:
 - generate partial-composite dispatch without altering authored bodies; and
 - expose one registration bundle, never one handwritten function per method.
 
-### 6.2 `#[vela::service_set]`
+### 6.3 `#[vela::service_set]`
 
 The set macro must:
 
@@ -620,12 +862,13 @@ The set macro must:
 - declare the Runtime authority carrier once;
 - generate the immutable service generation and controller;
 - generate the `ArcSwap` publication owner and safe-point pin handle;
-- generate coherent stage, activate, rollback, and current-generation APIs;
+- generate Snapshot and exact-base Delta staging, conditional activate,
+  conditional rollback, and current-generation APIs;
 - provide same-generation access for Rust and Vela cross-service calls; and
 - generate framework adapters without exposing Runtime or lease internals to
   business callers.
 
-### 6.3 `#[service_impl]`
+### 6.4 `#[service_impl]`
 
 The Vela compiler must:
 
@@ -635,9 +878,12 @@ The Vela compiler must:
 - expose lexical `base` and `services` capabilities;
 - reject unknown, duplicate, incompatible, or over-effect methods;
 - include exact source spans in stage diagnostics; and
-- emit a sparse `ServicePatchSet`, not mutate a live service table.
+- emit sparse `Replace` operations and never mutate a live service table. The
+  deployment bundle builder/manifest owns explicit `RustDefault` operations
+  and the enclosing Snapshot/Delta omission semantics; Vela does not gain
+  another patch-control statement for deployment bookkeeping.
 
-### 6.4 Diagnostics and reflection
+### 6.5 Diagnostics and reflection
 
 Diagnostics name the service path, method, positional parameter, expected and
 actual type/mode, source span, and generation when available. Reflection may
@@ -712,8 +958,12 @@ Deliverables:
   example, test, and benchmark;
 - extract a representative domain-neutral fixture with at least two services,
   one handler service, a mutable host actor, value DTOs, Array/Map arguments,
-  nested service calls, Result, and async coverage; and
-- record direct Rust trait dispatch and current Vela boundary baselines.
+  nested service calls, Result, and async coverage;
+- record direct Rust trait dispatch and current Vela boundary baselines; and
+- freeze allocation, latency, and throughput rows for HostRef alias copy,
+  static field/path read-write, registered method call, shared/exclusive
+  argument-set preflight, nested reborrow, borrowed return/release, and
+  host-backed bulk collection operations.
 
 Gate:
 
@@ -745,84 +995,126 @@ there is no public Rust hot-replacement mechanism at this checkpoint
 Deleting first is intentional. It prevents the new design from becoming an
 optional layer beside an already accepted competing model.
 
-### S2 — Service contract and Rust-only generation
+### S2 — Unified Rust type binding foundation
 
 Deliverables:
 
-- implement `#[vela::service]` and `#[vela::service_set]` schema generation;
+- implement `InteropTypeId`, `TypeBinding`, `TypeAbiFingerprint`, and one sealed
+  registry snapshot;
+- implement `Value` versus `Host` storage policy and owned/shared/exclusive/
+  construct receiver capabilities;
+- expose constructors, static and instance methods, fields, indexes,
+  iteration, protocols, effects, lifetime, and escape metadata;
+- make the script value carry a compact copyable HostRef handle backed by dense
+  root-local host-slot and borrow-group tables, with one metadata/lease entry
+  shared by every alias;
+- prepare dense field/method IDs and typed adapter thunks from the sealed
+  TypeBinding snapshot, and use an allocation-free inline request set for
+  common-arity atomic host-argument preflight;
+- provide manual custom-type registration plus `Value`, `Host`, and `methods`
+  derive generation; and
+- make compile, Runtime, reflection, and LSP use the same binding facts.
+
+Gate:
+
+```text
+one custom Value type and one custom Host type construct and call Rust methods
+T, &T, and &mut T share one identity but enforce receiver capabilities
+external unannotatable types register through the same TypeBinding API
+Rust host objects remain outside the script GC
+copying View/MutView allocates nothing and creates no new lease/refcount
+common-arity alias preflight allocates nothing and remains atomic
+```
+
+### S3 — Standard Rust types, views, and collection protocols
+
+Deliverables:
+
+- bind supported primitives, String/bytes, Option/Result/tuples, Vec/slices/
+  arrays, BTreeMap/HashMap, and BTreeSet/HashSet;
+- implement owned, View, and MutView representations with exact fixed/growable
+  mutation capability;
+- implement Sequence/Iterable/MapLike/SetLike once, including filter,
+  group_by, fold, collect, sorting, and budget rules;
+- synthesize recursive concrete bindings from type facts without handwritten
+  per-instantiation method registration;
+- pass views across nested Rust/Vela calls through scoped reborrow;
+- preserve or generate prepared HostTargetPlan/index/method operations so
+  linked static access materializes no HostPath/segment vector and performs no
+  name/reflection lookup; and
+- expose prepared bulk collection operations for host-backed iteration,
+  grouping, filtering, collection, and mutation where they reduce repeated
+  boundary setup without changing write-through semantics.
+
+Gate:
+
+```text
+owned/shared/exclusive standard type matrix passes in both directions
+BTreeMap and HashMap share MapLike behavior while preserving registered ABI
+filter/group_by/collect work on owned values and borrowed views
+mutating views write through immediately and shared views reject mutation
+implicit mutable copy-in/copy-out is rejected
+linked static host paths and methods use prepared dense operations
+bulk host-backed operations preserve budgets, identity, and immediate writes
+```
+
+### S4 — Service contract and Rust-only generation
+
+Deliverables:
+
+- implement `#[vela::service]` and `#[vela::service_set]` schema generation on
+  the sealed TypeBinding registry;
+- reject service signatures whose transitive types lack complete bindings;
 - generate object-safe sync/async dispatch and Rust default composites;
 - implement whole-set generation identity, `ArcSwap` publication, safe-point
-  pinning, and same-controller rollback validation; and
-- migrate the fixture's callers to the generated service set.
+  pinning, and same-controller rollback validation;
+- migrate the fixture's callers to the generated service set; and
+- keep the generated Rust-default branch as a direct Rust call that creates no
+  HostRef, performs no VM entry, and allocates nothing after root pinning.
 
 Gate:
 
 ```text
 business trait implementations and call sites contain no patch logic
 all methods execute Rust defaults through one pinned generation
+the complete transitive parameter/return type closure is validated
 old and new roots retain their exact generations across activation/rollback
+the Rust-default service branch pays no cross-language HostRef conversion
 ```
 
-### S3 — Scalar partial Vela vertical slice
+### S5 — Partial Vela service and cross-service vertical slice
 
 Deliverables:
 
-- import service schemas into Vela;
-- parse, resolve, compile, and link sparse `#[service_impl]` blocks;
-- stage and activate one scalar sync method while adjacent methods stay Rust;
-- implement `base` and same-service no-recursion behavior; and
-- reject ABI/effect/identity/duplicate/unknown-method candidates atomically.
+- import service schemas into Vela and link sparse `#[service_impl]` blocks;
+- stage one method while adjacent methods remain Rust, then stage a second
+  exact-base Delta while the first Vela implementation remains active;
+- implement `base` and `services.other.method(...)` on the pinned generation;
+- preserve registered constructors, Rust methods, custom types, container
+  protocols, HostRef reborrow, borrowed returns, and type identity throughout
+  the Rust/Vela/Rust chain;
+- use the active root-local lease/provenance entry for nested reborrow without
+  global owner reacquisition, business-ID resolution, or per-alias metadata;
+- reject ABI/effect/identity/duplicate/unknown-method candidates atomically;
+- reject stale-base activation without changing active state; and
+- explicitly restore one inherited Vela method to its Rust default.
 
 Gate:
 
 ```text
 Rust default -> activate one Vela method -> adjacent Rust -> rollback
-Vela failure propagates with no Rust fallback retry
-the caller source is unchanged across the full sequence
-```
-
-This is the first runnable end-to-end service hotfix slice.
-
-### S4 — Host references and cross-service re-entry
-
-Deliverables:
-
-- support shared/exclusive host arguments and borrowed returns through the
-  existing HostRef/HostAccess boundary;
-- implement `services.other.method(...)` on the same pinned generation and
-  `base.method(...)` through the generated Rust default thunk;
-- derive nested child reborrows instead of reacquiring unrelated leases; and
-- preserve one execution session, budgets, effects, cancellation, tracing, and
-  state view across Rust/Vela/Rust chains.
-
-Gate:
-
-```text
+Delta over active Vela -> inherit old Vela method -> replace another -> activate
+explicit RustDefault removes an inherited Vela implementation
+stale-base candidate cannot overwrite a concurrent activation
+Vela constructs and calls a registered custom Rust type inside the patch
 Vela service -> Rust service -> patched Vela service uses one generation
-mutable host writes are immediately visible at every layer
-alias conflicts fail before the nested callee body
-borrowed values cannot escape the root call tree
+collection views retain identity and writes are immediately visible
+Vela failure propagates with no Rust fallback retry
+nested reborrow retains complete alias preflight without global lookup/allocation
 ```
 
-### S5 — Collection and type-closure interop
-
-Deliverables:
-
-- implement owned and host-backed Array/Map/Set representations;
-- implement read-only, fixed-length mutable, and growable mutable capabilities;
-- synthesize recursive collection descriptors from service schemas;
-- complete the required stdlib methods and iterator lease rules; and
-- support safe cross-service pass-through without per-concrete registration.
-
-Gate:
-
-```text
-Vec/HashMap/HashSet value and borrow matrix passes in both directions
-group/filter/collect results are script-owned and budgeted
-mutable host views write through immediately
-implicit mutable copy-in/copy-out is rejected
-no handwritten Vec<i32>/Map<K,V> method registration exists
-```
+This is the first accepted end-to-end service hotfix slice because it proves
+that a patch can express realistic Rust-side logic, not only scalar arithmetic.
 
 ### S6 — Async, handlers, deployment, and tooling
 
@@ -832,8 +1124,11 @@ Deliverables:
 - retain pinned service/artifact generations and leases across suspension;
 - prove cancel, dropped-future, panic-unwind, and no-runtime-mutex behavior;
 - model handlers/rules/events exclusively as service contracts;
-- expose stage/activate/rollback diagnostics and service metadata to CLI/LSP;
-  and
+- expose stage/activate/rollback diagnostics, service metadata, and TypeBinding
+  constructors, methods, views, and protocols to CLI/LSP;
+- expose immutable Snapshot/Delta bundle build/load metadata, exact base and
+  artifact checksums, dry-run staging reports, and stale activation/rollback
+  diagnostics to the deployment surface; and
 - replace old examples and benchmark rows with service-generation examples.
 
 Gate:
@@ -853,9 +1148,14 @@ Deliverables:
   service/handler call chain without patch-aware business code;
 - patch one small method fragment, call Rust base, call another Rust service,
   and call another patched Vela service;
+- publish two successive Deltas over existing Vela logic, prove inherited
+  selections survive, then fold the resulting desired state into a Snapshot;
 - exercise Player/actor mutable references, DTOs, nested Array/Map values,
-  iteration and grouping, business Result, and async handling;
-- measure Rust-default and active-Vela service paths; and
+  registered constructors and Rust methods, View/MutView iteration and
+  grouping, business Result, and async handling;
+- measure Rust-default and active-Vela service paths plus every frozen S0
+  HostRef/lease/path/bulk-operation row, recording allocations and checksums;
+  and
 - complete structural, documentation, example, fuzz/build, and workspace gates.
 
 Gate:
@@ -880,6 +1180,20 @@ all old replacement production identifiers remain absent
 - Macro UI tests reject every unsupported service signature with a focused
   diagnostic.
 
+### Type interaction
+
+- Standard-library and custom Rust types use the same `TypeBinding` API.
+- `T`, `&T`, and `&mut T` retain one type and method identity with exact
+  owned/shared/exclusive receiver checks.
+- Registered constructors create either typed Vela values or host-owned
+  objects according to explicit storage policy.
+- Vela can call registered shared, mutating, consuming, and static Rust methods
+  without handwritten boundary wrappers.
+- Manual external-type registration and derive-generated registration produce
+  the same ABI and registry facts.
+- Missing type, constructor, method, protocol, conversion, or view support
+  rejects a service candidate before activation.
+
 ### Dispatch and generation
 
 - Rust-only generation, single partial patch, multiple methods in one service,
@@ -890,6 +1204,12 @@ all old replacement production identifiers remain absent
 - Cross-controller and cross-schema candidates/rollback tokens are rejected.
 - Missing Vela methods resolve to Rust at stage time.
 - Vela failures never trigger automatic Rust execution.
+- Snapshot omission selects Rust while Delta omission inherits the exact base;
+  explicit `RustDefault` removes an inherited Vela implementation.
+- A Delta names its exact base generation/artifact, activation and rollback use
+  conditional publication, and stale operations change no active state.
+- Vela function/module changes and service selections publish in one candidate;
+  a flattened generation performs no lookup through patch ancestry.
 
 ### Values and collections
 
@@ -899,9 +1219,27 @@ all old replacement production identifiers remain absent
 - Borrowed returns preserve origin/freeze and cannot escape.
 - Owned, shared, exclusive-fixed, and exclusive-growable Array cases pass.
 - Owned/shared/exclusive Map and Set cases pass with stable keys.
+- BTreeMap, HashMap, BTreeSet, and HashSet implement the shared MapLike/SetLike
+  protocols without per-concrete method copies.
 - Iteration, grouping, collection, sorting, and mutation charge budgets.
 - A host-backed collection passes through Vela to Rust and another Vela
   service without materialization or identity loss.
+
+### HostRef hot path
+
+- View/MutView aliases copy one compact handle and share one root-local slot and
+  `BorrowLeaseId`; alias copy performs no allocation, `Arc` clone, atomic
+  refcount update, or lease acquisition.
+- Statically linked host fields, paths, indexes, and methods use prepared dense
+  plans/thunks without runtime names, reflection walks, owned HostPath
+  materialization, or segment-vector allocation on success.
+- Common-arity host-argument sets are preflighted atomically with inline
+  storage; conflicting aliases still fail before any Rust reference exists.
+- Same-session nested service calls reborrow from current provenance without a
+  global lock, owner lookup, business-ID resolution, or HostRef rematerialization.
+- Rust-default service selection creates no HostRef and does not enter Vela.
+- Prepared collection bulk operations retain budgets, permissions, identity,
+  alias rules, generation pinning, and immediate host write-through.
 
 ### Execution
 
@@ -946,12 +1284,22 @@ Benchmarks compare:
 - generated Rust-default service call;
 - generated Vela-active service call;
 - nested same-generation Rust/Vela chains;
-- owned versus host-backed collection calls; and
+- owned versus host-backed collection calls;
+- HostRef alias copy and borrowed-return release;
+- static field/path read-write and registered method calls;
+- one-, two-, and representative multi-argument shared/exclusive preflight;
+- first-level versus nested same-session reborrow;
+- per-element versus prepared bulk host-backed collection operations; and
 - activation/staging cost outside the request hot path.
 
-No fixed percentage is accepted before the S0 baseline exists. S2 records a
-budget justified by measured production-shaped calls. A regression cannot be
-hidden by weakening generation coherence, lease safety, or error semantics.
+No fixed percentage is accepted before the S0 baseline exists. S2-S3 record
+value, host-object, method, constructor, and collection-view boundary costs;
+S4 records a service-dispatch budget justified by representative calls. S7
+must explain every slower HostRef row and cannot close with accidental
+per-alias allocation/refcount/lease work, successful static-path name or
+reflection lookup, common-arity preflight allocation, or HostRef conversion on
+the Rust-default branch. A regression cannot be hidden by weakening generation
+coherence, lease safety, type identity, HostAccess policy, or error semantics.
 
 ## 11. Validation Commands
 
@@ -998,6 +1346,8 @@ The hard switch does not include:
 - automatic hotfixing of direct concrete Rust calls;
 - transparent mutable copy-in/copy-out for script collections;
 - cross-root persistent borrowed container views;
+- multi-origin borrowed returns, projection-granular lease domains, and
+  durable host handles beyond the conservative root-scoped borrow model;
 - async frame migration between service generations;
 - a service-owned or process-global Runtime;
 - JIT, moving GC, or script-level shared-memory concurrency; or
@@ -1007,13 +1357,15 @@ The hard switch does not include:
 ## 13. Completion Definition
 
 This plan is complete only when S0-S7 and the full acceptance matrix are green,
-the host-framework integration demonstrates the intended authoring form, and
-the old callable-level replacement model is absent from all production paths.
+the host-framework integration demonstrates the intended authoring form, Vela
+can construct and operate on registered standard and custom Rust types across
+owned/shared/exclusive representations, and the old callable-level replacement
+model is absent from all production paths.
 
 The final architecture should be explainable in one sentence:
 
 ```text
-Rust supplies a default service generation; Vela supplies sparse method
-implementations; the host atomically publishes one complete generation, and
-every call uses ordinary typed Rust/Vela values through the same safe boundary.
+Rust registers complete type behavior and supplies a default service
+generation; Vela uses those types in sparse method implementations; the host
+atomically publishes one complete generation through the same safe boundary.
 ```

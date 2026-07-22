@@ -11,6 +11,8 @@ The core idea is:
 Scripts describe host-boundary business logic with natural syntax.
 The VM represents mutations to the Rust world as HostAccess operations.
 The runtime performs reliable function-level hot reload by replacing CodeObject mappings.
+One sealed TypeBinding registry gives owned values, shared/exclusive views,
+constructors, methods, indexes, iteration, and protocols a common Rust/Vela ABI.
 Rust-facing hotfixes cross one generated service contract and publish one
 complete immutable service generation; there is no callable-slot replacement
 path.

@@ -17,7 +17,14 @@ sparse Vela service implementations, and one atomically published complete
 service generation. Handler, rule, event, provider, and free-function hotfixes
 do not receive separate replacement paths. The existing `#[replaceable]` /
 `#[override]` slot implementation is frozen pending deletion in S1; no new
-work may extend it. S0-S7 implementation has not started.
+work may extend it. A sealed TypeBinding registry, compact root-local HostRef
+handles and borrow groups, prepared host plans/thunks, allocation-free
+common-arity preflight, standard Rust type and View/MutView protocols,
+constructors/methods, and user-defined type registration are now explicit
+S2-S3 prerequisites. The Rust-default service branch must bypass HostRef and
+VM conversion. Deployment uses complete Snapshots or exact-base Deltas that
+flatten inherited Vela code into one candidate and activate/rollback with
+conditional publication. S0-S7 implementation has not started.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry
@@ -83,7 +90,7 @@ state-storage hard switch.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Complete enough | Actor Runtime/cache Batches A-F are accepted with shared generation execution data, no eager Actor vectors, and no execution lane. |
 | M20.5 | Queued | Resume the concrete editor-visible follow-up after the service hard switch. |
-| Rust/Vela service interop | Reopened | S0-S7 hard switch is planned; callable-level replacement is frozen pending S1 deletion. |
+| Rust/Vela service interop | Reopened | S0-S7 hard switch is planned; S2-S3 build unified type interop before service dispatch. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -159,13 +166,15 @@ state-storage hard switch.
 
 ### Rust/Vela Service Hard Switch
 
-The plan is fixed, but implementation remains open. S0 must freeze and inventory
-the old model and establish a representative domain-neutral Rust-default
-fixture. S1 deletes all callable-level replacement surface before the generated
-service contract lands. S2-S7 then add Rust-only service generations, sparse
-Vela implementations, same-generation base/cross-service calls, host-reference
-reborrows, recursive Array/Map/Set interop, async/handler integration, and final
-host-framework acceptance.
+The plan is fixed, but implementation remains open. S0 freezes the old model
+and HostRef/lease/path baselines; S1 deletes callable-level replacement. S2
+builds one TypeBinding registry plus compact root-local HostRef/borrow tables,
+prepared typed thunks, and allocation-free common-arity preflight. S3 completes
+prepared host paths and standard collection View/MutView protocols, including
+bulk operations. Only then do S4-S7 add a zero-HostRef Rust-default generation,
+sparse Vela implementations, root-local same-generation reborrow,
+successive exact-base Delta/Snapshot deployment, async/handler integration, and
+final measured host-framework acceptance.
 
 The existing ordinary interop, HostRef/HostAccess lease safety, Actor-owned
 Runtime, generated bindings, same-session re-entry, staging, activation,
