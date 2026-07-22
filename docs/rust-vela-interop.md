@@ -14,9 +14,10 @@ service trait, provider, replaceable slot, manual `CallArgs`, erased value, or
 runtime target string is not required.
 
 The runnable primary example is
-`examples/src/bin/interop_round_trip`. Optional single-callable replacement is
-demonstrated separately by `replaceable_handler` and
-`replaceable_service_method`.
+`examples/src/bin/interop_round_trip`. The old `replaceable_handler` and
+`replaceable_service_method` examples are frozen deletion inputs for S1, not
+supported authoring guidance. The pure-Rust service baseline for the hard
+switch is `examples/src/bin/service_hard_switch_fixture`.
 
 ## Export Rust To Vela
 

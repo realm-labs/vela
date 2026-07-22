@@ -125,6 +125,12 @@ success_example!(
 );
 
 success_example!(
+    service_hard_switch_fixture_runs_through_rust_defaults,
+    env!("CARGO_BIN_EXE_service_hard_switch_fixture"),
+    "service_hard_switch_fixture granted=2 item7=6 last_reward_count=2 checksum=1711\n",
+);
+
+success_example!(
     replaceable_handler_example_runs,
     env!("CARGO_BIN_EXE_replaceable_handler"),
     "replaceable_handler fallback=41/10 active=42/0 adjacent=41 rollback=41/10\n",

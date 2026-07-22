@@ -14,6 +14,7 @@ cargo run --manifest-path examples/Cargo.toml --bin serde_value
 cargo run --manifest-path examples/Cargo.toml --bin container_type_hints
 cargo run --manifest-path examples/Cargo.toml --bin io_stdlib
 cargo run --manifest-path examples/Cargo.toml --bin interop_round_trip
+cargo run --manifest-path examples/Cargo.toml --bin service_hard_switch_fixture
 cargo run --manifest-path examples/Cargo.toml --bin replaceable_handler
 cargo run --manifest-path examples/Cargo.toml --bin replaceable_service_method
 ```
@@ -42,14 +43,19 @@ hand-write `ScriptHostObject` or `PathSegment` dispatch.
 
 Other useful embedding examples:
 
+- `service_hard_switch_fixture`: the S0 pure-Rust service baseline. Two
+  services and one async handler exercise a mutable actor, value DTOs,
+  Array/Map-shaped arguments, `Result`, and a nested handler-to-inventory-to-
+  reward call chain entirely through Rust defaults. Later service phases
+  migrate this fixture without adding patch-aware business branches.
 - `interop_round_trip`: the primary ordinary interop workflow. Vela calls an
   exported Rust function and methods using normal syntax, while Rust calls the
   Vela entry through build-time generated typed bindings. Authored calls do not
   assemble `CallArgs`, erase values, or resolve runtime target strings.
-- `replaceable_handler` and `replaceable_service_method`: optional
-  single-callable override extensions. They demonstrate direct fallback,
-  future-root activation, adjacent Rust methods, and rollback without a proxy
-  or complete Vela service implementation.
+- `replaceable_handler` and `replaceable_service_method`: frozen historical
+  callable-slot fixtures scheduled for deletion in S1. Do not use them as new
+  integration examples; Rust hotfixable operations move to the generated
+  service contract.
 - `async_stateful_reentry`: a mutable state lease held across a Rust service
   await, followed by same-session Vela reentry with an explicit mutable
   reborrow. Its actor-shaped container keeps Runtime and host storage disjoint

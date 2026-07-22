@@ -24,7 +24,11 @@ constructors/methods, and user-defined type registration are now explicit
 S2-S3 prerequisites. The Rust-default service branch must bypass HostRef and
 VM conversion. Deployment uses complete Snapshots or exact-base Deltas that
 flatten inherited Vela code into one candidate and activate/rollback with
-conditional publication. S0-S7 implementation has not started.
+conditional publication. S0 is active: the callable-slot deletion inventory
+is recorded, and the domain-neutral pure-Rust migration fixture covers two
+services, one async handler, a mutable actor, DTOs, Array/Map-shaped arguments,
+Result, and nested Rust-default calls. Dedicated HostRef/path/preflight/
+reborrow/borrowed-return/bulk-operation baseline rows remain before S0 closes.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry
@@ -90,7 +94,7 @@ state-storage hard switch.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Complete enough | Actor Runtime/cache Batches A-F are accepted with shared generation execution data, no eager Actor vectors, and no execution lane. |
 | M20.5 | Queued | Resume the concrete editor-visible follow-up after the service hard switch. |
-| Rust/Vela service interop | Reopened | S0-S7 hard switch is planned; S2-S3 build unified type interop before service dispatch. |
+| Rust/Vela service interop | S0 active | The deletion inventory and Rust-default migration fixture are in place; dedicated boundary benchmark rows remain. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -180,6 +184,11 @@ The existing ordinary interop, HostRef/HostAccess lease safety, Actor-owned
 Runtime, generated bindings, same-session re-entry, staging, activation,
 rollback, and no-retry semantics are reusable constraints rather than a reason
 to keep the old slot API.
+
+S0's remaining task is to add and freeze dedicated HostRef alias, static
+path/method, atomic argument-preflight, nested-reborrow, borrowed-return/
+release, and host-backed bulk collection benchmark rows before S1 removes the
+old callable-slot surface.
 
 ### State Storage Acceptance
 
