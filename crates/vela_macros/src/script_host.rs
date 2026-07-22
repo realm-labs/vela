@@ -7,12 +7,12 @@ use syn::{Data, DeriveInput, Result, parse2};
 
 use crate::attrs::{error, parse_script_attrs, spanned_error};
 
-struct TypeIdentity {
-    name: String,
-    module: String,
-    stable_path: String,
-    type_id: u128,
-    host_id: u64,
+pub(crate) struct TypeIdentity {
+    pub(crate) name: String,
+    pub(crate) module: String,
+    pub(crate) stable_path: String,
+    pub(crate) type_id: u128,
+    pub(crate) host_id: u64,
 }
 
 struct EnumExpansion {
@@ -282,7 +282,7 @@ fn expand_enum_result(expansion: EnumExpansion) -> Result<TokenStream> {
     })
 }
 
-fn type_identity(
+pub(crate) fn type_identity(
     ident: &Ident,
     path: Option<String>,
     module_attr: Option<String>,

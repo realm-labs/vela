@@ -1031,8 +1031,10 @@ constructor is associated with its binding but reuses the ordinary native
 function registry and `host::Type::new` resolution. Host factories now transfer
 exact Rust objects into actor-local Runtime-owned storage and expose only
 HostRef handles to Vela; Runtime drop is the current reclamation boundary.
-Derive generation, standard bindings, compact HostRef storage, prepared thunks,
-and common-arity preflight remain open.
+Named-struct `Value` derive generation now emits the same qualified schema,
+direct structural codec, and `TypeBinding`; enum and Host derive integration,
+standard bindings, compact HostRef storage, prepared thunks, and common-arity
+preflight remain open.
 
 ### S3 — Standard Rust types, views, and collection protocols
 

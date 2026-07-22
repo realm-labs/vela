@@ -24,7 +24,9 @@ pub use crate::runtime::{
     RuntimeInitializationLimits, RuntimeMethodSelector, VelaFunction, VelaMethod, VelaMethodTarget,
     VelaValue,
 };
-pub use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
+pub use crate::schema::{
+    ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema, ScriptValueSchema,
+};
 pub use crate::source::{
     EnginePackageError, EnginePackageErrorKind, PackageCompilationSnapshot,
     PackageCompilationSnapshotId, PackageCompileRequest, ProviderCatalog, ProviderCatalogError,

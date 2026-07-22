@@ -13,6 +13,7 @@ mod script_host;
 mod script_methods;
 mod signature;
 mod trait_export;
+mod value;
 
 use proc_macro::TokenStream;
 
@@ -56,6 +57,12 @@ pub fn derive_script_host(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(ScriptReflect, attributes(script))]
 pub fn derive_script_reflect(input: TokenStream) -> TokenStream {
     script_host::expand(input.into(), script_host::GeneratedMethod::Reflect).into()
+}
+
+/// Generates a structural Value codec, schema, and unified TypeBinding.
+#[proc_macro_derive(Value, attributes(script))]
+pub fn derive_value(input: TokenStream) -> TokenStream {
+    value::expand(input.into()).into()
 }
 
 #[proc_macro_attribute]

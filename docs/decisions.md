@@ -2316,6 +2316,22 @@ constructed objects are retained until Runtime drop in S2. Future explicit
 release or reachability-based reclamation may shorten that lifetime, but the
 script collector must never become the Rust object's owner.
 
+### Value Derive Generates The Unified Structural Binding
+
+`#[derive(Value)]` is code generation for the same `TypeBinding<T>` contract,
+not a second registration surface. For a named struct it emits one qualified
+Vela type descriptor, stable field IDs, direct field/element
+`IntoScriptArg`/`FromScriptArg` lowering, `ScriptValueSchema`, and
+`vela_type_binding()`. The generated path is the exact configured public path,
+so compiler schema, runtime record identity, reflection, and codec checks agree.
+
+All fields participate by default and may be renamed or given a stable alias.
+Skipping a field is rejected because structural decode could not reconstruct
+the exact Rust value without inventing a default. Custom partial conversion
+uses manual `ValueCodec`; generated enum support remains the next S2 macro
+slice. Neither path uses serde, JSON, runtime type reflection, or script
+generics.
+
 ### Repository Artifacts Use Domain-Neutral Host Names
 
 Vela is a reusable language library rather than an extension of one embedding

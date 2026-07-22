@@ -595,6 +595,16 @@ actor-local Runtime state, supports the same shared/exclusive lease boundary as
 other host roots, and currently retains constructed objects until Runtime drop;
 script values may keep or pass handles but never own the Rust allocation.
 
+For structural DTOs, `#[derive(Value)]` generates the exact `ScriptStruct`
+descriptor, stable field IDs, direct `IntoScriptArg`/`FromScriptArg` lowering,
+and `vela_type_binding()`. All named Rust fields participate by default, so
+ordinary DTOs require no field-by-field adapter. `#[script(name = "...")]`
+changes the public field name and `alias` preserves stable identity. A field
+cannot be skipped in the initial derive because decoding must reconstruct the
+exact Rust value; hosts with partial/private representations use a manual
+`ValueCodec`. The generated binding still enters only
+`register_rust_type::<T>` and does not create a macro-specific registry.
+
 For macro-exposed functions, `#[script_function]`,
 `#[script_context_function]`, and `#[script_host_function]` derive the native
 function ID from the public `::` qualified function name and optional `alias`.
