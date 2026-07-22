@@ -81,6 +81,17 @@ trait-object, generated Rust-default service, active Vela service,
 same-generation nested service, collection-view, and whole-generation staging
 measurements. No new optimization work should extend the slot benchmark.
 
+The S0 `service_boundary_baseline` harness freezes direct concrete/trait Rust,
+HostRef alias-copy, static host path, registered method, atomic argument
+preflight, same-session reborrow, borrowed return/release, and host-owned bulk
+collection rows with latency, throughput, allocations, bytes, and checksums.
+The 2026-07-23 stable run confirmed zero-allocation HostRef copies and direct
+Rust dispatch, while current two-argument preflight allocates one 64-byte
+buffer per call. Full methodology and exact rows are in the
+[S0 baseline report](archive/service-hard-switch-s0-baseline-2026-07-23.md).
+Use `cargo bench -p vela_engine --bench service_boundary_baseline` for quick
+sampling and append `-- --stable` for the frozen 100,000-iteration shape.
+
 The Batch E pre-optimization quick checkpoint on 2026-07-17 used parent commit
 `87e871439`, Rust/Cargo 1.97.0, macOS 26.5.2 arm64, the optimized bench profile,
 one sample, 1,000 measured iterations, and 100 warmups. It recorded 0.4 ns/call

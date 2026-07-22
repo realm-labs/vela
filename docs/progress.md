@@ -24,11 +24,11 @@ constructors/methods, and user-defined type registration are now explicit
 S2-S3 prerequisites. The Rust-default service branch must bypass HostRef and
 VM conversion. Deployment uses complete Snapshots or exact-base Deltas that
 flatten inherited Vela code into one candidate and activate/rollback with
-conditional publication. S0 is active: the callable-slot deletion inventory
-is recorded, and the domain-neutral pure-Rust migration fixture covers two
-services, one async handler, a mutable actor, DTOs, Array/Map-shaped arguments,
-Result, and nested Rust-default calls. Dedicated HostRef/path/preflight/
-reborrow/borrowed-return/bulk-operation baseline rows remain before S0 closes.
+conditional publication. S0 is accepted: the callable-slot deletion inventory,
+domain-neutral Rust-default migration fixture, and dedicated direct-Rust/
+HostRef/path/preflight/reborrow/borrowed-return/bulk-operation latency,
+throughput, allocation, and checksum baselines are recorded. S1 deletion is
+the active implementation checkpoint.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry
@@ -94,7 +94,7 @@ state-storage hard switch.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Complete enough | Actor Runtime/cache Batches A-F are accepted with shared generation execution data, no eager Actor vectors, and no execution lane. |
 | M20.5 | Queued | Resume the concrete editor-visible follow-up after the service hard switch. |
-| Rust/Vela service interop | S0 active | The deletion inventory and Rust-default migration fixture are in place; dedicated boundary benchmark rows remain. |
+| Rust/Vela service interop | S0 accepted | The deletion inventory, Rust-default fixture, and boundary benchmark report are complete; S1 deletion is next. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -185,10 +185,11 @@ Runtime, generated bindings, same-session re-entry, staging, activation,
 rollback, and no-retry semantics are reusable constraints rather than a reason
 to keep the old slot API.
 
-S0's remaining task is to add and freeze dedicated HostRef alias, static
-path/method, atomic argument-preflight, nested-reborrow, borrowed-return/
-release, and host-backed bulk collection benchmark rows before S1 removes the
-old callable-slot surface.
+S0 is accepted in the
+[baseline report](archive/service-hard-switch-s0-baseline-2026-07-23.md).
+S1 now removes the old callable-slot surface and preserves only neutral ABI,
+lease, re-entry, borrowed-return, generation-pinning, and no-retry facts under
+their correct module ownership.
 
 ### State Storage Acceptance
 
@@ -337,10 +338,9 @@ interpreter-only/profile-only/cache-enabled benchmark rows.
 
 ## Next Up
 
-1. Execute S0 of the Rust/Vela unified service hard switch: freeze/inventory the
-   old slot model, build the domain-neutral Rust-default fixture, and record
-   baselines.
-2. Execute S1 deletion before accepting a new public service replacement API.
+1. Execute S1 deletion before accepting a new public service replacement API.
+2. Implement the unified TypeBinding foundation and standard Rust collection
+   views in S2-S3 before service dispatch.
 3. Resume the M20.5 editor-visible follow-up after the service hard switch.
 4. Keep persistence, snapshots, replication, cross-Runtime sharing, structural
    state migration, async-frame migration, and initializer dependency reads as

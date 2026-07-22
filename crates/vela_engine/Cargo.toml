@@ -55,5 +55,9 @@ harness = false
 name = "interop"
 harness = false
 
+[[bench]]
+name = "service_boundary_baseline"
+harness = false
+
 [lints]
 workspace = true
