@@ -83,8 +83,9 @@ Callable contracts can now carry an exact binding-use proof containing the
 concrete `InteropTypeId`, `TypeAbiFingerprint`, and owned/Host/View/MutView
 representation. Engine sealing rejects unregistered, stale, unsupported, or
 boundary-mode-incompatible proofs, so an `ArrayMut` surface cannot conceal a
-fixed/growable or concrete Rust ABI mismatch. Service/export macro emission of
-those proofs and Host/View/MutView closure registration remain open.
+fixed/growable or concrete Rust ABI mismatch. Export and method macros now map
+borrowed standard `Vec`, map, and set signatures to exact View/MutView facts,
+emit those proofs, and register the concrete binding closure automatically.
 Restricted `ArrayView`/`ArrayMut`, `MapView`/`MapMut`, and
 `SetView`/`SetMut` hints now project as distinct analysis facts without adding
 general Vela generics. Hidden fixed/growable mutation capability survives
@@ -92,10 +93,15 @@ native metadata, registry projection, exported language-service schema, and
 callable ABI fingerprinting. Standard method facts reuse the owned collection
 read/iteration/transform surface while withholding structural mutation from
 shared and fixed views; growable exclusive views retain it. MIR and linked
-type contracts deliberately keep these facts dynamic until the HostRef-backed
-runtime adapter lands, so they are never mistaken for script-owned
-Array/Map/Set values. Macro signature mapping, HostRef runtime representations,
-write-through protocol adapters, and nested scoped reborrow remain open.
+type contracts deliberately keep these facts dynamic until HostRef-backed
+collection protocol dispatch lands, so they are never mistaken for
+script-owned Array/Map/Set values. Generated sync and async free-function and
+method adapters now lease real borrowed standard collections without
+materialization. Shared and exclusive collection references returned from one
+Rust export retain their owner lease and exact binding identity when passed
+into another Rust export, including immediate mutable write-through. Vela-side
+indexing, iteration, standard collection methods, bulk operations, fixed
+slices/arrays, and user-defined collection adapters remain open.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry

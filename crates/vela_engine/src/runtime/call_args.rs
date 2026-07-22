@@ -166,6 +166,26 @@ impl<'a> CallArgs<'a> {
         self
     }
 
+    /// Adds a shared HostRef-backed standard collection view using the exact
+    /// concrete binding identity generated for `T`.
+    #[doc(hidden)]
+    pub fn push_collection_ref<T>(&mut self, name: impl Into<String>, value: &'a T) -> &mut Self
+    where
+        T: ScriptHostObject + crate::standard::StandardTypeBinding + Sync + 'a,
+    {
+        self.entries.push(CallArg::NamedHost {
+            name: name.into(),
+            host_ref: None,
+            identity: None,
+            type_id: crate::standard::standard_collection_host_type_id::<T>(),
+            binding: HostArgBinding::Shared {
+                object: value,
+                leases: Arc::new(AtomicUsize::new(0)),
+            },
+        });
+        self
+    }
+
     #[doc(hidden)]
     pub fn push_positional_host_ref<T>(&mut self, value: &'a T) -> &mut Self
     where
@@ -175,6 +195,23 @@ impl<'a> CallArgs<'a> {
             host_ref: None,
             identity: None,
             type_id: value.host_type_id(),
+            binding: HostArgBinding::Shared {
+                object: value,
+                leases: Arc::new(AtomicUsize::new(0)),
+            },
+        });
+        self
+    }
+
+    #[doc(hidden)]
+    pub fn push_positional_collection_ref<T>(&mut self, value: &'a T) -> &mut Self
+    where
+        T: ScriptHostObject + crate::standard::StandardTypeBinding + Sync + 'a,
+    {
+        self.entries.push(CallArg::PositionalHost {
+            host_ref: None,
+            identity: None,
+            type_id: crate::standard::standard_collection_host_type_id::<T>(),
             binding: HostArgBinding::Shared {
                 object: value,
                 leases: Arc::new(AtomicUsize::new(0)),
@@ -222,6 +259,25 @@ impl<'a> CallArgs<'a> {
         self
     }
 
+    /// Adds an exclusive HostRef-backed standard collection view using the
+    /// exact concrete binding identity generated for `T`.
+    #[doc(hidden)]
+    pub fn push_collection_mut<T>(&mut self, name: impl Into<String>, value: &'a mut T) -> &mut Self
+    where
+        T: ScriptHostObject + crate::standard::StandardTypeBinding + Send + Sync + 'a,
+    {
+        self.entries.push(CallArg::NamedHost {
+            name: name.into(),
+            host_ref: None,
+            identity: None,
+            type_id: crate::standard::standard_collection_host_type_id::<T>(),
+            binding: HostArgBinding::Mutable {
+                object: Arc::new(parking_lot::RwLock::new(value)),
+            },
+        });
+        self
+    }
+
     #[doc(hidden)]
     pub fn push_positional_host_mut<T>(&mut self, value: &'a mut T) -> &mut Self
     where
@@ -231,6 +287,22 @@ impl<'a> CallArgs<'a> {
             host_ref: None,
             identity: None,
             type_id: value.host_type_id(),
+            binding: HostArgBinding::Mutable {
+                object: Arc::new(parking_lot::RwLock::new(value)),
+            },
+        });
+        self
+    }
+
+    #[doc(hidden)]
+    pub fn push_positional_collection_mut<T>(&mut self, value: &'a mut T) -> &mut Self
+    where
+        T: ScriptHostObject + crate::standard::StandardTypeBinding + Send + Sync + 'a,
+    {
+        self.entries.push(CallArg::PositionalHost {
+            host_ref: None,
+            identity: None,
+            type_id: crate::standard::standard_collection_host_type_id::<T>(),
             binding: HostArgBinding::Mutable {
                 object: Arc::new(parking_lot::RwLock::new(value)),
             },

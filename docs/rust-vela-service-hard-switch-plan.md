@@ -1105,17 +1105,24 @@ bindings once, while a conflicting manual binding still fails during sealing.
 Standard non-byte `Vec`, map, and set bindings now advertise shared View plus
 exact growable MutView capability on the same `InteropTypeId`; that
 representation fact participates in `TypeAbiFingerprint` and projects through
-reflection and compiler registries. Fixed array and byte-view capability,
-and HostRef-backed runtime adapters remain open. Restricted
+reflection and compiler registries. Export and method macros now traverse
+borrowed standard collection signatures, register their concrete binding
+closures, emit exact View/MutView ABI proofs, and generate sync/async lease
+adapters. A `&Vec`, borrowed map, or borrowed set therefore crosses as an exact
+HostRef-backed view rather than an owned Vela collection. Scoped collection
+references returned by one Rust export preserve the parent lease and concrete
+binding identity when reborrowed into another Rust export; mutable views write
+through immediately. Fixed array and byte-view capability remain open.
+Restricted
 `ArrayView`/`ArrayMut`, `MapView`/`MapMut`, and `SetView`/`SetMut` hints now
 retain distinct analysis facts and exact hidden fixed/growable mutation facts.
 Their shared collection methods are visible without materialization,
 structural mutators are statically absent from shared/fixed views, and
 growable exclusive views retain them. MIR/bytecode intentionally do not lower
-these facts to owned collection contracts before the HostRef runtime adapter
-exists.
-Service-macro signature traversal, Host/View/MutView closure registration,
-prepared operations, and host-backed bulk behavior are still open.
+these facts to owned collection contracts before HostRef runtime collection
+protocol dispatch exists. Vela-side HostRef indexing, iteration, method and
+bulk protocol dispatch, slices/fixed arrays, user-defined collection adapters,
+full service-macro traversal, and prepared operations are still open.
 
 ### S4 — Service contract and Rust-only generation
 

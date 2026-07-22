@@ -4,7 +4,9 @@ use std::any::TypeId as RustTypeId;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
 
-use vela_common::{CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation};
+use vela_common::{
+    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, HostTypeId,
+};
 use vela_def::TypeId;
 use vela_reflect::registry::{
     HostIndexCapability, SchemaHash, TraitDesc, TypeDesc, TypeKey, TypeKind,
@@ -36,6 +38,25 @@ where
     T: StandardTypeBinding,
 {
     T::standard_type_binding()
+}
+
+/// Returns a standard collection view's call-scoped HostRef identity. Standard
+/// IDs are 64-bit stable IDs and therefore map losslessly to `HostTypeId`.
+#[doc(hidden)]
+#[must_use]
+pub fn standard_collection_host_type_id<T>() -> HostTypeId
+where
+    T: StandardTypeBinding,
+{
+    let binding = T::standard_type_binding();
+    assert!(
+        binding.collection_views().is_some(),
+        "standard collection HostRef identity requires advertised views"
+    );
+    HostTypeId::new(
+        u64::try_from(binding.type_desc().key.id.get())
+            .expect("standard collection type IDs are generated from 64-bit stable IDs"),
+    )
 }
 
 macro_rules! primitive_standard_binding {

@@ -2,7 +2,10 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::ImplItemFn;
 
-use super::{effect_tokens, hint_tokens, parameter_mode_tokens, return_mode_tokens};
+use super::{
+    binding_use_tokens, collection_registration_tokens, effect_tokens, hint_tokens,
+    host_type_id_tokens, parameter_mode_tokens, return_mode_tokens,
+};
 use crate::export::signature::{
     ClassifiedSignature, ErrorMode, HostAccess, ParameterMode, ReturnMode, ScopedReturnContainer,
     TypeShape,
@@ -32,9 +35,10 @@ pub(crate) fn method_contract(
             hint_tokens(&parameter.ty)
         };
         let mode = parameter_mode_tokens(parameter.mode);
-        quote! {
+        let contract = quote! {
             ::vela_engine::interop::CallableParameter::new(#identity, #name, #hint, #mode)
-        }
+        };
+        binding_use_tokens(contract, &parameter.ty)
     });
     let return_hint = hint_tokens(&signature.returns.ty);
     let return_mode = return_mode_tokens(signature.returns.mode, &signature.returns.ty);
@@ -42,6 +46,16 @@ pub(crate) fn method_contract(
         ErrorMode::Value => quote! { ::vela_engine::interop::ErrorMode::Value },
         ErrorMode::RuntimeResult => quote! { ::vela_engine::interop::ErrorMode::RuntimeResult },
     };
+    let return_contract = binding_use_tokens(
+        quote! {
+            ::vela_engine::interop::CallableReturn::new(
+                #return_hint,
+                #return_mode,
+                #error_mode,
+            )
+        },
+        &signature.returns.ty,
+    );
     let effects = effect_tokens(&signature.effects);
     let asyncness = if signature.is_async {
         quote! { ::vela_common::CallableAsyncness::Async }
@@ -61,11 +75,7 @@ pub(crate) fn method_contract(
                 ),
                 public_path: #public_path.to_owned(),
                 parameters: vec![#(#parameters),*],
-                returns: ::vela_engine::interop::CallableReturn::new(
-                    #return_hint,
-                    #return_mode,
-                    #error_mode,
-                ),
+                returns: #return_contract,
                 asyncness: #asyncness,
                 effects: #effects,
                 access: ::vela_engine::interop::CallableAccess::default(),
@@ -97,6 +107,7 @@ pub(crate) fn method_adapter(
         return None;
     }
     let method_ident = &method.sig.ident;
+    let collection_registrations = collection_registration_tokens(signature);
     let contract_ident = format_ident!("vela_callable_contract_{method_ident}");
     let register_ident = format_ident!("vela_register_export_{method_ident}");
     let receiver = signature
@@ -136,9 +147,9 @@ pub(crate) fn method_adapter(
         .filter_map(|(contract_index, parameter)| {
             let argument_index = runtime_argument_index;
             runtime_argument_index += 1;
-            let TypeShape::Host(ty, access) = &parameter.ty else {
-                return None;
-            };
+            let (_, access) = parameter.ty.host_boundary()?;
+            let type_id = host_type_id_tokens(&parameter.ty)
+                .expect("host parameter has a runtime type identity");
             let kind = match access {
                 HostAccess::Shared => quote! { ::vela_host::lease::HostLeaseKind::Shared },
                 HostAccess::Exclusive => {
@@ -149,7 +160,7 @@ pub(crate) fn method_adapter(
                 ::vela_engine::interop::HostLeaseParameterPlan::argument(
                     #contract_index,
                     #argument_index,
-                    <#ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_id(),
+                    #type_id,
                     #kind,
                 )
             })
@@ -165,8 +176,8 @@ pub(crate) fn method_adapter(
             let argument_index = runtime_argument_index;
             runtime_argument_index += 1;
             let name = format_ident!("__vela_arg_{}", parameter.name);
-            match &parameter.ty {
-                TypeShape::Host(ty, HostAccess::Shared) => {
+            match parameter.ty.host_boundary() {
+                Some((ty, HostAccess::Shared)) => {
                     let lease_index = host_lease_index;
                     host_lease_index += 1;
                     quote! {
@@ -179,7 +190,7 @@ pub(crate) fn method_adapter(
                             ))?;
                     }
                 }
-                TypeShape::Host(ty, HostAccess::Exclusive) => {
+                Some((ty, HostAccess::Exclusive)) => {
                     let lease_index = host_lease_index;
                     host_lease_index += 1;
                     quote! {
@@ -193,7 +204,7 @@ pub(crate) fn method_adapter(
                             ))?;
                     }
                 }
-                _ => {
+                None => {
                     let ty = parameter
                         .rust_ty
                         .as_ref()
@@ -224,6 +235,7 @@ pub(crate) fn method_adapter(
         pub fn #register_ident(
             builder: ::vela_engine::builder::EngineBuilder,
         ) -> ::vela_engine::builder::EngineBuilder {
+            #(#collection_registrations)*
             let __vela_contract = Self::#contract_ident();
             let mut __vela_desc = __vela_contract.native_method_desc(
                 <#self_ty as ::vela_engine::schema::ScriptHostSchema>::script_host_type_desc().key,
@@ -289,6 +301,7 @@ fn method_sync_scoped_host_adapter(
     signature: &ClassifiedSignature,
 ) -> TokenStream {
     let method_ident = &method.sig.ident;
+    let collection_registrations = collection_registration_tokens(signature);
     let contract_ident = format_ident!("vela_callable_contract_{method_ident}");
     let register_ident = format_ident!("vela_register_export_{method_ident}");
     let receiver = signature
@@ -326,13 +339,14 @@ fn method_sync_scoped_host_adapter(
         .scoped_return_container()
         .expect("scoped method has a supported return container");
     let child_shape = match &signature.returns.ty {
-        TypeShape::Host(_, _) | TypeShape::Tuple(_) => &signature.returns.ty,
+        shape if shape.host_boundary().is_some() => shape,
+        TypeShape::Tuple(_) => &signature.returns.ty,
         TypeShape::Option(inner) => &**inner,
         TypeShape::Result(ok, _) => &**ok,
         _ => unreachable!(),
     };
     let child_shapes = match child_shape {
-        TypeShape::Host(_, _) => vec![child_shape],
+        shape if shape.host_boundary().is_some() => vec![shape],
         TypeShape::Tuple(elements) => elements.iter().collect::<Vec<_>>(),
         _ => unreachable!(),
     };
@@ -348,9 +362,9 @@ fn method_sync_scoped_host_adapter(
     let child_references = child_shapes
         .iter()
         .map(|shape| {
-            let TypeShape::Host(ty, access) = shape else {
-                unreachable!();
-            };
+            let (ty, access) = shape
+                .host_boundary()
+                .expect("borrowed method return is host-backed");
             match access {
                 HostAccess::Shared => quote! { &#ty },
                 HostAccess::Exclusive => quote! { &mut #ty },
@@ -361,15 +375,21 @@ fn method_sync_scoped_host_adapter(
         .iter()
         .zip(&child_names)
         .map(|(shape, name)| {
-            let TypeShape::Host(_, access) = shape else {
-                unreachable!();
-            };
+            let (_, access) = shape
+                .host_boundary()
+                .expect("borrowed method return is host-backed");
+            let type_id = host_type_id_tokens(shape)
+                .expect("borrowed method return has a runtime type identity");
             match access {
                 HostAccess::Shared => {
-                    quote! { ::vela_host::lease::shared_scoped_host(#name) }
+                    quote! {
+                        ::vela_host::lease::shared_scoped_host_with_type_id(#name, #type_id)
+                    }
                 }
                 HostAccess::Exclusive => {
-                    quote! { ::vela_host::lease::exclusive_scoped_host(#name) }
+                    quote! {
+                        ::vela_host::lease::exclusive_scoped_host_with_type_id(#name, #type_id)
+                    }
                 }
             }
         })
@@ -600,6 +620,7 @@ fn method_sync_scoped_host_adapter(
         pub fn #register_ident(
             builder: ::vela_engine::builder::EngineBuilder,
         ) -> ::vela_engine::builder::EngineBuilder {
+            #(#collection_registrations)*
             let __vela_contract = Self::#contract_ident();
             let mut __vela_desc = __vela_contract.native_method_desc(
                 <#self_ty as ::vela_engine::schema::ScriptHostSchema>::script_host_type_desc().key,
@@ -654,6 +675,7 @@ fn method_async_adapter(
     signature: &ClassifiedSignature,
 ) -> TokenStream {
     let method_ident = &method.sig.ident;
+    let collection_registrations = collection_registration_tokens(signature);
     let contract_ident = format_ident!("vela_callable_contract_{method_ident}");
     let register_ident = format_ident!("vela_register_export_{method_ident}");
     let receiver = signature
@@ -744,15 +766,15 @@ fn method_async_adapter(
             }
             let index = runtime_index;
             runtime_index += 1;
-            match &parameter.ty {
-                TypeShape::Host(ty, HostAccess::Shared) => quote! {
+            match parameter.ty.host_boundary() {
+                Some((ty, HostAccess::Shared)) => quote! {
                     let #name = __vela_leases
                         .next()
                         .and_then(|lease| lease.object().lease_any())
                         .and_then(|object| object.downcast_ref::<#ty>())
                         .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(root))?;
                 },
-                TypeShape::Host(ty, HostAccess::Exclusive) => quote! {
+                Some((ty, HostAccess::Exclusive)) => quote! {
                     let #name = __vela_leases
                         .next()
                         .and_then(|lease| lease.object_mut())
@@ -760,7 +782,7 @@ fn method_async_adapter(
                         .and_then(|object| object.downcast_mut::<#ty>())
                         .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(root))?;
                 },
-                _ => {
+                None => {
                     let ty = parameter
                         .rust_ty
                         .as_ref()
@@ -854,6 +876,7 @@ fn method_async_adapter(
         pub fn #register_ident(
             builder: ::vela_engine::builder::EngineBuilder,
         ) -> ::vela_engine::builder::EngineBuilder {
+            #(#collection_registrations)*
             #descriptor
             #registration
         }

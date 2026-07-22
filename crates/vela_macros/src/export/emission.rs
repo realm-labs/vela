@@ -8,6 +8,12 @@ use super::signature::{
     ReturnMode, ScopedReturnContainer, TypeShape,
 };
 
+mod binding;
+
+use binding::{
+    binding_use_tokens, collection_registration_tokens, hint_tokens, host_type_id_tokens,
+};
+
 pub(crate) fn function_contract(
     item: &ItemFn,
     attrs: &ExportAttrs,
@@ -28,9 +34,10 @@ pub(crate) fn function_contract(
             let hint = hint_tokens(&parameter.ty);
             let mode = parameter_mode_tokens(parameter.mode);
             let _ = index;
-            quote! {
+            let contract = quote! {
                 ::vela_engine::interop::CallableParameter::new(#identity, #name, #hint, #mode)
-            }
+            };
+            binding_use_tokens(contract, &parameter.ty)
         });
     let return_hint = hint_tokens(&signature.returns.ty);
     let return_mode = return_mode_tokens(signature.returns.mode, &signature.returns.ty);
@@ -38,6 +45,16 @@ pub(crate) fn function_contract(
         ErrorMode::Value => quote! { ::vela_engine::interop::ErrorMode::Value },
         ErrorMode::RuntimeResult => quote! { ::vela_engine::interop::ErrorMode::RuntimeResult },
     };
+    let return_contract = binding_use_tokens(
+        quote! {
+            ::vela_engine::interop::CallableReturn::new(
+                #return_hint,
+                #return_mode,
+                #error_mode,
+            )
+        },
+        &signature.returns.ty,
+    );
     let effects = effect_tokens(&signature.effects);
     let asyncness = if signature.is_async {
         quote! { ::vela_common::CallableAsyncness::Async }
@@ -57,11 +74,7 @@ pub(crate) fn function_contract(
                 ),
                 public_path: #public_path.to_owned(),
                 parameters: vec![#(#parameters),*],
-                returns: ::vela_engine::interop::CallableReturn::new(
-                    #return_hint,
-                    #return_mode,
-                    #error_mode,
-                ),
+                returns: #return_contract,
                 asyncness: #asyncness,
                 effects: #effects,
                 access: ::vela_engine::interop::CallableAccess::default(),
@@ -219,6 +232,7 @@ fn function_sync_scoped_host_adapter(
     item: &ItemFn,
     signature: &ClassifiedSignature,
 ) -> TokenStream {
+    let collection_registrations = collection_registration_tokens(signature);
     let function_ident = &item.sig.ident;
     let contract_ident = format_ident!("vela_callable_contract_{function_ident}");
     let register_ident = format_ident!("vela_register_export_{function_ident}");
@@ -235,13 +249,14 @@ fn function_sync_scoped_host_adapter(
         .scoped_return_container()
         .expect("scoped adapter has a supported return container");
     let child_shape = match &signature.returns.ty {
-        TypeShape::Host(_, _) | TypeShape::Tuple(_) => &signature.returns.ty,
+        shape if shape.host_boundary().is_some() => shape,
+        TypeShape::Tuple(_) => &signature.returns.ty,
         TypeShape::Option(inner) => &**inner,
         TypeShape::Result(ok, _) => &**ok,
         _ => unreachable!(),
     };
     let child_shapes = match child_shape {
-        TypeShape::Host(_, _) => vec![child_shape],
+        shape if shape.host_boundary().is_some() => vec![shape],
         TypeShape::Tuple(elements) => elements.iter().collect::<Vec<_>>(),
         _ => unreachable!("scoped adapter requires host payloads"),
     };
@@ -250,9 +265,9 @@ fn function_sync_scoped_host_adapter(
         .iter()
         .enumerate()
         .filter_map(|(index, parameter)| {
-            let TypeShape::Host(ty, access) = &parameter.ty else {
-                return None;
-            };
+            let (_, access) = parameter.ty.host_boundary()?;
+            let type_id = host_type_id_tokens(&parameter.ty)
+                .expect("host parameter has a runtime type identity");
             let kind = match access {
                 HostAccess::Shared => quote! { ::vela_host::lease::HostLeaseKind::Shared },
                 HostAccess::Exclusive => {
@@ -263,7 +278,7 @@ fn function_sync_scoped_host_adapter(
                 ::vela_engine::interop::HostLeaseParameterPlan::argument(
                     #index,
                     #index,
-                    <#ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_id(),
+                    #type_id,
                     #kind,
                 )
             })
@@ -274,7 +289,7 @@ fn function_sync_scoped_host_adapter(
         .iter()
         .enumerate()
         .filter_map(|(index, parameter)| {
-            if matches!(parameter.ty, TypeShape::Host(_, _)) {
+            if parameter.ty.host_boundary().is_some() {
                 return None;
             }
             let name = format_ident!("__vela_arg_{}", parameter.name);
@@ -292,12 +307,13 @@ fn function_sync_scoped_host_adapter(
     let host_parameter = signature
         .parameters
         .iter()
-        .find(|parameter| matches!(parameter.ty, TypeShape::Host(_, _)))
+        .find(|parameter| parameter.ty.host_boundary().is_some())
         .expect("scoped free return has one host origin");
     let host_name = format_ident!("__vela_arg_{}", host_parameter.name);
-    let TypeShape::Host(host_ty, host_access) = &host_parameter.ty else {
-        unreachable!();
-    };
+    let (host_ty, host_access) = host_parameter
+        .ty
+        .host_boundary()
+        .expect("scoped free return origin is host-backed");
     let host_binding = match host_access {
         HostAccess::Shared => quote! {
             let #host_name = __vela_parent_lease
@@ -327,9 +343,9 @@ fn function_sync_scoped_host_adapter(
     let child_references = child_shapes
         .iter()
         .map(|shape| {
-            let TypeShape::Host(ty, access) = shape else {
-                unreachable!("borrowed tuple contains only direct host references");
-            };
+            let (ty, access) = shape
+                .host_boundary()
+                .expect("borrowed tuple contains only direct host references");
             match access {
                 HostAccess::Shared => quote! { &#ty },
                 HostAccess::Exclusive => quote! { &mut #ty },
@@ -340,15 +356,23 @@ fn function_sync_scoped_host_adapter(
         .iter()
         .zip(&child_names)
         .map(|(shape, name)| {
-            let TypeShape::Host(_, access) = shape else {
-                unreachable!();
-            };
+            let (_, access) = shape
+                .host_boundary()
+                .expect("borrowed child is host-backed");
             match access {
                 HostAccess::Shared => {
-                    quote! { ::vela_host::lease::shared_scoped_host(#name) }
+                    let type_id = host_type_id_tokens(shape)
+                        .expect("borrowed child has a runtime type identity");
+                    quote! {
+                        ::vela_host::lease::shared_scoped_host_with_type_id(#name, #type_id)
+                    }
                 }
                 HostAccess::Exclusive => {
-                    quote! { ::vela_host::lease::exclusive_scoped_host(#name) }
+                    let type_id = host_type_id_tokens(shape)
+                        .expect("borrowed child has a runtime type identity");
+                    quote! {
+                        ::vela_host::lease::exclusive_scoped_host_with_type_id(#name, #type_id)
+                    }
                 }
             }
         })
@@ -506,6 +530,7 @@ fn function_sync_scoped_host_adapter(
         pub fn #register_ident(
             builder: ::vela_engine::builder::EngineBuilder,
         ) -> ::vela_engine::builder::EngineBuilder {
+            #(#collection_registrations)*
             let __vela_contract = #contract_ident();
             let __vela_desc = __vela_contract.native_function_desc();
             let __vela_plan = ::vela_engine::interop::PreparedHostLeasePlan::new(
@@ -548,6 +573,7 @@ fn function_sync_scoped_host_adapter(
 }
 
 fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -> TokenStream {
+    let collection_registrations = collection_registration_tokens(signature);
     let function_ident = &item.sig.ident;
     let contract_ident = format_ident!("vela_callable_contract_{function_ident}");
     let register_ident = format_ident!("vela_register_export_{function_ident}");
@@ -558,9 +584,9 @@ fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -
         .iter()
         .enumerate()
         .filter_map(|(index, parameter)| {
-            let TypeShape::Host(ty, access) = &parameter.ty else {
-                return None;
-            };
+            let (_, access) = parameter.ty.host_boundary()?;
+            let type_id = host_type_id_tokens(&parameter.ty)
+                .expect("host parameter has a runtime type identity");
             let kind = match access {
                 HostAccess::Shared => quote! { ::vela_host::lease::HostLeaseKind::Shared },
                 HostAccess::Exclusive => {
@@ -571,7 +597,7 @@ fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -
                 ::vela_engine::interop::HostLeaseParameterPlan::argument(
                     #index,
                     #index,
-                    <#ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_id(),
+                    #type_id,
                     #kind,
                 )
             })
@@ -583,8 +609,8 @@ fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -
         .enumerate()
         .map(|(index, parameter)| {
             let name = format_ident!("__vela_arg_{}", parameter.name);
-            match &parameter.ty {
-                TypeShape::Host(ty, HostAccess::Shared) => {
+            match parameter.ty.host_boundary() {
+                Some((ty, HostAccess::Shared)) => {
                     quote! {
                         let #name = __vela_leases
                             .next()
@@ -593,7 +619,7 @@ fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -
                             .expect("preflight-validated shared host lease");
                     }
                 }
-                TypeShape::Host(ty, HostAccess::Exclusive) => {
+                Some((ty, HostAccess::Exclusive)) => {
                     quote! {
                         let #name = __vela_leases
                             .next()
@@ -603,7 +629,7 @@ fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -
                             .expect("preflight-validated exclusive host lease");
                     }
                 }
-                _ => {
+                None => {
                     let ty = parameter
                         .rust_ty
                         .as_ref()
@@ -629,6 +655,7 @@ fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -
         pub fn #register_ident(
             builder: ::vela_engine::builder::EngineBuilder,
         ) -> ::vela_engine::builder::EngineBuilder {
+            #(#collection_registrations)*
             let __vela_contract = #contract_ident();
             let __vela_desc = __vela_contract.native_function_desc();
             let __vela_plan = ::vela_engine::interop::PreparedHostLeasePlan::new(
@@ -672,6 +699,7 @@ fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -
 }
 
 fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -> TokenStream {
+    let collection_registrations = collection_registration_tokens(signature);
     let function_ident = &item.sig.ident;
     let contract_ident = format_ident!("vela_callable_contract_{function_ident}");
     let register_ident = format_ident!("vela_register_export_{function_ident}");
@@ -692,9 +720,9 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
             }
             let argument_index = runtime_argument_index;
             runtime_argument_index += 1;
-            let TypeShape::Host(ty, access) = &parameter.ty else {
-                return None;
-            };
+            let (_, access) = parameter.ty.host_boundary()?;
+            let type_id = host_type_id_tokens(&parameter.ty)
+                .expect("host parameter has a runtime type identity");
             let kind = match access {
                 HostAccess::Shared => quote! { ::vela_host::lease::HostLeaseKind::Shared },
                 HostAccess::Exclusive => {
@@ -705,7 +733,7 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
                 ::vela_engine::interop::HostLeaseParameterPlan::argument(
                     #contract_index,
                     #argument_index,
-                    <#ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_id(),
+                    #type_id,
                     #kind,
                 )
             })
@@ -723,8 +751,8 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
             }
             let argument_index = runtime_argument_index;
             runtime_argument_index += 1;
-            match &parameter.ty {
-                TypeShape::Host(ty, HostAccess::Shared) => {
+            match parameter.ty.host_boundary() {
+                Some((ty, HostAccess::Shared)) => {
                     let lease_index = host_lease_index;
                     host_lease_index += 1;
                     quote! {
@@ -737,7 +765,7 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
                             ))?;
                     }
                 }
-                TypeShape::Host(ty, HostAccess::Exclusive) => {
+                Some((ty, HostAccess::Exclusive)) => {
                     let lease_index = host_lease_index;
                     host_lease_index += 1;
                     quote! {
@@ -751,7 +779,7 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
                             ))?;
                     }
                 }
-                _ => {
+                None => {
                     let ty = parameter
                         .rust_ty
                         .as_ref()
@@ -822,6 +850,7 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
         pub fn #register_ident(
             builder: ::vela_engine::builder::EngineBuilder,
         ) -> ::vela_engine::builder::EngineBuilder {
+            #(#collection_registrations)*
             let __vela_contract = #contract_ident();
             let __vela_desc = __vela_contract.native_function_desc();
             let __vela_callable = __vela_contract.public_path.clone();
@@ -871,9 +900,10 @@ pub(crate) fn protocol_contract(
                 hint_tokens(&parameter.ty)
             };
             let mode = parameter_mode_tokens(parameter.mode);
-            quote! {
+            let contract = quote! {
                 ::vela_engine::interop::CallableParameter::new(#identity, #name, #hint, #mode)
-            }
+            };
+            binding_use_tokens(contract, &parameter.ty)
         });
         let return_hint = hint_tokens(&signature.returns.ty);
         let return_mode = return_mode_tokens(signature.returns.mode, &signature.returns.ty);
@@ -881,6 +911,16 @@ pub(crate) fn protocol_contract(
             ErrorMode::Value => quote! { ::vela_engine::interop::ErrorMode::Value },
             ErrorMode::RuntimeResult => quote! { ::vela_engine::interop::ErrorMode::RuntimeResult },
         };
+        let return_contract = binding_use_tokens(
+            quote! {
+                ::vela_engine::interop::CallableReturn::new(
+                    #return_hint,
+                    #return_mode,
+                    #error_mode,
+                )
+            },
+            &signature.returns.ty,
+        );
         let effects = effect_tokens(&signature.effects);
         let asyncness = if signature.is_async {
             quote! { ::vela_common::CallableAsyncness::Async }
@@ -897,11 +937,7 @@ pub(crate) fn protocol_contract(
                 ),
                 public_path: #method_path.to_owned(),
                 parameters: vec![#(#parameters),*],
-                returns: ::vela_engine::interop::CallableReturn::new(
-                    #return_hint,
-                    #return_mode,
-                    #error_mode,
-                ),
+                returns: #return_contract,
                 asyncness: #asyncness,
                 effects: #effects,
                 access: ::vela_engine::interop::CallableAccess::default(),
@@ -1016,59 +1052,4 @@ fn effect_tokens(effects: &std::collections::BTreeSet<EffectName>) -> TokenStrea
         tokens = quote! { #tokens.union(#next) };
     }
     tokens
-}
-
-fn hint_tokens(shape: &TypeShape) -> TokenStream {
-    match shape {
-        TypeShape::Unit => quote! { ::vela_engine::native::TypeHint::unit() },
-        TypeShape::Bool => quote! { ::vela_engine::native::TypeHint::boolean() },
-        TypeShape::Char => quote! { ::vela_engine::native::TypeHint::char() },
-        TypeShape::I8 => quote! { ::vela_engine::native::TypeHint::i8() },
-        TypeShape::I16 => quote! { ::vela_engine::native::TypeHint::i16() },
-        TypeShape::I32 => quote! { ::vela_engine::native::TypeHint::i32() },
-        TypeShape::I64 => quote! { ::vela_engine::native::TypeHint::i64() },
-        TypeShape::U8 => quote! { ::vela_engine::native::TypeHint::u8() },
-        TypeShape::U16 => quote! { ::vela_engine::native::TypeHint::u16() },
-        TypeShape::U32 => quote! { ::vela_engine::native::TypeHint::u32() },
-        TypeShape::U64 => quote! { ::vela_engine::native::TypeHint::u64() },
-        TypeShape::F32 => quote! { ::vela_engine::native::TypeHint::f32() },
-        TypeShape::F64 => quote! { ::vela_engine::native::TypeHint::f64() },
-        TypeShape::String => quote! { ::vela_engine::native::TypeHint::string() },
-        TypeShape::Bytes => quote! { ::vela_engine::native::TypeHint::bytes() },
-        TypeShape::Array(element) => {
-            let element = hint_tokens(element);
-            quote! { ::vela_engine::native::TypeHint::array_of(#element) }
-        }
-        TypeShape::Map(key, value) => {
-            let key = hint_tokens(key);
-            let value = hint_tokens(value);
-            quote! { ::vela_engine::native::TypeHint::map_of(#key, #value) }
-        }
-        TypeShape::Set(element) => {
-            let element = hint_tokens(element);
-            quote! { ::vela_engine::native::TypeHint::set_of(#element) }
-        }
-        TypeShape::Tuple(elements) => {
-            let elements = elements.iter().map(hint_tokens);
-            quote! { ::vela_engine::native::TypeHint::tuple_of([#(#elements),*]) }
-        }
-        TypeShape::Option(payload) => {
-            let payload = hint_tokens(payload);
-            quote! { ::vela_engine::native::TypeHint::option_of(#payload) }
-        }
-        TypeShape::Result(ok, err) => {
-            let ok = hint_tokens(ok);
-            let err = hint_tokens(err);
-            quote! { ::vela_engine::native::TypeHint::result_of(#ok, #err) }
-        }
-        TypeShape::Value(ty) => {
-            quote! { <#ty as ::vela_engine::interop::VelaValueBoundary>::vela_type_hint() }
-        }
-        TypeShape::Host(ty, _) => {
-            quote! { <#ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_hint() }
-        }
-        TypeShape::ReceiverHost => {
-            quote! { <Self as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_hint() }
-        }
-    }
 }

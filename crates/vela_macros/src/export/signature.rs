@@ -96,7 +96,23 @@ pub(super) enum TypeShape {
     Result(Box<TypeShape>, Box<TypeShape>),
     Value(Type),
     Host(Type, HostAccess),
+    BorrowedCollection(BorrowedCollectionShape),
     ReceiverHost,
+}
+
+#[derive(Clone)]
+pub(super) struct BorrowedCollectionShape {
+    pub(super) rust_ty: Type,
+    pub(super) kind: BorrowedCollectionKind,
+    pub(super) access: HostAccess,
+    pub(super) mutation: vela_common::CollectionViewMutation,
+}
+
+#[derive(Clone)]
+pub(super) enum BorrowedCollectionKind {
+    Array(Box<TypeShape>),
+    Map(Box<TypeShape>, Box<TypeShape>),
+    Set(Box<TypeShape>),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -346,12 +362,24 @@ fn classify_parameter(parameter: &PatType) -> Result<ClassifiedParameter> {
                 rust_ty: Some(parameter.ty.as_ref().clone()),
             });
         }
-        let host_ty = direct_host_type(&reference.elem)?;
         let access = if reference.mutability.is_some() {
             HostAccess::Exclusive
         } else {
             HostAccess::Shared
         };
+        if let Some(collection) = borrowed_collection_type(&reference.elem, access)? {
+            return Ok(ClassifiedParameter {
+                name,
+                ty: collection,
+                mode: if access == HostAccess::Exclusive {
+                    ParameterMode::ExclusiveHost
+                } else {
+                    ParameterMode::SharedHost
+                },
+                rust_ty: Some(parameter.ty.as_ref().clone()),
+            });
+        }
+        let host_ty = direct_host_type(&reference.elem)?;
         return Ok(ClassifiedParameter {
             name,
             ty: TypeShape::Host(host_ty, access),
@@ -390,12 +418,15 @@ fn classify_return_shape(ty: &Type) -> Result<TypeShape> {
                 "borrowed scalar or container views cannot leave an exported Rust invocation",
             ));
         }
-        let host_ty = direct_host_type(&reference.elem)?;
         let access = if reference.mutability.is_some() {
             HostAccess::Exclusive
         } else {
             HostAccess::Shared
         };
+        if let Some(collection) = borrowed_collection_type(&reference.elem, access)? {
+            return Ok(collection);
+        }
+        let host_ty = direct_host_type(&reference.elem)?;
         return Ok(TypeShape::Host(host_ty, access));
     }
     if let Some(inner) = wrapper_inner_type(ty, &["Option"]) {
@@ -572,6 +603,60 @@ fn direct_host_type(ty: &Type) -> Result<Type> {
     Ok(ty.clone())
 }
 
+fn borrowed_collection_type(ty: &Type, access: HostAccess) -> Result<Option<TypeShape>> {
+    let Some(ident) = type_ident(ty) else {
+        return Ok(None);
+    };
+    let args = type_generic_args(ty);
+    let kind = match ident.as_str() {
+        "Vec" => {
+            let [element] = args.as_slice() else {
+                return Err(syn::Error::new_spanned(
+                    ty,
+                    "borrowed Vec boundary type requires exactly one type argument",
+                ));
+            };
+            if type_ident(element).is_some_and(|ident| ident == "u8") {
+                return Err(syn::Error::new_spanned(
+                    ty,
+                    "borrowed Vec<u8> views are not supported yet; use an owned byte value",
+                ));
+            }
+            BorrowedCollectionKind::Array(Box::new(classify_owned_type(element)?))
+        }
+        "BTreeMap" | "HashMap" => {
+            let [key, value] = args.as_slice() else {
+                return Err(syn::Error::new_spanned(
+                    ty,
+                    "borrowed map boundary type requires exactly two type arguments",
+                ));
+            };
+            BorrowedCollectionKind::Map(
+                Box::new(classify_owned_type(key)?),
+                Box::new(classify_owned_type(value)?),
+            )
+        }
+        "BTreeSet" | "HashSet" => {
+            let [element] = args.as_slice() else {
+                return Err(syn::Error::new_spanned(
+                    ty,
+                    "borrowed set boundary type requires exactly one type argument",
+                ));
+            };
+            BorrowedCollectionKind::Set(Box::new(classify_owned_type(element)?))
+        }
+        _ => return Ok(None),
+    };
+    Ok(Some(TypeShape::BorrowedCollection(
+        BorrowedCollectionShape {
+            rust_ty: ty.clone(),
+            kind,
+            access,
+            mutation: vela_common::CollectionViewMutation::Growable,
+        },
+    )))
+}
+
 fn reject_boundary_wrapper(ty: &Type) -> Result<()> {
     if type_ident(ty).is_some_and(|ident| BOUNDARY_WRAPPERS.contains(&ident.as_str())) {
         return Err(syn::Error::new_spanned(
@@ -617,12 +702,13 @@ fn inferred_effects(parameters: &[ClassifiedParameter]) -> BTreeSet<EffectName> 
 fn host_return_access(shape: &TypeShape) -> Result<Option<HostAccess>> {
     match shape {
         TypeShape::Host(_, access) => Ok(Some(*access)),
+        TypeShape::BorrowedCollection(collection) => Ok(Some(collection.access)),
         TypeShape::Option(inner) => host_return_access(inner),
         TypeShape::Result(ok, _) => host_return_access(ok),
         TypeShape::Tuple(elements) => {
             let mut access = None;
             for element in elements {
-                let TypeShape::Host(_, element_access) = element else {
+                let Some((_, element_access)) = element.host_boundary() else {
                     if host_return_access(element)?.is_some() || access.is_some() {
                         return Err(syn::Error::new(
                             proc_macro2::Span::call_site(),
@@ -631,19 +717,15 @@ fn host_return_access(shape: &TypeShape) -> Result<Option<HostAccess>> {
                     }
                     continue;
                 };
-                if access.is_some_and(|access| access != *element_access) {
+                if access.is_some_and(|access| access != element_access) {
                     return Err(syn::Error::new(
                         proc_macro2::Span::call_site(),
                         "borrowed host tuples must use one shared or exclusive access mode",
                     ));
                 }
-                access = Some(*element_access);
+                access = Some(element_access);
             }
-            if access.is_some()
-                && elements
-                    .iter()
-                    .any(|item| !matches!(item, TypeShape::Host(_, _)))
-            {
+            if access.is_some() && elements.iter().any(|item| item.host_boundary().is_none()) {
                 return Err(syn::Error::new(
                     proc_macro2::Span::call_site(),
                     "borrowed host tuples cannot mix owned values and host references",
@@ -675,6 +757,14 @@ fn host_return_access(shape: &TypeShape) -> Result<Option<HostAccess>> {
 }
 
 impl TypeShape {
+    pub(super) fn host_boundary(&self) -> Option<(&Type, HostAccess)> {
+        match self {
+            Self::Host(ty, access) => Some((ty, *access)),
+            Self::BorrowedCollection(collection) => Some((&collection.rust_ty, collection.access)),
+            _ => None,
+        }
+    }
+
     fn is_structured(&self) -> bool {
         matches!(
             self,
@@ -769,24 +859,22 @@ impl ClassifiedSignature {
 
     pub(crate) fn scoped_return_container(&self) -> Option<ScopedReturnContainer> {
         match &self.returns.ty {
-            TypeShape::Host(_, _) => Some(ScopedReturnContainer::Direct),
-            TypeShape::Option(inner) if matches!(&**inner, TypeShape::Host(_, _)) => {
+            shape if shape.host_boundary().is_some() => Some(ScopedReturnContainer::Direct),
+            TypeShape::Option(inner) if inner.host_boundary().is_some() => {
                 Some(ScopedReturnContainer::Option)
             }
-            TypeShape::Result(ok, _) if matches!(&**ok, TypeShape::Host(_, _)) => {
+            TypeShape::Result(ok, _) if ok.host_boundary().is_some() => {
                 Some(ScopedReturnContainer::Result)
             }
             TypeShape::Tuple(elements)
-                if elements
-                    .iter()
-                    .all(|item| matches!(item, TypeShape::Host(_, _))) =>
+                if elements.iter().all(|item| item.host_boundary().is_some()) =>
             {
                 Some(ScopedReturnContainer::Direct)
             }
-            TypeShape::Option(inner) if matches!(&**inner, TypeShape::Tuple(elements) if elements.iter().all(|item| matches!(item, TypeShape::Host(_, _)))) => {
+            TypeShape::Option(inner) if matches!(&**inner, TypeShape::Tuple(elements) if elements.iter().all(|item| item.host_boundary().is_some())) => {
                 Some(ScopedReturnContainer::Option)
             }
-            TypeShape::Result(ok, _) if matches!(&**ok, TypeShape::Tuple(elements) if elements.iter().all(|item| matches!(item, TypeShape::Host(_, _)))) => {
+            TypeShape::Result(ok, _) if matches!(&**ok, TypeShape::Tuple(elements) if elements.iter().all(|item| item.host_boundary().is_some())) => {
                 Some(ScopedReturnContainer::Result)
             }
             _ => None,
@@ -861,7 +949,10 @@ mod tests {
     use quote::quote;
     use syn::{ItemFn, parse2};
 
-    use super::{EffectName, ParameterMode, ReturnMode, classify_function, classify_method};
+    use super::{
+        BorrowedCollectionKind, EffectName, HostAccess, ParameterMode, ReturnMode, TypeShape,
+        classify_function, classify_method,
+    };
 
     fn classify(tokens: proc_macro2::TokenStream) -> super::ClassifiedSignature {
         let item = parse2::<ItemFn>(tokens).expect("test function parses");
@@ -878,6 +969,37 @@ mod tests {
         assert_eq!(shared.effects, BTreeSet::from([EffectName::HostRead]));
         assert_eq!(exclusive.effects, BTreeSet::from([EffectName::HostWrite]));
         assert_eq!(exclusive.parameters[0].mode, ParameterMode::ExclusiveHost);
+    }
+
+    #[test]
+    fn standard_collection_references_classify_as_host_backed_views() {
+        let classified = classify(quote! {
+            fn patch(
+                values: &Vec<i64>,
+                scores: &mut BTreeMap<String, i64>,
+                tags: &HashSet<String>,
+            ) {}
+        });
+
+        assert!(matches!(
+            &classified.parameters[0].ty,
+            TypeShape::BorrowedCollection(collection)
+                if collection.access == HostAccess::Shared
+                    && matches!(collection.kind, BorrowedCollectionKind::Array(_))
+        ));
+        assert!(matches!(
+            &classified.parameters[1].ty,
+            TypeShape::BorrowedCollection(collection)
+                if collection.access == HostAccess::Exclusive
+                    && matches!(collection.kind, BorrowedCollectionKind::Map(_, _))
+        ));
+        assert!(matches!(
+            &classified.parameters[2].ty,
+            TypeShape::BorrowedCollection(collection)
+                if collection.access == HostAccess::Shared
+                    && matches!(collection.kind, BorrowedCollectionKind::Set(_))
+        ));
+        assert_eq!(classified.effects, BTreeSet::from([EffectName::HostWrite]));
     }
 
     #[test]

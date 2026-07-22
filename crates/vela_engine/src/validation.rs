@@ -855,18 +855,23 @@ fn is_valid_type_hint_def(hint: &vela_registry::TypeHintDef) -> bool {
     match (name.as_str(), hint.args.as_slice()) {
         ("()", []) => true,
         ("()", elements) => elements.len() >= 2 && elements.iter().all(is_valid_type_hint_def),
-        ("Array" | "Iterator" | "Option", [element]) => is_valid_type_hint_def(element),
-        ("Set", [element]) => is_valid_type_hint_def(element) && is_keyable_type_hint_def(element),
-        ("Map", [key, value]) => {
+        ("Array" | "ArrayView" | "ArrayMut" | "Iterator" | "Option", [element]) => {
+            is_valid_type_hint_def(element)
+        }
+        ("Set" | "SetView" | "SetMut", [element]) => {
+            is_valid_type_hint_def(element) && is_keyable_type_hint_def(element)
+        }
+        ("Map" | "MapView" | "MapMut", [key, value]) => {
             is_valid_type_hint_def(key)
                 && is_keyable_type_hint_def(key)
                 && is_valid_type_hint_def(value)
         }
         ("Result", [ok, err]) => is_valid_type_hint_def(ok) && is_valid_type_hint_def(err),
         (
-            "Array" | "Set" | "Map" | "Range" | "Iterator" | "Function" | "Closure" | "Option"
-            | "Result" | "Any" | "String" | "Bytes" | "bool" | "char" | "i8" | "i16" | "i32"
-            | "i64" | "u8" | "u16" | "u32" | "u64" | "f32" | "f64",
+            "Array" | "ArrayView" | "ArrayMut" | "Set" | "SetView" | "SetMut" | "Map" | "MapView"
+            | "MapMut" | "Range" | "Iterator" | "Function" | "Closure" | "Option" | "Result"
+            | "Any" | "String" | "Bytes" | "bool" | "char" | "i8" | "i16" | "i32" | "i64" | "u8"
+            | "u16" | "u32" | "u64" | "f32" | "f64",
             [],
         ) => true,
         (_, []) => true,

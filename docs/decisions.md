@@ -2608,6 +2608,23 @@ existing unconverted callable surface while generated service/export macros
 are migrated; generated exact signatures must not degrade a failed binding
 lookup to an unbound type hint.
 
+### Borrowed Standard Collections Retain One Concrete HostRef Identity
+
+Generated Rust export and method adapters map borrowed `Vec`, map, and set
+signatures to restricted Vela View/MutView hints while retaining the concrete
+standard `InteropTypeId` as the call-scoped `HostRef` type identity. The macro
+registers the transitive concrete binding closure and emits the exact
+representation proof; it does not serialize or materialize the collection.
+Sync and async adapters lease and downcast the original Rust object.
+
+A scoped collection reference returned from Rust carries an explicit concrete
+type identity in its retained child wrapper because the generic host-field
+adapter has no registry dependency. Reborrowing that child into another Rust
+export therefore preserves type, provenance, access mode, and the parent
+lease. Exclusive views mutate the original collection immediately. Vela-side
+collection protocols must dispatch through this HostRef representation and
+must not reinterpret it as a script-owned Array, Map, or Set.
+
 ### Service Deployment Supports Snapshots And Exact-Base Deltas
 
 A Snapshot describes the complete desired Vela service state and composes

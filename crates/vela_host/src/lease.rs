@@ -143,21 +143,31 @@ self_cell::self_cell!(
     }
 );
 
-pub struct SharedScopedHost<'host, T>(&'host T);
+pub struct SharedScopedHost<'host, T>(&'host T, Option<vela_common::HostTypeId>);
 
 impl<'host, T> SharedScopedHost<'host, T> {
     #[must_use]
     pub const fn new(value: &'host T) -> Self {
-        Self(value)
+        Self(value, None)
+    }
+
+    #[must_use]
+    pub const fn with_type_id(value: &'host T, type_id: vela_common::HostTypeId) -> Self {
+        Self(value, Some(type_id))
     }
 }
 
-pub struct ExclusiveScopedHost<'host, T>(&'host mut T);
+pub struct ExclusiveScopedHost<'host, T>(&'host mut T, Option<vela_common::HostTypeId>);
 
 impl<'host, T> ExclusiveScopedHost<'host, T> {
     #[must_use]
     pub const fn new(value: &'host mut T) -> Self {
-        Self(value)
+        Self(value, None)
+    }
+
+    #[must_use]
+    pub const fn with_type_id(value: &'host mut T, type_id: vela_common::HostTypeId) -> Self {
+        Self(value, Some(type_id))
     }
 }
 
@@ -224,6 +234,26 @@ where
     Box::new(ExclusiveScopedHost::new(value))
 }
 
+pub fn shared_scoped_host_with_type_id<T>(
+    value: &T,
+    type_id: vela_common::HostTypeId,
+) -> ScopedHostDependent<'_>
+where
+    T: ScriptHostObject + Send + Sync + 'static,
+{
+    Box::new(SharedScopedHost::with_type_id(value, type_id))
+}
+
+pub fn exclusive_scoped_host_with_type_id<T>(
+    value: &mut T,
+    type_id: vela_common::HostTypeId,
+) -> ScopedHostDependent<'_>
+where
+    T: ScriptHostObject + Send + Sync + 'static,
+{
+    Box::new(ExclusiveScopedHost::with_type_id(value, type_id))
+}
+
 fn scoped_read_only_error(
     target: HostTargetInstance<'_>,
     action: &'static str,
@@ -237,7 +267,7 @@ fn scoped_read_only_error(
 macro_rules! impl_scoped_host_common {
     ($wrapper:ident) => {
         fn host_type_id(&self) -> vela_common::HostTypeId {
-            self.0.host_type_id()
+            self.1.unwrap_or_else(|| self.0.host_type_id())
         }
 
         fn lease_any(&self) -> Option<&dyn std::any::Any> {

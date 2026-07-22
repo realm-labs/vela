@@ -160,6 +160,14 @@ macro_rules! impl_script_host_object_via_field {
                 ScriptHostFieldAccess::script_host_type_id(self)
             }
 
+            fn lease_any(&self) -> Option<&dyn Any> {
+                Some(self)
+            }
+
+            fn lease_any_mut(&mut self) -> Option<&mut dyn Any> {
+                Some(self)
+            }
+
             fn read_resolved_host(
                 &self,
                 access: ResolvedHostAccess,
@@ -482,7 +490,7 @@ where
     }
 }
 
-impl_script_host_object_via_field!(<K, V> BTreeMap<K, V> where K: ScriptHostKey, V: ScriptHostFieldAccess);
+impl_script_host_object_via_field!(<K, V> BTreeMap<K, V> where K: ScriptHostKey + 'static, V: ScriptHostFieldAccess + 'static);
 
 impl<K, V> ScriptHostFieldAccess for HashMap<K, V>
 where
@@ -533,7 +541,7 @@ where
     }
 }
 
-impl_script_host_object_via_field!(<K, V> HashMap<K, V> where K: ScriptHostKey + Hash, V: ScriptHostFieldAccess);
+impl_script_host_object_via_field!(<K, V> HashMap<K, V> where K: ScriptHostKey + Hash + 'static, V: ScriptHostFieldAccess + 'static);
 
 impl<T> ScriptHostFieldAccess for Vec<T>
 where
@@ -631,7 +639,7 @@ where
     }
 }
 
-impl_script_host_object_via_field!(<K> BTreeSet<K> where K: ScriptHostKey);
+impl_script_host_object_via_field!(<K> BTreeSet<K> where K: ScriptHostKey + 'static);
 
 impl<K> ScriptHostFieldAccess for HashSet<K>
 where
@@ -665,7 +673,7 @@ where
     }
 }
 
-impl_script_host_object_via_field!(<K> HashSet<K> where K: ScriptHostKey + Hash);
+impl_script_host_object_via_field!(<K> HashSet<K> where K: ScriptHostKey + Hash + 'static);
 
 fn target_is_leaf(target: HostTargetInstance<'_>, offset: usize) -> bool {
     offset == target.plan.parts.len()
