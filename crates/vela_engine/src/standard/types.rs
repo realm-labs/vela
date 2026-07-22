@@ -168,7 +168,9 @@ fn array_type_desc() -> TypeDesc {
         required_std_type_id("Array"),
         TypeKind::Array,
         "Array collection type.",
-    );
+    )
+    .trait_impl(TraitDesc::new("Sequence"))
+    .trait_impl(TraitDesc::new("Iterable"));
     for method in array_method_descs() {
         desc = desc.method(method);
     }
@@ -195,7 +197,9 @@ fn set_type_desc() -> TypeDesc {
         required_std_type_id("Set"),
         TypeKind::Set,
         "Set collection type.",
-    );
+    )
+    .trait_impl(TraitDesc::new("SetLike"))
+    .trait_impl(TraitDesc::new("Iterable"));
     for method in set_method_descs() {
         desc = desc.method(method);
     }

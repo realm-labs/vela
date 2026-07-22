@@ -59,7 +59,9 @@ The first S3 standard binding family is also live: concrete
 key/value facts, share the Vela `MapLike` surface and owned Map codec, and keep
 distinct Rust ABI identities. Their keys now require the explicit
 `VelaValueKeyBoundary` proof, and `Vec<u8>` consistently reports the Bytes
-boundary fact. Service-macro closure generation and borrowed
+boundary fact. Owned `Vec<T>` now binds as a growable Sequence/Iterable Array,
+and `BTreeSet<T>`/`HashSet<T>` share SetLike/Iterable behavior with distinct
+concrete ABI identities. Service-macro closure generation and borrowed
 MapView/MapMut representations remain open, so application code does not yet
 receive automatic transitive registration.
 
@@ -226,10 +228,11 @@ substrate, manual external-type entrypoint, typed structural Value codec path,
 and type-owned Value plus Host constructor registration backed by actor-local
 Runtime storage. Structural `Value` derive generation is implemented for named
 structs plus unit/named-field enums, and `ScriptHost` emits the base Host
-binding. The owned Map portion of standard bindings now covers concrete
-`BTreeMap<K, V>` and `HashMap<K, V>` identities plus their common `MapLike`
-surface. Method-thunk composition, the rest of the standard type matrix and
-all borrowed collection views, compact root-local HostRef storage, prepared
+binding. Owned standard collection bindings now cover concrete `Vec<T>`,
+`Vec<u8>`, `BTreeMap<K, V>`, `HashMap<K, V>`, `BTreeSet<T>`, and `HashSet<T>`
+identities plus their common Sequence/MapLike/SetLike surfaces. Method-thunk
+composition, fixed arrays, the non-collection standard type matrix and all
+borrowed collection views, compact root-local HostRef storage, prepared
 thunks, allocation-free common-arity preflight, and a post-S2 shorter
 owned-host reclamation policy remain open. Runtime receiver enforcement is
 live; compile-time

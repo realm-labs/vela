@@ -2513,6 +2513,13 @@ remain HostRef-backed and must not reuse the owned codec as implicit mutable
 copy-in/copy-out. `Vec<u8>` is the standard owned bytes representation rather
 than an `Array<u8>` specialization.
 
+Owned `Vec<T>` uses the growable Array representation, while owned
+`BTreeSet<T>` and `HashSet<T>` share SetLike behavior with distinct concrete
+Rust ABI identities. Fixed arrays are not registered as ordinary mutable
+Arrays until the value representation can retain and enforce their fixed
+length; metadata alone must not claim that `push` or `remove` is rejected when
+the runtime value would still accept it.
+
 ### Service Deployment Supports Snapshots And Exact-Base Deltas
 
 A Snapshot describes the complete desired Vela service state and composes

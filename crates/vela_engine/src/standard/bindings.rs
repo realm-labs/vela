@@ -1,6 +1,7 @@
 //! Generated building blocks for Rust standard-library type bindings.
 
-use std::collections::{BTreeMap, HashMap};
+use std::any::TypeId as RustTypeId;
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
 
 use vela_def::TypeId;
@@ -36,6 +37,15 @@ where
     T::standard_type_binding()
 }
 
+impl<T> StandardTypeBinding for Vec<T>
+where
+    T: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
+{
+    fn standard_type_binding() -> TypeBinding<Self> {
+        TypeBinding::value(vec_type_desc::<T>())
+    }
+}
+
 impl<K, V> StandardTypeBinding for BTreeMap<K, V>
 where
     K: VelaValueKeyBoundary + IntoScriptArg + FromScriptArg + Ord + 'static,
@@ -54,6 +64,71 @@ where
     fn standard_type_binding() -> TypeBinding<Self> {
         TypeBinding::value(map_type_desc::<K, V>(MapFamily::Hash))
     }
+}
+
+impl<T> StandardTypeBinding for BTreeSet<T>
+where
+    T: VelaValueKeyBoundary + IntoScriptArg + FromScriptArg + Ord + 'static,
+{
+    fn standard_type_binding() -> TypeBinding<Self> {
+        TypeBinding::value(set_type_desc::<T>(SetFamily::BTree))
+    }
+}
+
+impl<T> StandardTypeBinding for HashSet<T>
+where
+    T: VelaValueKeyBoundary + IntoScriptArg + FromScriptArg + Eq + Hash + Ord + 'static,
+{
+    fn standard_type_binding() -> TypeBinding<Self> {
+        TypeBinding::value(set_type_desc::<T>(SetFamily::Hash))
+    }
+}
+
+fn vec_type_desc<T>() -> TypeDesc
+where
+    T: VelaValueBoundary + 'static,
+{
+    if RustTypeId::of::<T>() == RustTypeId::of::<u8>() {
+        return concrete_type_desc(
+            "vec_bytes",
+            "rust::std::vec::Vec<u8>".to_owned(),
+            "u8",
+            TypeKind::Bytes,
+        )
+        .trait_impl(TraitDesc::new("Sequence"))
+        .trait_impl(TraitDesc::new("Iterable"))
+        .docs("Concrete Rust Vec<u8> value binding using Vela Bytes behavior.")
+        .attr("rust_standard_family", "vec_bytes")
+        .attr("vela_collection_protocol", "Sequence,Iterable")
+        .attr("vela_collection_element", "u8")
+        .attr("vela_collection_growth", "immutable_bytes");
+    }
+
+    let element = type_hint_display(&T::vela_type_hint());
+    concrete_type_desc(
+        "vec",
+        format!("rust::std::vec::Vec<{element}>"),
+        &element,
+        TypeKind::Array,
+    )
+    .trait_impl(TraitDesc::new("Sequence"))
+    .trait_impl(TraitDesc::new("Iterable"))
+    .index_capability(
+        HostIndexCapability::new()
+            .readable(true)
+            .writable(true)
+            .addable(true)
+            .removable(true)
+            .key_type("i64")
+            .value_type(element.clone()),
+    )
+    .docs(format!(
+        "Concrete Rust Vec<{element}> value binding using growable Vela Array behavior."
+    ))
+    .attr("rust_standard_family", "vec")
+    .attr("vela_collection_protocol", "Sequence,Iterable")
+    .attr("vela_collection_element", element)
+    .attr("vela_collection_growth", "growable")
 }
 
 #[derive(Clone, Copy)]
@@ -78,6 +153,28 @@ impl MapFamily {
     }
 }
 
+#[derive(Clone, Copy)]
+enum SetFamily {
+    BTree,
+    Hash,
+}
+
+impl SetFamily {
+    const fn rust_name(self) -> &'static str {
+        match self {
+            Self::BTree => "BTreeSet",
+            Self::Hash => "HashSet",
+        }
+    }
+
+    const fn abi_name(self) -> &'static str {
+        match self {
+            Self::BTree => "btree_set",
+            Self::Hash => "hash_set",
+        }
+    }
+}
+
 fn map_type_desc<K, V>(family: MapFamily) -> TypeDesc
 where
     K: VelaValueBoundary,
@@ -89,19 +186,9 @@ where
         "rust::std::collections::{}<{key}, {value}>",
         family.rust_name()
     );
-    let type_id = TypeId::new(u128::from(vela_common::stable_id(
-        "rust_standard_type",
-        family.abi_name(),
-        &format!("{key}|{value}"),
-    )));
+    let facts = format!("{key}|{value}");
 
-    TypeDesc::new(TypeKey::new(type_id, path.clone()))
-        .kind(TypeKind::Map)
-        .schema_hash(SchemaHash::new(vela_common::stable_id(
-            "rust_standard_schema",
-            family.abi_name(),
-            &format!("{key}|{value}"),
-        )))
+    concrete_type_desc(family.abi_name(), path, &facts, TypeKind::Map)
         .trait_impl(TraitDesc::new("MapLike"))
         .index_capability(
             HostIndexCapability::new()
@@ -120,6 +207,41 @@ where
         .attr("vela_collection_protocol", "MapLike")
         .attr("vela_collection_key", key)
         .attr("vela_collection_value", value)
+}
+
+fn set_type_desc<T>(family: SetFamily) -> TypeDesc
+where
+    T: VelaValueBoundary,
+{
+    let element = type_hint_display(&T::vela_type_hint());
+    let path = format!("rust::std::collections::{}<{element}>", family.rust_name());
+
+    concrete_type_desc(family.abi_name(), path, &element, TypeKind::Set)
+        .trait_impl(TraitDesc::new("SetLike"))
+        .trait_impl(TraitDesc::new("Iterable"))
+        .docs(format!(
+            "Concrete Rust {}<{element}> value binding using Vela Set behavior.",
+            family.rust_name()
+        ))
+        .attr("rust_standard_family", family.abi_name())
+        .attr("vela_collection_protocol", "SetLike,Iterable")
+        .attr("vela_collection_element", element)
+        .attr("vela_collection_growth", "growable")
+}
+
+fn concrete_type_desc(family: &str, path: String, facts: &str, kind: TypeKind) -> TypeDesc {
+    let type_id = TypeId::new(u128::from(vela_common::stable_id(
+        "rust_standard_type",
+        family,
+        facts,
+    )));
+    TypeDesc::new(TypeKey::new(type_id, path))
+        .kind(kind)
+        .schema_hash(SchemaHash::new(vela_common::stable_id(
+            "rust_standard_schema",
+            family,
+            facts,
+        )))
 }
 
 #[cfg(test)]
@@ -164,6 +286,33 @@ mod tests {
                 .as_ref()
                 .and_then(|index| index.key_type.as_deref()),
             Some("i64")
+        );
+    }
+
+    #[test]
+    fn vec_and_set_bindings_preserve_representation_capabilities() {
+        let vector = vec_type_desc::<i64>();
+        let bytes = vec_type_desc::<u8>();
+        let ordered = set_type_desc::<i64>(SetFamily::BTree);
+        let hashed = set_type_desc::<i64>(SetFamily::Hash);
+
+        assert_eq!(vector.kind, TypeKind::Array);
+        assert_eq!(vector.attrs.get("vela_collection_growth"), Some("growable"));
+        let index = vector.index_capability.expect("Vec index capability");
+        assert!(index.readable && index.writable && index.addable && index.removable);
+
+        assert_eq!(bytes.kind, TypeKind::Bytes);
+        assert!(bytes.index_capability.is_none());
+        assert_eq!(
+            bytes.attrs.get("vela_collection_growth"),
+            Some("immutable_bytes")
+        );
+
+        assert_ne!(ordered.key, hashed.key);
+        assert_eq!(ordered.traits, hashed.traits);
+        assert_eq!(
+            ordered.attrs.get("vela_collection_protocol"),
+            Some("SetLike,Iterable")
         );
     }
 
@@ -252,6 +401,95 @@ fn retained_total(scores: Map<String, i64>) -> i64 {
         assert_eq!(
             runtime.value_to_owned(&hashed_output),
             Ok(OwnedValue::Scalar(ScalarValue::I64(8)))
+        );
+    }
+
+    #[test]
+    fn registered_vec_and_set_values_use_shared_vela_collection_behavior() {
+        type Values = Vec<i64>;
+        type Bytes = Vec<u8>;
+        type Ordered = BTreeSet<i64>;
+        type Hashed = HashSet<i64>;
+
+        let engine = Engine::builder()
+            .with_standard_natives()
+            .register_rust_type::<Values>(standard_type_binding::<Values>())
+            .register_rust_type::<Bytes>(standard_type_binding::<Bytes>())
+            .register_rust_type::<Ordered>(standard_type_binding::<Ordered>())
+            .register_rust_type::<Hashed>(standard_type_binding::<Hashed>())
+            .build()
+            .expect("standard Vec and Set bindings should seal together");
+        let bindings = engine.type_bindings();
+        let value_codec = bindings.value_codec::<Values>().expect("Vec codec");
+        let byte_codec = bindings.value_codec::<Bytes>().expect("bytes codec");
+        let ordered_codec = bindings.value_codec::<Ordered>().expect("BTreeSet codec");
+        let hashed_codec = bindings.value_codec::<Hashed>().expect("HashSet codec");
+        assert_eq!(
+            byte_codec.encode(vec![1, 2, 3]),
+            OwnedValue::Bytes(vec![1, 2, 3])
+        );
+        assert_ne!(
+            bindings
+                .get_for::<Ordered>()
+                .expect("ordered Set binding")
+                .id,
+            bindings.get_for::<Hashed>().expect("hashed Set binding").id
+        );
+
+        let program = engine
+            .compile_source_with_id(
+                SourceId::new(2),
+                r#"
+fn array_total(values: Array<i64>) -> i64 {
+    return values.filter(|value| value >= 3).sum();
+}
+
+fn set_total(values: Set<i64>) -> i64 {
+    return values
+        .filter(|value| value >= 3)
+        .values()
+        .collect_array()
+        .sum();
+}
+"#,
+            )
+            .expect("shared collection protocols should compile");
+        drop(bindings);
+        let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+
+        let array_output = runtime
+            .call(
+                "array_total",
+                CallArgs::from_positional([value_codec.encode(vec![1, 3, 5])]),
+                CallOptions::unbounded(),
+            )
+            .expect("Vec should use Sequence behavior");
+        let ordered_output = runtime
+            .call(
+                "set_total",
+                CallArgs::from_positional([ordered_codec.encode(BTreeSet::from([1, 3, 5]))]),
+                CallOptions::unbounded(),
+            )
+            .expect("BTreeSet should use SetLike behavior");
+        let hashed_output = runtime
+            .call(
+                "set_total",
+                CallArgs::from_positional([hashed_codec.encode(HashSet::from([1, 4, 6]))]),
+                CallOptions::unbounded(),
+            )
+            .expect("HashSet should use SetLike behavior");
+
+        assert_eq!(
+            runtime.value_to_owned(&array_output),
+            Ok(OwnedValue::from(8_i64))
+        );
+        assert_eq!(
+            runtime.value_to_owned(&ordered_output),
+            Ok(OwnedValue::from(8_i64))
+        );
+        assert_eq!(
+            runtime.value_to_owned(&hashed_output),
+            Ok(OwnedValue::from(10_i64))
         );
     }
 }
