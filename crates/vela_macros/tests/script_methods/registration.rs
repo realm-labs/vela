@@ -113,6 +113,17 @@ fn script_methods_feed_stable_engine_registration_api() {
     assert_eq!(player_type.methods[0].name, "grant_exp");
     assert_eq!(player_type.methods[3].name, "sum_score");
     assert_eq!(player_type.methods[4].name, "sum6_score");
+    let type_bindings = engine.type_bindings();
+    let binding = type_bindings
+        .get_for::<Player>()
+        .expect("generated host methods should compose into one TypeBinding");
+    assert_eq!(binding.key, generated_schema.key);
+    assert_eq!(
+        registry
+            .type_binding_for_key(&generated_schema.key)
+            .expect("reflection should use the same sealed binding"),
+        binding
+    );
 
     let player = HostRef::new(Player::vela_host_type_id(), HostObjectId::new(42), 1);
     let mut adapter = MockStateAdapter::new();
@@ -168,6 +179,9 @@ fn script_methods_register_async_shared_and_mutable_direct_receivers() {
         .reflection_permissions(vela_reflect::permissions::ReflectPermissionSet::all())
         .build()
         .expect("engine should register direct async methods");
+    assert!(engine.type_bindings().get_for::<DirectCounter>().is_some());
+    assert!(engine.type_bindings().get_for::<DirectPeer>().is_some());
+    assert!(engine.type_bindings().get_for::<DirectConfig>().is_some());
     let program = engine
         .compile_source(
             r#"

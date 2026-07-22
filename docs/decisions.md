@@ -2340,16 +2340,19 @@ linked program, including async resumes. This attaches generation-local record
 or enum identity before guards, field slots, or variant matching run; name-only
 heap values are not an acceptable substitute for static enum `match`.
 
-### ScriptHost Derive Generates The Base Host Binding
+### ScriptHost Methods Compose Into One Host Binding
 
 `#[derive(ScriptHost)]` generates `vela_type_binding()` from its existing
 schema through `ScriptHostSchema::script_host_binding()`. This is a Host-storage
 `TypeBinding<T>` and enters the same typed registry as generated Value
 bindings; it does not create a host-only registry or move Rust object ownership
-under script GC. `#[script_methods]` continues to generate method descriptors
-and thunks independently in this slice. The later service bundle generator
-will compose those artifacts in one generated registration transaction rather
-than requiring handwritten per-method setup.
+under script GC. `#[script_methods]` composes its metadata plus synchronous and
+asynchronous executable thunks into that binding through
+`script_host_type_binding()`. `EngineBuilder::register_script_host::<T>()`
+consumes the completed binding in one transaction; it does not separately
+register the schema and methods. Async direct and context-aware entries remain
+Engine-owned executable behavior while their descriptors participate in the
+same binding ABI.
 
 ### Repository Artifacts Use Domain-Neutral Host Names
 

@@ -26,8 +26,17 @@ pub trait ScriptValueSchema: IntoScriptArg + FromScriptArg + Sized + 'static {
     }
 }
 
-pub trait ScriptHostMethodMetadata {
+pub trait ScriptHostMethodMetadata: Sized + 'static {
     fn script_host_method_descs() -> Vec<NativeMethodDesc>;
+
+    fn script_host_type_binding() -> TypeBinding<Self>
+    where
+        Self: ScriptHostSchema,
+    {
+        Self::script_host_method_descs()
+            .into_iter()
+            .fold(Self::script_host_binding(), TypeBinding::method_desc)
+    }
 
     fn register_script_host_methods(builder: EngineBuilder) -> EngineBuilder {
         Self::script_host_method_descs()

@@ -14,7 +14,7 @@ use vela_reflect::type_binding::TypeBindingDesc;
 
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
 use crate::host_type::HostTypeSpec;
-use crate::method::{NativeMethodDesc, NativeMethodEntry};
+use crate::method::{AsyncNativeMethodEntry, NativeMethodDesc, NativeMethodEntry};
 use crate::native::{HostNativeFunctionEntry, NativeFunctionDesc, TypeHint};
 use crate::typed::TypedNativeMethodFunction;
 use crate::{args::FromScriptArg, args::IntoScriptArg};
@@ -28,6 +28,7 @@ pub struct TypeBinding<T: 'static> {
     capabilities: ReceiverCapabilities,
     value_codec: Option<ValueCodec<T>>,
     constructors: Vec<TypeConstructorEntry>,
+    async_native_methods: Vec<AsyncNativeMethodEntry>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -59,6 +60,7 @@ impl<T: 'static> TypeBinding<T> {
             capabilities: ReceiverCapabilities::OWNED_VALUE,
             value_codec: Some(codec),
             constructors: Vec::new(),
+            async_native_methods: Vec::new(),
         }
     }
 
@@ -70,6 +72,7 @@ impl<T: 'static> TypeBinding<T> {
             capabilities: ReceiverCapabilities::HOST_OBJECT,
             value_codec: None,
             constructors: Vec::new(),
+            async_native_methods: Vec::new(),
         }
     }
 
@@ -191,6 +194,74 @@ impl<T: 'static> TypeBinding<T> {
         })
     }
 
+    #[doc(hidden)]
+    #[must_use]
+    pub fn register_host_method_desc(self, desc: NativeMethodDesc) -> Self {
+        self.method_desc(desc)
+    }
+
+    #[doc(hidden)]
+    #[must_use]
+    pub fn register_typed_native_method_fn<Args, F>(
+        self,
+        desc: NativeMethodDesc,
+        function: F,
+    ) -> Self
+    where
+        F: TypedNativeMethodFunction<Args>,
+    {
+        self.typed_native_method_fn(desc, function)
+    }
+
+    #[doc(hidden)]
+    #[must_use]
+    pub fn register_async_direct_method_fn(
+        mut self,
+        desc: NativeMethodDesc,
+        lease_kind: vela_host::lease::HostLeaseKind,
+        function: impl for<'host> Fn(
+            vela_host::path::HostRef,
+            vela_host::lease::ErasedHostLease<'host>,
+            Vec<OwnedValue>,
+        ) -> crate::native::NativeCallFuture<'host>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.async_native_methods
+            .push(AsyncNativeMethodEntry::new_direct(
+                desc, lease_kind, function,
+            ));
+        self
+    }
+
+    #[doc(hidden)]
+    #[must_use]
+    pub fn register_async_context_direct_method_fn(
+        mut self,
+        desc: NativeMethodDesc,
+        lease_kind: vela_host::lease::HostLeaseKind,
+        param_leases: Vec<(usize, vela_host::lease::HostLeaseKind)>,
+        function: impl for<'invoke, 'lease> Fn(
+            vela_host::path::HostRef,
+            &'invoke mut [vela_host::lease::ErasedHostLease<'lease>],
+            Vec<OwnedValue>,
+            &'invoke mut crate::context::NativeCallContext<'invoke, 'invoke>,
+        ) -> crate::native::NativeCallFuture<'invoke>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.async_native_methods
+            .push(AsyncNativeMethodEntry::new_direct_context(
+                desc,
+                lease_kind,
+                param_leases,
+                function,
+            ));
+        self
+    }
+
     pub(crate) fn into_parts(
         self,
     ) -> (
@@ -198,11 +269,13 @@ impl<T: 'static> TypeBinding<T> {
         TypeDesc,
         Vec<NativeMethodDesc>,
         Vec<NativeMethodEntry>,
+        Vec<AsyncNativeMethodEntry>,
         Vec<HostNativeFunctionEntry>,
     ) {
         let storage = self.storage;
         let capabilities = self.capabilities;
         let constructors = self.constructors;
+        let async_native_methods = self.async_native_methods;
         let (type_desc, method_metadata, native_methods) = self.spec.into_parts();
         let registration = TypeBindingRegistration {
             key: type_desc.key.clone(),
@@ -223,6 +296,7 @@ impl<T: 'static> TypeBinding<T> {
             type_desc,
             method_metadata,
             native_methods,
+            async_native_methods,
             constructors.into_iter().map(|entry| entry.native).collect(),
         )
     }

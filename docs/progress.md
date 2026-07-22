@@ -52,8 +52,11 @@ structural codecs, and the same `TypeBinding` consumed by
 involved. Registered nominal values retain identity across entry arguments and
 sync/async native results, so Vela enum `match` works on Rust-produced values.
 `#[derive(ScriptHost)]` now also emits the base Host `TypeBinding`, allowing the
-same typed registration path without a handwritten host binding adapter;
-generated method-thunk composition remains open.
+same typed registration path without a handwritten host binding adapter.
+`#[script_methods]` now composes its sync, async-direct, and async-context
+method thunks into that binding, and `register_script_host::<T>()` consumes the
+single completed registration instead of installing schema and methods in
+parallel.
 The first S3 standard binding family is also live: concrete
 `BTreeMap<K, V>` and `HashMap<K, V>` bindings synthesize stable recursive
 key/value facts, share the Vela `MapLike` surface and owned Map codec, and keep
@@ -231,9 +234,10 @@ structs plus unit/named-field enums, and `ScriptHost` emits the base Host
 binding. Owned standard collection bindings now cover concrete `Vec<T>`,
 `Vec<u8>`, `BTreeMap<K, V>`, `HashMap<K, V>`, `BTreeSet<T>`, and `HashSet<T>`
 identities plus their common Sequence/MapLike/SetLike surfaces. Method-thunk
-composition, fixed arrays, the non-collection standard type matrix and all
-borrowed collection views, compact root-local HostRef storage, prepared
-thunks, allocation-free common-arity preflight, and a post-S2 shorter
+composition is complete for generated ScriptHost registrations. Fixed arrays,
+the non-collection standard type matrix and all borrowed collection views,
+compact root-local HostRef storage, prepared thunks, allocation-free
+common-arity preflight, and a post-S2 shorter
 owned-host reclamation policy remain open. Runtime receiver enforcement is
 live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-

@@ -69,13 +69,20 @@ impl EngineBuilder {
     /// Registers one Rust type through the unified Rust/Vela binding model.
     #[must_use]
     pub fn register_rust_type<T: 'static>(mut self, binding: TypeBinding<T>) -> Self {
-        let (mut registration, type_desc, method_metadata, native_methods, constructors) =
-            binding.into_parts();
+        let (
+            mut registration,
+            type_desc,
+            method_metadata,
+            native_methods,
+            async_native_methods,
+            constructors,
+        ) = binding.into_parts();
         registration.bind_rust_type::<T>();
         self.type_bindings.push(registration);
         self.types.push(type_desc);
         self.host_method_metadata.extend(method_metadata);
         self.native_methods.extend(native_methods);
+        self.async_native_methods.extend(async_native_methods);
         self.host_native_functions.extend(constructors);
         self
     }
@@ -111,7 +118,7 @@ impl EngineBuilder {
     where
         T: ScriptHostSchema + ScriptHostMethodMetadata,
     {
-        self.register_host_type::<T>().register_host_methods::<T>()
+        self.register_rust_type::<T>(T::script_host_type_binding())
     }
 
     #[must_use]

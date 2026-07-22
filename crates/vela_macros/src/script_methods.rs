@@ -82,6 +82,16 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
                 let owner_key = owner_desc.key;
                 #host_method_registration_tokens
             }
+
+            #[must_use]
+            pub fn vela_type_binding_with_methods(
+            ) -> ::vela_engine::type_binding::TypeBinding<Self> {
+                let owner_desc = Self::vela_host_type_desc();
+                let owner_stable_path = Self::vela_stable_type_path();
+                let owner_key = owner_desc.key;
+                let builder = <Self as ::vela_engine::schema::ScriptHostSchema>::script_host_binding();
+                #host_method_registration_tokens
+            }
         }
 
         impl ::vela_engine::schema::ScriptHostMethodMetadata for #self_ty {
@@ -93,6 +103,12 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
                 builder: ::vela_engine::builder::EngineBuilder,
             ) -> ::vela_engine::builder::EngineBuilder {
                 Self::vela_register_host_methods(builder)
+            }
+
+
+            fn script_host_type_binding(
+            ) -> ::vela_engine::type_binding::TypeBinding<Self> {
+                Self::vela_type_binding_with_methods()
             }
         }
 
