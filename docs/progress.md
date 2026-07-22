@@ -92,15 +92,16 @@ general Vela generics. Hidden fixed/growable mutation capability survives
 native metadata, registry projection, exported language-service schema, and
 callable ABI fingerprinting. Standard method facts reuse the owned collection
 read/iteration/transform surface while withholding structural mutation from
-shared and fixed views; growable exclusive views retain it. MIR and linked
-type contracts deliberately keep these facts dynamic until HostRef-backed
-collection protocol dispatch lands, so they are never mistaken for
-script-owned Array/Map/Set values. Generated sync and async free-function and
-method adapters now lease real borrowed standard collections without
-materialization. Shared and exclusive collection references returned from one
-Rust export retain their owner lease and exact binding identity when passed
-into another Rust export, including immediate mutable write-through. Vela-side
-indexing, iteration, standard collection methods, bulk operations, fixed
+shared and fixed views; growable exclusive views retain it. Linked calls keep
+borrowed collection contracts distinct from script-owned Array/Map/Set values.
+Generated sync and async free-function and method adapters now lease real
+borrowed standard collections without materialization. Shared and exclusive
+collection references returned from one Rust export retain their owner lease
+and exact binding identity when passed into another Rust export, including
+immediate mutable write-through. Vela now executes `len` and `is_empty` on
+direct or retained HostRef-backed views through a domain-neutral read-only
+collection protocol and HostAccess, including shared references. Indexing,
+element/key methods, iteration, mutation and bulk operations, fixed
 slices/arrays, and user-defined collection adapters remain open.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed

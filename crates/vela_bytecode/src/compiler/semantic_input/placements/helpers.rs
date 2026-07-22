@@ -236,9 +236,11 @@ pub(super) fn type_owner_name_standard(fact: &TypeFact) -> Option<&'static str> 
         TypeFact::Primitive(PrimitiveTag::Char) => Some("char"),
         TypeFact::Primitive(PrimitiveTag::String) => Some("String"),
         TypeFact::Primitive(PrimitiveTag::Bytes) => Some("Bytes"),
-        TypeFact::Array { .. } => Some("Array"),
-        TypeFact::Map { .. } => Some("Map"),
-        TypeFact::Set { .. } => Some("Set"),
+        TypeFact::Array { .. } | TypeFact::ArrayView { .. } | TypeFact::ArrayMut { .. } => {
+            Some("Array")
+        }
+        TypeFact::Map { .. } | TypeFact::MapView { .. } | TypeFact::MapMut { .. } => Some("Map"),
+        TypeFact::Set { .. } | TypeFact::SetView { .. } | TypeFact::SetMut { .. } => Some("Set"),
         TypeFact::Iterator { .. } => Some("Iterator"),
         TypeFact::Range => Some("Range"),
         TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone => {

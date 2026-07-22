@@ -167,6 +167,13 @@ pub trait ScriptStateAdapter {
     fn read_host(&self, access: ResolvedHostAccess, target: HostTargetInstance<'_>)
         -> HostResult<HostValue>;
 
+    fn query_collection_host(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        query: HostCollectionQuery,
+    ) -> HostResult<HostValue>;
+
     fn write_host(&mut self, access: ResolvedHostAccess, target: HostTargetInstance<'_>, value: HostValue)
         -> HostResult<()>;
 
@@ -276,9 +283,12 @@ method_id: HostMethodId
 args: scalar HostValue values or typed script-owned arguments
 ```
 
-The VM does not special-case whether the receiver is a struct, map, set, vec,
-or trait-object field. The adapter or direct host object resolves the receiver
-path and executes the registered method thunk.
+The VM does not special-case a concrete Rust collection family. Standard
+collection calls are lowered to semantic host protocols such as
+`HostCollectionQuery`, and the adapter or direct host object implements that
+protocol for its concrete type. User-defined collections enter through the
+same protocol surface. Non-protocol host methods continue through the
+registered method thunk.
 
 Indexing is a capability of the receiver type, not a map-only API. `obj[key]`
 is represented as a keyed host path segment or by an adapter-defined index

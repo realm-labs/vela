@@ -1,6 +1,7 @@
 use std::sync::OnceLock;
 
 use vela_def::MethodId;
+use vela_host::protocol::HostCollectionQuery;
 
 #[derive(Clone, Copy)]
 pub(crate) struct StdMethodIds {
@@ -266,6 +267,20 @@ impl StdMethodIds {
 pub(crate) fn std_method_ids() -> &'static StdMethodIds {
     static IDS: OnceLock<StdMethodIds> = OnceLock::new();
     IDS.get_or_init(StdMethodIds::new)
+}
+
+pub(crate) fn host_collection_query(method_id: MethodId) -> Option<HostCollectionQuery> {
+    let ids = std_method_ids();
+    if method_id == ids.array_len || method_id == ids.map_len || method_id == ids.set_len {
+        Some(HostCollectionQuery::Len)
+    } else if method_id == ids.array_is_empty
+        || method_id == ids.map_is_empty
+        || method_id == ids.set_is_empty
+    {
+        Some(HostCollectionQuery::IsEmpty)
+    } else {
+        None
+    }
 }
 
 fn standard_method_id(owner: &str, name: &str) -> MethodId {

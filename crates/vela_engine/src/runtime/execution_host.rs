@@ -13,6 +13,7 @@ use vela_host::lease::{
 };
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
+use vela_host::protocol::HostCollectionQuery;
 use vela_host::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
@@ -22,6 +23,8 @@ use vela_vm::{NativeCallFuture, PreparedAsyncCall};
 
 use super::call_args::{CallArgRuntime, HostArgBinding};
 use super::{CallArgs, RuntimeExternStateBindings, RuntimeHostArena};
+
+mod scoped_access;
 
 const EXECUTION_HOST_OBJECT_ID_BASE: u64 = 1 << 63;
 
@@ -602,6 +605,24 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         }
     }
 
+    fn query_collection_host(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        query: HostCollectionQuery,
+    ) -> HostResult<HostValue> {
+        match self.args.direct_binding(target.root) {
+            Some(HostArgBinding::Shared { object, .. }) => {
+                object.query_collection_resolved_host(access, target, query)
+            }
+            Some(HostArgBinding::Mutable { object }) => object
+                .try_read()
+                .ok_or_else(|| host_object_busy(target.root))?
+                .query_collection_resolved_host(access, target, query),
+            None => self.parent.query_collection_host(access, target, query),
+        }
+    }
+
     fn write_host(
         &mut self,
         access: ResolvedHostAccess,
@@ -787,6 +808,15 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         if let Some(result) = self.host_arena.resolve(spec) {
             return result;
         }
+        if let Some((root, _)) = self
+            .scoped_hosts
+            .iter()
+            .find(|(root, _)| root.type_id == spec.plan.root_type)
+            && let Some(result) =
+                self.inspect_scoped_host(*root, |object| object.resolve_host_target(spec))
+        {
+            return result;
+        }
         match self.args.direct_binding_by_type(spec.plan.root_type) {
             Some((_, HostArgBinding::Shared { object, .. })) => object.resolve_host_target(spec),
             Some((root, HostArgBinding::Mutable { object })) => object
@@ -817,6 +847,37 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 .ok_or_else(|| host_object_busy(target.root))?
                 .read_resolved_host(access, target),
             None => self.fallback.read_host(access, target),
+        }
+    }
+
+    fn query_collection_host(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        query: HostCollectionQuery,
+    ) -> HostResult<HostValue> {
+        if let Some(binding) = self.extern_states.binding(target.root) {
+            return binding
+                .object
+                .query_collection_resolved_host(access, target, query);
+        }
+        if let Some(result) = self.host_arena.query_collection(access, target, query) {
+            return result;
+        }
+        if let Some(result) = self.inspect_scoped_host(target.root, |object| {
+            object.query_collection_resolved_host(access, target, query)
+        }) {
+            return result;
+        }
+        match self.args.direct_binding(target.root) {
+            Some(HostArgBinding::Shared { object, .. }) => {
+                object.query_collection_resolved_host(access, target, query)
+            }
+            Some(HostArgBinding::Mutable { object }) => object
+                .try_read()
+                .ok_or_else(|| host_object_busy(target.root))?
+                .query_collection_resolved_host(access, target, query),
+            None => self.fallback.query_collection_host(access, target, query),
         }
     }
 
@@ -984,6 +1045,23 @@ impl ScriptStateAdapter for FallbackAdapter<'_> {
         self.adapter().map_or_else(
             || Err(Self::missing_path(target)),
             |adapter| adapter.read_host(access, target),
+        )
+    }
+
+    fn query_collection_host(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        query: HostCollectionQuery,
+    ) -> HostResult<HostValue> {
+        self.adapter().map_or_else(
+            || {
+                Err(HostError {
+                    kind: HostErrorKind::UnsupportedCollectionQuery { query },
+                    source_span: None,
+                })
+            },
+            |adapter| adapter.query_collection_host(access, target, query),
         )
     }
 

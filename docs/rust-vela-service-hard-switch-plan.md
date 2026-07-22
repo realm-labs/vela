@@ -1118,11 +1118,14 @@ Restricted
 retain distinct analysis facts and exact hidden fixed/growable mutation facts.
 Their shared collection methods are visible without materialization,
 structural mutators are statically absent from shared/fixed views, and
-growable exclusive views retain them. MIR/bytecode intentionally do not lower
-these facts to owned collection contracts before HostRef runtime collection
-protocol dispatch exists. Vela-side HostRef indexing, iteration, method and
-bulk protocol dispatch, slices/fixed arrays, user-defined collection adapters,
-full service-macro traversal, and prepared operations are still open.
+growable exclusive views retain them. Linked calls on a HostRef-backed view now
+route `len` and `is_empty` through the domain-neutral
+`HostCollectionQuery`/HostAccess boundary for direct arguments and retained
+borrowed returns; shared views remain read-only and no collection is
+materialized. Remaining HostRef indexing, element/key queries, iteration,
+mutation and bulk protocols, slices/fixed arrays, user-defined collection
+adapters, full service-macro traversal, and prepared operations are still
+open.
 
 ### S4 — Service contract and Rust-only generation
 

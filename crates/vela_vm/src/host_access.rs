@@ -5,6 +5,7 @@ use vela_bytecode::{
 use vela_common::{HostMethodId, Span, StateSlot};
 use vela_host::adapter::ExternStateBinding;
 use vela_host::path::HostPath;
+use vela_host::protocol::HostCollectionQuery;
 use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccess};
 use vela_host::target::{HostPathArg, HostTargetInstance, HostTargetPlan};
 use vela_host::value::HostValue;
@@ -592,6 +593,45 @@ pub(crate) fn execute_host_root_method_call(
     } else {
         Ok(None)
     }
+}
+
+pub(crate) fn execute_host_root_collection_query(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    query: HostCollectionQuery,
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<Value> {
+    let root = expect_host_ref(&runtime.frame.read(receiver)?, "host collection query")?;
+    let target = HostTargetPlan::new(root.type_id);
+    let instance = HostTargetInstance::new(root, &target, &[]);
+    let host = runtime.host.ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host context",
+        })
+    })?;
+    let resolved = if let Some(cache_site) = cache_site {
+        resolve_cached_access(
+            host.adapter,
+            runtime.inline_caches,
+            cache_site,
+            HostInlineCacheTarget::RootObject,
+            instance,
+            HostAccessOp::Read,
+            runtime.source_span,
+        )?
+    } else {
+        host.adapter
+            .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &target))
+            .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?
+    };
+    let value = host.access.query_collection_resolved(
+        host.adapter,
+        resolved,
+        instance,
+        query,
+        runtime.source_span,
+    )?;
+    runtime_value_from_host(value, runtime.heap, runtime.budget)
 }
 
 fn resolve_cached_access(

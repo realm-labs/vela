@@ -9,6 +9,7 @@ use crate::{
     },
     object::ScriptHostObject,
     path::HostRef,
+    protocol::HostCollectionQuery,
     resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess},
     target::HostTargetInstance,
     value::HostValue,
@@ -127,6 +128,17 @@ pub trait ScriptStateAdapter {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
     ) -> HostResult<HostValue>;
+
+    fn query_collection_host(
+        &self,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+        query: HostCollectionQuery,
+    ) -> HostResult<HostValue> {
+        Err(HostError::new(HostErrorKind::UnsupportedCollectionQuery {
+            query,
+        }))
+    }
 
     fn write_host(
         &mut self,

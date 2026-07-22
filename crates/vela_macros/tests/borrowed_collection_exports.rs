@@ -184,6 +184,46 @@ fn borrowed_collection_return_reborrows_into_another_rust_export() {
 }
 
 #[test]
+fn borrowed_collections_execute_read_only_protocols_from_vela() {
+    let mut runtime = runtime(
+        "fn direct(values: ArrayView<i64>, totals: MapMut<String, i64>) { return values.len() + totals.len(); } fn empty(values: ArrayView<i64>) { return values.is_empty(); } fn returned(owner: CollectionOwner) { let values = owner.values(); return values.len(); }",
+    );
+    let values = vec![2_i64, 3, 5];
+    let mut totals = BTreeMap::from([("sum".to_owned(), 10_i64)]);
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values)
+        .push_collection_mut("totals", &mut totals);
+
+    let result = runtime
+        .call("direct", args, CallOptions::unbounded())
+        .expect("borrowed collection protocols should execute through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(4)));
+    drop(result);
+
+    let empty_values = Vec::<i64>::new();
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &empty_values);
+    let result = runtime
+        .call("empty", args, CallOptions::unbounded())
+        .expect("shared collection is_empty should use the read-only protocol");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    drop(result);
+
+    let owner = CollectionOwner {
+        values: vec![4_i64, 6],
+        totals: BTreeMap::new(),
+    };
+    let result = runtime
+        .call(
+            "returned",
+            CallArgs::new().with_host_ref("owner", &owner),
+            CallOptions::unbounded(),
+        )
+        .expect("owner-frozen borrowed return should keep its collection protocol");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(2)));
+}
+
+#[test]
 fn generated_async_adapters_hold_collection_leases_to_completion() {
     let mut runtime = runtime(
         "async fn free(values: ArrayView<i64>, totals: MapMut<String, i64>) { return collections::merge_async(values, totals).await; } async fn method(service: CollectionService, totals: MapMut<String, i64>) { return service.add_async(totals, 3).await; }",

@@ -6,6 +6,7 @@ use vela_common::{HostMethodId, HostTypeId, ScalarValue};
 
 use crate::{
     error::{HostError, HostErrorKind, HostResult},
+    protocol::HostCollectionQuery,
     resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess},
     target::{HostPathArg, HostPathPart, HostTargetInstance},
     value::{HostValue, add_values, div_values, mul_values, rem_values, sub_values},
@@ -35,6 +36,20 @@ pub trait ScriptHostObject {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
     ) -> HostResult<HostValue>;
+
+    fn query_collection_resolved_host(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        query: HostCollectionQuery,
+    ) -> HostResult<HostValue> {
+        let _ = access;
+        Err(if target.plan.parts.is_empty() {
+            unsupported_collection_query(query)
+        } else {
+            missing_target(target)
+        })
+    }
 
     fn write_resolved_host(
         &mut self,
@@ -106,6 +121,19 @@ pub trait ScriptHostFieldAccess {
         offset: usize,
     ) -> HostResult<HostValue>;
 
+    fn query_collection_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        query: HostCollectionQuery,
+    ) -> HostResult<HostValue> {
+        Err(if target_is_leaf(target, offset) {
+            unsupported_collection_query(query)
+        } else {
+            missing_target(target)
+        })
+    }
+
     fn write_host_target_from(
         &mut self,
         target: HostTargetInstance<'_>,
@@ -175,6 +203,16 @@ macro_rules! impl_script_host_object_via_field {
             ) -> HostResult<HostValue> {
                 let _ = access;
                 ScriptHostFieldAccess::read_host_target_from(self, target, 0)
+            }
+
+            fn query_collection_resolved_host(
+                &self,
+                access: ResolvedHostAccess,
+                target: HostTargetInstance<'_>,
+                query: HostCollectionQuery,
+            ) -> HostResult<HostValue> {
+                let _ = access;
+                ScriptHostFieldAccess::query_collection_host_target_from(self, target, 0, query)
             }
 
             fn write_resolved_host(
@@ -462,6 +500,21 @@ where
             .read_host_target_from(target, offset + 1)
     }
 
+    fn query_collection_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        query: HostCollectionQuery,
+    ) -> HostResult<HostValue> {
+        if target_is_leaf(target, offset) {
+            return collection_query_result(self.len(), query);
+        }
+        let key = K::parse_host_key(target_key(target, offset)?)?;
+        self.get(&key)
+            .ok_or_else(|| missing_target(target))?
+            .query_collection_host_target_from(target, offset + 1, query)
+    }
+
     fn write_host_target_from(
         &mut self,
         target: HostTargetInstance<'_>,
@@ -511,6 +564,21 @@ where
         self.get(&key)
             .ok_or_else(|| missing_target(target))?
             .read_host_target_from(target, offset + 1)
+    }
+
+    fn query_collection_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        query: HostCollectionQuery,
+    ) -> HostResult<HostValue> {
+        if target_is_leaf(target, offset) {
+            return collection_query_result(self.len(), query);
+        }
+        let key = K::parse_host_key(target_key(target, offset)?)?;
+        self.get(&key)
+            .ok_or_else(|| missing_target(target))?
+            .query_collection_host_target_from(target, offset + 1, query)
     }
 
     fn write_host_target_from(
@@ -567,6 +635,22 @@ where
         self.get(index)
             .ok_or_else(|| missing_target(target))?
             .read_host_target_from(target, offset + 1)
+    }
+
+    fn query_collection_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        query: HostCollectionQuery,
+    ) -> HostResult<HostValue> {
+        if target_is_leaf(target, offset) {
+            return collection_query_result(self.len(), query);
+        }
+        let index = usize::try_from(target_index(target, offset)?)
+            .map_err(|_| invalid_arg("array index"))?;
+        self.get(index)
+            .ok_or_else(|| missing_target(target))?
+            .query_collection_host_target_from(target, offset + 1, query)
     }
 
     fn write_host_target_from(
@@ -629,6 +713,19 @@ where
         }
     }
 
+    fn query_collection_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        query: HostCollectionQuery,
+    ) -> HostResult<HostValue> {
+        if target_is_leaf(target, offset) {
+            collection_query_result(self.len(), query)
+        } else {
+            Err(missing_target(target))
+        }
+    }
+
     fn write_host_target_from(
         &mut self,
         target: HostTargetInstance<'_>,
@@ -658,6 +755,19 @@ where
         let key = K::parse_host_key(key)?;
         if offset + 1 == target.plan.parts.len() {
             Ok(HostValue::Bool(self.contains(&key)))
+        } else {
+            Err(missing_target(target))
+        }
+    }
+
+    fn query_collection_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        query: HostCollectionQuery,
+    ) -> HostResult<HostValue> {
+        if target_is_leaf(target, offset) {
+            collection_query_result(self.len(), query)
         } else {
             Err(missing_target(target))
         }
@@ -721,6 +831,15 @@ fn invalid_arg(expected: &'static str) -> HostError {
     }
 }
 
+fn collection_query_result(len: usize, query: HostCollectionQuery) -> HostResult<HostValue> {
+    match query {
+        HostCollectionQuery::Len => i64::try_from(len)
+            .map(|len| HostValue::Scalar(ScalarValue::I64(len)))
+            .map_err(|_| invalid_arg("collection length within i64 range")),
+        HostCollectionQuery::IsEmpty => Ok(HostValue::Bool(len == 0)),
+    }
+}
+
 fn missing_target(target: HostTargetInstance<'_>) -> HostError {
     HostError {
         kind: HostErrorKind::MissingPath {
@@ -775,6 +894,13 @@ fn invalid_mutation_error(op: HostMutationOp, target: HostTargetInstance<'_>) ->
 fn unsupported_method(method: HostMethodId) -> HostError {
     HostError {
         kind: HostErrorKind::UnsupportedMethod { method },
+        source_span: None,
+    }
+}
+
+fn unsupported_collection_query(query: HostCollectionQuery) -> HostError {
+    HostError {
+        kind: HostErrorKind::UnsupportedCollectionQuery { query },
         source_span: None,
     }
 }

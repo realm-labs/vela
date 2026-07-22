@@ -177,6 +177,25 @@ pub(crate) fn dispatch_linked_method_call(
             method_id,
             standard_method,
         } => {
+            if matches!(frame.read(call.receiver)?, Value::HostRef(_))
+                && let Some(query) = crate::std_method_ids::host_collection_query(method_id)
+            {
+                let result = host_access::execute_host_root_collection_query(
+                    host_access::HostAccessRuntime {
+                        frame,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        host: host.as_deref_mut(),
+                        inline_caches: context.inline_caches,
+                        source_span: context.call_site,
+                    },
+                    call.receiver,
+                    query,
+                    context.cache_site,
+                )?;
+                frame.write(call.dst, result)?;
+                return Ok(());
+            }
             if let Some(result) = linked_standard_value_method_result(
                 &context,
                 frame,

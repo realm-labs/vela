@@ -9,6 +9,7 @@ pub mod lease;
 pub mod mock;
 pub mod object;
 pub mod path;
+pub mod protocol;
 pub mod proxy;
 pub mod resolved;
 pub mod target;
