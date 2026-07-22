@@ -3,7 +3,7 @@ use std::fmt;
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, Span};
 
 use crate::path::HostPath;
-use crate::protocol::HostCollectionQuery;
+use crate::protocol::{HostCollectionMutation, HostCollectionQuery};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HostError {
@@ -95,6 +95,9 @@ pub enum HostErrorKind {
     },
     UnsupportedCollectionQuery {
         query: HostCollectionQuery,
+    },
+    UnsupportedCollectionMutation {
+        mutation: HostCollectionMutation,
     },
     HostObjectBusy {
         path: HostPath,

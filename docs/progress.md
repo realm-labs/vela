@@ -111,9 +111,9 @@ model. Read-only `MapView.has/get/get_or` and `SetView.has` now reuse the same
 resolved keyed HostAccess path without materializing the collection. A distinct
 missing-entry error ensures only absent keys become `false`, `Option::None`, or
 the caller fallback; other host errors propagate. Complex borrowed element
-views, remaining element/key methods, live/resumable iteration, bulk mutation,
-fixed slices/arrays, user-defined collection adapters, and prepared index plans
-remain open. Growable `MapMut.set` and missing-key index assignment now insert
+views, remaining element/key methods, live/resumable iteration, remaining bulk
+mutation, fixed slices/arrays, user-defined collection adapters, and prepared
+index plans remain open. Growable `MapMut.set` and missing-key index assignment now insert
 scalar/String/Bytes leaves through the keyed HostAccess write, while
 `MapMut.remove` uses a keyed HostAccess remove and returns the prior value as
 `Option<V>`. `SetMut.add/remove` write membership through the same path and
@@ -121,7 +121,12 @@ retain standard changed/not-changed results. Borrowed Array `iter/values`, Map
 `keys/values/entries/iter`, and Set `values/iter` now capture deterministic
 bounded boundary projections under the active lease and feed the existing Vela
 Iterator pipeline, including `filter/count/collect`; complex element handles
-and per-resume live host generation checks remain open.
+and per-resume live host generation checks remain open. Growable borrowed
+collection `clear` now precharges its size and performs one semantic
+`HostCollectionMutation::Clear` through HostAccess for standard Vec, Map, and
+Set host objects; budget failure occurs before mutation and adapters never see
+Vela method IDs. Batched extend, retain/filter, grouping, and prepared live
+traversal remain open.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry

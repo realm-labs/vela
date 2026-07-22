@@ -26,6 +26,25 @@ pub enum HostCollectionProjection {
     Entries,
 }
 
+/// Write-through collection operations understood by the host boundary.
+///
+/// These operations are semantic protocol identities rather than Vela
+/// standard-library method IDs. One operation may therefore be shared by
+/// standard and user-defined Rust collection bindings.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum HostCollectionMutation {
+    Clear,
+}
+
+impl HostCollectionMutation {
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Clear => "clear",
+        }
+    }
+}
+
 impl HostCollectionProjection {
     #[must_use]
     pub const fn name(self) -> &'static str {

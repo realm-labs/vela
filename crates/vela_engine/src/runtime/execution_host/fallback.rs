@@ -3,7 +3,9 @@ use vela_host::adapter::{ExternStateBinding, ScriptStateAdapter};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::lease::HostLeaseKind;
 use vela_host::path::HostRef;
-use vela_host::protocol::{HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot};
+use vela_host::protocol::{
+    HostCollectionMutation, HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot,
+};
 use vela_host::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
@@ -110,6 +112,23 @@ impl ScriptStateAdapter for FallbackAdapter<'_> {
                 })
             },
             |adapter| adapter.snapshot_collection_host(access, target, projection),
+        )
+    }
+
+    fn mutate_collection_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        mutation: HostCollectionMutation,
+    ) -> HostResult<()> {
+        self.adapter_mut().map_or_else(
+            || {
+                Err(HostError {
+                    kind: HostErrorKind::UnsupportedCollectionMutation { mutation },
+                    source_span: None,
+                })
+            },
+            |adapter| adapter.mutate_collection_host(access, target, mutation),
         )
     }
 

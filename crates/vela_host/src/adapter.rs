@@ -9,7 +9,10 @@ use crate::{
     },
     object::ScriptHostObject,
     path::HostRef,
-    protocol::{HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot},
+    protocol::{
+        HostCollectionMutation, HostCollectionProjection, HostCollectionQuery,
+        HostCollectionSnapshot,
+    },
     resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess},
     target::HostTargetInstance,
     value::HostValue,
@@ -149,6 +152,17 @@ pub trait ScriptStateAdapter {
         Err(HostError::new(HostErrorKind::InvalidArgument {
             expected: projection.name(),
         }))
+    }
+
+    fn mutate_collection_host(
+        &mut self,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+        mutation: HostCollectionMutation,
+    ) -> HostResult<()> {
+        Err(HostError::new(
+            HostErrorKind::UnsupportedCollectionMutation { mutation },
+        ))
     }
 
     fn write_host(

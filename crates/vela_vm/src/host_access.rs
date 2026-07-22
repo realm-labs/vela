@@ -734,6 +734,11 @@ pub(crate) fn execute_host_root_collection_mutation(
             actual: args.len(),
         }));
     }
+    if mutation == crate::std_method_ids::HostCollectionMutation::Clear {
+        return crate::host_collection_mutation::execute_host_root_collection_clear(
+            runtime, receiver, cache_site,
+        );
+    }
     let root = expect_host_ref(&runtime.frame.read(receiver)?, "host collection mutation")?;
     let key = runtime_collection_index(
         &args[0],
@@ -756,6 +761,7 @@ pub(crate) fn execute_host_root_collection_mutation(
 
     use crate::std_method_ids::HostCollectionMutation;
     match mutation {
+        HostCollectionMutation::Clear => unreachable!("clear dispatches before keyed mutations"),
         HostCollectionMutation::MapSet => {
             let resolved = resolve_collection_key_access(
                 host,

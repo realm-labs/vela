@@ -2586,6 +2586,17 @@ current value, perform `HostAccessOp::Remove` only when present, and return the
 captured value as Vela `Option<V>`. It does not encode deletion as a sentinel
 write or expose the Rust entry API.
 
+Host-backed whole-collection writes use `HostCollectionMutation`, a semantic
+adapter protocol distinct from Vela standard-library method IDs. The first
+operation is `Clear`, shared by standard Vec, Map, Set, and user-defined
+adapters. VM execution queries the current length and charges one execution
+unit per removed element before calling the mutation once. A budget failure
+therefore cannot partially clear host state; successful mutation still writes
+through immediately, and shared/fixed capability enforcement remains at the
+ordinary method-fact and HostAccess boundaries. Later extend, retain/filter,
+and grouping operations extend this protocol instead of looping over dynamic
+host calls or materializing the Rust container.
+
 Concrete Rust unit, bool, char, exact-width numeric, and String bindings retain
 distinct stable Rust ABI identities while using their existing native Vela
 value kinds and codecs. Concrete Rust `Option<T>` and `Result<T, E>` bindings

@@ -395,6 +395,82 @@ fn growable_borrowed_collection_methods_write_through_host_paths() {
 }
 
 #[test]
+fn growable_borrowed_collections_clear_through_one_host_mutation() {
+    let mut runtime = runtime(
+        "fn clear_map(values: MapMut<i32, i64>) { let before = values.len(); values.clear(); return before + values.len(); } fn clear_set(values: SetMut<i32>) { let before = values.len(); values.clear(); return before + values.len(); }",
+    );
+
+    let mut map = BTreeMap::from([(3_i32, 5_i64), (8, 13)]);
+    let mut args = CallArgs::new();
+    args.push_collection_mut("values", &mut map);
+    let result = runtime
+        .call("clear_map", args, CallOptions::unbounded())
+        .expect("borrowed map clear should use the host collection mutation protocol");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(2)));
+    drop(result);
+    assert!(map.is_empty());
+
+    let mut set = BTreeSet::from([3_i32, 5, 8]);
+    let mut args = CallArgs::new();
+    args.push_collection_mut("values", &mut set);
+    let result = runtime
+        .call("clear_set", args, CallOptions::unbounded())
+        .expect("borrowed set clear should use the host collection mutation protocol");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(3)));
+    drop(result);
+    assert!(set.is_empty());
+}
+
+#[test]
+fn borrowed_collection_clear_charges_size_before_mutation() {
+    let mut runtime = runtime("fn clear_map(values: MapMut<i32, i64>) { values.clear(); }");
+    let base_limit = (0..64)
+        .find(|limit| {
+            let mut values = BTreeMap::<i32, i64>::new();
+            let mut args = CallArgs::new();
+            args.push_collection_mut("values", &mut values);
+            runtime
+                .call(
+                    "clear_map",
+                    args,
+                    CallOptions::new(*limit, usize::MAX, usize::MAX),
+                )
+                .is_ok()
+        })
+        .expect("empty host clear should fit a small bounded call");
+
+    let expected = BTreeMap::from([(3_i32, 5_i64), (8, 13), (21, 34)]);
+    let mut values = expected.clone();
+    let mut args = CallArgs::new();
+    args.push_collection_mut("values", &mut values);
+    assert!(
+        runtime
+            .call(
+                "clear_map",
+                args,
+                CallOptions::new(base_limit + 2, usize::MAX, usize::MAX),
+            )
+            .is_err(),
+        "three removed entries must cost three execution units"
+    );
+    assert_eq!(
+        values, expected,
+        "budget failure must precede host mutation"
+    );
+
+    let mut args = CallArgs::new();
+    args.push_collection_mut("values", &mut values);
+    runtime
+        .call(
+            "clear_map",
+            args,
+            CallOptions::new(base_limit + 3, usize::MAX, usize::MAX),
+        )
+        .expect("exact size-aware clear budget should succeed");
+    assert!(values.is_empty());
+}
+
+#[test]
 fn borrowed_collection_projections_feed_iterator_pipelines() {
     let mut runtime = runtime(
         "fn array_iter(values: ArrayView<i64>) { return values.iter().filter(|value| value >= 6).count() + values.values().count(); } fn map_iter(scores: MapView<i32, i64>) { return scores.keys().count() + scores.entries().count() + scores.values().filter(|value| value >= 6).count(); } fn set_iter(values: SetView<i32>) { return values.iter().filter(|value| value >= 7i32).count() + values.values().count(); }",

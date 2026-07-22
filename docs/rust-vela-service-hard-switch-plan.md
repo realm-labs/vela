@@ -1130,9 +1130,10 @@ the Rust-side exact conversion without string serialization. Read-only
 `MapView.has/get/get_or` and `SetView.has` reuse the resolved keyed HostAccess
 path; `MissingCollectionEntry` alone becomes missing/fallback behavior, while
 other host errors propagate. Borrowed complex-element views, remaining
-element/key methods, live/resumable iteration, and bulk mutation protocols, slices/fixed
-arrays, richer user-defined collection adapters, full service macro traversal,
-and prepared operations are still open. Growable `MapMut.set` and keyed index
+element/key methods, live/resumable iteration, remaining bulk mutation
+protocols, slices/fixed arrays, richer user-defined collection adapters, full
+service macro traversal, and prepared operations are still open. Growable
+`MapMut.set` and keyed index
 assignment insert supported leaf values through HostAccess; `MapMut.remove`
 uses a keyed remove and returns the prior value as `Option<V>`;
 `SetMut.add/remove` use keyed boolean membership writes without
@@ -1142,7 +1143,13 @@ the active lease and then reuse the ordinary Vela Iterator pipeline. This
 snapshot slice preserves exact boundary tags and supports
 `filter/count/collect`; live host iterators, complex element HostRefs, and
 generation validation at resumable boundaries remain planned
-prepared-operation work.
+prepared-operation work. The first bulk write protocol is now live:
+growable collection `clear` precharges one execution unit per removed element
+and then performs one domain-neutral `HostCollectionMutation::Clear` through
+HostAccess. Standard Vec, Map, and Set host objects implement the same
+operation; budget failure precedes mutation, shared/fixed method facts remain
+non-mutating, and Rust adapters do not receive Vela method IDs. Batched extend,
+retain/filter, grouping, and prepared live traversal remain open.
 
 ### S4 — Service contract and Rust-only generation
 

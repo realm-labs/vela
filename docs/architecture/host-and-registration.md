@@ -181,6 +181,13 @@ pub trait ScriptStateAdapter {
         projection: HostCollectionProjection,
     ) -> HostResult<HostCollectionSnapshot>;
 
+    fn mutate_collection_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        mutation: HostCollectionMutation,
+    ) -> HostResult<()>;
+
     fn write_host(&mut self, access: ResolvedHostAccess, target: HostTargetInstance<'_>, value: HostValue)
         -> HostResult<()>;
 
@@ -337,6 +344,13 @@ contract, and becomes an ordinary one-shot Vela Iterator so existing
 filter/map/count/collect behavior and budgets apply. This first projection
 slice snapshots boundary values; resumable live host iterators with
 per-resume generation validation remain a later prepared-operation step.
+Growable borrowed collection `clear` uses one semantic
+`HostCollectionMutation::Clear` write rather than Vela method IDs or
+per-element boundary calls. The VM reads the collection length and charges its
+execution cost before invoking the mutation, so a budget failure leaves the
+host collection unchanged. Vec, Map, Set, and user-defined adapters share this
+protocol while HostAccess still enforces write capability and immediate
+write-through.
 Prepared plans replace the initial per-operation root plan as S3 advances.
 
 Low-level Rust native methods may use typed handles such as `HostRef` and

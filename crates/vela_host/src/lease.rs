@@ -316,6 +316,15 @@ where
 {
     impl_scoped_host_common!(SharedScopedHost);
 
+    fn mutate_collection_resolved_host(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        _mutation: crate::protocol::HostCollectionMutation,
+    ) -> crate::error::HostResult<()> {
+        Err(scoped_read_only_error(target, "write"))
+    }
+
     fn write_resolved_host(
         &mut self,
         _access: ResolvedHostAccess,
@@ -362,6 +371,16 @@ where
 
     fn lease_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
         self.0.lease_any_mut()
+    }
+
+    fn mutate_collection_resolved_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        mutation: crate::protocol::HostCollectionMutation,
+    ) -> crate::error::HostResult<()> {
+        self.0
+            .mutate_collection_resolved_host(access, target, mutation)
     }
 
     fn write_resolved_host(
@@ -448,6 +467,17 @@ impl ScriptHostObject for ScopedBorrowedHostCell<'_> {
     ) -> crate::error::HostResult<crate::protocol::HostCollectionSnapshot> {
         self.borrow_dependent()
             .snapshot_collection_resolved_host(access, target, projection)
+    }
+
+    fn mutate_collection_resolved_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        mutation: crate::protocol::HostCollectionMutation,
+    ) -> crate::error::HostResult<()> {
+        self.with_dependent_mut(|_, object| {
+            object.mutate_collection_resolved_host(access, target, mutation)
+        })
     }
 
     fn write_resolved_host(

@@ -13,7 +13,9 @@ use vela_host::lease::{
 };
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
-use vela_host::protocol::{HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot};
+use vela_host::protocol::{
+    HostCollectionMutation, HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot,
+};
 use vela_host::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
@@ -646,6 +648,24 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         }
     }
 
+    fn mutate_collection_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        mutation: HostCollectionMutation,
+    ) -> HostResult<()> {
+        match self.args.direct_binding_mut(target.root) {
+            Some(HostArgBinding::Shared { .. }) => {
+                Err(ExecutionHost::direct_access_error(target, "write"))
+            }
+            Some(HostArgBinding::Mutable { object }) => object
+                .try_write()
+                .ok_or_else(|| host_object_busy(target.root))?
+                .mutate_collection_resolved_host(access, target, mutation),
+            None => self.parent.mutate_collection_host(access, target, mutation),
+        }
+    }
+
     fn write_host(
         &mut self,
         access: ResolvedHostAccess,
@@ -942,6 +962,42 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             None => self
                 .fallback
                 .snapshot_collection_host(access, target, projection),
+        }
+    }
+
+    fn mutate_collection_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        mutation: HostCollectionMutation,
+    ) -> HostResult<()> {
+        if let Some(binding) = self.extern_states.binding_mut(target.root) {
+            return binding
+                .object
+                .mutate_collection_resolved_host(access, target, mutation);
+        }
+        if self.host_arena.contains(target.root) {
+            return self
+                .host_arena
+                .mutate_collection(access, target, mutation)
+                .expect("owned host root remains present");
+        }
+        if self.scoped_hosts.contains_key(&target.root) {
+            return self
+                .mutate_scoped_host(target.root, |object| {
+                    object.mutate_collection_resolved_host(access, target, mutation)
+                })
+                .expect("scoped host root remains present");
+        }
+        match self.args.direct_binding_mut(target.root) {
+            Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
+            Some(HostArgBinding::Mutable { object }) => object
+                .try_write()
+                .ok_or_else(|| host_object_busy(target.root))?
+                .mutate_collection_resolved_host(access, target, mutation),
+            None => self
+                .fallback
+                .mutate_collection_host(access, target, mutation),
         }
     }
 
