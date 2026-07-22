@@ -720,6 +720,126 @@ pub(crate) fn execute_host_root_collection_lookup(
     }
 }
 
+pub(crate) fn execute_host_root_collection_mutation(
+    mut runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    mutation: crate::std_method_ids::HostCollectionMutation,
+    args: &[Value],
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<Value> {
+    if args.len() != mutation.arity() {
+        return Err(VmError::new(VmErrorKind::ArityMismatch {
+            name: mutation.name().to_owned(),
+            expected: mutation.arity(),
+            actual: args.len(),
+        }));
+    }
+    let root = expect_host_ref(&runtime.frame.read(receiver)?, "host collection mutation")?;
+    let key = runtime_collection_index(
+        &args[0],
+        runtime.heap.as_deref(),
+        "host collection mutation",
+    )?;
+    let (target, arg) = key.target(root.type_id);
+    let target_args = [arg];
+    let instance = HostTargetInstance::new(root, &target, &target_args);
+    let map_value = matches!(
+        mutation,
+        crate::std_method_ids::HostCollectionMutation::MapSet
+    )
+    .then(|| value_to_host(&args[1], "host map set", runtime.heap.as_deref()))
+    .transpose()?;
+    let host = runtime
+        .host
+        .as_deref_mut()
+        .ok_or_else(missing_host_context)?;
+
+    use crate::std_method_ids::HostCollectionMutation;
+    match mutation {
+        HostCollectionMutation::MapSet => {
+            let resolved = resolve_collection_key_access(
+                host,
+                runtime.inline_caches,
+                cache_site,
+                instance,
+                HostAccessOp::Write,
+                runtime.source_span,
+            )?;
+            host.access.write_resolved(
+                host.adapter,
+                resolved,
+                instance,
+                map_value.expect("MapSet prepared a value"),
+                runtime.source_span,
+            )?;
+            Ok(args[1])
+        }
+        HostCollectionMutation::SetAdd | HostCollectionMutation::SetRemove => {
+            let read = resolve_collection_key_access(
+                host,
+                runtime.inline_caches,
+                cache_site,
+                instance,
+                HostAccessOp::Read,
+                runtime.source_span,
+            )?;
+            let current =
+                host.access
+                    .read_resolved(host.adapter, read, instance, runtime.source_span)?;
+            let HostValue::Bool(current) = current else {
+                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "host set mutation",
+                }));
+            };
+            let desired = matches!(mutation, HostCollectionMutation::SetAdd);
+            let changed = current != desired;
+            if changed {
+                let write = resolve_collection_key_access(
+                    host,
+                    runtime.inline_caches,
+                    cache_site,
+                    instance,
+                    HostAccessOp::Write,
+                    runtime.source_span,
+                )?;
+                host.access.write_resolved(
+                    host.adapter,
+                    write,
+                    instance,
+                    HostValue::Bool(desired),
+                    runtime.source_span,
+                )?;
+            }
+            Ok(Value::Bool(changed))
+        }
+    }
+}
+
+fn resolve_collection_key_access(
+    host: &HostExecution<'_>,
+    inline_caches: Option<&dyn VmInlineCaches>,
+    cache_site: Option<CacheSiteId>,
+    target: HostTargetInstance<'_>,
+    op: HostAccessOp,
+    source_span: Option<Span>,
+) -> VmResult<ResolvedHostAccess> {
+    if let Some(cache_site) = cache_site {
+        resolve_cached_access(
+            host.adapter,
+            inline_caches,
+            cache_site,
+            HostInlineCacheTarget::CollectionKey,
+            target,
+            op,
+            source_span,
+        )
+    } else {
+        host.adapter
+            .resolve_host_access(HostAccessSpec::new(op, target.plan))
+            .map_err(|error| error.with_source_span_if_absent(source_span).into())
+    }
+}
+
 pub(crate) fn execute_host_collection_index_read(
     mut runtime: HostAccessRuntime<'_, '_, '_>,
     receiver: Register,

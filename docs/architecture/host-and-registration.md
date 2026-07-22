@@ -313,6 +313,13 @@ the same resolved keyed HostAccess read. A missing map entry has the distinct
 `Option::None`, or the supplied fallback. Permission, stale-generation, value
 projection, and adapter errors continue to propagate. No Rust adapter receives
 or switches on Vela standard-library method IDs.
+Growable `MapMut.set` uses the keyed HostAccess write and may construct a new
+leaf through `ScriptHostFieldAccess::from_host_collection_value`; ordinary
+index assignment uses the same insertion path. `SetMut.add/remove` model
+membership as keyed boolean reads and writes, preserving their changed/not
+changed return value without materializing the set. Types that cannot be
+constructed from a scalar `HostValue` fail closed instead of cloning a complex
+Rust value through the script heap.
 Prepared plans replace the initial per-operation root plan as S3 advances.
 
 Low-level Rust native methods may use typed handles such as `HostRef` and

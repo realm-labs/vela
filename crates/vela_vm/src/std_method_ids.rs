@@ -325,6 +325,45 @@ pub(crate) fn host_collection_lookup(method_id: MethodId) -> Option<HostCollecti
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum HostCollectionMutation {
+    MapSet,
+    SetAdd,
+    SetRemove,
+}
+
+impl HostCollectionMutation {
+    #[must_use]
+    pub(crate) const fn name(self) -> &'static str {
+        match self {
+            Self::MapSet => "set",
+            Self::SetAdd => "add",
+            Self::SetRemove => "remove",
+        }
+    }
+
+    #[must_use]
+    pub(crate) const fn arity(self) -> usize {
+        match self {
+            Self::MapSet => 2,
+            Self::SetAdd | Self::SetRemove => 1,
+        }
+    }
+}
+
+pub(crate) fn host_collection_mutation(method_id: MethodId) -> Option<HostCollectionMutation> {
+    let ids = std_method_ids();
+    if method_id == ids.map_set {
+        Some(HostCollectionMutation::MapSet)
+    } else if method_id == ids.set_add {
+        Some(HostCollectionMutation::SetAdd)
+    } else if method_id == ids.set_remove {
+        Some(HostCollectionMutation::SetRemove)
+    } else {
+        None
+    }
+}
+
 fn standard_method_id(owner: &str, name: &str) -> MethodId {
     let Some(id) = vela_stdlib::std_method_id(owner, name) else {
         panic!("missing standard method identity for {owner}::{name}");

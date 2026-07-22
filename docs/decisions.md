@@ -2573,6 +2573,15 @@ absence is represented by `MissingCollectionEntry`, distinct from a general
 This prevents an unsupported value projection or nested adapter error from
 being silently reported as a missing key.
 
+Growable borrowed Map insertion reuses keyed HostAccess writes. A host field
+type opts into new-entry construction through
+`ScriptHostFieldAccess::from_host_collection_value`; scalar, String, and Bytes
+leaves implement it, while complex host values fail closed until their exact
+binding supplies a construction policy. Borrowed Set add/remove treats
+membership as a keyed boolean value and therefore reuses the same read/write,
+permission, generation, and alias enforcement as Map access. These operations
+do not introduce container-family mutation slots.
+
 Concrete Rust unit, bool, char, exact-width numeric, and String bindings retain
 distinct stable Rust ABI identities while using their existing native Vela
 value kinds and codecs. Concrete Rust `Option<T>` and `Result<T, E>` bindings

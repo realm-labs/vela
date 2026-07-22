@@ -106,6 +106,13 @@ pub trait ScriptHostObject {
 pub trait ScriptHostFieldAccess {
     fn script_host_type_id(&self) -> HostTypeId;
 
+    fn from_host_collection_value(_value: HostValue) -> HostResult<Self>
+    where
+        Self: Sized,
+    {
+        Err(invalid_arg("host collection value"))
+    }
+
     fn resolve_host_target_from(
         &self,
         spec: HostAccessSpec<'_>,
@@ -280,6 +287,10 @@ macro_rules! impl_scalar_host_value {
                     HostTypeId::new(0)
                 }
 
+                fn from_host_collection_value(value: HostValue) -> HostResult<Self> {
+                    <$ty as HostValueFrom>::from_host_value(&value)
+                }
+
                 fn read_host_target_from(
                     &self,
                     target: HostTargetInstance<'_>,
@@ -343,6 +354,10 @@ impl HostValueFrom for bool {
 impl ScriptHostFieldAccess for bool {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
+    }
+
+    fn from_host_collection_value(value: HostValue) -> HostResult<Self> {
+        bool::from_host_value(&value)
     }
 
     fn read_host_target_from(
@@ -419,6 +434,10 @@ impl HostValueFrom for Vec<u8> {
 impl ScriptHostFieldAccess for String {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
+    }
+
+    fn from_host_collection_value(value: HostValue) -> HostResult<Self> {
+        String::from_host_value(&value)
     }
 
     fn read_host_target_from(
@@ -567,9 +586,14 @@ where
         value: HostValue,
     ) -> HostResult<()> {
         let key = K::from_host_collection_key(target_key(target, offset)?)?;
-        self.get_mut(&key)
-            .ok_or_else(|| missing_collection_entry(target))?
-            .write_host_target_from(target, offset + 1, value)
+        if let Some(current) = self.get_mut(&key) {
+            return current.write_host_target_from(target, offset + 1, value);
+        }
+        if offset + 1 != target.plan.parts.len() {
+            return Err(missing_collection_entry(target));
+        }
+        self.insert(key, V::from_host_collection_value(value)?);
+        Ok(())
     }
 
     fn call_host_target_from(
@@ -630,9 +654,14 @@ where
         value: HostValue,
     ) -> HostResult<()> {
         let key = K::from_host_collection_key(target_key(target, offset)?)?;
-        self.get_mut(&key)
-            .ok_or_else(|| missing_collection_entry(target))?
-            .write_host_target_from(target, offset + 1, value)
+        if let Some(current) = self.get_mut(&key) {
+            return current.write_host_target_from(target, offset + 1, value);
+        }
+        if offset + 1 != target.plan.parts.len() {
+            return Err(missing_collection_entry(target));
+        }
+        self.insert(key, V::from_host_collection_value(value)?);
+        Ok(())
     }
 
     fn call_host_target_from(
@@ -657,6 +686,17 @@ where
 {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
+    }
+
+    fn from_host_collection_value(value: HostValue) -> HostResult<Self> {
+        if TypeId::of::<T>() != TypeId::of::<u8>() {
+            return Err(invalid_arg("host collection value"));
+        }
+        let bytes = Vec::<u8>::from_host_value(&value)?;
+        let value: Box<dyn Any> = Box::new(bytes);
+        Ok(*value
+            .downcast::<Self>()
+            .expect("Vec<T> TypeId matched Vec<u8>"))
     }
 
     fn read_host_target_from(
@@ -768,10 +808,19 @@ where
     fn write_host_target_from(
         &mut self,
         target: HostTargetInstance<'_>,
-        _offset: usize,
-        _value: HostValue,
+        offset: usize,
+        value: HostValue,
     ) -> HostResult<()> {
-        Err(permission_denied(target, "write"))
+        let key = K::from_host_collection_key(target_key(target, offset)?)?;
+        if offset + 1 != target.plan.parts.len() {
+            return Err(missing_target(target));
+        }
+        if bool::from_host_value(&value)? {
+            self.insert(key);
+        } else {
+            self.remove(&key);
+        }
+        Ok(())
     }
 }
 
@@ -814,10 +863,19 @@ where
     fn write_host_target_from(
         &mut self,
         target: HostTargetInstance<'_>,
-        _offset: usize,
-        _value: HostValue,
+        offset: usize,
+        value: HostValue,
     ) -> HostResult<()> {
-        Err(permission_denied(target, "write"))
+        let key = K::from_host_collection_key(target_key(target, offset)?)?;
+        if offset + 1 != target.plan.parts.len() {
+            return Err(missing_target(target));
+        }
+        if bool::from_host_value(&value)? {
+            self.insert(key);
+        } else {
+            self.remove(&key);
+        }
+        Ok(())
     }
 }
 

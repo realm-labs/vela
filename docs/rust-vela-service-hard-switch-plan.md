@@ -1130,9 +1130,12 @@ the Rust-side exact conversion without string serialization. Read-only
 `MapView.has/get/get_or` and `SetView.has` reuse the resolved keyed HostAccess
 path; `MissingCollectionEntry` alone becomes missing/fallback behavior, while
 other host errors propagate. Borrowed complex-element views, remaining
-element/key methods, iteration, method and bulk mutation protocols,
-slices/fixed arrays, richer user-defined collection adapters, full service
-macro traversal, and prepared operations are still open.
+element/key methods, iteration, and bulk mutation protocols, slices/fixed
+arrays, richer user-defined collection adapters, full service macro traversal,
+and prepared operations are still open. Growable `MapMut.set` and keyed index
+assignment insert supported leaf values through HostAccess;
+`SetMut.add/remove` use keyed boolean membership writes without
+materialization.
 
 ### S4 — Service contract and Rust-only generation
 

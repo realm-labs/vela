@@ -368,6 +368,33 @@ fn borrowed_collection_lookup_methods_use_host_paths_without_materializing() {
 }
 
 #[test]
+fn growable_borrowed_collection_methods_write_through_host_paths() {
+    let mut runtime = runtime(
+        "fn map_set(scores: MapMut<i32, i64>) { scores.set(7i32, 12); scores.set(9i32, 6); scores[10i32] = 8; return scores[7i32] + scores[9i32] + scores[10i32]; } fn set_mutate(values: SetMut<i32>) { return values.add(9i32) && !values.add(7i32) && values.remove(7i32) && !values.remove(8i32); }",
+    );
+
+    let mut scores = BTreeMap::from([(7_i32, 11_i64)]);
+    let mut args = CallArgs::new();
+    args.push_collection_mut("scores", &mut scores);
+    let result = runtime
+        .call("map_set", args, CallOptions::unbounded())
+        .expect("growable borrowed map set should write through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(26)));
+    drop(result);
+    assert_eq!(scores, BTreeMap::from([(7, 12), (9, 6), (10, 8)]));
+
+    let mut values = BTreeSet::from([7_i32]);
+    let mut args = CallArgs::new();
+    args.push_collection_mut("values", &mut values);
+    let result = runtime
+        .call("set_mutate", args, CallOptions::unbounded())
+        .expect("growable borrowed set methods should write through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    drop(result);
+    assert_eq!(values, BTreeSet::from([9]));
+}
+
+#[test]
 fn generated_async_adapters_hold_collection_leases_to_completion() {
     let mut runtime = runtime(
         "async fn free(values: ArrayView<i64>, totals: MapMut<String, i64>) { return collections::merge_async(values, totals).await; } async fn method(service: CollectionService, totals: MapMut<String, i64>) { return service.add_async(totals, 3).await; }",
