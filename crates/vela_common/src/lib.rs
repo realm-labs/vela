@@ -9,7 +9,8 @@ pub mod primitive;
 
 pub use capability::{Capability, CapabilitySet};
 pub use interop_type::{
-    InteropTypeId, ReceiverCapabilities, ReceiverCapability, StoragePolicy, TypeAbiFingerprint,
+    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, InteropTypeId,
+    ReceiverCapabilities, ReceiverCapability, StoragePolicy, TypeAbiFingerprint,
     TypeBindingRegistryChecksum,
 };
 pub use primitive::{NumericTag, PrimitiveTag, ScalarValue};

@@ -1,7 +1,7 @@
 use vela_analysis::registry::RegistryFacts;
 use vela_common::{
-    HostMethodId, HostTypeId, InteropTypeId, ReceiverCapabilities, ReceiverCapability, SourceId,
-    StoragePolicy,
+    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, HostMethodId,
+    HostTypeId, InteropTypeId, ReceiverCapabilities, ReceiverCapability, SourceId, StoragePolicy,
 };
 use vela_def::{FieldId, FunctionId, TypeId};
 use vela_host::error::HostResult;
@@ -277,6 +277,40 @@ fn type_binding_fingerprint_ignores_docs_but_tracks_structural_abi() {
             .abi_fingerprint
     );
     assert_ne!(first.checksum(), changed.checksum());
+}
+
+#[test]
+fn type_binding_fingerprint_tracks_collection_view_capabilities() {
+    let desc = value_desc(102, "amount");
+    let plain = external_value_binding(desc.clone()).abi_fingerprint();
+    let viewed = external_value_binding(desc)
+        .collection_view_capabilities(CollectionViewCapabilities::mutable(
+            CollectionViewKind::Array,
+            CollectionViewMutation::Growable,
+        ))
+        .abi_fingerprint();
+
+    assert_ne!(plain, viewed);
+}
+
+#[test]
+fn collection_view_kind_must_match_the_bound_representation() {
+    let result = Engine::builder()
+        .register_rust_type::<ExternalValue>(
+            external_value_binding(value_desc(102, "amount")).collection_view_capabilities(
+                CollectionViewCapabilities::read_only(CollectionViewKind::Array),
+            ),
+        )
+        .build();
+
+    assert!(matches!(
+        result,
+        Err(error)
+            if error.kind == EngineErrorKind::InvalidTypeBindingCollectionView {
+                name: "host::ExternalValue".to_owned(),
+                reason: "view kind does not match the registered value kind",
+            }
+    ));
 }
 
 #[test]

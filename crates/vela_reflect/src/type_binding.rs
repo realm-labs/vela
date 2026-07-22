@@ -1,8 +1,8 @@
 //! Immutable Rust/Vela type-binding facts exposed to compilation and tooling.
 
 use vela_common::{
-    InteropTypeId, ReceiverCapabilities, StoragePolicy, TypeAbiFingerprint,
-    TypeBindingRegistryChecksum,
+    CollectionViewCapabilities, InteropTypeId, ReceiverCapabilities, StoragePolicy,
+    TypeAbiFingerprint, TypeBindingRegistryChecksum,
 };
 use vela_def::FunctionId;
 
@@ -14,6 +14,7 @@ pub struct TypeBindingDesc {
     pub key: TypeKey,
     pub storage: StoragePolicy,
     pub capabilities: ReceiverCapabilities,
+    pub collection_views: Option<CollectionViewCapabilities>,
     pub constructor_ids: Vec<FunctionId>,
     pub abi_fingerprint: TypeAbiFingerprint,
 }
@@ -25,6 +26,7 @@ impl TypeBindingDesc {
         key: TypeKey,
         storage: StoragePolicy,
         capabilities: ReceiverCapabilities,
+        collection_views: Option<CollectionViewCapabilities>,
         constructor_ids: Vec<FunctionId>,
         abi_fingerprint: TypeAbiFingerprint,
     ) -> Self {
@@ -33,6 +35,7 @@ impl TypeBindingDesc {
             key,
             storage,
             capabilities,
+            collection_views,
             constructor_ids,
             abi_fingerprint,
         }

@@ -42,7 +42,10 @@ pub use vela_bytecode::{
     UnlinkedCodeObject,
     script_methods::{ScriptMethod, ScriptMethodTable},
 };
-pub use vela_common::{HostMethodId, HostObjectId, HostTypeId};
+pub use vela_common::{
+    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, HostMethodId,
+    HostObjectId, HostTypeId,
+};
 pub use vela_def::{FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId};
 pub use vela_hir::ids::{HirDeclId, ModuleId};
 pub use vela_hir::module_graph::{

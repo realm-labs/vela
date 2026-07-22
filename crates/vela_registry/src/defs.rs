@@ -1,8 +1,8 @@
 use std::fmt;
 
 use vela_common::{
-    InteropTypeId, PrimitiveTag, ReceiverCapabilities, ReceiverCapability, StoragePolicy,
-    TypeAbiFingerprint,
+    CollectionViewCapabilities, InteropTypeId, PrimitiveTag, ReceiverCapabilities,
+    ReceiverCapability, StoragePolicy, TypeAbiFingerprint,
 };
 use vela_def::{
     DefId, DefKind, DefPath, FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId,
@@ -834,6 +834,7 @@ pub struct TypeBindingDef {
     pub id: InteropTypeId,
     pub storage: StoragePolicy,
     pub capabilities: ReceiverCapabilities,
+    pub collection_views: Option<CollectionViewCapabilities>,
     pub constructor_ids: Vec<FunctionId>,
     pub abi_fingerprint: TypeAbiFingerprint,
 }
@@ -844,6 +845,7 @@ impl TypeBindingDef {
         id: InteropTypeId,
         storage: StoragePolicy,
         capabilities: ReceiverCapabilities,
+        collection_views: Option<CollectionViewCapabilities>,
         constructor_ids: Vec<FunctionId>,
         abi_fingerprint: TypeAbiFingerprint,
     ) -> Self {
@@ -851,6 +853,7 @@ impl TypeBindingDef {
             id,
             storage,
             capabilities,
+            collection_views,
             constructor_ids,
             abi_fingerprint,
         }

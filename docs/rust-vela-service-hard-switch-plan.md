@@ -1102,6 +1102,12 @@ views, and round-trip through ordinary Vela tuple projections.
 DTOs one recursive concrete registration contract. Registering an owned root
 installs nested field/variant, collection, Option/Result, tuple, and scalar
 bindings once, while a conflicting manual binding still fails during sealing.
+Standard non-byte `Vec`, map, and set bindings now advertise shared View plus
+exact growable MutView capability on the same `InteropTypeId`; that
+representation fact participates in `TypeAbiFingerprint` and projects through
+reflection and compiler registries. Fixed array and byte-view capability,
+restricted View/MutView type hints, and HostRef-backed runtime adapters remain
+open.
 Service-macro signature traversal, Host/View/MutView closure registration,
 prepared operations, and host-backed bulk behavior are still open.
 

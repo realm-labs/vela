@@ -99,6 +99,7 @@ impl<'registry> CompileViewFacts<'registry> {
                     id: binding.id,
                     storage: binding.storage,
                     capabilities: binding.capabilities,
+                    collection_views: binding.collection_views,
                     constructor_ids: binding.constructor_ids.clone(),
                     abi_fingerprint: binding.abi_fingerprint,
                 },

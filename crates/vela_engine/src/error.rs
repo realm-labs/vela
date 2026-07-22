@@ -90,6 +90,10 @@ pub enum EngineErrorKind {
         name: String,
         bits: u8,
     },
+    InvalidTypeBindingCollectionView {
+        name: String,
+        reason: &'static str,
+    },
     InvalidTypeBindingMethodReceiver {
         type_name: String,
         method: String,
@@ -269,6 +273,12 @@ impl fmt::Display for EngineError {
                 write!(
                     formatter,
                     "type binding {name} has invalid receiver capabilities 0x{bits:02x}"
+                )
+            }
+            EngineErrorKind::InvalidTypeBindingCollectionView { name, reason } => {
+                write!(
+                    formatter,
+                    "type binding {name} has invalid collection view capabilities: {reason}"
                 )
             }
             EngineErrorKind::InvalidTypeBindingMethodReceiver {

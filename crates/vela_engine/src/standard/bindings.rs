@@ -4,6 +4,7 @@ use std::any::TypeId as RustTypeId;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
 
+use vela_common::{CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation};
 use vela_def::TypeId;
 use vela_reflect::registry::{
     HostIndexCapability, SchemaHash, TraitDesc, TypeDesc, TypeKey, TypeKind,
@@ -75,7 +76,15 @@ where
     T: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
 {
     fn standard_type_binding() -> TypeBinding<Self> {
-        TypeBinding::value(vec_type_desc::<T>())
+        let binding = TypeBinding::value(vec_type_desc::<T>());
+        if RustTypeId::of::<T>() == RustTypeId::of::<u8>() {
+            binding
+        } else {
+            binding.collection_view_capabilities(CollectionViewCapabilities::mutable(
+                CollectionViewKind::Array,
+                CollectionViewMutation::Growable,
+            ))
+        }
     }
 }
 
@@ -137,7 +146,12 @@ where
     V: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
 {
     fn standard_type_binding() -> TypeBinding<Self> {
-        TypeBinding::value(map_type_desc::<K, V>(MapFamily::BTree))
+        TypeBinding::value(map_type_desc::<K, V>(MapFamily::BTree)).collection_view_capabilities(
+            CollectionViewCapabilities::mutable(
+                CollectionViewKind::Map,
+                CollectionViewMutation::Growable,
+            ),
+        )
     }
 }
 
@@ -147,7 +161,12 @@ where
     V: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
 {
     fn standard_type_binding() -> TypeBinding<Self> {
-        TypeBinding::value(map_type_desc::<K, V>(MapFamily::Hash))
+        TypeBinding::value(map_type_desc::<K, V>(MapFamily::Hash)).collection_view_capabilities(
+            CollectionViewCapabilities::mutable(
+                CollectionViewKind::Map,
+                CollectionViewMutation::Growable,
+            ),
+        )
     }
 }
 
@@ -156,7 +175,12 @@ where
     T: VelaValueKeyBoundary + IntoScriptArg + FromScriptArg + Ord + 'static,
 {
     fn standard_type_binding() -> TypeBinding<Self> {
-        TypeBinding::value(set_type_desc::<T>(SetFamily::BTree))
+        TypeBinding::value(set_type_desc::<T>(SetFamily::BTree)).collection_view_capabilities(
+            CollectionViewCapabilities::mutable(
+                CollectionViewKind::Set,
+                CollectionViewMutation::Growable,
+            ),
+        )
     }
 }
 
@@ -165,7 +189,12 @@ where
     T: VelaValueKeyBoundary + IntoScriptArg + FromScriptArg + Eq + Hash + Ord + 'static,
 {
     fn standard_type_binding() -> TypeBinding<Self> {
-        TypeBinding::value(set_type_desc::<T>(SetFamily::Hash))
+        TypeBinding::value(set_type_desc::<T>(SetFamily::Hash)).collection_view_capabilities(
+            CollectionViewCapabilities::mutable(
+                CollectionViewKind::Set,
+                CollectionViewMutation::Growable,
+            ),
+        )
     }
 }
 
@@ -686,6 +715,57 @@ fn reverse_and_increment(value: (i64, String)) -> (String, i64) {
             ordered.attrs.get("vela_collection_protocol"),
             Some("SetLike,Iterable")
         );
+
+        assert_eq!(
+            standard_type_binding::<Vec<i64>>().collection_views(),
+            Some(CollectionViewCapabilities::mutable(
+                CollectionViewKind::Array,
+                CollectionViewMutation::Growable,
+            ))
+        );
+        assert_eq!(
+            standard_type_binding::<BTreeSet<i64>>().collection_views(),
+            Some(CollectionViewCapabilities::mutable(
+                CollectionViewKind::Set,
+                CollectionViewMutation::Growable,
+            ))
+        );
+        assert_eq!(standard_type_binding::<Vec<u8>>().collection_views(), None);
+    }
+
+    #[test]
+    fn collection_view_capabilities_keep_one_identity_across_registry_views() {
+        type Scores = BTreeMap<String, i64>;
+
+        let engine = Engine::builder()
+            .register_rust_type::<Scores>(standard_type_binding::<Scores>())
+            .build()
+            .expect("map view capabilities should seal");
+        let expected = CollectionViewCapabilities::mutable(
+            CollectionViewKind::Map,
+            CollectionViewMutation::Growable,
+        );
+        let binding = engine
+            .type_bindings()
+            .get_for::<Scores>()
+            .expect("map binding")
+            .clone();
+        assert_eq!(binding.collection_views, Some(expected));
+
+        let reflected = engine.registry();
+        let reflection_binding = reflected
+            .type_binding_for_key(&binding.key)
+            .expect("reflection binding");
+        assert_eq!(reflection_binding.id, binding.id);
+        assert_eq!(reflection_binding.collection_views, Some(expected));
+
+        let compiler_facts = RegistryFacts::from_compile_view(engine.compiler_registry())
+            .expect("compiler registry facts");
+        let compiler_binding = compiler_facts
+            .type_binding_fact(&binding.key.name)
+            .expect("compiler binding");
+        assert_eq!(compiler_binding.id, binding.id);
+        assert_eq!(compiler_binding.collection_views, Some(expected));
     }
 
     #[test]

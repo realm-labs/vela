@@ -61,6 +61,85 @@ pub enum StoragePolicy {
     Host,
 }
 
+/// The script-visible collection protocol carried by a borrowed Rust view.
+///
+/// These variants correspond to Vela's restricted `ArrayView`, `MapView`, and
+/// `SetView` families. They describe a representation of one registered Rust
+/// type; they do not create a second interop type identity.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum CollectionViewKind {
+    Array,
+    Map,
+    Set,
+}
+
+impl CollectionViewKind {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Array => "array",
+            Self::Map => "map",
+            Self::Set => "set",
+        }
+    }
+}
+
+/// Whether an exclusive collection view may change collection length.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum CollectionViewMutation {
+    Fixed,
+    Growable,
+}
+
+impl CollectionViewMutation {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Fixed => "fixed",
+            Self::Growable => "growable",
+        }
+    }
+}
+
+/// Borrowed collection representations supported by one `TypeBinding`.
+///
+/// Presence always implies a shared read-only view. `mutation` additionally
+/// advertises an exclusive write-through view and records whether structural
+/// growth is legal. An exclusive view can always be reborrowed as shared.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct CollectionViewCapabilities {
+    kind: CollectionViewKind,
+    mutation: Option<CollectionViewMutation>,
+}
+
+impl CollectionViewCapabilities {
+    #[must_use]
+    pub const fn read_only(kind: CollectionViewKind) -> Self {
+        Self {
+            kind,
+            mutation: None,
+        }
+    }
+
+    #[must_use]
+    pub const fn mutable(kind: CollectionViewKind, mutation: CollectionViewMutation) -> Self {
+        Self {
+            kind,
+            mutation: Some(mutation),
+        }
+    }
+
+    #[must_use]
+    pub const fn kind(self) -> CollectionViewKind {
+        self.kind
+    }
+
+    #[must_use]
+    pub const fn mutation(self) -> Option<CollectionViewMutation> {
+        self.mutation
+    }
+}
+
 impl StoragePolicy {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
@@ -131,7 +210,10 @@ impl ReceiverCapabilities {
 
 #[cfg(test)]
 mod tests {
-    use super::{ReceiverCapabilities, ReceiverCapability};
+    use super::{
+        CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation,
+        ReceiverCapabilities, ReceiverCapability,
+    };
 
     #[test]
     fn receiver_capabilities_are_composable_without_implying_construct() {
@@ -145,5 +227,19 @@ mod tests {
                 .with(ReceiverCapability::Construct)
                 .contains(ReceiverCapability::Construct)
         );
+    }
+
+    #[test]
+    fn collection_views_keep_shared_and_structural_mutation_facts_separate() {
+        let shared = CollectionViewCapabilities::read_only(CollectionViewKind::Array);
+        assert_eq!(shared.kind(), CollectionViewKind::Array);
+        assert_eq!(shared.mutation(), None);
+
+        let mutable = CollectionViewCapabilities::mutable(
+            CollectionViewKind::Array,
+            CollectionViewMutation::Fixed,
+        );
+        assert_eq!(mutable.kind(), CollectionViewKind::Array);
+        assert_eq!(mutable.mutation(), Some(CollectionViewMutation::Fixed));
     }
 }

@@ -6,7 +6,8 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use vela_common::{
-    InteropTypeId, ReceiverCapabilities, ReceiverCapability, StoragePolicy, TypeAbiFingerprint,
+    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, InteropTypeId,
+    ReceiverCapabilities, ReceiverCapability, StoragePolicy, TypeAbiFingerprint,
     TypeBindingRegistryChecksum, stable_id,
 };
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeKind};
@@ -26,6 +27,7 @@ pub struct TypeBinding<T: 'static> {
     spec: HostTypeSpec,
     storage: StoragePolicy,
     capabilities: ReceiverCapabilities,
+    collection_views: Option<CollectionViewCapabilities>,
     value_codec: Option<ValueCodec<T>>,
     constructors: Vec<TypeConstructorEntry>,
     async_native_methods: Vec<AsyncNativeMethodEntry>,
@@ -58,6 +60,7 @@ impl<T: 'static> TypeBinding<T> {
             spec: HostTypeSpec::new(type_desc),
             storage: StoragePolicy::Value,
             capabilities: ReceiverCapabilities::OWNED_VALUE,
+            collection_views: None,
             value_codec: Some(codec),
             constructors: Vec::new(),
             async_native_methods: Vec::new(),
@@ -70,6 +73,7 @@ impl<T: 'static> TypeBinding<T> {
             spec: HostTypeSpec::new(type_desc),
             storage: StoragePolicy::Host,
             capabilities: ReceiverCapabilities::HOST_OBJECT,
+            collection_views: None,
             value_codec: None,
             constructors: Vec::new(),
             async_native_methods: Vec::new(),
@@ -91,6 +95,11 @@ impl<T: 'static> TypeBinding<T> {
         self.capabilities
     }
 
+    #[must_use]
+    pub const fn collection_views(&self) -> Option<CollectionViewCapabilities> {
+        self.collection_views
+    }
+
     pub(crate) fn abi_fingerprint(&self) -> TypeAbiFingerprint {
         let id = InteropTypeId::from_type_id(self.spec.type_desc().key.id);
         let constructors = self
@@ -105,6 +114,7 @@ impl<T: 'static> TypeBinding<T> {
             id,
             self.storage,
             self.capabilities,
+            self.collection_views,
             &constructors,
             self.spec.type_desc(),
         )
@@ -113,6 +123,17 @@ impl<T: 'static> TypeBinding<T> {
     #[must_use]
     pub const fn receiver_capabilities(mut self, capabilities: ReceiverCapabilities) -> Self {
         self.capabilities = capabilities;
+        self
+    }
+
+    /// Advertises the HostRef-backed borrowed collection representations for
+    /// this binding without creating another Rust or Vela type identity.
+    #[must_use]
+    pub const fn collection_view_capabilities(
+        mut self,
+        capabilities: CollectionViewCapabilities,
+    ) -> Self {
+        self.collection_views = Some(capabilities);
         self
     }
 
@@ -293,6 +314,7 @@ impl<T: 'static> TypeBinding<T> {
     ) {
         let storage = self.storage;
         let capabilities = self.capabilities;
+        let collection_views = self.collection_views;
         let constructors = self.constructors;
         let async_native_methods = self.async_native_methods;
         let (type_desc, method_metadata, native_methods) = self.spec.into_parts();
@@ -300,6 +322,7 @@ impl<T: 'static> TypeBinding<T> {
             key: type_desc.key.clone(),
             storage,
             capabilities,
+            collection_views,
             rust_type_id: None,
             value_codec: self.value_codec.map(ErasedValueCodec::new),
             constructors: constructors
@@ -384,6 +407,7 @@ pub(crate) struct TypeBindingRegistration {
     key: TypeKey,
     storage: StoragePolicy,
     capabilities: ReceiverCapabilities,
+    collection_views: Option<CollectionViewCapabilities>,
     value_codec: Option<ErasedValueCodec>,
     constructors: Vec<TypeConstructorRegistration>,
 }
@@ -431,6 +455,7 @@ impl TypeBindingRegistry {
                 id,
                 registration.storage,
                 registration.capabilities,
+                registration.collection_views,
                 &registration.constructors,
                 desc,
             );
@@ -445,6 +470,7 @@ impl TypeBindingRegistry {
                 registration.key.clone(),
                 registration.storage,
                 registration.capabilities,
+                registration.collection_views,
                 constructor_ids,
                 fingerprint,
             );
@@ -561,6 +587,7 @@ fn validate_representation(
             },
         ));
     }
+    validate_collection_views(registration, desc)?;
     validate_constructors(registration, desc)?;
     for method in &desc.methods {
         let valid = match method.receiver {
@@ -592,6 +619,7 @@ fn type_abi_fingerprint(
     id: InteropTypeId,
     storage: StoragePolicy,
     capabilities: ReceiverCapabilities,
+    collection_views: Option<CollectionViewCapabilities>,
     constructors: &[TypeConstructorRegistration],
     desc: &TypeDesc,
 ) -> TypeAbiFingerprint {
@@ -611,6 +639,15 @@ fn type_abi_fingerprint(
             desc.host_type_id.map_or(0, vela_common::HostTypeId::get)
         ),
     ];
+    if let Some(views) = collection_views {
+        parts.push(format!(
+            "collection-view={}:{}",
+            views.kind().as_str(),
+            views
+                .mutation()
+                .map_or("read-only", CollectionViewMutation::as_str)
+        ));
+    }
     let mut constructors = constructors.iter().collect::<Vec<_>>();
     constructors.sort_by_key(|constructor| constructor.desc.id);
     for constructor in constructors {
@@ -714,6 +751,62 @@ fn type_abi_fingerprint(
         ));
     }
     TypeAbiFingerprint::new(stable_id("vela_type_binding_abi_v1", "", &parts.join("|")))
+}
+
+fn validate_collection_views(
+    registration: &TypeBindingRegistration,
+    desc: &TypeDesc,
+) -> EngineResult<()> {
+    let Some(views) = registration.collection_views else {
+        return Ok(());
+    };
+    let kind_matches = matches!(
+        (views.kind(), desc.kind),
+        (CollectionViewKind::Array, TypeKind::Array)
+            | (CollectionViewKind::Map, TypeKind::Map)
+            | (CollectionViewKind::Set, TypeKind::Set)
+    );
+    if !kind_matches {
+        return Err(invalid_collection_views(
+            desc,
+            "view kind does not match the registered value kind",
+        ));
+    }
+    if !registration
+        .capabilities
+        .contains(ReceiverCapability::Shared)
+    {
+        return Err(invalid_collection_views(
+            desc,
+            "a collection view requires shared receiver capability",
+        ));
+    }
+    if views.mutation().is_some()
+        && !registration
+            .capabilities
+            .contains(ReceiverCapability::Exclusive)
+    {
+        return Err(invalid_collection_views(
+            desc,
+            "a mutable collection view requires exclusive receiver capability",
+        ));
+    }
+    if views.mutation() == Some(CollectionViewMutation::Fixed)
+        && views.kind() != CollectionViewKind::Array
+    {
+        return Err(invalid_collection_views(
+            desc,
+            "fixed-length mutation is supported only for array views",
+        ));
+    }
+    Ok(())
+}
+
+fn invalid_collection_views(desc: &TypeDesc, reason: &'static str) -> EngineError {
+    EngineError::new(EngineErrorKind::InvalidTypeBindingCollectionView {
+        name: desc.key.name.clone(),
+        reason,
+    })
 }
 
 fn validate_constructors(
