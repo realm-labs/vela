@@ -2676,7 +2676,12 @@ growable Array `push` is the scalar specialization of that protocol: the VM
 prepares and precharges one element, then passes a stack-backed one-item
 `ExtendSequence` slice through one HostAccess mutation. It does not allocate a
 temporary `Vec` merely to express the batch, and failed conversion or budget
-charging precedes Rust mutation.
+charging precedes Rust mutation. Indexed growable Array insertion uses the
+separate semantic `InsertSequence { index, value }` operation. The VM queries
+the live length under the exclusive lease and preserves owned Array bounds
+semantics before converting or charging the element; the adapter validates the
+index again, converts the exact Rust value, and performs one `Vec::insert`.
+Neither validation path may partially modify the collection.
 
 Concrete Rust unit, bool, char, exact-width numeric, and String bindings retain
 distinct stable Rust ABI identities while using their existing native Vela

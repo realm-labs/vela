@@ -220,6 +220,10 @@ the same path, and returns `Option::None` without mutation when empty.
 Growable `ArrayMut.push` converts its element before mutation, precharges one
 execution unit, and submits one stack-backed `ExtendSequence` item through
 HostAccess, so conversion or budget failure leaves the Rust Vec unchanged.
+`ArrayMut.insert` queries the live length under the exclusive lease, rejects
+sparse indexes with the ordinary Vela bounds error, then converts and
+precharges one element before one `InsertSequence` mutation; insertion at the
+current length appends and every failure remains non-mutating.
 Borrowed Array `iter/values`, Map
 `keys/values/entries/iter`, and Set `values/iter` now capture deterministic
 bounded boundary projections under the active lease and feed the existing Vela

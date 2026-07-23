@@ -18,6 +18,26 @@ pub(crate) fn host_array_edge_index(
     root: vela_host::path::HostRef,
     edge: HostArrayEdge,
 ) -> VmResult<Option<i64>> {
+    let len = host_array_len(runtime, root, "host array element lookup")?;
+    if len == 0 {
+        return Ok(None);
+    }
+    let index = match edge {
+        HostArrayEdge::First => 0,
+        HostArrayEdge::Last => len - 1,
+    };
+    i64::try_from(index).map(Some).map_err(|_| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host array element lookup",
+        })
+    })
+}
+
+pub(crate) fn host_array_len(
+    runtime: &mut HostAccessRuntime<'_, '_, '_>,
+    root: vela_host::path::HostRef,
+    operation: &'static str,
+) -> VmResult<usize> {
     let target = HostTargetPlan::new(root.type_id);
     let instance = HostTargetInstance::new(root, &target, &[]);
     let host = runtime
@@ -35,13 +55,9 @@ pub(crate) fn host_array_edge_index(
         HostCollectionQuery::Len,
         runtime.source_span,
     )? {
-        HostValue::Scalar(ScalarValue::I64(0)) => Ok(None),
-        HostValue::Scalar(ScalarValue::I64(len)) if len > 0 => Ok(Some(match edge {
-            HostArrayEdge::First => 0,
-            HostArrayEdge::Last => len - 1,
-        })),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "host array element lookup",
-        })),
+        HostValue::Scalar(ScalarValue::I64(len)) if len >= 0 => {
+            usize::try_from(len).map_err(|_| VmError::new(VmErrorKind::TypeMismatch { operation }))
+        }
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }

@@ -712,6 +712,11 @@ pub(crate) fn execute_host_root_collection_mutation(
             runtime, receiver, cache_site,
         );
     }
+    if mutation == crate::std_method_ids::HostCollectionMutation::ArrayInsert {
+        return crate::host_collection_mutation::execute_host_root_array_insert(
+            runtime, receiver, &args[0], &args[1], cache_site,
+        );
+    }
     if matches!(
         mutation,
         crate::std_method_ids::HostCollectionMutation::ArrayExtend
@@ -786,6 +791,7 @@ pub(crate) fn execute_host_root_collection_mutation(
     match mutation {
         HostCollectionMutation::Clear
         | HostCollectionMutation::ArrayExtend
+        | HostCollectionMutation::ArrayInsert
         | HostCollectionMutation::ArrayPush
         | HostCollectionMutation::MapExtend
         | HostCollectionMutation::SetExtend => {

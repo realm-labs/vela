@@ -1228,6 +1228,11 @@ reuses that read/remove path, and returns `Option::None` for an empty view.
 unit, and reuses a stack-backed one-item `ExtendSequence` mutation, so it
 writes through once without allocating a temporary batch or partially
 mutating on conversion or budget failure.
+`ArrayMut.insert` performs a live length query under the same exclusive lease,
+accepts indexes through the current length, rejects sparse insertion with the
+ordinary Vela bounds error, and then submits one preconverted, precharged
+`InsertSequence` mutation. Standard Vec validates the index again before its
+single write.
 Array `iter/values`, Map `keys/values/entries/iter`, and Set
 `values/iter` now use a deterministic bounded `HostCollectionProjection` under
 the active lease and then reuse the ordinary Vela Iterator pipeline. This

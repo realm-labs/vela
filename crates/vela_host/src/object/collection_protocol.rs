@@ -108,6 +108,13 @@ where
                 .collect::<HostResult<Vec<_>>>()?;
             values.extend(prepared);
         }
+        HostCollectionMutation::InsertSequence { index, value } => {
+            if index > values.len() {
+                return Err(invalid_arg("array insertion index"));
+            }
+            let value = T::from_host_collection_value(value.clone())?;
+            values.insert(index, value);
+        }
         mutation => return Err(unsupported_collection_mutation(mutation)),
     }
     Ok(())

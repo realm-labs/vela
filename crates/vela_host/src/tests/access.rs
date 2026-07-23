@@ -139,6 +139,63 @@ fn batch_sequence_extension_writes_exact_values_to_standard_vec() {
 }
 
 #[test]
+fn indexed_sequence_insertion_validates_before_mutating_standard_vec() {
+    let root = HostRef::new(HostTypeId::new(0), HostObjectId::new(1), 0);
+    let plan = HostTargetPlan::new(root.type_id);
+    let target = HostTargetInstance::new(root, &plan, &[]);
+    let access = ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0));
+    let mut values = vec![2_i64, 5];
+    let three = HostValue::Scalar(ScalarValue::I64(3));
+
+    values
+        .mutate_collection_resolved_host(
+            access,
+            target,
+            HostCollectionMutation::InsertSequence {
+                index: 1,
+                value: &three,
+            },
+        )
+        .expect("an in-range sequence insertion should write through");
+    assert_eq!(values, vec![2, 3, 5]);
+
+    let invalid = HostValue::String("not an i64".to_owned());
+    let conversion = values
+        .mutate_collection_resolved_host(
+            access,
+            target,
+            HostCollectionMutation::InsertSequence {
+                index: 2,
+                value: &invalid,
+            },
+        )
+        .expect_err("an invalid inserted value should fail before mutation");
+    assert_eq!(
+        conversion.kind,
+        HostErrorKind::InvalidArgument { expected: "i64" }
+    );
+    assert_eq!(values, vec![2, 3, 5]);
+
+    let bounds = values
+        .mutate_collection_resolved_host(
+            access,
+            target,
+            HostCollectionMutation::InsertSequence {
+                index: 4,
+                value: &three,
+            },
+        )
+        .expect_err("a sparse insertion should fail before mutation");
+    assert_eq!(
+        bounds.kind,
+        HostErrorKind::InvalidArgument {
+            expected: "array insertion index"
+        }
+    );
+    assert_eq!(values, vec![2, 3, 5]);
+}
+
+#[test]
 fn read_target_reads_current_adapter_state() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();

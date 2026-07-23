@@ -204,6 +204,60 @@ pub(crate) fn execute_host_root_collection_batch(
     Ok(Value::Unit)
 }
 
+pub(crate) fn execute_host_root_array_insert(
+    mut runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    index: &Value,
+    value: &Value,
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<Value> {
+    let operation = "host array insert";
+    let index = crate::array_methods::index_value(index, operation)?;
+    let root = expect_host_ref(
+        &runtime.frame.read(receiver)?,
+        runtime.host.as_deref(),
+        operation,
+    )?;
+    let len = crate::host_collection_edges::host_array_len(&mut runtime, root, operation)?;
+    if index > len {
+        return Err(crate::array_methods::index_out_of_bounds(index, len));
+    }
+    let value = value_to_host(
+        value,
+        operation,
+        runtime.heap.as_deref(),
+        runtime.host.as_deref(),
+    )?;
+    if let Some(budget) = runtime.budget.as_deref_mut() {
+        budget.charge_execution_units(1)?;
+    }
+    let target = HostTargetPlan::new(root.type_id);
+    let instance = HostTargetInstance::new(root, &target, &[]);
+    let host = runtime
+        .host
+        .as_deref_mut()
+        .ok_or_else(missing_host_context)?;
+    let write = resolve_access(
+        host.adapter,
+        runtime.inline_caches,
+        cache_site,
+        instance,
+        HostAccessOp::Write,
+        runtime.source_span,
+    )?;
+    host.access.mutate_collection_resolved(
+        host.adapter,
+        write,
+        instance,
+        HostCollectionMutation::InsertSequence {
+            index,
+            value: &value,
+        },
+        runtime.source_span,
+    )?;
+    Ok(Value::Unit)
+}
+
 impl From<Vec<HostValue>> for PreparedCollectionExtension {
     fn from(values: Vec<HostValue>) -> Self {
         Self::Sequence(values)

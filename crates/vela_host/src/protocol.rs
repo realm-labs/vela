@@ -35,6 +35,7 @@ pub enum HostCollectionProjection {
 pub enum HostCollectionMutation<'a> {
     Clear,
     ExtendSequence(&'a [HostValue]),
+    InsertSequence { index: usize, value: &'a HostValue },
     ExtendMap(&'a [(HostCollectionKey, HostValue)]),
     ExtendSet(&'a [HostCollectionKey]),
 }
@@ -43,6 +44,7 @@ pub enum HostCollectionMutation<'a> {
 pub enum HostCollectionMutationKind {
     Clear,
     ExtendSequence,
+    InsertSequence,
     ExtendMap,
     ExtendSet,
 }
@@ -53,6 +55,7 @@ impl HostCollectionMutation<'_> {
         match self {
             Self::Clear => HostCollectionMutationKind::Clear,
             Self::ExtendSequence(_) => HostCollectionMutationKind::ExtendSequence,
+            Self::InsertSequence { .. } => HostCollectionMutationKind::InsertSequence,
             Self::ExtendMap(_) => HostCollectionMutationKind::ExtendMap,
             Self::ExtendSet(_) => HostCollectionMutationKind::ExtendSet,
         }
@@ -65,6 +68,7 @@ impl HostCollectionMutationKind {
         match self {
             Self::Clear => "clear",
             Self::ExtendSequence => "extend sequence",
+            Self::InsertSequence => "insert sequence",
             Self::ExtendMap => "extend map",
             Self::ExtendSet => "extend set",
         }

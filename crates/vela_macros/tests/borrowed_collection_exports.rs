@@ -775,7 +775,7 @@ fn borrowed_collection_lookup_methods_use_host_paths_without_materializing() {
 #[test]
 fn growable_borrowed_collection_methods_write_through_host_paths() {
     let mut runtime = runtime(
-        "fn array_remove(owner: CollectionOwner) { let values = owner.values_mut(); return values.remove_at(1).unwrap_or(0); } fn array_missing(owner: CollectionOwner) { return owner.values_mut().remove_at(9).unwrap_or(4); } fn array_push(owner: CollectionOwner) { let values = owner.values_mut(); values.push(13); return values.last().unwrap_or(0); } fn array_pop(owner: CollectionOwner) { let values = owner.values_mut(); return values.pop().unwrap_or(4); } fn map_set(scores: MapMut<i32, i64>) { scores.set(7i32, 12); scores.set(9i32, 6); scores[10i32] = 8; return scores.remove(7i32).unwrap_or(0) + scores.remove(8i32).unwrap_or(4) + scores[9i32] + scores[10i32]; } fn set_mutate(values: SetMut<i32>) { return values.add(9i32) && !values.add(7i32) && values.remove(7i32) && !values.remove(8i32); }",
+        "fn array_remove(owner: CollectionOwner) { let values = owner.values_mut(); return values.remove_at(1).unwrap_or(0); } fn array_missing(owner: CollectionOwner) { return owner.values_mut().remove_at(9).unwrap_or(4); } fn array_push(owner: CollectionOwner) { let values = owner.values_mut(); values.push(13); return values.last().unwrap_or(0); } fn array_pop(owner: CollectionOwner) { let values = owner.values_mut(); return values.pop().unwrap_or(4); } fn array_insert(owner: CollectionOwner) { let values = owner.values_mut(); values.insert(1, 7); values.insert(values.len(), 17); return values.len(); } fn array_insert_missing(owner: CollectionOwner) { owner.values_mut().insert(9, 23); } fn map_set(scores: MapMut<i32, i64>) { scores.set(7i32, 12); scores.set(9i32, 6); scores[10i32] = 8; return scores.remove(7i32).unwrap_or(0) + scores.remove(8i32).unwrap_or(4) + scores[9i32] + scores[10i32]; } fn set_mutate(values: SetMut<i32>) { return values.add(9i32) && !values.add(7i32) && values.remove(7i32) && !values.remove(8i32); }",
     );
 
     let mut owner = CollectionOwner {
@@ -826,6 +826,30 @@ fn growable_borrowed_collection_methods_write_through_host_paths() {
     drop(result);
     assert_eq!(owner.values, vec![5, 11]);
 
+    let result = runtime
+        .call(
+            "array_insert",
+            CallArgs::new().with_host_mut("owner", &mut owner),
+            CallOptions::unbounded(),
+        )
+        .expect("growable borrowed array insert should write through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(4)));
+    drop(result);
+    assert_eq!(owner.values, vec![5, 7, 11, 17]);
+
+    let error = runtime
+        .call(
+            "array_insert_missing",
+            CallArgs::new().with_host_mut("owner", &mut owner),
+            CallOptions::unbounded(),
+        )
+        .expect_err("sparse borrowed array insert must fail");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::IndexOutOfBounds { index: 9, len: 4 }
+    ));
+    assert_eq!(owner.values, vec![5, 7, 11, 17]);
+
     owner.values.clear();
     let result = runtime
         .call(
@@ -862,21 +886,7 @@ fn growable_borrowed_collection_methods_write_through_host_paths() {
 #[test]
 fn borrowed_array_push_charges_before_mutation() {
     let mut runtime = runtime("fn push(owner: CollectionOwner) { owner.values_mut().push(13); }");
-    let minimum = (1..64)
-        .find(|limit| {
-            let mut owner = CollectionOwner {
-                values: vec![5],
-                totals: BTreeMap::new(),
-            };
-            runtime
-                .call(
-                    "push",
-                    CallArgs::new().with_host_mut("owner", &mut owner),
-                    CallOptions::new(*limit, usize::MAX, usize::MAX),
-                )
-                .is_ok()
-        })
-        .expect("one host array push should fit a small bounded call");
+    let minimum = minimum_owner_call_limit(&mut runtime, "push");
 
     let mut owner = CollectionOwner {
         values: vec![5],
@@ -906,6 +916,60 @@ fn borrowed_array_push_charges_before_mutation() {
         )
         .expect("the minimum observed push budget should succeed");
     assert_eq!(owner.values, vec![5, 13]);
+}
+
+#[test]
+fn borrowed_array_insert_charges_before_mutation() {
+    let mut runtime =
+        runtime("fn insert(owner: CollectionOwner) { owner.values_mut().insert(0, 13); }");
+    let minimum = minimum_owner_call_limit(&mut runtime, "insert");
+    let mut owner = CollectionOwner {
+        values: vec![5],
+        totals: BTreeMap::new(),
+    };
+
+    assert!(
+        runtime
+            .call(
+                "insert",
+                CallArgs::new().with_host_mut("owner", &mut owner),
+                CallOptions::new(minimum - 1, usize::MAX, usize::MAX),
+            )
+            .is_err(),
+        "one fewer execution unit must reject the insertion"
+    );
+    assert_eq!(
+        owner.values,
+        vec![5],
+        "budget failure must precede insertion"
+    );
+
+    runtime
+        .call(
+            "insert",
+            CallArgs::new().with_host_mut("owner", &mut owner),
+            CallOptions::new(minimum, usize::MAX, usize::MAX),
+        )
+        .expect("the minimum observed insertion budget should succeed");
+    assert_eq!(owner.values, vec![13, 5]);
+}
+
+fn minimum_owner_call_limit(runtime: &mut Runtime, function: &str) -> u64 {
+    (1..64)
+        .find(|limit| {
+            let mut owner = CollectionOwner {
+                values: vec![5],
+                totals: BTreeMap::new(),
+            };
+            runtime
+                .call(
+                    function,
+                    CallArgs::new().with_host_mut("owner", &mut owner),
+                    CallOptions::new(*limit, usize::MAX, usize::MAX),
+                )
+                .is_ok()
+        })
+        .expect("one host array growth operation should fit a small bounded call")
 }
 
 #[test]
@@ -1066,73 +1130,8 @@ fn borrowed_collection_extend_charges_batch_size_before_mutation() {
     assert_eq!(values, BTreeMap::from([(1, 2), (3, 5), (8, 13), (21, 34)]));
 }
 
-#[test]
-fn borrowed_collection_projections_feed_iterator_pipelines() {
-    let mut runtime = runtime(
-        "fn array_iter(values: ArrayView<i64>) { return values.iter().filter(|value| value >= 6).count() + values.values().count(); } fn map_iter(scores: MapView<i32, i64>) { return scores.keys().count() + scores.entries().count() + scores.values().filter(|value| value >= 6).count(); } fn set_iter(values: SetView<i32>) { return values.iter().filter(|value| value >= 7i32).count() + values.values().count(); }",
-    );
-
-    let array = vec![4_i64, 6_i64, 11_i64];
-    let mut args = CallArgs::new();
-    args.push_collection_ref("values", &array);
-    let result = runtime
-        .call("array_iter", args, CallOptions::unbounded())
-        .expect("borrowed array projections should feed iterator methods");
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(5)));
-    drop(result);
-
-    let scores = BTreeMap::from([(3_i32, 4_i64), (7_i32, 6_i64), (9_i32, 11_i64)]);
-    let mut args = CallArgs::new();
-    args.push_collection_ref("scores", &scores);
-    let result = runtime
-        .call("map_iter", args, CallOptions::unbounded())
-        .expect("borrowed map projections should feed iterator methods");
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(8)));
-    drop(result);
-
-    let values = BTreeSet::from([3_i32, 7_i32, 9_i32]);
-    let mut args = CallArgs::new();
-    args.push_collection_ref("values", &values);
-    let result = runtime
-        .call("set_iter", args, CallOptions::unbounded())
-        .expect("borrowed set projections should feed iterator methods");
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(5)));
-}
-
-#[test]
-fn borrowed_collection_callbacks_reuse_owned_collection_semantics() {
-    let mut runtime = runtime(
-        "fn array_callbacks(values: ArrayView<i64>) { let filtered = values.filter(|value| value >= 6); let groups = values.group_by(|value| if value % 2 == 0 { \"even\" } else { \"odd\" }); return filtered.sum() + groups[\"even\"].sum() + groups[\"odd\"].len(); } fn map_callbacks(scores: MapView<i32, i64>) { return scores.filter(|key, value| key >= 7i32 && value >= 6).values().collect_array().sum(); } fn set_callbacks(values: SetView<i32>) { return values.filter(|value| value >= 7i32).map(|value| value + 1i32).len(); }",
-    );
-
-    let array = vec![4_i64, 6_i64, 11_i64];
-    for _ in 0..2 {
-        let mut args = CallArgs::new();
-        args.push_collection_ref("values", &array);
-        let result = runtime
-            .call("array_callbacks", args, CallOptions::unbounded())
-            .expect("borrowed array filter and group_by should reuse callback execution");
-        assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(28)));
-        drop(result);
-    }
-
-    let scores = BTreeMap::from([(3_i32, 4_i64), (7_i32, 6_i64), (9_i32, 11_i64)]);
-    let mut args = CallArgs::new();
-    args.push_collection_ref("scores", &scores);
-    let result = runtime
-        .call("map_callbacks", args, CallOptions::unbounded())
-        .expect("borrowed map filter should preserve key/value callback semantics");
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(17)));
-    drop(result);
-
-    let values = BTreeSet::from([3_i32, 7_i32, 9_i32]);
-    let mut args = CallArgs::new();
-    args.push_collection_ref("values", &values);
-    let result = runtime
-        .call("set_callbacks", args, CallOptions::unbounded())
-        .expect("borrowed set callbacks should return ordinary owned sets");
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(2)));
-}
+#[path = "borrowed_collection_exports/projection_tests.rs"]
+mod borrowed_collection_projection_tests;
 
 #[path = "borrowed_collection_exports/async_tests.rs"]
 mod borrowed_collection_async_tests;
