@@ -2807,6 +2807,14 @@ execution. `union`, `intersection`, `difference`, and
 `is_subset`, `is_superset`, and `is_disjoint` return booleans. No operation
 mutates the Rust backing Set or sends a Vela method ID to the host adapter.
 
+Map `merge` on a HostRef-backed view follows the same bounded snapshot rule
+with one entries projection. The VM validates the owned Map operand before
+projecting the receiver, charges the complete projection, and passes the
+detached Vela key/value entries to the shared owned/cached merge payload.
+Right-hand entries replace duplicate keys when the ordinary owned Map result
+is built. No temporary receiver Map is allocated, the Rust backing Map is not
+mutated, and the adapter receives only `HostCollectionProjection::Entries`.
+
 ### Borrowed Rust Slices Use A Quarantined Erased-Borrow Boundary
 
 Concrete `[T]` has a distinct borrowed-only TypeBinding identity and maps to

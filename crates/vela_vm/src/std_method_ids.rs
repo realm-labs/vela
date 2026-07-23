@@ -489,6 +489,10 @@ pub(crate) fn host_collection_projection(method_id: MethodId) -> Option<HostColl
     }
 }
 
+pub(crate) fn is_host_map_merge(method_id: MethodId) -> bool {
+    method_id == std_method_ids().map_merge
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum HostSetAlgebra {
     Union,

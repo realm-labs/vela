@@ -14,7 +14,6 @@ fn untyped_dynamic_borrowed_collections_discover_supported_standard_methods() {
         "return values.get_or(9i32, 0); }\n",
         "fn mutate_set(values) { return values.add(11i32); }\n",
         "fn reject_fixed(values) { values.push(13); }\n",
-        "fn reject_merge(values) { return values.merge(values); }",
     ));
 
     let array = vec![3_i64, 5, 8];
@@ -95,16 +94,115 @@ fn untyped_dynamic_borrowed_collections_discover_supported_standard_methods() {
         VmErrorKind::UnknownMethod { method } if method == "push"
     ));
     assert_eq!(fixed, [3, 5]);
+}
+
+#[test]
+fn borrowed_map_merge_uses_one_bounded_projection() {
+    let mut runtime = runtime(concat!(
+        "fn merge(values: MapView<i32, i64>) {\n",
+        "  let patch = [MapEntry { key: 7i32, value: 13 }, ",
+        "MapEntry { key: 9i32, value: 17 }].iter().collect_map();\n",
+        "  let merged = values.merge(patch);\n",
+        "  return merged.len() == 3 && merged[3i32] == 5 ",
+        "&& merged[7i32] == 13 && merged[9i32] == 17 && values[7i32] == 11;\n",
+        "}\n",
+        "fn empty(values: MapView<i32, i64>) {\n",
+        "  let patch = [MapEntry { key: 7i32, value: 13 }].iter().collect_map();\n",
+        "  let merged = values.merge(patch);\n",
+        "  return merged.len() == 1 && merged[7i32] == 13;\n",
+        "}\n",
+        "fn dynamic(values) {\n",
+        "  let patch = [MapEntry { key: 7i32, value: 19 }].iter().collect_map();\n",
+        "  return values.merge(patch)[7i32];\n",
+        "}\n",
+        "fn wrong(values) { return values.merge([13]); }",
+    ));
+
+    let values = BTreeMap::from([(3_i32, 5_i64), (7_i32, 11_i64)]);
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call("merge", args, CallOptions::unbounded())
+        .expect("borrowed Map merge should return an owned Map");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    drop(result);
+    assert_eq!(values, BTreeMap::from([(3, 5), (7, 11)]));
+
+    let empty = BTreeMap::<i32, i64>::new();
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &empty);
+    let result = runtime
+        .call("empty", args, CallOptions::unbounded())
+        .expect("empty borrowed Maps should preserve owned merge semantics");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    drop(result);
 
     let mut args = CallArgs::new();
-    args.push_collection_ref("values", &scores);
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call("dynamic", args, CallOptions::unbounded())
+        .expect("dynamic borrowed Maps should discover merge");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(19)));
+    drop(result);
+
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
     let error = runtime
-        .call("reject_merge", args, CallOptions::unbounded())
-        .expect_err("dynamic discovery must not advertise an unimplemented host Map method");
+        .call("wrong", args, CallOptions::unbounded())
+        .expect_err("borrowed Map merge must reject a non-Map operand");
     assert!(matches!(
         error.kind(),
-        VmErrorKind::UnknownMethod { method } if method == "merge"
+        VmErrorKind::TypeMismatch {
+            operation: "method merge"
+        }
     ));
+}
+
+#[test]
+fn borrowed_map_merge_charges_projected_length() {
+    let mut runtime = runtime(concat!(
+        "fn merge(values: MapView<i32, i64>) { ",
+        "return values.merge([].iter().collect_map()).len(); }",
+    ));
+    let base_limit = (0..64)
+        .find(|limit| {
+            let values = BTreeMap::<i32, i64>::new();
+            let mut args = CallArgs::new();
+            args.push_collection_ref("values", &values);
+            runtime
+                .call(
+                    "merge",
+                    args,
+                    CallOptions::new(*limit, usize::MAX, usize::MAX),
+                )
+                .is_ok()
+        })
+        .expect("empty borrowed Map merge should fit a small bounded call");
+
+    let values = BTreeMap::from([(3_i32, 5_i64), (7_i32, 11_i64), (9_i32, 17_i64)]);
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    assert!(
+        runtime
+            .call(
+                "merge",
+                args,
+                CallOptions::new(base_limit + 2, usize::MAX, usize::MAX),
+            )
+            .is_err(),
+        "three projected Map entries must cost three execution units"
+    );
+
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call(
+            "merge",
+            args,
+            CallOptions::new(base_limit + 3, usize::MAX, usize::MAX),
+        )
+        .expect("the exact Map projection budget should succeed");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(3)));
 }
 
 #[test]

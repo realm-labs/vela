@@ -279,6 +279,25 @@ pub(crate) fn dispatch_linked_method_call(
                 return Ok(());
             }
             if matches!(frame.read(call.receiver)?, Value::HostRef(_))
+                && crate::std_method_ids::is_host_map_merge(method_id)
+            {
+                let result = crate::host_map_merge::execute_host_root_map_merge(
+                    host_access::HostAccessRuntime {
+                        frame,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        host: host.as_deref_mut(),
+                        inline_caches: context.inline_caches,
+                        source_span: context.call_site,
+                    },
+                    call.receiver,
+                    values,
+                    context.cache_site,
+                )?;
+                frame.write(call.dst, result)?;
+                return Ok(());
+            }
+            if matches!(frame.read(call.receiver)?, Value::HostRef(_))
                 && let Some(algebra) = crate::std_method_ids::host_set_algebra(method_id)
             {
                 let result = crate::host_set_algebra::execute_host_root_set_algebra(
@@ -559,6 +578,24 @@ pub(crate) fn dispatch_resolved_linked_dynamic_method_call(
                         values_storage.as_slice(),
                         context.cache_site,
                     )?;
+                return frame.write(call.dst, result);
+            }
+            if matches!(receiver, Value::HostRef(_))
+                && crate::std_method_ids::is_host_map_merge(method_id)
+            {
+                let result = crate::host_map_merge::execute_host_root_map_merge(
+                    host_access::HostAccessRuntime {
+                        frame,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        host: host.as_deref_mut(),
+                        inline_caches: context.inline_caches,
+                        source_span: context.call_site,
+                    },
+                    call.receiver,
+                    values_storage.as_slice(),
+                    context.cache_site,
+                )?;
                 return frame.write(call.dst, result);
             }
             if matches!(receiver, Value::HostRef(_))

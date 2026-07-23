@@ -108,6 +108,26 @@ pub(crate) fn project_host_root_collection_items(
     host_items_to_values(items, runtime)
 }
 
+pub(crate) fn project_host_root_collection_entries(
+    runtime: &mut HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<Vec<(Value, Value)>> {
+    let snapshot = snapshot_host_root_collection(
+        runtime,
+        receiver,
+        HostCollectionProjection::Entries,
+        cache_site,
+    )?;
+    charge_projection(&snapshot, runtime.budget.as_deref_mut())?;
+    let HostCollectionSnapshot::Entries(entries) = snapshot else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host collection entries projection",
+        }));
+    };
+    host_entries_to_values(entries, runtime)
+}
+
 pub(crate) fn execute_host_root_array_transform(
     mut runtime: HostAccessRuntime<'_, '_, '_>,
     receiver: Register,

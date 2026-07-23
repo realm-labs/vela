@@ -1265,7 +1265,12 @@ algebra against an owned Set operand. Combination results are detached owned
 Sets, relation results are booleans, and neither path mutates the Rust backing
 collection. Static and untyped dynamic receivers use the same route. Live host
 iterators, complex element HostRefs, and generation validation at resumable
-boundaries remain planned prepared-operation work. The first bulk write
+boundaries remain planned prepared-operation work. Borrowed Map `merge` uses
+the same bounded snapshot rule: one completely precharged entries projection
+feeds the shared owned/cached merge payload against an owned Map operand.
+Duplicate keys use the right operand, the detached owned Map result cannot
+mutate its Rust source, and static and untyped dynamic receivers share the
+route. The first bulk write
 protocol is now live:
 growable collection `clear` precharges one execution unit per removed element
 and then performs one domain-neutral `HostCollectionMutation::Clear` through

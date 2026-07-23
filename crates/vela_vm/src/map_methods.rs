@@ -14,7 +14,7 @@ mod mutation;
 pub(crate) use higher_order::{all, any, count, filter, find, map_values};
 pub(crate) use introspection::{entries, keys, values};
 pub(crate) use lookup::{get, get_or, has};
-pub(crate) use merge::merge;
+pub(crate) use merge::{merge, merge_payload};
 pub(crate) use mutation::{clear, extend, remove, set};
 
 pub(crate) fn is_map(receiver: &Value, heap: Option<&crate::HeapExecution<'_>>) -> bool {
@@ -37,7 +37,7 @@ pub(crate) fn map_entries(
     map_slots(receiver, heap, operation).map(ScriptMap::entries_vec)
 }
 
-pub(super) fn map_slots<'a>(
+pub(crate) fn map_slots<'a>(
     receiver: &Value,
     heap: Option<&'a crate::HeapExecution<'_>>,
     operation: &'static str,

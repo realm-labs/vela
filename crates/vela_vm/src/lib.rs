@@ -33,6 +33,7 @@ mod host_collection_lookup;
 mod host_collection_mutation;
 mod host_collection_ordering;
 mod host_collection_projection;
+mod host_map_merge;
 mod host_set_algebra;
 mod host_values;
 mod i64_ops;

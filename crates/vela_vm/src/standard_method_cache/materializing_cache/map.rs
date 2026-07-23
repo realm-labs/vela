@@ -53,10 +53,15 @@ pub(in crate::standard_method_cache) fn call_cached_map_materialization(
         StandardMethodInlineCacheTarget::Merge => {
             let payload = {
                 let values = map_values(receiver, heap.as_deref())?;
-                match map_merge_payload(values, args, heap.as_deref()) {
-                    Ok(payload) => payload,
-                    Err(error) => return Some(Err(error)),
+                if let Err(error) = crate::runtime_checks::expect_arity("merge", args, 1) {
+                    return Some(Err(error));
                 }
+                let Some(other) = map_values(&args[0], heap.as_deref()) else {
+                    return Some(Err(VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "method merge",
+                    })));
+                };
+                crate::map_methods::merge_payload(values.entries_vec(), other)
             };
             Some(make_map(payload, heap, budget, "method merge"))
         }
@@ -90,22 +95,6 @@ fn map_values_payload(values: &ScriptMap, args: &[Value]) -> VmResult<Vec<Value>
 fn map_entries_payload(values: &ScriptMap, args: &[Value]) -> VmResult<Vec<(Value, Value)>> {
     crate::runtime_checks::expect_arity("entries", args, 0)?;
     Ok(values.entries_vec())
-}
-
-fn map_merge_payload(
-    values: &ScriptMap,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-) -> VmResult<Vec<(Value, Value)>> {
-    crate::runtime_checks::expect_arity("merge", args, 1)?;
-    let other = map_values(&args[0], heap).ok_or_else(|| {
-        VmError::new(VmErrorKind::TypeMismatch {
-            operation: "method merge",
-        })
-    })?;
-    let mut merged = values.entries_vec();
-    merged.extend(other.entries_vec());
-    Ok(merged)
 }
 
 fn make_map_entry_array(

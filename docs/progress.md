@@ -258,7 +258,11 @@ consume one completely precharged values projection, reuse the owned/cached
 Set algebra algorithms against an owned Set operand, and return a detached
 owned Set or bool without mutating the Rust backing collection. Static and
 untyped dynamic receivers share this route; empty Sets and non-Set operands
-preserve the owned method semantics. Growable borrowed
+preserve the owned method semantics. Borrowed Map `merge` similarly consumes
+one completely precharged entries projection and reuses the owned/cached merge
+payload against an owned Map operand. The right operand replaces duplicate
+keys, the result is a detached owned Map, and static or untyped dynamic calls
+never mutate the Rust backing Map. Growable borrowed
 collection `clear` now precharges its size and performs one semantic
 `HostCollectionMutation::Clear` through HostAccess for standard Vec, Map, and
 Set host objects; budget failure occurs before mutation and adapters never see
