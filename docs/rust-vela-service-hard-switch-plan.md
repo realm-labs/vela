@@ -1224,6 +1224,10 @@ indexed read/remove through HostAccess, returns the prior value as `Option<T>`,
 and preserves retained method-return view identity and missing-index
 semantics. `ArrayMut.pop` queries the live final index under the same lease,
 reuses that read/remove path, and returns `Option::None` for an empty view.
+`ArrayMut.push` prepares one exact boundary element, precharges one execution
+unit, and reuses a stack-backed one-item `ExtendSequence` mutation, so it
+writes through once without allocating a temporary batch or partially
+mutating on conversion or budget failure.
 Array `iter/values`, Map `keys/values/entries/iter`, and Set
 `values/iter` now use a deterministic bounded `HostCollectionProjection` under
 the active lease and then reuse the ordinary Vela Iterator pipeline. This

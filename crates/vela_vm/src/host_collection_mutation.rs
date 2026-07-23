@@ -74,6 +74,7 @@ pub(crate) fn execute_host_root_collection_clear(
 }
 
 enum PreparedCollectionExtension {
+    SequenceItem(HostValue),
     Sequence(Vec<HostValue>),
     Map(Vec<(HostCollectionKey, HostValue)>),
     Set(Vec<HostCollectionKey>),
@@ -82,6 +83,7 @@ enum PreparedCollectionExtension {
 impl PreparedCollectionExtension {
     fn len(&self) -> usize {
         match self {
+            Self::SequenceItem(_) => 1,
             Self::Sequence(values) => values.len(),
             Self::Map(entries) => entries.len(),
             Self::Set(values) => values.len(),
@@ -90,6 +92,9 @@ impl PreparedCollectionExtension {
 
     fn mutation(&self) -> HostCollectionMutation<'_> {
         match self {
+            Self::SequenceItem(value) => {
+                HostCollectionMutation::ExtendSequence(std::slice::from_ref(value))
+            }
             Self::Sequence(values) => HostCollectionMutation::ExtendSequence(values),
             Self::Map(entries) => HostCollectionMutation::ExtendMap(entries),
             Self::Set(values) => HostCollectionMutation::ExtendSet(values),
@@ -97,7 +102,7 @@ impl PreparedCollectionExtension {
     }
 }
 
-pub(crate) fn execute_host_root_collection_extend(
+pub(crate) fn execute_host_root_collection_batch(
     mut runtime: HostAccessRuntime<'_, '_, '_>,
     receiver: Register,
     mutation: crate::std_method_ids::HostCollectionMutation,
@@ -106,7 +111,10 @@ pub(crate) fn execute_host_root_collection_extend(
 ) -> VmResult<Value> {
     use crate::std_method_ids::HostCollectionMutation as VmMutation;
 
-    let operation = "host collection extend";
+    let operation = match mutation {
+        VmMutation::ArrayPush => "host array push",
+        _ => "host collection extend",
+    };
     let extension = match mutation {
         VmMutation::ArrayExtend => {
             crate::array_methods::array_values(extension, runtime.heap.as_deref(), operation)?
@@ -122,6 +130,12 @@ pub(crate) fn execute_host_root_collection_extend(
                 .collect::<VmResult<Vec<_>>>()?
                 .into()
         }
+        VmMutation::ArrayPush => PreparedCollectionExtension::SequenceItem(value_to_host(
+            extension,
+            operation,
+            runtime.heap.as_deref(),
+            runtime.host.as_deref(),
+        )?),
         VmMutation::MapExtend => PreparedCollectionExtension::Map(
             crate::map_methods::map_entries(extension, runtime.heap.as_deref(), operation)?
                 .iter()
@@ -156,7 +170,7 @@ pub(crate) fn execute_host_root_collection_extend(
                 })
                 .collect::<VmResult<Vec<_>>>()?,
         ),
-        _ => unreachable!("only extend mutations reach bulk extension"),
+        _ => unreachable!("only prepared batch mutations reach collection extension"),
     };
     if let Some(budget) = runtime.budget.as_deref_mut() {
         budget.charge_execution_units(u64::try_from(extension.len()).unwrap_or(u64::MAX))?;

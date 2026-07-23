@@ -2671,7 +2671,12 @@ to its concrete element/key/value types before applying one collection
 mutation. This deliberately allocates a temporary prepared Rust batch to
 guarantee that conversion failure cannot partially modify host state. Existing
 Map keys are replaced and Set uniqueness follows the Rust container. Retain,
-filter, and grouping will reuse the same semantic bulk boundary.
+filter, and grouping will reuse the same semantic bulk boundary. A single
+growable Array `push` is the scalar specialization of that protocol: the VM
+prepares and precharges one element, then passes a stack-backed one-item
+`ExtendSequence` slice through one HostAccess mutation. It does not allocate a
+temporary `Vec` merely to express the batch, and failed conversion or budget
+charging precedes Rust mutation.
 
 Concrete Rust unit, bool, char, exact-width numeric, and String bindings retain
 distinct stable Rust ABI identities while using their existing native Vela

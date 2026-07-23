@@ -775,7 +775,7 @@ fn borrowed_collection_lookup_methods_use_host_paths_without_materializing() {
 #[test]
 fn growable_borrowed_collection_methods_write_through_host_paths() {
     let mut runtime = runtime(
-        "fn array_remove(owner: CollectionOwner) { let values = owner.values_mut(); return values.remove_at(1).unwrap_or(0); } fn array_missing(owner: CollectionOwner) { return owner.values_mut().remove_at(9).unwrap_or(4); } fn array_pop(owner: CollectionOwner) { let values = owner.values_mut(); return values.pop().unwrap_or(4); } fn map_set(scores: MapMut<i32, i64>) { scores.set(7i32, 12); scores.set(9i32, 6); scores[10i32] = 8; return scores.remove(7i32).unwrap_or(0) + scores.remove(8i32).unwrap_or(4) + scores[9i32] + scores[10i32]; } fn set_mutate(values: SetMut<i32>) { return values.add(9i32) && !values.add(7i32) && values.remove(7i32) && !values.remove(8i32); }",
+        "fn array_remove(owner: CollectionOwner) { let values = owner.values_mut(); return values.remove_at(1).unwrap_or(0); } fn array_missing(owner: CollectionOwner) { return owner.values_mut().remove_at(9).unwrap_or(4); } fn array_push(owner: CollectionOwner) { let values = owner.values_mut(); values.push(13); return values.last().unwrap_or(0); } fn array_pop(owner: CollectionOwner) { let values = owner.values_mut(); return values.pop().unwrap_or(4); } fn map_set(scores: MapMut<i32, i64>) { scores.set(7i32, 12); scores.set(9i32, 6); scores[10i32] = 8; return scores.remove(7i32).unwrap_or(0) + scores.remove(8i32).unwrap_or(4) + scores[9i32] + scores[10i32]; } fn set_mutate(values: SetMut<i32>) { return values.add(9i32) && !values.add(7i32) && values.remove(7i32) && !values.remove(8i32); }",
     );
 
     let mut owner = CollectionOwner {
@@ -806,14 +806,25 @@ fn growable_borrowed_collection_methods_write_through_host_paths() {
 
     let result = runtime
         .call(
+            "array_push",
+            CallArgs::new().with_host_mut("owner", &mut owner),
+            CallOptions::unbounded(),
+        )
+        .expect("growable borrowed array push should write through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(13)));
+    drop(result);
+    assert_eq!(owner.values, vec![5, 11, 13]);
+
+    let result = runtime
+        .call(
             "array_pop",
             CallArgs::new().with_host_mut("owner", &mut owner),
             CallOptions::unbounded(),
         )
         .expect("growable borrowed array pop should write through HostAccess");
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(11)));
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(13)));
     drop(result);
-    assert_eq!(owner.values, vec![5]);
+    assert_eq!(owner.values, vec![5, 11]);
 
     owner.values.clear();
     let result = runtime
@@ -846,6 +857,55 @@ fn growable_borrowed_collection_methods_write_through_host_paths() {
     assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
     drop(result);
     assert_eq!(values, BTreeSet::from([9]));
+}
+
+#[test]
+fn borrowed_array_push_charges_before_mutation() {
+    let mut runtime = runtime("fn push(owner: CollectionOwner) { owner.values_mut().push(13); }");
+    let minimum = (1..64)
+        .find(|limit| {
+            let mut owner = CollectionOwner {
+                values: vec![5],
+                totals: BTreeMap::new(),
+            };
+            runtime
+                .call(
+                    "push",
+                    CallArgs::new().with_host_mut("owner", &mut owner),
+                    CallOptions::new(*limit, usize::MAX, usize::MAX),
+                )
+                .is_ok()
+        })
+        .expect("one host array push should fit a small bounded call");
+
+    let mut owner = CollectionOwner {
+        values: vec![5],
+        totals: BTreeMap::new(),
+    };
+    assert!(
+        runtime
+            .call(
+                "push",
+                CallArgs::new().with_host_mut("owner", &mut owner),
+                CallOptions::new(minimum - 1, usize::MAX, usize::MAX),
+            )
+            .is_err(),
+        "one fewer execution unit must reject the push"
+    );
+    assert_eq!(
+        owner.values,
+        vec![5],
+        "budget failure must precede mutation"
+    );
+
+    runtime
+        .call(
+            "push",
+            CallArgs::new().with_host_mut("owner", &mut owner),
+            CallOptions::new(minimum, usize::MAX, usize::MAX),
+        )
+        .expect("the minimum observed push budget should succeed");
+    assert_eq!(owner.values, vec![5, 13]);
 }
 
 #[test]
@@ -1074,77 +1134,8 @@ fn borrowed_collection_callbacks_reuse_owned_collection_semantics() {
     assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(2)));
 }
 
-#[test]
-fn generated_async_adapters_hold_collection_leases_to_completion() {
-    let mut runtime = runtime(
-        "async fn free(values: ArrayView<i64>, totals: MapMut<String, i64>) { return collections::merge_async(values, totals).await; } async fn method(service: CollectionService, totals: MapMut<String, i64>) { return service.add_async(totals, 3).await; }",
-    );
-    let values = vec![2_i64, 3];
-    let mut totals = BTreeMap::<String, i64>::new();
-    let mut args = CallArgs::new();
-    args.push_collection_ref("values", &values)
-        .push_collection_mut("totals", &mut totals);
-    let mut future = Box::pin(runtime.call_async("free", args, CallOptions::unbounded()));
-    let waker = std::task::Waker::noop();
-    let mut context = std::task::Context::from_waker(waker);
-    let result = loop {
-        match std::future::Future::poll(future.as_mut(), &mut context) {
-            std::task::Poll::Ready(result) => {
-                break result.expect("async free collection adapter should complete");
-            }
-            std::task::Poll::Pending => continue,
-        }
-    };
-    drop(future);
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(5)));
-    drop(result);
-    assert_eq!(totals["sum"], 5);
-
-    let service = CollectionService { offset: 4 };
-    let mut args = CallArgs::new();
-    args.push_host_ref("service", &service)
-        .push_collection_mut("totals", &mut totals);
-    let mut future = Box::pin(runtime.call_async("method", args, CallOptions::unbounded()));
-    let waker = std::task::Waker::noop();
-    let mut context = std::task::Context::from_waker(waker);
-    let result = loop {
-        match std::future::Future::poll(future.as_mut(), &mut context) {
-            std::task::Poll::Ready(result) => {
-                break result.expect("async method collection adapter should complete");
-            }
-            std::task::Poll::Pending => continue,
-        }
-    };
-    drop(future);
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(12)));
-    drop(result);
-    assert_eq!(totals["sum"], 12);
-}
-
-#[test]
-fn generated_async_slice_adapter_holds_the_slice_lease_to_completion() {
-    let mut runtime = runtime(
-        "async fn main(service: CollectionService, values: ArrayView<i64>) { let direct = collections::slice_sum_async(values).await; return direct + service.slice_sum_async(values).await; }",
-    );
-    let service = CollectionService { offset: 4 };
-    let values = [2_i64, 3, 5];
-    let mut args = CallArgs::new();
-    args.push_host_ref("service", &service)
-        .push_slice_ref("values", &values);
-    let mut future = Box::pin(runtime.call_async("main", args, CallOptions::unbounded()));
-    let waker = std::task::Waker::noop();
-    let mut context = std::task::Context::from_waker(waker);
-    let result = loop {
-        match std::future::Future::poll(future.as_mut(), &mut context) {
-            std::task::Poll::Ready(result) => {
-                break result.expect("async slice adapter should complete");
-            }
-            std::task::Poll::Pending => continue,
-        }
-    };
-    drop(future);
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(24)));
-}
+#[path = "borrowed_collection_exports/async_tests.rs"]
+mod borrowed_collection_async_tests;
 
 fn runtime(source: &str) -> Runtime {
     let engine = collection_engine();

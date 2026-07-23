@@ -216,8 +216,11 @@ reads and removes through one indexed HostAccess path, returns the prior value
 as `Option<T>`, preserves missing-index behavior, and works on retained
 method-return views without materialization. `ArrayMut.pop` shares the live
 length/edge query used by `last`, removes the resolved final element through
-the same path, and returns `Option::None` without mutation when empty. Borrowed
-Array `iter/values`, Map
+the same path, and returns `Option::None` without mutation when empty.
+Growable `ArrayMut.push` converts its element before mutation, precharges one
+execution unit, and submits one stack-backed `ExtendSequence` item through
+HostAccess, so conversion or budget failure leaves the Rust Vec unchanged.
+Borrowed Array `iter/values`, Map
 `keys/values/entries/iter`, and Set `values/iter` now capture deterministic
 bounded boundary projections under the active lease and feed the existing Vela
 Iterator pipeline, including `filter/count/collect`; complex element handles

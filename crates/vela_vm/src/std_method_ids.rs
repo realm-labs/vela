@@ -338,6 +338,7 @@ pub(crate) fn host_collection_lookup(method_id: MethodId) -> Option<HostCollecti
 pub(crate) enum HostCollectionMutation {
     Clear,
     ArrayExtend,
+    ArrayPush,
     ArrayPop,
     ArrayRemoveAt,
     MapSet,
@@ -354,6 +355,7 @@ impl HostCollectionMutation {
         match self {
             Self::Clear => "clear",
             Self::ArrayExtend | Self::MapExtend | Self::SetExtend => "extend",
+            Self::ArrayPush => "push",
             Self::ArrayPop => "pop",
             Self::ArrayRemoveAt => "remove_at",
             Self::MapSet => "set",
@@ -368,6 +370,7 @@ impl HostCollectionMutation {
             Self::Clear | Self::ArrayPop => 0,
             Self::MapSet => 2,
             Self::ArrayExtend
+            | Self::ArrayPush
             | Self::ArrayRemoveAt
             | Self::MapRemove
             | Self::MapExtend
@@ -384,6 +387,8 @@ pub(crate) fn host_collection_mutation(method_id: MethodId) -> Option<HostCollec
         Some(HostCollectionMutation::Clear)
     } else if method_id == ids.array_extend {
         Some(HostCollectionMutation::ArrayExtend)
+    } else if method_id == ids.array_push {
+        Some(HostCollectionMutation::ArrayPush)
     } else if method_id == ids.array_pop {
         Some(HostCollectionMutation::ArrayPop)
     } else if method_id == ids.array_remove_at {

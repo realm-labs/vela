@@ -715,10 +715,11 @@ pub(crate) fn execute_host_root_collection_mutation(
     if matches!(
         mutation,
         crate::std_method_ids::HostCollectionMutation::ArrayExtend
+            | crate::std_method_ids::HostCollectionMutation::ArrayPush
             | crate::std_method_ids::HostCollectionMutation::MapExtend
             | crate::std_method_ids::HostCollectionMutation::SetExtend
     ) {
-        return crate::host_collection_mutation::execute_host_root_collection_extend(
+        return crate::host_collection_mutation::execute_host_root_collection_batch(
             runtime, receiver, mutation, &args[0], cache_site,
         );
     }
@@ -785,6 +786,7 @@ pub(crate) fn execute_host_root_collection_mutation(
     match mutation {
         HostCollectionMutation::Clear
         | HostCollectionMutation::ArrayExtend
+        | HostCollectionMutation::ArrayPush
         | HostCollectionMutation::MapExtend
         | HostCollectionMutation::SetExtend => {
             unreachable!("bulk mutations dispatch before keyed mutations")
