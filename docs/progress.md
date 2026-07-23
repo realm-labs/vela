@@ -204,7 +204,11 @@ implementations and the public `ScriptHostKey` conversion contract share this
 model. Read-only `MapView.has/get/get_or` and `SetView.has` now reuse the same
 resolved keyed HostAccess path without materializing the collection. A distinct
 missing-entry error ensures only absent keys become `false`, `Option::None`, or
-the caller fallback; other host errors propagate. Complex borrowed element
+the caller fallback; other host errors propagate. Read-only Array
+`contains/index_of` consume one bounded values projection, charge one execution
+unit per projected element, compare exact `ValueKey` identities, and preserve
+false/`Option::None` behavior for empty or absent values without materializing
+a script Array. Complex borrowed element
 views, remaining element/key methods, live/resumable iteration, remaining bulk
 mutation, user-defined collection adapters, and prepared
 index plans remain open. Growable `MapMut.set` and missing-key index assignment now insert

@@ -2623,6 +2623,13 @@ absence is represented by `MissingCollectionEntry`, distinct from a general
 This prevents an unsupported value projection or nested adapter error from
 being silently reported as a missing key.
 
+Read-only borrowed Array `contains` and `index_of` take one semantic values
+projection under the active lease and charge its full length before searching.
+Each projected boundary value is compared with the existing exact `ValueKey`
+rules, including scalar tags, String/Bytes payloads, and HostRef identity.
+Search does not materialize a temporary script Array; absence remains
+`false`/`Option::None`, and `index_of` returns the first matching index.
+
 Growable borrowed Map insertion reuses keyed HostAccess writes. A host field
 type opts into new-entry construction through
 `ScriptHostFieldAccess::from_host_collection_value`; scalar, String, and Bytes

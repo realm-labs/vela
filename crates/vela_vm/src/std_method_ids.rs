@@ -285,7 +285,9 @@ pub(crate) fn host_collection_query(method_id: MethodId) -> Option<HostCollectio
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum HostCollectionLookup {
+    ArrayContains,
     ArrayFirst,
+    ArrayIndexOf,
     ArrayLast,
     MapHas,
     MapGet,
@@ -297,7 +299,9 @@ impl HostCollectionLookup {
     #[must_use]
     pub(crate) const fn name(self) -> &'static str {
         match self {
+            Self::ArrayContains => "contains",
             Self::ArrayFirst => "first",
+            Self::ArrayIndexOf => "index_of",
             Self::ArrayLast => "last",
             Self::MapHas | Self::SetHas => "has",
             Self::MapGet => "get",
@@ -309,7 +313,11 @@ impl HostCollectionLookup {
     pub(crate) const fn arity(self) -> usize {
         match self {
             Self::ArrayFirst | Self::ArrayLast => 0,
-            Self::MapHas | Self::MapGet | Self::SetHas => 1,
+            Self::ArrayContains
+            | Self::ArrayIndexOf
+            | Self::MapHas
+            | Self::MapGet
+            | Self::SetHas => 1,
             Self::MapGetOr => 2,
         }
     }
@@ -317,8 +325,12 @@ impl HostCollectionLookup {
 
 pub(crate) fn host_collection_lookup(method_id: MethodId) -> Option<HostCollectionLookup> {
     let ids = std_method_ids();
-    if method_id == ids.array_first {
+    if method_id == ids.array_contains {
+        Some(HostCollectionLookup::ArrayContains)
+    } else if method_id == ids.array_first {
         Some(HostCollectionLookup::ArrayFirst)
+    } else if method_id == ids.array_index_of {
+        Some(HostCollectionLookup::ArrayIndexOf)
     } else if method_id == ids.array_last {
         Some(HostCollectionLookup::ArrayLast)
     } else if method_id == ids.map_has {

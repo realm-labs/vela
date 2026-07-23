@@ -1211,7 +1211,10 @@ integer, String, Bytes, and HostRef key identity, and `ScriptHostKey` performs
 the Rust-side exact conversion without string serialization. Read-only
 `MapView.has/get/get_or` and `SetView.has` reuse the resolved keyed HostAccess
 path; `MissingCollectionEntry` alone becomes missing/fallback behavior, while
-other host errors propagate. Borrowed complex-element views, remaining
+other host errors propagate. Array `contains/index_of` reuse one bounded values
+projection, charge its complete length, compare exact `ValueKey` identities,
+and return the ordinary bool/`Option<i64>` results without materializing a
+script Array. Borrowed complex-element views, remaining
 element/key methods, live/resumable iteration, remaining bulk mutation
 protocols, richer user-defined collection adapters, full
 service macro traversal, and prepared operations are still open. Growable

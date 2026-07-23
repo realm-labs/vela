@@ -26,6 +26,18 @@ pub(crate) fn execute_host_root_collection_lookup(
             actual: args.len(),
         }));
     }
+    if matches!(
+        lookup,
+        HostCollectionLookup::ArrayContains | HostCollectionLookup::ArrayIndexOf
+    ) {
+        return execute_host_root_array_search(
+            &mut runtime,
+            receiver,
+            lookup,
+            &args[0],
+            cache_site,
+        );
+    }
     let root = expect_host_ref(
         &runtime.frame.read(receiver)?,
         runtime.host.as_deref(),
@@ -38,13 +50,13 @@ pub(crate) fn execute_host_root_collection_lookup(
         HostCollectionLookup::ArrayLast => {
             host_array_edge_index(&mut runtime, root, HostArrayEdge::Last)?
         }
-        HostCollectionLookup::MapHas
-        | HostCollectionLookup::MapGet
-        | HostCollectionLookup::MapGetOr
-        | HostCollectionLookup::SetHas => None,
+        _ => None,
     };
-    let key = match lookup {
-        HostCollectionLookup::ArrayFirst | HostCollectionLookup::ArrayLast => array_index
+    let key = if matches!(
+        lookup,
+        HostCollectionLookup::ArrayFirst | HostCollectionLookup::ArrayLast
+    ) {
+        array_index
             .map(|index| {
                 runtime_collection_index(
                     &Value::I64(index),
@@ -53,16 +65,14 @@ pub(crate) fn execute_host_root_collection_lookup(
                     "host collection lookup",
                 )
             })
-            .transpose()?,
-        HostCollectionLookup::MapHas
-        | HostCollectionLookup::MapGet
-        | HostCollectionLookup::MapGetOr
-        | HostCollectionLookup::SetHas => Some(runtime_collection_index(
+            .transpose()?
+    } else {
+        Some(runtime_collection_index(
             &args[0],
             runtime.heap.as_deref(),
             runtime.host.as_deref(),
             "host collection lookup",
-        )?),
+        )?)
     };
     let host = runtime
         .host
@@ -102,6 +112,9 @@ pub(crate) fn execute_host_root_collection_lookup(
     };
 
     match lookup {
+        HostCollectionLookup::ArrayContains | HostCollectionLookup::ArrayIndexOf => {
+            unreachable!("array searches dispatch before keyed result handling")
+        }
         HostCollectionLookup::MapHas => Ok(Value::Bool(payload.is_some())),
         HostCollectionLookup::SetHas => match payload {
             Some(HostValue::Bool(value)) => Ok(Value::Bool(value)),
@@ -134,5 +147,54 @@ pub(crate) fn execute_host_root_collection_lookup(
             Some(payload) => runtime_value_from_host(payload, runtime.heap, runtime.budget, host),
             None => Ok(args[1]),
         },
+    }
+}
+
+fn execute_host_root_array_search(
+    runtime: &mut HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    lookup: HostCollectionLookup,
+    needle: &Value,
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<Value> {
+    let operation = match lookup {
+        HostCollectionLookup::ArrayContains => "method contains",
+        HostCollectionLookup::ArrayIndexOf => "method index_of",
+        _ => unreachable!("only array searches reach array search execution"),
+    };
+    let needle =
+        crate::value_key::ValueKey::from_value(needle, runtime.heap.as_deref(), operation)?;
+    let values = crate::host_collection_projection::project_host_root_collection_items(
+        runtime, receiver, cache_site,
+    )?;
+    let found = {
+        let heap = runtime.heap.as_deref();
+        let mut found = None;
+        for (index, value) in values.iter().enumerate() {
+            if crate::value_key::ValueKey::from_value(value, heap, operation)? == needle {
+                found = Some(index);
+                break;
+            }
+        }
+        found
+    };
+    match lookup {
+        HostCollectionLookup::ArrayContains => Ok(Value::Bool(found.is_some())),
+        HostCollectionLookup::ArrayIndexOf => {
+            let payload = found
+                .map(|index| {
+                    i64::try_from(index)
+                        .map(Value::I64)
+                        .map_err(|_| VmError::new(VmErrorKind::TypeMismatch { operation }))
+                })
+                .transpose()?;
+            let heap = runtime.heap.as_deref_mut().ok_or_else(|| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "host array index_of",
+                })
+            })?;
+            crate::option_result::option_value(payload, heap, runtime.budget.as_deref_mut())
+        }
+        _ => unreachable!("only array searches reach array search result handling"),
     }
 }
