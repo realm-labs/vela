@@ -719,6 +719,37 @@ fn nested_collection_protocols_execute_prepared_field_slots() {
         element_field_value,
         HostValue::Scalar(vela_common::ScalarValue::I64(34))
     );
+    let element_write_access =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+            &outer,
+            HostAccessSpec::new(HostAccessOp::Write, &element_field_plan),
+        )
+        .expect("indexed element field write should reuse the mixed prepared chain");
+    <CollectionOuter as vela_host::object::ScriptHostObject>::write_resolved_host(
+        &mut outer,
+        element_write_access,
+        element_field_target,
+        HostValue::Scalar(vela_common::ScalarValue::I64(40)),
+    )
+    .expect("mixed prepared chain should execute the dense element field write");
+    let element_mutate_access =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+            &outer,
+            HostAccessSpec::new(
+                HostAccessOp::Mutate(HostMutationOp::Add),
+                &element_field_plan,
+            ),
+        )
+        .expect("indexed element field mutation should reuse the mixed prepared chain");
+    <CollectionOuter as vela_host::object::ScriptHostObject>::mutate_resolved_host(
+        &mut outer,
+        element_mutate_access,
+        element_field_target,
+        HostMutationOp::Add,
+        HostValue::Scalar(vela_common::ScalarValue::I64(2)),
+    )
+    .expect("mixed prepared chain should execute the dense element field mutation");
+    assert_eq!(outer.leaf.counters[0].total, 42);
 
     let remove_access =
         <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(

@@ -1070,10 +1070,11 @@ prefixes remain prepared through the sequence boundary; fixed arrays and
 borrowed slices use the same index classification, while `BTreeMap<K, V>` and
 `HashMap<K, V>` plus `BTreeSet<K>` and `HashSet<K>` do the same for key-shaped
 suffixes. The inline prepared plan can interleave generated field slots with
-adapter-local steps, and sequence element-field reads execute the terminal
-dense field thunk after consuming the index step. Write, mutation, call, and
-non-sequence mixed-step execution remain open. Nested field and method
-resolution and execution reuse the original linked `HostTargetPlan` through
+adapter-local steps, and sequence element-field reads, writes, and compound
+mutations execute the terminal dense field thunk after consuming the index
+step. Calls and non-sequence mixed-step execution remain open. Nested field
+and method resolution and execution reuse the original linked `HostTargetPlan`
+through
 checked spec/instance offsets rather than allocating and cloning suffix plans.
 Generated adapters cache up to four schema-local field slots in the copyable
 resolved access and execute common field reads, writes, mutations, and method

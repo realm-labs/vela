@@ -83,9 +83,9 @@ index-shaped suffixes as well, and borrowed slices classify index-shaped
 targets through the same adapter-local contract. Prepared accesses now carry
 an inline mixed chain of generated field slots and adapter-local steps;
 `Vec<T>` consumes its index step and executes a terminal generated element
-field read through the dense field thunk without a live-element lookup during
-resolution. Element-field writes, mutations, calls, and non-sequence mixed
-chains remain open.
+field read, write, or compound mutation through dense field thunks without a
+live-element lookup during resolution. Element method calls and non-sequence
+mixed chains remain open.
 Default/manual adapters preserve that cursor during read-modify-write and use
 it when distinguishing a nested leaf from a missing target.
 Direct call arguments now keep an inline dense host-slot index separate from

@@ -280,6 +280,45 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
                 }
             }
 
+            fn write_resolved_host_target_from(
+                &mut self,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                value: ::vela_host::value::HostValue,
+            ) -> ::vela_host::error::HostResult<()> {
+                if let Some((
+                    ::vela_host::resolved::PreparedHostStep::Field(slot),
+                    child_access,
+                )) = access.next_prepared_step()
+                {
+                    return ::vela_host::object::ScriptHostFieldAccess::write_prepared_field_target(
+                        self,
+                        slot,
+                        child_access,
+                        target,
+                        value,
+                    );
+                }
+                if target.offset + 1 == target.plan.parts.len() {
+                    if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
+                        access.adapter_kind
+                    {
+                        return ::vela_host::object::ScriptHostFieldAccess::write_direct_field(
+                            self,
+                            slot,
+                            target,
+                            value,
+                        );
+                    }
+                }
+                ::vela_host::object::ScriptHostFieldAccess::write_host_target_from(
+                    self,
+                    target,
+                    target.offset,
+                    value,
+                )
+            }
+
             fn query_collection_host_target_from(
                 &self,
                 target: ::vela_host::target::HostTargetInstance<'_>,
@@ -368,6 +407,49 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
                     target,
                     offset,
                     next,
+                )
+            }
+
+            fn mutate_resolved_host_target_from(
+                &mut self,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                op: ::vela_host::resolved::HostMutationOp,
+                rhs: ::vela_host::value::HostValue,
+            ) -> ::vela_host::error::HostResult<()> {
+                if let Some((
+                    ::vela_host::resolved::PreparedHostStep::Field(slot),
+                    child_access,
+                )) = access.next_prepared_step()
+                {
+                    return ::vela_host::object::ScriptHostFieldAccess::mutate_prepared_field_target(
+                        self,
+                        slot,
+                        child_access,
+                        target,
+                        op,
+                        rhs,
+                    );
+                }
+                if target.offset + 1 == target.plan.parts.len() {
+                    if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
+                        access.adapter_kind
+                    {
+                        return ::vela_host::object::ScriptHostFieldAccess::mutate_direct_field(
+                            self,
+                            slot,
+                            target,
+                            op,
+                            rhs,
+                        );
+                    }
+                }
+                ::vela_host::object::ScriptHostFieldAccess::mutate_host_target_from(
+                    self,
+                    target,
+                    target.offset,
+                    op,
+                    rhs,
                 )
             }
 

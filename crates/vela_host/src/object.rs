@@ -255,6 +255,31 @@ pub trait ScriptHostFieldAccess {
         self.read_host_target_from(target, target.offset)
     }
 
+    /// Executes a resolved write from the cursor carried by `target`.
+    #[doc(hidden)]
+    fn write_resolved_host_target_from(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        value: HostValue,
+    ) -> HostResult<()> {
+        let _ = access;
+        self.write_host_target_from(target, target.offset, value)
+    }
+
+    /// Executes a resolved mutation from the cursor carried by `target`.
+    #[doc(hidden)]
+    fn mutate_resolved_host_target_from(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        op: HostMutationOp,
+        rhs: HostValue,
+    ) -> HostResult<()> {
+        let _ = access;
+        self.mutate_host_target_from(target, target.offset, op, rhs)
+    }
+
     fn read_host_target_from(
         &self,
         target: HostTargetInstance<'_>,
@@ -532,8 +557,9 @@ macro_rules! impl_script_host_object_via_field {
                 target: HostTargetInstance<'_>,
                 value: HostValue,
             ) -> HostResult<()> {
-                let _ = access;
-                ScriptHostFieldAccess::write_host_target_from(self, target, target.offset, value)
+                ScriptHostFieldAccess::write_resolved_host_target_from(
+                    self, access, target, value,
+                )
             }
 
             fn mutate_resolved_host(
@@ -543,13 +569,8 @@ macro_rules! impl_script_host_object_via_field {
                 op: HostMutationOp,
                 rhs: HostValue,
             ) -> HostResult<()> {
-                let _ = access;
-                ScriptHostFieldAccess::mutate_host_target_from(
-                    self,
-                    target,
-                    target.offset,
-                    op,
-                    rhs,
+                ScriptHostFieldAccess::mutate_resolved_host_target_from(
+                    self, access, target, op, rhs,
                 )
             }
 

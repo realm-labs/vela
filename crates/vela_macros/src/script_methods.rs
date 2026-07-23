@@ -201,7 +201,7 @@ mod tests {
         let expanded = tokens.to_string();
         assert!(expanded.contains("impl :: vela_host :: object :: ScriptHostObject for Player"));
         assert!(expanded.contains("mutate_resolved_host"));
-        assert!(expanded.contains("mutate_host_target_from"));
+        assert!(expanded.contains("mutate_resolved_host_target_from"));
     }
 
     #[test]

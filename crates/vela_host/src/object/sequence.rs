@@ -82,6 +82,52 @@ where
         self.read_host_target_from(target, target.offset)
     }
 
+    fn write_resolved_host_target_from(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        value: HostValue,
+    ) -> HostResult<()> {
+        if let Some((PreparedHostStep::AdapterLocal(0), child_access)) = access.next_prepared_step()
+        {
+            let index = usize::try_from(target_index(target, target.offset)?)
+                .map_err(|_| invalid_arg("array index"))?;
+            return self
+                .get_mut(index)
+                .ok_or_else(|| missing_target(target))?
+                .write_resolved_host_target_from(
+                    child_access,
+                    target.at_offset(target.offset + 1),
+                    value,
+                );
+        }
+        self.write_host_target_from(target, target.offset, value)
+    }
+
+    fn mutate_resolved_host_target_from(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        op: crate::resolved::HostMutationOp,
+        rhs: HostValue,
+    ) -> HostResult<()> {
+        if let Some((PreparedHostStep::AdapterLocal(0), child_access)) = access.next_prepared_step()
+        {
+            let index = usize::try_from(target_index(target, target.offset)?)
+                .map_err(|_| invalid_arg("array index"))?;
+            return self
+                .get_mut(index)
+                .ok_or_else(|| missing_target(target))?
+                .mutate_resolved_host_target_from(
+                    child_access,
+                    target.at_offset(target.offset + 1),
+                    op,
+                    rhs,
+                );
+        }
+        self.mutate_host_target_from(target, target.offset, op, rhs)
+    }
+
     fn read_host_target_from(
         &self,
         target: HostTargetInstance<'_>,
