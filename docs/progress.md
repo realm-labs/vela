@@ -73,7 +73,9 @@ re-resolution. Deeper or non-preparable paths retain the validated generic
 traversal. Collection length/empty queries, snapshots, and batch mutations now
 use the same prepared field chain to reach a leaf collection adapter, while
 index/key segments retain validated generic traversal. Preparing dense
-collection/index adapter slots remains open.
+collection/index adapter slots remains open. Indexed removal through generated
+host-field prefixes now also reaches the collection adapter via that validated
+generic traversal.
 Default/manual adapters preserve that cursor during read-modify-write and use
 it when distinguishing a nested leaf from a missing target.
 Direct call arguments now keep an inline dense host-slot index separate from

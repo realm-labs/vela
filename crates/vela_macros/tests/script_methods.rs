@@ -1,5 +1,7 @@
 #![allow(clippy::result_large_err)]
 
+use std::collections::BTreeMap;
+
 use vela_common::{HostMethodId, HostObjectId, stable_id};
 use vela_engine::engine::Engine;
 use vela_engine::method::NativeMethodDesc;
@@ -207,6 +209,8 @@ struct CollectionLeaf {
     values: Vec<i64>,
     #[script(get)]
     groups: Vec<Vec<i64>>,
+    #[script(get)]
+    entries: BTreeMap<String, i64>,
 }
 
 #[script_methods]
@@ -503,6 +507,7 @@ fn nested_collection_protocols_execute_prepared_field_slots() {
         leaf: CollectionLeaf {
             values: vec![1, 2],
             groups: vec![vec![4, 5]],
+            entries: BTreeMap::from([("x".to_owned(), 8)]),
         },
     };
     let plan = HostTargetPlan::new(CollectionOuter::vela_host_type_id())
@@ -591,4 +596,23 @@ fn nested_collection_protocols_execute_prepared_field_slots() {
         indexed_len,
         HostValue::Scalar(vela_common::ScalarValue::I64(2))
     );
+
+    let remove_plan = HostTargetPlan::new(CollectionOuter::vela_host_type_id())
+        .field(CollectionOuter::vela_field_id_leaf())
+        .field(CollectionLeaf::vela_field_id_entries())
+        .const_key("x");
+    let remove_target = HostTargetInstance::new(root, &remove_plan, &[]);
+    let remove_access =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+            &outer,
+            HostAccessSpec::new(HostAccessOp::Remove, &remove_plan),
+        )
+        .expect("indexed nested removal should retain generic traversal");
+    <CollectionOuter as vela_host::object::ScriptHostObject>::remove_resolved_host(
+        &mut outer,
+        remove_access,
+        remove_target,
+    )
+    .expect("indexed nested removal should reach the collection adapter");
+    assert!(outer.leaf.entries.is_empty());
 }

@@ -309,6 +309,18 @@ pub(super) fn script_host_object_impl_tokens(
                 )
             }
 
+            fn remove_resolved_host(
+                &mut self,
+                _access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+            ) -> ::vela_host::error::HostResult<()> {
+                ::vela_host::object::ScriptHostFieldAccess::remove_host_target_from(
+                    self,
+                    target,
+                    target.offset,
+                )
+            }
+
             fn write_resolved_host(
                 &mut self,
                 access: ::vela_host::resolved::ResolvedHostAccess,

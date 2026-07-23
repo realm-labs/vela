@@ -102,6 +102,10 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
         .iter()
         .filter(|field| field.readable || field.writable)
         .map(field_collection_mutation_arm_tokens);
+    let remove_arms = fields
+        .iter()
+        .filter(|field| field.readable || field.writable)
+        .map(field_remove_arm_tokens);
     let call_arms = fields.iter().map(field_call_arm_tokens);
     let prepared_call_arms = fields
         .iter()
@@ -269,6 +273,22 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
             ) -> ::vela_host::error::HostResult<()> {
                 match target.plan.parts.as_slice().get(offset) {
                     #(#collection_mutation_arms)*
+                    _ => Err(::vela_host::error::HostError {
+                        kind: ::vela_host::error::HostErrorKind::MissingPath {
+                            path: target.to_diagnostic_path().to_host_path(),
+                        },
+                        source_span: None,
+                    }),
+                }
+            }
+
+            fn remove_host_target_from(
+                &mut self,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                offset: usize,
+            ) -> ::vela_host::error::HostResult<()> {
+                match target.plan.parts.as_slice().get(offset) {
+                    #(#remove_arms)*
                     _ => Err(::vela_host::error::HostError {
                         kind: ::vela_host::error::HostErrorKind::MissingPath {
                             path: target.to_diagnostic_path().to_host_path(),
@@ -623,6 +643,22 @@ fn field_collection_mutation_arm_tokens(field: &FieldMeta) -> TokenStream {
                 target,
                 offset + 1,
                 mutation,
+            )
+        }
+    }
+}
+
+fn field_remove_arm_tokens(field: &FieldMeta) -> TokenStream {
+    let id = u128::from(field.id);
+    let rust_name = format_ident!("{}", field.rust_name);
+    quote! {
+        Some(::vela_host::target::HostPathPart::Field(field))
+            if *field == ::vela_def::FieldId::new(#id) =>
+        {
+            ::vela_host::object::ScriptHostFieldAccess::remove_host_target_from(
+                &mut self.#rust_name,
+                target,
+                offset + 1,
             )
         }
     }
