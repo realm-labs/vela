@@ -71,6 +71,11 @@ their mixed positional/named value entries. Every copied alias resolves its one
 binding/lease metadata entry in O(1) from the execution-assigned object range,
 including exact type and generation validation; the script `HostRef` payload
 itself is still expanded and remains an open S2 item.
+The compact table key is now a pointer-free, 8-byte `HostSlotRef` containing
+only a `u32` slot and `u32` generation. The production direct-host table uses
+that handle for generation validation. Migrating `Value::HostRef` and unifying
+direct, scoped, extern, and Runtime-owned metadata behind the root table remain
+open; the expanded canonical `HostRef` is still the VM payload for now.
 The first S3 standard binding family is also live: concrete
 `BTreeMap<K, V>` and `HashMap<K, V>` bindings synthesize stable recursive
 key/value facts, share the Vela `MapLike` surface and owned Map codec, and keep
@@ -347,10 +352,10 @@ complete conflict set before lease acquisition. Generated host functions and
 methods now reuse registration-time prepared parameter plans instead of
 rebuilding contracts and request metadata on each call. Service-signature and
 Host/View/MutView closure traversal, remaining borrowed collection
-runtime views and type hints, compact root-local HostRef storage, dense prepared
-field/method thunks, and a post-S2 shorter
-owned-host reclamation policy remain open. Runtime receiver enforcement is
-live; compile-time
+runtime views and type hints, migration of the expanded VM HostRef payload into
+the new compact root-local handle/table, nested prepared field/method adapter
+chains, and a post-S2 shorter owned-host reclamation policy remain open.
+Runtime receiver enforcement is live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-
 signature facts.
 

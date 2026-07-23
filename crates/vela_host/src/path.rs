@@ -1,6 +1,35 @@
 use vela_common::{HostObjectId, HostTypeId};
 use vela_def::FieldId;
 
+/// Compact generational reference into one root execution's host-slot table.
+///
+/// Canonical host identity and access metadata remain in the owning table. A
+/// slot reference is meaningful only to that owner and carries no Rust pointer
+/// or object payload.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(C)]
+pub struct HostSlotRef {
+    slot: u32,
+    generation: u32,
+}
+
+impl HostSlotRef {
+    #[must_use]
+    pub const fn new(slot: u32, generation: u32) -> Self {
+        Self { slot, generation }
+    }
+
+    #[must_use]
+    pub const fn slot(self) -> u32 {
+        self.slot
+    }
+
+    #[must_use]
+    pub const fn generation(self) -> u32 {
+        self.generation
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct HostRef {
     pub type_id: HostTypeId,
@@ -94,5 +123,16 @@ mod tests {
             .variant_field(FieldId::new(5));
 
         assert_eq!(reserved, regular);
+    }
+
+    #[test]
+    fn host_slot_refs_are_compact_copyable_generational_handles() {
+        fn require_copy<T: Copy>(_: T) {}
+
+        let handle = HostSlotRef::new(7, 3);
+        require_copy(handle);
+        assert_eq!(std::mem::size_of::<HostSlotRef>(), 8);
+        assert_eq!(handle.slot(), 7);
+        assert_eq!(handle.generation(), 3);
     }
 }

@@ -1050,9 +1050,11 @@ rebuild their `CallableContract` or parameter request descriptions. Generated
 field reads/writes/mutations and synchronous root methods rather than repeating
 stable-ID dispatch. Direct call arguments also maintain an inline dense
 host-slot index, so an alias reaches its single binding/lease metadata entry in
-O(1) without a common-arity allocation. Remaining standard bindings, the
-compact script `HostRef` payload and unified root table, and nested prepared
-field/method adapter chains remain open.
+O(1) without a common-arity allocation. The final pointer-free table key now
+exists as an 8-byte `(u32 slot, u32 generation)` `HostSlotRef`, and the direct
+table validates through it. Remaining standard bindings, migration of the
+expanded `Value::HostRef` payload plus unification of all root metadata behind
+that handle, and nested prepared field/method adapter chains remain open.
 
 ### S3 — Standard Rust types, views, and collection protocols
 
