@@ -57,6 +57,10 @@ same typed registration path without a handwritten host binding adapter.
 method thunks into that binding, and `register_script_host::<T>()` consumes the
 single completed registration instead of installing schema and methods in
 parallel.
+Generated host-argument preflight and the corresponding acquired lease-guard
+set now both stay inline for up to eight leases. Wider service boundaries still
+spill, and failed multi-lease acquisition drops the partially acquired inline
+set before returning, preserving atomic rollback.
 The first S3 standard binding family is also live: concrete
 `BTreeMap<K, V>` and `HashMap<K, V>` bindings synthesize stable recursive
 key/value facts, share the Vela `MapLike` surface and owned Map codec, and keep

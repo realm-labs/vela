@@ -6,8 +6,8 @@ use vela_bytecode::LinkedProgram;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::HostResult;
 use vela_host::lease::{
-    ErasedHostLease, ExclusiveScopedHost, HostLeaseKind, MutableHostLeaseSlot, ScopedHostLeaseSlot,
-    SharedScopedHost, host_lease_unsupported, host_object_busy,
+    ErasedHostLease, ErasedHostLeaseSet, ExclusiveScopedHost, HostLeaseKind, MutableHostLeaseSlot,
+    ScopedHostLeaseSlot, SharedScopedHost, host_lease_unsupported, host_object_busy,
 };
 use vela_host::object::{ScriptHostFieldAccess, ScriptHostObject};
 use vela_host::path::HostRef;
@@ -784,8 +784,8 @@ impl<'a> CallArgs<'a> {
     pub(super) fn take_host_leases(
         &mut self,
         requests: &[(HostRef, HostLeaseKind)],
-    ) -> HostResult<Vec<ErasedHostLease<'a>>> {
-        let mut leases = Vec::with_capacity(requests.len());
+    ) -> HostResult<ErasedHostLeaseSet<'a>> {
+        let mut leases = ErasedHostLeaseSet::with_capacity(requests.len());
         for (root, kind) in requests {
             match self.take_host_lease(*root, *kind) {
                 Ok(lease) => leases.push(lease),
@@ -1011,6 +1011,32 @@ mod lease_tests {
             .take_host_lease(root, HostLeaseKind::Exclusive)
             .expect("failed acquisition should restore the first lease");
         drop(lease);
+    }
+
+    #[test]
+    fn acquired_lease_guards_stay_inline_for_common_arities() {
+        let mut host = LeaseHost;
+        let mut args = CallArgs::new().with_host_mut("host", &mut host);
+        let mut next = 1_u64 << 63;
+        args.assign_direct_host_refs(&mut next);
+        let root = match &args.entries[0] {
+            CallArg::NamedHost {
+                host_ref: Some(root),
+                ..
+            } => *root,
+            _ => panic!("direct host argument should have an identity"),
+        };
+
+        let inline = args
+            .take_host_leases(&[(root, HostLeaseKind::Shared); 8])
+            .expect("common-arity shared leases should be acquired");
+        assert!(!inline.spilled());
+        drop(inline);
+
+        let spilled = args
+            .take_host_leases(&[(root, HostLeaseKind::Shared); 9])
+            .expect("wide shared lease sets should still be supported");
+        assert!(spilled.spilled());
     }
 
     #[test]

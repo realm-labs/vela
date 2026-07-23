@@ -77,6 +77,10 @@ pub enum ErasedHostLease<'host> {
     },
 }
 
+/// Acquired lease guards stay inline for ordinary service arities and spill
+/// only for unusually wide generated boundaries.
+pub type ErasedHostLeaseSet<'host> = smallvec::SmallVec<[ErasedHostLease<'host>; 8]>;
+
 impl ErasedHostLease<'_> {
     #[must_use]
     pub fn object(&self) -> &dyn ScriptHostObject {
