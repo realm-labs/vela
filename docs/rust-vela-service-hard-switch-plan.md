@@ -1291,9 +1291,14 @@ exact boundary tags, precharges one unit per input, and submits one borrowed
 sequence/map/set mutation request. Standard Vec, Map, and Set adapters prepare
 all concrete Rust values before applying the batch, so type conversion and
 budget failures are non-mutating. Map replacement and Set uniqueness follow
-their Rust container semantics. Complex element HostRefs, borrowed-source
-extension, write-through retain/filter, and prepared live grouping/traversal
-remain open.
+their Rust container semantics. Transactional retain requests are now
+available at the domain-neutral host boundary: sequence requests validate an
+unchanged length and a complete decision mask, while keyed requests convert
+the complete expected/retained key sets and validate the current Map or Set
+key snapshot before one standard-container mutation. The public resumable
+callback method and completion path still remain open, as do complex element
+HostRefs, borrowed-source extension, write-through filter, and prepared live
+grouping/traversal.
 
 ### S4 — Service contract and Rust-only generation
 

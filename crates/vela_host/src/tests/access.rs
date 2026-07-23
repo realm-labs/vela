@@ -196,6 +196,175 @@ fn indexed_sequence_insertion_validates_before_mutating_standard_vec() {
 }
 
 #[test]
+fn sequence_retain_applies_one_complete_mask_to_an_unchanged_vec() {
+    let root = HostRef::new(HostTypeId::new(0), HostObjectId::new(1), 0);
+    let plan = HostTargetPlan::new(root.type_id);
+    let target = HostTargetInstance::new(root, &plan, &[]);
+    let access = ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0));
+    let mut values = vec![2_i64, 3, 5, 8];
+    let keep = [true, false, true, false];
+
+    values
+        .mutate_collection_resolved_host(
+            access,
+            target,
+            HostCollectionMutation::RetainSequence {
+                expected_len: 4,
+                keep: &keep,
+            },
+        )
+        .expect("one decision per unchanged Vec element should retain in place");
+
+    assert_eq!(values, vec![2, 5]);
+}
+
+#[test]
+fn sequence_retain_rejects_stale_or_incomplete_masks_without_mutation() {
+    let root = HostRef::new(HostTypeId::new(0), HostObjectId::new(1), 0);
+    let plan = HostTargetPlan::new(root.type_id);
+    let target = HostTargetInstance::new(root, &plan, &[]);
+    let access = ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0));
+    let mut values = vec![2_i64, 3, 5];
+
+    let stale = [true, false];
+    let stale_error = values
+        .mutate_collection_resolved_host(
+            access,
+            target,
+            HostCollectionMutation::RetainSequence {
+                expected_len: 2,
+                keep: &stale,
+            },
+        )
+        .expect_err("a changed Vec length must invalidate retain decisions");
+    assert_eq!(
+        stale_error.kind,
+        HostErrorKind::InvalidArgument {
+            expected: "unchanged sequence snapshot"
+        }
+    );
+    assert_eq!(values, vec![2, 3, 5]);
+
+    let incomplete = [true, false];
+    let incomplete_error = values
+        .mutate_collection_resolved_host(
+            access,
+            target,
+            HostCollectionMutation::RetainSequence {
+                expected_len: 3,
+                keep: &incomplete,
+            },
+        )
+        .expect_err("retain must decide every captured Vec element");
+    assert_eq!(
+        incomplete_error.kind,
+        HostErrorKind::InvalidArgument {
+            expected: "retain decision for every sequence element"
+        }
+    );
+    assert_eq!(values, vec![2, 3, 5]);
+}
+
+#[test]
+fn map_retain_validates_the_complete_key_snapshot_before_mutation() {
+    let root = HostRef::new(HostTypeId::new(0), HostObjectId::new(1), 0);
+    let plan = HostTargetPlan::new(root.type_id);
+    let target = HostTargetInstance::new(root, &plan, &[]);
+    let access = ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0));
+    let expected = [
+        HostCollectionKey::I32(2),
+        HostCollectionKey::I32(3),
+        HostCollectionKey::I32(5),
+    ];
+    let keep = [HostCollectionKey::I32(2), HostCollectionKey::I32(5)];
+
+    let mut ordered = BTreeMap::from([(2_i32, 20_i64), (3, 30), (5, 50)]);
+    ordered
+        .mutate_collection_resolved_host(
+            access,
+            target,
+            HostCollectionMutation::RetainKeys {
+                expected: &expected,
+                keep: &keep,
+            },
+        )
+        .expect("an unchanged BTreeMap key snapshot should retain selected entries");
+    assert_eq!(ordered, BTreeMap::from([(2_i32, 20_i64), (5, 50)]));
+
+    let stale_expected = [HostCollectionKey::I32(2), HostCollectionKey::I32(3)];
+    let mut hashed = HashMap::from([(2_i32, 20_i64), (3, 30), (5, 50)]);
+    let error = hashed
+        .mutate_collection_resolved_host(
+            access,
+            target,
+            HostCollectionMutation::RetainKeys {
+                expected: &stale_expected,
+                keep: &keep,
+            },
+        )
+        .expect_err("a changed HashMap key set must invalidate retain decisions");
+    assert_eq!(
+        error.kind,
+        HostErrorKind::InvalidArgument {
+            expected: "unchanged keyed collection snapshot"
+        }
+    );
+    assert_eq!(hashed, HashMap::from([(2_i32, 20_i64), (3, 30), (5, 50)]));
+}
+
+#[test]
+fn set_retain_converts_and_validates_all_keys_before_mutation() {
+    use std::collections::{BTreeSet, HashSet};
+
+    let root = HostRef::new(HostTypeId::new(0), HostObjectId::new(1), 0);
+    let plan = HostTargetPlan::new(root.type_id);
+    let target = HostTargetInstance::new(root, &plan, &[]);
+    let access = ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0));
+    let expected = [
+        HostCollectionKey::I32(2),
+        HostCollectionKey::I32(3),
+        HostCollectionKey::I32(5),
+    ];
+    let keep = [HostCollectionKey::I32(3)];
+
+    let mut ordered = BTreeSet::from([2_i32, 3, 5]);
+    ordered
+        .mutate_collection_resolved_host(
+            access,
+            target,
+            HostCollectionMutation::RetainKeys {
+                expected: &expected,
+                keep: &keep,
+            },
+        )
+        .expect("an unchanged BTreeSet key snapshot should retain selected values");
+    assert_eq!(ordered, BTreeSet::from([3_i32]));
+
+    let invalid_keep = [
+        HostCollectionKey::I32(3),
+        HostCollectionKey::String("wrong key type".to_owned()),
+    ];
+    let mut hashed = HashSet::from([2_i32, 3, 5]);
+    let error = hashed
+        .mutate_collection_resolved_host(
+            access,
+            target,
+            HostCollectionMutation::RetainKeys {
+                expected: &expected,
+                keep: &invalid_keep,
+            },
+        )
+        .expect_err("every retained HashSet key must convert before mutation");
+    assert_eq!(
+        error.kind,
+        HostErrorKind::InvalidArgument {
+            expected: "i32 collection key"
+        }
+    );
+    assert_eq!(hashed, HashSet::from([2_i32, 3, 5]));
+}
+
+#[test]
 fn read_target_reads_current_adapter_state() {
     let mut adapter = MockStateAdapter::new();
     let path = level_path();

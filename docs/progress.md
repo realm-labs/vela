@@ -276,9 +276,16 @@ Vela Array/Map/Set into an exact borrowed mutation batch, charges one execution
 unit per input, and performs one HostAccess mutation. Standard Vec, Map, and
 Set adapters validate the complete batch before changing Rust state, so a
 conversion or budget failure cannot partially extend the host collection.
-Scalar, String, Bytes, and HostRef boundary leaves are supported; complex
-element handles, borrowed-source extension, write-through retain/filter, and
-prepared live grouping/traversal remain open.
+The host protocol now also has transactional retain primitives for the later
+resumable callback surface. `RetainSequence` requires one decision for every
+element and rejects a changed sequence length, while `RetainKeys` converts the
+complete expected/retained key sets and verifies the current Map or Set key
+snapshot before changing Rust state. Standard Vec, BTreeMap, HashMap,
+BTreeSet, and HashSet adapters implement these mutations without partial
+writes on conversion, shape, or stale-snapshot failure. Scalar, String, Bytes,
+and HostRef boundary leaves are supported; complex element handles,
+borrowed-source extension, public write-through retain/filter callback
+dispatch, and prepared live grouping/traversal remain open.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry

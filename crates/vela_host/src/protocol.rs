@@ -35,9 +35,28 @@ pub enum HostCollectionProjection {
 pub enum HostCollectionMutation<'a> {
     Clear,
     ExtendSequence(&'a [HostValue]),
-    InsertSequence { index: usize, value: &'a HostValue },
+    InsertSequence {
+        index: usize,
+        value: &'a HostValue,
+    },
+    /// Retains the elements selected by one complete decision mask.
+    ///
+    /// Adapters reject the request if the live length differs from the
+    /// projected length so callback decisions cannot resize stale storage.
+    RetainSequence {
+        expected_len: usize,
+        keep: &'a [bool],
+    },
     ExtendMap(&'a [(HostCollectionKey, HostValue)]),
     ExtendSet(&'a [HostCollectionKey]),
+    /// Retains selected Map entries or Set values after validating the key set.
+    ///
+    /// Both slices contain exact boundary keys. Adapters reject duplicate
+    /// keys, retained keys outside `expected`, and any live key-set change.
+    RetainKeys {
+        expected: &'a [HostCollectionKey],
+        keep: &'a [HostCollectionKey],
+    },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -45,8 +64,10 @@ pub enum HostCollectionMutationKind {
     Clear,
     ExtendSequence,
     InsertSequence,
+    RetainSequence,
     ExtendMap,
     ExtendSet,
+    RetainKeys,
 }
 
 impl HostCollectionMutation<'_> {
@@ -56,8 +77,10 @@ impl HostCollectionMutation<'_> {
             Self::Clear => HostCollectionMutationKind::Clear,
             Self::ExtendSequence(_) => HostCollectionMutationKind::ExtendSequence,
             Self::InsertSequence { .. } => HostCollectionMutationKind::InsertSequence,
+            Self::RetainSequence { .. } => HostCollectionMutationKind::RetainSequence,
             Self::ExtendMap(_) => HostCollectionMutationKind::ExtendMap,
             Self::ExtendSet(_) => HostCollectionMutationKind::ExtendSet,
+            Self::RetainKeys { .. } => HostCollectionMutationKind::RetainKeys,
         }
     }
 }
@@ -69,8 +92,10 @@ impl HostCollectionMutationKind {
             Self::Clear => "clear",
             Self::ExtendSequence => "extend sequence",
             Self::InsertSequence => "insert sequence",
+            Self::RetainSequence => "retain sequence",
             Self::ExtendMap => "extend map",
             Self::ExtendSet => "extend set",
+            Self::RetainKeys => "retain keyed collection",
         }
     }
 }
