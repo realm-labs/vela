@@ -8,7 +8,7 @@ use crate::host_access::{
     HostAccessRuntime, missing_host_context, resolve_cached_access, runtime_value_from_host,
 };
 use crate::host_access_helpers::runtime_collection_index;
-use crate::host_collection_edges::{HostArrayEdge, host_array_edge_index};
+use crate::host_collection_edges::{HostArrayEdge, host_array_edge_index, host_array_len};
 use crate::std_method_ids::HostCollectionLookup;
 use crate::{HostInlineCacheTarget, Value, VmError, VmErrorKind, VmResult, expect_host_ref};
 
@@ -47,6 +47,20 @@ pub(crate) fn execute_host_root_collection_lookup(
         HostCollectionLookup::ArrayFirst => {
             host_array_edge_index(&mut runtime, root, HostArrayEdge::First)?
         }
+        HostCollectionLookup::ArrayGet => {
+            let Value::I64(index) = args[0] else {
+                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "host collection lookup",
+                }));
+            };
+            let normalized = usize::try_from(index).map_err(|_| {
+                VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "host collection lookup",
+                })
+            })?;
+            (normalized < host_array_len(&mut runtime, root, "host collection lookup")?)
+                .then_some(index)
+        }
         HostCollectionLookup::ArrayLast => {
             host_array_edge_index(&mut runtime, root, HostArrayEdge::Last)?
         }
@@ -54,7 +68,9 @@ pub(crate) fn execute_host_root_collection_lookup(
     };
     let key = if matches!(
         lookup,
-        HostCollectionLookup::ArrayFirst | HostCollectionLookup::ArrayLast
+        HostCollectionLookup::ArrayFirst
+            | HostCollectionLookup::ArrayGet
+            | HostCollectionLookup::ArrayLast
     ) {
         array_index
             .map(|index| {
@@ -124,6 +140,7 @@ pub(crate) fn execute_host_root_collection_lookup(
             })),
         },
         HostCollectionLookup::ArrayFirst
+        | HostCollectionLookup::ArrayGet
         | HostCollectionLookup::ArrayLast
         | HostCollectionLookup::MapGet => {
             let payload = payload

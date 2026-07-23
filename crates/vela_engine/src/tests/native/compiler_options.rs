@@ -702,6 +702,7 @@ fn main() {
     let names: Array = ["gold", "xp"];
     return names.first().unwrap_or("") == "gold"
         && names.last().unwrap_or("") == "xp"
+        && names.get(1).unwrap_or("") == "xp"
         && names.index_of("xp").unwrap_or(-1) == 1;
 }
 "#,
@@ -721,6 +722,7 @@ fn main() {
         .collect::<Vec<_>>();
 
     assert!(value_methods.contains(&("first", Some(std_method_id("Array", "first")))));
+    assert!(value_methods.contains(&("get", Some(std_method_id("Array", "get")))));
     assert!(value_methods.contains(&("last", Some(std_method_id("Array", "last")))));
     assert!(value_methods.contains(&("index_of", Some(std_method_id("Array", "index_of")))));
 }

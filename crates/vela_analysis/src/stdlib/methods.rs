@@ -15,6 +15,7 @@ use option_result::{OptionShape, ResultShape, option_method_fact, result_method_
 const ARRAY_METHOD_NAMES: &[&str] = &[
     "len",
     "is_empty",
+    "get",
     "push",
     "pop",
     "insert",

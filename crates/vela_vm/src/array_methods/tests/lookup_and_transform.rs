@@ -1,6 +1,28 @@
 use super::*;
 
 #[test]
+fn runs_compiled_array_get_method() {
+    let source = r#"
+fn main() {
+    let values = [10, 20, 30];
+    return values.get(1).unwrap_or(0)
+        + values.get(9).unwrap_or(4)
+        + [].get(0).unwrap_or(6);
+}
+"#;
+    let code = compile_test_function(SourceId::new(1), source, "main")
+        .expect("array get method should compile");
+    let mut vm = Vm::new();
+    vm.register_standard_natives();
+
+    let result = run_linked_array_test_code(&vm, code).expect("array get method should run");
+    assert_eq!(
+        result,
+        OwnedValue::Scalar(vela_common::ScalarValue::I64(30))
+    );
+}
+
+#[test]
 fn runs_compiled_array_contains_method() {
     let source = r#"
 fn main() {

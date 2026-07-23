@@ -97,6 +97,107 @@ fn untyped_dynamic_borrowed_collections_discover_supported_standard_methods() {
 }
 
 #[test]
+fn borrowed_array_get_uses_one_live_index_read() {
+    let mut runtime = runtime(concat!(
+        "fn direct(values: ArrayView<i64>) { ",
+        "return values.get(1).unwrap_or(0) + values.get(9).unwrap_or(4); }\n",
+        "fn retained(owner: CollectionOwner) { ",
+        "return owner.values().get(2).unwrap_or(0); }\n",
+        "fn mutable(values: ArrayMut<i64>) { return values.get(1).unwrap_or(0); }\n",
+        "fn dynamic(values) { return values.get(0).unwrap_or(0); }\n",
+        "fn invalid(values: ArrayView<i64>) { return values.get(-1); }",
+    ));
+
+    let values = vec![11_i64, 13, 17];
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call("direct", args, CallOptions::unbounded())
+        .expect("borrowed Array get should return Some or None through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(17)));
+    drop(result);
+
+    let owner = CollectionOwner {
+        values: vec![3, 5, 8],
+        totals: BTreeMap::new(),
+    };
+    let result = runtime
+        .call(
+            "retained",
+            CallArgs::new().with_host_ref("owner", &owner),
+            CallOptions::unbounded(),
+        )
+        .expect("retained borrowed Array get should use its parent lease");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(8)));
+    drop(result);
+
+    let mut fixed = [19_i64, 23];
+    let mut args = CallArgs::new();
+    args.push_slice_mut("values", fixed.as_mut_slice());
+    let result = runtime
+        .call("mutable", args, CallOptions::unbounded())
+        .expect("fixed exclusive Array views should retain shared get behavior");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(23)));
+    drop(result);
+    assert_eq!(fixed, [19, 23]);
+
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call("dynamic", args, CallOptions::unbounded())
+        .expect("dynamic borrowed Arrays should discover get");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(11)));
+    drop(result);
+
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let error = runtime
+        .call("invalid", args, CallOptions::unbounded())
+        .expect_err("borrowed Array get should reject negative indexes");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::TypeMismatch {
+            operation: "host collection lookup"
+        }
+    ));
+}
+
+#[test]
+fn borrowed_array_get_cost_is_independent_of_collection_length() {
+    let mut runtime = runtime(
+        "fn get(values: ArrayView<i64>, index: i64) { return values.get(index).unwrap_or(-1); }",
+    );
+    let base_limit = (0..64)
+        .find(|limit| {
+            let values = vec![13_i64];
+            let mut args = CallArgs::new();
+            args.push_collection_ref("values", &values);
+            args.push_value("index", 0_i64);
+            runtime
+                .call(
+                    "get",
+                    args,
+                    CallOptions::new(*limit, usize::MAX, usize::MAX),
+                )
+                .is_ok()
+        })
+        .expect("one borrowed Array index read should fit a small bounded call");
+
+    let values = (0_i64..256).collect::<Vec<_>>();
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    args.push_value("index", 255_i64);
+    let result = runtime
+        .call(
+            "get",
+            args,
+            CallOptions::new(base_limit, usize::MAX, usize::MAX),
+        )
+        .expect("Array get must not charge or snapshot the full collection");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(255)));
+}
+
+#[test]
 fn borrowed_map_merge_uses_one_bounded_projection() {
     let mut runtime = runtime(concat!(
         "fn merge(values: MapView<i32, i64>) {\n",

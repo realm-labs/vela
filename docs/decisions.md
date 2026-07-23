@@ -2623,6 +2623,14 @@ absence is represented by `MissingCollectionEntry`, distinct from a general
 This prevents an unsupported value projection or nested adapter error from
 being silently reported as a missing key.
 
+Array `get(index)` is a shared standard method on owned Array, `ArrayView`, and
+`ArrayMut`. Owned execution reads the indexed value directly. HostRef-backed
+execution validates the non-negative `i64` index, queries the live length to
+distinguish absence from an unrelated host-path failure, and performs at most
+one indexed HostAccess read. An absent index becomes `Option::None`; other
+errors propagate. The operation never projects the collection, so its
+execution-unit cost is independent of collection length.
+
 Read-only borrowed Array `contains` and `index_of` take one semantic values
 projection under the active lease and charge its full length before searching.
 Each projected boundary value is compared with the existing exact `ValueKey`

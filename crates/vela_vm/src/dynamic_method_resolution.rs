@@ -338,6 +338,7 @@ fn array_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
     Some(match method {
         "len" => ids.array_len,
         "is_empty" => ids.array_is_empty,
+        "get" => ids.array_get,
         "push" => ids.array_push,
         "pop" => ids.array_pop,
         "insert" => ids.array_insert,

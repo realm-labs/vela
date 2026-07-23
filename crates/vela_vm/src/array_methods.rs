@@ -7,7 +7,7 @@ mod transform;
 
 pub(crate) use aggregation::{group_by, sum, sum_values};
 pub(crate) use higher_order::{all, any, count, filter, find, map};
-pub(crate) use lookup::{contains_by_key, first, index_of_by_key, last};
+pub(crate) use lookup::{contains_by_key, first, get, index_of_by_key, last};
 pub(crate) use mutation::{clear, extend, insert, pop, push, remove_at};
 pub(crate) use ordering::{
     ResumableArrayOrdering, ResumableArrayOrderingKind, ResumableArrayOrderingStep,

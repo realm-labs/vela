@@ -15,6 +15,12 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "Returns true when the array has no elements.",
     ),
     MethodSpec::new(
+        "get",
+        &[ParamSpec::new("index", "i64")],
+        "Option<Any>",
+        "Returns the value at an index, or Option::None.",
+    ),
+    MethodSpec::new(
         "push",
         &[ParamSpec::new("value", "any")],
         "()",

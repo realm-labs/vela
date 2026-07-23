@@ -343,6 +343,13 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
     ),
     StdMethodSpec::new(
         "Array",
+        "get",
+        &[StdParamSpec::new("index", "i64")],
+        "Option<Any>",
+        "Returns the value at an index, or Option::None.",
+    ),
+    StdMethodSpec::new(
+        "Array",
         "push",
         &[StdParamSpec::new("value", "any")],
         "()",

@@ -14,6 +14,10 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
         let filter = stdlib_method_fact(receiver, "filter", None).expect("read method fact");
         assert_eq!(filter.receiver, receiver.clone());
         assert_eq!(filter.returns, TypeFact::array(TypeFact::I64));
+        let get = stdlib_method_fact(receiver, "get", None).expect("indexed lookup fact");
+        assert_eq!(get.receiver, receiver.clone());
+        assert_eq!(get.params, vec![TypeFact::I64]);
+        assert_eq!(get.returns, TypeFact::option(TypeFact::I64));
     }
     let push = stdlib_method_fact(&array_growable, "push", None).expect("growable push");
     assert_eq!(push.receiver, array_growable);
@@ -54,6 +58,7 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
         .map(|fact| fact.method)
         .collect::<Vec<_>>();
     assert!(completion_methods.contains(&"group_by"));
+    assert!(completion_methods.contains(&"get"));
     assert!(!completion_methods.contains(&"push"));
 }
 

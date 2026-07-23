@@ -31,6 +31,15 @@ fn linked_standard_value_method_caches_array_first_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_array_get_target() {
+    assert_array_option_scalar_cache(
+        linked_array_get_cache_program(),
+        StandardMethodInlineCacheTarget::Get,
+        4,
+    );
+}
+
+#[test]
 fn linked_standard_value_method_caches_array_last_target() {
     assert_array_option_scalar_cache(
         linked_array_last_cache_program(),

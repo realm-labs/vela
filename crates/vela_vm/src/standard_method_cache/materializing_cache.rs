@@ -27,6 +27,7 @@ pub(super) fn call_cached_array_lookup_option(
 ) -> Option<VmResult<Value>> {
     let (method, operation) = match target {
         StandardMethodInlineCacheTarget::First => ("first", "method first"),
+        StandardMethodInlineCacheTarget::Get => ("get", "method get"),
         StandardMethodInlineCacheTarget::Last => ("last", "method last"),
         _ => return None,
     };
@@ -38,6 +39,17 @@ pub(super) fn call_cached_array_lookup_option(
                 Err(error) => return Some(Err(error)),
             }
             slots.first().copied()
+        }
+        StandardMethodInlineCacheTarget::Get => {
+            match crate::runtime_checks::expect_arity(method, args, 1) {
+                Ok(()) => {}
+                Err(error) => return Some(Err(error)),
+            }
+            let index = match array_index_value(&args[0], operation) {
+                Ok(index) => index,
+                Err(error) => return Some(Err(error)),
+            };
+            slots.get(index).copied()
         }
         StandardMethodInlineCacheTarget::Last => {
             match crate::runtime_checks::expect_arity(method, args, 0) {

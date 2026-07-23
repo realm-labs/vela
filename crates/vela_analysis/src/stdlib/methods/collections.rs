@@ -11,6 +11,10 @@ pub(super) fn array_method_fact(
     match method {
         "len" => Some(StdlibMethodFact::new(receiver, "len", TypeFact::I64)),
         "is_empty" => Some(StdlibMethodFact::new(receiver, "is_empty", TypeFact::BOOL)),
+        "get" => Some(
+            StdlibMethodFact::new(receiver, "get", TypeFact::option(element.clone()))
+                .with_params(vec![TypeFact::I64]),
+        ),
         "push" => Some(
             StdlibMethodFact::new(receiver, "push", TypeFact::UNIT)
                 .with_params(vec![element.clone()]),

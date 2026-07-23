@@ -319,6 +319,9 @@ fn standard_method_target(
         (StandardMethodReceiver::Array, id) if id == ids.array_is_empty => {
             StandardMethodInlineCacheTarget::IsEmpty
         }
+        (StandardMethodReceiver::Array, id) if id == ids.array_get => {
+            StandardMethodInlineCacheTarget::Get
+        }
         (StandardMethodReceiver::Array, id) if id == ids.array_contains => {
             StandardMethodInlineCacheTarget::Contains
         }
@@ -535,7 +538,9 @@ pub(crate) fn call_standard_cached(
         return call_readonly_cached(receiver, cache, args, heap.as_deref());
     }
     match cache.target {
-        StandardMethodInlineCacheTarget::First | StandardMethodInlineCacheTarget::Last
+        StandardMethodInlineCacheTarget::First
+        | StandardMethodInlineCacheTarget::Get
+        | StandardMethodInlineCacheTarget::Last
             if cache.receiver == StandardMethodReceiver::Array =>
         {
             return call_cached_array_lookup_option(receiver, cache.target, args, heap, budget);
@@ -771,6 +776,9 @@ pub(crate) fn call_standard_cached(
         }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::First) => {
             array_methods::first(receiver, args, heap, budget)
+        }
+        (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Get) => {
+            array_methods::get(receiver, args, heap, budget)
         }
         (StandardMethodReceiver::Array, StandardMethodInlineCacheTarget::Last) => {
             array_methods::last(receiver, args, heap, budget)

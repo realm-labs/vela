@@ -54,6 +54,7 @@ pub(crate) struct StdMethodIds {
     pub(crate) char_is_ascii_digit: MethodId,
     pub(crate) array_len: MethodId,
     pub(crate) array_is_empty: MethodId,
+    pub(crate) array_get: MethodId,
     pub(crate) array_push: MethodId,
     pub(crate) array_pop: MethodId,
     pub(crate) array_insert: MethodId,
@@ -184,6 +185,7 @@ impl StdMethodIds {
             char_is_ascii_digit: standard_method_id("Char", "is_ascii_digit"),
             array_len: standard_method_id("Array", "len"),
             array_is_empty: standard_method_id("Array", "is_empty"),
+            array_get: standard_method_id("Array", "get"),
             array_push: standard_method_id("Array", "push"),
             array_pop: standard_method_id("Array", "pop"),
             array_insert: standard_method_id("Array", "insert"),
@@ -287,6 +289,7 @@ pub(crate) fn host_collection_query(method_id: MethodId) -> Option<HostCollectio
 pub(crate) enum HostCollectionLookup {
     ArrayContains,
     ArrayFirst,
+    ArrayGet,
     ArrayIndexOf,
     ArrayLast,
     MapHas,
@@ -301,6 +304,7 @@ impl HostCollectionLookup {
         match self {
             Self::ArrayContains => "contains",
             Self::ArrayFirst => "first",
+            Self::ArrayGet => "get",
             Self::ArrayIndexOf => "index_of",
             Self::ArrayLast => "last",
             Self::MapHas | Self::SetHas => "has",
@@ -314,6 +318,7 @@ impl HostCollectionLookup {
         match self {
             Self::ArrayFirst | Self::ArrayLast => 0,
             Self::ArrayContains
+            | Self::ArrayGet
             | Self::ArrayIndexOf
             | Self::MapHas
             | Self::MapGet
@@ -329,6 +334,8 @@ pub(crate) fn host_collection_lookup(method_id: MethodId) -> Option<HostCollecti
         Some(HostCollectionLookup::ArrayContains)
     } else if method_id == ids.array_first {
         Some(HostCollectionLookup::ArrayFirst)
+    } else if method_id == ids.array_get {
+        Some(HostCollectionLookup::ArrayGet)
     } else if method_id == ids.array_index_of {
         Some(HostCollectionLookup::ArrayIndexOf)
     } else if method_id == ids.array_last {

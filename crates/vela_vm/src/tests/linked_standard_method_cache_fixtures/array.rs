@@ -12,6 +12,10 @@ pub(in crate::tests) fn linked_array_first_cache_program() -> LinkedMethodCacheF
     linked_array_i64_call_cache_program("first", &[2, 4], 2, &[])
 }
 
+pub(in crate::tests) fn linked_array_get_cache_program() -> LinkedMethodCacheFixture {
+    linked_array_i64_call_cache_program("get", &[2, 4, 1], 2, &[2])
+}
+
 pub(in crate::tests) fn linked_array_last_cache_program() -> LinkedMethodCacheFixture {
     linked_array_i64_call_cache_program("last", &[2, 4], 2, &[])
 }

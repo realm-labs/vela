@@ -26,6 +26,32 @@ pub(crate) fn last(
     last_value(receiver, heap, budget)
 }
 
+pub(crate) fn get(
+    receiver: &Value,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    expect_arity("get", args, 1)?;
+    let index = super::index_value(&args[0], "method get")?;
+    let payload = match receiver {
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Array(values)) =
+                heap.as_deref().and_then(|heap| heap.heap.get(*reference))
+            else {
+                return type_error("method get");
+            };
+            values.get(index).map(stored_runtime_value)
+        }
+        _ => return type_error("method get"),
+    };
+    if payload.is_some() {
+        option_value("Some", payload, heap, budget)
+    } else {
+        option_value("None", None, heap, budget)
+    }
+}
+
 pub(crate) fn contains_by_key(
     receiver: &Value,
     args: &[Value],
