@@ -219,6 +219,8 @@ struct CollectionLeaf {
     fixed: [i64; 2],
     #[script(get)]
     counters: Vec<DirectCounter>,
+    #[script(get)]
+    fixed_counters: [DirectCounter; 1],
 }
 
 #[script_methods]
@@ -519,6 +521,7 @@ fn nested_collection_protocols_execute_prepared_field_slots() {
             tags: BTreeSet::from(["ready".to_owned()]),
             fixed: [13, 21],
             counters: vec![DirectCounter { total: 34 }],
+            fixed_counters: [DirectCounter { total: 55 }],
         },
     };
     let plan = HostTargetPlan::new(CollectionOuter::vela_host_type_id())
@@ -751,6 +754,35 @@ fn nested_collection_protocols_execute_prepared_field_slots() {
     .expect("mixed prepared chain should execute the dense element field mutation");
     assert_eq!(outer.leaf.counters[0].total, 42);
 
+    let fixed_element_plan = HostTargetPlan::new(CollectionOuter::vela_host_type_id())
+        .field(CollectionOuter::vela_field_id_leaf())
+        .field(CollectionLeaf::vela_field_id_fixed_counters())
+        .const_index(0)
+        .field(DirectCounter::vela_field_id_total());
+    let fixed_element_target = HostTargetInstance::new(root, &fixed_element_plan, &[]);
+    let fixed_element_access =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+            &outer,
+            HostAccessSpec::new(
+                HostAccessOp::Mutate(HostMutationOp::Add),
+                &fixed_element_plan,
+            ),
+        )
+        .expect("fixed-array element field should resolve through a mixed prepared chain");
+    assert_eq!(
+        fixed_element_access.prepared_step(2),
+        Some(PreparedHostStep::AdapterLocal(0))
+    );
+    <CollectionOuter as vela_host::object::ScriptHostObject>::mutate_resolved_host(
+        &mut outer,
+        fixed_element_access,
+        fixed_element_target,
+        HostMutationOp::Add,
+        HostValue::Scalar(vela_common::ScalarValue::I64(3)),
+    )
+    .expect("fixed-array mixed chain should execute the dense element mutation");
+    assert_eq!(outer.leaf.fixed_counters[0].total, 58);
+
     let remove_access =
         <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
             &outer,
@@ -764,4 +796,34 @@ fn nested_collection_protocols_execute_prepared_field_slots() {
     )
     .expect("indexed nested removal should reach the collection adapter");
     assert!(outer.leaf.entries.is_empty());
+}
+
+#[test]
+fn borrowed_slice_element_fields_execute_mixed_prepared_steps() {
+    let mut values = [DirectCounter { total: 8 }];
+    let slice: &mut [DirectCounter] = &mut values;
+    let plan = HostTargetPlan::new(vela_common::HostTypeId::new(0))
+        .const_index(0)
+        .field(DirectCounter::vela_field_id_total());
+    let root = HostRef::new(vela_common::HostTypeId::new(0), HostObjectId::new(11), 1);
+    let target = HostTargetInstance::new(root, &plan, &[]);
+    let access = <[DirectCounter] as vela_host::object::ScriptHostObject>::resolve_host_target(
+        slice,
+        HostAccessSpec::new(HostAccessOp::Mutate(HostMutationOp::Add), &plan),
+    )
+    .expect("borrowed slice element field should resolve through a mixed prepared chain");
+
+    assert_eq!(
+        access.prepared_step(0),
+        Some(PreparedHostStep::AdapterLocal(0))
+    );
+    <[DirectCounter] as vela_host::object::ScriptHostObject>::mutate_resolved_host(
+        slice,
+        access,
+        target,
+        HostMutationOp::Add,
+        HostValue::Scalar(vela_common::ScalarValue::I64(5)),
+    )
+    .expect("borrowed slice mixed chain should execute the dense element mutation");
+    assert_eq!(values[0].total, 13);
 }

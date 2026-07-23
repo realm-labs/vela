@@ -1072,9 +1072,9 @@ borrowed slices use the same index classification, while `BTreeMap<K, V>` and
 suffixes. The inline prepared plan can interleave generated field slots with
 adapter-local steps, and sequence element-field reads, writes, and compound
 mutations execute the terminal dense field thunk after consuming the index
-step. Calls and non-sequence mixed-step execution remain open. Nested field
-and method resolution and execution reuse the original linked `HostTargetPlan`
-through
+step; fixed arrays and borrowed slices use the same mixed-step execution. Calls
+and keyed-map mixed-step execution remain open. Nested field and method
+resolution and execution reuse the original linked `HostTargetPlan` through
 checked spec/instance offsets rather than allocating and cloning suffix plans.
 Generated adapters cache up to four schema-local field slots in the copyable
 resolved access and execute common field reads, writes, mutations, and method

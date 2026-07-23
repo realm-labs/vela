@@ -180,10 +180,7 @@ pub trait ScriptHostFieldAccess {
     fn resolve_host_type_target_from(
         _spec: HostAccessSpec<'_>,
         _offset: usize,
-    ) -> HostResult<ResolvedHostAccess>
-    where
-        Self: Sized,
-    {
+    ) -> HostResult<ResolvedHostAccess> {
         Ok(ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)))
     }
 

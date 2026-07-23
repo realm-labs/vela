@@ -4,7 +4,9 @@ use crate::error::HostResult;
 use crate::protocol::{
     HostCollectionMutation, HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot,
 };
-use crate::resolved::{HostAccessSpec, HostSchemaEpoch, ResolvedHostAccess};
+use crate::resolved::{
+    HostAccessSpec, HostMutationOp, HostSchemaEpoch, PreparedHostStep, ResolvedHostAccess,
+};
 use crate::target::{HostPathPart, HostTargetInstance};
 use crate::value::HostValue;
 
@@ -21,17 +23,90 @@ where
         HostTypeId::new(0)
     }
 
+    fn resolve_host_type_target_from(
+        spec: HostAccessSpec<'_>,
+        offset: usize,
+    ) -> HostResult<ResolvedHostAccess> {
+        Ok(match spec.plan.parts.as_slice().get(offset) {
+            None => ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0)),
+            Some(HostPathPart::ConstIndex(_) | HostPathPart::DynIndex { .. })
+                if offset + 1 == spec.plan.parts.len() =>
+            {
+                ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0))
+            }
+            Some(HostPathPart::ConstIndex(_) | HostPathPart::DynIndex { .. }) => {
+                T::resolve_host_type_target_from(spec, offset + 1)?.prepend_prepared_adapter(0)
+            }
+            Some(_) => ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
+        })
+    }
+
     fn resolve_host_target_from(
         &self,
         spec: HostAccessSpec<'_>,
         offset: usize,
     ) -> HostResult<ResolvedHostAccess> {
-        Ok(match spec.plan.parts.as_slice().get(offset) {
-            None | Some(HostPathPart::ConstIndex(_) | HostPathPart::DynIndex { .. }) => {
-                ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0))
-            }
-            Some(_) => ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
-        })
+        Self::resolve_host_type_target_from(spec, offset)
+    }
+
+    fn read_resolved_host_target_from(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
+        if let Some((PreparedHostStep::AdapterLocal(0), child_access)) = access.next_prepared_step()
+        {
+            let index = checked_index(target, target.offset)?;
+            return self
+                .get(index)
+                .ok_or_else(|| missing_target(target))?
+                .read_resolved_host_target_from(child_access, target.at_offset(target.offset + 1));
+        }
+        self.read_host_target_from(target, target.offset)
+    }
+
+    fn write_resolved_host_target_from(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        value: HostValue,
+    ) -> HostResult<()> {
+        if let Some((PreparedHostStep::AdapterLocal(0), child_access)) = access.next_prepared_step()
+        {
+            let index = checked_index(target, target.offset)?;
+            return self
+                .get_mut(index)
+                .ok_or_else(|| missing_target(target))?
+                .write_resolved_host_target_from(
+                    child_access,
+                    target.at_offset(target.offset + 1),
+                    value,
+                );
+        }
+        self.write_host_target_from(target, target.offset, value)
+    }
+
+    fn mutate_resolved_host_target_from(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        op: HostMutationOp,
+        rhs: HostValue,
+    ) -> HostResult<()> {
+        if let Some((PreparedHostStep::AdapterLocal(0), child_access)) = access.next_prepared_step()
+        {
+            let index = checked_index(target, target.offset)?;
+            return self
+                .get_mut(index)
+                .ok_or_else(|| missing_target(target))?
+                .mutate_resolved_host_target_from(
+                    child_access,
+                    target.at_offset(target.offset + 1),
+                    op,
+                    rhs,
+                );
+        }
+        self.mutate_host_target_from(target, target.offset, op, rhs)
     }
 
     fn read_host_target_from(
