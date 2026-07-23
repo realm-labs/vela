@@ -40,12 +40,22 @@ pub enum HostMutationOp {
 pub struct HostAccessSpec<'a> {
     pub op: HostAccessOp,
     pub plan: &'a HostTargetPlan,
+    pub offset: usize,
 }
 
 impl<'a> HostAccessSpec<'a> {
     #[must_use]
     pub const fn new(op: HostAccessOp, plan: &'a HostTargetPlan) -> Self {
-        Self { op, plan }
+        Self {
+            op,
+            plan,
+            offset: 0,
+        }
+    }
+
+    #[must_use]
+    pub const fn at_offset(self, offset: usize) -> Self {
+        Self { offset, ..self }
     }
 }
 
@@ -109,8 +119,13 @@ mod tests {
 
         assert_eq!(read.op, HostAccessOp::Read);
         assert_eq!(read.plan, &plan);
+        assert_eq!(read.offset, 0);
         assert_ne!(read.op, call.op);
         assert_eq!(read.plan, call.plan);
+
+        let nested = call.at_offset(1);
+        assert_eq!(nested.plan, &plan);
+        assert_eq!(nested.offset, 1);
     }
 
     #[test]

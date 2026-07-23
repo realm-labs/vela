@@ -175,6 +175,17 @@ impl DirectPeer {}
 impl DirectConfig {}
 
 #[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(path = "game::counter::DirectWrapper")]
+struct DirectWrapper {
+    #[script(get)]
+    counter: DirectCounter,
+}
+
+#[script_methods]
+impl DirectWrapper {}
+
+#[allow(dead_code)]
 #[script_methods]
 impl DirectCounter {
     #[script_method(effect = "write_host", reflect = true)]
@@ -347,4 +358,37 @@ fn script_methods_resolve_root_methods_to_direct_access() {
     .expect("generated dense method adapter should execute");
     assert_eq!(result, HostValue::Scalar(vela_common::ScalarValue::I64(5)));
     assert_eq!(counter.total, 5);
+}
+
+#[test]
+fn nested_script_method_resolution_reuses_the_original_target_plan() {
+    let mut wrapper = DirectWrapper {
+        counter: DirectCounter { total: 2 },
+    };
+    let plan = HostTargetPlan::new(DirectWrapper::vela_host_type_id())
+        .field(DirectWrapper::vela_field_id_counter());
+    let method = HostMethodId::new(u128::from(stable_id(
+        "host_method",
+        "game::counter::DirectCounter",
+        "add",
+    )));
+    let access = <DirectWrapper as vela_host::object::ScriptHostObject>::resolve_host_target(
+        &wrapper,
+        HostAccessSpec::new(HostAccessOp::Call(method), &plan),
+    )
+    .expect("nested method should resolve through the target-plan cursor");
+
+    assert_eq!(access.adapter_kind, ResolvedHostAccessKind::DirectMethod(0));
+    let root = HostRef::new(DirectWrapper::vela_host_type_id(), HostObjectId::new(8), 1);
+    let result = <DirectWrapper as vela_host::object::ScriptHostObject>::call_resolved_host(
+        &mut wrapper,
+        access,
+        HostTargetInstance::new(root, &plan, &[]),
+        method,
+        &[HostValue::Scalar(vela_common::ScalarValue::I64(3))],
+    )
+    .expect("nested direct method should execute without rewriting its plan");
+
+    assert_eq!(result, HostValue::Scalar(vela_common::ScalarValue::I64(5)));
+    assert_eq!(wrapper.counter.total, 5);
 }

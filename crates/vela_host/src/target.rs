@@ -287,12 +287,23 @@ pub struct HostTargetInstance<'a> {
     pub root: HostRef,
     pub plan: &'a HostTargetPlan,
     pub args: &'a [HostPathArg<'a>],
+    pub offset: usize,
 }
 
 impl<'a> HostTargetInstance<'a> {
     #[must_use]
     pub fn new(root: HostRef, plan: &'a HostTargetPlan, args: &'a [HostPathArg<'a>]) -> Self {
-        Self { root, plan, args }
+        Self {
+            root,
+            plan,
+            args,
+            offset: 0,
+        }
+    }
+
+    #[must_use]
+    pub const fn at_offset(self, offset: usize) -> Self {
+        Self { offset, ..self }
     }
 
     #[must_use]

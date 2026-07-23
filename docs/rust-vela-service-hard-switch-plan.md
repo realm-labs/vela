@@ -1064,7 +1064,9 @@ boundary. Early release retires the live slot and preserves only a call-local
 expired-borrow diagnostic tombstone. Remaining standard bindings, movement of
 scoped, extern, Runtime-owned, borrow-group, provenance, prepared-adapter, and
 pinned-generation metadata behind the compact table, and nested prepared
-field/method adapter chains remain open.
+field/method slot-chain execution remain open. Nested method resolution and
+execution already reuse the original linked `HostTargetPlan` through checked
+spec/instance offsets rather than allocating and cloning suffix plans.
 
 ### S3 — Standard Rust types, views, and collection protocols
 

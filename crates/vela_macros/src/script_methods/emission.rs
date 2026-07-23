@@ -152,11 +152,11 @@ pub(super) fn script_host_object_impl_tokens(
                 &self,
                 spec: ::vela_host::resolved::HostAccessSpec<'_>,
             ) -> ::vela_host::error::HostResult<::vela_host::resolved::ResolvedHostAccess> {
-                if !spec.plan.parts.is_empty() {
+                if spec.offset < spec.plan.parts.len() {
                     return ::vela_host::object::ScriptHostFieldAccess::resolve_host_target_from(
                         self,
                         spec,
-                        0,
+                        spec.offset,
                     );
                 }
                 let owner_stable_path = Self::vela_stable_type_path();
@@ -244,11 +244,11 @@ pub(super) fn script_host_object_impl_tokens(
                 method: ::vela_common::HostMethodId,
                 args: &[::vela_host::value::HostValue],
             ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
-                if !target.plan.parts.is_empty() {
+                if target.offset < target.plan.parts.len() {
                     return ::vela_host::object::ScriptHostFieldAccess::call_host_target_from(
                         self,
                         target,
-                        0,
+                        target.offset,
                         method,
                         args,
                     );

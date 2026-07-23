@@ -280,18 +280,13 @@ fn field_resolve_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
                     #slot,
                     ::vela_host::resolved::HostSchemaEpoch::new(0),
                 ))
-            } else if let ::vela_host::resolved::HostAccessOp::Call(method) = spec.op {
-                let __vela_child_plan = ::vela_host::target::HostTargetPlan::from_parts(
-                    spec.plan.root_type,
-                    spec.plan.parts.as_slice()[(offset + 1)..].iter().cloned(),
-                );
-                let __vela_child_spec = ::vela_host::resolved::HostAccessSpec::new(
-                    ::vela_host::resolved::HostAccessOp::Call(method),
-                    &__vela_child_plan,
-                );
+            } else if matches!(
+                spec.op,
+                ::vela_host::resolved::HostAccessOp::Call(_)
+            ) {
                 ::vela_host::object::ScriptHostObject::resolve_host_target(
                     &self.#rust_name,
-                    __vela_child_spec,
+                    spec.at_offset(offset + 1),
                 )
             } else {
                 ::vela_host::object::ScriptHostFieldAccess::resolve_host_target_from(
@@ -354,19 +349,11 @@ fn field_call_arm_tokens(field: &FieldMeta) -> TokenStream {
         Some(::vela_host::target::HostPathPart::Field(field))
             if *field == ::vela_def::FieldId::new(#id) =>
         {
-            let __vela_child_plan = ::vela_host::target::HostTargetPlan::from_parts(
-                target.plan.root_type,
-                target.plan.parts.as_slice()[(offset + 1)..].iter().cloned(),
-            );
-            let __vela_child_target = ::vela_host::target::HostTargetInstance::new(
-                target.root,
-                &__vela_child_plan,
-                target.args,
-            );
             let __vela_child_spec = ::vela_host::resolved::HostAccessSpec::new(
                 ::vela_host::resolved::HostAccessOp::Call(method),
-                &__vela_child_plan,
-            );
+                target.plan,
+            )
+            .at_offset(offset + 1);
             let __vela_child_access =
                 ::vela_host::object::ScriptHostObject::resolve_host_target(
                     &self.#rust_name,
@@ -375,7 +362,7 @@ fn field_call_arm_tokens(field: &FieldMeta) -> TokenStream {
             ::vela_host::object::ScriptHostObject::call_resolved_host(
                 &mut self.#rust_name,
                 __vela_child_access,
-                __vela_child_target,
+                target.at_offset(offset + 1),
                 method,
                 args,
             )

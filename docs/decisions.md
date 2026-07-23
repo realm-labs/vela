@@ -1263,6 +1263,17 @@ metadata on those definitions and are used only when emitting current
 `HostTargetPlan` and host call operands. This keeps registry identity globally
 deterministic while preserving existing HostAccess adapter contracts.
 
+### Nested Host Target Traversal Uses Plan Cursors
+
+`HostAccessSpec` and `HostTargetInstance` carry a checked part offset into one
+immutable `HostTargetPlan`. Generated nested adapters advance that cursor when
+they delegate to a child field; they do not clone a path suffix or manufacture
+a temporary child plan. The cursor is traversal state only: it does not alter
+the canonical root, dynamic arguments, HostAccess operation, schema epoch, or
+permission and lease checks. A future fully prepared adapter chain may replace
+the remaining repeated leaf resolution, but must continue to reference the
+linked plan rather than materializing owned paths.
+
 ### Unlinked Bytecode Naming
 
 Compiler output bytecode is named `UnlinkedProgram`, `UnlinkedCodeObject`,

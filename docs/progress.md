@@ -64,8 +64,9 @@ set before returning, preserving atomic rollback.
 Generated `ScriptHost` adapters now consume their resolved dense field and
 method slots for root-level field reads/writes/mutations and synchronous root
 method calls. Those successful accesses no longer repeat stable field/method ID
-dispatch; nested prepared adapter chains remain open and continue through the
-validated HostTarget traversal.
+dispatch. Nested method resolution and execution now advance an offset through
+the original linked `HostTargetPlan` instead of cloning suffix plans; carrying
+the complete resolved field/method slot chain through execution remains open.
 Direct call arguments now keep an inline dense host-slot index separate from
 their mixed positional/named value entries. Every copied alias resolves its one
 binding/lease metadata entry in O(1) from the execution-assigned object range,
@@ -368,8 +369,8 @@ rebuilding contracts and request metadata on each call. Service-signature and
 Host/View/MutView closure traversal, remaining borrowed collection
 runtime views and type hints, consolidation of scoped/extern/Runtime-owned
 host and borrow-group metadata behind the compact slot table, nested prepared
-field/method adapter chains, and a post-S2 shorter owned-host reclamation
-policy remain open.
+field/method slot-chain execution beyond the allocation-free plan cursor, and
+a post-S2 shorter owned-host reclamation policy remain open.
 Runtime receiver enforcement is live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-
 signature facts.
