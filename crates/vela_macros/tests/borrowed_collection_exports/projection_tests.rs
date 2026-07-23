@@ -738,3 +738,87 @@ fn borrowed_collection_callbacks_reuse_owned_collection_semantics() {
         .expect("borrowed set callbacks should return ordinary owned sets");
     assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(2)));
 }
+
+#[test]
+fn borrowed_collection_retain_callbacks_write_through_transactionally() {
+    let mut runtime = runtime(
+        "fn array_retain(values) { values.retain(|value| value % 2 == 0); return values.len(); } fn returned_array_retain(owner: CollectionOwner) { let values = owner.values_mut(); values.retain(|value| value >= 7); return values.len(); } fn map_retain(scores: MapMut<i32, i64>) { scores.retain(|key, value| key >= 7i32 && value >= 6); return scores.len(); } fn set_retain(values: SetMut<i32>) { values.retain(|value| value >= 7i32); return values.len(); } fn array_retain_error(values) { values.retain(|value| collections::retain_non_two(value)); }",
+    );
+
+    let mut array = vec![2_i64, 3, 4, 5];
+    let mut args = CallArgs::new();
+    args.push_collection_mut("values", &mut array);
+    let result = runtime
+        .call("array_retain", args, CallOptions::unbounded())
+        .expect("borrowed Array retain should write through one completed callback mask");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(2)));
+    drop(result);
+    assert_eq!(array, vec![2, 4]);
+
+    let shared = vec![2_i64, 3, 4];
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &shared);
+    let error = runtime
+        .call("array_retain", args, CallOptions::unbounded())
+        .expect_err("a shared dynamic Array view must not discover retain");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::UnknownMethod { method } if method == "retain"
+    ));
+    assert_eq!(shared, vec![2, 3, 4]);
+
+    let mut fixed = [2_i64, 3, 4];
+    let mut args = CallArgs::new();
+    args.push_slice_mut("values", fixed.as_mut_slice());
+    let error = runtime
+        .call("array_retain", args, CallOptions::unbounded())
+        .expect_err("a fixed-length dynamic Array view must not discover retain");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::UnknownMethod { method } if method == "retain"
+    ));
+    assert_eq!(fixed, [2, 3, 4]);
+
+    let mut owner = CollectionOwner {
+        values: vec![5, 7, 11],
+        totals: BTreeMap::new(),
+    };
+    let result = runtime
+        .call(
+            "returned_array_retain",
+            CallArgs::new().with_host_mut("owner", &mut owner),
+            CallOptions::unbounded(),
+        )
+        .expect("a retained mutable collection view should keep its parent lease for write-back");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(2)));
+    drop(result);
+    assert_eq!(owner.values, vec![7, 11]);
+
+    let mut scores = BTreeMap::from([(3_i32, 4_i64), (7_i32, 6_i64), (9_i32, 11_i64)]);
+    let mut args = CallArgs::new();
+    args.push_collection_mut("scores", &mut scores);
+    let result = runtime
+        .call("map_retain", args, CallOptions::unbounded())
+        .expect("borrowed Map retain should write through selected keys");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(2)));
+    drop(result);
+    assert_eq!(scores, BTreeMap::from([(7_i32, 6_i64), (9_i32, 11_i64)]));
+
+    let mut values = BTreeSet::from([3_i32, 7_i32, 9_i32]);
+    let mut args = CallArgs::new();
+    args.push_collection_mut("values", &mut values);
+    let result = runtime
+        .call("set_retain", args, CallOptions::unbounded())
+        .expect("borrowed Set retain should write through selected keys");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(2)));
+    drop(result);
+    assert_eq!(values, BTreeSet::from([7_i32, 9_i32]));
+
+    let mut unchanged = vec![1_i64, 2, 3];
+    let mut args = CallArgs::new();
+    args.push_collection_mut("values", &mut unchanged);
+    runtime
+        .call("array_retain_error", args, CallOptions::unbounded())
+        .expect_err("a callback error must occur before retain mutates Rust state");
+    assert_eq!(unchanged, vec![1, 2, 3]);
+}

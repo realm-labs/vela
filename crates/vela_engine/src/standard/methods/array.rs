@@ -48,6 +48,12 @@ const ARRAY_METHODS: &[MethodSpec] = &[
         "Appends all values from another array.",
     ),
     MethodSpec::new("clear", &[], "()", "Removes all values."),
+    MethodSpec::new(
+        "retain",
+        &[ParamSpec::new("callback", "function")],
+        "()",
+        "Retains values accepted by a callback.",
+    ),
     MethodSpec::new("first", &[], "Option<Any>", "Returns the first value."),
     MethodSpec::new("last", &[], "Option<Any>", "Returns the last value."),
     MethodSpec::new(

@@ -1296,9 +1296,14 @@ available at the domain-neutral host boundary: sequence requests validate an
 unchanged length and a complete decision mask, while keyed requests convert
 the complete expected/retained key sets and validate the current Map or Set
 key snapshot before one standard-container mutation. The public resumable
-callback method and completion path still remain open, as do complex element
-HostRefs, borrowed-source extension, write-through filter, and prepared live
-grouping/traversal.
+callback and completion path are now live for owned Array/Map/Set and
+growable exclusive HostRef views. Decisions remain resumable until every
+callback succeeds, then owned storage or the original HostRef alias receives
+one checked retain mutation. Callback errors, final traversal budget failure,
+and stale structural snapshots are non-mutating; retained child views use
+their parent lease, and shared/fixed views do not expose the method. Complex
+element HostRefs, borrowed-source extension, write-through filter, and
+prepared live grouping/traversal remain open.
 
 ### S4 — Service contract and Rust-only generation
 

@@ -394,6 +394,21 @@ fn main() {
     assert_callback_value_method_cache(
         r#"
 fn main() {
+    let values = [1, 2, 3, 4];
+    values.retain(|value| value % 2 == 0);
+    return values.sum();
+}
+"#,
+        "retain",
+        "Array",
+        "retain",
+        StandardMethodReceiver::Array,
+        CallbackMethodInlineCacheTarget::Retain,
+        Value::i64(6),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
     return option::unwrap_or([1, 2, 3].find(|value| value == 2), 0);
 }
 "#,
@@ -506,6 +521,21 @@ fn main() {
     assert_callback_value_method_cache(
         r#"
 fn main() {
+    let rewards = {"gold": 4, "xp": 6, "quest": 8};
+    rewards.retain(|key, value| key != "gold" && value >= 6);
+    return rewards.values().collect_array().sum();
+}
+"#,
+        "retain",
+        "Map",
+        "retain",
+        StandardMethodReceiver::Map,
+        CallbackMethodInlineCacheTarget::Retain,
+        Value::i64(14),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
     let found = {"gold": 4, "xp": 6}.find(|key, value| key == "xp" && value == 6);
     let entry = option::unwrap_or(found, MapEntry { key: "", value: 0 });
     return entry.value;
@@ -586,6 +616,21 @@ fn main() {
         StandardMethodReceiver::Set,
         CallbackMethodInlineCacheTarget::Filter,
         Value::i64(5),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    let values = set::from_array([1, 2, 3, 4]);
+    values.retain(|value| value > 2);
+    return values.values().collect_array().sum();
+}
+"#,
+        "retain",
+        "Set",
+        "retain",
+        StandardMethodReceiver::Set,
+        CallbackMethodInlineCacheTarget::Retain,
+        Value::i64(7),
     );
     assert_callback_value_method_cache(
         r#"

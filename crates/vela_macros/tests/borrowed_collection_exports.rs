@@ -44,6 +44,16 @@ pub fn contains_i32(values: &BTreeSet<i32>, value: i32) -> bool {
     values.contains(&value)
 }
 
+#[export(path = "collections::retain_non_two")]
+pub fn retain_non_two(value: i64) -> VmResult<bool> {
+    if value == 2 {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "retain callback failure fixture",
+        }));
+    }
+    Ok(value > 0)
+}
+
 #[export(path = "collections::merge_async")]
 pub async fn merge_async(values: &Vec<i64>, totals: &mut BTreeMap<String, i64>) -> i64 {
     merge(values, totals)
@@ -1155,6 +1165,7 @@ fn collection_engine() -> Engine {
         .register_exports(vela_export_bundle_add())
         .register_exports(vela_export_bundle_lookup_i32())
         .register_exports(vela_export_bundle_contains_i32())
+        .register_exports(vela_export_bundle_retain_non_two())
         .register_exports(vela_export_bundle_merge_async())
         .register_exports(vela_export_bundle_fixed_sum())
         .register_exports(vela_export_bundle_fixed_bump())

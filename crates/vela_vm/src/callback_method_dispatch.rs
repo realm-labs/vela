@@ -23,6 +23,7 @@ pub(crate) struct CallbackMethodDispatch<'a, 'heap> {
 struct CallbackMethodIds {
     array_map: MethodId,
     array_filter: MethodId,
+    array_retain: MethodId,
     array_find: MethodId,
     array_any: MethodId,
     array_all: MethodId,
@@ -31,6 +32,7 @@ struct CallbackMethodIds {
     array_group_by: MethodId,
     array_sort_by: MethodId,
     map_filter: MethodId,
+    map_retain: MethodId,
     map_find: MethodId,
     map_any: MethodId,
     map_all: MethodId,
@@ -38,6 +40,7 @@ struct CallbackMethodIds {
     map_map_values: MethodId,
     set_map: MethodId,
     set_filter: MethodId,
+    set_retain: MethodId,
     set_find: MethodId,
     set_any: MethodId,
     set_all: MethodId,
@@ -67,6 +70,7 @@ impl CallbackMethodIds {
         Self {
             array_map: standard_method_id("Array", "map"),
             array_filter: standard_method_id("Array", "filter"),
+            array_retain: standard_method_id("Array", "retain"),
             array_find: standard_method_id("Array", "find"),
             array_any: standard_method_id("Array", "any"),
             array_all: standard_method_id("Array", "all"),
@@ -75,6 +79,7 @@ impl CallbackMethodIds {
             array_group_by: standard_method_id("Array", "group_by"),
             array_sort_by: standard_method_id("Array", "sort_by"),
             map_filter: standard_method_id("Map", "filter"),
+            map_retain: standard_method_id("Map", "retain"),
             map_find: standard_method_id("Map", "find"),
             map_any: standard_method_id("Map", "any"),
             map_all: standard_method_id("Map", "all"),
@@ -82,6 +87,7 @@ impl CallbackMethodIds {
             map_map_values: standard_method_id("Map", "map_values"),
             set_map: standard_method_id("Set", "map"),
             set_filter: standard_method_id("Set", "filter"),
+            set_retain: standard_method_id("Set", "retain"),
             set_find: standard_method_id("Set", "find"),
             set_any: standard_method_id("Set", "any"),
             set_all: standard_method_id("Set", "all"),
@@ -223,6 +229,9 @@ fn callback_method_target(
         (StandardMethodReceiver::Array, id) if id == ids.array_filter => {
             CallbackMethodInlineCacheTarget::Filter
         }
+        (StandardMethodReceiver::Array, id) if id == ids.array_retain => {
+            CallbackMethodInlineCacheTarget::Retain
+        }
         (StandardMethodReceiver::Array, id) if id == ids.array_find => {
             CallbackMethodInlineCacheTarget::Find
         }
@@ -247,6 +256,9 @@ fn callback_method_target(
         (StandardMethodReceiver::Map, id) if id == ids.map_filter => {
             CallbackMethodInlineCacheTarget::Filter
         }
+        (StandardMethodReceiver::Map, id) if id == ids.map_retain => {
+            CallbackMethodInlineCacheTarget::Retain
+        }
         (StandardMethodReceiver::Map, id) if id == ids.map_find => {
             CallbackMethodInlineCacheTarget::Find
         }
@@ -267,6 +279,9 @@ fn callback_method_target(
         }
         (StandardMethodReceiver::Set, id) if id == ids.set_filter => {
             CallbackMethodInlineCacheTarget::Filter
+        }
+        (StandardMethodReceiver::Set, id) if id == ids.set_retain => {
+            CallbackMethodInlineCacheTarget::Retain
         }
         (StandardMethodReceiver::Set, id) if id == ids.set_find => {
             CallbackMethodInlineCacheTarget::Find
@@ -424,6 +439,15 @@ pub(crate) fn call_cached(
         }
         (StandardMethodReceiver::Set, CallbackMethodInlineCacheTarget::Filter) => {
             set_methods::filter(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Array, CallbackMethodInlineCacheTarget::Retain) => {
+            array_methods::retain(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Map, CallbackMethodInlineCacheTarget::Retain) => {
+            map_methods::retain(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Set, CallbackMethodInlineCacheTarget::Retain) => {
+            set_methods::retain(receiver, args, dispatch.runtime())
         }
         (StandardMethodReceiver::Option, CallbackMethodInlineCacheTarget::Filter) => {
             if let Some(result) = option_result_inactive::call_cached(

@@ -11,6 +11,7 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
     for receiver in [&array_view, &array_fixed] {
         assert!(stdlib_method_fact(receiver, "push", None).is_none());
         assert!(stdlib_method_fact(receiver, "remove_at", None).is_none());
+        assert!(stdlib_method_fact(receiver, "retain", None).is_none());
         let filter = stdlib_method_fact(receiver, "filter", None).expect("read method fact");
         assert_eq!(filter.receiver, receiver.clone());
         assert_eq!(filter.returns, TypeFact::array(TypeFact::I64));
@@ -22,6 +23,7 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
     let push = stdlib_method_fact(&array_growable, "push", None).expect("growable push");
     assert_eq!(push.receiver, array_growable);
     assert_eq!(push.params, vec![TypeFact::I64]);
+    assert!(stdlib_method_fact(&array_growable, "retain", None).is_some());
 
     let map_view = TypeFact::map_view(TypeFact::STRING, TypeFact::I64);
     let map_fixed = TypeFact::map_mut(
@@ -37,6 +39,7 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
     for receiver in [&map_view, &map_fixed] {
         assert!(stdlib_method_fact(receiver, "set", None).is_none());
         assert!(stdlib_method_fact(receiver, "remove", None).is_none());
+        assert!(stdlib_method_fact(receiver, "retain", None).is_none());
         assert!(stdlib_method_fact(receiver, "group_by", None).is_none());
         let contains_key =
             stdlib_method_fact(receiver, "contains_key", None).expect("membership method fact");
@@ -47,6 +50,7 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
         assert_eq!(values.receiver, receiver.clone());
     }
     assert!(stdlib_method_fact(&map_growable, "set", None).is_some());
+    assert!(stdlib_method_fact(&map_growable, "retain", None).is_some());
 
     let set_view = TypeFact::set_view(TypeFact::STRING);
     let set_fixed = TypeFact::set_mut(TypeFact::STRING, CollectionViewMutation::Fixed);
@@ -55,6 +59,7 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
         assert!(stdlib_method_fact(receiver, "add", None).is_none());
         assert!(stdlib_method_fact(receiver, "insert", None).is_none());
         assert!(stdlib_method_fact(receiver, "clear", None).is_none());
+        assert!(stdlib_method_fact(receiver, "retain", None).is_none());
         assert!(stdlib_method_fact(receiver, "filter", None).is_some());
         let contains =
             stdlib_method_fact(receiver, "contains", None).expect("membership method fact");
@@ -64,6 +69,7 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
     }
     assert!(stdlib_method_fact(&set_growable, "add", None).is_some());
     assert!(stdlib_method_fact(&set_growable, "insert", None).is_some());
+    assert!(stdlib_method_fact(&set_growable, "retain", None).is_some());
 
     let completion_methods = stdlib_method_facts(&array_view, None)
         .into_iter()

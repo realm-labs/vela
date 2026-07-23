@@ -382,6 +382,13 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
     StdMethodSpec::new("Array", "clear", &[], "()", "Removes all values."),
     StdMethodSpec::new(
         "Array",
+        "retain",
+        &[StdParamSpec::new("callback", "function")],
+        "()",
+        "Retains values accepted by a callback.",
+    ),
+    StdMethodSpec::new(
+        "Array",
         "first",
         &[],
         "Option<Any>",
@@ -598,6 +605,13 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
     StdMethodSpec::new("Map", "clear", &[], "()", "Removes all entries."),
     StdMethodSpec::new(
         "Map",
+        "retain",
+        &[StdParamSpec::new("callback", "function")],
+        "()",
+        "Retains entries accepted by a callback.",
+    ),
+    StdMethodSpec::new(
+        "Map",
         "keys",
         &[],
         "iterator",
@@ -724,6 +738,13 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
         "Adds all values from another set.",
     ),
     StdMethodSpec::new("Set", "clear", &[], "()", "Removes all values."),
+    StdMethodSpec::new(
+        "Set",
+        "retain",
+        &[StdParamSpec::new("callback", "function")],
+        "()",
+        "Retains values accepted by a callback.",
+    ),
     StdMethodSpec::new(
         "Set",
         "values",

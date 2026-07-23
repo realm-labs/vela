@@ -11,7 +11,7 @@ mod lookup;
 mod merge;
 mod mutation;
 
-pub(crate) use higher_order::{all, any, count, filter, find, map_values};
+pub(crate) use higher_order::{all, any, count, filter, find, map_values, retain};
 pub(crate) use introspection::{entries, keys, values};
 pub(crate) use lookup::{contains_key, get, get_or, has};
 pub(crate) use merge::{merge, merge_payload};

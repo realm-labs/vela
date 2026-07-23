@@ -21,6 +21,7 @@ const ARRAY_METHOD_NAMES: &[&str] = &[
     "insert",
     "extend",
     "clear",
+    "retain",
     "first",
     "last",
     "remove_at",
@@ -56,6 +57,7 @@ const MAP_METHOD_NAMES: &[&str] = &[
     "remove",
     "extend",
     "clear",
+    "retain",
     "keys",
     "values",
     "entries",
@@ -78,6 +80,7 @@ const SET_METHOD_NAMES: &[&str] = &[
     "remove",
     "extend",
     "clear",
+    "retain",
     "values",
     "map",
     "filter",
@@ -327,35 +330,41 @@ fn collection_method_allowed(receiver: &TypeFact, method: &str) -> bool {
         TypeFact::Array { .. } | TypeFact::Map { .. } | TypeFact::Set { .. } => true,
         TypeFact::ArrayView { .. } => !matches!(
             method,
-            "push" | "pop" | "insert" | "extend" | "clear" | "remove_at"
+            "push" | "pop" | "insert" | "extend" | "clear" | "retain" | "remove_at"
         ),
         TypeFact::ArrayMut {
             mutation: CollectionViewMutation::Fixed,
             ..
         } => !matches!(
             method,
-            "push" | "pop" | "insert" | "extend" | "clear" | "remove_at"
+            "push" | "pop" | "insert" | "extend" | "clear" | "retain" | "remove_at"
         ),
         TypeFact::ArrayMut {
             mutation: CollectionViewMutation::Growable,
             ..
         } => true,
-        TypeFact::MapView { .. } => !matches!(method, "set" | "remove" | "extend" | "clear"),
+        TypeFact::MapView { .. } => {
+            !matches!(method, "set" | "remove" | "extend" | "clear" | "retain")
+        }
         TypeFact::MapMut {
             mutation: CollectionViewMutation::Fixed,
             ..
-        } => !matches!(method, "set" | "remove" | "extend" | "clear"),
+        } => !matches!(method, "set" | "remove" | "extend" | "clear" | "retain"),
         TypeFact::MapMut {
             mutation: CollectionViewMutation::Growable,
             ..
         } => true,
-        TypeFact::SetView { .. } => {
-            !matches!(method, "add" | "insert" | "remove" | "extend" | "clear")
-        }
+        TypeFact::SetView { .. } => !matches!(
+            method,
+            "add" | "insert" | "remove" | "extend" | "clear" | "retain"
+        ),
         TypeFact::SetMut {
             mutation: CollectionViewMutation::Fixed,
             ..
-        } => !matches!(method, "add" | "insert" | "remove" | "extend" | "clear"),
+        } => !matches!(
+            method,
+            "add" | "insert" | "remove" | "extend" | "clear" | "retain"
+        ),
         TypeFact::SetMut {
             mutation: CollectionViewMutation::Growable,
             ..

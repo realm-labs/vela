@@ -148,6 +148,7 @@ fn method_name(target: CallbackMethodInlineCacheTarget) -> Option<&'static str> 
         CallbackMethodInlineCacheTarget::AndThen => Some("and_then"),
         CallbackMethodInlineCacheTarget::OrElse => Some("or_else"),
         CallbackMethodInlineCacheTarget::Filter => Some("filter"),
+        CallbackMethodInlineCacheTarget::Retain => None,
         _ => None,
     }
 }
@@ -159,6 +160,7 @@ fn operation_name(target: CallbackMethodInlineCacheTarget) -> Option<&'static st
         CallbackMethodInlineCacheTarget::AndThen => Some("method and_then"),
         CallbackMethodInlineCacheTarget::OrElse => Some("method or_else"),
         CallbackMethodInlineCacheTarget::Filter => Some("method filter"),
+        CallbackMethodInlineCacheTarget::Retain => None,
         _ => None,
     }
 }

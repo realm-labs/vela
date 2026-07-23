@@ -1,6 +1,7 @@
 use crate::iteration::{self, IteratorState};
-use crate::method_runtime::MethodRuntime;
-use crate::{Value, VmResult};
+use crate::method_runtime::{MethodRuntime, call_callback};
+use crate::runtime_checks::is_truthy;
+use crate::{Value, VmError, VmErrorKind, VmResult};
 
 use super::{array_values, expect_arity, make_array_value, option_value};
 
@@ -31,6 +32,38 @@ pub(crate) fn filter(
         &mut runtime.budget,
         "method filter",
     )
+}
+
+pub(crate) fn retain(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_>,
+) -> VmResult<Value> {
+    expect_arity("retain", args, 1)?;
+    let operation = "method retain";
+    let values = array_values(receiver, runtime.heap.as_deref(), operation)?;
+    let keep = values
+        .iter()
+        .map(|value| {
+            call_callback(&mut runtime, operation, &args[0], &[*value], &values)
+                .map(|returned| is_truthy(&returned))
+        })
+        .collect::<VmResult<Vec<_>>>()?;
+    let Value::HeapRef(reference) = receiver else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+    };
+    let Some(heap) = runtime.heap.as_deref_mut() else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+    };
+    crate::collection_mutation::retain_array_slots(
+        heap,
+        *reference,
+        values.len(),
+        &keep,
+        runtime.budget.as_deref_mut(),
+        operation,
+    )?;
+    Ok(Value::Unit)
 }
 
 pub(crate) fn find(

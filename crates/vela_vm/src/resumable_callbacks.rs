@@ -9,6 +9,7 @@ use crate::equality::{ResumableComparison, ResumableComparisonStep};
 use crate::heap::HeapValue;
 use crate::heap_execution::HeapExecution;
 use crate::heap_values::allocate_heap_value;
+use crate::host_collection_callback::HostRetainWriteback;
 use crate::option_result::{StdEnumKind, StdEnumVariant, option_value, result_value, std_enum_tag};
 use crate::runtime_checks::{expect_closure_ref, is_truthy};
 use crate::script_set::ScriptSet;
@@ -19,10 +20,17 @@ use crate::{
     set_methods,
 };
 
+mod operations;
+mod retain;
+
+pub(crate) use retain::HostCollectionRetain;
+
 pub(crate) struct ResumableCallbackMethod {
     callback_value: Value,
     callback: Option<PreparedCallback>,
     state: CallbackState,
+    host_retain_writeback: Option<HostRetainWriteback>,
+    completed_host_retain: Option<Box<HostCollectionRetain>>,
 }
 
 pub(crate) enum ResumableCallbackStep {
@@ -46,6 +54,7 @@ enum CallbackState {
     Iterator(Box<crate::iteration::ResumableIteratorMethod>),
     Sequence {
         receiver: StandardMethodReceiver,
+        source: Value,
         target: CallbackMethodInlineCacheTarget,
         operation: &'static str,
         values: Vec<Value>,
@@ -55,9 +64,11 @@ enum CallbackState {
         total: NumericTotal,
         found: Option<Value>,
         decision: Option<bool>,
+        retain: Vec<bool>,
         awaiting: Option<Value>,
     },
     Map {
+        source: Value,
         target: CallbackMethodInlineCacheTarget,
         operation: &'static str,
         entries: Vec<(Value, Value)>,
@@ -66,6 +77,7 @@ enum CallbackState {
         count: i64,
         found: Option<(Value, Value)>,
         decision: Option<bool>,
+        retain: Vec<bool>,
         awaiting: Option<(Value, Value)>,
     },
     GroupBy {
@@ -148,6 +160,7 @@ impl ResumableCallbackMethod {
         cache: CallbackMethodInlineCacheEntry,
         args: &[Value],
         heap: Option<&HeapExecution<'_>>,
+        host_retain_writeback: Option<HostRetainWriteback>,
     ) -> Option<VmResult<Self>> {
         if let Some(iterator) =
             crate::iteration::ResumableIteratorMethod::new(*receiver, cache, args)
@@ -156,9 +169,11 @@ impl ResumableCallbackMethod {
                 callback_value: args.first().copied().unwrap_or(Value::Missing),
                 callback: None,
                 state: CallbackState::Iterator(Box::new(iterator)),
+                host_retain_writeback: None,
+                completed_host_retain: None,
             }));
         }
-        let operation = callback_operation(cache.receiver, cache.target)?;
+        let operation = operations::callback_operation(cache.receiver, cache.target)?;
         if cache.receiver == StandardMethodReceiver::Array
             && cache.target == CallbackMethodInlineCacheTarget::Sum
             && args.is_empty()
@@ -203,6 +218,7 @@ impl ResumableCallbackMethod {
             }
             (StandardMethodReceiver::Array, _) => CallbackState::Sequence {
                 receiver: cache.receiver,
+                source: *receiver,
                 target: cache.target,
                 operation,
                 values: match array_methods::array_values(receiver, heap, operation) {
@@ -215,10 +231,12 @@ impl ResumableCallbackMethod {
                 total: NumericTotal::Int(0),
                 found: None,
                 decision: None,
+                retain: Vec::new(),
                 awaiting: None,
             },
             (StandardMethodReceiver::Set, _) => CallbackState::Sequence {
                 receiver: cache.receiver,
+                source: *receiver,
                 target: cache.target,
                 operation,
                 values: match set_methods::set_values(receiver, heap, operation) {
@@ -231,9 +249,11 @@ impl ResumableCallbackMethod {
                 total: NumericTotal::Int(0),
                 found: None,
                 decision: None,
+                retain: Vec::new(),
                 awaiting: None,
             },
             (StandardMethodReceiver::Map, _) => CallbackState::Map {
+                source: *receiver,
                 target: cache.target,
                 operation,
                 entries: match map_methods::map_entries(receiver, heap, operation) {
@@ -245,6 +265,7 @@ impl ResumableCallbackMethod {
                 count: 0,
                 found: None,
                 decision: None,
+                retain: Vec::new(),
                 awaiting: None,
             },
             (StandardMethodReceiver::Option | StandardMethodReceiver::Result, _) => {
@@ -252,7 +273,8 @@ impl ResumableCallbackMethod {
                     Ok(value) => value,
                     Err(error) => return Some(Err(error)),
                 };
-                let active = enum_callback_is_active(cache.receiver, cache.target, variant);
+                let active =
+                    operations::enum_callback_is_active(cache.receiver, cache.target, variant);
                 CallbackState::Enum {
                     receiver_kind: cache.receiver,
                     target: cache.target,
@@ -270,7 +292,13 @@ impl ResumableCallbackMethod {
             callback_value: args[0],
             callback: None,
             state,
+            host_retain_writeback,
+            completed_host_retain: None,
         }))
+    }
+
+    pub(crate) fn take_completed_host_retain(&mut self) -> Option<HostCollectionRetain> {
+        self.completed_host_retain.take().map(|retain| *retain)
     }
 
     pub(crate) fn step(
@@ -299,6 +327,7 @@ impl ResumableCallbackMethod {
                 total,
                 found,
                 decision,
+                retain,
                 awaiting,
                 ..
             } => {
@@ -310,6 +339,9 @@ impl ResumableCallbackMethod {
                             if is_truthy(&returned) {
                                 output.push(value);
                             }
+                        }
+                        CallbackMethodInlineCacheTarget::Retain => {
+                            retain.push(is_truthy(&returned));
                         }
                         CallbackMethodInlineCacheTarget::Find => {
                             if is_truthy(&returned) {
@@ -346,6 +378,7 @@ impl ResumableCallbackMethod {
                 count,
                 found,
                 decision,
+                retain,
                 awaiting,
                 ..
             } => {
@@ -359,6 +392,9 @@ impl ResumableCallbackMethod {
                             if is_truthy(&returned) {
                                 output.push((key, value));
                             }
+                        }
+                        CallbackMethodInlineCacheTarget::Retain => {
+                            retain.push(is_truthy(&returned));
                         }
                         CallbackMethodInlineCacheTarget::Find => {
                             if is_truthy(&returned) {
@@ -524,12 +560,14 @@ impl ResumableCallbackMethod {
         match &self.state {
             CallbackState::Iterator(iterator) => iterator.protect_roots(heap),
             CallbackState::Sequence {
+                source,
                 values,
                 output,
                 found,
                 awaiting,
                 ..
             } => {
+                heap.protect_values(&[*source]);
                 heap.protect_values(values);
                 heap.protect_values(output);
                 if let Some(value) = found {
@@ -540,12 +578,14 @@ impl ResumableCallbackMethod {
                 }
             }
             CallbackState::Map {
+                source,
                 entries,
                 output,
                 found,
                 awaiting,
                 ..
             } => {
+                heap.protect_values(&[*source]);
                 for (key, value) in entries.iter().chain(output) {
                     heap.protect_values(&[*key, *value]);
                 }
@@ -838,13 +878,16 @@ impl ResumableCallbackMethod {
         let value = match state {
             CallbackState::Sequence {
                 receiver,
+                source,
                 target,
                 operation,
+                values,
                 output,
                 count,
                 total,
                 found,
                 decision,
+                retain,
                 ..
             } => match target {
                 CallbackMethodInlineCacheTarget::Map | CallbackMethodInlineCacheTarget::Filter => {
@@ -858,6 +901,22 @@ impl ResumableCallbackMethod {
                         _ => return Err(incomplete_callback()),
                     }
                 }
+                CallbackMethodInlineCacheTarget::Retain => {
+                    self.completed_host_retain = retain::complete_sequence(
+                        retain::SequenceCompletion {
+                            receiver,
+                            source,
+                            values,
+                            retain,
+                            writeback: self.host_retain_writeback.take(),
+                        },
+                        heap,
+                        budget,
+                        operation,
+                    )?
+                    .map(Box::new);
+                    Value::Unit
+                }
                 CallbackMethodInlineCacheTarget::Find => {
                     make_option_value(found, heap, budget, operation)?
                 }
@@ -868,17 +927,35 @@ impl ResumableCallbackMethod {
                 _ => return Err(incomplete_callback()),
             },
             CallbackState::Map {
+                source,
                 target,
                 operation,
+                entries,
                 output,
                 count,
                 found,
                 decision,
+                retain,
                 ..
             } => match target {
                 CallbackMethodInlineCacheTarget::MapValues
                 | CallbackMethodInlineCacheTarget::Filter => {
                     map_methods::make_map_from_entries(output, heap, budget, operation)?
+                }
+                CallbackMethodInlineCacheTarget::Retain => {
+                    self.completed_host_retain = retain::complete_map(
+                        retain::MapCompletion {
+                            source,
+                            entries,
+                            retain,
+                            writeback: self.host_retain_writeback.take(),
+                        },
+                        heap,
+                        budget,
+                        operation,
+                    )?
+                    .map(Box::new);
+                    Value::Unit
                 }
                 CallbackMethodInlineCacheTarget::Find => {
                     let payload = match found {
@@ -914,95 +991,6 @@ impl ResumableCallbackMethod {
         };
         Ok(ResumableCallbackStep::Complete(value))
     }
-}
-
-fn callback_operation(
-    receiver: StandardMethodReceiver,
-    target: CallbackMethodInlineCacheTarget,
-) -> Option<&'static str> {
-    let supported = match receiver {
-        StandardMethodReceiver::Array | StandardMethodReceiver::Set => matches!(
-            target,
-            CallbackMethodInlineCacheTarget::Map
-                | CallbackMethodInlineCacheTarget::Filter
-                | CallbackMethodInlineCacheTarget::Find
-                | CallbackMethodInlineCacheTarget::Any
-                | CallbackMethodInlineCacheTarget::All
-                | CallbackMethodInlineCacheTarget::Count
-                | CallbackMethodInlineCacheTarget::Sum
-                | CallbackMethodInlineCacheTarget::GroupBy
-                | CallbackMethodInlineCacheTarget::SortBy
-        ),
-        StandardMethodReceiver::Map => matches!(
-            target,
-            CallbackMethodInlineCacheTarget::MapValues
-                | CallbackMethodInlineCacheTarget::Filter
-                | CallbackMethodInlineCacheTarget::Find
-                | CallbackMethodInlineCacheTarget::Any
-                | CallbackMethodInlineCacheTarget::All
-                | CallbackMethodInlineCacheTarget::Count
-        ),
-        StandardMethodReceiver::Option => matches!(
-            target,
-            CallbackMethodInlineCacheTarget::Map
-                | CallbackMethodInlineCacheTarget::AndThen
-                | CallbackMethodInlineCacheTarget::OrElse
-                | CallbackMethodInlineCacheTarget::Filter
-        ),
-        StandardMethodReceiver::Result => matches!(
-            target,
-            CallbackMethodInlineCacheTarget::Map
-                | CallbackMethodInlineCacheTarget::MapErr
-                | CallbackMethodInlineCacheTarget::AndThen
-                | CallbackMethodInlineCacheTarget::OrElse
-        ),
-        _ => false,
-    };
-    supported.then(|| match target {
-        CallbackMethodInlineCacheTarget::Map => "method map",
-        CallbackMethodInlineCacheTarget::MapValues => "method map_values",
-        CallbackMethodInlineCacheTarget::MapErr => "method map_err",
-        CallbackMethodInlineCacheTarget::AndThen => "method and_then",
-        CallbackMethodInlineCacheTarget::OrElse => "method or_else",
-        CallbackMethodInlineCacheTarget::Filter => "method filter",
-        CallbackMethodInlineCacheTarget::Find => "method find",
-        CallbackMethodInlineCacheTarget::Any => "method any",
-        CallbackMethodInlineCacheTarget::All => "method all",
-        CallbackMethodInlineCacheTarget::Count => "method count",
-        CallbackMethodInlineCacheTarget::Sum => "method sum",
-        CallbackMethodInlineCacheTarget::GroupBy => "method group_by",
-        CallbackMethodInlineCacheTarget::SortBy => "method sort_by",
-        _ => unreachable!(),
-    })
-}
-
-fn enum_callback_is_active(
-    receiver: StandardMethodReceiver,
-    target: CallbackMethodInlineCacheTarget,
-    variant: StdEnumVariant,
-) -> bool {
-    matches!(
-        (receiver, target, variant),
-        (
-            StandardMethodReceiver::Option,
-            CallbackMethodInlineCacheTarget::Map
-                | CallbackMethodInlineCacheTarget::AndThen
-                | CallbackMethodInlineCacheTarget::Filter,
-            StdEnumVariant::Some,
-        ) | (
-            StandardMethodReceiver::Option,
-            CallbackMethodInlineCacheTarget::OrElse,
-            StdEnumVariant::None,
-        ) | (
-            StandardMethodReceiver::Result,
-            CallbackMethodInlineCacheTarget::Map | CallbackMethodInlineCacheTarget::AndThen,
-            StdEnumVariant::Ok,
-        ) | (
-            StandardMethodReceiver::Result,
-            CallbackMethodInlineCacheTarget::MapErr | CallbackMethodInlineCacheTarget::OrElse,
-            StdEnumVariant::Err,
-        )
-    )
 }
 
 fn enum_value(

@@ -189,7 +189,12 @@ fn host_collection_method_is_available(
     views: CollectionViewCapabilities,
     method_id: MethodId,
 ) -> bool {
-    if crate::std_method_ids::host_collection_mutation(method_id).is_none() {
+    let callback_retain =
+        crate::callback_method_dispatch::host_collection_callback_cache_entry(method_id)
+            .is_some_and(|(cache, _)| {
+                cache.target == crate::CallbackMethodInlineCacheTarget::Retain
+            });
+    if crate::std_method_ids::host_collection_mutation(method_id).is_none() && !callback_retain {
         return true;
     }
     host.adapter.host_receiver_access(root) == HostLeaseKind::Exclusive
@@ -353,7 +358,7 @@ fn array_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "distinct" => ids.array_distinct,
         "reverse" => ids.array_reverse,
         "slice" => ids.array_slice,
-        "map" | "filter" | "find" | "any" | "all" | "count" | "group_by" | "sort_by" => {
+        "map" | "filter" | "retain" | "find" | "any" | "all" | "count" | "group_by" | "sort_by" => {
             return vela_stdlib::std_method_id("Array", method);
         }
         "sort" => ids.array_sort,
@@ -382,7 +387,7 @@ fn map_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "values" => ids.map_values,
         "entries" => ids.map_entries,
         "merge" => ids.map_merge,
-        "map_values" | "filter" | "find" | "any" | "all" | "count" => {
+        "map_values" | "filter" | "retain" | "find" | "any" | "all" | "count" => {
             return vela_stdlib::std_method_id("Map", method);
         }
         "iter" => ids.map_iter,
@@ -402,7 +407,7 @@ fn set_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "extend" => ids.set_extend,
         "clear" => ids.set_clear,
         "values" => ids.set_values,
-        "map" | "filter" | "find" | "any" | "all" | "count" => {
+        "map" | "filter" | "retain" | "find" | "any" | "all" | "count" => {
             return vela_stdlib::std_method_id("Set", method);
         }
         "union" => ids.set_union,

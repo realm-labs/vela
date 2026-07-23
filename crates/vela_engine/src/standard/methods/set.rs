@@ -52,6 +52,12 @@ const SET_METHODS: &[MethodSpec] = &[
     ),
     MethodSpec::new("clear", &[], "()", "Removes all values."),
     MethodSpec::new(
+        "retain",
+        &[ParamSpec::new("callback", "function")],
+        "()",
+        "Retains values accepted by a callback.",
+    ),
+    MethodSpec::new(
         "values",
         &[],
         "iterator",

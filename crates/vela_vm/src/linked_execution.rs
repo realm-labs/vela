@@ -799,6 +799,20 @@ impl Vm {
                     .map_err(|error| error.with_source_span_if_absent(source_span))?
                 {
                     ResumableCallbackStep::Complete(value) => {
+                        if let Some(retain) = callback.take_completed_host_retain() {
+                            crate::host_collection_mutation::execute_host_root_collection_retain(
+                                crate::host_access::HostAccessRuntime {
+                                    frame: &mut frame_state.registers,
+                                    heap: heap.as_deref_mut(),
+                                    budget: budget.as_deref_mut(),
+                                    host: host.as_deref_mut(),
+                                    inline_caches: call.inline_caches,
+                                    source_span,
+                                },
+                                retain,
+                            )
+                            .map_err(|error| error.with_source_span_if_absent(source_span))?;
+                        }
                         frame_state.registers.write(destination, value)?;
                         None
                     }
@@ -1449,6 +1463,7 @@ impl Vm {
                                 prepared.cache,
                                 values.as_slice(),
                                 heap.as_deref(),
+                                prepared.host_retain_writeback,
                             ) {
                                 let callback = callback?;
                                 if prepared.cacheable_receiver
@@ -1714,6 +1729,7 @@ impl Vm {
                                 prepared.cache,
                                 values.as_slice(),
                                 heap.as_deref(),
+                                prepared.host_retain_writeback,
                             ) {
                                 frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
                                 frame_state.pending_operation =

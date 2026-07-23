@@ -13,7 +13,7 @@ pub(crate) use combination::{
     SetCombination, combination_payload, difference, intersection, is_disjoint, is_subset,
     is_superset, symmetric_difference, union,
 };
-pub(crate) use higher_order::{all, any, count, filter, find, map};
+pub(crate) use higher_order::{all, any, count, filter, find, map, retain};
 pub(crate) use mutation::{add, clear, extend, insert, remove};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

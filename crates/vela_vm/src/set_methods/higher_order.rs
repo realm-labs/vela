@@ -4,8 +4,10 @@ use crate::heap_values::allocate_heap_value;
 use crate::iteration::{self, IteratorState};
 use crate::method_runtime::MethodRuntime;
 use crate::option_result::option_value;
+use crate::runtime_checks::is_truthy;
 use crate::script_set::ScriptSet;
-use crate::{Value, VmResult};
+use crate::value_key::ValueKey;
+use crate::{Value, VmError, VmErrorKind, VmResult};
 
 use super::{expect_arity, set_values, type_error};
 
@@ -31,6 +33,54 @@ pub(crate) fn filter(
     let mut iterator = IteratorState::filter(IteratorState::from_values(values), args[0]);
     let filtered = collect_unique_values(&mut iterator, &mut runtime, "method filter")?;
     make_result_set(filtered, &mut runtime, "method filter")
+}
+
+pub(crate) fn retain(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_>,
+) -> VmResult<Value> {
+    expect_arity("retain", args, 1)?;
+    let operation = "method retain";
+    let values = set_values(receiver, runtime.heap.as_deref(), operation)?;
+    let decisions = values
+        .iter()
+        .map(|value| {
+            crate::method_runtime::call_callback(
+                &mut runtime,
+                operation,
+                &args[0],
+                &[*value],
+                &values,
+            )
+            .map(|returned| is_truthy(&returned))
+        })
+        .collect::<VmResult<Vec<_>>>()?;
+    let expected = values
+        .iter()
+        .map(|value| ValueKey::from_value(value, runtime.heap.as_deref(), operation))
+        .collect::<VmResult<std::collections::BTreeSet<_>>>()?;
+    let keep = values
+        .iter()
+        .zip(decisions)
+        .filter(|(_, keep)| *keep)
+        .map(|(value, _)| ValueKey::from_value(value, runtime.heap.as_deref(), operation))
+        .collect::<VmResult<std::collections::BTreeSet<_>>>()?;
+    let Value::HeapRef(reference) = receiver else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+    };
+    let Some(heap) = runtime.heap.as_deref_mut() else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+    };
+    crate::collection_mutation::retain_set_slots(
+        heap,
+        *reference,
+        &expected,
+        &keep,
+        runtime.budget.as_deref_mut(),
+        operation,
+    )?;
+    Ok(Value::Unit)
 }
 
 pub(crate) fn find(

@@ -213,6 +213,9 @@ pub enum VmErrorKind {
         collection: &'static str,
         limit: usize,
     },
+    CollectionChangedDuringCallback {
+        operation: &'static str,
+    },
     AllocationFailed {
         operation: &'static str,
     },
@@ -256,6 +259,9 @@ impl VmErrorKind {
             Self::UnknownMapKey { .. } => "vm::unknown_map_key",
             Self::BudgetExceeded { .. } => "vm::budget_exceeded",
             Self::CollectionLimitExceeded { .. } => "vm::collection_limit_exceeded",
+            Self::CollectionChangedDuringCallback { .. } => {
+                "vm::collection_changed_during_callback"
+            }
             Self::AllocationFailed { .. } => "vm::allocation_failed",
             Self::InlineCacheLayoutMismatch { .. } => "vm::inline_cache_layout_mismatch",
             Self::ProgramNotLinked => "vm::program_not_linked",
@@ -348,6 +354,9 @@ impl VmErrorKind {
             }
             Self::CollectionLimitExceeded { collection, limit } => {
                 format!("{collection} length exceeds collection limit {limit}")
+            }
+            Self::CollectionChangedDuringCallback { operation } => {
+                format!("collection changed while executing `{operation}`")
             }
             Self::AllocationFailed { operation } => {
                 format!("allocation failed during `{operation}`")

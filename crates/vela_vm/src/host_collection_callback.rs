@@ -3,12 +3,19 @@ use vela_def::MethodId;
 
 use crate::callback_method_dispatch::{callback_cache_entry, host_collection_callback_cache_entry};
 use crate::host_access::HostAccessRuntime;
-use crate::{CallbackMethodInlineCacheEntry, Value, VmResult};
+use crate::{CallbackMethodInlineCacheEntry, CallbackMethodInlineCacheTarget, Value, VmResult};
 
 pub(crate) struct PreparedCallbackReceiver {
     pub(crate) value: Value,
     pub(crate) cache: CallbackMethodInlineCacheEntry,
     pub(crate) cacheable_receiver: bool,
+    pub(crate) host_retain_writeback: Option<HostRetainWriteback>,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct HostRetainWriteback {
+    pub(crate) receiver: Register,
+    pub(crate) cache_site: Option<CacheSiteId>,
 }
 
 /// Prepares one standard callback receiver.
@@ -31,6 +38,7 @@ pub(crate) fn prepare_callback_receiver(
                     value: receiver_value,
                     cache,
                     cacheable_receiver: true,
+                    host_retain_writeback: None,
                 },
             ),
         );
@@ -50,5 +58,11 @@ pub(crate) fn prepare_callback_receiver(
         value,
         cache,
         cacheable_receiver: false,
+        host_retain_writeback: (cache.target == CallbackMethodInlineCacheTarget::Retain).then_some(
+            HostRetainWriteback {
+                receiver,
+                cache_site,
+            },
+        ),
     }))
 }

@@ -582,6 +582,7 @@ pub enum CallbackMethodInlineCacheTarget {
     AndThen,
     OrElse,
     Filter,
+    Retain,
     Find,
     Any,
     All,

@@ -156,6 +156,41 @@ pub(crate) fn clear_array(
         .adjust_object_size_after_mutation(reference, budget, 0)
 }
 
+pub(crate) fn retain_array_slots(
+    heap: &mut HeapExecution<'_>,
+    reference: GcRef,
+    expected_len: usize,
+    keep: &[bool],
+    mut budget: Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<()> {
+    if keep.len() != expected_len {
+        return type_error(operation);
+    }
+    if array_slots(heap, reference, operation)?.len() != expected_len {
+        return collection_changed(operation);
+    }
+    if let Some(budget) = budget.as_deref_mut() {
+        budget.charge_execution_units(u64::try_from(expected_len).unwrap_or(u64::MAX))?;
+    }
+    let changed = keep.iter().any(|keep| !keep);
+    let mut index = 0;
+    array_slots_mut(heap, reference, operation)?.retain(|_| {
+        let retain = keep[index];
+        index += 1;
+        retain
+    });
+    if changed {
+        heap.heap
+            .note_container_value_replaced_or_removed(reference);
+    }
+    if !tracks_collection_growth(budget.as_deref()) {
+        return Ok(());
+    }
+    heap.heap
+        .adjust_object_size_after_mutation(reference, budget, 0)
+}
+
 pub(crate) fn insert_map_slot(
     heap: &mut HeapExecution<'_>,
     reference: GcRef,
@@ -307,6 +342,42 @@ pub(crate) fn clear_map(
         .adjust_object_size_after_mutation(reference, budget, 0)
 }
 
+pub(crate) fn retain_map_slots(
+    heap: &mut HeapExecution<'_>,
+    reference: GcRef,
+    expected: &BTreeSet<ValueKey>,
+    keep: &BTreeSet<ValueKey>,
+    mut budget: Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<()> {
+    let current = map_slots(heap, reference, operation)?
+        .key_order()
+        .into_iter()
+        .collect::<BTreeSet<_>>();
+    if current != *expected || !keep.is_subset(expected) {
+        return collection_changed(operation);
+    }
+    if let Some(budget) = budget.as_deref_mut() {
+        budget.charge_execution_units(u64::try_from(expected.len()).unwrap_or(u64::MAX))?;
+    }
+    let removed = expected
+        .difference(keep)
+        .cloned()
+        .collect::<Vec<ValueKey>>();
+    if !removed.is_empty() {
+        let values = map_slots_mut(heap, reference, operation)?;
+        for key in &removed {
+            values.remove_keyed(key);
+        }
+        heap.heap.note_container_map_entry_removed(reference);
+    }
+    if !tracks_collection_growth(budget.as_deref()) {
+        return Ok(());
+    }
+    heap.heap
+        .adjust_object_size_after_mutation(reference, budget, 0)
+}
+
 pub(crate) fn push_set_slot(
     heap: &mut HeapExecution<'_>,
     reference: GcRef,
@@ -426,6 +497,43 @@ pub(crate) fn clear_set(
 ) -> VmResult<()> {
     set_slots_mut(heap, reference, operation)?.clear();
     heap.heap.note_container_cleared(reference);
+    if !tracks_collection_growth(budget.as_deref()) {
+        return Ok(());
+    }
+    heap.heap
+        .adjust_object_size_after_mutation(reference, budget, 0)
+}
+
+pub(crate) fn retain_set_slots(
+    heap: &mut HeapExecution<'_>,
+    reference: GcRef,
+    expected: &BTreeSet<ValueKey>,
+    keep: &BTreeSet<ValueKey>,
+    mut budget: Option<&mut ExecutionBudget>,
+    operation: &'static str,
+) -> VmResult<()> {
+    let current = set_slots(heap, reference, operation)?
+        .values()
+        .map(|value| ValueKey::from_value(value, Some(&*heap), operation))
+        .collect::<VmResult<BTreeSet<_>>>()?;
+    if current != *expected || !keep.is_subset(expected) {
+        return collection_changed(operation);
+    }
+    if let Some(budget) = budget.as_deref_mut() {
+        budget.charge_execution_units(u64::try_from(expected.len()).unwrap_or(u64::MAX))?;
+    }
+    let removed = expected
+        .difference(keep)
+        .cloned()
+        .collect::<Vec<ValueKey>>();
+    if !removed.is_empty() {
+        let values = set_slots_mut(heap, reference, operation)?;
+        for key in &removed {
+            values.remove_keyed(key);
+        }
+        heap.heap
+            .note_container_value_replaced_or_removed(reference);
+    }
     if !tracks_collection_growth(budget.as_deref()) {
         return Ok(());
     }
@@ -587,6 +695,12 @@ fn type_error<T>(operation: &'static str) -> VmResult<T> {
     Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
 }
 
+fn collection_changed<T>(operation: &'static str) -> VmResult<T> {
+    Err(VmError::new(VmErrorKind::CollectionChangedDuringCallback {
+        operation,
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use std::mem;
@@ -603,6 +717,7 @@ mod tests {
 
     use super::{
         extend_map_slots, extend_set_slots, insert_map_slot, push_array_slot, push_set_slot,
+        retain_array_slots,
     };
 
     #[test]
@@ -679,6 +794,64 @@ mod tests {
         assert_eq!(
             heap_execution.heap.get(reference),
             Some(&HeapValue::Array(Vec::new()))
+        );
+    }
+
+    #[test]
+    fn array_retain_rejects_budget_and_stale_snapshot_before_mutation() {
+        let mut heap = ScriptHeap::new();
+        let reference = heap.allocate(HeapValue::Array(vec![
+            Value::I64(1),
+            Value::I64(2),
+            Value::I64(3),
+        ]));
+        let mut heap_execution = HeapExecution::new(&mut heap);
+        let mut budget = ExecutionBudget::new(2, usize::MAX, usize::MAX);
+
+        let budget_error = retain_array_slots(
+            &mut heap_execution,
+            reference,
+            3,
+            &[true, false, true],
+            Some(&mut budget),
+            "test array retain",
+        )
+        .expect_err("the complete retain traversal must be precharged");
+        assert!(matches!(
+            budget_error.kind_ref(),
+            VmErrorKind::BudgetExceeded { .. }
+        ));
+        assert_eq!(
+            heap_execution.heap.get(reference),
+            Some(&HeapValue::Array(vec![
+                Value::I64(1),
+                Value::I64(2),
+                Value::I64(3)
+            ]))
+        );
+
+        let stale_error = retain_array_slots(
+            &mut heap_execution,
+            reference,
+            2,
+            &[true, false],
+            None,
+            "test array retain",
+        )
+        .expect_err("a changed sequence snapshot must reject callback decisions");
+        assert!(matches!(
+            stale_error.kind_ref(),
+            VmErrorKind::CollectionChangedDuringCallback {
+                operation: "test array retain"
+            }
+        ));
+        assert_eq!(
+            heap_execution.heap.get(reference),
+            Some(&HeapValue::Array(vec![
+                Value::I64(1),
+                Value::I64(2),
+                Value::I64(3)
+            ]))
         );
     }
 

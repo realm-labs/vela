@@ -1,7 +1,9 @@
 use crate::iteration;
 use crate::method_runtime::{MethodRuntime, call_callback, callback_param_len};
 use crate::option_result::option_value;
-use crate::{Value, VmResult};
+use crate::runtime_checks::is_truthy;
+use crate::value_key::ValueKey;
+use crate::{Value, VmError, VmErrorKind, VmResult};
 
 use super::{expect_arity, make_map_from_entries, map_entries, map_entry};
 
@@ -76,6 +78,61 @@ pub(crate) fn filter(
         &mut runtime.budget,
         "method filter",
     )
+}
+
+pub(crate) fn retain(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_>,
+) -> VmResult<Value> {
+    expect_arity("retain", args, 1)?;
+    let operation = "method retain";
+    let entries = map_entries(receiver, runtime.heap.as_deref(), operation)?;
+    let param_len = callback_param_len_for_entries(&runtime, operation, &args[0], &entries)?;
+    let protected = entries
+        .iter()
+        .flat_map(|(key, value)| [*key, *value])
+        .collect::<Vec<_>>();
+    let decisions = entries
+        .iter()
+        .map(|(key, value)| {
+            call_map_callback(
+                &mut runtime,
+                operation,
+                &args[0],
+                param_len,
+                key,
+                *value,
+                &protected,
+            )
+            .map(|returned| is_truthy(&returned))
+        })
+        .collect::<VmResult<Vec<_>>>()?;
+    let expected = entries
+        .iter()
+        .map(|(key, _)| ValueKey::from_value(key, runtime.heap.as_deref(), operation))
+        .collect::<VmResult<std::collections::BTreeSet<_>>>()?;
+    let keep = entries
+        .iter()
+        .zip(decisions)
+        .filter(|(_, keep)| *keep)
+        .map(|((key, _), _)| ValueKey::from_value(key, runtime.heap.as_deref(), operation))
+        .collect::<VmResult<std::collections::BTreeSet<_>>>()?;
+    let Value::HeapRef(reference) = receiver else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+    };
+    let Some(heap) = runtime.heap.as_deref_mut() else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+    };
+    crate::collection_mutation::retain_map_slots(
+        heap,
+        *reference,
+        &expected,
+        &keep,
+        runtime.budget.as_deref_mut(),
+        operation,
+    )?;
+    Ok(Value::Unit)
 }
 
 pub(crate) fn find(

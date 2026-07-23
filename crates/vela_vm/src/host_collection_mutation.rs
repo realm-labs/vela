@@ -9,6 +9,7 @@ use crate::host_access::{
     HostAccessRuntime, missing_host_context, resolve_cached_access, runtime_collection_key,
 };
 use crate::host_values::value_to_host;
+use crate::resumable_callbacks::HostCollectionRetain;
 use crate::{HostInlineCacheTarget, Value, VmError, VmErrorKind, VmResult, expect_host_ref};
 
 pub(crate) fn execute_host_root_collection_clear(
@@ -256,6 +257,110 @@ pub(crate) fn execute_host_root_array_insert(
         runtime.source_span,
     )?;
     Ok(Value::Unit)
+}
+
+pub(crate) fn execute_host_root_collection_retain(
+    mut runtime: HostAccessRuntime<'_, '_, '_>,
+    retain: HostCollectionRetain,
+) -> VmResult<Value> {
+    let (writeback, prepared, len) = match retain {
+        HostCollectionRetain::Sequence {
+            writeback,
+            expected_len,
+            keep,
+        } => (
+            writeback,
+            PreparedCollectionRetain::Sequence { expected_len, keep },
+            expected_len,
+        ),
+        HostCollectionRetain::Keys {
+            writeback,
+            expected,
+            keep,
+        } => {
+            let expected = expected
+                .iter()
+                .map(|value| {
+                    runtime_collection_key(
+                        value,
+                        runtime.heap.as_deref(),
+                        runtime.host.as_deref(),
+                        "host collection retain",
+                    )
+                })
+                .collect::<VmResult<Vec<_>>>()?;
+            let keep = keep
+                .iter()
+                .map(|value| {
+                    runtime_collection_key(
+                        value,
+                        runtime.heap.as_deref(),
+                        runtime.host.as_deref(),
+                        "host collection retain",
+                    )
+                })
+                .collect::<VmResult<Vec<_>>>()?;
+            let len = expected.len();
+            (
+                writeback,
+                PreparedCollectionRetain::Keys { expected, keep },
+                len,
+            )
+        }
+    };
+    if let Some(budget) = runtime.budget.as_deref_mut() {
+        budget.charge_execution_units(u64::try_from(len).unwrap_or(u64::MAX))?;
+    }
+    let root = expect_host_ref(
+        &runtime.frame.read(writeback.receiver)?,
+        runtime.host.as_deref(),
+        "host collection retain",
+    )?;
+    let target = HostTargetPlan::new(root.type_id);
+    let instance = HostTargetInstance::new(root, &target, &[]);
+    let host = runtime
+        .host
+        .as_deref_mut()
+        .ok_or_else(missing_host_context)?;
+    let write = resolve_access(
+        host.adapter,
+        runtime.inline_caches,
+        writeback.cache_site,
+        instance,
+        HostAccessOp::Write,
+        runtime.source_span,
+    )?;
+    host.access.mutate_collection_resolved(
+        host.adapter,
+        write,
+        instance,
+        prepared.mutation(),
+        runtime.source_span,
+    )?;
+    Ok(Value::Unit)
+}
+
+enum PreparedCollectionRetain {
+    Sequence {
+        expected_len: usize,
+        keep: Vec<bool>,
+    },
+    Keys {
+        expected: Vec<HostCollectionKey>,
+        keep: Vec<HostCollectionKey>,
+    },
+}
+
+impl PreparedCollectionRetain {
+    fn mutation(&self) -> HostCollectionMutation<'_> {
+        match self {
+            Self::Sequence { expected_len, keep } => HostCollectionMutation::RetainSequence {
+                expected_len: *expected_len,
+                keep,
+            },
+            Self::Keys { expected, keep } => HostCollectionMutation::RetainKeys { expected, keep },
+        }
+    }
 }
 
 impl From<Vec<HostValue>> for PreparedCollectionExtension {

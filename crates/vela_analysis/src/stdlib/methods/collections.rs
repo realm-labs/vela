@@ -33,6 +33,10 @@ pub(super) fn array_method_fact(
                 .with_params(vec![TypeFact::array(element.clone())]),
         ),
         "clear" => Some(StdlibMethodFact::new(receiver, "clear", TypeFact::UNIT)),
+        "retain" => Some(
+            StdlibMethodFact::new(receiver, "retain", TypeFact::UNIT)
+                .with_lambda(vec![element], TypeFact::BOOL),
+        ),
         "first" => Some(StdlibMethodFact::new(
             receiver,
             "first",
@@ -190,6 +194,12 @@ pub(super) fn map_method_fact(
                 .with_params(vec![TypeFact::map(key.clone(), value.clone())]),
         ),
         "clear" => Some(StdlibMethodFact::new(receiver, "clear", TypeFact::UNIT)),
+        "retain" => Some(
+            StdlibMethodFact::new(receiver, "retain", TypeFact::UNIT).with_lambda(
+                map_lambda_params(key.clone(), value.clone(), lambda_param_count),
+                TypeFact::BOOL,
+            ),
+        ),
         "keys" => Some(StdlibMethodFact::new(
             receiver,
             "keys",
@@ -316,6 +326,10 @@ pub(super) fn set_method_fact(
                 .with_params(vec![TypeFact::set(element.clone())]),
         ),
         "clear" => Some(StdlibMethodFact::new(receiver, "clear", TypeFact::UNIT)),
+        "retain" => Some(
+            StdlibMethodFact::new(receiver, "retain", TypeFact::UNIT)
+                .with_lambda(vec![element], TypeFact::BOOL),
+        ),
         "values" => Some(StdlibMethodFact::new(
             receiver,
             "values",

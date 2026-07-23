@@ -282,10 +282,18 @@ element and rejects a changed sequence length, while `RetainKeys` converts the
 complete expected/retained key sets and verifies the current Map or Set key
 snapshot before changing Rust state. Standard Vec, BTreeMap, HashMap,
 BTreeSet, and HashSet adapters implement these mutations without partial
-writes on conversion, shape, or stale-snapshot failure. Scalar, String, Bytes,
-and HostRef boundary leaves are supported; complex element handles,
-borrowed-source extension, public write-through retain/filter callback
-dispatch, and prepared live grouping/traversal remain open.
+writes on conversion, shape, or stale-snapshot failure. Array, Map, and Set
+`retain` are now public resumable callback methods for owned collections and
+growable exclusive HostRef views. Callback decisions are accumulated before
+one mutation; callback errors, final traversal budget failure, and stale
+sequence/key snapshots do not partially retain. Host-backed completion
+reacquires the original alias through HostAccess and the domain-neutral retain
+protocol rather than mutating the temporary projection. Static and dynamic
+dispatch share the standard method identity, retained child views write
+through their parent lease, and shared or fixed-length views withhold the
+method. Scalar, String, Bytes, and HostRef boundary leaves are supported;
+complex element handles, borrowed-source extension, write-through filter, and
+prepared live grouping/traversal remain open.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry
