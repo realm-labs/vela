@@ -371,6 +371,45 @@ pub trait ScriptHostFieldAccess {
         let _ = access;
         self.mutate_host_target_from(target, target.offset, op, rhs)
     }
+
+    #[doc(hidden)]
+    fn query_prepared_field_target(
+        &self,
+        slot: u32,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        query: HostCollectionQuery,
+    ) -> HostResult<HostValue> {
+        let _ = slot;
+        let _ = access;
+        self.query_collection_host_target_from(target, target.offset, query)
+    }
+
+    #[doc(hidden)]
+    fn snapshot_prepared_field_target(
+        &self,
+        slot: u32,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<HostCollectionSnapshot> {
+        let _ = slot;
+        let _ = access;
+        self.snapshot_collection_host_target_from(target, target.offset, projection)
+    }
+
+    #[doc(hidden)]
+    fn mutate_collection_prepared_field_target(
+        &mut self,
+        slot: u32,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        mutation: HostCollectionMutation<'_>,
+    ) -> HostResult<()> {
+        let _ = slot;
+        let _ = access;
+        self.mutate_collection_host_target_from(target, target.offset, mutation)
+    }
 }
 
 pub trait HostValueInto {
@@ -408,7 +447,7 @@ macro_rules! impl_script_host_object_via_field {
                 target: HostTargetInstance<'_>,
             ) -> HostResult<HostValue> {
                 let _ = access;
-                ScriptHostFieldAccess::read_host_target_from(self, target, 0)
+                ScriptHostFieldAccess::read_host_target_from(self, target, target.offset)
             }
 
             fn query_collection_resolved_host(
@@ -418,7 +457,12 @@ macro_rules! impl_script_host_object_via_field {
                 query: HostCollectionQuery,
             ) -> HostResult<HostValue> {
                 let _ = access;
-                ScriptHostFieldAccess::query_collection_host_target_from(self, target, 0, query)
+                ScriptHostFieldAccess::query_collection_host_target_from(
+                    self,
+                    target,
+                    target.offset,
+                    query,
+                )
             }
 
             fn snapshot_collection_resolved_host(
@@ -431,7 +475,7 @@ macro_rules! impl_script_host_object_via_field {
                 ScriptHostFieldAccess::snapshot_collection_host_target_from(
                     self,
                     target,
-                    0,
+                    target.offset,
                     projection,
                 )
             }
@@ -446,7 +490,7 @@ macro_rules! impl_script_host_object_via_field {
                 ScriptHostFieldAccess::mutate_collection_host_target_from(
                     self,
                     target,
-                    0,
+                    target.offset,
                     mutation,
                 )
             }
@@ -458,7 +502,7 @@ macro_rules! impl_script_host_object_via_field {
                 value: HostValue,
             ) -> HostResult<()> {
                 let _ = access;
-                ScriptHostFieldAccess::write_host_target_from(self, target, 0, value)
+                ScriptHostFieldAccess::write_host_target_from(self, target, target.offset, value)
             }
 
             fn mutate_resolved_host(
@@ -469,7 +513,13 @@ macro_rules! impl_script_host_object_via_field {
                 rhs: HostValue,
             ) -> HostResult<()> {
                 let _ = access;
-                ScriptHostFieldAccess::mutate_host_target_from(self, target, 0, op, rhs)
+                ScriptHostFieldAccess::mutate_host_target_from(
+                    self,
+                    target,
+                    target.offset,
+                    op,
+                    rhs,
+                )
             }
 
             fn remove_resolved_host(
@@ -478,7 +528,7 @@ macro_rules! impl_script_host_object_via_field {
                 target: HostTargetInstance<'_>,
             ) -> HostResult<()> {
                 let _ = access;
-                ScriptHostFieldAccess::remove_host_target_from(self, target, 0)
+                ScriptHostFieldAccess::remove_host_target_from(self, target, target.offset)
             }
 
             fn call_resolved_host(
@@ -489,7 +539,13 @@ macro_rules! impl_script_host_object_via_field {
                 args: &[HostValue],
             ) -> HostResult<HostValue> {
                 let _ = access;
-                ScriptHostFieldAccess::call_host_target_from(self, target, 0, method, args)
+                ScriptHostFieldAccess::call_host_target_from(
+                    self,
+                    target,
+                    target.offset,
+                    method,
+                    args,
+                )
             }
         }
     };

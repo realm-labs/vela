@@ -9,6 +9,9 @@ use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
 use vela_host::path::HostPath;
 use vela_host::path::HostRef;
+use vela_host::protocol::{
+    HostCollectionMutation, HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot,
+};
 use vela_host::proxy::PathProxy;
 use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccessKind};
 use vela_host::target::{HostTargetInstance, HostTargetPlan};
@@ -195,6 +198,30 @@ struct DirectOuter {
 
 #[script_methods]
 impl DirectOuter {}
+
+#[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(path = "game::counter::CollectionLeaf")]
+struct CollectionLeaf {
+    #[script(get)]
+    values: Vec<i64>,
+    #[script(get)]
+    groups: Vec<Vec<i64>>,
+}
+
+#[script_methods]
+impl CollectionLeaf {}
+
+#[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(path = "game::counter::CollectionOuter")]
+struct CollectionOuter {
+    #[script(get)]
+    leaf: CollectionLeaf,
+}
+
+#[script_methods]
+impl CollectionOuter {}
 
 #[allow(dead_code)]
 #[script_methods]
@@ -468,4 +495,100 @@ fn nested_field_access_executes_prepared_inline_field_slots() {
     .expect("prepared nested field mutation should execute");
 
     assert_eq!(outer.wrapper.counter.total, 9);
+}
+
+#[test]
+fn nested_collection_protocols_execute_prepared_field_slots() {
+    let mut outer = CollectionOuter {
+        leaf: CollectionLeaf {
+            values: vec![1, 2],
+            groups: vec![vec![4, 5]],
+        },
+    };
+    let plan = HostTargetPlan::new(CollectionOuter::vela_host_type_id())
+        .field(CollectionOuter::vela_field_id_leaf())
+        .field(CollectionLeaf::vela_field_id_values());
+    let root = HostRef::new(
+        CollectionOuter::vela_host_type_id(),
+        HostObjectId::new(10),
+        1,
+    );
+    let target = HostTargetInstance::new(root, &plan, &[]);
+    let read_access =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+            &outer,
+            HostAccessSpec::new(HostAccessOp::Read, &plan),
+        )
+        .expect("nested collection should resolve through prepared fields");
+
+    let len =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::query_collection_resolved_host(
+            &outer,
+            read_access,
+            target,
+            HostCollectionQuery::Len,
+        )
+        .expect("nested collection length should execute");
+    assert_eq!(len, HostValue::Scalar(vela_common::ScalarValue::I64(2)));
+
+    let snapshot =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::snapshot_collection_resolved_host(
+            &outer,
+            read_access,
+            target,
+            HostCollectionProjection::Values,
+        )
+        .expect("nested collection snapshot should execute");
+    assert_eq!(
+        snapshot,
+        HostCollectionSnapshot::Items(vec![
+            HostValue::Scalar(vela_common::ScalarValue::I64(1)),
+            HostValue::Scalar(vela_common::ScalarValue::I64(2)),
+        ])
+    );
+
+    let mutation_access =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+            &outer,
+            HostAccessSpec::new(HostAccessOp::Mutate(HostMutationOp::Push), &plan),
+        )
+        .expect("nested collection mutation should resolve");
+    let extension = [HostValue::Scalar(vela_common::ScalarValue::I64(3))];
+    <CollectionOuter as vela_host::object::ScriptHostObject>::mutate_collection_resolved_host(
+        &mut outer,
+        mutation_access,
+        target,
+        HostCollectionMutation::ExtendSequence(&extension),
+    )
+    .expect("nested collection mutation should execute");
+
+    assert_eq!(outer.leaf.values, vec![1, 2, 3]);
+
+    let indexed_plan = HostTargetPlan::new(CollectionOuter::vela_host_type_id())
+        .field(CollectionOuter::vela_field_id_leaf())
+        .field(CollectionLeaf::vela_field_id_groups())
+        .const_index(0);
+    let indexed_target = HostTargetInstance::new(root, &indexed_plan, &[]);
+    let indexed_access =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+            &outer,
+            HostAccessSpec::new(HostAccessOp::Read, &indexed_plan),
+        )
+        .expect("indexed nested collection should retain generic traversal");
+    assert_eq!(
+        indexed_access.adapter_kind,
+        ResolvedHostAccessKind::GenericTarget
+    );
+    let indexed_len =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::query_collection_resolved_host(
+            &outer,
+            indexed_access,
+            indexed_target,
+            HostCollectionQuery::Len,
+        )
+        .expect("indexed nested collection should use validated fallback");
+    assert_eq!(
+        indexed_len,
+        HostValue::Scalar(vela_common::ScalarValue::I64(2))
+    );
 }

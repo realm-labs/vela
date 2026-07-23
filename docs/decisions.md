@@ -1280,12 +1280,15 @@ continue to reference the linked plan rather than materializing owned paths.
 copy-local traversal cursor. Generated adapters prepend those slots during the
 validated resolution pass and consume them through typed child-field thunks
 during nested field reads, writes, mutations, and method execution, so the
-inline cache remains `Copy` and the common path allocates nothing. The cached
-access is still selected by the linked target-plan, operation, root-type, and
-schema-epoch guards; the slots do not replace HostRef, permission, lease, or
-generation validation. Deeper paths and paths containing an adapter that
-cannot prepare a slot chain fall back to the ordinary validated target
-traversal rather than allocating an unbounded chain in the cache entry.
+inline cache remains `Copy` and the common path allocates nothing. Collection
+queries, snapshots, and batch mutations consume the same field chain until the
+leaf collection adapter; index/key segments deliberately retain generic
+validated traversal. The cached access is still selected by the linked
+target-plan, operation, root-type, and schema-epoch guards; the slots do not
+replace HostRef, permission, lease, or generation validation. Deeper paths and
+paths containing an adapter that cannot prepare a slot chain fall back to the
+ordinary validated target traversal rather than allocating an unbounded chain
+in the cache entry.
 
 ### Unlinked Bytecode Naming
 

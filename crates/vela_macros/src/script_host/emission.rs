@@ -90,6 +90,18 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
         .iter()
         .filter(|field| field.readable || field.writable)
         .map(field_write_arm_tokens);
+    let query_arms = fields
+        .iter()
+        .filter(|field| field.readable)
+        .map(field_query_arm_tokens);
+    let snapshot_arms = fields
+        .iter()
+        .filter(|field| field.readable)
+        .map(field_snapshot_arm_tokens);
+    let collection_mutation_arms = fields
+        .iter()
+        .filter(|field| field.readable || field.writable)
+        .map(field_collection_mutation_arm_tokens);
     let call_arms = fields.iter().map(field_call_arm_tokens);
     let prepared_call_arms = fields
         .iter()
@@ -110,6 +122,21 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
         .enumerate()
         .filter(|(_, field)| field.readable || field.writable)
         .map(prepared_field_mutate_arm_tokens);
+    let prepared_query_arms = fields
+        .iter()
+        .enumerate()
+        .filter(|(_, field)| field.readable)
+        .map(prepared_field_query_arm_tokens);
+    let prepared_snapshot_arms = fields
+        .iter()
+        .enumerate()
+        .filter(|(_, field)| field.readable)
+        .map(prepared_field_snapshot_arm_tokens);
+    let prepared_collection_mutation_arms = fields
+        .iter()
+        .enumerate()
+        .filter(|(_, field)| field.readable || field.writable)
+        .map(prepared_field_collection_mutation_arm_tokens);
 
     quote! {
         impl ::vela_host::object::ScriptHostFieldAccess for #ident {
@@ -192,6 +219,59 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
                         kind: ::vela_host::error::HostErrorKind::PermissionDenied {
                             path: target.to_diagnostic_path().to_host_path(),
                             action: "write",
+                        },
+                        source_span: None,
+                    }),
+                }
+            }
+
+            fn query_collection_host_target_from(
+                &self,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                offset: usize,
+                query: ::vela_host::protocol::HostCollectionQuery,
+            ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
+                match target.plan.parts.as_slice().get(offset) {
+                    #(#query_arms)*
+                    _ => Err(::vela_host::error::HostError {
+                        kind: ::vela_host::error::HostErrorKind::MissingPath {
+                            path: target.to_diagnostic_path().to_host_path(),
+                        },
+                        source_span: None,
+                    }),
+                }
+            }
+
+            fn snapshot_collection_host_target_from(
+                &self,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                offset: usize,
+                projection: ::vela_host::protocol::HostCollectionProjection,
+            ) -> ::vela_host::error::HostResult<
+                ::vela_host::protocol::HostCollectionSnapshot
+            > {
+                match target.plan.parts.as_slice().get(offset) {
+                    #(#snapshot_arms)*
+                    _ => Err(::vela_host::error::HostError {
+                        kind: ::vela_host::error::HostErrorKind::MissingPath {
+                            path: target.to_diagnostic_path().to_host_path(),
+                        },
+                        source_span: None,
+                    }),
+                }
+            }
+
+            fn mutate_collection_host_target_from(
+                &mut self,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                offset: usize,
+                mutation: ::vela_host::protocol::HostCollectionMutation<'_>,
+            ) -> ::vela_host::error::HostResult<()> {
+                match target.plan.parts.as_slice().get(offset) {
+                    #(#collection_mutation_arms)*
+                    _ => Err(::vela_host::error::HostError {
+                        kind: ::vela_host::error::HostErrorKind::MissingPath {
+                            path: target.to_diagnostic_path().to_host_path(),
                         },
                         source_span: None,
                     }),
@@ -313,6 +393,63 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
                         kind: ::vela_host::error::HostErrorKind::PermissionDenied {
                             path: target.to_diagnostic_path().to_host_path(),
                             action: "mutate",
+                        },
+                        source_span: None,
+                    }),
+                }
+            }
+
+            fn query_prepared_field_target(
+                &self,
+                slot: u32,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                query: ::vela_host::protocol::HostCollectionQuery,
+            ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
+                match slot {
+                    #(#prepared_query_arms)*
+                    _ => Err(::vela_host::error::HostError {
+                        kind: ::vela_host::error::HostErrorKind::MissingPath {
+                            path: target.to_diagnostic_path().to_host_path(),
+                        },
+                        source_span: None,
+                    }),
+                }
+            }
+
+            fn snapshot_prepared_field_target(
+                &self,
+                slot: u32,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                projection: ::vela_host::protocol::HostCollectionProjection,
+            ) -> ::vela_host::error::HostResult<
+                ::vela_host::protocol::HostCollectionSnapshot
+            > {
+                match slot {
+                    #(#prepared_snapshot_arms)*
+                    _ => Err(::vela_host::error::HostError {
+                        kind: ::vela_host::error::HostErrorKind::MissingPath {
+                            path: target.to_diagnostic_path().to_host_path(),
+                        },
+                        source_span: None,
+                    }),
+                }
+            }
+
+            fn mutate_collection_prepared_field_target(
+                &mut self,
+                slot: u32,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                mutation: ::vela_host::protocol::HostCollectionMutation<'_>,
+            ) -> ::vela_host::error::HostResult<()> {
+                match slot {
+                    #(#prepared_collection_mutation_arms)*
+                    _ => Err(::vela_host::error::HostError {
+                        kind: ::vela_host::error::HostErrorKind::PermissionDenied {
+                            path: target.to_diagnostic_path().to_host_path(),
+                            action: "mutate collection",
                         },
                         source_span: None,
                     }),
@@ -440,6 +577,57 @@ fn field_write_arm_tokens(field: &FieldMeta) -> TokenStream {
     }
 }
 
+fn field_query_arm_tokens(field: &FieldMeta) -> TokenStream {
+    let id = u128::from(field.id);
+    let rust_name = format_ident!("{}", field.rust_name);
+    quote! {
+        Some(::vela_host::target::HostPathPart::Field(field))
+            if *field == ::vela_def::FieldId::new(#id) =>
+        {
+            ::vela_host::object::ScriptHostFieldAccess::query_collection_host_target_from(
+                &self.#rust_name,
+                target,
+                offset + 1,
+                query,
+            )
+        }
+    }
+}
+
+fn field_snapshot_arm_tokens(field: &FieldMeta) -> TokenStream {
+    let id = u128::from(field.id);
+    let rust_name = format_ident!("{}", field.rust_name);
+    quote! {
+        Some(::vela_host::target::HostPathPart::Field(field))
+            if *field == ::vela_def::FieldId::new(#id) =>
+        {
+            ::vela_host::object::ScriptHostFieldAccess::snapshot_collection_host_target_from(
+                &self.#rust_name,
+                target,
+                offset + 1,
+                projection,
+            )
+        }
+    }
+}
+
+fn field_collection_mutation_arm_tokens(field: &FieldMeta) -> TokenStream {
+    let id = u128::from(field.id);
+    let rust_name = format_ident!("{}", field.rust_name);
+    quote! {
+        Some(::vela_host::target::HostPathPart::Field(field))
+            if *field == ::vela_def::FieldId::new(#id) =>
+        {
+            ::vela_host::object::ScriptHostFieldAccess::mutate_collection_host_target_from(
+                &mut self.#rust_name,
+                target,
+                offset + 1,
+                mutation,
+            )
+        }
+    }
+}
+
 fn field_call_arm_tokens(field: &FieldMeta) -> TokenStream {
     let id = u128::from(field.id);
     let rust_name = format_ident!("{}", field.rust_name);
@@ -517,6 +705,47 @@ fn prepared_field_mutate_arm_tokens((slot, field): (usize, &FieldMeta)) -> Token
             target.at_offset(target.offset + 1),
             op,
             rhs,
+        ),
+    }
+}
+
+fn prepared_field_query_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
+    let slot = u32::try_from(slot).expect("host field slot index fits u32");
+    let rust_name = format_ident!("{}", field.rust_name);
+    quote! {
+        #slot => ::vela_host::object::ScriptHostObject::query_collection_resolved_host(
+            &self.#rust_name,
+            access,
+            target.at_offset(target.offset + 1),
+            query,
+        ),
+    }
+}
+
+fn prepared_field_snapshot_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
+    let slot = u32::try_from(slot).expect("host field slot index fits u32");
+    let rust_name = format_ident!("{}", field.rust_name);
+    quote! {
+        #slot => ::vela_host::object::ScriptHostObject::snapshot_collection_resolved_host(
+            &self.#rust_name,
+            access,
+            target.at_offset(target.offset + 1),
+            projection,
+        ),
+    }
+}
+
+fn prepared_field_collection_mutation_arm_tokens(
+    (slot, field): (usize, &FieldMeta),
+) -> TokenStream {
+    let slot = u32::try_from(slot).expect("host field slot index fits u32");
+    let rust_name = format_ident!("{}", field.rust_name);
+    quote! {
+        #slot => ::vela_host::object::ScriptHostObject::mutate_collection_resolved_host(
+            &mut self.#rust_name,
+            access,
+            target.at_offset(target.offset + 1),
+            mutation,
         ),
     }
 }
