@@ -1248,7 +1248,10 @@ uses a keyed remove and returns the prior value as `Option<V>`. Map
 missing-key write for owned Maps and growable exclusive HostRef views;
 shared/fixed views withhold it, retained child views keep their parent lease,
 existing entries do not convert the unused default, and missing-value
-conversion failure precedes mutation.
+conversion failure precedes mutation. Baseline Map `insert` now returns the
+replaced value as `Option<V>` for owned Maps and the same growable HostRef
+views; shared/fixed views withhold it, retained children preserve their parent
+lease, and conversion failure precedes write-through.
 `SetMut.add/insert/remove` use keyed boolean membership writes without
 materialization. Growable `ArrayMut.remove_at` performs the corresponding
 indexed read/remove through HostAccess, returns the prior value as `Option<T>`,

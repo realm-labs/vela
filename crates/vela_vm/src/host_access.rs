@@ -22,6 +22,8 @@ use crate::{
     expect_host_ref, value_to_owned,
 };
 
+mod map_insert;
+
 pub(crate) struct HostAccessRuntime<'a, 'host, 'heap> {
     pub(crate) frame: &'a CallFrame,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
@@ -769,19 +771,21 @@ pub(crate) fn execute_host_root_collection_mutation(
     let (target, arg) = key.target(root.type_id);
     let target_args = [arg];
     let instance = HostTargetInstance::new(root, &target, &target_args);
-    let map_value = matches!(
-        mutation,
-        crate::std_method_ids::HostCollectionMutation::MapSet
-    )
-    .then(|| {
-        value_to_host(
+    let map_value = match mutation {
+        crate::std_method_ids::HostCollectionMutation::MapSet => Some(value_to_host(
             &args[1],
             "host map set",
             runtime.heap.as_deref(),
             runtime.host.as_deref(),
-        )
-    })
-    .transpose()?;
+        )?),
+        crate::std_method_ids::HostCollectionMutation::MapInsert => Some(value_to_host(
+            &args[1],
+            "host map insert",
+            runtime.heap.as_deref(),
+            runtime.host.as_deref(),
+        )?),
+        _ => None,
+    };
     let host = runtime
         .host
         .as_deref_mut()
@@ -815,6 +819,18 @@ pub(crate) fn execute_host_root_collection_mutation(
             )?;
             Ok(args[1])
         }
+        HostCollectionMutation::MapInsert => map_insert::execute(
+            map_insert::Runtime {
+                heap: runtime.heap.as_deref_mut(),
+                budget: runtime.budget.as_deref_mut(),
+                inline_caches: runtime.inline_caches,
+                source_span: runtime.source_span,
+                host,
+            },
+            cache_site,
+            instance,
+            map_value.expect("MapInsert prepared a value"),
+        ),
         HostCollectionMutation::MapGetOrInsert => {
             let read = resolve_collection_key_access(
                 host,

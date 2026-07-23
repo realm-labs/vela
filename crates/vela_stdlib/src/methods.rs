@@ -600,6 +600,16 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
     ),
     StdMethodSpec::new(
         "Map",
+        "insert",
+        &[
+            StdParamSpec::new("key", "any"),
+            StdParamSpec::new("value", "any"),
+        ],
+        "Option<Any>",
+        "Inserts a value and returns the replaced value, if any.",
+    ),
+    StdMethodSpec::new(
+        "Map",
         "remove",
         &[StdParamSpec::new("key", "any")],
         "Option<Any>",

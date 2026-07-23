@@ -65,6 +65,32 @@ pub(crate) fn set(
     }
 }
 
+pub(crate) fn insert(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    expect_arity("insert", args, 2)?;
+    let reference = match *receiver {
+        Value::HeapRef(reference) => reference,
+        _ => return type_error("method insert"),
+    };
+    let Some(heap) = heap else {
+        return type_error("method insert");
+    };
+    let key = store_runtime_value(&args[0], heap, budget.as_deref_mut())?;
+    let slot = store_runtime_value(&args[1], heap, budget.as_deref_mut())?;
+    let previous = super::map_slots(receiver, Some(&*heap), "method insert")?.get(
+        &args[0],
+        Some(&*heap),
+        "method insert",
+    )?;
+    let result = option_value(previous, heap, budget.as_deref_mut())?;
+    collection_mutation::insert_map_slot(heap, reference, key, slot, budget, "method insert")?;
+    Ok(result)
+}
+
 pub(crate) fn remove(
     receiver: &mut Value,
     args: &[Value],

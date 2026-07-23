@@ -15,7 +15,7 @@ pub(crate) use higher_order::{all, any, count, filter, find, map_values, retain}
 pub(crate) use introspection::{entries, keys, values};
 pub(crate) use lookup::{contains_key, get, get_or, has};
 pub(crate) use merge::{merge, merge_payload};
-pub(crate) use mutation::{clear, extend, get_or_insert, remove, set};
+pub(crate) use mutation::{clear, extend, get_or_insert, insert, remove, set};
 
 pub(crate) fn is_map(receiver: &Value, heap: Option<&crate::HeapExecution<'_>>) -> bool {
     match receiver {
@@ -531,6 +531,28 @@ fn main() {
         assert_eq!(
             run_linked_map_test_code(&vm, code),
             Ok(OwnedValue::i64(528))
+        );
+    }
+
+    #[test]
+    fn managed_heap_map_insert_returns_replaced_values() {
+        let source = r#"
+fn main() {
+    let scores = {"existing": 5};
+    let replaced = scores.insert("existing", 9).unwrap_or(0);
+    let absent = scores.insert("inserted", 13).unwrap_or(7);
+    return replaced * 100 + absent * 10
+        + scores["existing"] + scores["inserted"] + scores.len();
+}
+"#;
+        let code = compile_test_function(SourceId::new(1), source, "main")
+            .expect("Map insert source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        assert_eq!(
+            run_linked_map_test_code(&vm, code),
+            Ok(OwnedValue::i64(594))
         );
     }
 

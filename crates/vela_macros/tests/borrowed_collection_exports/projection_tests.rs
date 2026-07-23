@@ -331,6 +331,65 @@ fn borrowed_map_get_or_insert_writes_only_missing_entries() {
 }
 
 #[test]
+fn borrowed_map_insert_returns_replaced_values_and_writes_through() {
+    let mut runtime = runtime(concat!(
+        "fn direct(scores: MapMut<i32, i64>) { ",
+        "let replaced = scores.insert(7i32, 9).unwrap_or(0); ",
+        "let absent = scores.insert(11i32, 13).unwrap_or(17); ",
+        "return replaced * 100 + absent; }\n",
+        "fn retained(owner: CollectionOwner) { let totals = owner.totals_mut(); ",
+        "return totals.insert(\"sum\", 19).unwrap_or(3); }\n",
+        "fn dynamic(scores) { return scores.insert(5i32, 11); }\n",
+        "fn invalid(scores) { return scores.insert(9i32, \"bad\"); }",
+    ));
+
+    let mut scores = BTreeMap::from([(7_i32, 5_i64)]);
+    let mut args = CallArgs::new();
+    args.push_collection_mut("scores", &mut scores);
+    let result = runtime
+        .call("direct", args, CallOptions::unbounded())
+        .expect("MapMut insert should return old values and write through");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(517)));
+    drop(result);
+    assert_eq!(scores, BTreeMap::from([(7, 9), (11, 13)]));
+
+    let mut owner = CollectionOwner {
+        values: Vec::new(),
+        totals: BTreeMap::from([("sum".to_owned(), 7)]),
+    };
+    let result = runtime
+        .call(
+            "retained",
+            CallArgs::new().with_host_mut("owner", &mut owner),
+            CallOptions::unbounded(),
+        )
+        .expect("retained MapMut insert should use its parent lease");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(7)));
+    drop(result);
+    assert_eq!(owner.totals, BTreeMap::from([("sum".to_owned(), 19)]));
+
+    let shared = BTreeMap::from([(5_i32, 7_i64)]);
+    let mut args = CallArgs::new();
+    args.push_collection_ref("scores", &shared);
+    let error = runtime
+        .call("dynamic", args, CallOptions::unbounded())
+        .expect_err("a shared dynamic Map view must not discover insert");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::UnknownMethod { method } if method == "insert"
+    ));
+    assert_eq!(shared, BTreeMap::from([(5, 7)]));
+
+    let mut unchanged = BTreeMap::from([(7_i32, 5_i64)]);
+    let mut args = CallArgs::new();
+    args.push_collection_mut("scores", &mut unchanged);
+    runtime
+        .call("invalid", args, CallOptions::unbounded())
+        .expect_err("an invalid inserted value must fail before host mutation");
+    assert_eq!(unchanged, BTreeMap::from([(7, 5)]));
+}
+
+#[test]
 fn borrowed_map_merge_charges_projected_length() {
     let mut runtime = runtime(concat!(
         "fn merge(values: MapView<i32, i64>) { ",

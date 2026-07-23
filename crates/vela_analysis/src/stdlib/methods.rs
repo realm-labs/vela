@@ -55,6 +55,7 @@ const MAP_METHOD_NAMES: &[&str] = &[
     "get_or",
     "get_or_insert",
     "set",
+    "insert",
     "remove",
     "extend",
     "clear",
@@ -428,14 +429,14 @@ fn collection_method_allowed(receiver: &TypeFact, method: &str) -> bool {
         } => true,
         TypeFact::MapView { .. } => !matches!(
             method,
-            "get_or_insert" | "set" | "remove" | "extend" | "clear" | "retain"
+            "get_or_insert" | "set" | "insert" | "remove" | "extend" | "clear" | "retain"
         ),
         TypeFact::MapMut {
             mutation: CollectionViewMutation::Fixed,
             ..
         } => !matches!(
             method,
-            "get_or_insert" | "set" | "remove" | "extend" | "clear" | "retain"
+            "get_or_insert" | "set" | "insert" | "remove" | "extend" | "clear" | "retain"
         ),
         TypeFact::MapMut {
             mutation: CollectionViewMutation::Growable,

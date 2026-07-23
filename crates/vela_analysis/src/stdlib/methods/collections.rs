@@ -189,6 +189,10 @@ pub(super) fn map_method_fact(
             StdlibMethodFact::new(receiver, "set", value.clone())
                 .with_params(vec![key.clone(), value.clone()]),
         ),
+        "insert" => Some(
+            StdlibMethodFact::new(receiver, "insert", TypeFact::option(value.clone()))
+                .with_params(vec![key.clone(), value.clone()]),
+        ),
         "remove" => Some(
             StdlibMethodFact::new(receiver, "remove", TypeFact::option(value.clone()))
                 .with_params(vec![key.clone()]),

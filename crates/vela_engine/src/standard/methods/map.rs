@@ -57,6 +57,12 @@ const MAP_METHODS: &[MethodSpec] = &[
         "Sets and returns a value for a key.",
     ),
     MethodSpec::new(
+        "insert",
+        &[ParamSpec::new("key", "any"), ParamSpec::new("value", "any")],
+        "Option<Any>",
+        "Inserts a value and returns the replaced value, if any.",
+    ),
+    MethodSpec::new(
         "remove",
         &[ParamSpec::new("key", "any")],
         "Option<Any>",

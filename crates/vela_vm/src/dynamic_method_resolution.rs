@@ -381,6 +381,7 @@ fn map_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "get_or" => ids.map_get_or,
         "get_or_insert" => ids.map_get_or_insert,
         "set" => ids.map_set,
+        "insert" => ids.map_insert,
         "remove" => ids.map_remove,
         "extend" => ids.map_extend,
         "clear" => ids.map_clear,

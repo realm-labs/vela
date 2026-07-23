@@ -237,7 +237,10 @@ scalar/String/Bytes leaves through the keyed HostAccess write, while
 one missing-key insertion on owned Maps and growable exclusive HostRef views;
 shared/fixed views withhold it, retained child views write through their parent
 lease, existing entries do not convert the unused default, and failed
-missing-value conversion leaves Rust state unchanged.
+missing-value conversion leaves Rust state unchanged. Baseline Map `insert`
+returns the replaced value as `Option<V>` on owned Maps and the same growable
+HostRef views; shared/fixed views withhold it, retained children preserve their
+parent lease, and conversion failure precedes write-through.
 `SetMut.add/insert/remove` write membership through the same path
 and retain standard changed/not-changed results; `insert` is the baseline name
 while `add` remains available. Growable `ArrayMut.remove_at`

@@ -406,6 +406,9 @@ fn standard_method_target(
         (StandardMethodReceiver::Map, id) if id == ids.map_set => {
             StandardMethodInlineCacheTarget::Set
         }
+        (StandardMethodReceiver::Map, id) if id == ids.map_insert => {
+            StandardMethodInlineCacheTarget::Insert
+        }
         (StandardMethodReceiver::Map, id) if id == ids.map_remove => {
             StandardMethodInlineCacheTarget::Remove
         }
@@ -565,6 +568,7 @@ pub(crate) fn call_standard_cached(
         }
         StandardMethodInlineCacheTarget::GetOrInsert
         | StandardMethodInlineCacheTarget::Set
+        | StandardMethodInlineCacheTarget::Insert
         | StandardMethodInlineCacheTarget::Remove
         | StandardMethodInlineCacheTarget::Clear
         | StandardMethodInlineCacheTarget::Extend

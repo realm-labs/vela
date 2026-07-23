@@ -21,6 +21,9 @@ pub(in crate::standard_method_cache) fn call_cached_map_mutation(
         StandardMethodInlineCacheTarget::Set => {
             Some(call_cached_map_set(receiver, args, heap, budget))
         }
+        StandardMethodInlineCacheTarget::Insert => {
+            Some(call_cached_map_insert(receiver, args, heap, budget))
+        }
         StandardMethodInlineCacheTarget::Remove => {
             Some(call_cached_map_remove(receiver, args, heap, budget))
         }
@@ -69,6 +72,21 @@ fn call_cached_map_set(
         "method set",
     )?;
     Ok(args[1])
+}
+
+fn call_cached_map_insert(
+    receiver: &Value,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    let mut receiver = *receiver;
+    crate::map_methods::insert(
+        &mut receiver,
+        args,
+        heap.as_deref_mut(),
+        budget.as_deref_mut(),
+    )
 }
 
 fn call_cached_map_remove(
