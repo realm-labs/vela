@@ -94,7 +94,7 @@ fn direct_host_bindings_use_dense_slots_across_mixed_arguments() {
     assert_eq!(
         args.direct_host_slots
             .iter()
-            .map(|slot| slot.entry_index)
+            .map(|(_, slot)| slot.entry_index)
             .collect::<Vec<_>>(),
         [1, 3]
     );
@@ -104,7 +104,7 @@ fn direct_host_bindings_use_dense_slots_across_mixed_arguments() {
     let roots = args
         .direct_host_slots
         .iter()
-        .map(|slot| match &args.entries[slot.entry_index as usize] {
+        .map(|(_, slot)| match &args.entries[slot.entry_index as usize] {
             CallArg::NamedHost {
                 host_ref: Some(root),
                 ..

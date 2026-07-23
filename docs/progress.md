@@ -72,10 +72,12 @@ binding/lease metadata entry in O(1) from the execution-assigned object range,
 including exact type and generation validation; the script `HostRef` payload
 itself is still expanded and remains an open S2 item.
 The compact table key is now a pointer-free, 8-byte `HostSlotRef` containing
-only a `u32` slot and `u32` generation. The production direct-host table uses
-that handle for generation validation. Migrating `Value::HostRef` and unifying
-direct, scoped, extern, and Runtime-owned metadata behind the root table remain
-open; the expanded canonical `HostRef` is still the VM payload for now.
+only a `u32` slot and `u32` generation. One reusable dense `HostSlotTable`
+owns inline metadata for the common eight-slot case, rejects stale aliases,
+and advances a slot generation before reuse. Production direct-host arguments
+use that table instead of an ad hoc slot vector. Migrating `Value::HostRef` and
+unifying scoped, extern, and Runtime-owned metadata behind the root table
+remain open; the expanded canonical `HostRef` is still the VM payload for now.
 The first S3 standard binding family is also live: concrete
 `BTreeMap<K, V>` and `HashMap<K, V>` bindings synthesize stable recursive
 key/value facts, share the Vela `MapLike` surface and owned Map codec, and keep

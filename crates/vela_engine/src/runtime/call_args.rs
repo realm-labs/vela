@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use smallvec::SmallVec;
 use vela_bytecode::LinkedProgram;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::HostResult;
@@ -12,6 +11,7 @@ use vela_host::lease::{
 };
 use vela_host::object::{ScriptHostFieldAccess, ScriptHostObject};
 use vela_host::path::{HostRef, HostSlotRef};
+use vela_host::slot::HostSlotTable;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::heap::ScriptHeap;
@@ -24,7 +24,7 @@ use super::VelaValue;
 #[derive(Default)]
 pub struct CallArgs<'a> {
     entries: Vec<CallArg<'a>>,
-    direct_host_slots: SmallVec<[DirectHostSlot; 8]>,
+    direct_host_slots: HostSlotTable<DirectHostSlot>,
     direct_host_object_id_base: Option<u64>,
     fallback: Option<&'a mut (dyn ScriptStateAdapter + Send)>,
 }
@@ -32,7 +32,6 @@ pub struct CallArgs<'a> {
 #[derive(Clone, Copy)]
 struct DirectHostSlot {
     entry_index: u32,
-    generation: u32,
 }
 
 pub(super) struct CallArgRuntime<'program, 'heap, 'budget> {
@@ -83,7 +82,7 @@ impl<'a> CallArgs<'a> {
     pub fn from_positional(args: impl IntoIterator<Item = OwnedValue>) -> Self {
         Self {
             entries: args.into_iter().map(CallArg::Positional).collect(),
-            direct_host_slots: SmallVec::new(),
+            direct_host_slots: HostSlotTable::new(),
             direct_host_object_id_base: None,
             fallback: None,
         }
@@ -93,7 +92,7 @@ impl<'a> CallArgs<'a> {
     pub fn from_values(args: impl IntoIterator<Item = VelaValue>) -> Self {
         Self {
             entries: args.into_iter().map(CallArg::PositionalValue).collect(),
-            direct_host_slots: SmallVec::new(),
+            direct_host_slots: HostSlotTable::new(),
             direct_host_object_id_base: None,
             fallback: None,
         }
@@ -672,11 +671,11 @@ impl<'a> CallArgs<'a> {
                 let assigned =
                     HostRef::new(*type_id, vela_common::HostObjectId::new(*next_object_id), 1);
                 *host_ref = Some(assigned);
-                self.direct_host_slots.push(DirectHostSlot {
+                let handle = self.direct_host_slots.insert(DirectHostSlot {
                     entry_index: u32::try_from(entry_index)
                         .expect("CallArgs host entry index must fit the compact slot table"),
-                    generation: assigned.generation,
                 });
+                debug_assert_eq!(handle.generation(), assigned.generation);
                 if let Some(identity) = identity {
                     *identity.0.lock() = Some(assigned);
                 }
@@ -728,7 +727,7 @@ impl<'a> CallArgs<'a> {
         &self,
         type_id: vela_common::HostTypeId,
     ) -> Option<(HostRef, &HostArgBinding<'a>)> {
-        self.direct_host_slots.iter().find_map(|slot| {
+        self.direct_host_slots.iter().find_map(|(_, slot)| {
             match &self.entries[slot.entry_index as usize] {
                 CallArg::NamedHost {
                     host_ref: Some(host_ref),
@@ -752,8 +751,8 @@ impl<'a> CallArgs<'a> {
         let slot = root.object_id.get().checked_sub(base)?;
         let slot = u32::try_from(slot).ok()?;
         let handle = HostSlotRef::new(slot, root.generation);
-        let metadata = self.direct_host_slots.get(handle.slot() as usize)?;
-        (metadata.generation == handle.generation()).then_some(metadata.entry_index as usize)
+        let metadata = self.direct_host_slots.get(handle)?;
+        Some(metadata.entry_index as usize)
     }
 
     pub(super) fn take_host_lease(

@@ -25,6 +25,8 @@ pub mod proxy;
 #[forbid(unsafe_code)]
 pub mod resolved;
 #[forbid(unsafe_code)]
+pub mod slot;
+#[forbid(unsafe_code)]
 pub mod target;
 #[forbid(unsafe_code)]
 pub mod value;
