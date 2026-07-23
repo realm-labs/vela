@@ -2798,6 +2798,15 @@ HostAccess lease ends. The state owns no Rust borrow or guard, retains only
 Vela values, roots projected heap values across nested comparison calls, and
 preserves the owned ordering, error, and result semantics.
 
+Set algebra on a HostRef-backed view is a bounded snapshot operation. The VM
+projects the receiver once under its active lease, charges that complete
+projection before evaluation, and combines it with the ordinary owned Set
+operand using the same payload and relation algorithms as owned and cached
+execution. `union`, `intersection`, `difference`, and
+`symmetric_difference` return detached script-owned Sets;
+`is_subset`, `is_superset`, and `is_disjoint` return booleans. No operation
+mutates the Rust backing Set or sends a Vela method ID to the host adapter.
+
 ### Borrowed Rust Slices Use A Quarantined Erased-Borrow Boundary
 
 Concrete `[T]` has a distinct borrowed-only TypeBinding identity and maps to

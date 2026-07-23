@@ -252,7 +252,13 @@ on borrowed Array, Map, and Set views now reuse that projection to create one
 budgeted temporary script collection and enter the existing resumable callback
 state machine, so Array `filter/group_by`, Map `filter/map_values`, and Set
 `filter/map` retain owned collection semantics without exposing Vela method
-IDs to host adapters. Growable borrowed
+IDs to host adapters. Borrowed Set `union`, `intersection`, `difference`,
+`symmetric_difference`, `is_subset`, `is_superset`, and `is_disjoint` now
+consume one completely precharged values projection, reuse the owned/cached
+Set algebra algorithms against an owned Set operand, and return a detached
+owned Set or bool without mutating the Rust backing collection. Static and
+untyped dynamic receivers share this route; empty Sets and non-Set operands
+preserve the owned method semantics. Growable borrowed
 collection `clear` now precharges its size and performs one semantic
 `HostCollectionMutation::Clear` through HostAccess for standard Vec, Map, and
 Set host objects; budget failure occurs before mutation and adapters never see

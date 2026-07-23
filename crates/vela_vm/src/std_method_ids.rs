@@ -489,6 +489,66 @@ pub(crate) fn host_collection_projection(method_id: MethodId) -> Option<HostColl
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum HostSetAlgebra {
+    Union,
+    Intersection,
+    Difference,
+    SymmetricDifference,
+    IsSubset,
+    IsSuperset,
+    IsDisjoint,
+}
+
+impl HostSetAlgebra {
+    #[must_use]
+    pub(crate) const fn name(self) -> &'static str {
+        match self {
+            Self::Union => "union",
+            Self::Intersection => "intersection",
+            Self::Difference => "difference",
+            Self::SymmetricDifference => "symmetric_difference",
+            Self::IsSubset => "is_subset",
+            Self::IsSuperset => "is_superset",
+            Self::IsDisjoint => "is_disjoint",
+        }
+    }
+
+    #[must_use]
+    pub(crate) const fn operation(self) -> &'static str {
+        match self {
+            Self::Union => "method union",
+            Self::Intersection => "method intersection",
+            Self::Difference => "method difference",
+            Self::SymmetricDifference => "method symmetric_difference",
+            Self::IsSubset => "method is_subset",
+            Self::IsSuperset => "method is_superset",
+            Self::IsDisjoint => "method is_disjoint",
+        }
+    }
+}
+
+pub(crate) fn host_set_algebra(method_id: MethodId) -> Option<HostSetAlgebra> {
+    let ids = std_method_ids();
+    if method_id == ids.set_union {
+        Some(HostSetAlgebra::Union)
+    } else if method_id == ids.set_intersection {
+        Some(HostSetAlgebra::Intersection)
+    } else if method_id == ids.set_difference {
+        Some(HostSetAlgebra::Difference)
+    } else if method_id == ids.set_symmetric_difference {
+        Some(HostSetAlgebra::SymmetricDifference)
+    } else if method_id == ids.set_is_subset {
+        Some(HostSetAlgebra::IsSubset)
+    } else if method_id == ids.set_is_superset {
+        Some(HostSetAlgebra::IsSuperset)
+    } else if method_id == ids.set_is_disjoint {
+        Some(HostSetAlgebra::IsDisjoint)
+    } else {
+        None
+    }
+}
+
 fn standard_method_id(owner: &str, name: &str) -> MethodId {
     let Some(id) = vela_stdlib::std_method_id(owner, name) else {
         panic!("missing standard method identity for {owner}::{name}");

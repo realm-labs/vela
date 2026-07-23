@@ -1,9 +1,8 @@
 use crate::heap::HeapValue;
 use crate::script_set::ScriptSet;
-use crate::value_key::ValueKey;
 use crate::{
     ExecutionBudget, HeapExecution, StandardMethodInlineCacheTarget, Value, VmError, VmErrorKind,
-    VmResult, allocate_heap_value, collection_mutation::check_collection_len,
+    VmResult, allocate_heap_value, collection_mutation::check_collection_len, set_methods,
 };
 
 pub(in crate::standard_method_cache) fn call_cached_set_materialization(
@@ -20,34 +19,39 @@ pub(in crate::standard_method_cache) fn call_cached_set_materialization(
         | StandardMethodInlineCacheTarget::SymmetricDifference => {
             let (method, operation, kind) = match target {
                 StandardMethodInlineCacheTarget::Union => {
-                    ("union", "method union", CachedSetCombination::Union)
+                    ("union", "method union", set_methods::SetCombination::Union)
                 }
                 StandardMethodInlineCacheTarget::Intersection => (
                     "intersection",
                     "method intersection",
-                    CachedSetCombination::Intersection,
+                    set_methods::SetCombination::Intersection,
                 ),
                 StandardMethodInlineCacheTarget::Difference => (
                     "difference",
                     "method difference",
-                    CachedSetCombination::Difference,
+                    set_methods::SetCombination::Difference,
                 ),
                 StandardMethodInlineCacheTarget::SymmetricDifference => (
                     "symmetric_difference",
                     "method symmetric_difference",
-                    CachedSetCombination::SymmetricDifference,
+                    set_methods::SetCombination::SymmetricDifference,
                 ),
                 _ => unreachable!("set combination target was validated above"),
             };
+            if let Err(error) = crate::runtime_checks::expect_arity(method, args, 1) {
+                return Some(Err(error));
+            }
             let payload = {
                 let values = set_values(receiver, heap.as_deref())?;
-                match set_combination_payload(
+                let Some(other) = set_values(&args[0], heap.as_deref()) else {
+                    return Some(Err(VmError::new(VmErrorKind::TypeMismatch { operation })));
+                };
+                match set_methods::combination_payload(
                     values,
-                    args,
+                    other,
                     heap.as_deref(),
-                    method,
-                    operation,
                     kind,
+                    operation,
                 ) {
                     Ok(payload) => payload,
                     Err(error) => return Some(Err(error)),
@@ -69,99 +73,6 @@ fn set_values<'a>(receiver: &Value, heap: Option<&'a HeapExecution<'_>>) -> Opti
     Some(values)
 }
 
-fn set_combination_payload(
-    values: &ScriptSet,
-    args: &[Value],
-    heap: Option<&HeapExecution<'_>>,
-    method: &str,
-    operation: &'static str,
-    kind: CachedSetCombination,
-) -> VmResult<Vec<Value>> {
-    crate::runtime_checks::expect_arity(method, args, 1)?;
-    let other = set_values(&args[0], heap)
-        .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
-    match kind {
-        CachedSetCombination::Union => set_union_payload(values, other, heap, operation),
-        CachedSetCombination::Intersection => {
-            set_intersection_payload(values, other, heap, operation)
-        }
-        CachedSetCombination::Difference => set_difference_payload(values, other, heap, operation),
-        CachedSetCombination::SymmetricDifference => {
-            set_symmetric_difference_payload(values, other, heap, operation)
-        }
-    }
-}
-
-fn set_union_payload(
-    left: &ScriptSet,
-    right: &ScriptSet,
-    heap: Option<&HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<Vec<Value>> {
-    let mut combined = ScriptSet::new();
-    for value in left.values() {
-        combined.insert(*value, heap, operation)?;
-    }
-    for value in right.values() {
-        combined.insert(*value, heap, operation)?;
-    }
-    Ok(combined.values_vec())
-}
-
-fn set_intersection_payload(
-    left: &ScriptSet,
-    right: &ScriptSet,
-    heap: Option<&HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<Vec<Value>> {
-    let mut result = ScriptSet::new();
-    for value in left.values() {
-        let key = ValueKey::from_value(value, heap, operation)?;
-        if right.contains_key(&key) {
-            result.insert_keyed(key, *value);
-        }
-    }
-    Ok(result.values_vec())
-}
-
-fn set_difference_payload(
-    left: &ScriptSet,
-    right: &ScriptSet,
-    heap: Option<&HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<Vec<Value>> {
-    let mut result = ScriptSet::new();
-    for value in left.values() {
-        let key = ValueKey::from_value(value, heap, operation)?;
-        if !right.contains_key(&key) {
-            result.insert_keyed(key, *value);
-        }
-    }
-    Ok(result.values_vec())
-}
-
-fn set_symmetric_difference_payload(
-    left: &ScriptSet,
-    right: &ScriptSet,
-    heap: Option<&HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<Vec<Value>> {
-    let mut result = ScriptSet::new();
-    for value in left.values() {
-        let key = ValueKey::from_value(value, heap, operation)?;
-        if !right.contains_key(&key) {
-            result.insert_keyed(key, *value);
-        }
-    }
-    for value in right.values() {
-        let key = ValueKey::from_value(value, heap, operation)?;
-        if !left.contains_key(&key) {
-            result.insert_keyed(key, *value);
-        }
-    }
-    Ok(result.values_vec())
-}
-
 fn make_set(
     value: Vec<Value>,
     heap: &mut Option<&mut HeapExecution<'_>>,
@@ -176,12 +87,4 @@ fn make_set(
     };
     let value = ScriptSet::from_values(value, Some(&*heap), operation)?;
     allocate_heap_value(HeapValue::Set(value), heap, budget.as_deref_mut())
-}
-
-#[derive(Clone, Copy)]
-enum CachedSetCombination {
-    Union,
-    Intersection,
-    Difference,
-    SymmetricDifference,
 }

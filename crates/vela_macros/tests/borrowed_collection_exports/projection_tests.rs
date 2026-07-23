@@ -14,8 +14,7 @@ fn untyped_dynamic_borrowed_collections_discover_supported_standard_methods() {
         "return values.get_or(9i32, 0); }\n",
         "fn mutate_set(values) { return values.add(11i32); }\n",
         "fn reject_fixed(values) { values.push(13); }\n",
-        "fn reject_merge(values) { return values.merge(values); }\n",
-        "fn reject_union(values) { return values.union(values); }",
+        "fn reject_merge(values) { return values.merge(values); }",
     ));
 
     let array = vec![3_i64, 5, 8];
@@ -106,16 +105,131 @@ fn untyped_dynamic_borrowed_collections_discover_supported_standard_methods() {
         error.kind(),
         VmErrorKind::UnknownMethod { method } if method == "merge"
     ));
+}
+
+#[test]
+fn borrowed_set_algebra_uses_one_bounded_projection() {
+    let mut runtime = runtime(concat!(
+        "fn combine(values: SetView<i32>) {\n",
+        "  let other = set::from_array([2i32, 4i32, 5i32]);\n",
+        "  let unioned = values.union(other);\n",
+        "  let shared = values.intersection(other);\n",
+        "  let left = values.difference(other);\n",
+        "  let changed = values.symmetric_difference(other);\n",
+        "  return unioned.len() == 5 && unioned.has(4i32)\n",
+        "    && shared.len() == 2 && shared.has(2i32) && shared.has(5i32)\n",
+        "    && left.len() == 2 && left.has(1i32) && left.has(3i32)\n",
+        "    && changed.len() == 3 && changed.has(1i32)\n",
+        "    && changed.has(3i32) && changed.has(4i32);\n",
+        "}\n",
+        "fn relations(values: SetView<i32>) {\n",
+        "  return values.is_subset(set::from_array([1i32, 2i32, 3i32, 5i32, 8i32]))\n",
+        "    && values.is_superset(set::from_array([1i32, 3i32]))\n",
+        "    && values.is_disjoint(set::from_array([8i32, 13i32]));\n",
+        "}\n",
+        "fn empty(values: SetView<i32>) {\n",
+        "  let other = set::from_array([7i32]);\n",
+        "  return values.union(other).len() == 1\n",
+        "    && values.intersection(other).is_empty()\n",
+        "    && values.difference(other).is_empty()\n",
+        "    && values.symmetric_difference(other).has(7i32);\n",
+        "}\n",
+        "fn dynamic(values) { return values.union(set::from_array([8i32])).len(); }\n",
+        "fn wrong(values) { return values.union([8i32]); }",
+    ));
+
+    let values = BTreeSet::from([1_i32, 2, 3, 5]);
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call("combine", args, CallOptions::unbounded())
+        .expect("borrowed Set combinations should return owned Set values");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    drop(result);
+    assert_eq!(values, BTreeSet::from([1, 2, 3, 5]));
+
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call("relations", args, CallOptions::unbounded())
+        .expect("borrowed Set relations should reuse owned Set semantics");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    drop(result);
+
+    let empty = BTreeSet::<i32>::new();
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &empty);
+    let result = runtime
+        .call("empty", args, CallOptions::unbounded())
+        .expect("empty borrowed Sets should preserve owned algebra semantics");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    drop(result);
+
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call("dynamic", args, CallOptions::unbounded())
+        .expect("dynamic borrowed Sets should discover implemented algebra methods");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(5)));
+    drop(result);
 
     let mut args = CallArgs::new();
     args.push_collection_ref("values", &values);
     let error = runtime
-        .call("reject_union", args, CallOptions::unbounded())
-        .expect_err("dynamic discovery must not advertise an unimplemented host Set method");
+        .call("wrong", args, CallOptions::unbounded())
+        .expect_err("borrowed Set algebra must reject a non-Set operand");
     assert!(matches!(
         error.kind(),
-        VmErrorKind::UnknownMethod { method } if method == "union"
+        VmErrorKind::TypeMismatch {
+            operation: "method union"
+        }
     ));
+}
+
+#[test]
+fn borrowed_set_algebra_charges_projected_length() {
+    let mut runtime = runtime(
+        "fn union(values: SetView<i32>) { return values.union(set::from_array([])).len(); }",
+    );
+    let base_limit = (0..64)
+        .find(|limit| {
+            let values = BTreeSet::<i32>::new();
+            let mut args = CallArgs::new();
+            args.push_collection_ref("values", &values);
+            runtime
+                .call(
+                    "union",
+                    args,
+                    CallOptions::new(*limit, usize::MAX, usize::MAX),
+                )
+                .is_ok()
+        })
+        .expect("empty borrowed Set algebra should fit a small bounded call");
+
+    let values = BTreeSet::from([3_i32, 5, 8]);
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    assert!(
+        runtime
+            .call(
+                "union",
+                args,
+                CallOptions::new(base_limit + 2, usize::MAX, usize::MAX),
+            )
+            .is_err(),
+        "three projected Set elements must cost three execution units"
+    );
+
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call(
+            "union",
+            args,
+            CallOptions::new(base_limit + 3, usize::MAX, usize::MAX),
+        )
+        .expect("the exact Set projection budget should succeed");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(3)));
 }
 
 #[test]

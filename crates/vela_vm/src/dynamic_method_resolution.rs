@@ -176,6 +176,7 @@ fn host_collection_method_is_implemented(method_id: MethodId) -> bool {
         || crate::std_method_ids::host_array_transform(method_id).is_some()
         || crate::std_method_ids::host_collection_mutation(method_id).is_some()
         || crate::std_method_ids::host_collection_projection(method_id).is_some()
+        || crate::std_method_ids::host_set_algebra(method_id).is_some()
         || crate::callback_method_dispatch::host_collection_callback_cache_entry(method_id)
             .is_some()
         || array_methods::ordering_kind(method_id).is_some()

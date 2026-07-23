@@ -10,7 +10,8 @@ mod mutation;
 
 pub(crate) use basic::{from_array, has, values};
 pub(crate) use combination::{
-    difference, intersection, is_disjoint, is_subset, is_superset, symmetric_difference, union,
+    SetCombination, combination_payload, difference, intersection, is_disjoint, is_subset,
+    is_superset, symmetric_difference, union,
 };
 pub(crate) use higher_order::{all, any, count, filter, find, map};
 pub(crate) use mutation::{add, clear, extend, remove};
@@ -51,6 +52,16 @@ pub(crate) fn relation_matches(
     operation: &'static str,
 ) -> VmResult<bool> {
     let other_values = set_slots(other, Some(heap), operation)?;
+    relation_between(receiver_values, other_values, heap, relation, operation)
+}
+
+pub(crate) fn relation_between(
+    receiver_values: &ScriptSet,
+    other_values: &ScriptSet,
+    heap: &HeapExecution<'_>,
+    relation: SetRelation,
+    operation: &'static str,
+) -> VmResult<bool> {
     match relation {
         SetRelation::Subset => slots_contain_all(receiver_values, other_values, heap, operation),
         SetRelation::Superset => slots_contain_all(other_values, receiver_values, heap, operation),
@@ -66,7 +77,7 @@ pub(crate) fn set_values(
     set_slots(receiver, heap, operation).map(ScriptSet::values_vec)
 }
 
-pub(super) fn set_slots<'a>(
+pub(crate) fn set_slots<'a>(
     receiver: &Value,
     heap: Option<&'a HeapExecution<'_>>,
     operation: &'static str,

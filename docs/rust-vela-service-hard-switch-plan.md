@@ -1259,9 +1259,14 @@ one budgeted projection, materialize the matching temporary script-owned
 Array/Map/Set, and enter the existing resumable callback state machine. Array
 `filter/group_by`, Map `filter/map_values`, and Set `filter/map` therefore keep
 their owned semantics while host adapters remain independent of Vela method
-IDs. Live host iterators, complex element HostRefs, and generation validation
-at resumable boundaries remain planned
-prepared-operation work. The first bulk write protocol is now live:
+IDs. Borrowed Set combinations and relation predicates likewise use one
+completely precharged values projection, then call the shared owned/cached Set
+algebra against an owned Set operand. Combination results are detached owned
+Sets, relation results are booleans, and neither path mutates the Rust backing
+collection. Static and untyped dynamic receivers use the same route. Live host
+iterators, complex element HostRefs, and generation validation at resumable
+boundaries remain planned prepared-operation work. The first bulk write
+protocol is now live:
 growable collection `clear` precharges one execution unit per removed element
 and then performs one domain-neutral `HostCollectionMutation::Clear` through
 HostAccess. Standard Vec, Map, and Set host objects implement the same
