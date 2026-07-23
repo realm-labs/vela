@@ -173,29 +173,10 @@ pub(super) fn script_host_object_impl_tokens(
                 access: ::vela_host::resolved::ResolvedHostAccess,
                 target: ::vela_host::target::HostTargetInstance<'_>,
             ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
-                if let Some((slot, child_access)) = access.next_prepared_field() {
-                    return ::vela_host::object::ScriptHostFieldAccess::read_prepared_field_target(
-                        self,
-                        slot,
-                        child_access,
-                        target,
-                    );
-                }
-                if target.offset + 1 == target.plan.parts.len() {
-                    if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
-                        access.adapter_kind
-                    {
-                        return ::vela_host::object::ScriptHostFieldAccess::read_direct_field(
-                            self,
-                            slot,
-                            target,
-                        );
-                    }
-                }
-                ::vela_host::object::ScriptHostFieldAccess::read_host_target_from(
+                ::vela_host::object::ScriptHostFieldAccess::read_resolved_host_target_from(
                     self,
+                    access,
                     target,
-                    target.offset,
                 )
             }
 

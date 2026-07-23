@@ -174,6 +174,19 @@ pub trait ScriptHostObject {
 pub trait ScriptHostFieldAccess {
     fn script_host_type_id(&self) -> HostTypeId;
 
+    /// Resolves a target from Rust type structure without requiring a live
+    /// collection element. Generated adapters override this for field paths.
+    #[doc(hidden)]
+    fn resolve_host_type_target_from(
+        _spec: HostAccessSpec<'_>,
+        _offset: usize,
+    ) -> HostResult<ResolvedHostAccess>
+    where
+        Self: Sized,
+    {
+        Ok(ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)))
+    }
+
     /// Reads a field selected by the adapter's dense, schema-local slot.
     ///
     /// Generated host adapters override this entry point. The default keeps
@@ -229,6 +242,17 @@ pub trait ScriptHostFieldAccess {
         let _ = spec;
         let _ = offset;
         Ok(ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)))
+    }
+
+    /// Executes a resolved target from the cursor carried by `target`.
+    #[doc(hidden)]
+    fn read_resolved_host_target_from(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
+        let _ = access;
+        self.read_host_target_from(target, target.offset)
     }
 
     fn read_host_target_from(
@@ -454,8 +478,7 @@ macro_rules! impl_script_host_object_via_field {
                 access: ResolvedHostAccess,
                 target: HostTargetInstance<'_>,
             ) -> HostResult<HostValue> {
-                let _ = access;
-                ScriptHostFieldAccess::read_host_target_from(self, target, target.offset)
+                ScriptHostFieldAccess::read_resolved_host_target_from(self, access, target)
             }
 
             fn query_collection_resolved_host(

@@ -8,7 +8,7 @@ use crate::{
         HostCollectionMutation, HostCollectionProjection, HostCollectionQuery,
         HostCollectionSnapshot,
     },
-    resolved::{HostAccessSpec, HostSchemaEpoch, ResolvedHostAccess},
+    resolved::{HostAccessSpec, HostSchemaEpoch, PreparedHostStep, ResolvedHostAccess},
     target::{HostPathPart, HostTargetInstance},
     value::HostValue,
 };
@@ -39,17 +39,47 @@ where
             .expect("Vec<T> TypeId matched Vec<u8>"))
     }
 
+    fn resolve_host_type_target_from(
+        spec: HostAccessSpec<'_>,
+        offset: usize,
+    ) -> HostResult<ResolvedHostAccess> {
+        Ok(match spec.plan.parts.as_slice().get(offset) {
+            None => ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0)),
+            Some(HostPathPart::ConstIndex(_) | HostPathPart::DynIndex { .. })
+                if offset + 1 == spec.plan.parts.len() =>
+            {
+                ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0))
+            }
+            Some(HostPathPart::ConstIndex(_) | HostPathPart::DynIndex { .. }) => {
+                T::resolve_host_type_target_from(spec, offset + 1)?.prepend_prepared_adapter(0)
+            }
+            Some(_) => ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
+        })
+    }
+
     fn resolve_host_target_from(
         &self,
         spec: HostAccessSpec<'_>,
         offset: usize,
     ) -> HostResult<ResolvedHostAccess> {
-        Ok(match spec.plan.parts.as_slice().get(offset) {
-            None | Some(HostPathPart::ConstIndex(_) | HostPathPart::DynIndex { .. }) => {
-                ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0))
-            }
-            Some(_) => ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
-        })
+        Self::resolve_host_type_target_from(spec, offset)
+    }
+
+    fn read_resolved_host_target_from(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
+        if let Some((PreparedHostStep::AdapterLocal(0), child_access)) = access.next_prepared_step()
+        {
+            let index = usize::try_from(target_index(target, target.offset)?)
+                .map_err(|_| invalid_arg("array index"))?;
+            return self
+                .get(index)
+                .ok_or_else(|| missing_target(target))?
+                .read_resolved_host_target_from(child_access, target.at_offset(target.offset + 1));
+        }
+        self.read_host_target_from(target, target.offset)
     }
 
     fn read_host_target_from(

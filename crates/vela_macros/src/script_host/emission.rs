@@ -82,6 +82,10 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
         .filter(|(_, field)| field.readable || field.writable)
         .map(direct_field_write_arm_tokens);
     let resolve_arms = fields.iter().enumerate().map(field_resolve_arm_tokens);
+    let static_resolve_arms = fields
+        .iter()
+        .enumerate()
+        .map(field_static_resolve_arm_tokens);
     let read_arms = fields
         .iter()
         .filter(|field| field.readable)
@@ -148,6 +152,18 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
                 Self::vela_host_type_id()
             }
 
+            fn resolve_host_type_target_from(
+                spec: ::vela_host::resolved::HostAccessSpec<'_>,
+                offset: usize,
+            ) -> ::vela_host::error::HostResult<::vela_host::resolved::ResolvedHostAccess> {
+                match spec.plan.parts.as_slice().get(offset) {
+                    #(#static_resolve_arms)*
+                    _ => Ok(::vela_host::resolved::ResolvedHostAccess::generic_target(
+                        ::vela_host::resolved::HostSchemaEpoch::new(0),
+                    )),
+                }
+            }
+
             fn read_direct_field(
                 &self,
                 slot: u32,
@@ -209,6 +225,41 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
                         source_span: None,
                     }),
                 }
+            }
+
+            fn read_resolved_host_target_from(
+                &self,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+            ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
+                if let Some((
+                    ::vela_host::resolved::PreparedHostStep::Field(slot),
+                    child_access,
+                )) = access.next_prepared_step()
+                {
+                    return ::vela_host::object::ScriptHostFieldAccess::read_prepared_field_target(
+                        self,
+                        slot,
+                        child_access,
+                        target,
+                    );
+                }
+                if target.offset + 1 == target.plan.parts.len() {
+                    if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
+                        access.adapter_kind
+                    {
+                        return ::vela_host::object::ScriptHostFieldAccess::read_direct_field(
+                            self,
+                            slot,
+                            target,
+                        );
+                    }
+                }
+                ::vela_host::object::ScriptHostFieldAccess::read_host_target_from(
+                    self,
+                    target,
+                    target.offset,
+                )
             }
 
             fn write_host_target_from(
@@ -548,6 +599,38 @@ fn field_resolve_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
                     spec,
                     offset + 1,
                 )?;
+                Ok(__vela_child_access.prepend_prepared_field(#slot))
+            }
+        }
+    }
+}
+
+fn field_static_resolve_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
+    let id = u128::from(field.id);
+    let slot = u32::try_from(slot).expect("host field slot index fits u32");
+    let rust_type = &field.rust_type;
+    quote! {
+        Some(::vela_host::target::HostPathPart::Field(field))
+            if *field == ::vela_def::FieldId::new(#id) =>
+        {
+            if offset + 1 == spec.plan.parts.len()
+                && !matches!(spec.op, ::vela_host::resolved::HostAccessOp::Call(_))
+            {
+                Ok(::vela_host::resolved::ResolvedHostAccess::direct_field(
+                    #slot,
+                    ::vela_host::resolved::HostSchemaEpoch::new(0),
+                ))
+            } else if matches!(
+                spec.op,
+                ::vela_host::resolved::HostAccessOp::Call(_)
+            ) {
+                Ok(::vela_host::resolved::ResolvedHostAccess::generic_target(
+                    ::vela_host::resolved::HostSchemaEpoch::new(0),
+                ))
+            } else {
+                let __vela_child_access =
+                    <#rust_type as ::vela_host::object::ScriptHostFieldAccess>::
+                        resolve_host_type_target_from(spec, offset + 1)?;
                 Ok(__vela_child_access.prepend_prepared_field(#slot))
             }
         }

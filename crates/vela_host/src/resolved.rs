@@ -2,7 +2,7 @@ use vela_common::HostMethodId;
 
 use crate::target::HostTargetPlan;
 
-const INLINE_PREPARED_FIELD_SLOTS: usize = 4;
+const INLINE_PREPARED_STEPS: usize = 4;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct HostSchemaEpoch(pub u64);
@@ -65,9 +65,9 @@ impl<'a> HostAccessSpec<'a> {
 pub struct ResolvedHostAccess {
     pub adapter_kind: ResolvedHostAccessKind,
     pub schema_epoch: HostSchemaEpoch,
-    prepared_field_slots: [u32; INLINE_PREPARED_FIELD_SLOTS],
-    prepared_field_count: u8,
-    prepared_field_offset: u8,
+    prepared_steps: [PreparedHostStep; INLINE_PREPARED_STEPS],
+    prepared_step_count: u8,
+    prepared_step_offset: u8,
 }
 
 impl ResolvedHostAccess {
@@ -76,9 +76,9 @@ impl ResolvedHostAccess {
         Self {
             adapter_kind,
             schema_epoch,
-            prepared_field_slots: [0; INLINE_PREPARED_FIELD_SLOTS],
-            prepared_field_count: 0,
-            prepared_field_offset: 0,
+            prepared_steps: [PreparedHostStep::Field(0); INLINE_PREPARED_STEPS],
+            prepared_step_count: 0,
+            prepared_step_offset: 0,
         }
     }
 
@@ -111,28 +111,70 @@ impl ResolvedHostAccess {
         if matches!(self.adapter_kind, ResolvedHostAccessKind::GenericTarget) {
             return self;
         }
-        let count = usize::from(self.prepared_field_count);
-        if count == INLINE_PREPARED_FIELD_SLOTS {
+        let count = usize::from(self.prepared_step_count);
+        if count == INLINE_PREPARED_STEPS {
             return Self::generic_target(self.schema_epoch);
         }
-        self.prepared_field_slots.copy_within(0..count, 1);
-        self.prepared_field_slots[0] = slot;
-        self.prepared_field_count += 1;
+        self.prepared_steps.copy_within(0..count, 1);
+        self.prepared_steps[0] = PreparedHostStep::Field(slot);
+        self.prepared_step_count += 1;
+        self
+    }
+
+    /// Prepends one adapter-local traversal step to a prepared nested access.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn prepend_prepared_adapter(mut self, slot: u32) -> Self {
+        if matches!(self.adapter_kind, ResolvedHostAccessKind::GenericTarget) {
+            return self;
+        }
+        let count = usize::from(self.prepared_step_count);
+        if count == INLINE_PREPARED_STEPS {
+            return Self::generic_target(self.schema_epoch);
+        }
+        self.prepared_steps.copy_within(0..count, 1);
+        self.prepared_steps[0] = PreparedHostStep::AdapterLocal(slot);
+        self.prepared_step_count += 1;
         self
     }
 
     #[must_use]
     pub fn prepared_field_slot(self, offset: usize) -> Option<u32> {
-        (offset < usize::from(self.prepared_field_count)).then(|| self.prepared_field_slots[offset])
+        match self.prepared_step(offset) {
+            Some(PreparedHostStep::Field(slot)) => Some(slot),
+            Some(PreparedHostStep::AdapterLocal(_)) | None => None,
+        }
+    }
+
+    #[doc(hidden)]
+    #[must_use]
+    pub fn prepared_step(self, offset: usize) -> Option<PreparedHostStep> {
+        (offset < usize::from(self.prepared_step_count)).then(|| self.prepared_steps[offset])
+    }
+
+    #[doc(hidden)]
+    #[must_use]
+    pub fn next_prepared_step(mut self) -> Option<(PreparedHostStep, Self)> {
+        let offset = usize::from(self.prepared_step_offset);
+        let step = self.prepared_step(offset)?;
+        self.prepared_step_offset += 1;
+        Some((step, self))
     }
 
     #[must_use]
-    pub fn next_prepared_field(mut self) -> Option<(u32, Self)> {
-        let offset = usize::from(self.prepared_field_offset);
-        let slot = self.prepared_field_slot(offset)?;
-        self.prepared_field_offset += 1;
-        Some((slot, self))
+    pub fn next_prepared_field(self) -> Option<(u32, Self)> {
+        match self.next_prepared_step()? {
+            (PreparedHostStep::Field(slot), access) => Some((slot, access)),
+            (PreparedHostStep::AdapterLocal(_), _) => None,
+        }
     }
+}
+
+#[doc(hidden)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum PreparedHostStep {
+    Field(u32),
+    AdapterLocal(u32),
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -205,5 +247,25 @@ mod tests {
         assert_eq!(fallback.adapter_kind, ResolvedHostAccessKind::GenericTarget);
         assert_eq!(fallback.prepared_field_slot(0), None);
         assert_eq!(fallback.schema_epoch, epoch);
+    }
+
+    #[test]
+    fn prepared_steps_distinguish_fields_from_adapter_boundaries() {
+        let epoch = HostSchemaEpoch::new(42);
+        let resolved = ResolvedHostAccess::direct_field(9, epoch)
+            .prepend_prepared_field(3)
+            .prepend_prepared_adapter(0)
+            .prepend_prepared_field(1);
+
+        assert_eq!(resolved.prepared_field_slot(0), Some(1));
+        assert_eq!(resolved.prepared_field_slot(1), None);
+        assert_eq!(
+            resolved.prepared_step(1),
+            Some(PreparedHostStep::AdapterLocal(0))
+        );
+        let (first, remaining) = resolved.next_prepared_step().expect("field step");
+        let (second, _) = remaining.next_prepared_step().expect("adapter step");
+        assert_eq!(first, PreparedHostStep::Field(1));
+        assert_eq!(second, PreparedHostStep::AdapterLocal(0));
     }
 }

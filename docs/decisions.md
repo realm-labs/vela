@@ -2784,6 +2784,18 @@ Rust objects into script storage. Consolidating borrow-group, provenance,
 prepared-adapter, pinned-generation, scoped, extern, and Runtime-owned metadata
 into the dense slot entry remains S2 work.
 
+### Prepared Host Traversal Uses Inline Typed Steps
+
+A resolved host access carries one bounded copyable chain whose steps
+distinguish generated schema-local field slots from adapter-local collection
+operations. Generated field traversal consumes only field steps; sequence,
+map, set, array, and slice adapters consume only their own adapter steps before
+delegating to the next typed target. This lets a static path cross collection
+boundaries and resume dense field or method dispatch without storing names,
+materializing a HostPath, consulting reflection, or inspecting a live element
+during resolution. Paths deeper than the inline capacity retain the validated
+generic fallback.
+
 ### Service Deployment Supports Snapshots And Exact-Base Deltas
 
 A Snapshot describes the complete desired Vela service state and composes

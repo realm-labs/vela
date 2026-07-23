@@ -1,5 +1,7 @@
 use std::collections::BTreeSet;
 
+use proc_macro2::TokenStream;
+use quote::ToTokens;
 use syn::{Data, DeriveInput, Fields, Result};
 
 use crate::attrs::{error, inferred_type_hint, parse_script_attrs, spanned_error};
@@ -8,6 +10,7 @@ use crate::hash::StableHasher;
 #[derive(Clone, Debug)]
 pub(super) struct FieldMeta {
     pub(super) rust_name: String,
+    pub(super) rust_type: TokenStream,
     pub(super) script_name: String,
     pub(super) stable_name: String,
     pub(super) id: u64,
@@ -76,6 +79,7 @@ pub(super) fn collect_fields(
             script_name,
             stable_name,
             rust_name,
+            rust_type: field.ty.to_token_stream(),
             id,
             readable: attrs.get,
             writable: attrs.set,
@@ -196,6 +200,7 @@ fn collect_variant_fields(
                     script_name,
                     stable_name,
                     rust_name,
+                    rust_type: field.ty.to_token_stream(),
                     id,
                     readable: attrs.get,
                     writable: attrs.set,

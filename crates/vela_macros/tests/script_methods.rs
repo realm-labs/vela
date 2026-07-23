@@ -15,7 +15,9 @@ use vela_host::protocol::{
     HostCollectionMutation, HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot,
 };
 use vela_host::proxy::PathProxy;
-use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccessKind};
+use vela_host::resolved::{
+    HostAccessOp, HostAccessSpec, HostMutationOp, PreparedHostStep, ResolvedHostAccessKind,
+};
 use vela_host::target::{HostTargetInstance, HostTargetPlan};
 use vela_host::value::HostValue;
 use vela_macros::{ScriptHost, script_methods};
@@ -215,6 +217,8 @@ struct CollectionLeaf {
     tags: BTreeSet<String>,
     #[script(get)]
     fixed: [i64; 2],
+    #[script(get)]
+    counters: Vec<DirectCounter>,
 }
 
 #[script_methods]
@@ -514,6 +518,7 @@ fn nested_collection_protocols_execute_prepared_field_slots() {
             entries: BTreeMap::from([("x".to_owned(), 8)]),
             tags: BTreeSet::from(["ready".to_owned()]),
             fixed: [13, 21],
+            counters: vec![DirectCounter { total: 34 }],
         },
     };
     let plan = HostTargetPlan::new(CollectionOuter::vela_host_type_id())
@@ -679,6 +684,40 @@ fn nested_collection_protocols_execute_prepared_field_slots() {
     assert_eq!(
         fixed_value,
         HostValue::Scalar(vela_common::ScalarValue::I64(21))
+    );
+
+    let element_field_plan = HostTargetPlan::new(CollectionOuter::vela_host_type_id())
+        .field(CollectionOuter::vela_field_id_leaf())
+        .field(CollectionLeaf::vela_field_id_counters())
+        .const_index(0)
+        .field(DirectCounter::vela_field_id_total());
+    let element_field_target = HostTargetInstance::new(root, &element_field_plan, &[]);
+    let element_field_access =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+            &outer,
+            HostAccessSpec::new(HostAccessOp::Read, &element_field_plan),
+        )
+        .expect("indexed element field should resolve through a mixed prepared chain");
+    assert_eq!(
+        element_field_access.adapter_kind,
+        ResolvedHostAccessKind::DirectField(0)
+    );
+    assert_eq!(element_field_access.prepared_field_slot(0), Some(0));
+    assert_eq!(element_field_access.prepared_field_slot(1), Some(5));
+    assert_eq!(
+        element_field_access.prepared_step(2),
+        Some(PreparedHostStep::AdapterLocal(0))
+    );
+    let element_field_value =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::read_resolved_host(
+            &outer,
+            element_field_access,
+            element_field_target,
+        )
+        .expect("mixed prepared chain should execute the dense element field read");
+    assert_eq!(
+        element_field_value,
+        HostValue::Scalar(vela_common::ScalarValue::I64(34))
     );
 
     let remove_access =
