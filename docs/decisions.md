@@ -2639,7 +2639,9 @@ Growable borrowed Array `remove_at` follows the same rule over an indexed path:
 capture the current element, remove it only when present, and return
 `Option<T>`. Missing indexes are not errors, while conversion, permission,
 lease, generation, and nested-path failures still propagate through
-HostAccess.
+HostAccess. `pop` first queries the live last index under the same exclusive
+lease, then uses that identical indexed read/remove operation; an empty Array
+returns `Option::None` without resolving or mutating an element path.
 
 ### Mutable Collection Return Capability Is Structured Metadata
 

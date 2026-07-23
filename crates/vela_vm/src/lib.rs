@@ -28,6 +28,7 @@ mod heap_values;
 mod host_access;
 mod host_access_helpers;
 mod host_collection_callback;
+mod host_collection_edges;
 mod host_collection_lookup;
 mod host_collection_mutation;
 mod host_collection_projection;

@@ -1,15 +1,14 @@
 use vela_bytecode::{CacheSiteId, Register};
-use vela_common::ScalarValue;
 use vela_host::error::HostErrorKind;
-use vela_host::protocol::HostCollectionQuery;
 use vela_host::resolved::{HostAccessOp, HostAccessSpec};
-use vela_host::target::{HostTargetInstance, HostTargetPlan};
+use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
 
 use crate::host_access::{
     HostAccessRuntime, missing_host_context, resolve_cached_access, runtime_value_from_host,
 };
 use crate::host_access_helpers::runtime_collection_index;
+use crate::host_collection_edges::{HostArrayEdge, host_array_edge_index};
 use crate::std_method_ids::HostCollectionLookup;
 use crate::{HostInlineCacheTarget, Value, VmError, VmErrorKind, VmResult, expect_host_ref};
 
@@ -32,7 +31,18 @@ pub(crate) fn execute_host_root_collection_lookup(
         runtime.host.as_deref(),
         "host collection lookup",
     )?;
-    let array_index = array_lookup_index(&mut runtime, root, lookup)?;
+    let array_index = match lookup {
+        HostCollectionLookup::ArrayFirst => {
+            host_array_edge_index(&mut runtime, root, HostArrayEdge::First)?
+        }
+        HostCollectionLookup::ArrayLast => {
+            host_array_edge_index(&mut runtime, root, HostArrayEdge::Last)?
+        }
+        HostCollectionLookup::MapHas
+        | HostCollectionLookup::MapGet
+        | HostCollectionLookup::MapGetOr
+        | HostCollectionLookup::SetHas => None,
+    };
     let key = match lookup {
         HostCollectionLookup::ArrayFirst | HostCollectionLookup::ArrayLast => array_index
             .map(|index| {
@@ -124,47 +134,5 @@ pub(crate) fn execute_host_root_collection_lookup(
             Some(payload) => runtime_value_from_host(payload, runtime.heap, runtime.budget, host),
             None => Ok(args[1]),
         },
-    }
-}
-
-fn array_lookup_index(
-    runtime: &mut HostAccessRuntime<'_, '_, '_>,
-    root: vela_host::path::HostRef,
-    lookup: HostCollectionLookup,
-) -> VmResult<Option<i64>> {
-    if !matches!(
-        lookup,
-        HostCollectionLookup::ArrayFirst | HostCollectionLookup::ArrayLast
-    ) {
-        return Ok(None);
-    }
-    let target = HostTargetPlan::new(root.type_id);
-    let instance = HostTargetInstance::new(root, &target, &[]);
-    let host = runtime
-        .host
-        .as_deref_mut()
-        .ok_or_else(missing_host_context)?;
-    let resolved = host
-        .adapter
-        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &target))
-        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
-    match host.access.query_collection_resolved(
-        host.adapter,
-        resolved,
-        instance,
-        HostCollectionQuery::Len,
-        runtime.source_span,
-    )? {
-        HostValue::Scalar(ScalarValue::I64(0)) => Ok(None),
-        HostValue::Scalar(ScalarValue::I64(len)) if len > 0 => {
-            Ok(Some(if lookup == HostCollectionLookup::ArrayFirst {
-                0
-            } else {
-                len - 1
-            }))
-        }
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "host array element lookup",
-        })),
     }
 }

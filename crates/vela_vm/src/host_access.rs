@@ -727,8 +727,35 @@ pub(crate) fn execute_host_root_collection_mutation(
         runtime.host.as_deref(),
         "host collection mutation",
     )?;
+    let pop_index = if mutation == crate::std_method_ids::HostCollectionMutation::ArrayPop {
+        match crate::host_collection_edges::host_array_edge_index(
+            &mut runtime,
+            root,
+            crate::host_collection_edges::HostArrayEdge::Last,
+        )? {
+            Some(index) => Some(Value::I64(index)),
+            None => {
+                let heap = runtime.heap.as_deref_mut().ok_or_else(|| {
+                    VmError::new(VmErrorKind::TypeMismatch {
+                        operation: "host array pop",
+                    })
+                })?;
+                return crate::option_result::option_value(
+                    None,
+                    heap,
+                    runtime.budget.as_deref_mut(),
+                );
+            }
+        }
+    } else {
+        None
+    };
+    let index = match pop_index.as_ref() {
+        Some(index) => index,
+        None => &args[0],
+    };
     let key = runtime_collection_index(
-        &args[0],
+        index,
         runtime.heap.as_deref(),
         runtime.host.as_deref(),
         "host collection mutation",
@@ -780,7 +807,9 @@ pub(crate) fn execute_host_root_collection_mutation(
             )?;
             Ok(args[1])
         }
-        HostCollectionMutation::ArrayRemoveAt | HostCollectionMutation::MapRemove => {
+        HostCollectionMutation::ArrayPop
+        | HostCollectionMutation::ArrayRemoveAt
+        | HostCollectionMutation::MapRemove => {
             let read = resolve_collection_key_access(
                 host,
                 runtime.inline_caches,
@@ -797,8 +826,11 @@ pub(crate) fn execute_host_root_collection_mutation(
                     Ok(value) => Some(value),
                     Err(error)
                         if matches!(&error.kind, HostErrorKind::MissingCollectionEntry { .. })
-                            || (mutation == HostCollectionMutation::ArrayRemoveAt
-                                && matches!(&error.kind, HostErrorKind::MissingPath { .. })) =>
+                            || (matches!(
+                                mutation,
+                                HostCollectionMutation::ArrayPop
+                                    | HostCollectionMutation::ArrayRemoveAt
+                            ) && matches!(&error.kind, HostErrorKind::MissingPath { .. })) =>
                     {
                         None
                     }

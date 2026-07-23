@@ -1222,7 +1222,9 @@ uses a keyed remove and returns the prior value as `Option<V>`;
 materialization. Growable `ArrayMut.remove_at` performs the corresponding
 indexed read/remove through HostAccess, returns the prior value as `Option<T>`,
 and preserves retained method-return view identity and missing-index
-semantics. Array `iter/values`, Map `keys/values/entries/iter`, and Set
+semantics. `ArrayMut.pop` queries the live final index under the same lease,
+reuses that read/remove path, and returns `Option::None` for an empty view.
+Array `iter/values`, Map `keys/values/entries/iter`, and Set
 `values/iter` now use a deterministic bounded `HostCollectionProjection` under
 the active lease and then reuse the ordinary Vela Iterator pipeline. This
 snapshot slice preserves exact boundary tags and supports
