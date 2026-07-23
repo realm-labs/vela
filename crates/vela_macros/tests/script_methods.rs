@@ -1,6 +1,6 @@
 #![allow(clippy::result_large_err)]
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use vela_common::{HostMethodId, HostObjectId, stable_id};
 use vela_engine::engine::Engine;
@@ -221,6 +221,10 @@ struct CollectionLeaf {
     counters: Vec<DirectCounter>,
     #[script(get)]
     fixed_counters: [DirectCounter; 1],
+    #[script(get)]
+    counter_entries: BTreeMap<String, DirectCounter>,
+    #[script(get)]
+    hash_counters: HashMap<String, DirectCounter>,
 }
 
 #[script_methods]
@@ -522,6 +526,8 @@ fn nested_collection_protocols_execute_prepared_field_slots() {
             fixed: [13, 21],
             counters: vec![DirectCounter { total: 34 }],
             fixed_counters: [DirectCounter { total: 55 }],
+            counter_entries: BTreeMap::from([("primary".to_owned(), DirectCounter { total: 60 })]),
+            hash_counters: HashMap::from([("primary".to_owned(), DirectCounter { total: 70 })]),
         },
     };
     let plan = HostTargetPlan::new(CollectionOuter::vela_host_type_id())
@@ -782,6 +788,53 @@ fn nested_collection_protocols_execute_prepared_field_slots() {
     )
     .expect("fixed-array mixed chain should execute the dense element mutation");
     assert_eq!(outer.leaf.fixed_counters[0].total, 58);
+
+    let map_element_plan = HostTargetPlan::new(CollectionOuter::vela_host_type_id())
+        .field(CollectionOuter::vela_field_id_leaf())
+        .field(CollectionLeaf::vela_field_id_counter_entries())
+        .const_key("primary")
+        .field(DirectCounter::vela_field_id_total());
+    let map_element_target = HostTargetInstance::new(root, &map_element_plan, &[]);
+    let map_element_access =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+            &outer,
+            HostAccessSpec::new(HostAccessOp::Mutate(HostMutationOp::Add), &map_element_plan),
+        )
+        .expect("map value field should resolve through a mixed prepared chain");
+    assert_eq!(
+        map_element_access.prepared_step(2),
+        Some(PreparedHostStep::AdapterLocal(0))
+    );
+    <CollectionOuter as vela_host::object::ScriptHostObject>::mutate_resolved_host(
+        &mut outer,
+        map_element_access,
+        map_element_target,
+        HostMutationOp::Add,
+        HostValue::Scalar(vela_common::ScalarValue::I64(4)),
+    )
+    .expect("map mixed chain should execute the dense value-field mutation");
+    assert_eq!(outer.leaf.counter_entries["primary"].total, 64);
+
+    let hash_element_plan = HostTargetPlan::new(CollectionOuter::vela_host_type_id())
+        .field(CollectionOuter::vela_field_id_leaf())
+        .field(CollectionLeaf::vela_field_id_hash_counters())
+        .const_key("primary")
+        .field(DirectCounter::vela_field_id_total());
+    let hash_element_target = HostTargetInstance::new(root, &hash_element_plan, &[]);
+    let hash_element_access =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+            &outer,
+            HostAccessSpec::new(HostAccessOp::Write, &hash_element_plan),
+        )
+        .expect("hash-map value field should resolve through a mixed prepared chain");
+    <CollectionOuter as vela_host::object::ScriptHostObject>::write_resolved_host(
+        &mut outer,
+        hash_element_access,
+        hash_element_target,
+        HostValue::Scalar(vela_common::ScalarValue::I64(75)),
+    )
+    .expect("hash-map mixed chain should execute the dense value-field write");
+    assert_eq!(outer.leaf.hash_counters["primary"].total, 75);
 
     let remove_access =
         <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(

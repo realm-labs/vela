@@ -85,7 +85,9 @@ an inline mixed chain of generated field slots and adapter-local steps;
 `Vec<T>` consumes its index step and executes a terminal generated element
 field read, write, or compound mutation through dense field thunks without a
 live-element lookup during resolution; fixed arrays and borrowed slices now do
-the same. Element method calls and keyed-map mixed chains remain open.
+the same. `BTreeMap<K, V>` and `HashMap<K, V>` consume typed key steps and
+execute the same dense value-field operations while preserving key conversion
+and missing-entry validation. Element method calls remain open.
 Default/manual adapters preserve that cursor during read-modify-write and use
 it when distinguishing a nested leaf from a missing target.
 Direct call arguments now keep an inline dense host-slot index separate from
