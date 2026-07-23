@@ -67,10 +67,11 @@ method calls. Those successful accesses no longer repeat stable field/method ID
 dispatch. Nested method resolution and execution now advance an offset through
 the original linked `HostTargetPlan` instead of cloning suffix plans. Generated
 adapters also cache up to four resolved schema-local field slots inline and
-execute ordinary nested method calls through typed slot thunks without stable
-field-ID redispatch or leaf re-resolution. Deeper or non-preparable paths retain
-the validated generic traversal. Extending prepared chains to nested field
-read/write/mutation and collection/index operations remains open.
+execute ordinary nested field reads, writes, mutations, and method calls
+through typed slot thunks without stable field-ID redispatch or leaf
+re-resolution. Deeper or non-preparable paths retain the validated generic
+traversal. Extending prepared chains through collection/index adapters remains
+open.
 Default/manual adapters preserve that cursor during read-modify-write and use
 it when distinguishing a nested leaf from a missing target.
 Direct call arguments now keep an inline dense host-slot index separate from
@@ -375,8 +376,8 @@ rebuilding contracts and request metadata on each call. Service-signature and
 Host/View/MutView closure traversal, remaining borrowed collection
 runtime views and type hints, consolidation of scoped/extern/Runtime-owned
 host and borrow-group metadata behind the compact slot table, prepared slot
-chains for nested field and collection/index operations beyond the live nested
-method path, and a post-S2 shorter owned-host reclamation policy remain open.
+chains through collection/index operations beyond the live ordinary-field
+path, and a post-S2 shorter owned-host reclamation policy remain open.
 Runtime receiver enforcement is live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-
 signature facts.

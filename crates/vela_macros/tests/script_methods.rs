@@ -10,7 +10,7 @@ use vela_host::mock::MockStateAdapter;
 use vela_host::path::HostPath;
 use vela_host::path::HostRef;
 use vela_host::proxy::PathProxy;
-use vela_host::resolved::{HostAccessOp, HostAccessSpec, ResolvedHostAccessKind};
+use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccessKind};
 use vela_host::target::{HostTargetInstance, HostTargetPlan};
 use vela_host::value::HostValue;
 use vela_macros::{ScriptHost, script_methods};
@@ -408,4 +408,64 @@ fn nested_script_method_resolution_prepares_inline_field_slots() {
 
     assert_eq!(result, HostValue::Scalar(vela_common::ScalarValue::I64(5)));
     assert_eq!(outer.wrapper.counter.total, 5);
+}
+
+#[test]
+fn nested_field_access_executes_prepared_inline_field_slots() {
+    let mut outer = DirectOuter {
+        wrapper: DirectWrapper {
+            counter: DirectCounter { total: 2 },
+        },
+    };
+    let plan = HostTargetPlan::new(DirectOuter::vela_host_type_id())
+        .field(DirectOuter::vela_field_id_wrapper())
+        .field(DirectWrapper::vela_field_id_counter())
+        .field(DirectCounter::vela_field_id_total());
+    let root = HostRef::new(DirectOuter::vela_host_type_id(), HostObjectId::new(9), 1);
+    let target = HostTargetInstance::new(root, &plan, &[]);
+
+    let read_access = <DirectOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+        &outer,
+        HostAccessSpec::new(HostAccessOp::Read, &plan),
+    )
+    .expect("nested field read should resolve");
+    assert_eq!(read_access.prepared_field_slot(0), Some(0));
+    assert_eq!(read_access.prepared_field_slot(1), Some(0));
+    assert_eq!(read_access.prepared_field_slot(2), None);
+    let value = <DirectOuter as vela_host::object::ScriptHostObject>::read_resolved_host(
+        &outer,
+        read_access,
+        target,
+    )
+    .expect("prepared nested field read should execute");
+    assert_eq!(value, HostValue::Scalar(vela_common::ScalarValue::I64(2)));
+
+    let write_access = <DirectOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+        &outer,
+        HostAccessSpec::new(HostAccessOp::Write, &plan),
+    )
+    .expect("nested field write should resolve");
+    <DirectOuter as vela_host::object::ScriptHostObject>::write_resolved_host(
+        &mut outer,
+        write_access,
+        target,
+        HostValue::Scalar(vela_common::ScalarValue::I64(7)),
+    )
+    .expect("prepared nested field write should execute");
+
+    let mutate_access = <DirectOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+        &outer,
+        HostAccessSpec::new(HostAccessOp::Mutate(HostMutationOp::Add), &plan),
+    )
+    .expect("nested field mutation should resolve");
+    <DirectOuter as vela_host::object::ScriptHostObject>::mutate_resolved_host(
+        &mut outer,
+        mutate_access,
+        target,
+        HostMutationOp::Add,
+        HostValue::Scalar(vela_common::ScalarValue::I64(2)),
+    )
+    .expect("prepared nested field mutation should execute");
+
+    assert_eq!(outer.wrapper.counter.total, 9);
 }

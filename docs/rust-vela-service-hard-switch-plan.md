@@ -1063,13 +1063,14 @@ direct and scoped entries are generation-invalidated at their call-tree
 boundary. Early release retires the live slot and preserves only a call-local
 expired-borrow diagnostic tombstone. Remaining standard bindings, movement of
 scoped, extern, Runtime-owned, borrow-group, provenance, prepared-adapter, and
-pinned-generation metadata behind the compact table, and nested prepared
-field and collection/index slot-chain execution remain open. Nested method
+pinned-generation metadata behind the compact table, and prepared
+collection/index slot-chain execution remain open. Nested field and method
 resolution and execution reuse the original linked `HostTargetPlan` through
 checked spec/instance offsets rather than allocating and cloning suffix plans.
 Generated adapters cache up to four schema-local field slots in the copyable
-resolved access and execute those common nested method paths through typed slot
-thunks; deeper or non-preparable paths fall back to validated generic traversal.
+resolved access and execute common field reads, writes, mutations, and method
+paths through typed slot thunks; deeper or non-preparable paths fall back to
+validated generic traversal.
 
 ### S3 — Standard Rust types, views, and collection protocols
 

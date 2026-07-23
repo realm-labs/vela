@@ -332,6 +332,45 @@ pub trait ScriptHostFieldAccess {
         let _ = access;
         self.call_host_target_from(target, target.offset, method, args)
     }
+
+    #[doc(hidden)]
+    fn read_prepared_field_target(
+        &self,
+        slot: u32,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
+        let _ = slot;
+        let _ = access;
+        self.read_host_target_from(target, target.offset)
+    }
+
+    #[doc(hidden)]
+    fn write_prepared_field_target(
+        &mut self,
+        slot: u32,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        value: HostValue,
+    ) -> HostResult<()> {
+        let _ = slot;
+        let _ = access;
+        self.write_host_target_from(target, target.offset, value)
+    }
+
+    #[doc(hidden)]
+    fn mutate_prepared_field_target(
+        &mut self,
+        slot: u32,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        op: HostMutationOp,
+        rhs: HostValue,
+    ) -> HostResult<()> {
+        let _ = slot;
+        let _ = access;
+        self.mutate_host_target_from(target, target.offset, op, rhs)
+    }
 }
 
 pub trait HostValueInto {

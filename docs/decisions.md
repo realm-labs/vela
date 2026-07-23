@@ -1271,21 +1271,21 @@ they delegate to a child field; they do not clone a path suffix or manufacture
 a temporary child plan. The cursor is traversal state only: it does not alter
 the canonical root, dynamic arguments, HostAccess operation, schema epoch, or
 permission and lease checks. A future fully prepared adapter chain may replace
-the remaining repeated leaf resolution, but must continue to reference the
-linked plan rather than materializing owned paths.
+the remaining generic collection/index traversal, but prepared execution must
+continue to reference the linked plan rather than materializing owned paths.
 
-### Prepared Nested Method Fields Stay Inline
+### Prepared Nested Field Paths Stay Inline
 
 `ResolvedHostAccess` carries up to four schema-local field slots plus a
 copy-local traversal cursor. Generated adapters prepend those slots during the
 validated resolution pass and consume them through typed child-field thunks
-during nested method execution, so the inline cache remains `Copy` and the
-common path allocates nothing. The cached access is still selected by the
-linked target-plan, operation, root-type, and schema-epoch guards; the slots do
-not replace HostRef, permission, lease, or generation validation. Deeper paths
-and paths containing an adapter that cannot prepare a slot chain fall back to
-the ordinary validated target traversal rather than allocating an unbounded
-chain in the cache entry.
+during nested field reads, writes, mutations, and method execution, so the
+inline cache remains `Copy` and the common path allocates nothing. The cached
+access is still selected by the linked target-plan, operation, root-type, and
+schema-epoch guards; the slots do not replace HostRef, permission, lease, or
+generation validation. Deeper paths and paths containing an adapter that
+cannot prepare a slot chain fall back to the ordinary validated target
+traversal rather than allocating an unbounded chain in the cache entry.
 
 ### Unlinked Bytecode Naming
 

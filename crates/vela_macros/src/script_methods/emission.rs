@@ -173,7 +173,15 @@ pub(super) fn script_host_object_impl_tokens(
                 access: ::vela_host::resolved::ResolvedHostAccess,
                 target: ::vela_host::target::HostTargetInstance<'_>,
             ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
-                if target.plan.parts.len() == 1 {
+                if let Some((slot, child_access)) = access.next_prepared_field() {
+                    return ::vela_host::object::ScriptHostFieldAccess::read_prepared_field_target(
+                        self,
+                        slot,
+                        child_access,
+                        target,
+                    );
+                }
+                if target.offset + 1 == target.plan.parts.len() {
                     if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
                         access.adapter_kind
                     {
@@ -184,7 +192,11 @@ pub(super) fn script_host_object_impl_tokens(
                         );
                     }
                 }
-                ::vela_host::object::ScriptHostFieldAccess::read_host_target_from(self, target, 0)
+                ::vela_host::object::ScriptHostFieldAccess::read_host_target_from(
+                    self,
+                    target,
+                    target.offset,
+                )
             }
 
             fn write_resolved_host(
@@ -193,7 +205,16 @@ pub(super) fn script_host_object_impl_tokens(
                 target: ::vela_host::target::HostTargetInstance<'_>,
                 value: ::vela_host::value::HostValue,
             ) -> ::vela_host::error::HostResult<()> {
-                if target.plan.parts.len() == 1 {
+                if let Some((slot, child_access)) = access.next_prepared_field() {
+                    return ::vela_host::object::ScriptHostFieldAccess::write_prepared_field_target(
+                        self,
+                        slot,
+                        child_access,
+                        target,
+                        value,
+                    );
+                }
+                if target.offset + 1 == target.plan.parts.len() {
                     if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
                         access.adapter_kind
                     {
@@ -205,7 +226,12 @@ pub(super) fn script_host_object_impl_tokens(
                         );
                     }
                 }
-                ::vela_host::object::ScriptHostFieldAccess::write_host_target_from(self, target, 0, value)
+                ::vela_host::object::ScriptHostFieldAccess::write_host_target_from(
+                    self,
+                    target,
+                    target.offset,
+                    value,
+                )
             }
 
             fn mutate_resolved_host(
@@ -215,7 +241,17 @@ pub(super) fn script_host_object_impl_tokens(
                 op: ::vela_host::resolved::HostMutationOp,
                 rhs: ::vela_host::value::HostValue,
             ) -> ::vela_host::error::HostResult<()> {
-                if target.plan.parts.len() == 1 {
+                if let Some((slot, child_access)) = access.next_prepared_field() {
+                    return ::vela_host::object::ScriptHostFieldAccess::mutate_prepared_field_target(
+                        self,
+                        slot,
+                        child_access,
+                        target,
+                        op,
+                        rhs,
+                    );
+                }
+                if target.offset + 1 == target.plan.parts.len() {
                     if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
                         access.adapter_kind
                     {
@@ -231,7 +267,7 @@ pub(super) fn script_host_object_impl_tokens(
                 ::vela_host::object::ScriptHostFieldAccess::mutate_host_target_from(
                     self,
                     target,
-                    0,
+                    target.offset,
                     op,
                     rhs,
                 )

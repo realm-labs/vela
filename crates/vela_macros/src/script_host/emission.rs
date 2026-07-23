@@ -95,6 +95,21 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
         .iter()
         .enumerate()
         .map(prepared_field_call_arm_tokens);
+    let prepared_read_arms = fields
+        .iter()
+        .enumerate()
+        .filter(|(_, field)| field.readable)
+        .map(prepared_field_read_arm_tokens);
+    let prepared_write_arms = fields
+        .iter()
+        .enumerate()
+        .filter(|(_, field)| field.readable || field.writable)
+        .map(prepared_field_write_arm_tokens);
+    let prepared_mutate_arms = fields
+        .iter()
+        .enumerate()
+        .filter(|(_, field)| field.readable || field.writable)
+        .map(prepared_field_mutate_arm_tokens);
 
     quote! {
         impl ::vela_host::object::ScriptHostFieldAccess for #ident {
@@ -247,6 +262,62 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
                     }),
                 }
             }
+
+            fn read_prepared_field_target(
+                &self,
+                slot: u32,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+            ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
+                match slot {
+                    #(#prepared_read_arms)*
+                    _ => Err(::vela_host::error::HostError {
+                        kind: ::vela_host::error::HostErrorKind::MissingPath {
+                            path: target.to_diagnostic_path().to_host_path(),
+                        },
+                        source_span: None,
+                    }),
+                }
+            }
+
+            fn write_prepared_field_target(
+                &mut self,
+                slot: u32,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                value: ::vela_host::value::HostValue,
+            ) -> ::vela_host::error::HostResult<()> {
+                match slot {
+                    #(#prepared_write_arms)*
+                    _ => Err(::vela_host::error::HostError {
+                        kind: ::vela_host::error::HostErrorKind::PermissionDenied {
+                            path: target.to_diagnostic_path().to_host_path(),
+                            action: "write",
+                        },
+                        source_span: None,
+                    }),
+                }
+            }
+
+            fn mutate_prepared_field_target(
+                &mut self,
+                slot: u32,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                op: ::vela_host::resolved::HostMutationOp,
+                rhs: ::vela_host::value::HostValue,
+            ) -> ::vela_host::error::HostResult<()> {
+                match slot {
+                    #(#prepared_mutate_arms)*
+                    _ => Err(::vela_host::error::HostError {
+                        kind: ::vela_host::error::HostErrorKind::PermissionDenied {
+                            path: target.to_diagnostic_path().to_host_path(),
+                            action: "mutate",
+                        },
+                        source_span: None,
+                    }),
+                }
+            }
         }
     }
 }
@@ -258,7 +329,7 @@ fn direct_field_read_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStre
         #slot => ::vela_host::object::ScriptHostFieldAccess::read_host_target_from(
             &self.#rust_name,
             target,
-            1,
+            target.offset + 1,
         ),
     }
 }
@@ -281,7 +352,7 @@ fn direct_field_write_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStr
             ::vela_host::object::ScriptHostFieldAccess::write_host_target_from(
                 &mut self.#rust_name,
                 target,
-                1,
+                target.offset + 1,
                 value,
             )
         }
@@ -407,6 +478,45 @@ fn prepared_field_call_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenSt
             target.at_offset(target.offset + 1),
             method,
             args,
+        ),
+    }
+}
+
+fn prepared_field_read_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
+    let slot = u32::try_from(slot).expect("host field slot index fits u32");
+    let rust_name = format_ident!("{}", field.rust_name);
+    quote! {
+        #slot => ::vela_host::object::ScriptHostObject::read_resolved_host(
+            &self.#rust_name,
+            access,
+            target.at_offset(target.offset + 1),
+        ),
+    }
+}
+
+fn prepared_field_write_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
+    let slot = u32::try_from(slot).expect("host field slot index fits u32");
+    let rust_name = format_ident!("{}", field.rust_name);
+    quote! {
+        #slot => ::vela_host::object::ScriptHostObject::write_resolved_host(
+            &mut self.#rust_name,
+            access,
+            target.at_offset(target.offset + 1),
+            value,
+        ),
+    }
+}
+
+fn prepared_field_mutate_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
+    let slot = u32::try_from(slot).expect("host field slot index fits u32");
+    let rust_name = format_ident!("{}", field.rust_name);
+    quote! {
+        #slot => ::vela_host::object::ScriptHostObject::mutate_resolved_host(
+            &mut self.#rust_name,
+            access,
+            target.at_offset(target.offset + 1),
+            op,
+            rhs,
         ),
     }
 }
