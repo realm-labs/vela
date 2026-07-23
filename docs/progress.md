@@ -27,8 +27,8 @@ flatten inherited Vela code into one candidate and activate/rollback with
 conditional publication. S0 is accepted: the callable-slot deletion inventory,
 domain-neutral Rust-default migration fixture, and dedicated direct-Rust/
 HostRef/path/preflight/reborrow/borrowed-return/bulk-operation latency,
-throughput, allocation, and checksum baselines are recorded. S1 is accepted;
-S2 is the active implementation checkpoint. Its first foundation is landed:
+throughput, allocation, and checksum baselines are recorded. S1 and S2 are
+accepted; S3 is the active implementation checkpoint. S2 delivered:
 manual `TypeBinding` registration now seals stable interop identity, explicit
 Value/Host storage, receiver capabilities, ABI fingerprints, and one registry
 checksum into Engine, reflection, compiler-analysis, and LSP-facing facts. A
@@ -122,9 +122,10 @@ share one release group and a reused slot receives a different identity.
 Runtime extern-state object/type/activation metadata also uses dense
 generational slots; durable `StateId` and staged-name maps remain boundary
 indexes, staged roots remain inactive until commit, and replacement or
-reclamation generation-invalidates the old root. Consolidating the remaining
-provenance, prepared-adapter, and pinned-generation metadata behind the compact
-table remains open.
+reclamation generation-invalidates the old root. Transient lease provenance
+stays in the inline active-call proof, prepared adapters stay in sealed
+registration/link plans, and service-generation pins stay in the root
+execution session; none is copied into HostRef aliases.
 The first S3 standard binding family is also live: concrete
 `BTreeMap<K, V>` and `HashMap<K, V>` bindings synthesize stable recursive
 key/value facts, share the Vela `MapLike` surface and owned Map codec, and keep
@@ -287,7 +288,7 @@ state-storage hard switch.
 | M19.5 | Complete enough | Primitive scalars, bytes, type contracts, guard plans, linked bytecode, runtime profile ownership, and HostTargetPlan/HostAccess preparation are validated. |
 | M20 | Complete enough | Actor Runtime/cache Batches A-F are accepted with shared generation execution data, no eager Actor vectors, and no execution lane. |
 | M20.5 | Queued | Resume the concrete editor-visible follow-up after the service hard switch. |
-| Rust/Vela service interop | S1 accepted | Callable-level replacement is deleted; S2 builds the shared type registry and HostRef hot path. |
+| Rust/Vela service interop | S2 accepted; S3 active | The unified TypeBinding and compact HostRef/preflight gate is green; S3 closes standard view, collection-protocol, and prepared-operation gaps. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, debugger, and conformance contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation gates, and performance targets. |
@@ -362,9 +363,9 @@ state-storage hard switch.
 ### Rust/Vela Service Hard Switch
 
 The plan is fixed, but implementation remains open. S0 froze the boundary
-baselines and S1 deleted callable-level replacement. S2 builds one TypeBinding
-registry plus compact root-local HostRef/borrow tables,
-prepared typed thunks, and allocation-free common-arity preflight. S3 completes
+baselines, S1 deleted callable-level replacement, and S2 accepted one
+TypeBinding registry plus compact root-local HostRef/borrow tables, prepared
+typed thunks, and allocation-free common-arity preflight. S3 completes
 prepared host paths and standard collection View/MutView protocols, including
 bulk operations. Only then do S4-S7 add a zero-HostRef Rust-default generation,
 sparse Vela implementations, root-local same-generation reborrow,
@@ -381,7 +382,8 @@ S0 is accepted in the
 S1 is accepted. The deleted model has no aliases, annotations, dispatch APIs,
 examples, benchmark rows, or schema metadata. Neutral ABI, lease, re-entry,
 borrowed-return, generation-pinning, and no-retry behavior remains under its
-ordinary module ownership. S2 now has the sealed binding identity/storage/ABI
+ordinary module ownership. S2 is accepted with the sealed binding
+identity/storage/ABI
 substrate, manual external-type entrypoint, typed structural Value codec path,
 and type-owned Value plus Host constructor registration backed by actor-local
 Runtime storage. Structural `Value` derive generation is implemented for named
@@ -405,11 +407,12 @@ inline, so ordinary nested host calls do not allocate a provenance vector.
 Root execution-host lease guards and grouped scoped child/activity sets now use
 the same eight-entry inline threshold while retaining acquire-all-or-clean-up
 behavior on conflict.
-Service-signature and Host/View/MutView closure traversal, remaining borrowed
-collection runtime views and type hints, consolidation of provenance,
-prepared-adapter, and pinned-generation metadata behind the compact slot table,
-prepared element method calls, and a post-S2 shorter owned-host reclamation
-policy remain open.
+S3 is active. Its remaining gaps are byte-view capability, complex-element
+borrowed views, remaining element/key and live/resumable collection
+operations, borrowed-source and write-through bulk mutations, richer adapters,
+and prepared element/grouping/traversal operations. Service-signature traversal
+and service-generation pinning belong to S4-S6. A shorter owned-host
+reclamation policy remains post-S2 follow-up.
 Runtime receiver enforcement is live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-
 signature facts.

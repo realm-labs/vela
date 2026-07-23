@@ -80,10 +80,13 @@ The S0 `service_boundary_baseline` harness freezes direct concrete/trait Rust,
 HostRef alias-copy, static host path, registered method, atomic argument
 preflight, same-session reborrow, borrowed return/release, and host-owned bulk
 collection rows with latency, throughput, allocations, bytes, and checksums.
-The 2026-07-23 stable run confirmed zero-allocation HostRef copies and direct
-Rust dispatch, while current two-argument preflight allocates one 64-byte
-buffer per call. Full methodology and exact rows are in the
-[S0 baseline report](archive/service-hard-switch-s0-baseline-2026-07-23.md).
+The 2026-07-23 frozen S0 stable run confirmed zero-allocation HostRef copies
+and direct Rust dispatch, while its two-argument preflight still allocated one
+64-byte buffer per call. The later S2 quick acceptance rerun reports zero
+allocations for HostRef alias copy, shared/exclusive preflight, and prepared
+shared/exclusive preflight. That quick result is gate evidence and does not
+replace the frozen latency baseline. Full methodology and exact S0 rows are in
+the [S0 baseline report](archive/service-hard-switch-s0-baseline-2026-07-23.md).
 Use `cargo bench -p vela_engine --bench service_boundary_baseline` for quick
 sampling and append `-- --stable` for the frozen 100,000-iteration shape.
 

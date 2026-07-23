@@ -2806,8 +2806,16 @@ inactive until layout commit, while replacement and state reclamation remove
 the prior slot before reuse.
 
 This handle hard switch does not weaken HostRef/HostAccess validation or move
-Rust objects into script storage. Consolidating provenance, prepared-adapter,
-and pinned-generation metadata into the dense slot entry remains S2 work.
+Rust objects into script storage.
+
+The durable root slot owns alias identity, concrete type and capability,
+owner/object binding, and borrow-group identity. Metadata with a different
+lifetime stays under its natural owner: transient reborrow provenance lives in
+the inline active-call proof, prepared adapter thunks live in sealed
+registration and linked access plans, and service-generation pins live at the
+root execution/session boundary. None is duplicated into copied HostRef
+aliases. This ownership split closes S2 without weakening validation and keeps
+alias copy free of allocation, refcount, lease, or unrelated generation work.
 
 The transient active-provenance proof used by generated native reborrow keeps
 the common eight host arguments inline in `NativeCallContext`. Each entry still

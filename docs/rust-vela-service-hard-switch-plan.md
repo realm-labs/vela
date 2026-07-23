@@ -5,7 +5,7 @@
 > publication, host-reference and collection interop, and deletion of
 > callable-level replacement
 >
-> Status: S0-S1 accepted; S2 implementation is active
+> Status: S0-S2 accepted; S3 implementation is active
 >
 > Switch policy: pre-release hard switch; no public compatibility layer and no
 > second Rust hot-replacement model
@@ -1025,7 +1025,7 @@ copying View/MutView allocates nothing and creates no new lease/refcount
 common-arity alias preflight allocates nothing and remains atomic
 ```
 
-Current S2 state: the sealed registry, manual Value codec, receiver-capability
+S2 acceptance: the sealed registry, manual Value codec, receiver-capability
 enforcement, and type-owned Value constructor path are implemented. A
 constructor is associated with its binding but reuses the ordinary native
 function registry and `host::Type::new` resolution. Host factories now transfer
@@ -1078,10 +1078,11 @@ retained by its borrow-free expired diagnostic tombstone. Runtime extern-state
 object/type/activation metadata now uses dense generational slots too;
 `StateId` and staged-name maps remain boundary indexes, staged roots remain
 inactive until commit, and replacement/reclamation invalidate the prior
-generation. Remaining standard bindings, movement of provenance,
-prepared-adapter, and pinned-generation metadata behind the compact table, and
-dense prepared slots inside the remaining collection/index adapters remain
-open. `Vec<T>` already
+generation. Transient lease provenance stays in the active inline
+`NativeCallContext` proof, prepared adapters stay in sealed registration and
+linked access plans, and generation pinning stays in the root execution or
+service session; none is copied into HostRef aliases. Standard collection and
+deeper prepared-operation work is owned by S3. `Vec<T>` already
 classifies index-shaped suffixes with an `AdapterLocal` slot so generated field
 prefixes remain prepared through the sequence boundary; fixed arrays and
 borrowed slices use the same index classification, while `BTreeMap<K, V>` and
@@ -1101,6 +1102,12 @@ paths through typed slot thunks; deeper or non-preparable paths fall back to
 validated generic traversal. Collection queries, snapshots, and batch
 mutations use the prepared field prefix through the leaf collection, while
 index/key segments retain validated generic traversal.
+
+S2 is accepted. Focused TypeBinding, derive, and receiver tests are green; the
+hard-switch audit returns no production matches; and the 2026-07-23 quick
+boundary rerun reports zero allocations for HostRef alias copy and both
+legacy/prepared shared/exclusive common-arity preflight. The quick run is
+acceptance evidence, not a replacement for the frozen S0 stable baseline.
 
 ### S3 — Standard Rust types, views, and collection protocols
 
