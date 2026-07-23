@@ -362,6 +362,14 @@ uniqueness follow the concrete Rust container semantics; the adapter cannot
 retain the borrowed request.
 Prepared plans replace the initial per-operation root plan as S3 advances.
 
+Concrete Rust `[T; N]` uses one stable binding identity that includes `N`.
+Borrowed `&[T; N]` and `&mut [T; N]` cross as shared and fixed mutable Array
+views respectively. The fixed mutable view permits indexed replacement but
+does not expose structural collection methods. Its HostRef always targets the
+original Rust array; there is no mutable copy-in/copy-out. A separately owned
+Vela Array remains growable, and the fixed-array value codec checks the exact
+length when crossing back into Rust.
+
 Low-level Rust native methods may use typed handles such as `HostRef` and
 `PathProxy`. The approved ordinary interop target instead permits authored
 `&T`/`&mut T` parameters when generated registration code can prove the exact

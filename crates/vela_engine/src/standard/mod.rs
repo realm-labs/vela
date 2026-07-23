@@ -1,4 +1,5 @@
 mod bindings;
+mod fixed_array;
 mod functions;
 mod methods;
 mod modules;

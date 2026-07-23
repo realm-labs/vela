@@ -78,7 +78,10 @@ are idempotent while conflicting manual bindings remain seal errors.
 Standard non-byte `Vec`, map, and set bindings now advertise shared View and
 exact growable MutView capabilities on that same identity. Those
 representation facts participate in the type ABI and project consistently
-through reflection and compiler registries.
+through reflection and compiler registries. Concrete `[T; N]` bindings include
+`N` in stable identity and expose shared plus exact fixed MutView capability;
+generated `&[T; N]`/`&mut [T; N]` adapters reborrow through HostRef, permit
+indexed replacement, and withhold structural mutation.
 Callable contracts can now carry an exact binding-use proof containing the
 concrete `InteropTypeId`, `TypeAbiFingerprint`, and owned/Host/View/MutView
 representation. Engine sealing rejects unregistered, stale, unsupported, or
@@ -311,7 +314,7 @@ shared/exclusive boundary rows allocate zero times and still reject the
 complete conflict set before lease acquisition. Generated host functions and
 methods now reuse registration-time prepared parameter plans instead of
 rebuilding contracts and request metadata on each call. Service-signature and
-Host/View/MutView closure traversal, fixed arrays, all borrowed collection
+Host/View/MutView closure traversal, slices, remaining borrowed collection
 runtime views and type hints, compact root-local HostRef storage, dense prepared
 field/method thunks, and a post-S2 shorter
 owned-host reclamation policy remain open. Runtime receiver enforcement is

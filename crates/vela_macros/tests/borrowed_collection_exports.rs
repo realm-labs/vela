@@ -39,6 +39,17 @@ pub async fn merge_async(values: &Vec<i64>, totals: &mut BTreeMap<String, i64>) 
     merge(values, totals)
 }
 
+#[export(path = "collections::fixed_sum")]
+pub fn fixed_sum(values: &[i64; 3]) -> i64 {
+    values.iter().sum()
+}
+
+#[export(path = "collections::fixed_bump")]
+pub fn fixed_bump(values: &mut [i64; 3]) -> i64 {
+    values[1] += 4;
+    values[1]
+}
+
 #[derive(ScriptHost)]
 #[script(path = "host::CollectionService")]
 struct CollectionService {
@@ -131,6 +142,51 @@ fn generated_free_adapter_reborrows_collections_and_writes_through() {
     assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(11)));
     drop(result);
     assert_eq!(totals["sum"], 11);
+}
+
+#[test]
+fn fixed_array_views_reborrow_and_preserve_non_growable_mutation() {
+    let shared = vela_callable_contract_fixed_sum();
+    assert_eq!(
+        shared.parameters[0]
+            .binding
+            .expect("shared fixed-array binding")
+            .representation,
+        InteropRepresentation::CollectionView(CollectionViewKind::Array)
+    );
+    let mutable = vela_callable_contract_fixed_bump();
+    assert_eq!(
+        mutable.parameters[0]
+            .binding
+            .expect("mutable fixed-array binding")
+            .representation,
+        InteropRepresentation::CollectionMut {
+            kind: CollectionViewKind::Array,
+            mutation: CollectionViewMutation::Fixed,
+        }
+    );
+
+    let mut runtime = runtime(
+        "fn read(values: ArrayView<i64>) { return collections::fixed_sum(values) + values[1]; } fn write(values: ArrayMut<i64>) { values[0] = values[0] + 1; return collections::fixed_bump(values) + values[0]; }",
+    );
+    let values = [2_i64, 3, 5];
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call("read", args, CallOptions::unbounded())
+        .expect("shared fixed array should reborrow without materialization");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(13)));
+    drop(result);
+
+    let mut values = [2_i64, 3, 5];
+    let mut args = CallArgs::new();
+    args.push_collection_mut("values", &mut values);
+    let result = runtime
+        .call("write", args, CallOptions::unbounded())
+        .expect("mutable fixed array should write elements through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(10)));
+    drop(result);
+    assert_eq!(values, [3, 7, 5]);
 }
 
 #[test]
@@ -643,6 +699,8 @@ fn runtime(source: &str) -> Runtime {
         .register_exports(vela_export_bundle_lookup_i32())
         .register_exports(vela_export_bundle_contains_i32())
         .register_exports(vela_export_bundle_merge_async())
+        .register_exports(vela_export_bundle_fixed_sum())
+        .register_exports(vela_export_bundle_fixed_bump())
         .register_exports(CollectionService::vela_inherent_exports())
         .register_exports(CollectionOwner::vela_inherent_exports())
         .build()

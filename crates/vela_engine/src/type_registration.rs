@@ -67,6 +67,16 @@ where
     }
 }
 
+impl<T, const N: usize> RustValueType for [T; N]
+where
+    T: RustValueType,
+{
+    fn register_value_type_closure(builder: EngineBuilder) -> EngineBuilder {
+        let builder = T::register_value_type_closure(builder);
+        register_standard::<Self>(builder)
+    }
+}
+
 impl<T> RustValueType for Option<T>
 where
     T: RustValueType,

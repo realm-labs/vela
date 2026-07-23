@@ -444,7 +444,12 @@ where
         .attr("vela_collection_growth", "growable")
 }
 
-fn concrete_type_desc(family: &str, path: String, facts: &str, kind: TypeKind) -> TypeDesc {
+pub(super) fn concrete_type_desc(
+    family: &str,
+    path: String,
+    facts: &str,
+    kind: TypeKind,
+) -> TypeDesc {
     let type_id = TypeId::new(u128::from(vela_common::stable_id(
         "rust_standard_type",
         family,
@@ -532,7 +537,6 @@ mod tests {
                 TypeKind::String,
             ),
         ];
-
         assert!(bindings.iter().all(|(actual, expected)| actual == expected));
         assert_ne!(
             standard_type_binding::<i64>().type_desc().key,
@@ -725,19 +729,16 @@ fn reverse_and_increment(value: (i64, String)) -> (String, i64) {
         let bytes = vec_type_desc::<u8>();
         let ordered = set_type_desc::<i64>(SetFamily::BTree);
         let hashed = set_type_desc::<i64>(SetFamily::Hash);
-
         assert_eq!(vector.kind, TypeKind::Array);
         assert_eq!(vector.attrs.get("vela_collection_growth"), Some("growable"));
         let index = vector.index_capability.expect("Vec index capability");
         assert!(index.readable && index.writable && index.addable && index.removable);
-
         assert_eq!(bytes.kind, TypeKind::Bytes);
         assert!(bytes.index_capability.is_none());
         assert_eq!(
             bytes.attrs.get("vela_collection_growth"),
             Some("immutable_bytes")
         );
-
         assert_ne!(ordered.key, hashed.key);
         assert_eq!(ordered.traits, hashed.traits);
         assert_eq!(
@@ -779,7 +780,6 @@ fn reverse_and_increment(value: (i64, String)) -> (String, i64) {
                 mutation: CollectionViewMutation::Growable,
             })
             .expect("growable Vec view");
-
         assert_eq!(owned.type_id, shared.type_id);
         assert_eq!(shared.type_id, mutable.type_id);
         assert_eq!(owned.abi_fingerprint, mutable.abi_fingerprint);

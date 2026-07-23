@@ -1112,7 +1112,10 @@ adapters. A `&Vec`, borrowed map, or borrowed set therefore crosses as an exact
 HostRef-backed view rather than an owned Vela collection. Scoped collection
 references returned by one Rust export preserve the parent lease and concrete
 binding identity when reborrowed into another Rust export; mutable views write
-through immediately. Fixed array and byte-view capability remain open.
+through immediately. Concrete `[T; N]` identity and generated
+`&[T; N]`/`&mut [T; N]` adapters now carry exact fixed mutation capability and
+write indexed elements through HostAccess; slices and byte-view capability
+remain open.
 Restricted
 `ArrayView`/`ArrayMut`, `MapView`/`MapMut`, and `SetView`/`SetMut` hints now
 retain distinct analysis facts and exact hidden fixed/growable mutation facts.
@@ -1131,7 +1134,7 @@ the Rust-side exact conversion without string serialization. Read-only
 path; `MissingCollectionEntry` alone becomes missing/fallback behavior, while
 other host errors propagate. Borrowed complex-element views, remaining
 element/key methods, live/resumable iteration, remaining bulk mutation
-protocols, slices/fixed arrays, richer user-defined collection adapters, full
+protocols, slices, richer user-defined collection adapters, full
 service macro traversal, and prepared operations are still open. Growable
 `MapMut.set` and keyed index
 assignment insert supported leaf values through HostAccess; `MapMut.remove`

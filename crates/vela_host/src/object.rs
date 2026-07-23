@@ -17,6 +17,7 @@ use crate::{
 
 mod collection_protocol;
 mod collection_snapshot;
+mod fixed_array;
 mod keys;
 mod mutation;
 mod target;
@@ -377,6 +378,11 @@ macro_rules! impl_script_host_object_via_field {
     };
     (<$($generics:ident),+> $ty:ty where $($bounds:tt)+) => {
         impl_script_host_object_via_field!(@impl (<$($generics),+>) $ty ; where $($bounds)+);
+    };
+    (<$generic:ident, const $constant:ident: $constant_ty:ty> $ty:ty where $($bounds:tt)+) => {
+        impl_script_host_object_via_field!(
+            @impl (<$generic, const $constant: $constant_ty>) $ty ; where $($bounds)+
+        );
     };
     ($ty:ty) => {
         impl_script_host_object_via_field!(@impl () $ty ;);
@@ -969,6 +975,7 @@ where
 }
 
 impl_script_host_object_via_field!(<T> Vec<T> where T: ScriptHostFieldAccess + 'static);
+impl_script_host_object_via_field!(<T, const N: usize> [T; N] where T: ScriptHostFieldAccess + 'static);
 
 impl<K> ScriptHostFieldAccess for BTreeSet<K>
 where

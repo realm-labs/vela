@@ -730,6 +730,20 @@ fn external_hint_contract(
     if hint.path.as_slice() == ["Any"] && hint.args.is_empty() {
         return Ok(None);
     }
+    if hint.path.len() == 1
+        && matches!(
+            hint.path[0].as_str(),
+            "ArrayView" | "ArrayMut" | "MapView" | "MapMut" | "SetView" | "SetMut"
+        )
+    {
+        // Collection views are HostRef-backed capabilities. Static facts prove
+        // known calls, while generated host preflight validates dynamic calls;
+        // they do not have a script-value structural guard to lower into MIR.
+        for argument in &hint.args {
+            validate_external_hint_names(argument, catalog, options, origin)?;
+        }
+        return Ok(None);
+    }
     validate_external_hint_names(hint, catalog, options, origin)?;
     if options.allows_opaque_external_type_hint(&hint.path.join("::")) {
         return Ok(None);

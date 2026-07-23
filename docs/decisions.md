@@ -2536,18 +2536,24 @@ than an `Array<u8>` specialization.
 
 Owned `Vec<T>` uses the growable Array representation, while owned
 `BTreeSet<T>` and `HashSet<T>` share SetLike behavior with distinct concrete
-Rust ABI identities. Fixed arrays are not registered as ordinary mutable
-Arrays until the value representation can retain and enforce their fixed
-length; metadata alone must not claim that `push` or `remove` is rejected when
-the runtime value would still accept it.
+Rust ABI identities. A concrete `[T; N]` binding includes `N` in its Rust ABI
+identity and structural codec; decode rejects a changed length. Its borrowed
+`&[T; N]`/`&mut [T; N]` representations are HostRef-backed fixed views, so
+indexed replacement is available while `push`, `remove`, `clear`, and `extend`
+are absent. This fixed capability describes the Rust-backed view; it does not
+turn an independently script-owned Array value into a fixed-length container.
 
 Borrowed collection surfaces have distinct internal facts:
 `ArrayView`/`ArrayMut`, `MapView`/`MapMut`, and `SetView`/`SetMut`. These are a
 closed set of restricted builtin type hints, not a general generic type
 facility. Mut facts retain an out-of-band fixed/growable capability that is
 part of callable ABI even though ordinary Vela source does not spell that
-capability. Shared and fixed views reuse read, iteration, and transforming
-methods, but structural mutators are absent; fixed Array mutation is limited
+capability. External View/MutView parameters do not lower to script-value MIR
+structural guards: static facts reject known mismatches, while generated host
+preflight validates exact binding identity, capability, and alias safety for
+dynamic calls before Rust code runs. Shared and fixed views reuse read,
+iteration, and transforming methods, but structural mutators are absent; fixed
+Array mutation is limited
 to indexed element replacement through the future HostAccess adapter.
 Borrowed collection calls keep the standard Array/Map/Set method identity in
 linked code, but a HostRef receiver routes that identity to a domain-neutral

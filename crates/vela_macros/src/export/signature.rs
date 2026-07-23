@@ -604,6 +604,22 @@ fn direct_host_type(ty: &Type) -> Result<Type> {
 }
 
 fn borrowed_collection_type(ty: &Type, access: HostAccess) -> Result<Option<TypeShape>> {
+    if let Type::Array(array) = ty {
+        if type_ident(&array.elem).is_some_and(|ident| ident == "u8") {
+            return Err(syn::Error::new_spanned(
+                ty,
+                "borrowed [u8; N] views are not supported yet; use an owned byte value",
+            ));
+        }
+        return Ok(Some(TypeShape::BorrowedCollection(
+            BorrowedCollectionShape {
+                rust_ty: ty.clone(),
+                kind: BorrowedCollectionKind::Array(Box::new(classify_owned_type(&array.elem)?)),
+                access,
+                mutation: vela_common::CollectionViewMutation::Fixed,
+            },
+        )));
+    }
     let Some(ident) = type_ident(ty) else {
         return Ok(None);
     };
