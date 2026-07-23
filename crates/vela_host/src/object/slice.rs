@@ -1,4 +1,3 @@
-use better_any::{Tid, TidExt};
 use vela_common::{HostMethodId, HostTypeId};
 
 use crate::error::HostResult;
@@ -14,61 +13,17 @@ use super::{
     target_index, target_is_leaf, unsupported_collection_mutation,
 };
 
-struct SharedSliceReborrow<'a, T: 'static>(&'a [T]);
-better_any::tid! { impl<'a, T:'static> TidAble<'a> for SharedSliceReborrow<'a, T> }
-
-struct ExclusiveSliceReborrow<'a, T: 'static>(Option<&'a mut [T]>);
-better_any::tid! { impl<'a, T:'static> TidAble<'a> for ExclusiveSliceReborrow<'a, T> }
-
-#[doc(hidden)]
-pub trait HostSliceRefVisitor<'a> {
-    fn visit(&mut self, value: &(dyn Tid<'a> + 'a));
-}
-
-#[doc(hidden)]
-pub trait HostSliceMutVisitor<'a> {
-    fn visit(&mut self, value: &mut (dyn Tid<'a> + 'a));
-}
-
 /// Safely reborrows a dynamically-sized slice from a host object without
 /// copying or exposing a Rust reference to script code.
 #[must_use]
 pub fn lease_slice_ref<T: 'static>(object: &dyn ScriptHostObject) -> Option<&[T]> {
-    struct Visitor<'a, T: 'static> {
-        value: Option<&'a [T]>,
-    }
-
-    impl<'a, T: 'static> HostSliceRefVisitor<'a> for Visitor<'a, T> {
-        fn visit(&mut self, value: &(dyn Tid<'a> + 'a)) {
-            self.value = value
-                .downcast_ref::<SharedSliceReborrow<'a, T>>()
-                .map(|slice| slice.0);
-        }
-    }
-
-    let mut visitor = Visitor { value: None };
-    object.visit_slice_ref(&mut visitor).then_some(())?;
-    visitor.value
+    object.erased_slice_ref()?.downcast::<T>()
 }
 
 /// Mutable counterpart to [`lease_slice_ref`].
 #[must_use]
 pub fn lease_slice_mut<T: 'static>(object: &mut dyn ScriptHostObject) -> Option<&mut [T]> {
-    struct Visitor<'a, T: 'static> {
-        value: Option<&'a mut [T]>,
-    }
-
-    impl<'a, T: 'static> HostSliceMutVisitor<'a> for Visitor<'a, T> {
-        fn visit(&mut self, value: &mut (dyn Tid<'a> + 'a)) {
-            self.value = value
-                .downcast_mut::<ExclusiveSliceReborrow<'a, T>>()
-                .and_then(|slice| slice.0.take());
-        }
-    }
-
-    let mut visitor = Visitor { value: None };
-    object.visit_slice_mut(&mut visitor).then_some(())?;
-    visitor.value
+    object.erased_slice_mut()?.downcast::<T>()
 }
 
 impl<T> ScriptHostFieldAccess for [T]
@@ -176,24 +131,12 @@ where
         ScriptHostFieldAccess::script_host_type_id(self)
     }
 
-    fn visit_slice_ref<'a>(&'a self, visitor: &mut dyn HostSliceRefVisitor<'a>) -> bool {
-        let value = SharedSliceReborrow(self);
-        visitor.visit(&value);
-        true
+    fn erased_slice_ref(&self) -> Option<crate::erased_slice::ErasedSliceRef<'_>> {
+        Some(crate::erased_slice::ErasedSliceRef::new(self))
     }
 
-    fn visit_slice_mut<'a>(&'a mut self, visitor: &mut dyn HostSliceMutVisitor<'a>) -> bool {
-        let mut value = ExclusiveSliceReborrow(Some(self));
-        visitor.visit(&mut value);
-        true
-    }
-
-    fn supports_slice_ref(&self) -> bool {
-        true
-    }
-
-    fn supports_slice_mut(&self) -> bool {
-        true
+    fn erased_slice_mut(&mut self) -> Option<crate::erased_slice::ErasedSliceMut<'_>> {
+        Some(crate::erased_slice::ErasedSliceMut::new(self))
     }
 
     fn resolve_host_target(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {

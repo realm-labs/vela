@@ -35,7 +35,6 @@ version = "0.1.0"
 
 [workspace.dependencies]
 anyhow = "1"
-better_any = "0.2.1"
 clap = { version = "4.5", features = ["derive"] }
 crossbeam-channel = "0.5"
 lsp-server = "0.8.0"
@@ -48,7 +47,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 self_cell = "=1.2.2"
 smallvec = "1"
-syn = { version = "2", features = ["full"] }
+syn = { version = "2", features = ["full", "visit"] }
 blake3 = "1"
 toml_edit = "0.23"
 vela_analysis = { path = "crates/vela_analysis" }

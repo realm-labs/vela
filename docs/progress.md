@@ -86,6 +86,11 @@ Concrete borrowed `[T]` bindings now use a distinct stable slice identity and
 the same shared/fixed Array view surface. Generated sync/async free-function
 and method adapters preserve the original DST reference without copying,
 including slices returned from one service and reborrowed into another.
+Borrowed slice recovery now uses one private lifetime-aware erased-borrow
+module in `vela_host`; the obsolete visitor/support API and `better_any` are
+removed. Mutable downcast consumes its exclusive token, all other host modules
+forbid unsafe, and a syntax-aware architecture audit restricts unsafe Rust to
+the reviewed slice-erasure and C ABI boundary files.
 Callable contracts can now carry an exact binding-use proof containing the
 concrete `InteropTypeId`, `TypeAbiFingerprint`, and owned/Host/View/MutView
 representation. Engine sealing rejects unregistered, stale, unsupported, or
@@ -466,9 +471,11 @@ cargo check --manifest-path fuzz/Cargo.toml --bins
 cargo bench -p vela_vm --bench baseline -- vm_state_read_write --quick
 ```
 
-The Miri component is unavailable on the installed stable
-`x86_64-pc-windows-msvc` toolchain; focused safe-Rust lease/reentry tests and
-the workspace unsafe-code prohibition remain green. Documentation placeholder,
+The Miri component is unavailable on the installed stable Rust 1.97.1
+`x86_64-pc-windows-msvc` toolchain, so the erased-slice boundary has not been
+claimed as Miri-validated. Focused erased-borrow, lease/reentry, returned-slice,
+and async adapter tests plus the unsafe-boundary source audit are green.
+Documentation placeholder,
 syntax-highlighting, Astro diagnostics, and static-site build gates also pass.
 
 Use the relevant subset of [validation.md](validation.md) for each change.

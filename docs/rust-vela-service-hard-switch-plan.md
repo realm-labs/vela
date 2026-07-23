@@ -1118,7 +1118,11 @@ write indexed elements through HostAccess. Concrete `&[T]`/`&mut [T]`
 signatures use a distinct host-backed slice binding, preserve DST length and
 reference semantics without copying, and work for sync/async free functions,
 methods, retained returns, nested reborrow, indexing, and collection
-projections. Byte-view capability remains open.
+projections. Slice recovery is confined to one private lifetime-aware erased-
+borrow module in `vela_host`; mutable reconstruction consumes its exclusive
+token, `better_any` and the visitor/support surface are removed, and a source
+audit restricts unsafe Rust to reviewed boundary files. Byte-view capability
+remains open.
 Restricted
 `ArrayView`/`ArrayMut`, `MapView`/`MapMut`, and `SetView`/`SetMut` hints now
 retain distinct analysis facts and exact hidden fixed/growable mutation facts.

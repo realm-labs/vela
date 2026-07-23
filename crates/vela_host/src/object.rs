@@ -33,8 +33,6 @@ use errors::{
     invalid_arg, missing_collection_entry, missing_target, permission_denied, unsupported_method,
 };
 pub use mutation::mutate_host_value;
-#[doc(hidden)]
-pub use slice::{HostSliceMutVisitor, HostSliceRefVisitor};
 pub use slice::{lease_slice_mut, lease_slice_ref};
 use target::{target_index, target_is_leaf, target_key};
 
@@ -52,27 +50,18 @@ pub trait ScriptHostObject {
         None
     }
 
-    /// Exposes a borrowed dynamically-sized Rust slice to generated adapters.
-    ///
-    /// Unlike [`Any`], this preserves the slice length without materializing an
-    /// owned `Vec`. The erased handle never crosses into script values.
-    fn visit_slice_ref<'a>(&'a self, visitor: &mut dyn HostSliceRefVisitor<'a>) -> bool {
-        let _ = visitor;
-        false
+    /// Produces a call-scoped erased shared slice borrow for generated Rust
+    /// adapters. The erased representation is private to `vela_host` and is
+    /// never stored in a Vela value or host-reference payload.
+    #[doc(hidden)]
+    fn erased_slice_ref(&self) -> Option<crate::erased_slice::ErasedSliceRef<'_>> {
+        None
     }
 
-    /// Mutable counterpart to [`ScriptHostObject::visit_slice_ref`].
-    fn visit_slice_mut<'a>(&'a mut self, visitor: &mut dyn HostSliceMutVisitor<'a>) -> bool {
-        let _ = visitor;
-        false
-    }
-
-    fn supports_slice_ref(&self) -> bool {
-        false
-    }
-
-    fn supports_slice_mut(&self) -> bool {
-        false
+    /// Exclusive counterpart to [`ScriptHostObject::erased_slice_ref`].
+    #[doc(hidden)]
+    fn erased_slice_mut(&mut self) -> Option<crate::erased_slice::ErasedSliceMut<'_>> {
+        None
     }
 
     fn resolve_host_target(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {

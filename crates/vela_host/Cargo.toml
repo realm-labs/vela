@@ -5,7 +5,6 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-better_any = { workspace = true }
 parking_lot = { workspace = true }
 self_cell = { workspace = true }
 smallvec = { workspace = true }
@@ -13,5 +12,11 @@ vela_common = { workspace = true }
 
 vela_def = { workspace = true }
 
-[lints]
-workspace = true
+[dev-dependencies]
+syn = { workspace = true }
+
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"

@@ -376,10 +376,18 @@ always represented as a HostRef-backed fixed Array view. `&[T]` and
 elements against the original slice, and a generated Rust adapter obtains only
 an invocation-scoped reborrow under the active shared/exclusive lease. Because
 standard `Any` cannot erase a dynamically-sized slice with a non-`'static`
-lifetime, the host boundary uses safe lifetime-aware temporary reborrow
-visitors. Vela never receives the Rust reference, and the workspace continues
-to forbid local unsafe code. Returned slices retain their parent lease and may
-be passed to another sync or async Rust/Vela call in the same call tree.
+lifetime, one private `vela_host` module uses lifetime-aware erased shared and
+exclusive slice tokens. Each token retains the data pointer, length, concrete
+Rust `TypeId`, access mode, and borrow lifetime; checked typed reconstruction
+is confined to that module, and the exclusive token is consumed by mutable
+downcast. This is the only reviewed unsafe boundary in `vela_host`; every
+other module forbids unsafe, and an architecture test audits Rust sources
+against the explicit boundary-file allowlist. Stable `InteropTypeId`, not Rust
+`TypeId`, remains the external ABI identity. Vela never receives a pointer or
+Rust reference: script values, GC objects, reflection values, HostRef payloads,
+and persistent state retain only HostRef aliases. Returned slices retain their
+parent lease and may be passed to another sync or async Rust/Vela call in the
+same call tree.
 Structural growth remains unavailable; `[u8]` byte-view behavior is a separate
 capability decision.
 

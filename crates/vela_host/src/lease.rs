@@ -274,19 +274,8 @@ macro_rules! impl_scoped_host_common {
             self.0.lease_any()
         }
 
-        fn visit_slice_ref<'a>(
-            &'a self,
-            visitor: &mut dyn crate::object::HostSliceRefVisitor<'a>,
-        ) -> bool {
-            self.0.visit_slice_ref(visitor)
-        }
-
-        fn supports_slice_ref(&self) -> bool {
-            self.0.supports_slice_ref()
-        }
-
-        fn supports_slice_mut(&self) -> bool {
-            self.0.supports_slice_mut()
+        fn erased_slice_ref(&self) -> Option<crate::erased_slice::ErasedSliceRef<'_>> {
+            self.0.erased_slice_ref()
         }
 
         fn resolve_host_target(
@@ -388,11 +377,8 @@ where
         self.0.lease_any_mut()
     }
 
-    fn visit_slice_mut<'a>(
-        &'a mut self,
-        visitor: &mut dyn crate::object::HostSliceMutVisitor<'a>,
-    ) -> bool {
-        self.0.visit_slice_mut(visitor)
+    fn erased_slice_mut(&mut self) -> Option<crate::erased_slice::ErasedSliceMut<'_>> {
+        self.0.erased_slice_mut()
     }
 
     fn mutate_collection_resolved_host(
@@ -456,26 +442,12 @@ impl ScriptHostObject for ScopedBorrowedHostCell<'_> {
         self.with_dependent_mut(|_, object| object.lease_any_mut())
     }
 
-    fn visit_slice_ref<'a>(
-        &'a self,
-        visitor: &mut dyn crate::object::HostSliceRefVisitor<'a>,
-    ) -> bool {
-        self.borrow_dependent().visit_slice_ref(visitor)
+    fn erased_slice_ref(&self) -> Option<crate::erased_slice::ErasedSliceRef<'_>> {
+        self.borrow_dependent().erased_slice_ref()
     }
 
-    fn visit_slice_mut<'a>(
-        &'a mut self,
-        visitor: &mut dyn crate::object::HostSliceMutVisitor<'a>,
-    ) -> bool {
-        self.with_dependent_mut(|_, object| object.visit_slice_mut(visitor))
-    }
-
-    fn supports_slice_ref(&self) -> bool {
-        self.borrow_dependent().supports_slice_ref()
-    }
-
-    fn supports_slice_mut(&self) -> bool {
-        self.borrow_dependent().supports_slice_mut()
+    fn erased_slice_mut(&mut self) -> Option<crate::erased_slice::ErasedSliceMut<'_>> {
+        self.with_dependent_mut(|_, object| object.erased_slice_mut())
     }
 
     fn resolve_host_target(

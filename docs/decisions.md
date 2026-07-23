@@ -2699,18 +2699,26 @@ live resumable host iteration and complex element HostRefs remain open and
 must add generation checks rather than silently changing the snapshot into an
 escaping Rust borrow.
 
-### Borrowed Rust Slices Use Safe Lifetime-Aware Host Reborrows
+### Borrowed Rust Slices Use A Quarantined Erased-Borrow Boundary
 
 Concrete `[T]` has a distinct borrowed-only TypeBinding identity and maps to
 the fixed Array View/MutView surface. It never crosses the boundary through an
 owned `Vec<T>` codec. Root arguments and retained returned slices stay behind
 HostRef/HostAccess, and generated sync/async free-function and method adapters
 obtain only invocation-scoped `&[T]`/`&mut [T]` reborrows under the active
-lease. Since standard `Any` cannot erase a non-`'static` DST reference and the
-workspace forbids local unsafe code, Vela uses a safe lifetime-aware temporary
-visitor for typed Rust recovery. This mechanism is internal to the host
-boundary: scripts still hold only HostRefs and cannot retain a Rust reference.
-`[u8]` remains reserved for the separate Bytes/view capability decision.
+lease. Since standard `Any` cannot erase a non-`'static` DST reference,
+`vela_host` contains one private unsafe module with lifetime-aware shared and
+exclusive erased tokens. Rust `TypeId` checks only the internal typed
+reconstruction; stable `InteropTypeId` remains the ABI identity. Mutable
+reconstruction consumes a non-Clone, non-Copy exclusive token. The token and
+all reconstructed references remain under the active lease, borrow group,
+parent lease, and lock guard, including across native async completion.
+
+Every other `vela_host` module forbids unsafe, as do the other Vela crates. A
+source audit permits unsafe syntax only in the reviewed erased-slice module
+and the pre-existing C ABI boundary. Raw pointers and reconstructed references
+never enter Value, GC, HostRef payloads, reflection, or persistent script
+state. `[u8]` remains reserved for the separate Bytes/view capability decision.
 
 ### Service Deployment Supports Snapshots And Exact-Base Deltas
 

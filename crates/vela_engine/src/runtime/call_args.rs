@@ -761,9 +761,6 @@ impl<'a> CallArgs<'a> {
                 let Some(leased) = object.try_read_arc() else {
                     return Err(host_object_busy(root));
                 };
-                if !supports_shared_lease(&**leased) {
-                    return Err(host_lease_unsupported(root));
-                }
                 Ok(ErasedHostLease::ScopedShared { object: leased })
             }
             (
@@ -773,12 +770,9 @@ impl<'a> CallArgs<'a> {
                 },
                 HostLeaseKind::Exclusive,
             ) => {
-                let Some(mut leased) = object.try_write_arc() else {
+                let Some(leased) = object.try_write_arc() else {
                     return Err(host_object_busy(root));
                 };
-                if !supports_shared_lease(&**leased) || !supports_exclusive_lease(&mut **leased) {
-                    return Err(host_lease_unsupported(root));
-                }
                 Ok(ErasedHostLease::ScopedExclusive { object: leased })
             }
             (HostArgBinding::Scoped { mutable: false, .. }, HostLeaseKind::Exclusive) => {
@@ -938,14 +932,6 @@ impl HostArgBinding<'_> {
                 .and_then(|mut object| mutate(&mut **object)),
         }
     }
-}
-
-fn supports_shared_lease(object: &dyn ScriptHostObject) -> bool {
-    object.lease_any().is_some() || object.supports_slice_ref()
-}
-
-fn supports_exclusive_lease(object: &mut dyn ScriptHostObject) -> bool {
-    object.lease_any_mut().is_some() || object.supports_slice_mut()
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
