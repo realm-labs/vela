@@ -1,15 +1,25 @@
 #![allow(clippy::ptr_arg)] // The boundary contract intentionally distinguishes &Vec from slices.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::future::poll_fn;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::task::Poll;
 
 use vela_common::{CollectionViewKind, CollectionViewMutation, InteropRepresentation};
+use vela_engine::context::NativeCallContext;
 use vela_engine::engine::Engine;
 use vela_engine::interop::BoundaryMode;
 use vela_engine::native::TypeHint;
 use vela_engine::permission::Capability;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_macros::{ScriptHost, export, methods};
+use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
+
+static SLICE_GATE_READY: AtomicBool = AtomicBool::new(false);
+
+#[path = "borrowed_collection_exports/slice_erasure_acceptance.rs"]
+mod slice_erasure_acceptance;
 
 #[export(path = "collections::merge")]
 pub fn merge(values: &Vec<i64>, totals: &mut BTreeMap<String, i64>) -> i64 {
@@ -64,6 +74,79 @@ pub fn slice_bump(values: &mut [i64]) -> i64 {
 #[export(path = "collections::slice_sum_async")]
 pub async fn slice_sum_async(values: &[i64]) -> i64 {
     slice_sum(values)
+}
+
+#[export(path = "collections::slice_pair_sum")]
+pub fn slice_pair_sum(left: &[i64], right: &[i64]) -> i64 {
+    left.iter().sum::<i64>() + right.iter().sum::<i64>()
+}
+
+#[export(path = "collections::slice_pair_mut")]
+pub fn slice_pair_mut(left: &mut [i64], right: &mut [i64]) -> i64 {
+    left[0] += right[0];
+    left[0]
+}
+
+#[export(path = "collections::slice_len_mut")]
+pub fn slice_len_mut(values: &mut [i64]) -> i64 {
+    i64::try_from(values.len()).expect("test slice length must fit i64")
+}
+
+#[export(path = "collections::slice_fail")]
+pub fn slice_fail(values: &mut [i64]) -> VmResult<i64> {
+    values[0] += 1;
+    Err(VmError::new(VmErrorKind::TypeMismatch {
+        operation: "borrowed slice failure fixture",
+    }))
+}
+
+#[export(path = "collections::slice_yield_once")]
+pub async fn slice_yield_once(values: &[i64]) -> i64 {
+    let mut first_poll = true;
+    poll_fn(|context| {
+        if std::mem::take(&mut first_poll) {
+            context.waker().wake_by_ref();
+            Poll::Pending
+        } else {
+            Poll::Ready(())
+        }
+    })
+    .await;
+    slice_sum(values)
+}
+
+#[export(path = "collections::slice_wait")]
+pub async fn slice_wait(values: &mut [i64]) -> i64 {
+    values[0] += 1;
+    std::future::pending().await
+}
+
+#[export(path = "collections::slice_panic_async")]
+pub async fn slice_panic_async(values: &mut [i64]) -> i64 {
+    values[0] += 1;
+    std::future::ready(()).await;
+    panic!("borrowed slice panic fixture")
+}
+
+#[export(path = "collections::slice_gate")]
+pub async fn slice_gate(values: &[i64]) -> i64 {
+    poll_fn(|_| {
+        if SLICE_GATE_READY.load(Ordering::SeqCst) {
+            Poll::Ready(())
+        } else {
+            Poll::Pending
+        }
+    })
+    .await;
+    slice_sum(values)
+}
+
+#[export(path = "collections::slice_reenter")]
+pub fn slice_reenter(context: &mut NativeCallContext<'_, '_>, values: &[i64]) -> VmResult<i64> {
+    let mut args = CallArgs::new();
+    args.push_slice_ref("values", values);
+    let _ = context.call("slice_nested", args)?;
+    Ok(slice_sum(values))
 }
 
 #[derive(ScriptHost)]
@@ -861,7 +944,15 @@ fn generated_async_slice_adapter_holds_the_slice_lease_to_completion() {
 }
 
 fn runtime(source: &str) -> Runtime {
-    let engine = Engine::builder()
+    let engine = collection_engine();
+    let program = engine
+        .compile_source(source)
+        .expect("borrowed collection call should compile");
+    Runtime::new(engine, program).expect("runtime should initialize")
+}
+
+fn collection_engine() -> Engine {
+    Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
         .register_host_type::<CollectionService>()
@@ -876,12 +967,17 @@ fn runtime(source: &str) -> Runtime {
         .register_exports(vela_export_bundle_slice_sum())
         .register_exports(vela_export_bundle_slice_bump())
         .register_exports(vela_export_bundle_slice_sum_async())
+        .register_exports(vela_export_bundle_slice_pair_sum())
+        .register_exports(vela_export_bundle_slice_pair_mut())
+        .register_exports(vela_export_bundle_slice_len_mut())
+        .register_exports(vela_export_bundle_slice_fail())
+        .register_exports(vela_export_bundle_slice_yield_once())
+        .register_exports(vela_export_bundle_slice_wait())
+        .register_exports(vela_export_bundle_slice_panic_async())
+        .register_exports(vela_export_bundle_slice_gate())
+        .register_exports(vela_export_bundle_slice_reenter())
         .register_exports(CollectionService::vela_inherent_exports())
         .register_exports(CollectionOwner::vela_inherent_exports())
         .build()
-        .expect("collection bindings should be registered transitively");
-    let program = engine
-        .compile_source(source)
-        .expect("borrowed collection call should compile");
-    Runtime::new(engine, program).expect("runtime should initialize")
+        .expect("collection bindings should be registered transitively")
 }

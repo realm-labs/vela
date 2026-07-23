@@ -91,6 +91,10 @@ module in `vela_host`; the obsolete visitor/support API and `better_any` are
 removed. Mutable downcast consumes its exclusive token, all other host modules
 forbid unsafe, and a syntax-aware architecture audit restricts unsafe Rust to
 the reviewed slice-erasure and C ABI boundary files.
+The focused acceptance matrix covers shared/exclusive and wrong-type recovery,
+empty and zero-sized slices, HostRef alias conflicts, retained returns, nested
+native re-entry, real async suspension/completion and cancellation, authored
+error/panic cleanup, and old-generation completion across staged reload.
 Callable contracts can now carry an exact binding-use proof containing the
 concrete `InteropTypeId`, `TypeAbiFingerprint`, and owned/Host/View/MutView
 representation. Engine sealing rejects unregistered, stale, unsupported, or

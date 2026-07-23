@@ -1121,8 +1121,10 @@ methods, retained returns, nested reborrow, indexing, and collection
 projections. Slice recovery is confined to one private lifetime-aware erased-
 borrow module in `vela_host`; mutable reconstruction consumes its exclusive
 token, `better_any` and the visitor/support surface are removed, and a source
-audit restricts unsafe Rust to reviewed boundary files. Byte-view capability
-remains open.
+audit restricts unsafe Rust to reviewed boundary files. Focused regressions
+cover shared/exclusive recovery, wrong types, empty/ZST slices, alias conflict,
+retained returns, nested re-entry, actual async suspension/cancellation,
+error/panic cleanup, and generation pinning. Byte-view capability remains open.
 Restricted
 `ArrayView`/`ArrayMut`, `MapView`/`MapMut`, and `SetView`/`SetMut` hints now
 retain distinct analysis facts and exact hidden fixed/growable mutation facts.
