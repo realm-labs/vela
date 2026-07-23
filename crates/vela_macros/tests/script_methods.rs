@@ -604,12 +604,35 @@ fn nested_collection_protocols_execute_prepared_field_slots() {
         .field(CollectionLeaf::vela_field_id_entries())
         .const_key("x");
     let remove_target = HostTargetInstance::new(root, &remove_plan, &[]);
+    let keyed_access =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+            &outer,
+            HostAccessSpec::new(HostAccessOp::Read, &remove_plan),
+        )
+        .expect("keyed nested map should resolve through an adapter-local slot");
+    assert_eq!(
+        keyed_access.adapter_kind,
+        ResolvedHostAccessKind::AdapterLocal(0)
+    );
+    assert_eq!(keyed_access.prepared_field_slot(0), Some(0));
+    assert_eq!(keyed_access.prepared_field_slot(1), Some(2));
+    let keyed_value = <CollectionOuter as vela_host::object::ScriptHostObject>::read_resolved_host(
+        &outer,
+        keyed_access,
+        remove_target,
+    )
+    .expect("prepared keyed read should reach the map adapter");
+    assert_eq!(
+        keyed_value,
+        HostValue::Scalar(vela_common::ScalarValue::I64(8))
+    );
+
     let remove_access =
         <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
             &outer,
             HostAccessSpec::new(HostAccessOp::Remove, &remove_plan),
         )
-        .expect("indexed nested removal should retain generic traversal");
+        .expect("indexed nested removal should resolve");
     <CollectionOuter as vela_host::object::ScriptHostObject>::remove_resolved_host(
         &mut outer,
         remove_access,

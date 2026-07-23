@@ -1,0 +1,162 @@
+use std::any::{Any, TypeId};
+
+use vela_common::{HostMethodId, HostTypeId};
+
+use crate::{
+    error::HostResult,
+    protocol::{
+        HostCollectionMutation, HostCollectionProjection, HostCollectionQuery,
+        HostCollectionSnapshot,
+    },
+    resolved::{HostAccessSpec, HostSchemaEpoch, ResolvedHostAccess},
+    target::{HostPathPart, HostTargetInstance},
+    value::HostValue,
+};
+
+use super::{
+    HostValueFrom, ScriptHostFieldAccess,
+    collection_protocol::{collection_query_result, mutate_vec},
+    errors::{invalid_arg, missing_target},
+    target::{target_index, target_is_leaf},
+};
+
+impl<T> ScriptHostFieldAccess for Vec<T>
+where
+    T: ScriptHostFieldAccess + 'static,
+{
+    fn script_host_type_id(&self) -> HostTypeId {
+        HostTypeId::new(0)
+    }
+
+    fn from_host_collection_value(value: HostValue) -> HostResult<Self> {
+        if TypeId::of::<T>() != TypeId::of::<u8>() {
+            return Err(invalid_arg("host collection value"));
+        }
+        let bytes = Vec::<u8>::from_host_value(&value)?;
+        let value: Box<dyn Any> = Box::new(bytes);
+        Ok(*value
+            .downcast::<Self>()
+            .expect("Vec<T> TypeId matched Vec<u8>"))
+    }
+
+    fn resolve_host_target_from(
+        &self,
+        spec: HostAccessSpec<'_>,
+        offset: usize,
+    ) -> HostResult<ResolvedHostAccess> {
+        Ok(match spec.plan.parts.as_slice().get(offset) {
+            None | Some(HostPathPart::ConstIndex(_) | HostPathPart::DynIndex { .. }) => {
+                ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0))
+            }
+            Some(_) => ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
+        })
+    }
+
+    fn read_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+    ) -> HostResult<HostValue> {
+        if target_is_leaf(target, offset) && TypeId::of::<T>() == TypeId::of::<u8>() {
+            let bytes = (self as &dyn Any)
+                .downcast_ref::<Vec<u8>>()
+                .expect("Vec<T> TypeId matched Vec<u8>");
+            return Ok(HostValue::Bytes(bytes.clone()));
+        }
+        let index = usize::try_from(target_index(target, offset)?)
+            .map_err(|_| invalid_arg("array index"))?;
+        self.get(index)
+            .ok_or_else(|| missing_target(target))?
+            .read_host_target_from(target, offset + 1)
+    }
+
+    fn query_collection_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        query: HostCollectionQuery,
+    ) -> HostResult<HostValue> {
+        if target_is_leaf(target, offset) {
+            return collection_query_result(self.len(), query);
+        }
+        let index = usize::try_from(target_index(target, offset)?)
+            .map_err(|_| invalid_arg("array index"))?;
+        self.get(index)
+            .ok_or_else(|| missing_target(target))?
+            .query_collection_host_target_from(target, offset + 1, query)
+    }
+
+    fn snapshot_collection_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        projection: HostCollectionProjection,
+    ) -> HostResult<HostCollectionSnapshot> {
+        if !target_is_leaf(target, offset) {
+            let index = usize::try_from(target_index(target, offset)?)
+                .map_err(|_| invalid_arg("array index"))?;
+            return self
+                .get(index)
+                .ok_or_else(|| missing_target(target))?
+                .snapshot_collection_host_target_from(target, offset + 1, projection);
+        }
+        if projection != HostCollectionProjection::Values {
+            return Err(invalid_arg(projection.name()));
+        }
+        self.iter()
+            .map(|value| value.read_host_target_from(target, offset))
+            .collect::<HostResult<Vec<_>>>()
+            .map(HostCollectionSnapshot::Items)
+    }
+
+    fn mutate_collection_host_target_from(
+        &mut self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        mutation: HostCollectionMutation<'_>,
+    ) -> HostResult<()> {
+        if target_is_leaf(target, offset) {
+            return mutate_vec(self, mutation);
+        }
+        let index = usize::try_from(target_index(target, offset)?)
+            .map_err(|_| invalid_arg("array index"))?;
+        self.get_mut(index)
+            .ok_or_else(|| missing_target(target))?
+            .mutate_collection_host_target_from(target, offset + 1, mutation)
+    }
+
+    fn write_host_target_from(
+        &mut self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        value: HostValue,
+    ) -> HostResult<()> {
+        if target_is_leaf(target, offset) && TypeId::of::<T>() == TypeId::of::<u8>() {
+            let bytes = Vec::<u8>::from_host_value(&value)?;
+            let target = (self as &mut dyn Any)
+                .downcast_mut::<Vec<u8>>()
+                .expect("Vec<T> TypeId matched Vec<u8>");
+            *target = bytes;
+            return Ok(());
+        }
+        let index = usize::try_from(target_index(target, offset)?)
+            .map_err(|_| invalid_arg("array index"))?;
+        self.get_mut(index)
+            .ok_or_else(|| missing_target(target))?
+            .write_host_target_from(target, offset + 1, value)
+    }
+
+    fn call_host_target_from(
+        &mut self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        let index = usize::try_from(target_index(target, offset)?)
+            .map_err(|_| invalid_arg("array index"))?;
+        self.get_mut(index)
+            .ok_or_else(|| missing_target(target))?
+            .call_host_target_from(target, offset + 1, method, args)
+    }
+}
