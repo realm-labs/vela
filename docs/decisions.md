@@ -2794,10 +2794,18 @@ reused. The small call-local expired-root and compact-handle tombstones remain
 separate because they preserve the user-facing `ExpiredBorrowedHostRef`
 diagnostic without retaining the Rust borrow.
 
+Runtime extern-state objects, concrete type identity, and active/pending state
+now use dense generational slots as well. `StateId` and staged qualified-name
+maps remain boundary indexes into those slots because they express durable
+schema identity rather than alias identity. Expanded internal roots derive
+from the extern slot and generation and validate exact type; staged roots stay
+inactive until layout commit, while replacement and state reclamation remove
+the prior slot before reuse.
+
 This handle hard switch does not weaken HostRef/HostAccess validation or move
 Rust objects into script storage. Consolidating borrow-group, provenance,
-prepared-adapter, pinned-generation, and extern metadata into the dense slot
-entry remains S2 work.
+prepared-adapter, and pinned-generation metadata into the dense slot entry
+remains S2 work.
 
 ### Prepared Host Traversal Uses Inline Typed Steps
 
