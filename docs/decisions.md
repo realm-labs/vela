@@ -2779,10 +2779,17 @@ but keeps a root-local tombstone long enough to preserve the established
 preassigned same-session reborrow is indexed as a child binding and must not
 reacquire its already leased parent.
 
+Runtime-owned Rust objects and their concrete type identity are stored in the
+same dense generational table shape rather than a `BTreeMap<HostRef, _>`.
+Their expanded internal `HostRef` object ID is the reserved owned-arena base
+plus the dense slot, and its generation is the slot generation; lookup also
+checks the stored exact type. Vela still carries only the separate canonical
+compact handle, and Runtime drop remains the owned-object reclamation boundary.
+
 This handle hard switch does not weaken HostRef/HostAccess validation or move
 Rust objects into script storage. Consolidating borrow-group, provenance,
-prepared-adapter, pinned-generation, scoped, extern, and Runtime-owned metadata
-into the dense slot entry remains S2 work.
+prepared-adapter, pinned-generation, scoped, and extern metadata into the dense
+slot entry remains S2 work.
 
 ### Prepared Host Traversal Uses Inline Typed Steps
 

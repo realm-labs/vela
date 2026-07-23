@@ -1,16 +1,16 @@
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use parking_lot::RwLock;
-use vela_common::{HostMethodId, HostObjectId};
+use vela_common::{HostMethodId, HostObjectId, HostTypeId};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::lease::{ErasedHostLease, HostLeaseKind, OwnedHostLeaseSlot, host_object_busy};
 use vela_host::object::ScriptHostObject;
-use vela_host::path::HostRef;
+use vela_host::path::{HostRef, HostSlotRef};
 use vela_host::protocol::{
     HostCollectionMutation, HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot,
 };
 use vela_host::resolved::{HostAccessSpec, HostMutationOp, ResolvedHostAccess};
+use vela_host::slot::HostSlotTable;
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
 
@@ -22,31 +22,32 @@ const OWNED_HOST_OBJECT_ID_BASE: u64 = 1 << 61;
 /// until their owning Runtime is dropped; the script GC neither owns nor
 /// traces Rust state.
 pub(super) struct RuntimeHostArena {
-    objects: BTreeMap<HostRef, OwnedHostLeaseSlot>,
-    next_object_id: u64,
+    objects: HostSlotTable<RuntimeHostObject>,
+}
+
+struct RuntimeHostObject {
+    type_id: HostTypeId,
+    object: OwnedHostLeaseSlot,
 }
 
 impl RuntimeHostArena {
     pub(super) fn new() -> Self {
         Self {
-            objects: BTreeMap::new(),
-            next_object_id: OWNED_HOST_OBJECT_ID_BASE,
+            objects: HostSlotTable::new(),
         }
     }
 
     pub(super) fn retain(&mut self, object: Box<dyn ScriptHostObject + Send + Sync>) -> HostRef {
-        let root = HostRef::new(
-            object.host_type_id(),
-            HostObjectId::new(self.next_object_id),
-            1,
-        );
-        self.next_object_id = self.next_object_id.saturating_add(1);
-        self.objects.insert(root, Arc::new(RwLock::new(object)));
-        root
+        let type_id = object.host_type_id();
+        let handle = self.objects.insert(RuntimeHostObject {
+            type_id,
+            object: Arc::new(RwLock::new(object)),
+        });
+        Self::root_for(handle, type_id)
     }
 
     pub(super) fn contains(&self, root: HostRef) -> bool {
-        self.objects.contains_key(&root)
+        self.entry(root).is_some()
     }
 
     pub(super) fn take_lease<'host>(
@@ -74,11 +75,12 @@ impl RuntimeHostArena {
         let (root, object) = self
             .objects
             .iter()
-            .find(|(root, _)| root.type_id == spec.plan.root_type)?;
+            .find(|(_, object)| object.type_id == spec.plan.root_type)
+            .map(|(handle, object)| (Self::root_for(handle, object.type_id), &object.object))?;
         Some(
             object
                 .try_read()
-                .ok_or_else(|| host_object_busy(*root))
+                .ok_or_else(|| host_object_busy(root))
                 .and_then(|object| object.resolve_host_target(spec)),
         )
     }
@@ -88,7 +90,7 @@ impl RuntimeHostArena {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
     ) -> Option<HostResult<HostValue>> {
-        let object = self.objects.get(&target.root)?;
+        let object = &self.entry(target.root)?.object;
         Some(
             object
                 .try_read()
@@ -103,7 +105,7 @@ impl RuntimeHostArena {
         target: HostTargetInstance<'_>,
         query: HostCollectionQuery,
     ) -> Option<HostResult<HostValue>> {
-        let object = self.objects.get(&target.root)?;
+        let object = &self.entry(target.root)?.object;
         Some(
             object
                 .try_read()
@@ -118,7 +120,7 @@ impl RuntimeHostArena {
         target: HostTargetInstance<'_>,
         projection: HostCollectionProjection,
     ) -> Option<HostResult<HostCollectionSnapshot>> {
-        let object = self.objects.get(&target.root)?;
+        let object = &self.entry(target.root)?.object;
         Some(
             object
                 .try_read()
@@ -135,7 +137,7 @@ impl RuntimeHostArena {
         target: HostTargetInstance<'_>,
         mutation: HostCollectionMutation<'_>,
     ) -> Option<HostResult<()>> {
-        let object = self.objects.get(&target.root)?;
+        let object = &self.entry(target.root)?.object;
         Some(
             object
                 .try_write()
@@ -152,7 +154,7 @@ impl RuntimeHostArena {
         target: HostTargetInstance<'_>,
         value: HostValue,
     ) -> Option<HostResult<()>> {
-        let object = self.objects.get(&target.root)?;
+        let object = &self.entry(target.root)?.object;
         Some(
             object
                 .try_write()
@@ -168,7 +170,7 @@ impl RuntimeHostArena {
         op: HostMutationOp,
         rhs: HostValue,
     ) -> Option<HostResult<()>> {
-        let object = self.objects.get(&target.root)?;
+        let object = &self.entry(target.root)?.object;
         Some(
             object
                 .try_write()
@@ -182,7 +184,7 @@ impl RuntimeHostArena {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
     ) -> Option<HostResult<()>> {
-        let object = self.objects.get(&target.root)?;
+        let object = &self.entry(target.root)?.object;
         Some(
             object
                 .try_write()
@@ -198,7 +200,7 @@ impl RuntimeHostArena {
         method: HostMethodId,
         args: &[HostValue],
     ) -> Option<HostResult<HostValue>> {
-        let object = self.objects.get(&target.root)?;
+        let object = &self.entry(target.root)?.object;
         Some(
             object
                 .try_write()
@@ -208,12 +210,32 @@ impl RuntimeHostArena {
     }
 
     fn object(&self, root: HostRef) -> HostResult<&OwnedHostLeaseSlot> {
-        self.objects.get(&root).ok_or_else(|| HostError {
-            kind: HostErrorKind::MissingPath {
-                path: vela_host::path::HostPath::new(root),
-            },
-            source_span: None,
-        })
+        self.entry(root)
+            .map(|entry| &entry.object)
+            .ok_or_else(|| HostError {
+                kind: HostErrorKind::MissingPath {
+                    path: vela_host::path::HostPath::new(root),
+                },
+                source_span: None,
+            })
+    }
+
+    fn entry(&self, root: HostRef) -> Option<&RuntimeHostObject> {
+        let slot = root
+            .object_id
+            .get()
+            .checked_sub(OWNED_HOST_OBJECT_ID_BASE)
+            .and_then(|slot| u32::try_from(slot).ok())?;
+        let entry = self.objects.get(HostSlotRef::new(slot, root.generation))?;
+        (entry.type_id == root.type_id).then_some(entry)
+    }
+
+    fn root_for(handle: HostSlotRef, type_id: HostTypeId) -> HostRef {
+        HostRef::new(
+            type_id,
+            HostObjectId::new(OWNED_HOST_OBJECT_ID_BASE + u64::from(handle.slot())),
+            handle.generation(),
+        )
     }
 }
 
@@ -228,6 +250,7 @@ mod tests {
     use vela_common::HostTypeId;
     use vela_host::error::HostResult;
     use vela_host::object::ScriptHostObject;
+    use vela_host::path::HostRef;
     use vela_host::target::HostTargetInstance;
     use vela_host::value::HostValue;
 
@@ -256,6 +279,21 @@ mod tests {
         let first = arena.retain(Box::new(ArenaObject));
         let second = arena.retain(Box::new(ArenaObject));
         assert_ne!(first, second);
+        assert_eq!(first.object_id.get(), super::OWNED_HOST_OBJECT_ID_BASE);
+        assert_eq!(second.object_id.get(), super::OWNED_HOST_OBJECT_ID_BASE + 1);
+        assert_eq!(first.generation, 1);
+        assert!(!arena.objects.spilled());
+        assert!(arena.contains(first));
+        assert!(!arena.contains(HostRef::new(
+            HostTypeId::new(92),
+            first.object_id,
+            first.generation,
+        )));
+        assert!(!arena.contains(HostRef::new(
+            first.type_id,
+            first.object_id,
+            first.generation + 1,
+        )));
 
         let shared = arena
             .take_lease(first, HostLeaseKind::Shared)

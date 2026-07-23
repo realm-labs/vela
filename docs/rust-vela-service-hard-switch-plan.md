@@ -1030,7 +1030,9 @@ enforcement, and type-owned Value constructor path are implemented. A
 constructor is associated with its binding but reuses the ordinary native
 function registry and `host::Type::new` resolution. Host factories now transfer
 exact Rust objects into actor-local Runtime-owned storage and expose only
-HostRef handles to Vela; Runtime drop is the current reclamation boundary.
+HostRef handles to Vela; the owned arena uses dense generational slots with
+exact type/generation validation, and Runtime drop is the current reclamation
+boundary.
 Structural `Value` derive generation now emits the same qualified schema,
 direct codec, and `TypeBinding` for named structs plus unit/named-field enums.
 Rust arguments and native results are linked to nominal identity before script
@@ -1061,10 +1063,13 @@ reflection, collection, comparison, and guard operations. Runtime owns the
 namespace so durable Runtime-owned and extern identities survive calls, while
 direct and scoped entries are generation-invalidated at their call-tree
 boundary. Early release retires the live slot and preserves only a call-local
-expired-borrow diagnostic tombstone. Remaining standard bindings, movement of
-scoped, extern, Runtime-owned, borrow-group, provenance, prepared-adapter, and
-pinned-generation metadata behind the compact table, and dense prepared slots
-inside the remaining collection/index adapters remain open. `Vec<T>` already
+expired-borrow diagnostic tombstone. Runtime-owned object/type metadata now
+lives in a dense generational `HostSlotTable`; expanded internal roots derive
+from the slot and validate exact type/generation identity. Remaining standard
+bindings, movement of scoped, extern, borrow-group, provenance,
+prepared-adapter, and pinned-generation metadata behind the compact table, and
+dense prepared slots inside the remaining collection/index adapters remain
+open. `Vec<T>` already
 classifies index-shaped suffixes with an `AdapterLocal` slot so generated field
 prefixes remain prepared through the sequence boundary; fixed arrays and
 borrowed slices use the same index classification, while `BTreeMap<K, V>` and

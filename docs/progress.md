@@ -44,7 +44,10 @@ from Vela through a qualified `host::Type::new` call.
 Host factories now use `host_constructor_fn` to transfer exact Rust objects
 into actor-local Runtime-owned storage. Vela receives only a `HostRef`; the
 object remains outside script GC, supports HostAccess and shared/exclusive
-leases, and survives across Runtime calls until its Runtime is dropped.
+leases, and survives across Runtime calls until its Runtime is dropped. The
+owned arena stores object/type metadata in a dense generational
+`HostSlotTable`; expanded internal roots derive from that slot and reject
+mismatched type or stale-generation identities.
 The first generated authoring path is also live: `#[derive(Value)]` emits
 qualified named-struct or enum schemas, stable field/variant facts, direct
 structural codecs, and the same `TypeBinding` consumed by
@@ -111,8 +114,8 @@ re-entry shares the namespace, recursive value/native/async/reflection
 conversions require an active resolver, and detached conversions fail closed.
 Early scoped release retires the live slot while retaining a call-local
 diagnostic tombstone so existing `ExpiredBorrowedHostRef` behavior is
-preserved. Consolidating the remaining scoped, extern, Runtime-owned,
-borrow-group, provenance, prepared-adapter, and pinned-generation metadata
+preserved. Consolidating the remaining scoped, extern, borrow-group,
+provenance, prepared-adapter, and pinned-generation metadata
 behind the compact table remains open.
 The first S3 standard binding family is also live: concrete
 `BTreeMap<K, V>` and `HashMap<K, V>` bindings synthesize stable recursive
@@ -389,11 +392,11 @@ shared/exclusive boundary rows allocate zero times and still reject the
 complete conflict set before lease acquisition. Generated host functions and
 methods now reuse registration-time prepared parameter plans instead of
 rebuilding contracts and request metadata on each call. Service-signature and
-Host/View/MutView closure traversal, remaining borrowed collection
-runtime views and type hints, consolidation of scoped/extern/Runtime-owned
-host and borrow-group metadata behind the compact slot table, prepared slot
-chains inside collection/index adapters beyond the live prepared field prefix,
-and a post-S2 shorter owned-host reclamation policy remain open.
+Host/View/MutView closure traversal, remaining borrowed collection runtime
+views and type hints, consolidation of scoped/extern host, borrow-group,
+provenance, prepared-adapter, and pinned-generation metadata behind the
+compact slot table, prepared element method calls, and a post-S2 shorter
+owned-host reclamation policy remain open.
 Runtime receiver enforcement is live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-
 signature facts.
