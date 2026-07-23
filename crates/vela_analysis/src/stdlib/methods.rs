@@ -194,30 +194,42 @@ pub(super) fn method_fact(
     match receiver {
         TypeFact::Array { element }
         | TypeFact::ArrayView { element }
-        | TypeFact::ArrayMut { element, .. } => bind_collection_receiver(
-            receiver,
+        | TypeFact::ArrayMut { element, .. } => specialize_collection_source(
             method,
-            array_method_fact((**element).clone(), method, lambda_return),
+            arguments,
+            bind_collection_receiver(
+                receiver,
+                method,
+                array_method_fact((**element).clone(), method, lambda_return),
+            ),
         ),
         TypeFact::Map { key, value }
         | TypeFact::MapView { key, value }
-        | TypeFact::MapMut { key, value, .. } => bind_collection_receiver(
-            receiver,
+        | TypeFact::MapMut { key, value, .. } => specialize_collection_source(
             method,
-            map_method_fact(
-                (**key).clone(),
-                (**value).clone(),
+            arguments,
+            bind_collection_receiver(
+                receiver,
                 method,
-                lambda_return,
-                lambda_param_count,
+                map_method_fact(
+                    (**key).clone(),
+                    (**value).clone(),
+                    method,
+                    lambda_return,
+                    lambda_param_count,
+                ),
             ),
         ),
         TypeFact::Set { element }
         | TypeFact::SetView { element }
-        | TypeFact::SetMut { element, .. } => bind_collection_receiver(
-            receiver,
+        | TypeFact::SetMut { element, .. } => specialize_collection_source(
             method,
-            set_method_fact((**element).clone(), method, lambda_return),
+            arguments,
+            bind_collection_receiver(
+                receiver,
+                method,
+                set_method_fact((**element).clone(), method, lambda_return),
+            ),
         ),
         TypeFact::Iterator { item } => {
             iterator_method_fact((**item).clone(), method, lambda_return)
@@ -323,6 +335,76 @@ fn bind_collection_receiver(
         fact.receiver = receiver.clone();
         fact
     })
+}
+
+fn specialize_collection_source(
+    method: &str,
+    arguments: Option<&[TypeFact]>,
+    mut fact: Option<StdlibMethodFact>,
+) -> Option<StdlibMethodFact> {
+    if method != "extend" {
+        return fact;
+    }
+    let (Some(method_fact), Some(actual)) =
+        (fact.as_mut(), arguments.and_then(|args| args.first()))
+    else {
+        return fact;
+    };
+    let Some(expected) = method_fact.params.first_mut() else {
+        return fact;
+    };
+    if same_collection_shape(actual, expected) {
+        *expected = actual.clone();
+    }
+    fact
+}
+
+fn same_collection_shape(actual: &TypeFact, expected: &TypeFact) -> bool {
+    match (actual, expected) {
+        (
+            TypeFact::Array { element: actual }
+            | TypeFact::ArrayView { element: actual }
+            | TypeFact::ArrayMut {
+                element: actual, ..
+            },
+            TypeFact::Array { element: expected },
+        )
+        | (
+            TypeFact::Set { element: actual }
+            | TypeFact::SetView { element: actual }
+            | TypeFact::SetMut {
+                element: actual, ..
+            },
+            TypeFact::Set { element: expected },
+        ) => collection_component_matches(actual, expected),
+        (
+            TypeFact::Map {
+                key: actual_key,
+                value: actual_value,
+            }
+            | TypeFact::MapView {
+                key: actual_key,
+                value: actual_value,
+            }
+            | TypeFact::MapMut {
+                key: actual_key,
+                value: actual_value,
+                ..
+            },
+            TypeFact::Map {
+                key: expected_key,
+                value: expected_value,
+            },
+        ) => {
+            collection_component_matches(actual_key, expected_key)
+                && collection_component_matches(actual_value, expected_value)
+        }
+        _ => false,
+    }
+}
+
+fn collection_component_matches(actual: &TypeFact, expected: &TypeFact) -> bool {
+    actual == expected || matches!(actual, TypeFact::Never) || matches!(expected, TypeFact::Any)
 }
 
 fn collection_method_allowed(receiver: &TypeFact, method: &str) -> bool {

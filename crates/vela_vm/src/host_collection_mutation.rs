@@ -1,6 +1,9 @@
 use vela_bytecode::{CacheSiteId, Register};
 use vela_common::ScalarValue;
-use vela_host::protocol::{HostCollectionKey, HostCollectionMutation, HostCollectionQuery};
+use vela_host::protocol::{
+    HostCollectionKey, HostCollectionMutation, HostCollectionProjection, HostCollectionQuery,
+    HostCollectionSnapshot,
+};
 use vela_host::resolved::{HostAccessOp, HostAccessSpec};
 use vela_host::target::{HostTargetInstance, HostTargetPlan};
 use vela_host::value::HostValue;
@@ -103,6 +106,141 @@ impl PreparedCollectionExtension {
     }
 }
 
+fn prepare_sequence_extension(
+    runtime: &mut HostAccessRuntime<'_, '_, '_>,
+    extension: &Value,
+    operation: &'static str,
+) -> VmResult<PreparedCollectionExtension> {
+    if matches!(extension, Value::HostRef(_)) {
+        let snapshot = crate::host_collection_projection::snapshot_host_collection_value(
+            runtime,
+            extension,
+            HostCollectionProjection::Values,
+        )?;
+        let HostCollectionSnapshot::Items(values) = snapshot else {
+            return extension_type_error(operation);
+        };
+        return Ok(PreparedCollectionExtension::Sequence(values));
+    }
+    Ok(PreparedCollectionExtension::Sequence(
+        crate::array_methods::array_values(extension, runtime.heap.as_deref(), operation)?
+            .iter()
+            .map(|value| {
+                value_to_host(
+                    value,
+                    operation,
+                    runtime.heap.as_deref(),
+                    runtime.host.as_deref(),
+                )
+            })
+            .collect::<VmResult<Vec<_>>>()?,
+    ))
+}
+
+fn prepare_map_extension(
+    runtime: &mut HostAccessRuntime<'_, '_, '_>,
+    extension: &Value,
+    operation: &'static str,
+) -> VmResult<PreparedCollectionExtension> {
+    if matches!(extension, Value::HostRef(_)) {
+        let snapshot = crate::host_collection_projection::snapshot_host_collection_value(
+            runtime,
+            extension,
+            HostCollectionProjection::Entries,
+        )?;
+        let HostCollectionSnapshot::Entries(entries) = snapshot else {
+            return extension_type_error(operation);
+        };
+        return entries
+            .into_iter()
+            .map(|(key, value)| Ok((host_value_to_collection_key(key, operation)?, value)))
+            .collect::<VmResult<Vec<_>>>()
+            .map(PreparedCollectionExtension::Map);
+    }
+    crate::map_methods::map_entries(extension, runtime.heap.as_deref(), operation)?
+        .iter()
+        .map(|(key, value)| {
+            Ok((
+                runtime_collection_key(
+                    key,
+                    runtime.heap.as_deref(),
+                    runtime.host.as_deref(),
+                    operation,
+                )?,
+                value_to_host(
+                    value,
+                    operation,
+                    runtime.heap.as_deref(),
+                    runtime.host.as_deref(),
+                )?,
+            ))
+        })
+        .collect::<VmResult<Vec<_>>>()
+        .map(PreparedCollectionExtension::Map)
+}
+
+fn prepare_set_extension(
+    runtime: &mut HostAccessRuntime<'_, '_, '_>,
+    extension: &Value,
+    operation: &'static str,
+) -> VmResult<PreparedCollectionExtension> {
+    if matches!(extension, Value::HostRef(_)) {
+        let snapshot = crate::host_collection_projection::snapshot_host_collection_value(
+            runtime,
+            extension,
+            HostCollectionProjection::Values,
+        )?;
+        let HostCollectionSnapshot::Items(values) = snapshot else {
+            return extension_type_error(operation);
+        };
+        return values
+            .into_iter()
+            .map(|value| host_value_to_collection_key(value, operation))
+            .collect::<VmResult<Vec<_>>>()
+            .map(PreparedCollectionExtension::Set);
+    }
+    crate::set_methods::set_values(extension, runtime.heap.as_deref(), operation)?
+        .iter()
+        .map(|value| {
+            runtime_collection_key(
+                value,
+                runtime.heap.as_deref(),
+                runtime.host.as_deref(),
+                operation,
+            )
+        })
+        .collect::<VmResult<Vec<_>>>()
+        .map(PreparedCollectionExtension::Set)
+}
+
+fn host_value_to_collection_key(
+    value: HostValue,
+    operation: &'static str,
+) -> VmResult<HostCollectionKey> {
+    Ok(match value {
+        HostValue::Bool(value) => HostCollectionKey::Bool(value),
+        HostValue::Char(value) => HostCollectionKey::Char(value),
+        HostValue::Scalar(ScalarValue::I8(value)) => HostCollectionKey::I8(value),
+        HostValue::Scalar(ScalarValue::I16(value)) => HostCollectionKey::I16(value),
+        HostValue::Scalar(ScalarValue::I32(value)) => HostCollectionKey::I32(value),
+        HostValue::Scalar(ScalarValue::I64(value)) => HostCollectionKey::I64(value),
+        HostValue::Scalar(ScalarValue::U8(value)) => HostCollectionKey::U8(value),
+        HostValue::Scalar(ScalarValue::U16(value)) => HostCollectionKey::U16(value),
+        HostValue::Scalar(ScalarValue::U32(value)) => HostCollectionKey::U32(value),
+        HostValue::Scalar(ScalarValue::U64(value)) => HostCollectionKey::U64(value),
+        HostValue::String(value) => HostCollectionKey::String(value),
+        HostValue::Bytes(value) => HostCollectionKey::Bytes(value),
+        HostValue::HostRef(value) => HostCollectionKey::HostRef(value),
+        HostValue::Unit | HostValue::Scalar(ScalarValue::F32(_) | ScalarValue::F64(_)) => {
+            return extension_type_error(operation);
+        }
+    })
+}
+
+fn extension_type_error<T>(operation: &'static str) -> VmResult<T> {
+    Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
+}
+
 pub(crate) fn execute_host_root_collection_batch(
     mut runtime: HostAccessRuntime<'_, '_, '_>,
     receiver: Register,
@@ -117,60 +255,15 @@ pub(crate) fn execute_host_root_collection_batch(
         _ => "host collection extend",
     };
     let extension = match mutation {
-        VmMutation::ArrayExtend => {
-            crate::array_methods::array_values(extension, runtime.heap.as_deref(), operation)?
-                .iter()
-                .map(|value| {
-                    value_to_host(
-                        value,
-                        operation,
-                        runtime.heap.as_deref(),
-                        runtime.host.as_deref(),
-                    )
-                })
-                .collect::<VmResult<Vec<_>>>()?
-                .into()
-        }
+        VmMutation::ArrayExtend => prepare_sequence_extension(&mut runtime, extension, operation)?,
         VmMutation::ArrayPush => PreparedCollectionExtension::SequenceItem(value_to_host(
             extension,
             operation,
             runtime.heap.as_deref(),
             runtime.host.as_deref(),
         )?),
-        VmMutation::MapExtend => PreparedCollectionExtension::Map(
-            crate::map_methods::map_entries(extension, runtime.heap.as_deref(), operation)?
-                .iter()
-                .map(|(key, value)| {
-                    Ok((
-                        runtime_collection_key(
-                            key,
-                            runtime.heap.as_deref(),
-                            runtime.host.as_deref(),
-                            operation,
-                        )?,
-                        value_to_host(
-                            value,
-                            operation,
-                            runtime.heap.as_deref(),
-                            runtime.host.as_deref(),
-                        )?,
-                    ))
-                })
-                .collect::<VmResult<Vec<_>>>()?,
-        ),
-        VmMutation::SetExtend => PreparedCollectionExtension::Set(
-            crate::set_methods::set_values(extension, runtime.heap.as_deref(), operation)?
-                .iter()
-                .map(|value| {
-                    runtime_collection_key(
-                        value,
-                        runtime.heap.as_deref(),
-                        runtime.host.as_deref(),
-                        operation,
-                    )
-                })
-                .collect::<VmResult<Vec<_>>>()?,
-        ),
+        VmMutation::MapExtend => prepare_map_extension(&mut runtime, extension, operation)?,
+        VmMutation::SetExtend => prepare_set_extension(&mut runtime, extension, operation)?,
         _ => unreachable!("only prepared batch mutations reach collection extension"),
     };
     if let Some(budget) = runtime.budget.as_deref_mut() {
@@ -360,12 +453,6 @@ impl PreparedCollectionRetain {
             },
             Self::Keys { expected, keep } => HostCollectionMutation::RetainKeys { expected, keep },
         }
-    }
-}
-
-impl From<Vec<HostValue>> for PreparedCollectionExtension {
-    fn from(values: Vec<HostValue>) -> Self {
-        Self::Sequence(values)
     }
 }
 

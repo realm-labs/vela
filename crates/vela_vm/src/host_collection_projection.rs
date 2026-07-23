@@ -128,6 +128,21 @@ pub(crate) fn project_host_root_collection_entries(
     host_entries_to_values(entries, runtime)
 }
 
+pub(crate) fn snapshot_host_collection_value(
+    runtime: &mut HostAccessRuntime<'_, '_, '_>,
+    receiver: &Value,
+    projection: HostCollectionProjection,
+) -> VmResult<HostCollectionSnapshot> {
+    let root = expect_host_ref(
+        receiver,
+        runtime.host.as_deref(),
+        "host collection projection",
+    )?;
+    let snapshot = snapshot_host_collection_root(runtime, root, projection, None)?;
+    charge_projection(&snapshot, runtime.budget.as_deref_mut())?;
+    Ok(snapshot)
+}
+
 pub(crate) fn execute_host_root_array_transform(
     mut runtime: HostAccessRuntime<'_, '_, '_>,
     receiver: Register,
@@ -171,11 +186,21 @@ fn snapshot_host_root_collection(
     projection: HostCollectionProjection,
     cache_site: Option<CacheSiteId>,
 ) -> VmResult<HostCollectionSnapshot> {
+    let receiver = runtime.frame.read(receiver)?;
     let root = expect_host_ref(
-        &runtime.frame.read(receiver)?,
+        &receiver,
         runtime.host.as_deref(),
         "host collection projection",
     )?;
+    snapshot_host_collection_root(runtime, root, projection, cache_site)
+}
+
+fn snapshot_host_collection_root(
+    runtime: &mut HostAccessRuntime<'_, '_, '_>,
+    root: vela_host::path::HostRef,
+    projection: HostCollectionProjection,
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<HostCollectionSnapshot> {
     let target = HostTargetPlan::new(root.type_id);
     let instance = HostTargetInstance::new(root, &target, &[]);
     let host = runtime

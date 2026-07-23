@@ -292,8 +292,12 @@ protocol rather than mutating the temporary projection. Static and dynamic
 dispatch share the standard method identity, retained child views write
 through their parent lease, and shared or fixed-length views withhold the
 method. Scalar, String, Bytes, and HostRef boundary leaves are supported;
-complex element handles, borrowed-source extension, write-through filter, and
-prepared live grouping/traversal remain open.
+matching borrowed Array/Map/Set sources can now extend a growable HostRef
+target without owned materialization. The source is snapshotted through its
+active lease before one target batch, source and mutation traversals are
+precharged, and same-alias extension reads the complete old snapshot before
+write-through. Complex element handles, write-through filter, and prepared
+live grouping/traversal remain open.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry

@@ -1301,9 +1301,12 @@ growable exclusive HostRef views. Decisions remain resumable until every
 callback succeeds, then owned storage or the original HostRef alias receives
 one checked retain mutation. Callback errors, final traversal budget failure,
 and stale structural snapshots are non-mutating; retained child views use
-their parent lease, and shared/fixed views do not expose the method. Complex
-element HostRefs, borrowed-source extension, write-through filter, and
-prepared live grouping/traversal remain open.
+their parent lease, and shared/fixed views do not expose the method. Growable
+HostRef targets also accept matching borrowed Array/Map/Set `extend` sources:
+the source is snapshotted through its active lease, both traversals are
+precharged, and same-alias extension snapshots before write-through. Complex
+element HostRefs, write-through filter, and prepared live grouping/traversal
+remain open.
 
 ### S4 — Service contract and Rust-only generation
 

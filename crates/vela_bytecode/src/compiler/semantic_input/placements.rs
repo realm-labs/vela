@@ -608,6 +608,31 @@ impl GenerationBuilder<'_, '_> {
             else {
                 continue;
             };
+            let Some(expression) = external_parameter_expression(arguments, index) else {
+                continue;
+            };
+            let actual = self
+                .body_for_expression(expression)
+                .and_then(|body| self.direct_declared_receiver_fact(body, expression))
+                .or_else(|| {
+                    self.executable_analysis(executable)
+                        .ok()?
+                        .expression(expression)
+                        .cloned()
+                });
+            if method == "extend"
+                && let Some(actual) = actual.as_ref()
+                && borrowed_collection_source(actual, &expected)
+            {
+                self.remove_native_parameter_boundary(
+                    executable,
+                    expression,
+                    method,
+                    mutation_arg_debug_name(method, &parameter.name, index),
+                    checked_u32(index, origin, "typed container mutation parameter")?,
+                );
+                continue;
+            }
             let Some(contract) = contract_from_fact(
                 &expected,
                 &self.registry_facts,
@@ -616,9 +641,6 @@ impl GenerationBuilder<'_, '_> {
                 &self.type_shapes,
             )
             .and_then(super::schema::meaningful_contract) else {
-                continue;
-            };
-            let Some(expression) = external_parameter_expression(arguments, index) else {
                 continue;
             };
             self.replace_native_parameter_boundary(
@@ -1089,6 +1111,32 @@ impl GenerationBuilder<'_, '_> {
             },
         ))
     }
+}
+
+fn borrowed_collection_source(actual: &TypeFact, expected: &TypeFact) -> bool {
+    let borrowed = matches!(
+        actual,
+        TypeFact::ArrayView { .. }
+            | TypeFact::ArrayMut { .. }
+            | TypeFact::MapView { .. }
+            | TypeFact::MapMut { .. }
+            | TypeFact::SetView { .. }
+            | TypeFact::SetMut { .. }
+    );
+    borrowed
+        && matches!(
+            (actual, expected),
+            (
+                TypeFact::ArrayView { .. } | TypeFact::ArrayMut { .. },
+                TypeFact::Array { .. }
+            ) | (
+                TypeFact::MapView { .. } | TypeFact::MapMut { .. },
+                TypeFact::Map { .. }
+            ) | (
+                TypeFact::SetView { .. } | TypeFact::SetMut { .. },
+                TypeFact::Set { .. }
+            )
+        )
 }
 
 fn external_parameter_expression(

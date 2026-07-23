@@ -822,3 +822,123 @@ fn borrowed_collection_retain_callbacks_write_through_transactionally() {
         .expect_err("a callback error must occur before retain mutates Rust state");
     assert_eq!(unchanged, vec![1, 2, 3]);
 }
+
+#[test]
+fn growable_borrowed_collections_extend_from_borrowed_sources() {
+    let mut runtime = runtime(
+        "fn array_extend(target, source: ArrayView<i64>) { target.extend(source); return target.len(); } fn map_extend(target: MapMut<i32, i64>, source: MapView<i32, i64>) { target.extend(source); return target.len(); } fn set_extend(target: SetMut<i32>, source: SetView<i32>) { target.extend(source); return target.len(); } fn self_extend(owner: CollectionOwner) { let values = owner.values_mut(); values.extend(values); return values.len(); } fn wrong_extend(target, source) { target.extend(source); }",
+    );
+
+    let mut array_target = vec![2_i64];
+    let array_source = vec![3_i64, 5];
+    let mut args = CallArgs::new();
+    args.push_collection_mut("target", &mut array_target);
+    args.push_collection_ref("source", &array_source);
+    let result = runtime
+        .call("array_extend", args, CallOptions::unbounded())
+        .expect("borrowed Array source should extend one growable host target");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(3)));
+    drop(result);
+    assert_eq!(array_target, vec![2, 3, 5]);
+    assert_eq!(array_source, vec![3, 5]);
+
+    let mut map_target = BTreeMap::from([(2_i32, 3_i64)]);
+    let map_source = BTreeMap::from([(2_i32, 5_i64), (7_i32, 11_i64)]);
+    let mut args = CallArgs::new();
+    args.push_collection_mut("target", &mut map_target);
+    args.push_collection_ref("source", &map_source);
+    let result = runtime
+        .call("map_extend", args, CallOptions::unbounded())
+        .expect("borrowed Map source should extend one growable host target");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(2)));
+    drop(result);
+    assert_eq!(map_target, BTreeMap::from([(2, 5), (7, 11)]));
+    assert_eq!(map_source, BTreeMap::from([(2, 5), (7, 11)]));
+
+    let mut set_target = BTreeSet::from([2_i32]);
+    let set_source = BTreeSet::from([3_i32, 5]);
+    let mut args = CallArgs::new();
+    args.push_collection_mut("target", &mut set_target);
+    args.push_collection_ref("source", &set_source);
+    let result = runtime
+        .call("set_extend", args, CallOptions::unbounded())
+        .expect("borrowed Set source should extend one growable host target");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(3)));
+    drop(result);
+    assert_eq!(set_target, BTreeSet::from([2, 3, 5]));
+    assert_eq!(set_source, BTreeSet::from([3, 5]));
+
+    let mut owner = CollectionOwner {
+        values: vec![2, 3],
+        totals: BTreeMap::new(),
+    };
+    let result = runtime
+        .call(
+            "self_extend",
+            CallArgs::new().with_host_mut("owner", &mut owner),
+            CallOptions::unbounded(),
+        )
+        .expect("one exclusive HostRef alias should snapshot before extending itself");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(4)));
+    drop(result);
+    assert_eq!(owner.values, vec![2, 3, 2, 3]);
+
+    let mut wrong_target = vec![2_i32];
+    let wrong_source = BTreeSet::from([3_i32, 5]);
+    let mut args = CallArgs::new();
+    args.push_collection_mut("target", &mut wrong_target);
+    args.push_collection_ref("source", &wrong_source);
+    runtime
+        .call("wrong_extend", args, CallOptions::unbounded())
+        .expect_err("a borrowed source from another collection protocol must be rejected");
+    assert_eq!(wrong_target, vec![2]);
+}
+
+#[test]
+fn borrowed_source_extend_precharges_projection_and_mutation() {
+    let mut runtime =
+        runtime("fn extend(target, source: ArrayView<i64>) { target.extend(source); }");
+    let base_limit = (0..96)
+        .find(|limit| {
+            let mut target = vec![1_i64];
+            let source = Vec::<i64>::new();
+            let mut args = CallArgs::new();
+            args.push_collection_mut("target", &mut target);
+            args.push_collection_ref("source", &source);
+            runtime
+                .call(
+                    "extend",
+                    args,
+                    CallOptions::new(*limit, usize::MAX, usize::MAX),
+                )
+                .is_ok()
+        })
+        .expect("empty borrowed-source extension should fit a bounded call");
+
+    let source = vec![2_i64, 3, 5];
+    let mut target = vec![1_i64];
+    let mut args = CallArgs::new();
+    args.push_collection_mut("target", &mut target);
+    args.push_collection_ref("source", &source);
+    runtime
+        .call(
+            "extend",
+            args,
+            CallOptions::new(base_limit + 5, usize::MAX, usize::MAX),
+        )
+        .expect_err("source projection plus target mutation must each charge three units");
+    assert_eq!(target, vec![1], "budget failure must precede host mutation");
+
+    let mut args = CallArgs::new();
+    args.push_collection_mut("target", &mut target);
+    args.push_collection_ref("source", &source);
+    runtime
+        .call(
+            "extend",
+            args,
+            CallOptions::new(base_limit + 6, usize::MAX, usize::MAX),
+        )
+        .expect("the exact two-traversal budget should extend the host target");
+    assert_eq!(target, vec![1, 2, 3, 5]);
+    assert_eq!(source, vec![2, 3, 5]);
+}

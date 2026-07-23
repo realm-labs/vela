@@ -17,6 +17,7 @@ use crate::facts::AnalysisFacts;
 use crate::hints::type_fact_from_hint_in_module;
 use crate::registry::RegistryFacts;
 use crate::semantic_facts::{CallTargetFact, registry_callable_owner};
+use crate::stdlib::stdlib_method_fact_for_call;
 use crate::type_fact::TypeFact;
 
 pub(super) fn record_body(
@@ -164,7 +165,11 @@ fn placement_policy(
             let signature = body.field(call.callee).and_then(|field| {
                 let receiver = facts.expression(field.receiver)?;
                 let owner = registry_callable_owner(receiver)?;
-                schema.and_then(|schema| registry_method_signature(schema, owner, name))
+                let signature =
+                    schema.and_then(|schema| registry_method_signature(schema, owner, name))?;
+                Some(specialize_stdlib_method_signature(
+                    facts, call, receiver, name, signature,
+                ))
             });
             PlacementPolicy::External(signature)
         }
@@ -174,6 +179,37 @@ fn placement_policy(
             PlacementPolicy::Unresolved
         }
     }
+}
+
+fn specialize_stdlib_method_signature(
+    facts: &AnalysisFacts,
+    call: &vela_hir::body::HirCall,
+    receiver: &TypeFact,
+    method: &str,
+    mut signature: CallableSignatureFact,
+) -> CallableSignatureFact {
+    if method != "extend" {
+        return signature;
+    }
+    let arguments = call
+        .arguments
+        .iter()
+        .map(|argument| {
+            argument
+                .value
+                .and_then(|value| facts.expression(value).cloned())
+                .unwrap_or(TypeFact::Unknown)
+        })
+        .collect::<Vec<_>>();
+    let Some(method) =
+        stdlib_method_fact_for_call(receiver, method, None, None, arguments.as_slice())
+    else {
+        return signature;
+    };
+    for (parameter, specialized) in signature.parameters.iter_mut().zip(method.params) {
+        parameter.type_fact = specialized;
+    }
+    signature
 }
 
 fn registry_variant_signature(

@@ -81,6 +81,49 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
 }
 
 #[test]
+fn collection_extend_accepts_matching_borrowed_sources() {
+    let array_receiver = TypeFact::array_mut(TypeFact::I64, CollectionViewMutation::Growable);
+    let array_source = TypeFact::array_view(TypeFact::I64);
+    let array = stdlib_method_fact_for_call(
+        &array_receiver,
+        "extend",
+        None,
+        None,
+        std::slice::from_ref(&array_source),
+    )
+    .expect("Array extend fact");
+    assert_eq!(array.params, vec![array_source]);
+
+    let map_receiver = TypeFact::map_mut(
+        TypeFact::I32,
+        TypeFact::I64,
+        CollectionViewMutation::Growable,
+    );
+    let map_source = TypeFact::map_view(TypeFact::I32, TypeFact::I64);
+    let map = stdlib_method_fact_for_call(
+        &map_receiver,
+        "extend",
+        None,
+        None,
+        std::slice::from_ref(&map_source),
+    )
+    .expect("Map extend fact");
+    assert_eq!(map.params, vec![map_source]);
+
+    let set_receiver = TypeFact::set_mut(TypeFact::I32, CollectionViewMutation::Growable);
+    let set_source = TypeFact::set_view(TypeFact::I32);
+    let set = stdlib_method_fact_for_call(
+        &set_receiver,
+        "extend",
+        None,
+        None,
+        std::slice::from_ref(&set_source),
+    )
+    .expect("Set extend fact");
+    assert_eq!(set.params, vec![set_source]);
+}
+
+#[test]
 fn array_lambda_methods_expose_element_parameter_facts() {
     let receiver = TypeFact::array(TypeFact::record("Reward"));
 

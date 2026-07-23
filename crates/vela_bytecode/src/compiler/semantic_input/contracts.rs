@@ -137,6 +137,27 @@ impl GenerationBuilder<'_, '_> {
         self.boundaries.push(replacement);
     }
 
+    pub(super) fn remove_native_parameter_boundary(
+        &mut self,
+        function: FunctionId,
+        expression: HirExprId,
+        display_function: impl Into<String>,
+        name: impl Into<String>,
+        index: u32,
+    ) {
+        let site = ContractBoundary::native_parameter(
+            function,
+            expression,
+            MirTypeContract::Any,
+            display_function,
+            name,
+            index,
+        );
+        self.boundaries.retain(|boundary| {
+            !boundary.has_native_parameter_site(function, expression, &site.context)
+        });
+    }
+
     pub(super) fn reject_literal_diagnostics(&self) -> CompileResult<()> {
         let diagnostics = self.literal_diagnostics()?;
         if diagnostics.is_empty() {
