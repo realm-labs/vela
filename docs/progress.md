@@ -72,10 +72,12 @@ through typed slot thunks without stable field-ID redispatch or leaf
 re-resolution. Deeper or non-preparable paths retain the validated generic
 traversal. Collection length/empty queries, snapshots, and batch mutations now
 use the same prepared field chain to reach a leaf collection adapter, while
-index/key segments retain validated generic traversal. Preparing dense
-collection/index adapter slots remains open. Indexed removal through generated
-host-field prefixes now also reaches the collection adapter via that validated
-generic traversal.
+index/key segments without an adapter-local slot retain validated generic
+traversal. Indexed removal through generated host-field prefixes reaches the
+collection adapter via that fallback. `Vec<T>` index-shaped plans now resolve
+to an `AdapterLocal` slot, preserving the prepared generated-field prefix
+through the sequence adapter; dense element-field suffixes and the remaining
+collection families remain open.
 Default/manual adapters preserve that cursor during read-modify-write and use
 it when distinguishing a nested leaf from a missing target.
 Direct call arguments now keep an inline dense host-slot index separate from

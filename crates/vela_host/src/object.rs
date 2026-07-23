@@ -441,6 +441,13 @@ macro_rules! impl_script_host_object_via_field {
                 Some(self)
             }
 
+            fn resolve_host_target(
+                &self,
+                spec: HostAccessSpec<'_>,
+            ) -> HostResult<ResolvedHostAccess> {
+                ScriptHostFieldAccess::resolve_host_target_from(self, spec, spec.offset)
+            }
+
             fn read_resolved_host(
                 &self,
                 access: ResolvedHostAccess,
@@ -1036,6 +1043,21 @@ where
         Ok(*value
             .downcast::<Self>()
             .expect("Vec<T> TypeId matched Vec<u8>"))
+    }
+
+    fn resolve_host_target_from(
+        &self,
+        spec: HostAccessSpec<'_>,
+        offset: usize,
+    ) -> HostResult<ResolvedHostAccess> {
+        Ok(match spec.plan.parts.as_slice().get(offset) {
+            None
+            | Some(
+                crate::target::HostPathPart::ConstIndex(_)
+                | crate::target::HostPathPart::DynIndex { .. },
+            ) => ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0)),
+            Some(_) => ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
+        })
     }
 
     fn read_host_target_from(

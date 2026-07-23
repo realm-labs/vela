@@ -579,11 +579,13 @@ fn nested_collection_protocols_execute_prepared_field_slots() {
             &outer,
             HostAccessSpec::new(HostAccessOp::Read, &indexed_plan),
         )
-        .expect("indexed nested collection should retain generic traversal");
+        .expect("indexed nested sequence should resolve through an adapter-local slot");
     assert_eq!(
         indexed_access.adapter_kind,
-        ResolvedHostAccessKind::GenericTarget
+        ResolvedHostAccessKind::AdapterLocal(0)
     );
+    assert_eq!(indexed_access.prepared_field_slot(0), Some(0));
+    assert_eq!(indexed_access.prepared_field_slot(1), Some(1));
     let indexed_len =
         <CollectionOuter as vela_host::object::ScriptHostObject>::query_collection_resolved_host(
             &outer,

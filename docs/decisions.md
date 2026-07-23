@@ -1290,6 +1290,17 @@ paths containing an adapter that cannot prepare a slot chain fall back to the
 ordinary validated target traversal rather than allocating an unbounded chain
 in the cache entry.
 
+### Sequence Index Plans Use Adapter-Local Resolution
+
+Standard `Vec<T>` adapters classify empty or index-shaped target suffixes as
+schema-local adapter slot zero during host-target resolution. This is a
+prepared traversal identity, not an embedded index: constant and dynamic index
+values remain in the linked target plan and are validated by the collection
+adapter under the active HostAccess lease. Because the result is no longer
+generic, generated parent-field slots remain in `ResolvedHostAccess` up to the
+sequence boundary. Unsupported key-shaped suffixes still degrade to generic
+validated traversal.
+
 ### Unlinked Bytecode Naming
 
 Compiler output bytecode is named `UnlinkedProgram`, `UnlinkedCodeObject`,
