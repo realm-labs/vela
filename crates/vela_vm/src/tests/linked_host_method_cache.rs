@@ -65,6 +65,8 @@ fn linked_host_method_uses_immutable_target_and_ignores_mutable_entry() {
         stale_method_id,
         HostValue::Scalar(vela_common::ScalarValue::I64(99)),
     );
+    let host_slot = vela_host::adapter::ScriptStateAdapter::intern_host_ref(&mut adapter, host_ref)
+        .expect("host ref should intern");
     let mut access = HostAccess::new();
     let mut budget = ExecutionBudget::unbounded();
     let result = {
@@ -79,7 +81,7 @@ fn linked_host_method_uses_immutable_target_and_ignores_mutable_entry() {
                 owner: Arc::clone(&program),
                 function: main,
                 captures: &[],
-                args: &[Value::HostRef(host_ref)],
+                args: &[Value::HostRef(host_slot)],
                 check_param_guards: true,
                 call_site: None,
                 call_site_offset: None,
@@ -140,7 +142,7 @@ fn linked_host_method_uses_immutable_target_and_ignores_mutable_entry() {
                 owner: Arc::clone(&program),
                 function: main,
                 captures: &[],
-                args: &[Value::HostRef(host_ref)],
+                args: &[Value::HostRef(host_slot)],
                 check_param_guards: true,
                 call_site: None,
                 call_site_offset: None,
@@ -171,7 +173,7 @@ fn linked_host_method_uses_immutable_target_and_ignores_mutable_entry() {
                 owner: Arc::clone(&program),
                 function: main,
                 captures: &[],
-                args: &[Value::HostRef(host_ref)],
+                args: &[Value::HostRef(host_slot)],
                 check_param_guards: true,
                 call_site: None,
                 call_site_offset: None,

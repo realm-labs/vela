@@ -3,33 +3,46 @@ use vela_common::Span;
 
 use crate::heap::HeapValue;
 use crate::{
-    CallFrame, ExecutionBudget, HeapExecution, VmError, VmErrorKind, VmResult, allocate_heap_value,
-    value_to_owned,
+    CallFrame, ExecutionBudget, HeapExecution, HostExecution, VmError, VmErrorKind, VmResult,
+    allocate_heap_value, value_to_owned,
 };
+
+pub(crate) struct FormatStringRequest<'a> {
+    pub(crate) dst: Register,
+    pub(crate) constants: &'a [Constant],
+    pub(crate) parts: &'a [FormatStringPart],
+    pub(crate) source_span: Option<Span>,
+}
 
 pub(crate) fn make_format_string(
     frame: &mut CallFrame,
     heap: Option<&mut HeapExecution<'_>>,
+    host: Option<&HostExecution<'_>>,
     budget: Option<&mut ExecutionBudget>,
-    dst: Register,
-    constants: &[Constant],
-    parts: &[FormatStringPart],
-    source_span: Option<Span>,
+    request: FormatStringRequest<'_>,
 ) -> VmResult<()> {
     let Some(heap) = heap else {
         return Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "format string heap",
         })
-        .with_source_span_if_absent(source_span));
+        .with_source_span_if_absent(request.source_span));
     };
-    let text = render_format_string(frame, heap, constants, parts, source_span)?;
+    let text = render_format_string(
+        frame,
+        heap,
+        host,
+        request.constants,
+        request.parts,
+        request.source_span,
+    )?;
     let value = allocate_heap_value(HeapValue::String(text), heap, budget)?;
-    frame.write(dst, value)
+    frame.write(request.dst, value)
 }
 
 fn render_format_string(
     frame: &CallFrame,
     heap: &HeapExecution<'_>,
+    host: Option<&HostExecution<'_>>,
     constants: &[Constant],
     parts: &[FormatStringPart],
     source_span: Option<Span>,
@@ -42,8 +55,14 @@ fn render_format_string(
             }
             FormatStringPart::Value(register) => {
                 let value = frame.read(*register)?;
-                let owned = value_to_owned(&value, Some(heap))
-                    .map_err(|error| error.with_source_span_if_absent(source_span))?;
+                let owned = value_to_owned(
+                    &value,
+                    Some(heap),
+                    host.map(|host| {
+                        &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)
+                    }),
+                )
+                .map_err(|error| error.with_source_span_if_absent(source_span))?;
                 output.push_str(&owned.display_text());
             }
         }

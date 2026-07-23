@@ -217,6 +217,21 @@ pub enum RuntimeMethodSelectorKind {
 }
 
 #[doc(hidden)]
+pub enum RuntimeHostResolver<'state> {
+    Slots(&'state vela_host::slot::HostRefSlots),
+    Adapter(&'state dyn vela_host::adapter::ScriptStateAdapter),
+}
+
+impl RuntimeHostResolver<'_> {
+    fn resolve(&self, handle: vela_host::path::HostSlotRef) -> Option<vela_host::path::HostRef> {
+        match self {
+            Self::Slots(slots) => slots.resolve(handle),
+            Self::Adapter(adapter) => adapter.resolve_host_ref(handle).ok(),
+        }
+    }
+}
+
+#[doc(hidden)]
 pub struct RuntimeMethodResolveContext<'program, 'state> {
     pub runtime_id: u64,
     pub program_image: &'state ProgramImage,
@@ -224,6 +239,7 @@ pub struct RuntimeMethodResolveContext<'program, 'state> {
     pub version_id: Option<ProgramVersionId>,
     pub script_heap: &'state ScriptHeap,
     pub engine: &'state Engine,
+    pub host: RuntimeHostResolver<'state>,
 }
 
 pub(super) fn resolve_bound_method(
@@ -245,6 +261,7 @@ pub(super) fn resolve_bound_method(
         &target.receiver.value,
         context.script_heap,
         context.engine.registry().as_ref(),
+        |handle| context.host.resolve(handle),
     )
     .ok_or_else(|| unknown_method(method_handle.name.clone()))?;
     if receiver_type != method_handle.receiver_type {
@@ -357,6 +374,7 @@ pub(super) struct RuntimeCallExecution<'program, 'state, 'host, 'budget> {
     pub(super) hot_reload: Option<&'program HotReloadRuntime>,
     pub(super) extern_states: &'state mut RuntimeExternStateBindings,
     pub(super) host_arena: &'state mut super::host_arena::RuntimeHostArena,
+    pub(super) host_slots: &'state mut vela_host::slot::HostRefSlots,
     pub(super) vm_states: &'state mut RuntimeVmStateStore,
     pub(super) generations: &'state mut RuntimeGenerations,
     pub(super) target: EntryRequest,

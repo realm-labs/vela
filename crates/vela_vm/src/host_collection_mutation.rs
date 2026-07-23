@@ -16,7 +16,11 @@ pub(crate) fn execute_host_root_collection_clear(
     receiver: Register,
     cache_site: Option<CacheSiteId>,
 ) -> VmResult<Value> {
-    let root = expect_host_ref(&runtime.frame.read(receiver)?, "host collection clear")?;
+    let root = expect_host_ref(
+        &runtime.frame.read(receiver)?,
+        runtime.host.as_deref(),
+        "host collection clear",
+    )?;
     let target = HostTargetPlan::new(root.type_id);
     let instance = HostTargetInstance::new(root, &target, &[]);
     let host = runtime
@@ -107,7 +111,14 @@ pub(crate) fn execute_host_root_collection_extend(
         VmMutation::ArrayExtend => {
             crate::array_methods::array_values(extension, runtime.heap.as_deref(), operation)?
                 .iter()
-                .map(|value| value_to_host(value, operation, runtime.heap.as_deref()))
+                .map(|value| {
+                    value_to_host(
+                        value,
+                        operation,
+                        runtime.heap.as_deref(),
+                        runtime.host.as_deref(),
+                    )
+                })
                 .collect::<VmResult<Vec<_>>>()?
                 .into()
         }
@@ -116,8 +127,18 @@ pub(crate) fn execute_host_root_collection_extend(
                 .iter()
                 .map(|(key, value)| {
                     Ok((
-                        runtime_collection_key(key, runtime.heap.as_deref(), operation)?,
-                        value_to_host(value, operation, runtime.heap.as_deref())?,
+                        runtime_collection_key(
+                            key,
+                            runtime.heap.as_deref(),
+                            runtime.host.as_deref(),
+                            operation,
+                        )?,
+                        value_to_host(
+                            value,
+                            operation,
+                            runtime.heap.as_deref(),
+                            runtime.host.as_deref(),
+                        )?,
                     ))
                 })
                 .collect::<VmResult<Vec<_>>>()?,
@@ -125,7 +146,14 @@ pub(crate) fn execute_host_root_collection_extend(
         VmMutation::SetExtend => PreparedCollectionExtension::Set(
             crate::set_methods::set_values(extension, runtime.heap.as_deref(), operation)?
                 .iter()
-                .map(|value| runtime_collection_key(value, runtime.heap.as_deref(), operation))
+                .map(|value| {
+                    runtime_collection_key(
+                        value,
+                        runtime.heap.as_deref(),
+                        runtime.host.as_deref(),
+                        operation,
+                    )
+                })
                 .collect::<VmResult<Vec<_>>>()?,
         ),
         _ => unreachable!("only extend mutations reach bulk extension"),
@@ -133,7 +161,11 @@ pub(crate) fn execute_host_root_collection_extend(
     if let Some(budget) = runtime.budget.as_deref_mut() {
         budget.charge_execution_units(u64::try_from(extension.len()).unwrap_or(u64::MAX))?;
     }
-    let root = expect_host_ref(&runtime.frame.read(receiver)?, operation)?;
+    let root = expect_host_ref(
+        &runtime.frame.read(receiver)?,
+        runtime.host.as_deref(),
+        operation,
+    )?;
     let target = HostTargetPlan::new(root.type_id);
     let instance = HostTargetInstance::new(root, &target, &[]);
     let host = runtime

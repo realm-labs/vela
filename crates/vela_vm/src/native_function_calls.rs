@@ -142,9 +142,10 @@ pub(crate) fn dispatch_linked_native_function_call(
         _ => None,
     };
     if context_native_boundaries && matches!(target, NativeCallTarget::ContextHost(_)) {
-        let args = native_call_args_from_registers(frame, call.args, heap.as_deref())?
-            .as_slice()
-            .to_vec();
+        let args =
+            native_call_args_from_registers(frame, call.args, heap.as_deref(), host.as_deref())?
+                .as_slice()
+                .to_vec();
         return Ok(LinkedNativeDispatch::Context(PreparedContextNativeCall {
             native_id: call.native,
             args,
@@ -154,9 +155,10 @@ pub(crate) fn dispatch_linked_native_function_call(
         }));
     }
     if let Some(function) = async_function {
-        let args = native_call_args_from_registers(frame, call.args, heap.as_deref())?
-            .as_slice()
-            .to_vec();
+        let args =
+            native_call_args_from_registers(frame, call.args, heap.as_deref(), host.as_deref())?
+                .as_slice()
+                .to_vec();
         return Ok(LinkedNativeDispatch::Async(PreparedAsyncNativeCall {
             native_id: call.native,
             function,
@@ -167,19 +169,20 @@ pub(crate) fn dispatch_linked_native_function_call(
         }));
     }
     if let NativeCallTarget::ConditionalHost(function) = target {
-        let args = native_call_args_from_registers(frame, call.args, heap.as_deref())?
-            .as_slice()
-            .to_vec();
-        let host = host.as_deref_mut().ok_or_else(|| {
+        let args =
+            native_call_args_from_registers(frame, call.args, heap.as_deref(), host.as_deref())?
+                .as_slice()
+                .to_vec();
+        let host_execution = host.as_deref_mut().ok_or_else(|| {
             VmError::new(VmErrorKind::TypeMismatch {
                 operation: "host context",
             })
         })?;
-        return match function(&args, host, budget.as_deref_mut())
+        return match function(&args, host_execution, budget.as_deref_mut())
             .map_err(|error| error.with_source_span_if_absent(call.call_site))?
         {
             ConditionalHostNativeOutcome::Complete(result) => {
-                write_native_result(frame, heap, budget, program, call.dst, result)?;
+                write_native_result(frame, host, heap, budget, program, call.dst, result)?;
                 Ok(LinkedNativeDispatch::Complete)
             }
             ConditionalHostNativeOutcome::Async {
@@ -233,7 +236,12 @@ fn dispatch_resolved_native_function_call(
 ) -> VmResult<()> {
     let result = match target {
         NativeCallTarget::Pure(native) => {
-            let values = native_call_args_from_registers(frame, call.args, heap.as_deref())?;
+            let values = native_call_args_from_registers(
+                frame,
+                call.args,
+                heap.as_deref(),
+                host.as_deref(),
+            )?;
             native(values.as_slice())
                 .map_err(|error| error.with_source_span_if_absent(call.call_site))?
         }
@@ -254,7 +262,12 @@ fn dispatch_resolved_native_function_call(
                 .map_err(|error| error.with_source_span_if_absent(call.call_site))?
         }
         NativeCallTarget::Host(native) => {
-            let values = native_call_args_from_registers(frame, call.args, heap.as_deref())?;
+            let values = native_call_args_from_registers(
+                frame,
+                call.args,
+                heap.as_deref(),
+                host.as_deref(),
+            )?;
             let host = host.as_deref_mut().ok_or_else(|| {
                 VmError::new(VmErrorKind::TypeMismatch {
                     operation: "host context",
@@ -264,7 +277,12 @@ fn dispatch_resolved_native_function_call(
                 .map_err(|error| error.with_source_span_if_absent(call.call_site))?
         }
         NativeCallTarget::ContextHost(native) => {
-            let values = native_call_args_from_registers(frame, call.args, heap.as_deref())?;
+            let values = native_call_args_from_registers(
+                frame,
+                call.args,
+                heap.as_deref(),
+                host.as_deref(),
+            )?;
             let host = host.as_deref_mut().ok_or_else(|| {
                 VmError::new(VmErrorKind::TypeMismatch {
                     operation: "host context",
@@ -291,11 +309,12 @@ fn dispatch_resolved_native_function_call(
                 .map_err(|error| error.with_source_span_if_absent(call.call_site))?
         }
     };
-    write_native_result(frame, heap, budget, program, call.dst, result)
+    write_native_result(frame, host, heap, budget, program, call.dst, result)
 }
 
 pub(crate) fn write_native_result(
     frame: &mut CallFrame,
+    host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     program: &LinkedProgram,
@@ -314,6 +333,9 @@ pub(crate) fn write_native_result(
             })
         })?,
         budget.as_deref_mut(),
+        host.as_deref_mut().map(|host| {
+            &mut *host.adapter as &mut (dyn vela_host::adapter::ScriptStateAdapter + Send)
+        }),
     )?;
     frame.write(destination, result)
 }
@@ -392,9 +414,14 @@ fn native_call_args_from_registers(
     frame: &CallFrame,
     registers: &[Register],
     heap: Option<&HeapExecution<'_>>,
+    host: Option<&HostExecution<'_>>,
 ) -> VmResult<SmallStorage<OwnedValue>> {
     SmallStorage::try_from_slice_map(registers, 4, |register| {
-        value_to_owned(&frame.read(*register)?, heap)
+        value_to_owned(
+            &frame.read(*register)?,
+            heap,
+            host.map(|host| &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)),
+        )
     })
 }
 

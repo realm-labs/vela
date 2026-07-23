@@ -111,12 +111,13 @@ impl ResumableArrayOrdering {
         &mut self,
         vm: &Vm,
         program: &vela_bytecode::LinkedProgram,
+        host: Option<&crate::HostExecution<'_>>,
         heap: &mut Option<&mut HeapExecution<'_>>,
         budget: &mut Option<&mut ExecutionBudget>,
         returned: Option<Value>,
     ) -> VmResult<ResumableArrayOrderingStep> {
         if let Some(comparison) = self.comparison.as_mut() {
-            match comparison.step(vm, program, heap, budget, returned)? {
+            match comparison.step(vm, program, host, heap, budget, returned)? {
                 ResumableComparisonStep::Call { function, args } => {
                     return Ok(ResumableArrayOrderingStep::Call { function, args });
                 }
@@ -233,7 +234,7 @@ impl ResumableArrayOrdering {
                 .comparison
                 .as_mut()
                 .expect("array ordering schedules a comparison");
-            match comparison.step(vm, program, heap, budget, None)? {
+            match comparison.step(vm, program, host, heap, budget, None)? {
                 ResumableComparisonStep::Call { function, args } => {
                     return Ok(ResumableArrayOrderingStep::Call { function, args });
                 }

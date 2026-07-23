@@ -346,6 +346,8 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
         HostValue::Scalar(vela_common::ScalarValue::I64(9)),
     );
     adapter.insert_method_return(method, HostValue::Unit);
+    let host_slot = vela_host::adapter::ScriptStateAdapter::intern_host_ref(&mut adapter, host_ref)
+        .expect("host ref should intern");
     let mut tx = HostAccess::new();
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
@@ -360,7 +362,7 @@ fn heap_execution_converts_heap_string_for_host_method_call() {
         run_host_method_program_runtime(
             &program,
             "main",
-            &[RuntimeValue::HostRef(host_ref)],
+            &[RuntimeValue::HostRef(host_slot)],
             &mut host,
             &mut heap_execution,
             &mut budget,

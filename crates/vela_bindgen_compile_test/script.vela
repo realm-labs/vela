@@ -37,7 +37,9 @@ pub async fn raise_async(player: Player, amount: i64) -> i64 {
 pub fn read_level(player: Player) -> i64 { return player.level; }
 
 pub fn round_trip(player: Player, amount: i64) -> i64 {
-    return test::reenter_player(player, amount);
+    let result = test::reenter_player(player, amount);
+    let after = player.level;
+    return result + after - after;
 }
 
 pub fn round_trip_unrelated(player: Player) -> i64 {

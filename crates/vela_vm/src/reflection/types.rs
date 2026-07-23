@@ -33,7 +33,7 @@ pub(super) fn register(
     let borrowed_type_of_registry = Arc::clone(registry);
     let borrowed_type_of_policy = policy.clone();
     let borrowed_type_of_budget = Arc::clone(lookup_budget);
-    vm.register_borrowed_host_native("reflect::type_of", move |args, heap, _host, _budget| {
+    vm.register_borrowed_host_native("reflect::type_of", move |args, heap, host, _budget| {
         check_reflect_policy(
             &borrowed_type_of_policy,
             &borrowed_type_of_budget,
@@ -46,7 +46,7 @@ pub(super) fn register(
                 actual: args.len(),
             }));
         }
-        let target = runtime_value_to_reflect(&args[0], heap, "reflect::type_of")?;
+        let target = runtime_value_to_reflect(&args[0], heap, Some(host), "reflect::type_of")?;
         check_host_ref_inspection(&borrowed_type_of_policy, &target)?;
         value_from_reflect(reflect::types::type_of_value(
             &borrowed_type_of_registry,

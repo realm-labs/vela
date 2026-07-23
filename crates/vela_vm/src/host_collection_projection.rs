@@ -94,7 +94,11 @@ fn snapshot_host_root_collection(
     projection: HostCollectionProjection,
     cache_site: Option<CacheSiteId>,
 ) -> VmResult<HostCollectionSnapshot> {
-    let root = expect_host_ref(&runtime.frame.read(receiver)?, "host collection projection")?;
+    let root = expect_host_ref(
+        &runtime.frame.read(receiver)?,
+        runtime.host.as_deref(),
+        "host collection projection",
+    )?;
     let target = HostTargetPlan::new(root.type_id);
     let instance = HostTargetInstance::new(root, &target, &[]);
     let host = runtime
@@ -151,6 +155,10 @@ fn snapshot_values(
                     item,
                     runtime.heap.as_deref_mut(),
                     runtime.budget.as_deref_mut(),
+                    runtime
+                        .host
+                        .as_deref_mut()
+                        .ok_or_else(missing_host_context)?,
                 )
             })
             .collect(),
@@ -161,11 +169,19 @@ fn snapshot_values(
                     key,
                     runtime.heap.as_deref_mut(),
                     runtime.budget.as_deref_mut(),
+                    runtime
+                        .host
+                        .as_deref_mut()
+                        .ok_or_else(missing_host_context)?,
                 )?;
                 let value = runtime_value_from_host(
                     value,
                     runtime.heap.as_deref_mut(),
                     runtime.budget.as_deref_mut(),
+                    runtime
+                        .host
+                        .as_deref_mut()
+                        .ok_or_else(missing_host_context)?,
                 )?;
                 values.push(crate::map_methods::map_entry(
                     key,
@@ -190,6 +206,10 @@ fn host_items_to_values(
                 item,
                 runtime.heap.as_deref_mut(),
                 runtime.budget.as_deref_mut(),
+                runtime
+                    .host
+                    .as_deref_mut()
+                    .ok_or_else(missing_host_context)?,
             )
         })
         .collect()
@@ -206,11 +226,19 @@ fn host_entries_to_values(
                 key,
                 runtime.heap.as_deref_mut(),
                 runtime.budget.as_deref_mut(),
+                runtime
+                    .host
+                    .as_deref_mut()
+                    .ok_or_else(missing_host_context)?,
             )?;
             let value = runtime_value_from_host(
                 value,
                 runtime.heap.as_deref_mut(),
                 runtime.budget.as_deref_mut(),
+                runtime
+                    .host
+                    .as_deref_mut()
+                    .ok_or_else(missing_host_context)?,
             )?;
             Ok((key, value))
         })

@@ -3,6 +3,7 @@ use vela_bytecode::{
     TypeGuardPlan, TypeGuardPlanId,
 };
 use vela_common::{HostTypeId, PrimitiveTag};
+use vela_host::adapter::ScriptStateAdapter;
 
 use crate::budget::ExecutionBudget;
 use crate::container_contracts::{
@@ -18,6 +19,7 @@ use crate::{CallFrame, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 pub(crate) struct GuardExecutionContext<'a, 'heap> {
     heap: Option<&'a mut HeapExecution<'heap>>,
     budget: Option<&'a mut ExecutionBudget>,
+    host: Option<&'a (dyn ScriptStateAdapter + Send)>,
 }
 
 impl<'a, 'heap> GuardExecutionContext<'a, 'heap> {
@@ -25,7 +27,19 @@ impl<'a, 'heap> GuardExecutionContext<'a, 'heap> {
         heap: Option<&'a mut HeapExecution<'heap>>,
         budget: Option<&'a mut ExecutionBudget>,
     ) -> Self {
-        Self { heap, budget }
+        Self {
+            heap,
+            budget,
+            host: None,
+        }
+    }
+
+    pub(crate) fn new_with_host(
+        heap: Option<&'a mut HeapExecution<'heap>>,
+        budget: Option<&'a mut ExecutionBudget>,
+        host: Option<&'a (dyn ScriptStateAdapter + Send)>,
+    ) -> Self {
+        Self { heap, budget, host }
     }
 
     fn heap(&self) -> Option<&HeapExecution<'heap>> {
@@ -34,6 +48,10 @@ impl<'a, 'heap> GuardExecutionContext<'a, 'heap> {
 
     fn heap_mut(&mut self) -> Option<&mut HeapExecution<'heap>> {
         self.heap.as_deref_mut()
+    }
+
+    fn host(&self) -> Option<&(dyn ScriptStateAdapter + Send)> {
+        self.host
     }
 
     fn charge_scan_item(&mut self) -> VmResult<()> {
@@ -57,6 +75,7 @@ pub(crate) fn execute_linked_guard(
     }
 
     let heap = context.heap();
+    let host = context.host();
     match guard.plan {
         TypeGuardPlan::Primitive(expected) => {
             execute_primitive_guard(value, expected, heap, debug_name)
@@ -170,6 +189,7 @@ pub(crate) fn execute_linked_guard(
                 host_type_id,
                 program.debug_name(expected.debug_name),
                 heap,
+                host,
                 debug_name,
             )
         }
@@ -495,6 +515,7 @@ fn try_linked_container_contract_fast_path(
     context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<bool> {
+    let host = context.host;
     let Some(heap) = context.heap_mut() else {
         return Ok(false);
     };
@@ -505,7 +526,7 @@ fn try_linked_container_contract_fast_path(
         .heap
         .container_value_summary(reference)
         .unwrap_or(ContainerTypeSummary::Unknown);
-    match linked_summary_proof(summary, element, program) {
+    match linked_summary_proof(summary, element, program, host) {
         ContainerSummaryProof::Proven => {
             heap.heap
                 .install_container_contract_stamp(reference, stamp.clone());
@@ -531,6 +552,7 @@ fn try_linked_map_contract_fast_path(
     context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<bool> {
+    let host = context.host;
     let Some(heap) = context.heap_mut() else {
         return Ok(false);
     };
@@ -544,6 +566,7 @@ fn try_linked_map_contract_fast_path(
                 .unwrap_or(ContainerTypeSummary::Unknown),
             plan,
             program,
+            host,
             debug_name,
         )
     })?;
@@ -554,6 +577,7 @@ fn try_linked_map_contract_fast_path(
                 .unwrap_or(ContainerTypeSummary::Unknown),
             plan,
             program,
+            host,
             debug_name,
         )
     })?;
@@ -569,9 +593,10 @@ fn map_summary_proof_linked(
     summary: ContainerTypeSummary,
     plan: &TypeGuardPlan,
     program: &LinkedProgram,
+    host: Option<&(dyn ScriptStateAdapter + Send)>,
     debug_name: &str,
 ) -> VmResult<ContainerSummaryProof> {
-    match linked_summary_proof(summary, plan, program) {
+    match linked_summary_proof(summary, plan, program, host) {
         ContainerSummaryProof::Mismatch(actual) => {
             Err(VmError::new(VmErrorKind::TypeContractViolation {
                 expected: linked_plan_expected_name(plan, program),
@@ -587,7 +612,25 @@ fn linked_summary_proof(
     summary: ContainerTypeSummary,
     plan: &TypeGuardPlan,
     program: &LinkedProgram,
+    host: Option<&(dyn ScriptStateAdapter + Send)>,
 ) -> ContainerSummaryProof {
+    if let (
+        ContainerTypeSummary::Exact(ShallowTypeKey::HostSlot(handle)),
+        TypeGuardPlan::HostType { host_type_id, .. },
+    ) = (summary, plan)
+    {
+        let Some(actual) = host
+            .and_then(|host| host.resolve_host_ref(handle).ok())
+            .map(|reference| reference.type_id)
+        else {
+            return ContainerSummaryProof::Unknown;
+        };
+        return if actual == *host_type_id {
+            ContainerSummaryProof::Proven
+        } else {
+            ContainerSummaryProof::Mismatch(ShallowTypeKey::Host(actual))
+        };
+    }
     if let Some(key) = linked_exact_shallow_key(plan, program) {
         return summary.prove_exact_key(key);
     }
@@ -858,6 +901,7 @@ fn execute_linked_guard_plan(
     debug_name: &str,
 ) -> VmResult<()> {
     let heap = context.heap();
+    let host = context.host();
     match plan {
         TypeGuardPlan::Primitive(expected) => {
             execute_primitive_guard(value, *expected, heap, debug_name)
@@ -968,6 +1012,7 @@ fn execute_linked_guard_plan(
                 *host_type_id,
                 program.debug_name(expected.debug_name),
                 heap,
+                host,
                 debug_name,
             )
         }
@@ -1046,9 +1091,10 @@ fn execute_host_type_guard(
     expected: HostTypeId,
     expected_name: &str,
     heap: Option<&HeapExecution<'_>>,
+    host: Option<&(dyn ScriptStateAdapter + Send)>,
     debug_name: &str,
 ) -> VmResult<()> {
-    if runtime_host_type_id(value) == Some(expected) {
+    if runtime_host_type_id(value, host) == Some(expected) {
         return Ok(());
     }
     Err(type_contract_error(value, expected_name, heap, debug_name))
@@ -1257,9 +1303,14 @@ fn runtime_variant_id(
     }
 }
 
-fn runtime_host_type_id(value: &Value) -> Option<HostTypeId> {
+fn runtime_host_type_id(
+    value: &Value,
+    host: Option<&(dyn ScriptStateAdapter + Send)>,
+) -> Option<HostTypeId> {
     match value {
-        Value::HostRef(reference) => Some(reference.type_id),
+        Value::HostRef(reference) => host
+            .and_then(|host| host.resolve_host_ref(*reference).ok())
+            .map(|reference| reference.type_id),
         _ => None,
     }
 }
@@ -1304,6 +1355,8 @@ fn runtime_record_debug_shape<'a>(
 mod tests {
     use vela_bytecode::{LinkedCodeObject, LinkedProgram, LinkedType, TypeGuardPlan};
     use vela_common::{HostObjectId, HostTypeId, PrimitiveTag};
+    use vela_host::adapter::ScriptStateAdapter;
+    use vela_host::mock::MockStateAdapter;
     use vela_host::path::HostRef;
 
     use super::*;
@@ -1456,6 +1509,10 @@ mod tests {
             program.push_type(LinkedType::new(vela_def::TypeId::new(0x703), player_name));
         let host_type_id = HostTypeId::new(77);
         let player = HostRef::new(host_type_id, HostObjectId::new(7), 1);
+        let mut adapter = MockStateAdapter::new();
+        let player = adapter
+            .intern_host_ref(player)
+            .expect("player should intern");
 
         let mut set = ScriptSet::new();
         set.insert_keyed(ValueKey::HostIdentity(player), Value::HostRef(player));
@@ -1469,7 +1526,11 @@ mod tests {
         };
         let mut budget = ExecutionBudget::new(0, usize::MAX, usize::MAX);
         let mut heap_execution = HeapExecution::new(&mut heap);
-        let mut context = GuardExecutionContext::new(Some(&mut heap_execution), Some(&mut budget));
+        let mut context = GuardExecutionContext::new_with_host(
+            Some(&mut heap_execution),
+            Some(&mut budget),
+            Some(&adapter),
+        );
 
         execute_linked_guard_plan(&value, &plan, &program, &mut context, "players")
             .expect("host-ref summary should prove set element contract");
@@ -1485,6 +1546,10 @@ mod tests {
             program.push_type(LinkedType::new(vela_def::TypeId::new(0x704), player_name));
         let host_type_id = HostTypeId::new(77);
         let player = HostRef::new(host_type_id, HostObjectId::new(7), 1);
+        let mut adapter = MockStateAdapter::new();
+        let player = adapter
+            .intern_host_ref(player)
+            .expect("player should intern");
 
         let mut map = ScriptMap::new();
         map.insert_keyed(
@@ -1503,7 +1568,11 @@ mod tests {
         };
         let mut budget = ExecutionBudget::new(0, usize::MAX, usize::MAX);
         let mut heap_execution = HeapExecution::new(&mut heap);
-        let mut context = GuardExecutionContext::new(Some(&mut heap_execution), Some(&mut budget));
+        let mut context = GuardExecutionContext::new_with_host(
+            Some(&mut heap_execution),
+            Some(&mut budget),
+            Some(&adapter),
+        );
 
         execute_linked_guard_plan(&value, &plan, &program, &mut context, "scores")
             .expect("host-ref summary should prove map key contract");

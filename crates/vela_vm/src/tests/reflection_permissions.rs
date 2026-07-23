@@ -871,6 +871,8 @@ fn main(player) {
         host_ref,
         HostValue::Scalar(vela_common::ScalarValue::I64(9)),
     );
+    let host_slot = vela_host::adapter::ScriptStateAdapter::intern_host_ref(&mut adapter, host_ref)
+        .expect("host ref should intern");
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
@@ -887,7 +889,7 @@ fn main(player) {
         exec_reflection_permission_runtime(
             &vm,
             &program,
-            &[RuntimeValue::HostRef(host_ref)],
+            &[RuntimeValue::HostRef(host_slot)],
             &mut host,
             &mut heap_execution,
             &mut budget,

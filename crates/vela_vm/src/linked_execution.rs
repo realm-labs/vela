@@ -208,6 +208,8 @@ impl Vm {
             call.inline_caches,
             call.bytecode_profiler,
             None,
+            host.as_deref()
+                .map(|host| &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)),
             heap.as_deref_mut(),
             budget.as_deref_mut(),
         )?;
@@ -352,6 +354,9 @@ impl Vm {
                         child_dispatch.inline_caches,
                         child_dispatch.bytecode_profiler,
                         Some(return_to),
+                        host.as_deref().map(|host| {
+                            &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)
+                        }),
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                     );
@@ -591,6 +596,7 @@ impl Vm {
         inline_caches: Option<&dyn VmInlineCaches>,
         _bytecode_profiler: Option<&dyn VmBytecodeProfiler>,
         return_to: Option<ReturnContinuation>,
+        host: Option<&(dyn vela_host::adapter::ScriptStateAdapter + Send)>,
         heap: Option<&mut HeapExecution<'_>>,
         budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<ExecutionFrame> {
@@ -675,7 +681,8 @@ impl Vm {
             }
         }
         if check_param_guards {
-            let mut guard_context = runtime_type_guards::GuardExecutionContext::new(heap, budget);
+            let mut guard_context =
+                runtime_type_guards::GuardExecutionContext::new_with_host(heap, budget, host);
             runtime_type_guards::execute_linked_param_guards(
                 code,
                 program,
@@ -720,7 +727,7 @@ impl Vm {
                     returned,
                     source_span,
                 } => match comparison
-                    .step(self, program, heap, budget, returned)
+                    .step(self, program, host.as_deref(), heap, budget, returned)
                     .map_err(|error| error.with_source_span_if_absent(source_span))?
                 {
                     ResumableComparisonStep::Complete(value) => {
@@ -752,7 +759,7 @@ impl Vm {
                     returned,
                     source_span,
                 } => match ordering
-                    .step(self, program, heap, budget, returned)
+                    .step(self, program, host.as_deref(), heap, budget, returned)
                     .map_err(|error| error.with_source_span_if_absent(source_span))?
                 {
                     array_methods::ResumableArrayOrderingStep::Complete(value) => {
@@ -779,7 +786,14 @@ impl Vm {
                     returned,
                     source_span,
                 } => match callback
-                    .step(self, &current_owner, heap, budget, returned)
+                    .step(
+                        self,
+                        &current_owner,
+                        host.as_deref(),
+                        heap,
+                        budget,
+                        returned,
+                    )
                     .map_err(|error| error.with_source_span_if_absent(source_span))?
                 {
                     ResumableCallbackStep::Complete(value) => {
@@ -1191,10 +1205,15 @@ impl Vm {
                     }
                 }
                 InstructionKind::GuardType { src, guard } => {
-                    let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
-                    );
+                    let mut guard_context =
+                        runtime_type_guards::GuardExecutionContext::new_with_host(
+                            heap.as_deref_mut(),
+                            budget.as_deref_mut(),
+                            host.as_deref().map(|host| {
+                                &*host.adapter
+                                    as &(dyn vela_host::adapter::ScriptStateAdapter + Send)
+                            }),
+                        );
                     runtime_type_guards::execute_linked_register_guard(
                         code,
                         program,
@@ -1733,18 +1752,22 @@ impl Vm {
                         let prepared = host_access::prepare_async_host_root_method_args(
                             frame,
                             heap.as_deref(),
+                            host.as_deref(),
                             *receiver,
                             args,
                         )?;
-                        let host = host.as_deref_mut().ok_or_else(|| {
+                        let host_execution = host.as_deref_mut().ok_or_else(|| {
                             VmError::new(VmErrorKind::TypeMismatch {
                                 operation: "host context",
                             })
                         })?;
-                        let result = function(&prepared.receiver, &prepared.args, host)
-                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                        let result = function(&prepared.receiver, &prepared.args, host_execution)
+                            .map_err(|error| {
+                            error.with_source_span_if_absent(instruction.span)
+                        })?;
                         native_function_calls::write_native_result(
                             frame,
+                            host,
                             heap,
                             budget,
                             program,
@@ -1766,6 +1789,7 @@ impl Vm {
                         let prepared = host_access::prepare_async_host_root_method_args(
                             frame,
                             heap.as_deref(),
+                            host.as_deref(),
                             *receiver,
                             args,
                         )?;
@@ -1798,6 +1822,7 @@ impl Vm {
                         let prepared = host_access::prepare_async_host_root_method_args(
                             frame,
                             heap.as_deref(),
+                            host.as_deref(),
                             *receiver,
                             args,
                         )?;
@@ -1837,10 +1862,15 @@ impl Vm {
                         *src,
                         *expected,
                     )? {
-                        let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
-                            heap.as_deref_mut(),
-                            budget.as_deref_mut(),
-                        );
+                        let mut guard_context =
+                            runtime_type_guards::GuardExecutionContext::new_with_host(
+                                heap.as_deref_mut(),
+                                budget.as_deref_mut(),
+                                host.as_deref().map(|host| {
+                                    &*host.adapter
+                                        as &(dyn vela_host::adapter::ScriptStateAdapter + Send)
+                                }),
+                            );
                         return runtime_type_guards::execute_linked_return_guard(
                             code,
                             program,
@@ -1881,11 +1911,14 @@ impl Vm {
                     format_strings::make_format_string(
                         frame,
                         heap.as_deref_mut(),
+                        host.as_deref(),
                         budget.as_deref_mut(),
-                        *dst,
-                        &code.constants,
-                        parts,
-                        instruction.span,
+                        format_strings::FormatStringRequest {
+                            dst: *dst,
+                            constants: &code.constants,
+                            parts,
+                            source_span: instruction.span,
+                        },
                     )?;
                 }
                 InstructionKind::MakeMap { dst, entries } => {
@@ -2292,7 +2325,8 @@ impl Vm {
                         })
                         .with_source_span(instruction.span)
                     })?;
-                    host.adapter.release_scoped_host(root)?;
+                    let reference = host.resolve_host_ref(root)?;
+                    host.adapter.release_scoped_host(reference)?;
                     frame.write(*dst, Value::Unit)?;
                 }
                 InstructionKind::HostRead {
@@ -2417,6 +2451,7 @@ impl Vm {
                         let prepared = host_access::prepare_async_host_method_args(
                             frame,
                             heap.as_deref(),
+                            host.as_deref(),
                             *root,
                             host_access::CodeHostTargetPlan {
                                 targets: &code.host_targets,
@@ -2427,15 +2462,17 @@ impl Vm {
                             args,
                             instruction.span,
                         )?;
-                        let host = host.as_deref_mut().ok_or_else(|| {
+                        let host_execution = host.as_deref_mut().ok_or_else(|| {
                             VmError::new(VmErrorKind::TypeMismatch {
                                 operation: "host context",
                             })
                         })?;
-                        let result = function(&prepared.receiver, &prepared.args, host)
-                            .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                        let result = function(&prepared.receiver, &prepared.args, host_execution)
+                            .map_err(|error| {
+                            error.with_source_span_if_absent(instruction.span)
+                        })?;
                         native_function_calls::write_native_result(
-                            frame, heap, budget, program, *dst, result,
+                            frame, host, heap, budget, program, *dst, result,
                         )?;
                         continue;
                     }
@@ -2450,6 +2487,7 @@ impl Vm {
                         let prepared = host_access::prepare_async_host_method_args(
                             frame,
                             heap.as_deref(),
+                            host.as_deref(),
                             *root,
                             host_access::CodeHostTargetPlan {
                                 targets: &code.host_targets,
@@ -2486,6 +2524,7 @@ impl Vm {
                         let prepared = host_access::prepare_async_host_method_args(
                             frame,
                             heap.as_deref(),
+                            host.as_deref(),
                             *root,
                             host_access::CodeHostTargetPlan {
                                 targets: &code.host_targets,
@@ -2541,10 +2580,15 @@ impl Vm {
                     }
                 }
                 InstructionKind::Return { src } => {
-                    let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
-                        heap.as_deref_mut(),
-                        budget.as_deref_mut(),
-                    );
+                    let mut guard_context =
+                        runtime_type_guards::GuardExecutionContext::new_with_host(
+                            heap.as_deref_mut(),
+                            budget.as_deref_mut(),
+                            host.as_deref().map(|host| {
+                                &*host.adapter
+                                    as &(dyn vela_host::adapter::ScriptStateAdapter + Send)
+                            }),
+                        );
                     return runtime_type_guards::execute_linked_return_guard(
                         code,
                         program,

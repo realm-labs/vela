@@ -1,6 +1,6 @@
 use crate::heap::HeapValue;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
-use vela_host::path::HostRef;
+use vela_host::path::HostSlotRef;
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub(crate) enum ValueKey {
@@ -20,7 +20,7 @@ pub(crate) enum ValueKey {
     String(String),
     Bytes(Vec<u8>),
     HeapIdentity(crate::heap::GcRef),
-    HostIdentity(HostRef),
+    HostIdentity(HostSlotRef),
 }
 
 impl ValueKey {
@@ -119,7 +119,7 @@ mod tests {
 
     use vela_common::{HostObjectId, HostTypeId, ShapeId};
     use vela_def::TypeId;
-    use vela_host::path::HostRef;
+    use vela_host::path::{HostRef, HostSlotRef};
     use vela_host::proxy::PathProxy;
     use vela_host::target::HostTargetPlan;
 
@@ -203,8 +203,8 @@ mod tests {
 
     #[test]
     fn value_key_uses_host_ref_identity() {
-        let first = HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 1);
-        let second = HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 2);
+        let first = HostSlotRef::new(7, 1);
+        let second = HostSlotRef::new(7, 2);
 
         assert_eq!(key(&Value::HostRef(first)), ValueKey::HostIdentity(first));
         assert_ne!(key(&Value::HostRef(first)), key(&Value::HostRef(second)));

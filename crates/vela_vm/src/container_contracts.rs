@@ -1,5 +1,6 @@
 use vela_bytecode::{StandardTypeGuard, TypeGuardPlan};
 use vela_common::{HostTypeId, PrimitiveTag};
+use vela_host::path::HostSlotRef;
 
 use crate::heap::{HeapValue, ScriptHeap};
 use crate::option_result::{StdEnumKind, std_enum_tag};
@@ -194,6 +195,7 @@ pub(crate) enum ShallowTypeKey {
     Shape(vela_def::TypeId, vela_common::ShapeId),
     Variant(vela_def::VariantId),
     Host(HostTypeId),
+    HostSlot(HostSlotRef),
 }
 
 impl ShallowTypeKey {
@@ -213,7 +215,7 @@ impl ShallowTypeKey {
             Self::Standard(StandardTypeGuard::Result) => "Result",
             Self::Shape(_, _) => "record",
             Self::Variant(_) => "enum",
-            Self::Host(_) => "host",
+            Self::Host(_) | Self::HostSlot(_) => "host",
         }
     }
 
@@ -261,7 +263,7 @@ impl ShallowTypeKey {
                 HeapValue::Record { .. } | HeapValue::Enum { .. } => None,
                 HeapValue::PathProxy(_) => None,
             },
-            Value::HostRef(reference) => Some(Self::Host(reference.type_id)),
+            Value::HostRef(reference) => Some(Self::HostSlot(*reference)),
             Value::Missing => None,
         }
     }

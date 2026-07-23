@@ -83,6 +83,7 @@ pub(crate) fn value_to_reflect(
 pub(crate) fn runtime_value_to_reflect(
     value: &Value,
     heap: &HeapExecution<'_>,
+    host: Option<&crate::HostExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<reflect::value::ReflectValue> {
     if let Some(value) = value.as_scalar() {
@@ -94,7 +95,10 @@ pub(crate) fn runtime_value_to_reflect(
         Value::Bool(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Bool(*value))),
         Value::Char(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Char(*value))),
         Value::Range(_) => Ok(reflect::value::ReflectValue::Range),
-        Value::HostRef(host_ref) => Ok(reflect::value::ReflectValue::HostRef(*host_ref)),
+        Value::HostRef(host_ref) => Ok(reflect::value::ReflectValue::HostRef(
+            host.ok_or_else(|| type_error(operation))?
+                .resolve_host_ref(*host_ref)?,
+        )),
         Value::HeapRef(reference) => match heap.heap.get(*reference) {
             Some(HeapValue::String(value)) => Ok(reflect::value::ReflectValue::Host(
                 HostValue::String(value.clone()),
@@ -105,7 +109,7 @@ pub(crate) fn runtime_value_to_reflect(
             Some(HeapValue::Tuple(_)) => Err(type_error(operation)),
             Some(HeapValue::Array(values)) => values
                 .iter()
-                .map(|value| runtime_value_to_reflect(value, heap, operation))
+                .map(|value| runtime_value_to_reflect(value, heap, host, operation))
                 .collect::<VmResult<Vec<_>>>()
                 .map(reflect::value::ReflectValue::Array),
             Some(HeapValue::Map(values)) => {
@@ -113,8 +117,8 @@ pub(crate) fn runtime_value_to_reflect(
                     .entries()
                     .map(|entry| {
                         Ok(ReflectMapEntry::new(
-                            runtime_value_to_reflect(&entry.key, heap, operation)?,
-                            runtime_value_to_reflect(&entry.value, heap, operation)?,
+                            runtime_value_to_reflect(&entry.key, heap, host, operation)?,
+                            runtime_value_to_reflect(&entry.value, heap, host, operation)?,
                         ))
                     })
                     .collect::<VmResult<Vec<_>>>()?;
@@ -122,7 +126,7 @@ pub(crate) fn runtime_value_to_reflect(
             }
             Some(HeapValue::Set(values)) => values
                 .values()
-                .map(|value| runtime_value_to_reflect(value, heap, operation))
+                .map(|value| runtime_value_to_reflect(value, heap, host, operation))
                 .collect::<VmResult<Vec<_>>>()
                 .map(reflect::value::ReflectValue::Set),
             Some(HeapValue::Record {
@@ -133,7 +137,7 @@ pub(crate) fn runtime_value_to_reflect(
                     .map(|(key, value)| {
                         Ok((
                             key.to_owned(),
-                            runtime_value_to_reflect(value, heap, operation)?,
+                            runtime_value_to_reflect(value, heap, host, operation)?,
                         ))
                     })
                     .collect::<VmResult<BTreeMap<_, _>>>()?;
@@ -153,7 +157,7 @@ pub(crate) fn runtime_value_to_reflect(
                     .map(|(key, value)| {
                         Ok((
                             key.to_owned(),
-                            runtime_value_to_reflect(value, heap, operation)?,
+                            runtime_value_to_reflect(value, heap, host, operation)?,
                         ))
                     })
                     .collect::<VmResult<BTreeMap<_, _>>>()?;

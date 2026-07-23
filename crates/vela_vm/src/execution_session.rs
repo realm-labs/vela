@@ -12,7 +12,7 @@ use crate::heap_execution::HeapExecution;
 use crate::iteration;
 use crate::resumable_callbacks::ResumableCallbackMethod;
 use crate::value::Value;
-use crate::{Vm, VmBytecodeProfiler, VmInlineCaches};
+use crate::{HostExecution, Vm, VmBytecodeProfiler, VmInlineCaches};
 
 pub struct LinkedExecutionSession {
     pub(crate) frames: Vec<ExecutionFrame>,
@@ -142,6 +142,7 @@ impl Vm {
     pub fn start_linked_execution(
         &self,
         start: LinkedExecutionStart<'_, '_, '_>,
+        host: Option<&HostExecution<'_>>,
         heap: &mut HeapExecution<'_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<LinkedExecutionSession> {
@@ -174,6 +175,7 @@ impl Vm {
             start.inline_caches,
             start.bytecode_profiler,
             None,
+            host.map(|host| &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)),
             Some(heap),
             Some(budget),
         );

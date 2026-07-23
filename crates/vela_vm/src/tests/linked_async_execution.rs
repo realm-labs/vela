@@ -56,6 +56,7 @@ fn linked_context_native_pauses_and_resumes_the_same_frame() {
                 inline_caches: None,
                 bytecode_profiler: None,
             },
+            None,
             &mut heap,
             &mut budget,
         )
@@ -75,6 +76,7 @@ fn linked_context_native_pauses_and_resumes_the_same_frame() {
     vm.resume_linked_context_call(
         &mut session,
         Ok(OwnedValue::i64(42)),
+        None,
         Some(&mut heap),
         Some(&mut budget),
     )
@@ -144,6 +146,7 @@ fn linked_async_native_arguments_and_results_are_owned_across_gc() {
                 inline_caches: None,
                 bytecode_profiler: None,
             },
+            None,
             &mut heap,
             &mut budget,
         )
@@ -170,8 +173,14 @@ fn linked_async_native_arguments_and_results_are_owned_across_gc() {
     let Poll::Ready(result) = Pin::new(&mut future).poll(&mut context) else {
         panic!("identity future should be ready");
     };
-    vm.resume_linked_async_call(&mut session, result, Some(&mut heap), Some(&mut budget))
-        .expect("ready value should resume the frame");
+    vm.resume_linked_async_call(
+        &mut session,
+        result,
+        None,
+        Some(&mut heap),
+        Some(&mut budget),
+    )
+    .expect("ready value should resume the frame");
 
     let LinkedDriveOutcome::Complete(value) = vm
         .drive_linked_execution(&mut session, None, &mut heap, &mut budget, None, None)

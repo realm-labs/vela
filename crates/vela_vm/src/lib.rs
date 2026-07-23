@@ -26,6 +26,7 @@ pub mod heap_execution;
 mod heap_graph;
 mod heap_values;
 mod host_access;
+mod host_access_helpers;
 mod host_collection_callback;
 mod host_collection_mutation;
 mod host_collection_projection;
@@ -93,12 +94,15 @@ pub use heap_graph::copy_persistent_value_graph;
 #[cfg(test)]
 use heap_values::owned_to_value;
 use heap_values::{
-    allocate_heap_value, enum_variant_owner, owned_to_linked_value, store_runtime_value,
+    allocate_heap_value, enum_variant_owner, owned_values_to_linked_values, store_runtime_value,
     store_value_in_heap_if_needed, stored_runtime_value, value_from_constant, value_to_owned,
 };
 pub use heap_values::{
-    allocate_zero_field_record, owned_to_linked_persistent_value, owned_to_persistent_value,
-    persistent_value_to_owned,
+    allocate_zero_field_record, owned_to_linked_persistent_value,
+    owned_to_linked_persistent_value_with_host, owned_to_linked_persistent_value_with_slots,
+    owned_to_persistent_value, owned_to_persistent_value_with_host,
+    owned_to_persistent_value_with_slots, persistent_value_to_owned,
+    persistent_value_to_owned_with_host, persistent_value_to_owned_with_slots,
 };
 pub use owned_contract::{canonicalize_owned_value_contract, validate_owned_value_contract};
 use owned_value::OwnedValue;
@@ -285,6 +289,22 @@ pub struct HostExecution<'host> {
     pub adapter: &'host mut (dyn ScriptStateAdapter + Send),
     pub access: &'host mut vela_host::access::HostAccess,
     pub state_values: Option<&'host mut VmStateValues>,
+}
+
+impl HostExecution<'_> {
+    pub(crate) fn intern_host_ref(
+        &mut self,
+        reference: vela_host::path::HostRef,
+    ) -> VmResult<vela_host::path::HostSlotRef> {
+        self.adapter.intern_host_ref(reference).map_err(Into::into)
+    }
+
+    pub(crate) fn resolve_host_ref(
+        &self,
+        handle: vela_host::path::HostSlotRef,
+    ) -> VmResult<vela_host::path::HostRef> {
+        self.adapter.resolve_host_ref(handle).map_err(Into::into)
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -1000,25 +1020,39 @@ impl Vm {
         let function = linked_program_entry(artifact.program(), entry)?;
         let mut heap = ScriptHeap::new();
         let mut heap_execution = HeapExecution::new(&mut heap);
-        let args =
-            owned_args_to_runtime(args, artifact.program(), &mut heap_execution, Some(budget))?;
-        let result = self.execute_linked_call(
-            linked_execution::LinkedExecutionCall {
-                owner: Arc::clone(artifact),
-                function,
-                captures: &[],
-                args: &args,
-                check_param_guards: true,
-                call_site: None,
-                call_site_offset: None,
-                inline_caches: None,
-                bytecode_profiler: None,
-            },
-            None,
-            Some(&mut heap_execution),
+        let mut host_slots = vela_host::slot::HostRefSlots::new();
+        let args = owned_args_to_runtime(
+            args,
+            artifact.program(),
+            &mut heap_execution,
             Some(budget),
-        );
-        owned_heap_result(result, &mut heap_execution, budget)
+            Some(&mut host_slots),
+        )?;
+        let mut access = vela_host::access::HostAccess::new();
+        let result = {
+            let mut host = HostExecution {
+                adapter: &mut host_slots,
+                access: &mut access,
+                state_values: None,
+            };
+            self.execute_linked_call(
+                linked_execution::LinkedExecutionCall {
+                    owner: Arc::clone(artifact),
+                    function,
+                    captures: &[],
+                    args: &args,
+                    check_param_guards: true,
+                    call_site: None,
+                    call_site_offset: None,
+                    inline_caches: None,
+                    bytecode_profiler: None,
+                },
+                Some(&mut host),
+                Some(&mut heap_execution),
+                Some(budget),
+            )
+        };
+        owned_heap_result(result, &mut heap_execution, budget, Some(&host_slots))
     }
 
     pub fn run_linked_program_with_heap_and_budget(
@@ -1060,8 +1094,13 @@ impl Vm {
         let function = linked_program_entry(artifact.program(), entry)?;
         let mut heap = ScriptHeap::new();
         let mut heap_execution = HeapExecution::new(&mut heap);
-        let args =
-            owned_args_to_runtime(args, artifact.program(), &mut heap_execution, Some(budget))?;
+        let args = owned_args_to_runtime(
+            args,
+            artifact.program(),
+            &mut heap_execution,
+            Some(budget),
+            Some(&mut *host.adapter),
+        )?;
         let result = self.execute_linked_call(
             linked_execution::LinkedExecutionCall {
                 owner: Arc::clone(artifact),
@@ -1078,7 +1117,7 @@ impl Vm {
             Some(&mut heap_execution),
             Some(budget),
         );
-        owned_heap_result(result, &mut heap_execution, budget)
+        owned_heap_result(result, &mut heap_execution, budget, Some(&*host.adapter))
     }
 
     pub fn run_linked_program_host_budget_call(
@@ -1093,6 +1132,7 @@ impl Vm {
             call.artifact.program(),
             &mut heap_execution,
             Some(call.budget),
+            Some(&mut *call.host.adapter),
         )?;
         let result = self.execute_linked_call(
             linked_execution::LinkedExecutionCall {
@@ -1110,7 +1150,12 @@ impl Vm {
             Some(&mut heap_execution),
             Some(call.budget),
         );
-        owned_heap_result(result, &mut heap_execution, call.budget)
+        owned_heap_result(
+            result,
+            &mut heap_execution,
+            call.budget,
+            Some(&*call.host.adapter),
+        )
     }
 
     pub fn run_linked_program_host_call(
@@ -1124,6 +1169,7 @@ impl Vm {
             call.artifact.program(),
             &mut heap_execution,
             Some(call.budget),
+            Some(&mut *call.host.adapter),
         )?;
         heap_execution.protect_values(call.persistent.roots);
         let result = self.execute_linked_call(
@@ -1142,7 +1188,9 @@ impl Vm {
             Some(&mut heap_execution),
             Some(call.budget),
         );
-        let result = result.and_then(|value| value_to_owned(&value, Some(&heap_execution)));
+        let result = result.and_then(|value| {
+            value_to_owned(&value, Some(&heap_execution), Some(&*call.host.adapter))
+        });
         let mut roots = Vec::new();
         call.persistent
             .roots
@@ -1194,20 +1242,19 @@ fn owned_args_to_runtime(
     args: &[OwnedValue],
     program: &LinkedProgram,
     heap: &mut HeapExecution<'_>,
-    mut budget: Option<&mut ExecutionBudget>,
+    budget: Option<&mut ExecutionBudget>,
+    host: Option<&mut (dyn ScriptStateAdapter + Send)>,
 ) -> VmResult<Vec<Value>> {
-    args.iter()
-        .cloned()
-        .map(|arg| owned_to_linked_value(arg, program, heap, budget.as_deref_mut()))
-        .collect::<VmResult<Vec<_>>>()
+    owned_values_to_linked_values(args, program, heap, budget, host)
 }
 
 fn owned_heap_result(
     result: VmResult<Value>,
     heap: &mut HeapExecution<'_>,
     budget: &mut ExecutionBudget,
+    host: Option<&(dyn ScriptStateAdapter + Send)>,
 ) -> VmResult<OwnedValue> {
-    let result = result.and_then(|value| value_to_owned(&value, Some(heap)));
+    let result = result.and_then(|value| value_to_owned(&value, Some(heap), host));
     heap.heap.collect_full_with_budget(&[], Some(budget));
     result
 }

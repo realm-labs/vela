@@ -122,6 +122,24 @@ fn direct_host_bindings_use_dense_slots_across_mixed_arguments() {
 }
 
 #[test]
+fn preassigned_reborrow_uses_its_child_binding_without_reacquiring_parent() {
+    let mut host = LeaseHost;
+    let root = HostRef::new(host.host_type_id(), vela_common::HostObjectId::new(41), 7);
+    let mut args = CallArgs::new();
+    args.push_reborrowed_host_mut("host", root, &mut host);
+    let mut next = 1_u64 << 63;
+    args.assign_direct_host_refs(&mut next);
+
+    assert_eq!(next, 1_u64 << 63);
+    assert!(args.direct_binding(root).is_some());
+    assert_eq!(args.direct_host_refs().count(), 0);
+    let lease = args
+        .take_host_lease(root, HostLeaseKind::Exclusive)
+        .expect("a nested reborrow should lease its child binding");
+    assert!(lease.is_exclusive());
+}
+
+#[test]
 fn mutable_origin_shared_leases_coexist_and_restore_exclusive_access() {
     fn require_send<T: Send>(_: &T) {}
 

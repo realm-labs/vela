@@ -22,7 +22,7 @@ struct HostSlot<T> {
     metadata: Option<T>,
 }
 
-/// Canonical HostRef registry for one root execution.
+/// Canonical HostRef registry for one active runtime namespace.
 ///
 /// Equal canonical references intern to one metadata entry, so every copied
 /// script handle shares identity and generation validation. The linear intern
@@ -40,14 +40,17 @@ impl HostRefSlots {
 
     #[must_use]
     pub fn intern(&mut self, reference: HostRef) -> HostSlotRef {
-        if let Some((handle, _)) = self
-            .table
-            .iter()
-            .find(|(_, current)| **current == reference)
-        {
+        if let Some(handle) = self.handle_for(reference) {
             return handle;
         }
         self.table.insert(reference)
+    }
+
+    #[must_use]
+    pub fn handle_for(&self, reference: HostRef) -> Option<HostSlotRef> {
+        self.table
+            .iter()
+            .find_map(|(handle, current)| (*current == reference).then_some(handle))
     }
 
     #[must_use]
@@ -236,11 +239,13 @@ mod tests {
         let handle = slots.intern(reference);
         let alias = slots.intern(reference);
         assert_eq!(alias, handle);
+        assert_eq!(slots.handle_for(reference), Some(handle));
         assert_eq!(slots.len(), 1);
         assert_eq!(slots.resolve(alias), Some(reference));
         assert!(!slots.spilled());
 
         assert_eq!(slots.release(handle), Some(reference));
+        assert_eq!(slots.handle_for(reference), None);
         assert_eq!(slots.resolve(alias), None);
         let replacement = slots.intern(reference);
         assert_eq!(replacement.slot(), handle.slot());

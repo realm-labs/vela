@@ -957,7 +957,9 @@ mod tests {
     #[test]
     fn host_refs_are_external_and_do_not_trace_rust_owned_state() {
         let mut heap = ScriptHeap::new();
-        let root = heap.allocate(HeapValue::Array(vec![Value::HostRef(host_ref())]));
+        let root = heap.allocate(HeapValue::Array(vec![Value::HostRef(
+            vela_host::path::HostSlotRef::new(7, 3),
+        )]));
         let unreachable = heap.allocate(HeapValue::String("unused".into()));
 
         let stats = heap.collect_full(&[root]);

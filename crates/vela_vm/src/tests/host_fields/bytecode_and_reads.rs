@@ -610,6 +610,8 @@ fn heap_execution_converts_heap_string_for_host_field_write() {
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let mut adapter = host_adapter(host_ref, HostValue::String("old".into()));
+    let host_slot = vela_host::adapter::ScriptStateAdapter::intern_host_ref(&mut adapter, host_ref)
+        .expect("host ref should intern");
     let mut tx = HostAccess::new();
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
@@ -624,7 +626,7 @@ fn heap_execution_converts_heap_string_for_host_field_write() {
         exec_host_field_runtime(
             &program,
             "main",
-            &[RuntimeValue::HostRef(host_ref)],
+            &[RuntimeValue::HostRef(host_slot)],
             &mut host,
             &mut heap_execution,
             &mut budget,

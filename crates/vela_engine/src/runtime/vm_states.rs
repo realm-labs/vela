@@ -7,7 +7,7 @@ use vela_vm::heap::ScriptHeap;
 use vela_vm::heap_execution::ActiveExecutionRoot;
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
-use vela_vm::{VmStateValues, persistent_value_to_owned};
+use vela_vm::{VmStateValues, persistent_value_to_owned, persistent_value_to_owned_with_slots};
 
 use super::{RuntimeImageStorage, RuntimeImpl};
 
@@ -121,7 +121,11 @@ impl IntoStateValue for VelaValue {
         I: RuntimeImageStorage,
     {
         runtime.check_vela_value_runtime(&self)?;
-        let value = persistent_value_to_owned(&self.value, &mut runtime.state.vm_states.heap)?;
+        let value = persistent_value_to_owned_with_slots(
+            &self.value,
+            &mut runtime.state.vm_states.heap,
+            &runtime.state.host_slots,
+        )?;
         runtime.set_owned_state(name, value)
     }
 }
@@ -132,7 +136,11 @@ impl IntoStateValue for &VelaValue {
         I: RuntimeImageStorage,
     {
         runtime.check_vela_value_runtime(self)?;
-        let value = persistent_value_to_owned(&self.value, &mut runtime.state.vm_states.heap)?;
+        let value = persistent_value_to_owned_with_slots(
+            &self.value,
+            &mut runtime.state.vm_states.heap,
+            &runtime.state.host_slots,
+        )?;
         runtime.set_owned_state(name, value)
     }
 }

@@ -10,7 +10,7 @@ use crate::numeric_ops::{
 };
 use crate::option_result::{StdEnumKind, StdEnumVariant, std_enum_tag};
 use crate::{
-    ExecutionBudget, HeapExecution, Value, Vm, VmError, VmErrorKind, VmResult,
+    ExecutionBudget, HeapExecution, HostExecution, Value, Vm, VmError, VmErrorKind, VmResult,
     store_value_in_heap_if_needed, stored_runtime_value,
 };
 
@@ -132,6 +132,7 @@ impl ResumableComparison {
         &mut self,
         vm: &Vm,
         program: &LinkedProgram,
+        host: Option<&HostExecution<'_>>,
         heap: &mut Option<&mut HeapExecution<'_>>,
         budget: &mut Option<&mut ExecutionBudget>,
         returned: Option<Value>,
@@ -249,7 +250,7 @@ impl ResumableComparison {
                         continue;
                     }
                     let Some((type_id, type_name)) =
-                        receiver_type_identity(&lhs, heap.as_deref(), vm.type_registry())
+                        receiver_type_identity(&lhs, heap.as_deref(), host, vm.type_registry())
                             .map(|(id, name)| (id, name.to_owned()))
                     else {
                         return Err(comparable_error(mode.operation()));
@@ -612,12 +613,15 @@ impl OrderingOp {
 fn receiver_type_identity<'a>(
     receiver: &Value,
     heap: Option<&'a HeapExecution<'_>>,
+    host: Option<&HostExecution<'_>>,
     registry: Option<&'a TypeRegistry>,
 ) -> Option<(TypeId, &'a str)> {
     match receiver {
-        Value::HostRef(reference) => registry
-            .and_then(|registry| registry.type_of_host(*reference))
-            .map(|desc| (desc.key.id, desc.key.name.as_str())),
+        Value::HostRef(reference) => {
+            let reference = host?.resolve_host_ref(*reference).ok()?;
+            let desc = registry?.type_of_host(reference)?;
+            Some((desc.key.id, desc.key.name.as_str()))
+        }
         Value::HeapRef(reference) => match heap?.heap.get(*reference)? {
             HeapValue::Record {
                 type_name,
@@ -857,7 +861,7 @@ enum HeapLeaf<'a> {
 
 enum IdentityKey {
     Heap(GcRef),
-    Host(vela_host::path::HostRef),
+    Host(vela_host::path::HostSlotRef),
 }
 
 #[cfg(test)]
@@ -866,7 +870,7 @@ mod tests {
 
     use vela_common::{HostObjectId, HostTypeId, ShapeId};
     use vela_def::TypeId;
-    use vela_host::path::HostRef;
+    use vela_host::path::{HostRef, HostSlotRef};
     use vela_host::proxy::PathProxy;
     use vela_host::target::HostTargetPlan;
 
@@ -959,9 +963,9 @@ mod tests {
 
     #[test]
     fn identity_equality_compares_host_refs_without_host_reads() {
-        let first = HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 1);
-        let same = HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 1);
-        let stale = HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 2);
+        let first = HostSlotRef::new(7, 1);
+        let same = HostSlotRef::new(7, 1);
+        let stale = HostSlotRef::new(7, 2);
 
         assert_eq!(
             identity_equal(&Value::HostRef(first), &Value::HostRef(same), None),

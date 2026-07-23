@@ -6,13 +6,15 @@ use vela_common::{HostMethodId, Span, StateSlot};
 use vela_host::adapter::ExternStateBinding;
 use vela_host::error::HostErrorKind;
 use vela_host::path::HostPath;
-use vela_host::protocol::{HostCollectionKey, HostCollectionKeyRef, HostCollectionQuery};
+use vela_host::protocol::HostCollectionQuery;
 use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccess};
 use vela_host::target::{HostPathArg, HostTargetInstance, HostTargetPlan};
 use vela_host::value::HostValue;
 
-use crate::heap::HeapValue;
 use crate::heap_values::host_to_value;
+use crate::host_access_helpers::materialize_host_args;
+use crate::host_access_helpers::runtime_collection_index;
+pub(crate) use crate::host_access_helpers::runtime_collection_key;
 use crate::host_values::{value_from_host, value_to_host};
 use crate::{
     CallFrame, ExecutionBudget, HeapExecution, HostExecution, HostInlineCacheEntry,
@@ -62,7 +64,7 @@ pub(crate) fn load_linked_cached_extern_state(
         .adapter
         .extern_state_ref(ExternStateBinding { id: state.id, name })
         .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
-    Ok(Value::HostRef(root))
+    Ok(Value::HostRef(host.intern_host_ref(root)?))
 }
 
 pub(crate) fn load_linked_state(
@@ -118,7 +120,11 @@ pub(crate) fn execute_host_read(
     dynamic_args: &[Register],
     cache_site: CacheSiteId,
 ) -> VmResult<Value> {
-    let root = expect_host_ref(&runtime.frame.read(root)?, "host_read")?;
+    let root = expect_host_ref(
+        &runtime.frame.read(root)?,
+        runtime.host.as_deref(),
+        "host_read",
+    )?;
     let args = materialize_host_args(
         runtime.frame,
         dynamic_args,
@@ -143,7 +149,7 @@ pub(crate) fn execute_host_read(
     let value =
         host.access
             .read_resolved(host.adapter, cached_access, instance, runtime.source_span)?;
-    runtime_value_from_host(value, runtime.heap, runtime.budget)
+    runtime_value_from_host(value, runtime.heap, runtime.budget, host)
 }
 
 pub(crate) fn execute_code_host_read(
@@ -171,11 +177,16 @@ pub(crate) fn execute_host_write(
     src: Register,
     cache_site: CacheSiteId,
 ) -> VmResult<()> {
-    let root = expect_host_ref(&runtime.frame.read(root)?, "host_write")?;
+    let root = expect_host_ref(
+        &runtime.frame.read(root)?,
+        runtime.host.as_deref(),
+        "host_write",
+    )?;
     let value = value_to_host(
         &runtime.frame.read(src)?,
         "set_host_field",
         runtime.heap.as_deref(),
+        runtime.host.as_deref(),
     )?;
     let args = materialize_host_args(
         runtime.frame,
@@ -231,11 +242,16 @@ pub(crate) fn execute_host_mutate(
     root: Register,
     mutation: HostMutationPlan<'_>,
 ) -> VmResult<()> {
-    let root = expect_host_ref(&runtime.frame.read(root)?, "host_mutate")?;
+    let root = expect_host_ref(
+        &runtime.frame.read(root)?,
+        runtime.host.as_deref(),
+        "host_mutate",
+    )?;
     let value = value_to_host(
         &runtime.frame.read(mutation.rhs)?,
         "host_mutate",
         runtime.heap.as_deref(),
+        runtime.host.as_deref(),
     )?;
     let args = materialize_host_args(
         runtime.frame,
@@ -316,7 +332,11 @@ pub(crate) fn execute_host_remove(
     dynamic_args: &[Register],
     cache_site: CacheSiteId,
 ) -> VmResult<()> {
-    let root = expect_host_ref(&runtime.frame.read(root)?, "host_remove")?;
+    let root = expect_host_ref(
+        &runtime.frame.read(root)?,
+        runtime.host.as_deref(),
+        "host_remove",
+    )?;
     let args = materialize_host_args(
         runtime.frame,
         dynamic_args,
@@ -401,7 +421,11 @@ pub(crate) fn execute_host_call(
     root: Register,
     call: HostCallPlan<'_>,
 ) -> VmResult<Option<Value>> {
-    let root = expect_host_ref(&runtime.frame.read(root)?, "host_call")?;
+    let root = expect_host_ref(
+        &runtime.frame.read(root)?,
+        runtime.host.as_deref(),
+        "host_call",
+    )?;
     let dynamic_args = materialize_host_args(
         runtime.frame,
         call.dynamic_args,
@@ -416,6 +440,7 @@ pub(crate) fn execute_host_call(
                 &runtime.frame.read(*register)?,
                 "host_call",
                 runtime.heap.as_deref(),
+                runtime.host.as_deref(),
             )
         })
         .collect::<VmResult<Vec<_>>>()?;
@@ -443,7 +468,7 @@ pub(crate) fn execute_host_call(
         runtime.source_span,
     )?;
     if call.wants_return {
-        runtime_value_from_host(value, runtime.heap, runtime.budget).map(Some)
+        runtime_value_from_host(value, runtime.heap, runtime.budget, host).map(Some)
     } else {
         Ok(None)
     }
@@ -511,12 +536,13 @@ pub(crate) fn linked_host_method_id(
 pub(crate) fn prepare_async_host_method_args(
     frame: &CallFrame,
     heap: Option<&HeapExecution<'_>>,
+    host: Option<&HostExecution<'_>>,
     root: Register,
     target: CodeHostTargetPlan<'_>,
     args: &[Register],
     source_span: Option<Span>,
 ) -> VmResult<PreparedAsyncHostMethodArgs> {
-    let root = expect_host_ref(&frame.read(root)?, "host_call")?;
+    let root = expect_host_ref(&frame.read(root)?, host, "host_call")?;
     let plan = code_host_target(target.targets, target.target_id, source_span)?;
     let dynamic_args = materialize_host_args(frame, target.dynamic_args, heap, "host_call")?;
     let receiver = HostTargetInstance::new(root, plan, dynamic_args.as_slice())
@@ -524,7 +550,15 @@ pub(crate) fn prepare_async_host_method_args(
         .to_host_path();
     let args = args
         .iter()
-        .map(|register| value_to_owned(&frame.read(*register)?, heap))
+        .map(|register| {
+            value_to_owned(
+                &frame.read(*register)?,
+                heap,
+                host.map(|host| {
+                    &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)
+                }),
+            )
+        })
         .collect::<VmResult<Vec<_>>>()?;
     Ok(PreparedAsyncHostMethodArgs { receiver, args })
 }
@@ -532,13 +566,22 @@ pub(crate) fn prepare_async_host_method_args(
 pub(crate) fn prepare_async_host_root_method_args(
     frame: &CallFrame,
     heap: Option<&HeapExecution<'_>>,
+    host: Option<&HostExecution<'_>>,
     receiver: Register,
     args: &[DynamicCallArgumentLinked],
 ) -> VmResult<PreparedAsyncHostMethodArgs> {
-    let root = expect_host_ref(&frame.read(receiver)?, "host_call")?;
+    let root = expect_host_ref(&frame.read(receiver)?, host, "host_call")?;
     let args = crate::script_method_calls::dynamic_value_args_from_linked_arguments(frame, args)?
         .iter()
-        .map(|value| value_to_owned(value, heap))
+        .map(|value| {
+            value_to_owned(
+                value,
+                heap,
+                host.map(|host| {
+                    &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)
+                }),
+            )
+        })
         .collect::<VmResult<Vec<_>>>()?;
     Ok(PreparedAsyncHostMethodArgs {
         receiver: HostPath::new(root),
@@ -551,11 +594,22 @@ pub(crate) fn execute_host_root_method_call(
     receiver: Register,
     call: HostRootMethodCall<'_>,
 ) -> VmResult<Option<Value>> {
-    let root = expect_host_ref(&runtime.frame.read(receiver)?, "host_call")?;
+    let root = expect_host_ref(
+        &runtime.frame.read(receiver)?,
+        runtime.host.as_deref(),
+        "host_call",
+    )?;
     let values = call
         .args
         .iter()
-        .map(|value| value_to_host(value, "host_call", runtime.heap.as_deref()))
+        .map(|value| {
+            value_to_host(
+                value,
+                "host_call",
+                runtime.heap.as_deref(),
+                runtime.host.as_deref(),
+            )
+        })
         .collect::<VmResult<Vec<_>>>()?;
     let target = HostTargetPlan::new(root.type_id);
     let dynamic_args = [];
@@ -590,7 +644,7 @@ pub(crate) fn execute_host_root_method_call(
         runtime.source_span,
     )?;
     if call.wants_return {
-        runtime_value_from_host(value, runtime.heap, runtime.budget).map(Some)
+        runtime_value_from_host(value, runtime.heap, runtime.budget, host).map(Some)
     } else {
         Ok(None)
     }
@@ -602,7 +656,11 @@ pub(crate) fn execute_host_root_collection_query(
     query: HostCollectionQuery,
     cache_site: Option<CacheSiteId>,
 ) -> VmResult<Value> {
-    let root = expect_host_ref(&runtime.frame.read(receiver)?, "host collection query")?;
+    let root = expect_host_ref(
+        &runtime.frame.read(receiver)?,
+        runtime.host.as_deref(),
+        "host collection query",
+    )?;
     let target = HostTargetPlan::new(root.type_id);
     let instance = HostTargetInstance::new(root, &target, &[]);
     let host = runtime.host.ok_or_else(|| {
@@ -632,7 +690,7 @@ pub(crate) fn execute_host_root_collection_query(
         query,
         runtime.source_span,
     )?;
-    runtime_value_from_host(value, runtime.heap, runtime.budget)
+    runtime_value_from_host(value, runtime.heap, runtime.budget, host)
 }
 
 pub(crate) fn execute_host_root_collection_lookup(
@@ -649,9 +707,17 @@ pub(crate) fn execute_host_root_collection_lookup(
             actual: args.len(),
         }));
     }
-    let root = expect_host_ref(&runtime.frame.read(receiver)?, "host collection lookup")?;
-    let key =
-        runtime_collection_index(&args[0], runtime.heap.as_deref(), "host collection lookup")?;
+    let root = expect_host_ref(
+        &runtime.frame.read(receiver)?,
+        runtime.host.as_deref(),
+        "host collection lookup",
+    )?;
+    let key = runtime_collection_index(
+        &args[0],
+        runtime.heap.as_deref(),
+        runtime.host.as_deref(),
+        "host collection lookup",
+    )?;
     let (target, arg) = key.target(root.type_id);
     let target_args = [arg];
     let instance = HostTargetInstance::new(root, &target, &target_args);
@@ -703,6 +769,7 @@ pub(crate) fn execute_host_root_collection_lookup(
                         payload,
                         runtime.heap.as_deref_mut(),
                         runtime.budget.as_deref_mut(),
+                        host,
                     )
                 })
                 .transpose()?;
@@ -714,7 +781,7 @@ pub(crate) fn execute_host_root_collection_lookup(
             crate::option_result::option_value(payload, heap, runtime.budget.as_deref_mut())
         }
         HostCollectionLookup::MapGetOr => match payload {
-            Some(payload) => runtime_value_from_host(payload, runtime.heap, runtime.budget),
+            Some(payload) => runtime_value_from_host(payload, runtime.heap, runtime.budget, host),
             None => Ok(args[1]),
         },
     }
@@ -749,10 +816,15 @@ pub(crate) fn execute_host_root_collection_mutation(
             runtime, receiver, mutation, &args[0], cache_site,
         );
     }
-    let root = expect_host_ref(&runtime.frame.read(receiver)?, "host collection mutation")?;
+    let root = expect_host_ref(
+        &runtime.frame.read(receiver)?,
+        runtime.host.as_deref(),
+        "host collection mutation",
+    )?;
     let key = runtime_collection_index(
         &args[0],
         runtime.heap.as_deref(),
+        runtime.host.as_deref(),
         "host collection mutation",
     )?;
     let (target, arg) = key.target(root.type_id);
@@ -762,7 +834,14 @@ pub(crate) fn execute_host_root_collection_mutation(
         mutation,
         crate::std_method_ids::HostCollectionMutation::MapSet
     )
-    .then(|| value_to_host(&args[1], "host map set", runtime.heap.as_deref()))
+    .then(|| {
+        value_to_host(
+            &args[1],
+            "host map set",
+            runtime.heap.as_deref(),
+            runtime.host.as_deref(),
+        )
+    })
     .transpose()?;
     let host = runtime
         .host
@@ -835,6 +914,7 @@ pub(crate) fn execute_host_root_collection_mutation(
                         value,
                         runtime.heap.as_deref_mut(),
                         runtime.budget.as_deref_mut(),
+                        host,
                     )
                 })
                 .transpose()?;
@@ -916,10 +996,15 @@ pub(crate) fn execute_host_collection_index_read(
     receiver: Register,
     index: Register,
 ) -> VmResult<Value> {
-    let root = expect_host_ref(&runtime.frame.read(receiver)?, "host collection index")?;
+    let root = expect_host_ref(
+        &runtime.frame.read(receiver)?,
+        runtime.host.as_deref(),
+        "host collection index",
+    )?;
     let index = runtime_collection_index(
         &runtime.frame.read(index)?,
         runtime.heap.as_deref(),
+        runtime.host.as_deref(),
         "host collection index",
     )?;
     let (target, arg) = index.target(root.type_id);
@@ -933,7 +1018,7 @@ pub(crate) fn execute_host_collection_index_read(
     let value = host
         .access
         .read_resolved(host.adapter, access, instance, runtime.source_span)?;
-    runtime_value_from_host(value, runtime.heap.take(), runtime.budget.take())
+    runtime_value_from_host(value, runtime.heap.take(), runtime.budget.take(), host)
 }
 
 pub(crate) fn execute_host_collection_string_key_read(
@@ -941,7 +1026,11 @@ pub(crate) fn execute_host_collection_string_key_read(
     receiver: Register,
     key: &str,
 ) -> VmResult<Value> {
-    let root = expect_host_ref(&runtime.frame.read(receiver)?, "host collection index")?;
+    let root = expect_host_ref(
+        &runtime.frame.read(receiver)?,
+        runtime.host.as_deref(),
+        "host collection index",
+    )?;
     let target = HostTargetPlan::new(root.type_id).const_key(key);
     let instance = HostTargetInstance::new(root, &target, &[]);
     let host = runtime.host.ok_or_else(missing_host_context)?;
@@ -952,7 +1041,7 @@ pub(crate) fn execute_host_collection_string_key_read(
     let value = host
         .access
         .read_resolved(host.adapter, access, instance, runtime.source_span)?;
-    runtime_value_from_host(value, runtime.heap.take(), runtime.budget.take())
+    runtime_value_from_host(value, runtime.heap.take(), runtime.budget.take(), host)
 }
 
 pub(crate) fn execute_host_collection_index_write(
@@ -963,17 +1052,20 @@ pub(crate) fn execute_host_collection_index_write(
 ) -> VmResult<()> {
     let root = expect_host_ref(
         &runtime.frame.read(receiver)?,
+        runtime.host.as_deref(),
         "host collection index assignment",
     )?;
     let index = runtime_collection_index(
         &runtime.frame.read(index)?,
         runtime.heap.as_deref(),
+        runtime.host.as_deref(),
         "host collection index assignment",
     )?;
     let value = value_to_host(
         &runtime.frame.read(src)?,
         "host collection index assignment",
         runtime.heap.as_deref(),
+        runtime.host.as_deref(),
     )?;
     let (target, arg) = index.target(root.type_id);
     let args = [arg];
@@ -988,12 +1080,14 @@ pub(crate) fn execute_host_collection_string_key_write(
 ) -> VmResult<()> {
     let root = expect_host_ref(
         &runtime.frame.read(receiver)?,
+        runtime.host.as_deref(),
         "host collection index assignment",
     )?;
     let value = value_to_host(
         &runtime.frame.read(src)?,
         "host collection index assignment",
         runtime.heap.as_deref(),
+        runtime.host.as_deref(),
     )?;
     let target = HostTargetPlan::new(root.type_id).const_key(key);
     execute_host_collection_index_write_target(runtime, root, &target, &[], value)
@@ -1015,52 +1109,6 @@ fn execute_host_collection_index_write_target(
     host.access
         .write_resolved(host.adapter, access, instance, value, runtime.source_span)?;
     Ok(())
-}
-
-struct RuntimeCollectionIndex(HostCollectionKey);
-impl RuntimeCollectionIndex {
-    fn target(&self, root_type: vela_common::HostTypeId) -> (HostTargetPlan, HostPathArg<'_>) {
-        (
-            HostTargetPlan::new(root_type).dyn_key(0),
-            HostPathArg::Key(self.0.as_ref()),
-        )
-    }
-}
-pub(crate) fn runtime_collection_key(
-    index: &Value,
-    heap: Option<&HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<HostCollectionKey> {
-    let key = match index {
-        Value::Bool(value) => HostCollectionKey::Bool(*value),
-        Value::Char(value) => HostCollectionKey::Char(*value),
-        Value::I8(value) => HostCollectionKey::I8(*value),
-        Value::I16(value) => HostCollectionKey::I16(*value),
-        Value::I32(value) => HostCollectionKey::I32(*value),
-        Value::I64(value) => HostCollectionKey::I64(*value),
-        Value::U8(value) => HostCollectionKey::U8(*value),
-        Value::U16(value) => HostCollectionKey::U16(*value),
-        Value::U32(value) => HostCollectionKey::U32(*value),
-        Value::U64(value) => HostCollectionKey::U64(*value),
-        Value::HostRef(value) => HostCollectionKey::HostRef(*value),
-        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::String(key)) => HostCollectionKey::String(key.clone()),
-            Some(HeapValue::Bytes(key)) => HostCollectionKey::Bytes(key.clone()),
-            _ => return Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-        },
-        Value::Missing | Value::Unit | Value::F32(_) | Value::F64(_) | Value::Range(_) => {
-            return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
-        }
-    };
-    Ok(key)
-}
-
-fn runtime_collection_index(
-    index: &Value,
-    heap: Option<&HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<RuntimeCollectionIndex> {
-    runtime_collection_key(index, heap, operation).map(RuntimeCollectionIndex)
 }
 
 pub(crate) fn missing_host_context() -> VmError {
@@ -1123,64 +1171,11 @@ pub(crate) fn runtime_value_from_host(
     value: HostValue,
     heap: Option<&mut HeapExecution<'_>>,
     budget: Option<&mut ExecutionBudget>,
+    host: &mut HostExecution<'_>,
 ) -> VmResult<Value> {
     if let Some(heap) = heap {
-        host_to_value(value, heap, budget)
+        host_to_value(value, heap, budget, host)
     } else {
-        Ok(value_from_host(value))
-    }
-}
-
-enum MaterializedHostArgs<'a> {
-    Empty,
-    Values(Vec<HostPathArg<'a>>),
-}
-
-impl<'a> MaterializedHostArgs<'a> {
-    fn as_slice(&'a self) -> &'a [HostPathArg<'a>] {
-        match self {
-            Self::Empty => &[],
-            Self::Values(args) => args,
-        }
-    }
-}
-
-fn materialize_host_args<'a>(
-    frame: &CallFrame,
-    registers: &[Register],
-    heap: Option<&'a HeapExecution<'a>>,
-    operation: &'static str,
-) -> VmResult<MaterializedHostArgs<'a>> {
-    if registers.is_empty() {
-        return Ok(MaterializedHostArgs::Empty);
-    }
-    registers
-        .iter()
-        .map(|register| host_arg_from_value(&frame.read(*register)?, heap, operation))
-        .collect::<VmResult<Vec<_>>>()
-        .map(MaterializedHostArgs::Values)
-}
-
-fn host_arg_from_value<'a>(
-    value: &Value,
-    heap: Option<&'a HeapExecution<'a>>,
-    operation: &'static str,
-) -> VmResult<HostPathArg<'a>> {
-    match value {
-        Value::I64(index) => {
-            let index = u32::try_from(*index).map_err(|_| {
-                VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "host path index",
-                })
-            })?;
-            Ok(HostPathArg::Index(index))
-        }
-        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::String(value)) => Ok(HostPathArg::Key(HostCollectionKeyRef::String(
-                value.as_str(),
-            ))),
-            _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
-        },
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+        value_from_host(value, host)
     }
 }

@@ -52,7 +52,8 @@ pub(super) struct ExecutionHost<'state, 'host> {
     next_direct_object_id: u64,
     scoped_hosts: BTreeMap<HostRef, ScopedHostBinding<'host>>,
     expired_scoped_hosts: BTreeSet<HostRef>,
-    host_slots: HostRefSlots,
+    expired_scoped_slots: BTreeMap<HostSlotRef, HostRef>,
+    host_slots: &'state mut HostRefSlots,
 }
 
 struct ScopedHostBinding<'host> {
@@ -72,6 +73,8 @@ enum ScopedHostObjectBinding<'host> {
 
 pub(super) trait ExecutionHostBoundary: ScriptStateAdapter + Send {
     fn assign_direct_host_refs(&mut self, args: &mut CallArgs<'_>);
+
+    fn release_interned_host_ref(&mut self, root: HostRef);
 
     fn with_execution_host_leases(
         &mut self,
@@ -107,6 +110,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
         mut args: CallArgs<'host>,
         extern_states: &'state mut RuntimeExternStateBindings,
         host_arena: &'state mut RuntimeHostArena,
+        host_slots: &'state mut HostRefSlots,
     ) -> Self {
         let fallback = args
             .take_fallback()
@@ -119,7 +123,8 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             next_direct_object_id: EXECUTION_HOST_OBJECT_ID_BASE,
             scoped_hosts: BTreeMap::new(),
             expired_scoped_hosts: BTreeSet::new(),
-            host_slots: HostRefSlots::new(),
+            expired_scoped_slots: BTreeMap::new(),
+            host_slots,
         };
         execution_host
             .args
@@ -128,14 +133,16 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
     }
 
     pub(super) fn resolve_values(
-        &self,
+        &mut self,
         entry: &str,
         params: &[String],
         param_defaults: &[bool],
         mut runtime: CallArgRuntime<'_, '_, '_>,
     ) -> VmResult<Vec<Value>> {
-        self.args
-            .resolve_values(entry, params, param_defaults, &mut runtime)
+        let args = std::mem::take(&mut self.args);
+        let result = args.resolve_values(entry, params, param_defaults, &mut runtime, self);
+        self.args = args;
+        result
     }
 
     fn direct_access_error(target: HostTargetInstance<'_>, action: &'static str) -> HostError {
@@ -336,9 +343,28 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
     }
 }
 
+impl Drop for ExecutionHost<'_, '_> {
+    fn drop(&mut self) {
+        let roots = self
+            .args
+            .direct_host_refs()
+            .chain(self.scoped_hosts.keys().copied())
+            .collect::<Vec<_>>();
+        for root in roots {
+            self.release_interned_host_ref(root);
+        }
+    }
+}
+
 impl ExecutionHostBoundary for ExecutionHost<'_, '_> {
     fn assign_direct_host_refs(&mut self, args: &mut CallArgs<'_>) {
         args.assign_direct_host_refs(&mut self.next_direct_object_id);
+    }
+
+    fn release_interned_host_ref(&mut self, root: HostRef) {
+        if let Some(handle) = self.host_slots.handle_for(root) {
+            let _ = self.host_slots.release(handle);
+        }
     }
 
     fn with_execution_host_leases(
@@ -431,20 +457,26 @@ impl<'args, 'parent> ReentryExecutionHost<'args, 'parent> {
     }
 
     pub(super) fn resolve_values(
-        &self,
+        &mut self,
         entry: &str,
         params: &[String],
         param_defaults: &[bool],
         mut runtime: CallArgRuntime<'_, '_, '_>,
     ) -> VmResult<Vec<Value>> {
-        self.args
-            .resolve_values(entry, params, param_defaults, &mut runtime)
+        let args = std::mem::take(&mut self.args);
+        let result = args.resolve_values(entry, params, param_defaults, &mut runtime, self);
+        self.args = args;
+        result
     }
 }
 
 impl ExecutionHostBoundary for ReentryExecutionHost<'_, '_> {
     fn assign_direct_host_refs(&mut self, args: &mut CallArgs<'_>) {
         self.parent.assign_direct_host_refs(args);
+    }
+
+    fn release_interned_host_ref(&mut self, root: HostRef) {
+        self.parent.release_interned_host_ref(root);
     }
 
     fn with_execution_host_leases(
@@ -521,6 +553,15 @@ impl ExecutionHostBoundary for ReentryExecutionHost<'_, '_> {
             let mut leases = self.args.take_host_leases(&requests)?;
             invoke.invoke(&mut leases, self).await
         })
+    }
+}
+
+impl Drop for ReentryExecutionHost<'_, '_> {
+    fn drop(&mut self) {
+        let roots = self.args.direct_host_refs().collect::<Vec<_>>();
+        for root in roots {
+            self.parent.release_interned_host_ref(root);
+        }
     }
 }
 
@@ -761,10 +802,13 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
     }
 
     fn resolve_host_ref(&self, handle: HostSlotRef) -> HostResult<HostRef> {
-        self.host_slots.resolve(handle).ok_or(HostError {
-            kind: HostErrorKind::InvalidHostSlot { handle },
-            source_span: None,
-        })
+        self.host_slots
+            .resolve(handle)
+            .or_else(|| self.expired_scoped_slots.get(&handle).copied())
+            .ok_or(HostError {
+                kind: HostErrorKind::InvalidHostSlot { handle },
+                source_span: None,
+            })
     }
 
     fn release_host_ref(&mut self, handle: HostSlotRef) -> HostResult<HostRef> {
@@ -853,6 +897,10 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         }
         self.scoped_hosts.remove(&root);
         self.expired_scoped_hosts.insert(root);
+        if let Some(handle) = self.host_slots.handle_for(root) {
+            let _ = self.host_slots.release(handle);
+            self.expired_scoped_slots.insert(handle, root);
+        }
         Ok(())
     }
 

@@ -2720,6 +2720,31 @@ and the pre-existing C ABI boundary. Raw pointers and reconstructed references
 never enter Value, GC, HostRef payloads, reflection, or persistent script
 state. `[u8]` remains reserved for the separate Bytes/view capability decision.
 
+### VM HostRef Values Carry Only Generational Slot Handles
+
+`Value::HostRef` stores the pointer-free 8-byte `HostSlotRef`; expanded
+canonical `HostRef` identity is obtained only by resolving through an active
+host adapter, and Rust-side metadata remains behind that boundary. Every
+conversion that may encounter a HostRef—including nested heap values, native
+inputs/results, async resume, reflection, comparisons, collection protocols,
+and type guards—must use that adapter. Detached conversion fails closed rather
+than embedding an expanded reference.
+
+The Actor Runtime owns the canonical slot namespace because Runtime-owned host
+objects and extern identities may survive multiple calls. Direct arguments and
+borrowed-return children are still call-tree scoped: root and nested re-entry
+share the namespace, and teardown advances the generation for every admitted
+direct/scoped entry. Explicit early release retires the live slot immediately
+but keeps a root-local tombstone long enough to preserve the established
+`ExpiredBorrowedHostRef` diagnostic for aliases used later in that root. A
+preassigned same-session reborrow is indexed as a child binding and must not
+reacquire its already leased parent.
+
+This handle hard switch does not weaken HostRef/HostAccess validation or move
+Rust objects into script storage. Consolidating borrow-group, provenance,
+prepared-adapter, pinned-generation, scoped, extern, and Runtime-owned metadata
+into the dense slot entry remains S2 work.
+
 ### Service Deployment Supports Snapshots And Exact-Base Deltas
 
 A Snapshot describes the complete desired Vela service state and composes

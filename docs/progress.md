@@ -69,18 +69,27 @@ validated HostTarget traversal.
 Direct call arguments now keep an inline dense host-slot index separate from
 their mixed positional/named value entries. Every copied alias resolves its one
 binding/lease metadata entry in O(1) from the execution-assigned object range,
-including exact type and generation validation; the script `HostRef` payload
-itself is still expanded and remains an open S2 item.
+including exact type and generation validation. Preassigned same-session
+reborrows use their child binding rather than reacquiring the already leased
+parent object.
 The compact table key is now a pointer-free, 8-byte `HostSlotRef` containing
 only a `u32` slot and `u32` generation. One reusable dense `HostSlotTable`
 owns inline metadata for the common eight-slot case, rejects stale aliases,
 and advances a slot generation before reuse. Production direct-host arguments
-use that table instead of an ad hoc slot vector. Root execution adapters now
-also intern canonical HostRefs once, resolve handles in O(1), invalidate every
-alias on release, and share that slot namespace with nested re-entry. Migrating
-`Value::HostRef` and moving scoped, extern, and Runtime-owned metadata into
-that root table remain open; the expanded canonical `HostRef` is still the VM
-payload for now.
+use that table instead of an ad hoc slot vector. `Value::HostRef` now carries
+only `HostSlotRef`; expanded canonical `HostRef` values stay behind the active
+host adapter and never enter VM values, script GC, or persistent script state.
+Reflection resolves the handle through that adapter before producing its
+controlled boundary value. Runtime owns the canonical slot namespace so
+Runtime-owned and extern identities can survive calls, while direct and scoped
+entries are generation-invalidated at their call-tree boundary. Nested
+re-entry shares the namespace, recursive value/native/async/reflection
+conversions require an active resolver, and detached conversions fail closed.
+Early scoped release retires the live slot while retaining a call-local
+diagnostic tombstone so existing `ExpiredBorrowedHostRef` behavior is
+preserved. Consolidating the remaining scoped, extern, Runtime-owned,
+borrow-group, provenance, prepared-adapter, and pinned-generation metadata
+behind the compact table remains open.
 The first S3 standard binding family is also live: concrete
 `BTreeMap<K, V>` and `HashMap<K, V>` bindings synthesize stable recursive
 key/value facts, share the Vela `MapLike` surface and owned Map codec, and keep
@@ -357,9 +366,10 @@ complete conflict set before lease acquisition. Generated host functions and
 methods now reuse registration-time prepared parameter plans instead of
 rebuilding contracts and request metadata on each call. Service-signature and
 Host/View/MutView closure traversal, remaining borrowed collection
-runtime views and type hints, migration of the expanded VM HostRef payload into
-the new compact root-local handle/table, nested prepared field/method adapter
-chains, and a post-S2 shorter owned-host reclamation policy remain open.
+runtime views and type hints, consolidation of scoped/extern/Runtime-owned
+host and borrow-group metadata behind the compact slot table, nested prepared
+field/method adapter chains, and a post-S2 shorter owned-host reclamation
+policy remain open.
 Runtime receiver enforcement is live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-
 signature facts.
@@ -503,6 +513,13 @@ The Miri component is unavailable on the installed stable Rust 1.97.1
 `x86_64-pc-windows-msvc` toolchain, so the erased-slice boundary has not been
 claimed as Miri-validated. Focused erased-borrow, lease/reentry, returned-slice,
 and async adapter tests plus the unsafe-boundary source audit are green.
+The compact `Value::HostRef` hard-switch checkpoint passes formatting,
+workspace Clippy with warnings denied, the full workspace test suite, the
+unsafe-boundary audit, and the active-file size architecture audit. Focused
+proof covers recursive compact-slot conversion, canonical aliases and stale
+generations, Runtime-owned HostRefs across calls, direct/scoped root cleanup,
+early-release diagnostics, async resume, returned borrows, and generated
+same-session mutable re-entry without parent reacquisition.
 Documentation placeholder,
 syntax-highlighting, Astro diagnostics, and static-site build gates also pass.
 

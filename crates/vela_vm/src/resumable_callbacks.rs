@@ -277,6 +277,7 @@ impl ResumableCallbackMethod {
         &mut self,
         vm: &crate::Vm,
         program_owner: &Arc<LinkedArtifact>,
+        host: Option<&crate::HostExecution<'_>>,
         heap: &mut Option<&mut HeapExecution<'_>>,
         budget: &mut Option<&mut ExecutionBudget>,
         returned: Option<Value>,
@@ -288,7 +289,7 @@ impl ResumableCallbackMethod {
             return self.step_enum(heap, budget, returned);
         }
         if matches!(self.state, CallbackState::SortBy(_)) {
-            return self.step_sort_by(vm, program_owner, heap, budget, returned);
+            return self.step_sort_by(vm, program_owner, host, heap, budget, returned);
         }
         match &mut self.state {
             CallbackState::Sequence {
@@ -726,6 +727,7 @@ impl ResumableCallbackMethod {
         &mut self,
         vm: &crate::Vm,
         program_owner: &Arc<LinkedArtifact>,
+        host: Option<&crate::HostExecution<'_>>,
         heap: &mut Option<&mut HeapExecution<'_>>,
         budget: &mut Option<&mut ExecutionBudget>,
         mut returned: Option<Value>,
@@ -735,7 +737,14 @@ impl ResumableCallbackMethod {
             return Err(incomplete_callback());
         };
         if let Some(comparison) = state.comparison.as_mut() {
-            match comparison.step(vm, program_owner.program(), heap, budget, returned.take())? {
+            match comparison.step(
+                vm,
+                program_owner.program(),
+                host,
+                heap,
+                budget,
+                returned.take(),
+            )? {
                 ResumableComparisonStep::Call { function, args } => {
                     self.state = CallbackState::SortBy(state);
                     return Ok(ResumableCallbackStep::Call {
@@ -801,7 +810,7 @@ impl ResumableCallbackMethod {
                 .comparison
                 .as_mut()
                 .expect("sort_by scheduled a comparison");
-            match comparison.step(vm, program_owner.program(), heap, budget, None)? {
+            match comparison.step(vm, program_owner.program(), host, heap, budget, None)? {
                 ResumableComparisonStep::Call { function, args } => {
                     self.state = CallbackState::SortBy(state);
                     return Ok(ResumableCallbackStep::Call {

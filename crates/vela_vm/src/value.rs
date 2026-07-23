@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use vela_bytecode::ScriptFunctionHandle;
 use vela_common::ScalarValue;
-use vela_host::path::HostRef;
+use vela_host::path::HostSlotRef;
 
 use crate::heap::GcRef;
 use crate::ranges::RangeValue;
@@ -26,7 +26,7 @@ pub enum Value {
     F64(f64),
     Range(RangeValue),
     HeapRef(GcRef),
-    HostRef(HostRef),
+    HostRef(HostSlotRef),
 }
 
 macro_rules! impl_scalar_value_helpers {

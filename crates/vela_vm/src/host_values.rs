@@ -1,23 +1,24 @@
 use vela_host::value::HostValue;
 
 use crate::heap::HeapValue;
-use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
+use crate::{HeapExecution, HostExecution, Value, VmError, VmErrorKind, VmResult};
 
-pub(crate) fn value_from_host(value: HostValue) -> Value {
-    match value {
+pub(crate) fn value_from_host(value: HostValue, host: &mut HostExecution<'_>) -> VmResult<Value> {
+    Ok(match value {
         HostValue::Unit => Value::Unit,
         HostValue::Bool(value) => Value::Bool(value),
         HostValue::Char(value) => Value::Char(value),
         HostValue::Scalar(value) => Value::from_scalar(value),
-        HostValue::HostRef(value) => Value::HostRef(value),
+        HostValue::HostRef(value) => Value::HostRef(host.intern_host_ref(value)?),
         HostValue::String(_) | HostValue::Bytes(_) => Value::Missing,
-    }
+    })
 }
 
 pub(crate) fn value_to_host(
     value: &Value,
     operation: &'static str,
     heap: Option<&HeapExecution<'_>>,
+    host: Option<&HostExecution<'_>>,
 ) -> VmResult<HostValue> {
     if let Some(value) = value.as_scalar() {
         return Ok(HostValue::Scalar(value));
@@ -26,7 +27,10 @@ pub(crate) fn value_to_host(
         Value::Unit => Ok(HostValue::Unit),
         Value::Bool(value) => Ok(HostValue::Bool(*value)),
         Value::Char(value) => Ok(HostValue::Char(*value)),
-        Value::HostRef(value) => Ok(HostValue::HostRef(*value)),
+        Value::HostRef(value) => Ok(HostValue::HostRef(
+            host.ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?
+                .resolve_host_ref(*value)?,
+        )),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
             Some(HeapValue::Bytes(value)) => Ok(HostValue::Bytes(value.clone())),

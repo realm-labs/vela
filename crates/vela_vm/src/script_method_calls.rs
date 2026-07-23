@@ -579,6 +579,7 @@ fn linked_dynamic_method_dispatch_target(
         method,
         context.program,
         heap,
+        host,
         vm.type_registry(),
     )
     .ok_or_else(|| {
@@ -748,7 +749,9 @@ fn host_receiver_guard(
     let Value::HostRef(reference) = receiver else {
         return None;
     };
-    let schema_epoch = host?.adapter.host_schema_epoch();
+    let host = host?;
+    let schema_epoch = host.adapter.host_schema_epoch();
+    let reference = host.resolve_host_ref(*reference).ok()?;
     Some(DynamicReceiverGuard::HostType {
         type_id: reference.type_id,
         schema_epoch,

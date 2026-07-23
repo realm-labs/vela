@@ -14,6 +14,7 @@ use crate::{
         HostCollectionSnapshot,
     },
     resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess},
+    slot::HostRefSlots,
     target::HostTargetInstance,
     value::HostValue,
 };
@@ -211,4 +212,72 @@ pub trait ScriptStateAdapter {
         method: HostMethodId,
         args: &[HostValue],
     ) -> HostResult<HostValue>;
+}
+
+impl ScriptStateAdapter for HostRefSlots {
+    fn intern_host_ref(&mut self, root: HostRef) -> HostResult<HostSlotRef> {
+        Ok(self.intern(root))
+    }
+
+    fn resolve_host_ref(&self, handle: HostSlotRef) -> HostResult<HostRef> {
+        self.resolve(handle)
+            .ok_or_else(|| HostError::new(HostErrorKind::InvalidHostSlot { handle }))
+    }
+
+    fn release_host_ref(&mut self, handle: HostSlotRef) -> HostResult<HostRef> {
+        self.release(handle)
+            .ok_or_else(|| HostError::new(HostErrorKind::InvalidHostSlot { handle }))
+    }
+
+    fn read_host(
+        &self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
+        Err(slot_only_access_error(target, "read"))
+    }
+
+    fn write_host(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        _value: HostValue,
+    ) -> HostResult<()> {
+        Err(slot_only_access_error(target, "write"))
+    }
+
+    fn mutate_host(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        _op: HostMutationOp,
+        _rhs: HostValue,
+    ) -> HostResult<()> {
+        Err(slot_only_access_error(target, "mutate"))
+    }
+
+    fn remove_host(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<()> {
+        Err(slot_only_access_error(target, "remove"))
+    }
+
+    fn call_host(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        _method: HostMethodId,
+        _args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        Err(slot_only_access_error(target, "call"))
+    }
+}
+
+fn slot_only_access_error(target: HostTargetInstance<'_>, action: &'static str) -> HostError {
+    HostError::new(HostErrorKind::PermissionDenied {
+        path: target.to_diagnostic_path().to_host_path(),
+        action,
+    })
 }

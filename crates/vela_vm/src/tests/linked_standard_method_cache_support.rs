@@ -26,7 +26,7 @@ pub(super) fn run_linked_method_cache_owned_program_with_budget(
     let mut heap_execution = HeapExecution::new(&mut heap);
     let result =
         run_linked_method_cache_with_heap_and_budget(program, caches, &mut heap_execution, budget)?;
-    crate::heap_values::value_to_owned(&result, Some(&heap_execution))
+    crate::heap_values::value_to_owned(&result, Some(&heap_execution), None)
 }
 
 pub(super) fn run_linked_method_cache_program_with_standard_natives(

@@ -15,7 +15,7 @@ use vela_host::slot::HostSlotTable;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::heap::ScriptHeap;
-use vela_vm::owned_to_linked_persistent_value;
+use vela_vm::owned_to_linked_persistent_value_with_host;
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 
@@ -31,7 +31,9 @@ pub struct CallArgs<'a> {
 
 #[derive(Clone, Copy)]
 struct DirectHostSlot {
+    root: HostRef,
     entry_index: u32,
+    owned_by_scope: bool,
 }
 
 pub(super) struct CallArgRuntime<'program, 'heap, 'budget> {
@@ -572,15 +574,16 @@ impl<'a> CallArgs<'a> {
         params: &[String],
         param_defaults: &[bool],
         runtime: &mut CallArgRuntime<'_, '_, '_>,
+        host: &mut (dyn ScriptStateAdapter + Send),
     ) -> VmResult<Vec<Value>> {
         match self.mode()? {
             CallArgsMode::Empty | CallArgsMode::Positional => self
                 .entries
                 .iter()
-                .map(|arg| arg.runtime_value(runtime))
+                .map(|arg| arg.runtime_value(runtime, host))
                 .collect(),
             CallArgsMode::Named => {
-                self.resolve_named_values(entry, params, param_defaults, runtime)
+                self.resolve_named_values(entry, params, param_defaults, runtime, host)
             }
         }
     }
@@ -614,6 +617,7 @@ impl<'a> CallArgs<'a> {
         params: &[String],
         param_defaults: &[bool],
         runtime: &mut CallArgRuntime<'_, '_, '_>,
+        host: &mut (dyn ScriptStateAdapter + Send),
     ) -> VmResult<Vec<Value>> {
         let mut values = BTreeMap::new();
         for (index, arg) in self.entries.iter().enumerate() {
@@ -631,7 +635,7 @@ impl<'a> CallArgs<'a> {
         let mut resolved = Vec::with_capacity(params.len());
         for (index, param) in params.iter().enumerate() {
             if let Some(arg_index) = values.remove(param) {
-                resolved.push(self.entries[arg_index].runtime_value(runtime)?);
+                resolved.push(self.entries[arg_index].runtime_value(runtime, host)?);
             } else if param_defaults.get(index).copied().unwrap_or(false) {
                 resolved.push(Value::Missing);
             } else {
@@ -663,23 +667,33 @@ impl<'a> CallArgs<'a> {
                 type_id,
                 ..
             } = entry
-                && host_ref.is_none()
             {
-                if self.direct_host_object_id_base.is_none() {
-                    self.direct_host_object_id_base = Some(*next_object_id);
-                }
-                let assigned =
-                    HostRef::new(*type_id, vela_common::HostObjectId::new(*next_object_id), 1);
-                *host_ref = Some(assigned);
+                let (assigned, owned_by_scope) = match *host_ref {
+                    Some(root) => (root, false),
+                    None => {
+                        if self.direct_host_object_id_base.is_none() {
+                            self.direct_host_object_id_base = Some(*next_object_id);
+                        }
+                        let root = HostRef::new(
+                            *type_id,
+                            vela_common::HostObjectId::new(*next_object_id),
+                            1,
+                        );
+                        *host_ref = Some(root);
+                        if let Some(identity) = identity {
+                            *identity.0.lock() = Some(root);
+                        }
+                        *next_object_id = next_object_id.saturating_add(1);
+                        (root, true)
+                    }
+                };
                 let handle = self.direct_host_slots.insert(DirectHostSlot {
+                    root: assigned,
                     entry_index: u32::try_from(entry_index)
                         .expect("CallArgs host entry index must fit the compact slot table"),
+                    owned_by_scope,
                 });
-                debug_assert_eq!(handle.generation(), assigned.generation);
-                if let Some(identity) = identity {
-                    *identity.0.lock() = Some(assigned);
-                }
-                *next_object_id = next_object_id.saturating_add(1);
+                debug_assert_eq!(handle.generation(), 1);
             }
         }
     }
@@ -746,13 +760,28 @@ impl<'a> CallArgs<'a> {
         })
     }
 
+    pub(super) fn direct_host_refs(&self) -> impl Iterator<Item = HostRef> + '_ {
+        self.direct_host_slots
+            .iter()
+            .filter_map(|(_, slot)| slot.owned_by_scope.then_some(slot.root))
+    }
+
     fn direct_binding_entry_index(&self, root: HostRef) -> Option<usize> {
-        let base = self.direct_host_object_id_base?;
-        let slot = root.object_id.get().checked_sub(base)?;
-        let slot = u32::try_from(slot).ok()?;
-        let handle = HostSlotRef::new(slot, root.generation);
-        let metadata = self.direct_host_slots.get(handle)?;
-        Some(metadata.entry_index as usize)
+        if let Some(metadata) = self
+            .direct_host_object_id_base
+            .and_then(|base| root.object_id.get().checked_sub(base))
+            .and_then(|slot| u32::try_from(slot).ok())
+            .and_then(|slot| {
+                self.direct_host_slots
+                    .get(HostSlotRef::new(slot, root.generation))
+            })
+            && metadata.root == root
+        {
+            return Some(metadata.entry_index as usize);
+        }
+        self.direct_host_slots.iter().find_map(|(_, metadata)| {
+            (metadata.root == root).then_some(metadata.entry_index as usize)
+        })
     }
 
     pub(super) fn take_host_lease(
@@ -870,14 +899,19 @@ pub(super) enum CallArg<'a> {
 }
 
 impl CallArg<'_> {
-    fn runtime_value(&self, runtime: &mut CallArgRuntime<'_, '_, '_>) -> VmResult<Value> {
+    fn runtime_value(
+        &self,
+        runtime: &mut CallArgRuntime<'_, '_, '_>,
+        host: &mut (dyn ScriptStateAdapter + Send),
+    ) -> VmResult<Value> {
         match self {
             Self::Positional(value) | Self::Named { value, .. } => {
-                owned_to_linked_persistent_value(
+                owned_to_linked_persistent_value_with_host(
                     value.clone(),
                     runtime.program,
                     runtime.heap,
                     Some(runtime.budget),
+                    host,
                 )
             }
             Self::PositionalValue(value) | Self::NamedValue { value, .. } => {
@@ -894,7 +928,7 @@ impl CallArg<'_> {
             | Self::PositionalHost {
                 host_ref: Some(host_ref),
                 ..
-            } => Ok(Value::HostRef(*host_ref)),
+            } => Ok(Value::HostRef(host.intern_host_ref(*host_ref)?)),
             Self::NamedHost { host_ref: None, .. }
             | Self::PositionalHost { host_ref: None, .. } => Err(call_args_type_error(
                 "direct host argument was not assigned an execution identity",

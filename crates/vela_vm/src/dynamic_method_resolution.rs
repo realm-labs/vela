@@ -57,10 +57,11 @@ pub(crate) fn resolve_linked_dynamic_method(
     method: &str,
     program: &LinkedProgram,
     heap: Option<&HeapExecution<'_>>,
+    host: Option<&HostExecution<'_>>,
     registry: Option<&TypeRegistry>,
 ) -> Option<DynamicMethodTarget> {
     resolve_script_dynamic_method(receiver, method, program, heap)
-        .or_else(|| resolve_host_dynamic_method(receiver, method, registry))
+        .or_else(|| resolve_host_dynamic_method(receiver, method, host, registry))
         .or_else(|| resolve_standard_dynamic_method(receiver, method, heap))
 }
 
@@ -100,7 +101,7 @@ pub(crate) fn classify_dynamic_receiver(
             _ => DynamicReceiverKind::Unsupported,
         }
     } else if let Value::HostRef(reference) = receiver {
-        if host.is_some() {
+        if let Some(reference) = host.and_then(|host| host.resolve_host_ref(*reference).ok()) {
             DynamicReceiverKind::Host {
                 type_name: format!("{:?}", reference.type_id),
                 host_type_id: reference.type_id,
@@ -157,12 +158,14 @@ fn resolve_script_dynamic_method(
 fn resolve_host_dynamic_method(
     receiver: &Value,
     method: &str,
+    host: Option<&HostExecution<'_>>,
     registry: Option<&TypeRegistry>,
 ) -> Option<DynamicMethodTarget> {
     let Value::HostRef(reference) = receiver else {
         return None;
     };
-    let desc = registry?.type_of_host(*reference)?;
+    let reference = host?.resolve_host_ref(*reference).ok()?;
+    let desc = registry?.type_of_host(reference)?;
     desc.methods
         .iter()
         .find(|candidate| candidate.name == method)

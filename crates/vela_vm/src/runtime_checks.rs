@@ -5,9 +5,13 @@ use crate::owned_value::OwnedValue;
 use crate::value::ClosureValue;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 
-pub(crate) fn expect_host_ref(value: &Value, operation: &'static str) -> VmResult<HostRef> {
-    match value {
-        Value::HostRef(value) => Ok(*value),
+pub(crate) fn expect_host_ref(
+    value: &Value,
+    host: Option<&crate::HostExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<HostRef> {
+    match (value, host) {
+        (Value::HostRef(value), Some(host)) => host.resolve_host_ref(*value),
         _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }

@@ -159,10 +159,11 @@ fn runtime_reflection_preserves_map_key_values() {
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
     let runtime =
-        owned_to_value(value.clone(), &mut heap_execution, None).expect("materialize map");
+        owned_to_value(value.clone(), &mut heap_execution, None, None).expect("materialize map");
 
-    let reflected = runtime_value_to_reflect(&runtime, &heap_execution, "test runtime reflect map")
-        .expect("reflect runtime map");
+    let reflected =
+        runtime_value_to_reflect(&runtime, &heap_execution, None, "test runtime reflect map")
+            .expect("reflect runtime map");
 
     assert_eq!(
         reflected,
@@ -417,6 +418,8 @@ fn main(player) {
         host_ref,
         HostValue::Scalar(vela_common::ScalarValue::I64(9)),
     );
+    let host_slot = vela_host::adapter::ScriptStateAdapter::intern_host_ref(&mut adapter, host_ref)
+        .expect("host ref should intern");
     let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
@@ -434,7 +437,7 @@ fn main(player) {
             &vm,
             &program,
             "main",
-            &[RuntimeValue::HostRef(host_ref)],
+            &[RuntimeValue::HostRef(host_slot)],
             &mut host,
             &mut heap_execution,
             &mut budget,

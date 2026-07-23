@@ -206,26 +206,29 @@ impl Vm {
         &self,
         session: &mut LinkedExecutionSession,
         result: VmResult<OwnedValue>,
+        host: Option<&mut crate::HostExecution<'_>>,
         heap: Option<&mut HeapExecution<'_>>,
         budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<()> {
-        self.resume_linked_native_call(session, result, heap, budget, "async")
+        self.resume_linked_native_call(session, result, host, heap, budget, "async")
     }
 
     pub fn resume_linked_context_call(
         &self,
         session: &mut LinkedExecutionSession,
         result: VmResult<OwnedValue>,
+        host: Option<&mut crate::HostExecution<'_>>,
         heap: Option<&mut HeapExecution<'_>>,
         budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<()> {
-        self.resume_linked_native_call(session, result, heap, budget, "context")
+        self.resume_linked_native_call(session, result, host, heap, budget, "context")
     }
 
     fn resume_linked_native_call(
         &self,
         session: &mut LinkedExecutionSession,
         result: VmResult<OwnedValue>,
+        host: Option<&mut crate::HostExecution<'_>>,
         heap: Option<&mut HeapExecution<'_>>,
         budget: Option<&mut ExecutionBudget>,
         boundary: &'static str,
@@ -263,8 +266,15 @@ impl Vm {
                     opcode: "native resume without an active frame",
                 })
             })?;
-        let value =
-            crate::heap_values::owned_to_linked_value(value, owner.program(), heap, budget)?;
+        let value = crate::heap_values::owned_to_linked_value(
+            value,
+            owner.program(),
+            heap,
+            budget,
+            host.map(|host| {
+                &mut *host.adapter as &mut (dyn vela_host::adapter::ScriptStateAdapter + Send)
+            }),
+        )?;
         if let Some(destination) = pending.destination {
             session
                 .frames

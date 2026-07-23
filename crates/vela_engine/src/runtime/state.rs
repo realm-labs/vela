@@ -5,6 +5,7 @@ use vela_bytecode::{
     CacheSiteId, DebugNameId, ExecutableGenerationId, InstructionOffset, LinkedArtifact,
     LinkedProgram,
 };
+use vela_host::slot::HostRefSlots;
 
 use super::{
     RuntimeExternStateBindings, RuntimeVmStateStore, bytecode_profile::BytecodeProfileSnapshot,
@@ -16,6 +17,7 @@ pub(super) struct RuntimeState {
     pub(super) id: u64,
     pub(super) extern_states: RuntimeExternStateBindings,
     pub(super) host_arena: RuntimeHostArena,
+    pub(super) host_slots: HostRefSlots,
     pub(super) vm_states: RuntimeVmStateStore,
     pub(super) generations: RuntimeGenerations,
 }
@@ -45,6 +47,7 @@ impl RuntimeState {
             id: next_runtime_id(),
             extern_states: RuntimeExternStateBindings::new(),
             host_arena: RuntimeHostArena::new(),
+            host_slots: HostRefSlots::new(),
             vm_states: RuntimeVmStateStore::new(),
             generations: RuntimeGenerations {
                 active_generation,

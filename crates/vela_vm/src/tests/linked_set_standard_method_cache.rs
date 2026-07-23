@@ -685,7 +685,7 @@ fn run_linked_set_cache_owned_program(
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
     let result = run_linked_set_cache_program(program, caches, &mut heap_execution)?;
-    crate::heap_values::value_to_owned(&result, Some(&heap_execution))
+    crate::heap_values::value_to_owned(&result, Some(&heap_execution), None)
 }
 
 fn run_linked_set_cache_program(

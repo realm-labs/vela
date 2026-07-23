@@ -88,7 +88,7 @@ pub(super) fn run_linked_standard_id_code_with_caches(
         Some(&mut heap_execution),
         Some(&mut budget),
     )?;
-    crate::heap_values::value_to_owned(&result, Some(&heap_execution))
+    crate::heap_values::value_to_owned(&result, Some(&heap_execution), None)
 }
 
 pub(super) struct RecordingNativeCaches {

@@ -389,6 +389,8 @@ fn linked_program_calls_host_method_by_dispatch_handle() {
         method_id,
         HostValue::Scalar(vela_common::ScalarValue::I64(12)),
     );
+    let host_slot = vela_host::adapter::ScriptStateAdapter::intern_host_ref(&mut adapter, host_ref)
+        .expect("host ref should intern");
     let mut access = HostAccess::new();
     let mut budget = ExecutionBudget::unbounded();
     let result = {
@@ -403,7 +405,7 @@ fn linked_program_calls_host_method_by_dispatch_handle() {
                 owner: Arc::clone(&program),
                 function: main,
                 captures: &[],
-                args: &[Value::HostRef(host_ref)],
+                args: &[Value::HostRef(host_slot)],
                 check_param_guards: true,
                 call_site: None,
                 call_site_offset: None,

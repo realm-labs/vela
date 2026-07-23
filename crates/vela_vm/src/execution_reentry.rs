@@ -9,7 +9,7 @@ use crate::execution_session::{
 };
 use crate::heap_execution::HeapExecution;
 use crate::value::Value;
-use crate::{Vm, VmBytecodeProfiler, VmInlineCaches};
+use crate::{HostExecution, Vm, VmBytecodeProfiler, VmInlineCaches};
 
 pub struct LinkedExecutionReentry<'artifact, 'args, 'caches> {
     pub artifact: &'artifact Arc<LinkedArtifact>,
@@ -24,6 +24,7 @@ impl Vm {
         &self,
         session: &mut LinkedExecutionSession,
         reentry: LinkedExecutionReentry<'_, '_, '_>,
+        host: Option<&HostExecution<'_>>,
         heap: &mut HeapExecution<'_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<()> {
@@ -85,6 +86,7 @@ impl Vm {
                 target: PendingReturnTarget::Reentry,
                 protected_root_len,
             }),
+            host.map(|host| &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)),
             Some(heap),
             Some(budget),
         );

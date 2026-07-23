@@ -63,6 +63,7 @@ impl ActiveNativeReentry<'_, '_> {
                     version_id: None,
                     script_heap: self.heap.heap,
                     engine: self.engine,
+                    host: handles::RuntimeHostResolver::Adapter(self.host),
                 },
             ),
             RuntimeCallTargetKind::ProviderMethod(target) => {
@@ -86,6 +87,7 @@ impl ActiveNativeReentry<'_, '_> {
             &receiver.value,
             self.heap.heap,
             self.engine.registry().as_ref(),
+            |handle| self.host.resolve_host_ref(handle).ok(),
         )
         .ok_or_else(|| unknown_method(name.clone()))?;
         let method_id = self
@@ -147,6 +149,11 @@ impl ActiveNativeReentry<'_, '_> {
             ),
         )?;
         let entry_args = reentry_entry_args(&target, &resolved);
+        let initial_host = HostExecution {
+            adapter: &mut child_host,
+            access: self.access,
+            state_values: Some(&mut *self.vm_state_values),
+        };
         self.vm.push_linked_reentry(
             self.session,
             LinkedExecutionReentry {
@@ -156,6 +163,7 @@ impl ActiveNativeReentry<'_, '_> {
                 inline_caches: Some(&*self.generations),
                 bytecode_profiler: self.generations.bytecode_profiler(),
             },
+            Some(&initial_host),
             self.heap,
             self.budget,
         )?;
@@ -217,9 +225,15 @@ impl ActiveNativeReentry<'_, '_> {
                         };
                         invoke_prepared_context(&prepared, &mut nested)
                     };
+                    let mut host = HostExecution {
+                        adapter: &mut child_host,
+                        access: self.access,
+                        state_values: Some(&mut *self.vm_state_values),
+                    };
                     if let Err(error) = self.vm.resume_linked_context_call(
                         self.session,
                         result,
+                        Some(&mut host),
                         Some(self.heap),
                         Some(self.budget),
                     ) {
@@ -260,6 +274,11 @@ impl ActiveNativeReentry<'_, '_> {
             ),
         )?;
         let entry_args = reentry_entry_args(&target, &resolved);
+        let initial_host = HostExecution {
+            adapter: &mut child_host,
+            access: self.access,
+            state_values: Some(&mut *self.vm_state_values),
+        };
         self.vm.push_linked_reentry(
             self.session,
             LinkedExecutionReentry {
@@ -269,6 +288,7 @@ impl ActiveNativeReentry<'_, '_> {
                 inline_caches: Some(&*self.generations),
                 bytecode_profiler: self.generations.bytecode_profiler(),
             },
+            Some(&initial_host),
             self.heap,
             self.budget,
         )?;
@@ -330,9 +350,15 @@ impl ActiveNativeReentry<'_, '_> {
                         };
                         invoke_prepared_async(&prepared, &mut nested).await
                     };
+                    let mut host = HostExecution {
+                        adapter: &mut child_host,
+                        access: self.access,
+                        state_values: Some(&mut *self.vm_state_values),
+                    };
                     if let Err(error) = self.vm.resume_linked_async_call(
                         self.session,
                         result,
+                        Some(&mut host),
                         Some(self.heap),
                         Some(self.budget),
                     ) {
@@ -360,9 +386,15 @@ impl ActiveNativeReentry<'_, '_> {
                         };
                         invoke_prepared_context(&prepared, &mut nested)
                     };
+                    let mut host = HostExecution {
+                        adapter: &mut child_host,
+                        access: self.access,
+                        state_values: Some(&mut *self.vm_state_values),
+                    };
                     if let Err(error) = self.vm.resume_linked_context_call(
                         self.session,
                         result,
+                        Some(&mut host),
                         Some(self.heap),
                         Some(self.budget),
                     ) {
@@ -385,7 +417,7 @@ impl NativeReentry for ActiveNativeReentry<'_, '_> {
         if value.runtime_id() != self.runtime_id {
             return Err(call_args_type_error("VelaValue belongs to another Runtime"));
         }
-        vela_vm::persistent_value_to_owned(&value.value(), self.heap.heap)
+        vela_vm::persistent_value_to_owned_with_host(&value.value(), self.heap.heap, self.host)
     }
 
     fn adapter(&mut self) -> &mut dyn ScriptStateAdapter {
@@ -500,6 +532,7 @@ impl NativeReentry for ActiveNativeReentry<'_, '_> {
                 version_id: None,
                 script_heap: self.heap.heap,
                 engine: self.engine,
+                host: handles::RuntimeHostResolver::Adapter(self.host),
             },
         )?;
         Ok(target)
