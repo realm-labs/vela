@@ -1221,11 +1221,17 @@ backing-collection mutation. Array `sort/min/max` likewise use one completely
 precharged values projection, then enter the existing resumable comparison
 state after the HostAccess lease ends. The state owns only Vela values, roots
 projected heap values across nested comparison calls, and returns an ordinary
-owned Array or Option without mutating Rust. Borrowed complex-element views,
-remaining element/key methods, untyped dynamic HostRef standard-method
-discovery, live/resumable iteration, remaining bulk mutation protocols, richer
-user-defined collection adapters, full service macro traversal, and prepared
-operations are still open. Growable
+owned Array or Option without mutating Rust. Untyped dynamic HostRef method
+resolution now combines the canonical HostRef with its sealed collection-view
+facts and live adapter access mode. It advertises only standard methods with
+an implemented HostRef route; structural mutators additionally require an
+exclusive growable view. Shared/fixed receivers and unimplemented HostRef
+collection methods remain `UnknownMethod`, and access-sensitive HostRef
+results do not enter the ordinary dynamic StandardValue inline cache. Borrowed
+complex-element views, remaining element/key methods, live/resumable
+iteration, remaining bulk mutation protocols, richer user-defined collection
+adapters, full service macro traversal, and prepared operations are still
+open. Growable
 `MapMut.set` and keyed index
 assignment insert supported leaf values through HostAccess; `MapMut.remove`
 uses a keyed remove and returns the prior value as `Option<V>`;

@@ -216,8 +216,14 @@ Array `sort/min/max` also consume one completely precharged projection, then
 run the existing resumable ordering state machine after the HostAccess lease
 ends. The state retains only Vela values, roots projected heap values across
 nested comparison calls, and returns an owned Array or Option without mutating
-the Rust collection. Complex borrowed element views, remaining element/key
-methods, untyped dynamic HostRef standard-method discovery, live/resumable
+the Rust collection. Untyped dynamic HostRef receivers now discover only
+standard methods backed by an implemented HostRef execution route. Resolution
+uses the canonical HostRef, sealed collection-view capability, and live
+shared/exclusive access mode; structural mutators require an exclusive
+growable view, while shared/fixed receivers and unimplemented collection
+methods remain `UnknownMethod`. These access-sensitive HostRef resolutions are
+not entered into the ordinary dynamic StandardValue inline cache. Complex
+borrowed element views, remaining element/key methods, live/resumable
 iteration, remaining bulk mutation, user-defined collection adapters, and
 prepared index plans remain open. Growable `MapMut.set` and missing-key index
 assignment now insert
@@ -443,9 +449,9 @@ Root execution-host lease guards and grouped scoped child/activity sets now use
 the same eight-entry inline threshold while retaining acquire-all-or-clean-up
 behavior on conflict.
 S3 is active. Its remaining gaps are complex-element borrowed views, remaining
-element/key and live/resumable collection operations, untyped dynamic HostRef
-standard-method discovery, borrowed-source and write-through bulk mutations,
-richer adapters, and prepared element/grouping/traversal operations.
+element/key and live/resumable collection operations, borrowed-source and
+write-through bulk mutations, richer adapters, and prepared
+element/grouping/traversal operations.
 Service-signature traversal and service-generation pinning belong to S4-S6. A
 shorter owned-host reclamation policy remains post-S2 follow-up.
 Runtime receiver enforcement is live; compile-time

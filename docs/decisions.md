@@ -2762,6 +2762,17 @@ lease. Exclusive views mutate the original collection immediately. Vela-side
 collection protocols must dispatch through this HostRef representation and
 must not reinterpret it as a script-owned Array, Map, or Set.
 
+Untyped dynamic method resolution for a HostRef-backed collection derives its
+surface from the canonical HostRef, the sealed `TypeBinding` collection-view
+capability, and the adapter's live shared/exclusive access mode. A standard
+method is discoverable only when the VM has a corresponding HostRef execution
+route. Structural mutators additionally require exclusive access and a
+growable MutView; shared or fixed views therefore fail as `UnknownMethod`
+before execution while HostAccess remains the enforcement boundary. Because
+access can differ between calls for the same concrete Rust type, these
+StandardValue targets are not stored in the ordinary dynamic-method inline
+cache.
+
 Borrowed collection traversal first crosses one bounded semantic projection,
 not a Rust iterator object or a serialized container. `HostCollectionProjection`
 captures Array values, Map keys/values/entries, or Set values while the exact

@@ -1,5 +1,9 @@
-use vela_common::{HostMethodId, HostTypeId};
+use vela_common::{
+    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, HostMethodId,
+    HostTypeId, InteropTypeId,
+};
 use vela_def::MethodId;
+use vela_host::lease::HostLeaseKind;
 
 use vela_bytecode::{
     LinkedMethodDispatchKind, LinkedProgram, MethodDispatchHandle, ScriptFunctionHandle,
@@ -62,7 +66,7 @@ pub(crate) fn resolve_linked_dynamic_method(
 ) -> Option<DynamicMethodTarget> {
     resolve_script_dynamic_method(receiver, method, program, heap)
         .or_else(|| resolve_host_dynamic_method(receiver, method, host, registry))
-        .or_else(|| resolve_standard_dynamic_method(receiver, method, heap))
+        .or_else(|| resolve_standard_dynamic_method(receiver, method, heap, host, registry))
 }
 
 pub(crate) fn classify_dynamic_receiver(
@@ -114,14 +118,80 @@ pub(crate) fn classify_dynamic_receiver(
     }
 }
 
-pub(crate) fn resolve_standard_dynamic_method(
+fn resolve_standard_dynamic_method(
     receiver: &Value,
     method: &str,
     heap: Option<&HeapExecution<'_>>,
+    host: Option<&HostExecution<'_>>,
+    registry: Option<&TypeRegistry>,
 ) -> Option<DynamicMethodTarget> {
     let method_id =
-        standard_method_id_for_receiver(classify_dynamic_receiver(receiver, heap, None), method)?;
+        standard_method_id_for_receiver(classify_dynamic_receiver(receiver, heap, None), method)
+            .or_else(|| host_collection_standard_method(receiver, method, host, registry))?;
     Some(DynamicMethodTarget::StandardValue { method_id })
+}
+
+fn host_collection_standard_method(
+    receiver: &Value,
+    method: &str,
+    host: Option<&HostExecution<'_>>,
+    registry: Option<&TypeRegistry>,
+) -> Option<MethodId> {
+    let Value::HostRef(reference) = receiver else {
+        return None;
+    };
+    let host = host?;
+    let root = host.resolve_host_ref(*reference).ok()?;
+    let registry = registry?;
+    let binding = registry
+        .type_of_host(root)
+        .and_then(|desc| registry.type_binding_for_key(&desc.key))
+        .or_else(|| {
+            // Standard collection HostTypeId values are documented lossless
+            // projections of their 64-bit-generated InteropTypeId values.
+            registry.type_binding(InteropTypeId::new(u128::from(root.type_id.get())))
+        })?;
+    let views = binding.collection_views?;
+    let method_id =
+        standard_method_id_for_receiver(collection_receiver_kind(views.kind()), method)?;
+    if !host_collection_method_is_implemented(method_id)
+        || !host_collection_method_is_available(host, root, views, method_id)
+    {
+        return None;
+    }
+    Some(method_id)
+}
+
+fn collection_receiver_kind(kind: CollectionViewKind) -> DynamicReceiverKind {
+    match kind {
+        CollectionViewKind::Array => DynamicReceiverKind::Array,
+        CollectionViewKind::Map => DynamicReceiverKind::Map,
+        CollectionViewKind::Set => DynamicReceiverKind::Set,
+    }
+}
+
+fn host_collection_method_is_implemented(method_id: MethodId) -> bool {
+    crate::std_method_ids::host_collection_query(method_id).is_some()
+        || crate::std_method_ids::host_collection_lookup(method_id).is_some()
+        || crate::std_method_ids::host_array_transform(method_id).is_some()
+        || crate::std_method_ids::host_collection_mutation(method_id).is_some()
+        || crate::std_method_ids::host_collection_projection(method_id).is_some()
+        || crate::callback_method_dispatch::host_collection_callback_cache_entry(method_id)
+            .is_some()
+        || array_methods::ordering_kind(method_id).is_some()
+}
+
+fn host_collection_method_is_available(
+    host: &HostExecution<'_>,
+    root: vela_host::path::HostRef,
+    views: CollectionViewCapabilities,
+    method_id: MethodId,
+) -> bool {
+    if crate::std_method_ids::host_collection_mutation(method_id).is_none() {
+        return true;
+    }
+    host.adapter.host_receiver_access(root) == HostLeaseKind::Exclusive
+        && views.mutation() == Some(CollectionViewMutation::Growable)
 }
 
 fn resolve_script_dynamic_method(
@@ -280,6 +350,9 @@ fn array_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "distinct" => ids.array_distinct,
         "reverse" => ids.array_reverse,
         "slice" => ids.array_slice,
+        "map" | "filter" | "find" | "any" | "all" | "count" | "group_by" | "sort_by" => {
+            return vela_stdlib::std_method_id("Array", method);
+        }
         "sort" => ids.array_sort,
         "min" => ids.array_min,
         "max" => ids.array_max,
@@ -305,6 +378,9 @@ fn map_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "values" => ids.map_values,
         "entries" => ids.map_entries,
         "merge" => ids.map_merge,
+        "map_values" | "filter" | "find" | "any" | "all" | "count" => {
+            return vela_stdlib::std_method_id("Map", method);
+        }
         "iter" => ids.map_iter,
         _ => return None,
     })
@@ -320,6 +396,9 @@ fn set_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "extend" => ids.set_extend,
         "clear" => ids.set_clear,
         "values" => ids.set_values,
+        "map" | "filter" | "find" | "any" | "all" | "count" => {
+            return vela_stdlib::std_method_id("Set", method);
+        }
         "union" => ids.set_union,
         "intersection" => ids.set_intersection,
         "difference" => ids.set_difference,
