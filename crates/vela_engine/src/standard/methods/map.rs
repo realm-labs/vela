@@ -42,6 +42,15 @@ const MAP_METHODS: &[MethodSpec] = &[
         "Returns the value for a key or a default.",
     ),
     MethodSpec::new(
+        "get_or_insert",
+        &[
+            ParamSpec::new("key", "any"),
+            ParamSpec::new("default", "any"),
+        ],
+        "any",
+        "Returns the value for a key, inserting the default when absent.",
+    ),
+    MethodSpec::new(
         "set",
         &[ParamSpec::new("key", "any"), ParamSpec::new("value", "any")],
         "any",

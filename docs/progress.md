@@ -233,7 +233,12 @@ prepared index plans remain open. Growable `MapMut.set` and missing-key index
 assignment now insert
 scalar/String/Bytes leaves through the keyed HostAccess write, while
 `MapMut.remove` uses a keyed HostAccess remove and returns the prior value as
-`Option<V>`. `SetMut.add/insert/remove` write membership through the same path
+`Option<V>`. Map `get_or_insert` now preserves an existing value or performs
+one missing-key insertion on owned Maps and growable exclusive HostRef views;
+shared/fixed views withhold it, retained child views write through their parent
+lease, existing entries do not convert the unused default, and failed
+missing-value conversion leaves Rust state unchanged.
+`SetMut.add/insert/remove` write membership through the same path
 and retain standard changed/not-changed results; `insert` is the baseline name
 while `add` remains available. Growable `ArrayMut.remove_at`
 reads and removes through one indexed HostAccess path, returns the prior value

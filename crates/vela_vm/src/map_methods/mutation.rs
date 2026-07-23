@@ -4,6 +4,39 @@ use crate::{ExecutionBudget, HeapExecution, Value, VmResult, store_runtime_value
 
 use super::{expect_arity, map_entries, type_error};
 
+pub(crate) fn get_or_insert(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    expect_arity("get_or_insert", args, 2)?;
+    let reference = match *receiver {
+        Value::HeapRef(reference) => reference,
+        _ => return type_error("method get_or_insert"),
+    };
+    let Some(heap) = heap else {
+        return type_error("method get_or_insert");
+    };
+    if let Some(value) = {
+        let values = super::map_slots(receiver, Some(&*heap), "method get_or_insert")?;
+        values.get(&args[0], Some(&*heap), "method get_or_insert")?
+    } {
+        return Ok(value);
+    }
+    let key = store_runtime_value(&args[0], heap, budget.as_deref_mut())?;
+    let slot = store_runtime_value(&args[1], heap, budget.as_deref_mut())?;
+    collection_mutation::insert_map_slot(
+        heap,
+        reference,
+        key,
+        slot,
+        budget,
+        "method get_or_insert",
+    )?;
+    Ok(args[1])
+}
+
 pub(crate) fn set(
     receiver: &mut Value,
     args: &[Value],

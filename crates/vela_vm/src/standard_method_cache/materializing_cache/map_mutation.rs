@@ -15,6 +15,9 @@ pub(in crate::standard_method_cache) fn call_cached_map_mutation(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> Option<VmResult<Value>> {
     match target {
+        StandardMethodInlineCacheTarget::GetOrInsert => {
+            Some(call_cached_map_get_or_insert(receiver, args, heap, budget))
+        }
         StandardMethodInlineCacheTarget::Set => {
             Some(call_cached_map_set(receiver, args, heap, budget))
         }
@@ -27,6 +30,21 @@ pub(in crate::standard_method_cache) fn call_cached_map_mutation(
         }
         _ => None,
     }
+}
+
+fn call_cached_map_get_or_insert(
+    receiver: &Value,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    let mut receiver = *receiver;
+    crate::map_methods::get_or_insert(
+        &mut receiver,
+        args,
+        heap.as_deref_mut(),
+        budget.as_deref_mut(),
+    )
 }
 
 fn call_cached_map_set(

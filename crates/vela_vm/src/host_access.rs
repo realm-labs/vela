@@ -815,6 +815,54 @@ pub(crate) fn execute_host_root_collection_mutation(
             )?;
             Ok(args[1])
         }
+        HostCollectionMutation::MapGetOrInsert => {
+            let read = resolve_collection_key_access(
+                host,
+                runtime.inline_caches,
+                cache_site,
+                instance,
+                HostAccessOp::Read,
+                runtime.source_span,
+            )?;
+            match host
+                .access
+                .read_resolved(host.adapter, read, instance, runtime.source_span)
+            {
+                Ok(value) => runtime_value_from_host(
+                    value,
+                    runtime.heap.as_deref_mut(),
+                    runtime.budget.as_deref_mut(),
+                    host,
+                ),
+                Err(error)
+                    if matches!(&error.kind, HostErrorKind::MissingCollectionEntry { .. }) =>
+                {
+                    let map_value = value_to_host(
+                        &args[1],
+                        "host map get_or_insert",
+                        runtime.heap.as_deref(),
+                        Some(&*host),
+                    )?;
+                    let write = resolve_collection_key_access(
+                        host,
+                        runtime.inline_caches,
+                        cache_site,
+                        instance,
+                        HostAccessOp::Write,
+                        runtime.source_span,
+                    )?;
+                    host.access.write_resolved(
+                        host.adapter,
+                        write,
+                        instance,
+                        map_value,
+                        runtime.source_span,
+                    )?;
+                    Ok(args[1])
+                }
+                Err(error) => Err(error.into()),
+            }
+        }
         HostCollectionMutation::ArrayPop
         | HostCollectionMutation::ArrayRemoveAt
         | HostCollectionMutation::MapRemove => {

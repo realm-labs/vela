@@ -400,6 +400,9 @@ fn standard_method_target(
         (StandardMethodReceiver::Map, id) if id == ids.map_get_or => {
             StandardMethodInlineCacheTarget::GetOr
         }
+        (StandardMethodReceiver::Map, id) if id == ids.map_get_or_insert => {
+            StandardMethodInlineCacheTarget::GetOrInsert
+        }
         (StandardMethodReceiver::Map, id) if id == ids.map_set => {
             StandardMethodInlineCacheTarget::Set
         }
@@ -560,7 +563,8 @@ pub(crate) fn call_standard_cached(
         StandardMethodInlineCacheTarget::Merge if cache.receiver == StandardMethodReceiver::Map => {
             return call_cached_map_materialization(receiver, cache.target, args, heap, budget);
         }
-        StandardMethodInlineCacheTarget::Set
+        StandardMethodInlineCacheTarget::GetOrInsert
+        | StandardMethodInlineCacheTarget::Set
         | StandardMethodInlineCacheTarget::Remove
         | StandardMethodInlineCacheTarget::Clear
         | StandardMethodInlineCacheTarget::Extend

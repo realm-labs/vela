@@ -379,6 +379,7 @@ fn map_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "contains_key" => ids.map_contains_key,
         "get" => ids.map_get,
         "get_or" => ids.map_get_or,
+        "get_or_insert" => ids.map_get_or_insert,
         "set" => ids.map_set,
         "remove" => ids.map_remove,
         "extend" => ids.map_extend,

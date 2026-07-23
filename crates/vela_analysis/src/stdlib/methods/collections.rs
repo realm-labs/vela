@@ -181,6 +181,10 @@ pub(super) fn map_method_fact(
             StdlibMethodFact::new(receiver, "get_or", value.clone())
                 .with_params(vec![key.clone(), value.clone()]),
         ),
+        "get_or_insert" => Some(
+            StdlibMethodFact::new(receiver, "get_or_insert", value.clone())
+                .with_params(vec![key.clone(), value.clone()]),
+        ),
         "set" => Some(
             StdlibMethodFact::new(receiver, "set", value.clone())
                 .with_params(vec![key.clone(), value.clone()]),

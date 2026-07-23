@@ -580,6 +580,16 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
     ),
     StdMethodSpec::new(
         "Map",
+        "get_or_insert",
+        &[
+            StdParamSpec::new("key", "any"),
+            StdParamSpec::new("default", "any"),
+        ],
+        "any",
+        "Returns the value for a key, inserting the default when absent.",
+    ),
+    StdMethodSpec::new(
+        "Map",
         "set",
         &[
             StdParamSpec::new("key", "any"),

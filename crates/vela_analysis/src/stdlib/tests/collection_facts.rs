@@ -37,6 +37,7 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
         CollectionViewMutation::Growable,
     );
     for receiver in [&map_view, &map_fixed] {
+        assert!(stdlib_method_fact(receiver, "get_or_insert", None).is_none());
         assert!(stdlib_method_fact(receiver, "set", None).is_none());
         assert!(stdlib_method_fact(receiver, "remove", None).is_none());
         assert!(stdlib_method_fact(receiver, "retain", None).is_none());
@@ -49,6 +50,10 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
         let values = stdlib_method_fact(receiver, "values", None).expect("read method fact");
         assert_eq!(values.receiver, receiver.clone());
     }
+    let get_or_insert =
+        stdlib_method_fact(&map_growable, "get_or_insert", None).expect("growable entry insert");
+    assert_eq!(get_or_insert.params, vec![TypeFact::STRING, TypeFact::I64]);
+    assert_eq!(get_or_insert.returns, TypeFact::I64);
     assert!(stdlib_method_fact(&map_growable, "set", None).is_some());
     assert!(stdlib_method_fact(&map_growable, "retain", None).is_some());
 

@@ -81,6 +81,7 @@ pub(crate) struct StdMethodIds {
     pub(crate) map_contains_key: MethodId,
     pub(crate) map_get: MethodId,
     pub(crate) map_get_or: MethodId,
+    pub(crate) map_get_or_insert: MethodId,
     pub(crate) map_set: MethodId,
     pub(crate) map_remove: MethodId,
     pub(crate) map_extend: MethodId,
@@ -215,6 +216,7 @@ impl StdMethodIds {
             map_contains_key: standard_method_id("Map", "contains_key"),
             map_get: standard_method_id("Map", "get"),
             map_get_or: standard_method_id("Map", "get_or"),
+            map_get_or_insert: standard_method_id("Map", "get_or_insert"),
             map_set: standard_method_id("Map", "set"),
             map_remove: standard_method_id("Map", "remove"),
             map_extend: standard_method_id("Map", "extend"),
@@ -422,6 +424,7 @@ pub(crate) enum HostCollectionMutation {
     ArrayPop,
     ArrayRemoveAt,
     MapSet,
+    MapGetOrInsert,
     MapRemove,
     MapExtend,
     SetAdd,
@@ -441,6 +444,7 @@ impl HostCollectionMutation {
             Self::ArrayPop => "pop",
             Self::ArrayRemoveAt => "remove_at",
             Self::MapSet => "set",
+            Self::MapGetOrInsert => "get_or_insert",
             Self::MapRemove | Self::SetRemove => "remove",
             Self::SetAdd => "add",
         }
@@ -450,7 +454,7 @@ impl HostCollectionMutation {
     pub(crate) const fn arity(self) -> usize {
         match self {
             Self::Clear | Self::ArrayPop => 0,
-            Self::MapSet => 2,
+            Self::MapSet | Self::MapGetOrInsert => 2,
             Self::ArrayExtend
             | Self::ArrayPush
             | Self::ArrayRemoveAt
@@ -481,6 +485,8 @@ pub(crate) fn host_collection_mutation(method_id: MethodId) -> Option<HostCollec
         Some(HostCollectionMutation::ArrayRemoveAt)
     } else if method_id == ids.map_set {
         Some(HostCollectionMutation::MapSet)
+    } else if method_id == ids.map_get_or_insert {
+        Some(HostCollectionMutation::MapGetOrInsert)
     } else if method_id == ids.map_remove {
         Some(HostCollectionMutation::MapRemove)
     } else if method_id == ids.map_extend {

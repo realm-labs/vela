@@ -15,7 +15,7 @@ pub(crate) use higher_order::{all, any, count, filter, find, map_values, retain}
 pub(crate) use introspection::{entries, keys, values};
 pub(crate) use lookup::{contains_key, get, get_or, has};
 pub(crate) use merge::{merge, merge_payload};
-pub(crate) use mutation::{clear, extend, remove, set};
+pub(crate) use mutation::{clear, extend, get_or_insert, remove, set};
 
 pub(crate) fn is_map(receiver: &Value, heap: Option<&crate::HeapExecution<'_>>) -> bool {
     match receiver {
@@ -498,6 +498,7 @@ fn main() {
     {
         return states.len() + scores.get_or("daily", 0);
     }
+
     return 0;
 }
 "#;
@@ -510,6 +511,27 @@ fn main() {
         let result = run_linked_map_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap map lookup methods should run");
         assert_eq!(result, OwnedValue::Scalar(vela_common::ScalarValue::I64(6)));
+    }
+
+    #[test]
+    fn managed_heap_map_get_or_insert_preserves_existing_values() {
+        let source = r#"
+fn main() {
+    let scores = {"existing": 5};
+    let existing = scores.get_or_insert("existing", 99);
+    let inserted = scores.get_or_insert("inserted", 13);
+    return existing * 100 + inserted + scores["inserted"] + scores.len();
+}
+"#;
+        let code = compile_test_function(SourceId::new(1), source, "main")
+            .expect("Map get_or_insert source should compile");
+        let mut vm = Vm::new();
+        vm.register_standard_natives();
+
+        assert_eq!(
+            run_linked_map_test_code(&vm, code),
+            Ok(OwnedValue::i64(528))
+        );
     }
 
     #[test]

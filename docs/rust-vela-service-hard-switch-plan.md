@@ -1243,7 +1243,12 @@ adapters, full service macro traversal, and prepared operations are still
 open. Growable
 `MapMut.set` and keyed index
 assignment insert supported leaf values through HostAccess; `MapMut.remove`
-uses a keyed remove and returns the prior value as `Option<V>`;
+uses a keyed remove and returns the prior value as `Option<V>`. Map
+`get_or_insert` now preserves the live existing value or performs one
+missing-key write for owned Maps and growable exclusive HostRef views;
+shared/fixed views withhold it, retained child views keep their parent lease,
+existing entries do not convert the unused default, and missing-value
+conversion failure precedes mutation.
 `SetMut.add/insert/remove` use keyed boolean membership writes without
 materialization. Growable `ArrayMut.remove_at` performs the corresponding
 indexed read/remove through HostAccess, returns the prior value as `Option<T>`,
