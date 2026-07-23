@@ -193,14 +193,18 @@ fn variant_field_def(
 }
 
 fn method_def(desc: &TypeDesc, owner: vela_def::TypeId, method: &MethodDesc) -> MethodDef {
+    let return_type = method.return_type.as_deref().map(|return_type| {
+        let hint = raw_type_hint_def(return_type);
+        match method.return_collection_mutation {
+            Some(mutation) => hint.with_collection_mutation(mutation),
+            None => hint,
+        }
+    });
     MethodDef::new(
         source_method_path("host", &desc.key.name, &method.name),
         owner,
-        FunctionSignature::new(
-            method.params.iter().map(method_param_def),
-            method.return_type.as_deref().map(raw_type_hint_def),
-        )
-        .asyncness(method.asyncness),
+        FunctionSignature::new(method.params.iter().map(method_param_def), return_type)
+            .asyncness(method.asyncness),
     )
     .host_runtime_id(method.id.get())
     .effects(method_effects(&method.effects))

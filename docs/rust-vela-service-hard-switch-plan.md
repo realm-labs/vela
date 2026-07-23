@@ -1193,7 +1193,9 @@ copying and mutate Rust bytes immediately, while owned `Vec<u8>` remains Vela
 `Bytes`. Restricted
 `ArrayView`/`ArrayMut`, `MapView`/`MapMut`, and `SetView`/`SetMut` hints now
 retain distinct analysis facts and exact hidden fixed/growable mutation facts.
-Their shared collection methods are visible without materialization,
+Host-method returns carry that mutation fact separately from their visible
+type spelling, project it into compiler facts, and include it in binding ABI
+identity. Their shared collection methods are visible without materialization,
 structural mutators are statically absent from shared/fixed views, and
 growable exclusive views retain them. Linked calls on a HostRef-backed view now
 route `len` and `is_empty` through the domain-neutral
@@ -1217,7 +1219,10 @@ service macro traversal, and prepared operations are still open. Growable
 assignment insert supported leaf values through HostAccess; `MapMut.remove`
 uses a keyed remove and returns the prior value as `Option<V>`;
 `SetMut.add/remove` use keyed boolean membership writes without
-materialization. Array `iter/values`, Map `keys/values/entries/iter`, and Set
+materialization. Growable `ArrayMut.remove_at` performs the corresponding
+indexed read/remove through HostAccess, returns the prior value as `Option<T>`,
+and preserves retained method-return view identity and missing-index
+semantics. Array `iter/values`, Map `keys/values/entries/iter`, and Set
 `values/iter` now use a deterministic bounded `HostCollectionProjection` under
 the active lease and then reuse the ordinary Vela Iterator pipeline. This
 snapshot slice preserves exact boundary tags and supports

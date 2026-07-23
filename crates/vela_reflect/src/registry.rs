@@ -8,7 +8,7 @@ use crate::access::{FieldAccess, MethodAccess, MethodEffectSet};
 use crate::error::{ReflectError, ReflectErrorKind, ReflectResult};
 use crate::modules::{DeclOrigin, FunctionDesc, ModuleDesc, StateDesc};
 use crate::type_binding::{TypeBindingDesc, TypeBindingSnapshot};
-use vela_common::{HostMethodId, HostTypeId, Span};
+use vela_common::{CollectionViewMutation, HostMethodId, HostTypeId, Span};
 use vela_common::{InteropTypeId, TypeBindingRegistryChecksum};
 use vela_def::{FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId};
 use vela_host::path::HostRef;
@@ -380,6 +380,7 @@ pub struct MethodDesc {
     pub name: String,
     pub params: Vec<MethodParamDesc>,
     pub return_type: Option<String>,
+    pub return_collection_mutation: Option<CollectionViewMutation>,
     pub effects: MethodEffectSet,
     pub asyncness: vela_common::CallableAsyncness,
     pub receiver: vela_common::ReceiverCapability,
@@ -398,6 +399,7 @@ impl MethodDesc {
             name: name.into(),
             params: Vec::new(),
             return_type: None,
+            return_collection_mutation: None,
             effects: MethodEffectSet::default(),
             asyncness: vela_common::CallableAsyncness::Sync,
             receiver: vela_common::ReceiverCapability::Shared,
@@ -436,6 +438,12 @@ impl MethodDesc {
     #[must_use]
     pub fn return_type(mut self, return_type: impl Into<String>) -> Self {
         self.return_type = Some(return_type.into());
+        self
+    }
+
+    #[must_use]
+    pub const fn return_collection_mutation(mut self, mutation: CollectionViewMutation) -> Self {
+        self.return_collection_mutation = Some(mutation);
         self
     }
 

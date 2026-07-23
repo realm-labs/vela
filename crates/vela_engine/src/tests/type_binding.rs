@@ -428,6 +428,64 @@ fn method_receiver_requirement_participates_in_type_abi() {
 }
 
 #[test]
+fn method_return_collection_mutation_participates_in_type_abi() {
+    let build = |mutation| {
+        let owner = host_desc(101, 201).key;
+        Engine::builder()
+            .register_rust_type::<ExternalHost>(
+                TypeBinding::host(host_desc(101, 201)).method_desc(
+                    NativeMethodDesc::new(owner, HostMethodId::new(302), "values")
+                        .returns(TypeHint::array_mut_of(TypeHint::i64(), mutation)),
+                ),
+            )
+            .build()
+            .expect("collection-return binding should seal")
+    };
+    let fixed = build(CollectionViewMutation::Fixed);
+    let growable = build(CollectionViewMutation::Growable);
+    let fixed_registry = fixed.registry();
+    let growable_registry = growable.registry();
+    let fixed_method = &fixed_registry
+        .type_by_name("host::ExternalHost")
+        .expect("fixed host type metadata")
+        .methods[0];
+    let growable_method = &growable_registry
+        .type_by_name("host::ExternalHost")
+        .expect("growable host type metadata")
+        .methods[0];
+
+    assert_eq!(fixed_method.return_type.as_deref(), Some("ArrayMut<i64>"));
+    assert_eq!(
+        growable_method.return_type.as_deref(),
+        Some("ArrayMut<i64>")
+    );
+    assert_eq!(
+        fixed_method.return_collection_mutation,
+        Some(CollectionViewMutation::Fixed)
+    );
+    assert_eq!(
+        growable_method.return_collection_mutation,
+        Some(CollectionViewMutation::Growable)
+    );
+    assert_ne!(
+        fixed
+            .type_bindings()
+            .get_for::<ExternalHost>()
+            .expect("fixed binding")
+            .abi_fingerprint,
+        growable
+            .type_bindings()
+            .get_for::<ExternalHost>()
+            .expect("growable binding")
+            .abi_fingerprint
+    );
+    assert_ne!(
+        fixed.type_bindings().checksum(),
+        growable.type_bindings().checksum()
+    );
+}
+
+#[test]
 fn registered_value_codec_round_trips_through_script_execution() {
     let engine = Engine::builder()
         .register_rust_type::<ExternalValue>(external_value_binding(value_desc(102, "amount")))

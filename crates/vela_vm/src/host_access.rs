@@ -780,7 +780,7 @@ pub(crate) fn execute_host_root_collection_mutation(
             )?;
             Ok(args[1])
         }
-        HostCollectionMutation::MapRemove => {
+        HostCollectionMutation::ArrayRemoveAt | HostCollectionMutation::MapRemove => {
             let read = resolve_collection_key_access(
                 host,
                 runtime.inline_caches,
@@ -796,7 +796,9 @@ pub(crate) fn execute_host_root_collection_mutation(
                 {
                     Ok(value) => Some(value),
                     Err(error)
-                        if matches!(&error.kind, HostErrorKind::MissingCollectionEntry { .. }) =>
+                        if matches!(&error.kind, HostErrorKind::MissingCollectionEntry { .. })
+                            || (mutation == HostCollectionMutation::ArrayRemoveAt
+                                && matches!(&error.kind, HostErrorKind::MissingPath { .. })) =>
                     {
                         None
                     }
@@ -826,7 +828,7 @@ pub(crate) fn execute_host_root_collection_mutation(
                 .transpose()?;
             let heap = runtime.heap.as_deref_mut().ok_or_else(|| {
                 VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "host map remove",
+                    operation: "host collection remove",
                 })
             })?;
             crate::option_result::option_value(current, heap, runtime.budget.as_deref_mut())

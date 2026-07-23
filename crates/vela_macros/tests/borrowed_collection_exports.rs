@@ -206,6 +206,10 @@ impl CollectionOwner {
         &self.values
     }
 
+    pub fn values_mut(&mut self) -> &mut Vec<i64> {
+        &mut self.values
+    }
+
     pub fn totals_mut(&mut self) -> &mut BTreeMap<String, i64> {
         &mut self.totals
     }
@@ -771,8 +775,34 @@ fn borrowed_collection_lookup_methods_use_host_paths_without_materializing() {
 #[test]
 fn growable_borrowed_collection_methods_write_through_host_paths() {
     let mut runtime = runtime(
-        "fn map_set(scores: MapMut<i32, i64>) { scores.set(7i32, 12); scores.set(9i32, 6); scores[10i32] = 8; return scores.remove(7i32).unwrap_or(0) + scores.remove(8i32).unwrap_or(4) + scores[9i32] + scores[10i32]; } fn set_mutate(values: SetMut<i32>) { return values.add(9i32) && !values.add(7i32) && values.remove(7i32) && !values.remove(8i32); }",
+        "fn array_remove(owner: CollectionOwner) { let values = owner.values_mut(); return values.remove_at(1).unwrap_or(0); } fn array_missing(owner: CollectionOwner) { return owner.values_mut().remove_at(9).unwrap_or(4); } fn map_set(scores: MapMut<i32, i64>) { scores.set(7i32, 12); scores.set(9i32, 6); scores[10i32] = 8; return scores.remove(7i32).unwrap_or(0) + scores.remove(8i32).unwrap_or(4) + scores[9i32] + scores[10i32]; } fn set_mutate(values: SetMut<i32>) { return values.add(9i32) && !values.add(7i32) && values.remove(7i32) && !values.remove(8i32); }",
     );
+
+    let mut owner = CollectionOwner {
+        values: vec![5, 7, 11],
+        totals: BTreeMap::new(),
+    };
+    let result = runtime
+        .call(
+            "array_remove",
+            CallArgs::new().with_host_mut("owner", &mut owner),
+            CallOptions::unbounded(),
+        )
+        .expect("growable borrowed array remove_at should write through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(7)));
+    drop(result);
+    assert_eq!(owner.values, vec![5, 11]);
+
+    let result = runtime
+        .call(
+            "array_missing",
+            CallArgs::new().with_host_mut("owner", &mut owner),
+            CallOptions::unbounded(),
+        )
+        .expect("out-of-range borrowed array remove_at should return Option::None");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(4)));
+    drop(result);
+    assert_eq!(owner.values, vec![5, 11]);
 
     let mut scores = BTreeMap::from([(7_i32, 11_i64)]);
     let mut args = CallArgs::new();

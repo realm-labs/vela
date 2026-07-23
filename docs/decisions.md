@@ -2635,6 +2635,22 @@ Borrowed Map removal is the corresponding keyed remove operation: read the
 current value, perform `HostAccessOp::Remove` only when present, and return the
 captured value as Vela `Option<V>`. It does not encode deletion as a sentinel
 write or expose the Rust entry API.
+Growable borrowed Array `remove_at` follows the same rule over an indexed path:
+capture the current element, remove it only when present, and return
+`Option<T>`. Missing indexes are not errors, while conversion, permission,
+lease, generation, and nested-path failures still propagate through
+HostAccess.
+
+### Mutable Collection Return Capability Is Structured Metadata
+
+The visible return spelling of a borrowed mutable collection remains
+`ArrayMut<T>`, `MapMut<K, V>`, or `SetMut<T>`; fixed versus growable is not
+script syntax. A reflected host method therefore carries its return mutation
+capability as a separate structured fact. Compiler-registry projection
+reapplies that fact to the return type, and type-binding ABI fingerprints
+include it. Changing a Rust method return from fixed to growable is
+consequently an ABI change even though reflection presents the same ordinary
+type spelling.
 
 Host-backed whole-collection writes use `HostCollectionMutation`, a semantic
 adapter protocol distinct from Vela standard-library method IDs. The first

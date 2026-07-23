@@ -222,6 +222,25 @@ where
             .write_host_target_from(target, offset + 1, value)
     }
 
+    fn remove_host_target_from(
+        &mut self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+    ) -> HostResult<()> {
+        let index = usize::try_from(target_index(target, offset)?)
+            .map_err(|_| invalid_arg("array index"))?;
+        if target_is_leaf(target, offset + 1) {
+            if index >= self.len() {
+                return Err(missing_target(target));
+            }
+            self.remove(index);
+            return Ok(());
+        }
+        self.get_mut(index)
+            .ok_or_else(|| missing_target(target))?
+            .remove_host_target_from(target, offset + 1)
+    }
+
     fn call_host_target_from(
         &mut self,
         target: HostTargetInstance<'_>,

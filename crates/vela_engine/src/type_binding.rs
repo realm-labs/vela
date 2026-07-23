@@ -724,14 +724,17 @@ fn type_abi_fingerprint(
     methods.sort_by_key(|method| method.id);
     for method in methods {
         parts.push(format!(
-            "method={:032x}:{}:{}:{}:{}:{}:{}",
+            "method={:032x}:{}:{}:{}:{}:{}:{}:{}",
             method.id.get(),
             method.name,
             method.asyncness.is_async(),
             method.receiver.as_str(),
             method.access.public,
             method_effect_bits(&method.effects),
-            method.return_type.as_deref().unwrap_or("")
+            method.return_type.as_deref().unwrap_or(""),
+            method
+                .return_collection_mutation
+                .map_or("read-only", CollectionViewMutation::as_str)
         ));
         parts.extend(method.params.iter().enumerate().map(|(index, param)| {
             format!(

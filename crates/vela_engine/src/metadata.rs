@@ -33,6 +33,9 @@ pub(crate) fn inject_host_method_metadata(
             .effects(reflect_effects(&desc.effects))
             .receiver(desc.receiver)
             .access(reflect_access(&desc.access));
+        if let Some(mutation) = type_hint_collection_mutation(&desc.returns) {
+            method = method.return_collection_mutation(mutation);
+        }
         for param in &desc.params {
             method = method.param(
                 MethodParamDesc::new(param.name.clone()).type_hint(type_hint_display(&param.hint)),
@@ -50,6 +53,15 @@ pub(crate) fn inject_host_method_metadata(
         owner.methods.push(method);
     }
     Ok(())
+}
+
+fn type_hint_collection_mutation(hint: &TypeHint) -> Option<vela_common::CollectionViewMutation> {
+    match hint {
+        TypeHint::ArrayMutOf { mutation, .. }
+        | TypeHint::MapMutOf { mutation, .. }
+        | TypeHint::SetMutOf { mutation, .. } => Some(*mutation),
+        _ => None,
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

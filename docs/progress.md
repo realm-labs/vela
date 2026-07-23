@@ -179,8 +179,9 @@ emit those proofs, and register the concrete binding closure automatically.
 Restricted `ArrayView`/`ArrayMut`, `MapView`/`MapMut`, and
 `SetView`/`SetMut` hints now project as distinct analysis facts without adding
 general Vela generics. Hidden fixed/growable mutation capability survives
-native metadata, registry projection, exported language-service schema, and
-callable ABI fingerprinting. Standard method facts reuse the owned collection
+native metadata, host-method return reflection/compiler projection, exported
+language-service schema, and callable/type-binding ABI fingerprinting.
+Standard method facts reuse the owned collection
 read/iteration/transform surface while withholding structural mutation from
 shared and fixed views; growable exclusive views retain it. Linked calls keep
 borrowed collection contracts distinct from script-owned Array/Map/Set values.
@@ -210,7 +211,10 @@ index plans remain open. Growable `MapMut.set` and missing-key index assignment 
 scalar/String/Bytes leaves through the keyed HostAccess write, while
 `MapMut.remove` uses a keyed HostAccess remove and returns the prior value as
 `Option<V>`. `SetMut.add/remove` write membership through the same path and
-retain standard changed/not-changed results. Borrowed Array `iter/values`, Map
+retain standard changed/not-changed results. Growable `ArrayMut.remove_at`
+reads and removes through one indexed HostAccess path, returns the prior value
+as `Option<T>`, preserves missing-index behavior, and works on retained
+method-return views without materialization. Borrowed Array `iter/values`, Map
 `keys/values/entries/iter`, and Set `values/iter` now capture deterministic
 bounded boundary projections under the active lease and feed the existing Vela
 Iterator pipeline, including `filter/count/collect`; complex element handles
