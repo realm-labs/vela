@@ -1,6 +1,100 @@
 use super::*;
 
 #[test]
+fn borrowed_array_ordering_uses_one_bounded_projection() {
+    let mut runtime = runtime(
+        "fn numeric(values: ArrayView<i64>) { let sorted = values.sort(); return sorted[0] == 3 && sorted[1] == 3 && sorted[2] == 5 && sorted[3] == 8 && values.min().unwrap_or(0) == 3 && values.max().unwrap_or(0) == 8; } fn retained(owner: CollectionOwner) { let values = owner.values(); return values.sort()[0] + values.min().unwrap_or(0) + values.max().unwrap_or(0); } fn words(values: ArrayView<String>) { return values.sort().join(\"|\") == \"north|star|west\" && values.min().unwrap_or(\"\") == \"north\" && values.max().unwrap_or(\"\") == \"west\"; } fn empty(values: ArrayView<i64>) { return values.sort().is_empty() && values.min().unwrap_or(17) == 17 && values.max().unwrap_or(19) == 19; }",
+    );
+
+    let values = vec![3_i64, 5, 3, 8];
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call("numeric", args, CallOptions::unbounded())
+        .expect("borrowed array ordering should reuse Vela ordering semantics");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    drop(result);
+    assert_eq!(values, vec![3, 5, 3, 8]);
+
+    let owner = CollectionOwner {
+        values: vec![7, 5, 11],
+        totals: BTreeMap::new(),
+    };
+    let result = runtime
+        .call(
+            "retained",
+            CallArgs::new().with_host_ref("owner", &owner),
+            CallOptions::unbounded(),
+        )
+        .expect("retained borrowed ordering should use the parent lease");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(21)));
+    drop(result);
+    assert_eq!(owner.values, vec![7, 5, 11]);
+
+    let words = vec!["west".to_owned(), "north".to_owned(), "star".to_owned()];
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &words);
+    let result = runtime
+        .call("words", args, CallOptions::unbounded())
+        .expect("borrowed string ordering should retain lexical semantics");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    drop(result);
+
+    let empty = Vec::<i64>::new();
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &empty);
+    let result = runtime
+        .call("empty", args, CallOptions::unbounded())
+        .expect("empty borrowed ordering should preserve Array and Option semantics");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+}
+
+#[test]
+fn borrowed_array_ordering_charges_projected_length() {
+    let mut runtime =
+        runtime("fn minimum(values: ArrayView<i64>) { return values.min().unwrap_or(0); }");
+    let base_limit = (0..64)
+        .find(|limit| {
+            let values = Vec::<i64>::new();
+            let mut args = CallArgs::new();
+            args.push_collection_ref("values", &values);
+            runtime
+                .call(
+                    "minimum",
+                    args,
+                    CallOptions::new(*limit, usize::MAX, usize::MAX),
+                )
+                .is_ok()
+        })
+        .expect("empty borrowed minimum should fit a small bounded call");
+
+    let values = vec![8_i64, 3, 5];
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    assert!(
+        runtime
+            .call(
+                "minimum",
+                args,
+                CallOptions::new(base_limit + 2, usize::MAX, usize::MAX),
+            )
+            .is_err(),
+        "three projected elements must cost three execution units"
+    );
+
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call(
+            "minimum",
+            args,
+            CallOptions::new(base_limit + 3, usize::MAX, usize::MAX),
+        )
+        .expect("the exact ordering projection budget should succeed");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(3)));
+}
+
+#[test]
 fn borrowed_array_transforms_use_one_bounded_projection() {
     let mut runtime = runtime(
         "fn numeric(values: ArrayView<i64>) { let unique = values.distinct(); let reversed = values.reverse(); let middle = values.slice(1, 3); return unique.len() == 3 && unique[2] == 8 && reversed[0] == 8 && reversed[3] == 3 && middle[0] == 5 && middle[1] == 3; } fn retained(owner: CollectionOwner) { let values = owner.values(); return values.reverse()[0] + values.slice(1, 3)[0]; } fn joined(values: ArrayView<String>) { return values.join(\"|\"); } fn empty(values: ArrayView<i64>) { return values.distinct().is_empty() && values.reverse().is_empty() && values.slice(0, 0).is_empty(); } fn invalid(values: ArrayView<i64>) { return values.slice(0, 9); }",

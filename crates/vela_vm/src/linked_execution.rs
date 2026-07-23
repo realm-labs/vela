@@ -330,8 +330,10 @@ impl Vm {
                                 PendingFrameOperation::IteratorNext { next, .. } => {
                                     next.protect_roots(heap);
                                 }
-                                PendingFrameOperation::Comparison { .. }
-                                | PendingFrameOperation::ArrayOrdering { .. } => {}
+                                PendingFrameOperation::ArrayOrdering { ordering, .. } => {
+                                    ordering.protect_roots(heap);
+                                }
+                                PendingFrameOperation::Comparison { .. } => {}
                             }
                         }
                         protected_root_len
@@ -1492,62 +1494,71 @@ impl Vm {
                                 return Ok(FrameDriveOutcome::Continue);
                             }
                         }
-                        if let Some(kind) = array_methods::resumable_ordering_kind(
-                            &receiver_value,
-                            *method_id,
-                            heap.as_deref(),
-                        ) {
+                        if let Some(kind) = array_methods::ordering_kind(*method_id) {
                             let values =
                                 script_function_calls::script_call_args_from_call_arguments(
                                     frame, args,
                                 )?;
-                            let ordering = array_methods::ResumableArrayOrdering::new(
+                            let ordering = crate::host_collection_ordering::prepare_array_ordering(
                                 kind,
-                                &receiver_value,
+                                receiver_value,
                                 values.as_slice(),
-                                heap.as_deref(),
-                            )?;
-                            if let (Some(site), Some(caches)) = (*cache_site, call.inline_caches) {
-                                let existing = caches.method_dispatch(site);
-                                let cached = existing.is_some_and(|entry| {
-                                    entry.dispatch == *dispatch
-                                        && entry.debug_name == dispatch_target.debug_name
-                                        && matches!(
-                                            entry.target,
-                                            crate::MethodInlineCacheTarget::Value {
-                                                method_id: cached_method,
-                                                ..
-                                            } if cached_method == *method_id
-                                        )
-                                });
-                                if !cached {
-                                    caches.set_method_dispatch(
-                                        site,
-                                        crate::MethodInlineCacheEntry {
-                                            dispatch: *dispatch,
-                                            debug_name: dispatch_target.debug_name,
-                                            target: crate::MethodInlineCacheTarget::Value {
-                                                method_id: *method_id,
-                                                standard_method:
-                                                    script_builtin_methods::standard_cache_entry(
-                                                        *method_id,
-                                                        &receiver_value,
-                                                        heap.as_deref(),
-                                                    ),
-                                            },
-                                        },
-                                    );
-                                }
-                            }
-                            frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
-                            frame_state.pending_operation =
-                                Some(PendingFrameOperation::ArrayOrdering {
-                                    ordering,
-                                    destination: *dst,
-                                    returned: None,
+                                crate::host_access::HostAccessRuntime {
+                                    frame,
+                                    heap: heap.as_deref_mut(),
+                                    budget: budget.as_deref_mut(),
+                                    host: host.as_deref_mut(),
+                                    inline_caches: call.inline_caches,
                                     source_span: instruction.span,
-                                });
-                            return Ok(FrameDriveOutcome::Continue);
+                                },
+                                *receiver,
+                                *cache_site,
+                            )?;
+                            if let Some(ordering) = ordering {
+                                if let (Some(site), Some(caches)) =
+                                    (*cache_site, call.inline_caches)
+                                {
+                                    let existing = caches.method_dispatch(site);
+                                    let cached = existing.is_some_and(|entry| {
+                                        entry.dispatch == *dispatch
+                                            && entry.debug_name == dispatch_target.debug_name
+                                            && matches!(
+                                                entry.target,
+                                                crate::MethodInlineCacheTarget::Value {
+                                                    method_id: cached_method,
+                                                    ..
+                                                } if cached_method == *method_id
+                                            )
+                                    });
+                                    if !cached {
+                                        caches.set_method_dispatch(
+                                            site,
+                                            crate::MethodInlineCacheEntry {
+                                                dispatch: *dispatch,
+                                                debug_name: dispatch_target.debug_name,
+                                                target: crate::MethodInlineCacheTarget::Value {
+                                                    method_id: *method_id,
+                                                    standard_method:
+                                                        script_builtin_methods::standard_cache_entry(
+                                                            *method_id,
+                                                            &receiver_value,
+                                                            heap.as_deref(),
+                                                        ),
+                                                },
+                                            },
+                                        );
+                                    }
+                                }
+                                frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                                frame_state.pending_operation =
+                                    Some(PendingFrameOperation::ArrayOrdering {
+                                        ordering,
+                                        destination: *dst,
+                                        returned: None,
+                                        source_span: instruction.span,
+                                    });
+                                return Ok(FrameDriveOutcome::Continue);
+                            }
                         }
                     }
                     if let vela_bytecode::linked::LinkedMethodDispatchKind::Script {
@@ -1715,30 +1726,37 @@ impl Vm {
                                 return Ok(FrameDriveOutcome::Continue);
                             }
                         }
-                        if let Some(kind) = array_methods::resumable_ordering_kind(
-                            &receiver_value,
-                            *method_id,
-                            heap.as_deref(),
-                        ) {
+                        if let Some(kind) = array_methods::ordering_kind(*method_id) {
                             let values =
                                 script_method_calls::dynamic_value_args_from_linked_arguments(
                                     frame, args,
                                 )?;
-                            let ordering = array_methods::ResumableArrayOrdering::new(
+                            let ordering = crate::host_collection_ordering::prepare_array_ordering(
                                 kind,
-                                &receiver_value,
+                                receiver_value,
                                 values.as_slice(),
-                                heap.as_deref(),
-                            )?;
-                            frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
-                            frame_state.pending_operation =
-                                Some(PendingFrameOperation::ArrayOrdering {
-                                    ordering,
-                                    destination: *dst,
-                                    returned: None,
+                                crate::host_access::HostAccessRuntime {
+                                    frame,
+                                    heap: heap.as_deref_mut(),
+                                    budget: budget.as_deref_mut(),
+                                    host: host.as_deref_mut(),
+                                    inline_caches: call.inline_caches,
                                     source_span: instruction.span,
-                                });
-                            return Ok(FrameDriveOutcome::Continue);
+                                },
+                                *receiver,
+                                *cache_site,
+                            )?;
+                            if let Some(ordering) = ordering {
+                                frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                                frame_state.pending_operation =
+                                    Some(PendingFrameOperation::ArrayOrdering {
+                                        ordering,
+                                        destination: *dst,
+                                        returned: None,
+                                        source_span: instruction.span,
+                                    });
+                                return Ok(FrameDriveOutcome::Continue);
+                            }
                         }
                     }
                     let script_method_calls::LinkedDynamicResolution::Other(target) = resolution

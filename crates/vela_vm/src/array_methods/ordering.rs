@@ -44,19 +44,39 @@ enum ResumableArrayOrderingState {
 }
 
 impl ResumableArrayOrdering {
+    pub(crate) fn validate_arity(kind: ResumableArrayOrderingKind, args: &[Value]) -> VmResult<()> {
+        let (name, _) = ordering_metadata(kind);
+        expect_arity(name, args, 0)
+    }
+
     pub(crate) fn new(
         kind: ResumableArrayOrderingKind,
         receiver: &Value,
         args: &[Value],
         heap: Option<&HeapExecution<'_>>,
     ) -> VmResult<Self> {
-        let (name, operation) = match kind {
-            ResumableArrayOrderingKind::Sort => ("sort", "method sort"),
-            ResumableArrayOrderingKind::Min => ("min", "method min"),
-            ResumableArrayOrderingKind::Max => ("max", "method max"),
-        };
-        expect_arity(name, args, 0)?;
+        Self::validate_arity(kind, args)?;
+        let (_, operation) = ordering_metadata(kind);
         let values = array_values(receiver, heap, operation)?;
+        Self::from_values(kind, values, heap)
+    }
+
+    pub(crate) fn from_projected_values(
+        kind: ResumableArrayOrderingKind,
+        values: Vec<Value>,
+        args: &[Value],
+        heap: Option<&HeapExecution<'_>>,
+    ) -> VmResult<Self> {
+        Self::validate_arity(kind, args)?;
+        Self::from_values(kind, values, heap)
+    }
+
+    fn from_values(
+        kind: ResumableArrayOrderingKind,
+        values: Vec<Value>,
+        heap: Option<&HeapExecution<'_>>,
+    ) -> VmResult<Self> {
+        let (_, operation) = ordering_metadata(kind);
         let state = match kind {
             ResumableArrayOrderingKind::Sort => {
                 match sort_values_by_key(values.clone(), heap, operation, |value, _| Ok(*value)) {
@@ -105,6 +125,21 @@ impl ResumableArrayOrdering {
             state,
             comparison: None,
         })
+    }
+
+    pub(crate) fn protect_roots(&self, heap: &mut HeapExecution<'_>) {
+        match &self.state {
+            ResumableArrayOrderingState::ReadyArray(values)
+            | ResumableArrayOrderingState::Extremum { values, .. } => {
+                heap.protect_values(values);
+            }
+            ResumableArrayOrderingState::Sort { entries, .. } => {
+                for entry in entries {
+                    heap.protect_values(&[entry.key, entry.value]);
+                }
+            }
+            ResumableArrayOrderingState::Complete => {}
+        }
     }
 
     pub(crate) fn step(
@@ -281,6 +316,14 @@ impl ResumableArrayOrdering {
                 }
             }
         }
+    }
+}
+
+fn ordering_metadata(kind: ResumableArrayOrderingKind) -> (&'static str, &'static str) {
+    match kind {
+        ResumableArrayOrderingKind::Sort => ("sort", "method sort"),
+        ResumableArrayOrderingKind::Min => ("min", "method min"),
+        ResumableArrayOrderingKind::Max => ("max", "method max"),
     }
 }
 

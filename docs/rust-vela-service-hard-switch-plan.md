@@ -1217,10 +1217,15 @@ and return the ordinary bool/`Option<i64>` results without materializing a
 script Array. Array `distinct/reverse/slice/join` reuse that one completely
 precharged values projection and the owned transform algorithms, then return
 ordinary owned Array/String results without a temporary receiver Array or Rust
-backing-collection mutation. Borrowed complex-element views, remaining
-element/key methods (including Array `sort/min/max`), live/resumable iteration,
-remaining bulk mutation protocols, richer user-defined collection adapters,
-full service macro traversal, and prepared operations are still open. Growable
+backing-collection mutation. Array `sort/min/max` likewise use one completely
+precharged values projection, then enter the existing resumable comparison
+state after the HostAccess lease ends. The state owns only Vela values, roots
+projected heap values across nested comparison calls, and returns an ordinary
+owned Array or Option without mutating Rust. Borrowed complex-element views,
+remaining element/key methods, untyped dynamic HostRef standard-method
+discovery, live/resumable iteration, remaining bulk mutation protocols, richer
+user-defined collection adapters, full service macro traversal, and prepared
+operations are still open. Growable
 `MapMut.set` and keyed index
 assignment insert supported leaf values through HostAccess; `MapMut.remove`
 uses a keyed remove and returns the prior value as `Option<V>`;

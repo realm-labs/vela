@@ -66,8 +66,10 @@ impl Vm {
                     PendingFrameOperation::IteratorNext { next, .. } => {
                         next.protect_roots(heap);
                     }
-                    PendingFrameOperation::Comparison { .. }
-                    | PendingFrameOperation::ArrayOrdering { .. } => {}
+                    PendingFrameOperation::ArrayOrdering { ordering, .. } => {
+                        ordering.protect_roots(heap);
+                    }
+                    PendingFrameOperation::Comparison { .. } => {}
                 }
             }
             protected_root_len

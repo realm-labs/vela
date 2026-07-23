@@ -2781,9 +2781,11 @@ escaping Rust borrow.
 Non-callback Array transforms `distinct`, `reverse`, `slice`, and `join` reuse
 the same completely precharged values projection but call the shared owned
 algorithms directly. They return ordinary owned Array/String results and do
-not allocate a temporary receiver Array. Ordering operations such as
-`sort/min/max` remain separate because their resumable comparison and error
-semantics require an explicit host-backed design.
+not allocate a temporary receiver Array. Array `sort/min/max` feed that
+projection into the ordinary resumable ordering state only after the
+HostAccess lease ends. The state owns no Rust borrow or guard, retains only
+Vela values, roots projected heap values across nested comparison calls, and
+preserves the owned ordering, error, and result semantics.
 
 ### Borrowed Rust Slices Use A Quarantined Erased-Borrow Boundary
 

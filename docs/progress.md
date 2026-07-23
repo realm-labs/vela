@@ -212,7 +212,12 @@ a script Array. Read-only Array `distinct/reverse/slice/join` consume the same
 single precharged values projection and reuse the owned transform algorithms
 directly. They return ordinary owned Array/String results without creating a
 temporary receiver Array or mutating the Rust backing collection. Complex
-borrowed element views, remaining element/key methods, live/resumable
+Array `sort/min/max` also consume one completely precharged projection, then
+run the existing resumable ordering state machine after the HostAccess lease
+ends. The state retains only Vela values, roots projected heap values across
+nested comparison calls, and returns an owned Array or Option without mutating
+the Rust collection. Complex borrowed element views, remaining element/key
+methods, untyped dynamic HostRef standard-method discovery, live/resumable
 iteration, remaining bulk mutation, user-defined collection adapters, and
 prepared index plans remain open. Growable `MapMut.set` and missing-key index
 assignment now insert
@@ -438,9 +443,9 @@ Root execution-host lease guards and grouped scoped child/activity sets now use
 the same eight-entry inline threshold while retaining acquire-all-or-clean-up
 behavior on conflict.
 S3 is active. Its remaining gaps are complex-element borrowed views, remaining
-element/key and live/resumable collection operations (including Array
-`sort/min/max`), borrowed-source and write-through bulk mutations, richer
-adapters, and prepared element/grouping/traversal operations.
+element/key and live/resumable collection operations, untyped dynamic HostRef
+standard-method discovery, borrowed-source and write-through bulk mutations,
+richer adapters, and prepared element/grouping/traversal operations.
 Service-signature traversal and service-generation pinning belong to S4-S6. A
 shorter owned-host reclamation policy remains post-S2 follow-up.
 Runtime receiver enforcement is live; compile-time

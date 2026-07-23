@@ -54,14 +54,7 @@ pub(crate) fn is_array(receiver: &Value, heap: Option<&HeapExecution<'_>>) -> bo
     }
 }
 
-pub(crate) fn resumable_ordering_kind(
-    receiver: &Value,
-    method_id: vela_def::MethodId,
-    heap: Option<&HeapExecution<'_>>,
-) -> Option<ResumableArrayOrderingKind> {
-    if !is_array(receiver, heap) {
-        return None;
-    }
+pub(crate) fn ordering_kind(method_id: vela_def::MethodId) -> Option<ResumableArrayOrderingKind> {
     let ids = crate::std_method_ids::std_method_ids();
     if method_id == ids.array_sort {
         Some(ResumableArrayOrderingKind::Sort)
