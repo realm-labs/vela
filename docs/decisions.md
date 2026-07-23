@@ -2571,7 +2571,12 @@ implies deterministic key semantics, and user-defined stable keys must opt in.
 Owned collection codecs lower directly to script values; View/MutView bindings
 remain HostRef-backed and must not reuse the owned codec as implicit mutable
 copy-in/copy-out. `Vec<u8>` is the standard owned bytes representation rather
-than an `Array<u8>` specialization.
+than an `Array<u8>` specialization. Its borrowed `&Vec<u8>` and
+`&mut Vec<u8>` representations nevertheless use the ordinary
+`ArrayView<u8>`/`ArrayMut<u8>` host protocol with growable capability. This is
+one `InteropTypeId`: owned storage selects Vela `Bytes`, while borrowing
+selects a HostRef-backed array view and never materializes or copies the byte
+buffer.
 
 Owned `Vec<T>` uses the growable Array representation, while owned
 `BTreeSet<T>` and `HashSet<T>` share SetLike behavior with distinct concrete
@@ -2757,7 +2762,10 @@ Every other `vela_host` module forbids unsafe, as do the other Vela crates. A
 source audit permits unsafe syntax only in the reviewed erased-slice module
 and the pre-existing C ABI boundary. Raw pointers and reconstructed references
 never enter Value, GC, HostRef payloads, reflection, or persistent script
-state. `[u8]` remains reserved for the separate Bytes/view capability decision.
+state. Byte slices and fixed byte arrays use the same erased-slice/fixed-array
+lease path as other element types and project as fixed
+`ArrayView<u8>`/`ArrayMut<u8>` views. The owned byte representation remains
+Vela `Bytes`; no reconstructed slice reference enters that owned value.
 
 ### VM HostRef Values Carry Only Generational Slot Handles
 

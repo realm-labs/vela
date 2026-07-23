@@ -87,7 +87,6 @@ pub(super) enum TypeShape {
     F32,
     F64,
     String,
-    Bytes,
     Array(Box<TypeShape>),
     Map(Box<TypeShape>, Box<TypeShape>),
     Set(Box<TypeShape>),
@@ -349,20 +348,6 @@ fn classify_parameter(parameter: &PatType) -> Result<ClassifiedParameter> {
                 rust_ty: Some(parameter.ty.as_ref().clone()),
             });
         }
-        if is_u8_slice(&reference.elem) {
-            if reference.mutability.is_some() {
-                return Err(syn::Error::new_spanned(
-                    &parameter.ty,
-                    "mutable byte-slice borrows are not supported at the Vela boundary",
-                ));
-            }
-            return Ok(ClassifiedParameter {
-                name,
-                ty: TypeShape::Bytes,
-                mode: ParameterMode::ReadOnlyValueBorrow,
-                rust_ty: Some(parameter.ty.as_ref().clone()),
-            });
-        }
         let access = if reference.mutability.is_some() {
             HostAccess::Exclusive
         } else {
@@ -413,7 +398,7 @@ fn classify_return_type(output: &ReturnType) -> Result<(TypeShape, ErrorMode)> {
 fn classify_return_shape(ty: &Type) -> Result<TypeShape> {
     if let Type::Reference(reference) = ty {
         reject_explicit_lifetime(reference)?;
-        if is_str(&reference.elem) || is_u8_slice(&reference.elem) {
+        if is_str(&reference.elem) {
             return Err(syn::Error::new_spanned(
                 ty,
                 "borrowed scalar or container views cannot leave an exported Rust invocation",
@@ -606,12 +591,6 @@ fn direct_host_type(ty: &Type) -> Result<Type> {
 
 fn borrowed_collection_type(ty: &Type, access: HostAccess) -> Result<Option<TypeShape>> {
     if let Type::Slice(slice) = ty {
-        if type_ident(&slice.elem).is_some_and(|ident| ident == "u8") {
-            return Err(syn::Error::new_spanned(
-                ty,
-                "borrowed [u8] views are not supported yet; use an owned byte value",
-            ));
-        }
         return Ok(Some(TypeShape::BorrowedCollection(
             BorrowedCollectionShape {
                 rust_ty: ty.clone(),
@@ -623,12 +602,6 @@ fn borrowed_collection_type(ty: &Type, access: HostAccess) -> Result<Option<Type
         )));
     }
     if let Type::Array(array) = ty {
-        if type_ident(&array.elem).is_some_and(|ident| ident == "u8") {
-            return Err(syn::Error::new_spanned(
-                ty,
-                "borrowed [u8; N] views are not supported yet; use an owned byte value",
-            ));
-        }
         return Ok(Some(TypeShape::BorrowedCollection(
             BorrowedCollectionShape {
                 rust_ty: ty.clone(),
@@ -651,12 +624,6 @@ fn borrowed_collection_type(ty: &Type, access: HostAccess) -> Result<Option<Type
                     "borrowed Vec boundary type requires exactly one type argument",
                 ));
             };
-            if type_ident(element).is_some_and(|ident| ident == "u8") {
-                return Err(syn::Error::new_spanned(
-                    ty,
-                    "borrowed Vec<u8> views are not supported yet; use an owned byte value",
-                ));
-            }
             BorrowedCollectionKind::Array(Box::new(classify_owned_type(element)?))
         }
         "BTreeMap" | "HashMap" => {
@@ -783,7 +750,6 @@ fn host_return_access(shape: &TypeShape) -> Result<Option<HostAccess>> {
         | TypeShape::F32
         | TypeShape::F64
         | TypeShape::String
-        | TypeShape::Bytes
         | TypeShape::Array(_)
         | TypeShape::Map(_, _)
         | TypeShape::Set(_)
@@ -983,10 +949,6 @@ fn is_str(ty: &Type) -> bool {
     type_ident(ty).is_some_and(|ident| ident == "str")
 }
 
-fn is_u8_slice(ty: &Type) -> bool {
-    matches!(ty, Type::Slice(slice) if type_ident(&slice.elem).is_some_and(|ident| ident == "u8"))
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;
@@ -1045,6 +1007,35 @@ mod tests {
                     && matches!(collection.kind, BorrowedCollectionKind::Set(_))
         ));
         assert_eq!(classified.effects, BTreeSet::from([EffectName::HostWrite]));
+    }
+
+    #[test]
+    fn byte_collection_references_classify_as_host_backed_views() {
+        let classified = classify(quote! {
+            fn patch(shared: &[u8], fixed: &mut [u8; 4], growable: &mut Vec<u8>) {}
+        });
+
+        assert!(matches!(
+            &classified.parameters[0].ty,
+            TypeShape::BorrowedCollection(collection)
+                if collection.access == HostAccess::Shared
+                    && collection.mutation == vela_common::CollectionViewMutation::Fixed
+                    && matches!(collection.kind, BorrowedCollectionKind::Array(_))
+        ));
+        assert!(matches!(
+            &classified.parameters[1].ty,
+            TypeShape::BorrowedCollection(collection)
+                if collection.access == HostAccess::Exclusive
+                    && collection.mutation == vela_common::CollectionViewMutation::Fixed
+                    && matches!(collection.kind, BorrowedCollectionKind::Array(_))
+        ));
+        assert!(matches!(
+            &classified.parameters[2].ty,
+            TypeShape::BorrowedCollection(collection)
+                if collection.access == HostAccess::Exclusive
+                    && collection.mutation == vela_common::CollectionViewMutation::Growable
+                    && matches!(collection.kind, BorrowedCollectionKind::Array(_))
+        ));
     }
 
     #[test]

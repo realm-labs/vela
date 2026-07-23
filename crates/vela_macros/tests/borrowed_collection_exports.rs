@@ -71,6 +71,23 @@ pub fn slice_bump(values: &mut [i64]) -> i64 {
     values[1]
 }
 
+#[export(path = "collections::byte_slice_sum")]
+pub fn byte_slice_sum(values: &[u8]) -> i64 {
+    values.iter().map(|value| i64::from(*value)).sum()
+}
+
+#[export(path = "collections::byte_slice_bump")]
+pub fn byte_slice_bump(values: &mut [u8]) -> i64 {
+    values[1] += 4;
+    i64::from(values[1])
+}
+
+#[export(path = "collections::byte_vec_push")]
+pub fn byte_vec_push(values: &mut Vec<u8>, value: u8) -> i64 {
+    values.push(value);
+    i64::try_from(values.len()).expect("test byte vector length must fit i64")
+}
+
 #[export(path = "collections::slice_sum_async")]
 pub async fn slice_sum_async(values: &[i64]) -> i64 {
     slice_sum(values)
@@ -199,6 +216,23 @@ impl CollectionOwner {
 
     pub fn slice_mut(&mut self) -> &mut [i64] {
         self.values.as_mut_slice()
+    }
+}
+
+#[derive(ScriptHost)]
+#[script(path = "host::ByteOwner")]
+struct ByteOwner {
+    bytes: Vec<u8>,
+}
+
+#[methods(path = "host::ByteOwner")]
+impl ByteOwner {
+    pub fn bytes(&self) -> &[u8] {
+        self.bytes.as_slice()
+    }
+
+    pub fn bytes_mut(&mut self) -> &mut [u8] {
+        self.bytes.as_mut_slice()
     }
 }
 
@@ -347,6 +381,90 @@ fn slice_views_preserve_reference_semantics_across_vela_and_rust() {
     assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(13)));
     drop(result);
     assert_eq!(values, [2, 4, 9, 7]);
+}
+
+#[test]
+fn byte_views_preserve_bytes_identity_and_host_backed_mutation() {
+    let shared = vela_callable_contract_byte_slice_sum();
+    assert_eq!(
+        shared.parameters[0].ty,
+        TypeHint::array_view_of(TypeHint::u8())
+    );
+    assert_eq!(
+        shared.parameters[0]
+            .binding
+            .expect("shared byte-slice binding")
+            .representation,
+        InteropRepresentation::CollectionView(CollectionViewKind::Array)
+    );
+    let mutable = vela_callable_contract_byte_slice_bump();
+    assert_eq!(
+        mutable.parameters[0]
+            .binding
+            .expect("mutable byte-slice binding")
+            .representation,
+        InteropRepresentation::CollectionMut {
+            kind: CollectionViewKind::Array,
+            mutation: CollectionViewMutation::Fixed,
+        }
+    );
+    let growable = vela_callable_contract_byte_vec_push();
+    assert_eq!(
+        growable.parameters[0]
+            .binding
+            .expect("mutable byte-vector binding")
+            .representation,
+        InteropRepresentation::CollectionMut {
+            kind: CollectionViewKind::Array,
+            mutation: CollectionViewMutation::Growable,
+        }
+    );
+
+    let mut runtime = runtime(
+        "fn read(values: ArrayView<u8>) { return collections::byte_slice_sum(values); } fn write(values: ArrayMut<u8>) { values[0] = 7u8; return collections::byte_slice_bump(values); } fn grow(values: ArrayMut<u8>) { return collections::byte_vec_push(values, 9u8); } fn returned(owner: ByteOwner) { let values = owner.bytes_mut(); values[0] = 8u8; return collections::byte_slice_bump(values); }",
+    );
+    let values = [2_u8, 3, 5];
+    let mut args = CallArgs::new();
+    args.push_slice_ref("values", &values);
+    let result = runtime
+        .call("read", args, CallOptions::unbounded())
+        .expect("shared byte slice should reborrow without copying");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(10)));
+    drop(result);
+
+    let mut values = [2_u8, 3, 5];
+    let mut args = CallArgs::new();
+    args.push_slice_mut("values", &mut values);
+    let result = runtime
+        .call("write", args, CallOptions::unbounded())
+        .expect("mutable byte slice should write through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(7)));
+    drop(result);
+    assert_eq!(values, [7, 7, 5]);
+
+    let mut values = vec![2_u8, 3];
+    let mut args = CallArgs::new();
+    args.push_collection_mut("values", &mut values);
+    let result = runtime
+        .call("grow", args, CallOptions::unbounded())
+        .expect("mutable byte vector should retain growable view capability");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(3)));
+    drop(result);
+    assert_eq!(values, vec![2, 3, 9]);
+
+    let mut owner = ByteOwner {
+        bytes: vec![2, 3, 5],
+    };
+    let result = runtime
+        .call(
+            "returned",
+            CallArgs::new().with_host_mut("owner", &mut owner),
+            CallOptions::unbounded(),
+        )
+        .expect("returned mutable byte slice should retain and reborrow its parent lease");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(7)));
+    drop(result);
+    assert_eq!(owner.bytes, vec![8, 7, 5]);
 }
 
 #[test]
@@ -957,6 +1075,7 @@ fn collection_engine() -> Engine {
         .capability(Capability::HostWrite)
         .register_host_type::<CollectionService>()
         .register_host_type::<CollectionOwner>()
+        .register_host_type::<ByteOwner>()
         .register_exports(vela_export_bundle_merge())
         .register_exports(vela_export_bundle_add())
         .register_exports(vela_export_bundle_lookup_i32())
@@ -966,6 +1085,9 @@ fn collection_engine() -> Engine {
         .register_exports(vela_export_bundle_fixed_bump())
         .register_exports(vela_export_bundle_slice_sum())
         .register_exports(vela_export_bundle_slice_bump())
+        .register_exports(vela_export_bundle_byte_slice_sum())
+        .register_exports(vela_export_bundle_byte_slice_bump())
+        .register_exports(vela_export_bundle_byte_vec_push())
         .register_exports(vela_export_bundle_slice_sum_async())
         .register_exports(vela_export_bundle_slice_pair_sum())
         .register_exports(vela_export_bundle_slice_pair_mut())
@@ -978,6 +1100,7 @@ fn collection_engine() -> Engine {
         .register_exports(vela_export_bundle_slice_reenter())
         .register_exports(CollectionService::vela_inherent_exports())
         .register_exports(CollectionOwner::vela_inherent_exports())
+        .register_exports(ByteOwner::vela_inherent_exports())
         .build()
         .expect("collection bindings should be registered transitively")
 }

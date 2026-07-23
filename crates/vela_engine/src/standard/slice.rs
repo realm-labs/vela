@@ -111,4 +111,24 @@ mod tests {
                 .key
         );
     }
+
+    #[test]
+    fn byte_slice_binding_advertises_fixed_array_views() {
+        let slice = standard_slice_type_binding::<u8>();
+        assert_eq!(slice.type_desc().kind, TypeKind::Array);
+        assert_eq!(
+            slice.collection_views(),
+            Some(CollectionViewCapabilities::mutable(
+                CollectionViewKind::Array,
+                CollectionViewMutation::Fixed,
+            ))
+        );
+        assert!(
+            slice
+                .interop_contract(vela_common::InteropRepresentation::CollectionView(
+                    CollectionViewKind::Array,
+                ))
+                .is_some()
+        );
+    }
 }

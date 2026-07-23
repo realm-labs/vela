@@ -806,7 +806,7 @@ fn validate_collection_views(
     };
     let kind_matches = matches!(
         (views.kind(), desc.kind),
-        (CollectionViewKind::Array, TypeKind::Array)
+        (CollectionViewKind::Array, TypeKind::Array | TypeKind::Bytes)
             | (CollectionViewKind::Map, TypeKind::Map)
             | (CollectionViewKind::Set, TypeKind::Set)
     );

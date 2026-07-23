@@ -97,15 +97,12 @@ where
     T: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
 {
     fn standard_type_binding() -> TypeBinding<Self> {
-        let binding = TypeBinding::value(vec_type_desc::<T>());
-        if RustTypeId::of::<T>() == RustTypeId::of::<u8>() {
-            binding
-        } else {
-            binding.collection_view_capabilities(CollectionViewCapabilities::mutable(
+        TypeBinding::value(vec_type_desc::<T>()).collection_view_capabilities(
+            CollectionViewCapabilities::mutable(
                 CollectionViewKind::Array,
                 CollectionViewMutation::Growable,
-            ))
-        }
+            ),
+        )
     }
 }
 
@@ -465,6 +462,10 @@ pub(super) fn concrete_type_desc(
 }
 
 #[cfg(test)]
+#[path = "bindings_byte_view_tests.rs"]
+mod byte_view_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use vela_analysis::registry::RegistryFacts;
@@ -760,7 +761,6 @@ fn reverse_and_increment(value: (i64, String)) -> (String, i64) {
                 CollectionViewMutation::Growable,
             ))
         );
-        assert_eq!(standard_type_binding::<Vec<u8>>().collection_views(), None);
     }
 
     #[test]
@@ -789,13 +789,6 @@ fn reverse_and_increment(value: (i64, String)) -> (String, i64) {
                     kind: CollectionViewKind::Array,
                     mutation: CollectionViewMutation::Fixed,
                 })
-                .is_none()
-        );
-        assert!(
-            standard_type_binding::<Vec<u8>>()
-                .interop_contract(InteropRepresentation::CollectionView(
-                    CollectionViewKind::Array,
-                ))
                 .is_none()
         );
     }

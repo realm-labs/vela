@@ -1163,8 +1163,9 @@ views, and round-trip through ordinary Vela tuple projections.
 DTOs one recursive concrete registration contract. Registering an owned root
 installs nested field/variant, collection, Option/Result, tuple, and scalar
 bindings once, while a conflicting manual binding still fails during sealing.
-Standard non-byte `Vec`, map, and set bindings now advertise shared View plus
-exact growable MutView capability on the same `InteropTypeId`; that
+Standard `Vec` (including the owned-Bytes `Vec<u8>` specialization), map, and
+set bindings now advertise shared View plus exact growable MutView capability
+on the same `InteropTypeId`; that
 representation fact participates in `TypeAbiFingerprint` and projects through
 reflection and compiler registries. Export and method macros now traverse
 borrowed standard collection signatures, register their concrete binding
@@ -1185,8 +1186,11 @@ token, `better_any` and the visitor/support surface are removed, and a source
 audit restricts unsafe Rust to reviewed boundary files. Focused regressions
 cover shared/exclusive recovery, wrong types, empty/ZST slices, alias conflict,
 retained returns, nested re-entry, actual async suspension/cancellation,
-error/panic cleanup, and generation pinning. Byte-view capability remains open.
-Restricted
+error/panic cleanup, and generation pinning. Borrowed `Vec<u8>`, `[u8; N]`, and
+`[u8]` now use HostRef-backed `ArrayView<u8>`/`ArrayMut<u8>` contracts with
+exact growable/fixed capability; direct and retained views reborrow without
+copying and mutate Rust bytes immediately, while owned `Vec<u8>` remains Vela
+`Bytes`. Restricted
 `ArrayView`/`ArrayMut`, `MapView`/`MapMut`, and `SetView`/`SetMut` hints now
 retain distinct analysis facts and exact hidden fixed/growable mutation facts.
 Their shared collection methods are visible without materialization,

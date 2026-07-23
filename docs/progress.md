@@ -144,8 +144,9 @@ projection. `RustValueType` and `register_rust_value_closure::<T>()` now
 recursively install concrete standard containers, shared leaves, and nested
 `#[derive(Value)]` field/variant types from one owned root; exact duplicates
 are idempotent while conflicting manual bindings remain seal errors.
-Standard non-byte `Vec`, map, and set bindings now advertise shared View and
-exact growable MutView capabilities on that same identity. Those
+Standard `Vec` (including the owned-Bytes `Vec<u8>` specialization), map, and
+set bindings now advertise shared View and exact growable MutView capabilities
+on that same identity. Those
 representation facts participate in the type ABI and project consistently
 through reflection and compiler registries. Concrete `[T; N]` bindings include
 `N` in stable identity and expose shared plus exact fixed MutView capability;
@@ -164,6 +165,10 @@ The focused acceptance matrix covers shared/exclusive and wrong-type recovery,
 empty and zero-sized slices, HostRef alias conflicts, retained returns, nested
 native re-entry, real async suspension/completion and cancellation, authored
 error/panic cleanup, and old-generation completion across staged reload.
+Borrowed `Vec<u8>`, `[u8; N]`, and `[u8]` now use HostRef-backed
+`ArrayView<u8>`/`ArrayMut<u8>` contracts with exact growable/fixed capability;
+direct and retained views reborrow without copying and mutate the Rust bytes
+immediately, while the owned `Vec<u8>` representation remains Vela `Bytes`.
 Callable contracts can now carry an exact binding-use proof containing the
 concrete `InteropTypeId`, `TypeAbiFingerprint`, and owned/Host/View/MutView
 representation. Engine sealing rejects unregistered, stale, unsupported, or
@@ -407,12 +412,12 @@ inline, so ordinary nested host calls do not allocate a provenance vector.
 Root execution-host lease guards and grouped scoped child/activity sets now use
 the same eight-entry inline threshold while retaining acquire-all-or-clean-up
 behavior on conflict.
-S3 is active. Its remaining gaps are byte-view capability, complex-element
-borrowed views, remaining element/key and live/resumable collection
-operations, borrowed-source and write-through bulk mutations, richer adapters,
-and prepared element/grouping/traversal operations. Service-signature traversal
-and service-generation pinning belong to S4-S6. A shorter owned-host
-reclamation policy remains post-S2 follow-up.
+S3 is active. Its remaining gaps are complex-element borrowed views, remaining
+element/key and live/resumable collection operations, borrowed-source and
+write-through bulk mutations, richer adapters, and prepared
+element/grouping/traversal operations. Service-signature traversal and
+service-generation pinning belong to S4-S6. A shorter owned-host reclamation
+policy remains post-S2 follow-up.
 Runtime receiver enforcement is live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-
 signature facts.

@@ -314,6 +314,22 @@ fn collection_view_kind_must_match_the_bound_representation() {
 }
 
 #[test]
+fn bytes_binding_accepts_array_view_capabilities() {
+    let binding = TypeBinding::<Vec<u8>>::value(
+        TypeDesc::new(TypeKey::new(TypeId::new(103), "host::Bytes")).kind(TypeKind::Bytes),
+    )
+    .collection_view_capabilities(CollectionViewCapabilities::mutable(
+        CollectionViewKind::Array,
+        CollectionViewMutation::Growable,
+    ));
+
+    Engine::builder()
+        .register_rust_type::<Vec<u8>>(binding)
+        .build()
+        .expect("Bytes values should support borrowed array views");
+}
+
+#[test]
 fn type_binding_rejects_ambiguous_storage_and_receiver_capabilities() {
     let value_with_host_storage = Engine::builder()
         .register_rust_type::<ExternalValue>(external_value_binding(host_desc(101, 201)))

@@ -146,7 +146,6 @@ pub(super) fn hint_tokens(shape: &TypeShape) -> TokenStream {
         TypeShape::F32 => quote! { ::vela_engine::native::TypeHint::f32() },
         TypeShape::F64 => quote! { ::vela_engine::native::TypeHint::f64() },
         TypeShape::String => quote! { ::vela_engine::native::TypeHint::string() },
-        TypeShape::Bytes => quote! { ::vela_engine::native::TypeHint::bytes() },
         TypeShape::Array(element) => {
             let element = hint_tokens(element);
             quote! { ::vela_engine::native::TypeHint::array_of(#element) }
