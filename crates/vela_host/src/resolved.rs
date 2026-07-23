@@ -2,6 +2,8 @@ use vela_common::HostMethodId;
 
 use crate::target::HostTargetPlan;
 
+const INLINE_PREPARED_FIELD_SLOTS: usize = 4;
+
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct HostSchemaEpoch(pub u64);
 
@@ -63,6 +65,9 @@ impl<'a> HostAccessSpec<'a> {
 pub struct ResolvedHostAccess {
     pub adapter_kind: ResolvedHostAccessKind,
     pub schema_epoch: HostSchemaEpoch,
+    prepared_field_slots: [u32; INLINE_PREPARED_FIELD_SLOTS],
+    prepared_field_count: u8,
+    prepared_field_offset: u8,
 }
 
 impl ResolvedHostAccess {
@@ -71,6 +76,9 @@ impl ResolvedHostAccess {
         Self {
             adapter_kind,
             schema_epoch,
+            prepared_field_slots: [0; INLINE_PREPARED_FIELD_SLOTS],
+            prepared_field_count: 0,
+            prepared_field_offset: 0,
         }
     }
 
@@ -92,6 +100,38 @@ impl ResolvedHostAccess {
     #[must_use]
     pub const fn adapter_local(slot: u32, schema_epoch: HostSchemaEpoch) -> Self {
         Self::new(ResolvedHostAccessKind::AdapterLocal(slot), schema_epoch)
+    }
+
+    /// Prepends one schema-local field slot to a prepared nested traversal.
+    ///
+    /// Paths beyond the inline threshold retain the generic validated
+    /// traversal instead of allocating inside the copyable inline-cache entry.
+    #[must_use]
+    pub fn prepend_prepared_field(mut self, slot: u32) -> Self {
+        if matches!(self.adapter_kind, ResolvedHostAccessKind::GenericTarget) {
+            return self;
+        }
+        let count = usize::from(self.prepared_field_count);
+        if count == INLINE_PREPARED_FIELD_SLOTS {
+            return Self::generic_target(self.schema_epoch);
+        }
+        self.prepared_field_slots.copy_within(0..count, 1);
+        self.prepared_field_slots[0] = slot;
+        self.prepared_field_count += 1;
+        self
+    }
+
+    #[must_use]
+    pub fn prepared_field_slot(self, offset: usize) -> Option<u32> {
+        (offset < usize::from(self.prepared_field_count)).then(|| self.prepared_field_slots[offset])
+    }
+
+    #[must_use]
+    pub fn next_prepared_field(mut self) -> Option<(u32, Self)> {
+        let offset = usize::from(self.prepared_field_offset);
+        let slot = self.prepared_field_slot(offset)?;
+        self.prepared_field_offset += 1;
+        Some((slot, self))
     }
 }
 
@@ -138,5 +178,32 @@ mod tests {
             resolved.adapter_kind,
             ResolvedHostAccessKind::DirectField(7)
         );
+    }
+
+    #[test]
+    fn prepared_field_slots_are_inline_and_fall_back_when_too_deep() {
+        let epoch = HostSchemaEpoch::new(42);
+        let resolved = ResolvedHostAccess::direct_method(9, epoch)
+            .prepend_prepared_field(3)
+            .prepend_prepared_field(2)
+            .prepend_prepared_field(1)
+            .prepend_prepared_field(0);
+
+        assert_eq!(resolved.prepared_field_slot(0), Some(0));
+        assert_eq!(resolved.prepared_field_slot(3), Some(3));
+        assert_eq!(resolved.prepared_field_slot(4), None);
+
+        let (first, remaining) = resolved
+            .next_prepared_field()
+            .expect("prepared traversal should have a first field");
+        let (second, _) = remaining
+            .next_prepared_field()
+            .expect("prepared traversal should advance independently");
+        assert_eq!((first, second), (0, 1));
+
+        let fallback = resolved.prepend_prepared_field(99);
+        assert_eq!(fallback.adapter_kind, ResolvedHostAccessKind::GenericTarget);
+        assert_eq!(fallback.prepared_field_slot(0), None);
+        assert_eq!(fallback.schema_epoch, epoch);
     }
 }

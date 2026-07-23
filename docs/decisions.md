@@ -1274,6 +1274,19 @@ permission and lease checks. A future fully prepared adapter chain may replace
 the remaining repeated leaf resolution, but must continue to reference the
 linked plan rather than materializing owned paths.
 
+### Prepared Nested Method Fields Stay Inline
+
+`ResolvedHostAccess` carries up to four schema-local field slots plus a
+copy-local traversal cursor. Generated adapters prepend those slots during the
+validated resolution pass and consume them through typed child-field thunks
+during nested method execution, so the inline cache remains `Copy` and the
+common path allocates nothing. The cached access is still selected by the
+linked target-plan, operation, root-type, and schema-epoch guards; the slots do
+not replace HostRef, permission, lease, or generation validation. Deeper paths
+and paths containing an adapter that cannot prepare a slot chain fall back to
+the ordinary validated target traversal rather than allocating an unbounded
+chain in the cache entry.
+
 ### Unlinked Bytecode Naming
 
 Compiler output bytecode is named `UnlinkedProgram`, `UnlinkedCodeObject`,

@@ -244,6 +244,16 @@ pub(super) fn script_host_object_impl_tokens(
                 method: ::vela_common::HostMethodId,
                 args: &[::vela_host::value::HostValue],
             ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
+                if let Some((slot, child_access)) = access.next_prepared_field() {
+                    return ::vela_host::object::ScriptHostFieldAccess::call_prepared_field_target(
+                        self,
+                        slot,
+                        child_access,
+                        target,
+                        method,
+                        args,
+                    );
+                }
                 if target.offset < target.plan.parts.len() {
                     return ::vela_host::object::ScriptHostFieldAccess::call_host_target_from(
                         self,

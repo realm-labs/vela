@@ -186,6 +186,17 @@ struct DirectWrapper {
 impl DirectWrapper {}
 
 #[allow(dead_code)]
+#[derive(ScriptHost)]
+#[script(path = "game::counter::DirectOuter")]
+struct DirectOuter {
+    #[script(get)]
+    wrapper: DirectWrapper,
+}
+
+#[script_methods]
+impl DirectOuter {}
+
+#[allow(dead_code)]
 #[script_methods]
 impl DirectCounter {
     #[script_method(effect = "write_host", reflect = true)]
@@ -361,27 +372,33 @@ fn script_methods_resolve_root_methods_to_direct_access() {
 }
 
 #[test]
-fn nested_script_method_resolution_reuses_the_original_target_plan() {
-    let mut wrapper = DirectWrapper {
-        counter: DirectCounter { total: 2 },
+fn nested_script_method_resolution_prepares_inline_field_slots() {
+    let mut outer = DirectOuter {
+        wrapper: DirectWrapper {
+            counter: DirectCounter { total: 2 },
+        },
     };
-    let plan = HostTargetPlan::new(DirectWrapper::vela_host_type_id())
+    let plan = HostTargetPlan::new(DirectOuter::vela_host_type_id())
+        .field(DirectOuter::vela_field_id_wrapper())
         .field(DirectWrapper::vela_field_id_counter());
     let method = HostMethodId::new(u128::from(stable_id(
         "host_method",
         "game::counter::DirectCounter",
         "add",
     )));
-    let access = <DirectWrapper as vela_host::object::ScriptHostObject>::resolve_host_target(
-        &wrapper,
+    let access = <DirectOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+        &outer,
         HostAccessSpec::new(HostAccessOp::Call(method), &plan),
     )
     .expect("nested method should resolve through the target-plan cursor");
 
     assert_eq!(access.adapter_kind, ResolvedHostAccessKind::DirectMethod(0));
-    let root = HostRef::new(DirectWrapper::vela_host_type_id(), HostObjectId::new(8), 1);
-    let result = <DirectWrapper as vela_host::object::ScriptHostObject>::call_resolved_host(
-        &mut wrapper,
+    assert_eq!(access.prepared_field_slot(0), Some(0));
+    assert_eq!(access.prepared_field_slot(1), Some(0));
+    assert_eq!(access.prepared_field_slot(2), None);
+    let root = HostRef::new(DirectOuter::vela_host_type_id(), HostObjectId::new(8), 1);
+    let result = <DirectOuter as vela_host::object::ScriptHostObject>::call_resolved_host(
+        &mut outer,
         access,
         HostTargetInstance::new(root, &plan, &[]),
         method,
@@ -390,5 +407,5 @@ fn nested_script_method_resolution_reuses_the_original_target_plan() {
     .expect("nested direct method should execute without rewriting its plan");
 
     assert_eq!(result, HostValue::Scalar(vela_common::ScalarValue::I64(5)));
-    assert_eq!(wrapper.counter.total, 5);
+    assert_eq!(outer.wrapper.counter.total, 5);
 }

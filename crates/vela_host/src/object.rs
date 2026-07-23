@@ -21,14 +21,15 @@ mod errors;
 mod fixed_array;
 mod keys;
 mod mutation;
+mod sets;
 mod slice;
 mod target;
 
 use collection_protocol::{
-    collection_query_result, mutate_btree_map, mutate_btree_set, mutate_hash_map, mutate_hash_set,
-    mutate_vec, unsupported_collection_mutation, unsupported_collection_query,
+    collection_query_result, mutate_btree_map, mutate_hash_map, mutate_vec,
+    unsupported_collection_mutation, unsupported_collection_query,
 };
-use collection_snapshot::{snapshot_map_entries, snapshot_set_values};
+use collection_snapshot::snapshot_map_entries;
 use errors::{
     invalid_arg, missing_collection_entry, missing_target, permission_denied, unsupported_method,
 };
@@ -314,6 +315,22 @@ pub trait ScriptHostFieldAccess {
         } else {
             missing_target(target)
         })
+    }
+
+    /// Calls through a generated schema-local field slot in a prepared nested
+    /// adapter chain. Handwritten adapters retain validated target traversal.
+    #[doc(hidden)]
+    fn call_prepared_field_target(
+        &mut self,
+        slot: u32,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        let _ = slot;
+        let _ = access;
+        self.call_host_target_from(target, target.offset, method, args)
     }
 }
 
@@ -1038,162 +1055,5 @@ where
 impl_script_host_object_via_field!(<T> Vec<T> where T: ScriptHostFieldAccess + 'static);
 impl_script_host_object_via_field!(<T, const N: usize> [T; N] where T: ScriptHostFieldAccess + 'static);
 
-impl<K> ScriptHostFieldAccess for BTreeSet<K>
-where
-    K: ScriptHostKey,
-{
-    fn script_host_type_id(&self) -> HostTypeId {
-        HostTypeId::new(0)
-    }
-
-    fn read_host_target_from(
-        &self,
-        target: HostTargetInstance<'_>,
-        offset: usize,
-    ) -> HostResult<HostValue> {
-        let key = K::from_host_collection_key(target_key(target, offset)?)?;
-        if offset + 1 == target.plan.parts.len() {
-            Ok(HostValue::Bool(self.contains(&key)))
-        } else {
-            Err(missing_target(target))
-        }
-    }
-
-    fn query_collection_host_target_from(
-        &self,
-        target: HostTargetInstance<'_>,
-        offset: usize,
-        query: HostCollectionQuery,
-    ) -> HostResult<HostValue> {
-        if target_is_leaf(target, offset) {
-            collection_query_result(self.len(), query)
-        } else {
-            Err(missing_target(target))
-        }
-    }
-
-    fn snapshot_collection_host_target_from(
-        &self,
-        target: HostTargetInstance<'_>,
-        offset: usize,
-        projection: HostCollectionProjection,
-    ) -> HostResult<HostCollectionSnapshot> {
-        if !target_is_leaf(target, offset) {
-            return Err(missing_target(target));
-        }
-        snapshot_set_values(self.iter(), projection)
-    }
-
-    fn mutate_collection_host_target_from(
-        &mut self,
-        target: HostTargetInstance<'_>,
-        offset: usize,
-        mutation: HostCollectionMutation<'_>,
-    ) -> HostResult<()> {
-        if !target_is_leaf(target, offset) {
-            return Err(missing_target(target));
-        }
-        mutate_btree_set(self, mutation)
-    }
-
-    fn write_host_target_from(
-        &mut self,
-        target: HostTargetInstance<'_>,
-        offset: usize,
-        value: HostValue,
-    ) -> HostResult<()> {
-        let key = K::from_host_collection_key(target_key(target, offset)?)?;
-        if offset + 1 != target.plan.parts.len() {
-            return Err(missing_target(target));
-        }
-        if bool::from_host_value(&value)? {
-            self.insert(key);
-        } else {
-            self.remove(&key);
-        }
-        Ok(())
-    }
-}
-
 impl_script_host_object_via_field!(<K> BTreeSet<K> where K: ScriptHostKey + 'static);
-
-impl<K> ScriptHostFieldAccess for HashSet<K>
-where
-    K: ScriptHostKey + Hash,
-{
-    fn script_host_type_id(&self) -> HostTypeId {
-        HostTypeId::new(0)
-    }
-
-    fn read_host_target_from(
-        &self,
-        target: HostTargetInstance<'_>,
-        offset: usize,
-    ) -> HostResult<HostValue> {
-        let key = K::from_host_collection_key(target_key(target, offset)?)?;
-        if offset + 1 == target.plan.parts.len() {
-            Ok(HostValue::Bool(self.contains(&key)))
-        } else {
-            Err(missing_target(target))
-        }
-    }
-
-    fn query_collection_host_target_from(
-        &self,
-        target: HostTargetInstance<'_>,
-        offset: usize,
-        query: HostCollectionQuery,
-    ) -> HostResult<HostValue> {
-        if target_is_leaf(target, offset) {
-            collection_query_result(self.len(), query)
-        } else {
-            Err(missing_target(target))
-        }
-    }
-
-    fn snapshot_collection_host_target_from(
-        &self,
-        target: HostTargetInstance<'_>,
-        offset: usize,
-        projection: HostCollectionProjection,
-    ) -> HostResult<HostCollectionSnapshot> {
-        if !target_is_leaf(target, offset) {
-            return Err(missing_target(target));
-        }
-        let mut values = self.iter().collect::<Vec<_>>();
-        values.sort();
-        snapshot_set_values(values, projection)
-    }
-
-    fn mutate_collection_host_target_from(
-        &mut self,
-        target: HostTargetInstance<'_>,
-        offset: usize,
-        mutation: HostCollectionMutation<'_>,
-    ) -> HostResult<()> {
-        if !target_is_leaf(target, offset) {
-            return Err(missing_target(target));
-        }
-        mutate_hash_set(self, mutation)
-    }
-
-    fn write_host_target_from(
-        &mut self,
-        target: HostTargetInstance<'_>,
-        offset: usize,
-        value: HostValue,
-    ) -> HostResult<()> {
-        let key = K::from_host_collection_key(target_key(target, offset)?)?;
-        if offset + 1 != target.plan.parts.len() {
-            return Err(missing_target(target));
-        }
-        if bool::from_host_value(&value)? {
-            self.insert(key);
-        } else {
-            self.remove(&key);
-        }
-        Ok(())
-    }
-}
-
 impl_script_host_object_via_field!(<K> HashSet<K> where K: ScriptHostKey + Hash + 'static);

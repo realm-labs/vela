@@ -91,6 +91,10 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
         .filter(|field| field.readable || field.writable)
         .map(field_write_arm_tokens);
     let call_arms = fields.iter().map(field_call_arm_tokens);
+    let prepared_call_arms = fields
+        .iter()
+        .enumerate()
+        .map(prepared_field_call_arm_tokens);
 
     quote! {
         impl ::vela_host::object::ScriptHostFieldAccess for #ident {
@@ -224,6 +228,25 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
                     }),
                 }
             }
+
+            fn call_prepared_field_target(
+                &mut self,
+                slot: u32,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                method: ::vela_common::HostMethodId,
+                args: &[::vela_host::value::HostValue],
+            ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
+                match slot {
+                    #(#prepared_call_arms)*
+                    _ => Err(::vela_host::error::HostError {
+                        kind: ::vela_host::error::HostErrorKind::MissingPath {
+                            path: target.to_diagnostic_path().to_host_path(),
+                        },
+                        source_span: None,
+                    }),
+                }
+            }
         }
     }
 }
@@ -284,16 +307,20 @@ fn field_resolve_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
                 spec.op,
                 ::vela_host::resolved::HostAccessOp::Call(_)
             ) {
-                ::vela_host::object::ScriptHostObject::resolve_host_target(
+                let __vela_child_access =
+                    ::vela_host::object::ScriptHostObject::resolve_host_target(
                     &self.#rust_name,
                     spec.at_offset(offset + 1),
-                )
+                )?;
+                Ok(__vela_child_access.prepend_prepared_field(#slot))
             } else {
-                ::vela_host::object::ScriptHostFieldAccess::resolve_host_target_from(
+                let __vela_child_access =
+                    ::vela_host::object::ScriptHostFieldAccess::resolve_host_target_from(
                     &self.#rust_name,
                     spec,
                     offset + 1,
-                )
+                )?;
+                Ok(__vela_child_access.prepend_prepared_field(#slot))
             }
         }
     }
@@ -367,6 +394,20 @@ fn field_call_arm_tokens(field: &FieldMeta) -> TokenStream {
                 args,
             )
         }
+    }
+}
+
+fn prepared_field_call_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
+    let slot = u32::try_from(slot).expect("host field slot index fits u32");
+    let rust_name = format_ident!("{}", field.rust_name);
+    quote! {
+        #slot => ::vela_host::object::ScriptHostObject::call_resolved_host(
+            &mut self.#rust_name,
+            access,
+            target.at_offset(target.offset + 1),
+            method,
+            args,
+        ),
     }
 }
 
