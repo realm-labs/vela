@@ -67,6 +67,8 @@ method calls. Those successful accesses no longer repeat stable field/method ID
 dispatch. Nested method resolution and execution now advance an offset through
 the original linked `HostTargetPlan` instead of cloning suffix plans; carrying
 the complete resolved field/method slot chain through execution remains open.
+Default/manual adapters preserve that cursor during read-modify-write and use
+it when distinguishing a nested leaf from a missing target.
 Direct call arguments now keep an inline dense host-slot index separate from
 their mixed positional/named value entries. Every copied alias resolves its one
 binding/lease metadata entry in O(1) from the execution-assigned object range,

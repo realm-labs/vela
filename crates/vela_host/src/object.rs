@@ -82,7 +82,7 @@ pub trait ScriptHostObject {
         query: HostCollectionQuery,
     ) -> HostResult<HostValue> {
         let _ = access;
-        Err(if target.plan.parts.is_empty() {
+        Err(if target.offset >= target.plan.parts.len() {
             unsupported_collection_query(query)
         } else {
             missing_target(target)
@@ -96,7 +96,7 @@ pub trait ScriptHostObject {
         projection: HostCollectionProjection,
     ) -> HostResult<HostCollectionSnapshot> {
         let _ = access;
-        Err(if target.plan.parts.is_empty() {
+        Err(if target.offset >= target.plan.parts.len() {
             invalid_arg(projection.name())
         } else {
             missing_target(target)
@@ -110,7 +110,7 @@ pub trait ScriptHostObject {
         mutation: HostCollectionMutation<'_>,
     ) -> HostResult<()> {
         let _ = access;
-        Err(if target.plan.parts.is_empty() {
+        Err(if target.offset >= target.plan.parts.len() {
             unsupported_collection_mutation(mutation)
         } else {
             missing_target(target)
@@ -137,8 +137,9 @@ pub trait ScriptHostObject {
     ) -> HostResult<()> {
         let current = self.read_resolved_host(access, target)?;
         let next = mutate_host_value(op, &current, &rhs, target)?;
-        let write_access =
-            self.resolve_host_target(HostAccessSpec::new(HostAccessOp::Write, target.plan))?;
+        let write_access = self.resolve_host_target(
+            HostAccessSpec::new(HostAccessOp::Write, target.plan).at_offset(target.offset),
+        )?;
         self.write_resolved_host(write_access, target, next)
     }
 
@@ -160,7 +161,7 @@ pub trait ScriptHostObject {
     ) -> HostResult<HostValue> {
         let _ = access;
         let _ = args;
-        Err(if target.plan.parts.is_empty() {
+        Err(if target.offset >= target.plan.parts.len() {
             unsupported_method(method)
         } else {
             missing_target(target)
