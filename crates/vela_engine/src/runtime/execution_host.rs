@@ -12,11 +12,12 @@ use vela_host::lease::{
     ScopedHostLeaseSlot, host_lease_unsupported, host_object_busy,
 };
 use vela_host::object::ScriptHostObject;
-use vela_host::path::HostRef;
+use vela_host::path::{HostRef, HostSlotRef};
 use vela_host::protocol::{
     HostCollectionMutation, HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot,
 };
 use vela_host::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
+use vela_host::slot::HostRefSlots;
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
@@ -51,6 +52,7 @@ pub(super) struct ExecutionHost<'state, 'host> {
     next_direct_object_id: u64,
     scoped_hosts: BTreeMap<HostRef, ScopedHostBinding<'host>>,
     expired_scoped_hosts: BTreeSet<HostRef>,
+    host_slots: HostRefSlots,
 }
 
 struct ScopedHostBinding<'host> {
@@ -117,6 +119,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             next_direct_object_id: EXECUTION_HOST_OBJECT_ID_BASE,
             scoped_hosts: BTreeMap::new(),
             expired_scoped_hosts: BTreeSet::new(),
+            host_slots: HostRefSlots::new(),
         };
         execution_host
             .args
@@ -533,6 +536,18 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         }
     }
 
+    fn intern_host_ref(&mut self, root: HostRef) -> HostResult<HostSlotRef> {
+        self.parent.intern_host_ref(root)
+    }
+
+    fn resolve_host_ref(&self, handle: HostSlotRef) -> HostResult<HostRef> {
+        self.parent.resolve_host_ref(handle)
+    }
+
+    fn release_host_ref(&mut self, handle: HostSlotRef) -> HostResult<HostRef> {
+        self.parent.release_host_ref(handle)
+    }
+
     fn extern_state_ref(&self, state: ExternStateBinding<'_>) -> HostResult<HostRef> {
         self.parent.extern_state_ref(state)
     }
@@ -739,6 +754,24 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             Some(binding) => binding.receiver_access(),
             None => self.fallback.host_receiver_access(root),
         }
+    }
+
+    fn intern_host_ref(&mut self, root: HostRef) -> HostResult<HostSlotRef> {
+        Ok(self.host_slots.intern(root))
+    }
+
+    fn resolve_host_ref(&self, handle: HostSlotRef) -> HostResult<HostRef> {
+        self.host_slots.resolve(handle).ok_or(HostError {
+            kind: HostErrorKind::InvalidHostSlot { handle },
+            source_span: None,
+        })
+    }
+
+    fn release_host_ref(&mut self, handle: HostSlotRef) -> HostResult<HostRef> {
+        self.host_slots.release(handle).ok_or(HostError {
+            kind: HostErrorKind::InvalidHostSlot { handle },
+            source_span: None,
+        })
     }
 
     fn extern_state_ref(&self, state: ExternStateBinding<'_>) -> HostResult<HostRef> {
@@ -1094,69 +1127,4 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
 }
 
 #[cfg(test)]
-mod tests {
-    use vela_vm::budget::ExecutionBudget;
-    use vela_vm::heap::ScriptHeap;
-    use vela_vm::value::Value;
-
-    use super::{
-        CallArgRuntime, EXECUTION_HOST_OBJECT_ID_BASE, ExecutionHost, ReentryExecutionHost,
-    };
-    use crate::runtime::{CallArgs, RuntimeExternStateBindings, RuntimeHostArena};
-
-    #[test]
-    fn direct_host_ids_are_allocated_by_the_execution_owner() {
-        let shared = vec![1_i64];
-        let mut mutable = vec![2_i64];
-        let args = CallArgs::new()
-            .with_host_ref("shared", &shared)
-            .with_host_mut("mutable", &mut mutable);
-        let mut extern_states = RuntimeExternStateBindings::new();
-        let mut host_arena = RuntimeHostArena::new();
-
-        let host = ExecutionHost::new(args, &mut extern_states, &mut host_arena);
-
-        assert_eq!(
-            host.next_direct_object_id(),
-            EXECUTION_HOST_OBJECT_ID_BASE + 2
-        );
-    }
-
-    #[test]
-    fn nested_scope_uses_shared_allocator_and_invalidates_child_ref_on_drop() {
-        let root_value = vec![1_i64];
-        let child_value = vec![2_i64];
-        let args = CallArgs::new().with_host_ref("root", &root_value);
-        let mut extern_states = RuntimeExternStateBindings::new();
-        let mut host_arena = RuntimeHostArena::new();
-        let mut host = ExecutionHost::new(args, &mut extern_states, &mut host_arena);
-        let mut heap = ScriptHeap::default();
-        let mut budget = ExecutionBudget::unbounded();
-        let program = vela_bytecode::LinkedProgram::new();
-
-        let child_ref = {
-            let child_args = CallArgs::new().with_host_ref("child", &child_value);
-            let child = ReentryExecutionHost::new(child_args, &mut host)
-                .expect("nested scope should allocate its direct binding");
-            let values = child
-                .resolve_values(
-                    "child",
-                    &["child".to_owned()],
-                    &[false],
-                    CallArgRuntime::new(1, &program, &mut heap, &mut budget),
-                )
-                .expect("child binding should resolve");
-            let [Value::HostRef(child_ref)] = values.as_slice() else {
-                panic!("child binding should resolve to HostRef");
-            };
-            *child_ref
-        };
-
-        assert_eq!(child_ref.object_id.get(), EXECUTION_HOST_OBJECT_ID_BASE + 1);
-        assert_eq!(
-            host.next_direct_object_id(),
-            EXECUTION_HOST_OBJECT_ID_BASE + 2
-        );
-        assert!(host.args.direct_binding(child_ref).is_none());
-    }
-}
+mod tests;

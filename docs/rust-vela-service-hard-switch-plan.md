@@ -1053,10 +1053,12 @@ host-slot index, so an alias reaches its single binding/lease metadata entry in
 O(1) without a common-arity allocation. The final pointer-free table key now
 exists as an 8-byte `(u32 slot, u32 generation)` `HostSlotRef`, and the direct
 table now uses one reusable inline `HostSlotTable` that invalidates stale
-aliases and advances generation before slot reuse. Remaining standard bindings,
-migration of the expanded `Value::HostRef` payload plus unification of scoped,
-extern, and Runtime-owned metadata behind that handle, and nested prepared
-field/method adapter chains remain open.
+aliases and advances generation before slot reuse. The root execution adapter
+now owns canonical HostRef interning/resolution/release, and nested re-entry
+delegates to that same namespace. Remaining standard bindings, migration of the
+expanded `Value::HostRef` payload plus movement of scoped, extern, and
+Runtime-owned metadata behind that handle, and nested prepared field/method
+adapter chains remain open.
 
 ### S3 — Standard Rust types, views, and collection protocols
 

@@ -75,9 +75,12 @@ The compact table key is now a pointer-free, 8-byte `HostSlotRef` containing
 only a `u32` slot and `u32` generation. One reusable dense `HostSlotTable`
 owns inline metadata for the common eight-slot case, rejects stale aliases,
 and advances a slot generation before reuse. Production direct-host arguments
-use that table instead of an ad hoc slot vector. Migrating `Value::HostRef` and
-unifying scoped, extern, and Runtime-owned metadata behind the root table
-remain open; the expanded canonical `HostRef` is still the VM payload for now.
+use that table instead of an ad hoc slot vector. Root execution adapters now
+also intern canonical HostRefs once, resolve handles in O(1), invalidate every
+alias on release, and share that slot namespace with nested re-entry. Migrating
+`Value::HostRef` and moving scoped, extern, and Runtime-owned metadata into
+that root table remain open; the expanded canonical `HostRef` is still the VM
+payload for now.
 The first S3 standard binding family is also live: concrete
 `BTreeMap<K, V>` and `HashMap<K, V>` bindings synthesize stable recursive
 key/value facts, share the Vela `MapLike` surface and owned Map codec, and keep

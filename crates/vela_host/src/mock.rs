@@ -9,9 +9,10 @@ use crate::{
     add_values, div_values,
     error::{HostError, HostErrorKind, HostResult},
     mul_values,
-    path::{HostPath, HostRef},
+    path::{HostPath, HostRef, HostSlotRef},
     rem_values,
     resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess},
+    slot::HostRefSlots,
     sub_values,
     target::{HostPathArgOwned, HostTargetInstance, HostTargetPlan},
     value::HostValue,
@@ -111,6 +112,7 @@ pub struct MockStateAdapter {
     denied_writes: BTreeSet<MockValueKey>,
     denied_calls: BTreeSet<MockValueKey>,
     schema_epoch: HostSchemaEpoch,
+    host_slots: HostRefSlots,
 }
 
 impl Default for MockStateAdapter {
@@ -125,6 +127,7 @@ impl Default for MockStateAdapter {
             denied_writes: BTreeSet::new(),
             denied_calls: BTreeSet::new(),
             schema_epoch: HostSchemaEpoch::new(0),
+            host_slots: HostRefSlots::new(),
         }
     }
 }
@@ -253,6 +256,22 @@ impl MockStateAdapter {
 impl ScriptStateAdapter for MockStateAdapter {
     fn host_schema_epoch(&self) -> HostSchemaEpoch {
         self.schema_epoch
+    }
+
+    fn intern_host_ref(&mut self, root: HostRef) -> HostResult<HostSlotRef> {
+        Ok(self.host_slots.intern(root))
+    }
+
+    fn resolve_host_ref(&self, handle: HostSlotRef) -> HostResult<HostRef> {
+        self.host_slots
+            .resolve(handle)
+            .ok_or_else(|| HostError::new(HostErrorKind::InvalidHostSlot { handle }))
+    }
+
+    fn release_host_ref(&mut self, handle: HostSlotRef) -> HostResult<HostRef> {
+        self.host_slots
+            .release(handle)
+            .ok_or_else(|| HostError::new(HostErrorKind::InvalidHostSlot { handle }))
     }
 
     fn extern_state_ref(&self, state: ExternStateBinding<'_>) -> HostResult<HostRef> {

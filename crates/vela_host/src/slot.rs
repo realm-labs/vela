@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use crate::path::HostSlotRef;
+use crate::path::{HostRef, HostSlotRef};
 
 const INLINE_HOST_SLOTS: usize = 8;
 
@@ -9,15 +9,70 @@ const INLINE_HOST_SLOTS: usize = 8;
 /// Copying a [`HostSlotRef`] does not touch this table. Removing an entry
 /// invalidates every copied handle by advancing the slot generation before the
 /// slot can be reused.
+#[derive(Clone, Debug, PartialEq)]
 pub struct HostSlotTable<T> {
     slots: SmallVec<[HostSlot<T>; INLINE_HOST_SLOTS]>,
     free: SmallVec<[u32; INLINE_HOST_SLOTS]>,
     len: usize,
 }
 
+#[derive(Clone, Debug, PartialEq)]
 struct HostSlot<T> {
     generation: u32,
     metadata: Option<T>,
+}
+
+/// Canonical HostRef registry for one root execution.
+///
+/// Equal canonical references intern to one metadata entry, so every copied
+/// script handle shares identity and generation validation. The linear intern
+/// scan is confined to boundary admission; handle resolution remains O(1).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct HostRefSlots {
+    table: HostSlotTable<HostRef>,
+}
+
+impl HostRefSlots {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub fn intern(&mut self, reference: HostRef) -> HostSlotRef {
+        if let Some((handle, _)) = self
+            .table
+            .iter()
+            .find(|(_, current)| **current == reference)
+        {
+            return handle;
+        }
+        self.table.insert(reference)
+    }
+
+    #[must_use]
+    pub fn resolve(&self, handle: HostSlotRef) -> Option<HostRef> {
+        self.table.get(handle).copied()
+    }
+
+    pub fn release(&mut self, handle: HostSlotRef) -> Option<HostRef> {
+        self.table.remove(handle)
+    }
+
+    #[must_use]
+    pub const fn len(&self) -> usize {
+        self.table.len()
+    }
+
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.table.is_empty()
+    }
+
+    #[must_use]
+    pub fn spilled(&self) -> bool {
+        self.table.spilled()
+    }
 }
 
 impl<T> Default for HostSlotTable<T> {
@@ -167,5 +222,54 @@ mod tests {
 
         let _ = table.insert(INLINE_HOST_SLOTS);
         assert!(table.spilled());
+    }
+
+    #[test]
+    fn canonical_host_refs_intern_once_and_release_as_one_alias_group() {
+        let mut slots = HostRefSlots::new();
+        let reference = HostRef::new(
+            vela_common::HostTypeId::new(7),
+            vela_common::HostObjectId::new(11),
+            3,
+        );
+
+        let handle = slots.intern(reference);
+        let alias = slots.intern(reference);
+        assert_eq!(alias, handle);
+        assert_eq!(slots.len(), 1);
+        assert_eq!(slots.resolve(alias), Some(reference));
+        assert!(!slots.spilled());
+
+        assert_eq!(slots.release(handle), Some(reference));
+        assert_eq!(slots.resolve(alias), None);
+        let replacement = slots.intern(reference);
+        assert_eq!(replacement.slot(), handle.slot());
+        assert_ne!(replacement.generation(), handle.generation());
+    }
+
+    #[test]
+    fn canonical_host_ref_identity_keeps_exact_type_and_generation() {
+        let mut slots = HostRefSlots::new();
+        let player = HostRef::new(
+            vela_common::HostTypeId::new(7),
+            vela_common::HostObjectId::new(11),
+            3,
+        );
+        let wrong_type = HostRef::new(
+            vela_common::HostTypeId::new(8),
+            player.object_id,
+            player.generation,
+        );
+        let next_generation = HostRef::new(player.type_id, player.object_id, 4);
+
+        let player_handle = slots.intern(player);
+        let wrong_type_handle = slots.intern(wrong_type);
+        let next_generation_handle = slots.intern(next_generation);
+
+        assert_ne!(wrong_type_handle, player_handle);
+        assert_ne!(next_generation_handle, player_handle);
+        assert_eq!(slots.resolve(player_handle), Some(player));
+        assert_eq!(slots.resolve(wrong_type_handle), Some(wrong_type));
+        assert_eq!(slots.resolve(next_generation_handle), Some(next_generation));
     }
 }

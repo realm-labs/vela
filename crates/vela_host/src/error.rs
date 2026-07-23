@@ -2,7 +2,7 @@ use std::fmt;
 
 use vela_common::{HostMethodId, HostObjectId, HostTypeId, Span};
 
-use crate::path::HostPath;
+use crate::path::{HostPath, HostSlotRef};
 use crate::protocol::{HostCollectionMutationKind, HostCollectionQuery};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -105,6 +105,10 @@ pub enum HostErrorKind {
     HostLeaseUnsupported {
         path: HostPath,
     },
+    InvalidHostSlot {
+        handle: HostSlotRef,
+    },
+    HostSlotStorageUnsupported,
     OwnedHostStorageUnsupported,
     NotScopedBorrow {
         path: HostPath,

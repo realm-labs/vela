@@ -8,7 +8,7 @@ use crate::{
         host_lease_unsupported,
     },
     object::ScriptHostObject,
-    path::HostRef,
+    path::{HostRef, HostSlotRef},
     protocol::{
         HostCollectionMutation, HostCollectionProjection, HostCollectionQuery,
         HostCollectionSnapshot,
@@ -61,6 +61,22 @@ pub trait ScriptStateAdapter {
     /// override this with the exact Rust `&T` or `&mut T` capability.
     fn host_receiver_access(&self, _root: HostRef) -> HostLeaseKind {
         HostLeaseKind::Exclusive
+    }
+
+    /// Interns one canonical host reference into this root execution's dense
+    /// slot table.
+    fn intern_host_ref(&mut self, _root: HostRef) -> HostResult<HostSlotRef> {
+        Err(HostError::new(HostErrorKind::HostSlotStorageUnsupported))
+    }
+
+    /// Resolves a compact script handle back to canonical host metadata.
+    fn resolve_host_ref(&self, handle: HostSlotRef) -> HostResult<HostRef> {
+        Err(HostError::new(HostErrorKind::InvalidHostSlot { handle }))
+    }
+
+    /// Releases a root-scoped slot and invalidates every copied alias.
+    fn release_host_ref(&mut self, handle: HostSlotRef) -> HostResult<HostRef> {
+        Err(HostError::new(HostErrorKind::InvalidHostSlot { handle }))
     }
 
     fn extern_state_ref(&self, state: ExternStateBinding<'_>) -> HostResult<HostRef> {
