@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vela_common::{HostMethodId, HostTypeId};
@@ -8,8 +8,8 @@ use vela_host::adapter::{
 };
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::lease::{
-    ErasedHostLease, HostLeaseKind, ScopedBorrowedHostGroupCell, ScopedHostLeaseSlot,
-    host_lease_unsupported, host_object_busy,
+    BorrowLeaseId, ErasedHostLease, HostLeaseKind, ScopedBorrowedHostGroupCell,
+    ScopedHostLeaseSlot, host_lease_unsupported, host_object_busy,
 };
 use vela_host::object::ScriptHostObject;
 use vela_host::path::{HostRef, HostSlotRef};
@@ -52,12 +52,13 @@ pub(super) struct ExecutionHost<'state, 'host> {
     fallback: FallbackAdapter<'host>,
     next_direct_object_id: u64,
     scoped_hosts: HostSlotTable<ScopedHostBinding<'host>>,
-    expired_scoped_hosts: BTreeSet<HostRef>,
+    expired_scoped_hosts: BTreeMap<HostRef, BorrowLeaseId>,
     expired_scoped_slots: BTreeMap<HostSlotRef, HostRef>,
     host_slots: &'state mut HostRefSlots,
 }
 
 struct ScopedHostBinding<'host> {
+    borrow_lease_id: BorrowLeaseId,
     type_id: HostTypeId,
     access: HostLeaseKind,
     object: ScopedHostObjectBinding<'host>,
@@ -123,7 +124,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             fallback,
             next_direct_object_id: EXECUTION_HOST_OBJECT_ID_BASE,
             scoped_hosts: HostSlotTable::new(),
-            expired_scoped_hosts: BTreeSet::new(),
+            expired_scoped_hosts: BTreeMap::new(),
             expired_scoped_slots: BTreeMap::new(),
             host_slots,
         };
@@ -183,7 +184,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
         root: HostRef,
         kind: HostLeaseKind,
     ) -> HostResult<ErasedHostLease<'host>> {
-        if self.expired_scoped_hosts.contains(&root) {
+        if self.expired_scoped_hosts.contains_key(&root) {
             return Err(HostError {
                 kind: HostErrorKind::ExpiredBorrowedHostRef {
                     path: vela_host::path::HostPath::new(root),
@@ -229,7 +230,8 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
 
     fn retain_scoped_host(&mut self, returned: ScopedHostReturn<'host>) -> HostRef {
         let type_id = returned.object.host_type_id();
-        let handle = self.scoped_hosts.insert(ScopedHostBinding {
+        let handle = self.scoped_hosts.insert_with(|handle| ScopedHostBinding {
+            borrow_lease_id: Self::borrow_lease_id(handle),
             type_id,
             access: returned.access,
             object: ScopedHostObjectBinding::Single(Arc::new(parking_lot::RwLock::new(Box::new(
@@ -261,7 +263,8 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
                 },
                 source_span: None,
             })?;
-            let handle = self.scoped_hosts.insert(ScopedHostBinding {
+            let handle = self.scoped_hosts.insert_with(|handle| ScopedHostBinding {
+                borrow_lease_id: Self::borrow_lease_id(handle),
                 type_id,
                 access,
                 object: ScopedHostObjectBinding::Group {
@@ -856,7 +859,7 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
 
     fn release_scoped_host(&mut self, root: HostRef) -> HostResult<()> {
         let Some(handle) = self.scoped_handle(root) else {
-            let kind = if self.expired_scoped_hosts.contains(&root) {
+            let kind = if self.expired_scoped_hosts.contains_key(&root) {
                 HostErrorKind::ExpiredBorrowedHostRef {
                     path: vela_host::path::HostPath::new(root),
                 }
@@ -886,10 +889,11 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 source_span: None,
             });
         }
+        let borrow_lease_id = binding.borrow_lease_id;
         self.scoped_hosts
             .remove(handle)
             .expect("validated scoped host handle remains present");
-        self.expired_scoped_hosts.insert(root);
+        self.expired_scoped_hosts.insert(root, borrow_lease_id);
         if let Some(handle) = self.host_slots.handle_for(root) {
             let _ = self.host_slots.release(handle);
             self.expired_scoped_slots.insert(handle, root);

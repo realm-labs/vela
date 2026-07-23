@@ -1071,14 +1071,15 @@ lives in a dense generational `HostSlotTable`; expanded internal roots derive
 from the slot and validate exact type/generation identity. Live scoped-return
 object/type/access metadata now uses a dense generational table too; private
 internal roots encode the slot/generation and validate exact type, while
-expired diagnostic tombstones retain no Rust borrow. Runtime extern-state
+each scoped root's `BorrowLeaseId` derives from that slot/generation and is
+retained by its borrow-free expired diagnostic tombstone. Runtime extern-state
 object/type/activation metadata now uses dense generational slots too;
 `StateId` and staged-name maps remain boundary indexes, staged roots remain
 inactive until commit, and replacement/reclamation invalidate the prior
-generation. Remaining standard bindings, movement of borrow-group,
-provenance, prepared-adapter, and pinned-generation metadata behind the compact
-table, and dense prepared slots inside the remaining collection/index adapters
-remain open. `Vec<T>` already
+generation. Remaining standard bindings, movement of provenance,
+prepared-adapter, and pinned-generation metadata behind the compact table, and
+dense prepared slots inside the remaining collection/index adapters remain
+open. `Vec<T>` already
 classifies index-shaped suffixes with an `AdapterLocal` slot so generated field
 prefixes remain prepared through the sequence boundary; fixed arrays and
 borrowed slices use the same index classification, while `BTreeMap<K, V>` and

@@ -96,21 +96,28 @@ impl<T> HostSlotTable<T> {
 
     #[must_use]
     pub fn insert(&mut self, metadata: T) -> HostSlotRef {
+        self.insert_with(|_| metadata)
+    }
+
+    #[must_use]
+    pub fn insert_with(&mut self, build: impl FnOnce(HostSlotRef) -> T) -> HostSlotRef {
         self.len = self.len.saturating_add(1);
         if let Some(slot) = self.free.pop() {
             let entry = &mut self.slots[slot as usize];
             debug_assert!(entry.metadata.is_none());
-            entry.metadata = Some(metadata);
-            return HostSlotRef::new(slot, entry.generation);
+            let handle = HostSlotRef::new(slot, entry.generation);
+            entry.metadata = Some(build(handle));
+            return handle;
         }
 
         let slot = u32::try_from(self.slots.len())
             .expect("a root host-slot table cannot contain more than u32::MAX entries");
+        let handle = HostSlotRef::new(slot, 1);
         self.slots.push(HostSlot {
             generation: 1,
-            metadata: Some(metadata),
+            metadata: Some(build(handle)),
         });
-        HostSlotRef::new(slot, 1)
+        handle
     }
 
     #[must_use]
@@ -186,6 +193,19 @@ mod tests {
         assert_eq!(table.get(alias).map(String::as_str), Some("player"));
         assert_eq!(table.len(), 1);
         assert!(!table.spilled());
+    }
+
+    #[test]
+    fn metadata_can_derive_identity_from_its_assigned_handle() {
+        let mut table = HostSlotTable::new();
+        let first = table.insert_with(|handle| (handle, "first"));
+        assert_eq!(table.get(first), Some(&(first, "first")));
+
+        assert_eq!(table.remove(first), Some((first, "first")));
+        let replacement = table.insert_with(|handle| (handle, "replacement"));
+        assert_eq!(replacement.slot(), first.slot());
+        assert_ne!(replacement.generation(), first.generation());
+        assert_eq!(table.get(replacement), Some(&(replacement, "replacement")));
     }
 
     #[test]

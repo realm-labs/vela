@@ -116,13 +116,15 @@ Early scoped release retires the live slot while retaining a call-local
 diagnostic tombstone so existing `ExpiredBorrowedHostRef` behavior is
 preserved. Live scoped-return object/type/access metadata now uses its own
 dense generational `HostSlotTable`; its internal roots encode slot and
-generation in a private range and validate exact type identity. Runtime
-extern-state object/type/activation metadata also uses dense
+generation in a private range and validate exact type identity. A scoped
+root's `BorrowLeaseId` derives from that same slot/generation, so copied aliases
+share one release group and a reused slot receives a different identity.
+Runtime extern-state object/type/activation metadata also uses dense
 generational slots; durable `StateId` and staged-name maps remain boundary
 indexes, staged roots remain inactive until commit, and replacement or
 reclamation generation-invalidates the old root. Consolidating the remaining
-borrow-group, provenance, prepared-adapter, and pinned-generation metadata
-behind the compact table remains open.
+provenance, prepared-adapter, and pinned-generation metadata behind the compact
+table remains open.
 The first S3 standard binding family is also live: concrete
 `BTreeMap<K, V>` and `HashMap<K, V>` bindings synthesize stable recursive
 key/value facts, share the Vela `MapLike` surface and owned Map codec, and keep
@@ -401,10 +403,10 @@ rebuilding contracts and request metadata on each call. Active native-reborrow
 provenance now keeps the common eight exact root/mode/object-address proofs
 inline, so ordinary nested host calls do not allocate a provenance vector.
 Service-signature and Host/View/MutView closure traversal, remaining borrowed
-collection runtime views and type hints, consolidation of borrow-group,
-provenance, prepared-adapter, and pinned-generation metadata behind the compact
-slot table, prepared element method calls, and a post-S2 shorter owned-host
-reclamation policy remain open.
+collection runtime views and type hints, consolidation of provenance,
+prepared-adapter, and pinned-generation metadata behind the compact slot table,
+prepared element method calls, and a post-S2 shorter owned-host reclamation
+policy remain open.
 Runtime receiver enforcement is live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-
 signature facts.

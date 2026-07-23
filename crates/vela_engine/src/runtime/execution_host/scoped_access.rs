@@ -1,6 +1,6 @@
 use vela_common::{HostObjectId, HostTypeId};
 use vela_host::error::HostResult;
-use vela_host::lease::{host_lease_unsupported, host_object_busy};
+use vela_host::lease::{BorrowLeaseId, host_lease_unsupported, host_object_busy};
 use vela_host::object::ScriptHostObject;
 use vela_host::path::{HostRef, HostSlotRef};
 
@@ -9,6 +9,10 @@ use super::{
 };
 
 impl<'state, 'host> ExecutionHost<'state, 'host> {
+    pub(super) fn borrow_lease_id(handle: HostSlotRef) -> BorrowLeaseId {
+        BorrowLeaseId::new((u64::from(handle.generation()) << 32) | u64::from(handle.slot()))
+    }
+
     pub(super) fn scoped_handle(&self, root: HostRef) -> Option<HostSlotRef> {
         let slot = root
             .object_id
@@ -22,6 +26,12 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
 
     pub(super) fn scoped_binding(&self, root: HostRef) -> Option<&ScopedHostBinding<'host>> {
         self.scoped_hosts.get(self.scoped_handle(root)?)
+    }
+
+    #[cfg(test)]
+    pub(super) fn scoped_borrow_lease_id(&self, root: HostRef) -> Option<BorrowLeaseId> {
+        self.scoped_binding(root)
+            .map(|binding| binding.borrow_lease_id)
     }
 
     pub(super) fn scoped_binding_mut(

@@ -45,15 +45,21 @@ fn scoped_hosts_use_dense_generation_checked_identity() {
     let mut host = ExecutionHost::new(args, &mut extern_states, &mut host_arena, &mut host_slots);
     let type_id = HostTypeId::new(93);
     let object: ScopedHostLeaseSlot<'_> = Arc::new(RwLock::new(Box::new(DenseScopedObject)));
-    let dense_handle = host.scoped_hosts.insert(ScopedHostBinding {
+    let dense_handle = host.scoped_hosts.insert_with(|handle| ScopedHostBinding {
+        borrow_lease_id: ExecutionHost::borrow_lease_id(handle),
         type_id,
         access: HostLeaseKind::Shared,
         object: ScopedHostObjectBinding::Single(object),
         activity: Arc::new(()),
     });
     let root = ExecutionHost::scoped_root(dense_handle, type_id);
+    let alias = root;
+    let borrow_lease_id = host
+        .scoped_borrow_lease_id(root)
+        .expect("live scoped root should have one borrow-group identity");
 
     assert!(!host.scoped_hosts.spilled());
+    assert_eq!(host.scoped_borrow_lease_id(alias), Some(borrow_lease_id));
     assert_eq!(host.host_receiver_access(root), HostLeaseKind::Shared);
     assert_eq!(
         host.host_receiver_access(HostRef::new(
@@ -78,6 +84,7 @@ fn scoped_hosts_use_dense_generation_checked_identity() {
     host.release_scoped_host(root)
         .expect("uncontended scoped host should release");
     assert!(host.scoped_hosts.is_empty());
+    assert_eq!(host.expired_scoped_hosts.get(&root), Some(&borrow_lease_id));
     assert_eq!(
         host.resolve_host_ref(compact)
             .expect("released compact alias should retain its diagnostic root"),
@@ -89,16 +96,21 @@ fn scoped_hosts_use_dense_generation_checked_identity() {
     ));
 
     let replacement: ScopedHostLeaseSlot<'_> = Arc::new(RwLock::new(Box::new(DenseScopedObject)));
-    let replacement_handle = host.scoped_hosts.insert(ScopedHostBinding {
+    let replacement_handle = host.scoped_hosts.insert_with(|handle| ScopedHostBinding {
+        borrow_lease_id: ExecutionHost::borrow_lease_id(handle),
         type_id,
         access: HostLeaseKind::Shared,
         object: ScopedHostObjectBinding::Single(replacement),
         activity: Arc::new(()),
     });
     let replacement_root = ExecutionHost::scoped_root(replacement_handle, type_id);
+    let replacement_borrow_lease_id = host
+        .scoped_borrow_lease_id(replacement_root)
+        .expect("replacement root should have one borrow-group identity");
     assert_eq!(replacement_handle.slot(), dense_handle.slot());
     assert_ne!(replacement_handle.generation(), dense_handle.generation());
     assert_ne!(replacement_root, root);
+    assert_ne!(replacement_borrow_lease_id, borrow_lease_id);
     assert!(host.scoped_binding(root).is_none());
     assert!(host.scoped_binding(replacement_root).is_some());
 }
