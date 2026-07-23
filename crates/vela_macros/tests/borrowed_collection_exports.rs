@@ -715,8 +715,40 @@ fn borrowed_map_indexes_preserve_exact_integer_key_types() {
 #[test]
 fn borrowed_collection_lookup_methods_use_host_paths_without_materializing() {
     let mut runtime = runtime(
-        "fn map_lookup(scores: MapView<i32, i64>) { return scores.has(7i32) && !scores.has(9i32) && scores.get(7i32).unwrap_or(0) == 11 && scores.get(9i32).unwrap_or(4) == 4 && scores.get_or(9i32, 6) == 6; } fn set_lookup(values: SetView<i32>) { return values.has(7i32) && !values.has(9i32); }",
+        "fn array_lookup(values: ArrayView<i64>) { return values.first().unwrap_or(4) == 11 && values.last().unwrap_or(4) == 13; } fn array_empty(values: ArrayView<i64>) { return values.first().unwrap_or(4) == 4 && values.last().unwrap_or(6) == 6; } fn retained(owner: CollectionOwner) { let values = owner.values(); return values.first().unwrap_or(0) + values.last().unwrap_or(0); } fn map_lookup(scores: MapView<i32, i64>) { return scores.has(7i32) && !scores.has(9i32) && scores.get(7i32).unwrap_or(0) == 11 && scores.get(9i32).unwrap_or(4) == 4 && scores.get_or(9i32, 6) == 6; } fn set_lookup(values: SetView<i32>) { return values.has(7i32) && !values.has(9i32); }",
     );
+
+    let values = vec![11_i64, 12, 13];
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call("array_lookup", args, CallOptions::unbounded())
+        .expect("borrowed array first/last should execute through HostAccess");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    drop(result);
+
+    let owner = CollectionOwner {
+        values: vec![11, 12, 13],
+        totals: BTreeMap::new(),
+    };
+    let result = runtime
+        .call(
+            "retained",
+            CallArgs::new().with_host_ref("owner", &owner),
+            CallOptions::unbounded(),
+        )
+        .expect("retained borrowed array first/last should use the parent lease");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(24)));
+    drop(result);
+
+    let values = Vec::<i64>::new();
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call("array_empty", args, CallOptions::unbounded())
+        .expect("empty borrowed array first/last should return Option::None");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    drop(result);
 
     let scores = BTreeMap::from([(7_i32, 11_i64)]);
     let mut args = CallArgs::new();

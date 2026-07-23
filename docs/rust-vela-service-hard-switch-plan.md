@@ -1201,7 +1201,10 @@ route `len` and `is_empty` through the domain-neutral
 borrowed returns; shared views remain read-only and no collection is
 materialized. Array positional indexing and typed Map indexing now read and
 write through HostAccess for direct and retained borrowed views; shared write
-attempts fail closed. `HostCollectionKey` preserves bool, char, exact-width
+attempts fail closed. Read-only Array `first` and `last` reuse a length query
+plus one indexed HostAccess read, return `Option::None` for empty views, and
+work for direct and retained borrows without snapshotting the collection.
+`HostCollectionKey` preserves bool, char, exact-width
 integer, String, Bytes, and HostRef key identity, and `ScriptHostKey` performs
 the Rust-side exact conversion without string serialization. Read-only
 `MapView.has/get/get_or` and `SetView.has` reuse the resolved keyed HostAccess

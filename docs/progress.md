@@ -193,6 +193,9 @@ direct or retained HostRef-backed views through a domain-neutral read-only
 collection protocol and HostAccess, including shared references. Array
 positional and typed Map indexing also read and write through HostAccess for
 direct and retained views; shared writes fail without changing Rust state. The
+read-only Array `first` and `last` methods now reuse a length query plus one
+indexed HostAccess read, return `Option::None` for empty views, and work for
+direct and retained borrows without snapshotting the collection. The
 dynamic key boundary preserves bool, char, exact-width signed/unsigned
 integers, String, Bytes, and HostRef identity, so a `BTreeMap<i32, V>` is
 indexed by an actual `i32` rather than a serialized path string. Standard key

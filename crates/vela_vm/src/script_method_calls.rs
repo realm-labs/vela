@@ -199,7 +199,7 @@ pub(crate) fn dispatch_linked_method_call(
             if matches!(frame.read(call.receiver)?, Value::HostRef(_))
                 && let Some(lookup) = crate::std_method_ids::host_collection_lookup(method_id)
             {
-                let result = host_access::execute_host_root_collection_lookup(
+                let result = crate::host_collection_lookup::execute_host_root_collection_lookup(
                     host_access::HostAccessRuntime {
                         frame,
                         heap: heap.as_deref_mut(),
@@ -446,7 +446,7 @@ pub(crate) fn dispatch_resolved_linked_dynamic_method_call(
             if matches!(receiver, Value::HostRef(_))
                 && let Some(lookup) = crate::std_method_ids::host_collection_lookup(method_id)
             {
-                let result = host_access::execute_host_root_collection_lookup(
+                let result = crate::host_collection_lookup::execute_host_root_collection_lookup(
                     host_access::HostAccessRuntime {
                         frame,
                         heap: heap.as_deref_mut(),
