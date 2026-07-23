@@ -79,8 +79,9 @@ to an `AdapterLocal` slot, preserving the prepared generated-field prefix
 through the sequence adapter. `BTreeMap<K, V>` and `HashMap<K, V>` do the same
 for key-shaped suffixes, as do `BTreeSet<K>` and `HashSet<K>` membership paths.
 Fixed arrays now preserve prepared generated-field prefixes through
-index-shaped suffixes as well; dense element-field suffixes and borrowed slice
-adapter-local resolution remain open.
+index-shaped suffixes as well, and borrowed slices classify index-shaped
+targets through the same adapter-local contract. Dense element-field suffixes
+remain open.
 Default/manual adapters preserve that cursor during read-modify-write and use
 it when distinguishing a nested leaf from a missing target.
 Direct call arguments now keep an inline dense host-slot index separate from

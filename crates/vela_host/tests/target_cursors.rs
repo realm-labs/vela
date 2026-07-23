@@ -6,7 +6,10 @@ use vela_host::{
     error::{HostErrorKind, HostResult},
     object::ScriptHostObject,
     path::HostRef,
-    resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess},
+    resolved::{
+        HostAccessOp, HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess,
+        ResolvedHostAccessKind,
+    },
     target::{HostTargetInstance, HostTargetPlan},
     value::HostValue,
 };
@@ -98,4 +101,22 @@ fn default_method_errors_classify_a_nested_cursor_at_the_leaf() {
         error.kind,
         HostErrorKind::UnsupportedMethod { method } if method == HostMethodId::new(5)
     ));
+}
+
+#[test]
+fn borrowed_slice_index_resolves_through_an_adapter_local_slot() {
+    let values: &[i64] = &[13, 21];
+    let plan = HostTargetPlan::new(HostTypeId::new(0)).const_index(1);
+    let root = HostRef::new(HostTypeId::new(0), HostObjectId::new(6), 7);
+    let target = HostTargetInstance::new(root, &plan, &[]);
+    let access = <[i64] as ScriptHostObject>::resolve_host_target(
+        values,
+        HostAccessSpec::new(HostAccessOp::Read, &plan),
+    )
+    .expect("borrowed slice index should resolve");
+
+    assert_eq!(access.adapter_kind, ResolvedHostAccessKind::AdapterLocal(0));
+    let value = <[i64] as ScriptHostObject>::read_resolved_host(values, access, target)
+        .expect("adapter-local slice read should preserve behavior");
+    assert_eq!(value, HostValue::Scalar(ScalarValue::I64(21)));
 }

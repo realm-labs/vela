@@ -4,8 +4,8 @@ use crate::error::HostResult;
 use crate::protocol::{
     HostCollectionMutation, HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot,
 };
-use crate::resolved::{HostAccessSpec, HostMutationOp, ResolvedHostAccess};
-use crate::target::HostTargetInstance;
+use crate::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
+use crate::target::{HostPathPart, HostTargetInstance};
 use crate::value::HostValue;
 
 use super::{
@@ -32,6 +32,19 @@ where
 {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
+    }
+
+    fn resolve_host_target_from(
+        &self,
+        spec: HostAccessSpec<'_>,
+        offset: usize,
+    ) -> HostResult<ResolvedHostAccess> {
+        Ok(match spec.plan.parts.as_slice().get(offset) {
+            None | Some(HostPathPart::ConstIndex(_) | HostPathPart::DynIndex { .. }) => {
+                ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0))
+            }
+            Some(_) => ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
+        })
     }
 
     fn read_host_target_from(
