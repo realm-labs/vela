@@ -6,9 +6,10 @@ use vela_bytecode::LinkedProgram;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::HostResult;
 use vela_host::lease::{
-    ErasedHostLease, HostLeaseKind, MutableHostLeaseSlot, host_lease_unsupported, host_object_busy,
+    ErasedHostLease, ExclusiveScopedHost, HostLeaseKind, MutableHostLeaseSlot, ScopedHostLeaseSlot,
+    SharedScopedHost, host_lease_unsupported, host_object_busy,
 };
-use vela_host::object::ScriptHostObject;
+use vela_host::object::{ScriptHostFieldAccess, ScriptHostObject};
 use vela_host::path::HostRef;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
@@ -186,6 +187,28 @@ impl<'a> CallArgs<'a> {
         self
     }
 
+    /// Adds a shared, fixed-length Rust slice without copying its elements.
+    #[doc(hidden)]
+    pub fn push_slice_ref<T>(&mut self, name: impl Into<String>, value: &'a [T]) -> &mut Self
+    where
+        T: ScriptHostFieldAccess + crate::type_registration::RustValueType + Send + Sync + 'static,
+    {
+        let type_id = crate::standard::standard_slice_host_type_id::<T>();
+        self.entries.push(CallArg::NamedHost {
+            name: name.into(),
+            host_ref: None,
+            identity: None,
+            type_id,
+            binding: HostArgBinding::Scoped {
+                object: Arc::new(parking_lot::RwLock::new(Box::new(
+                    SharedScopedHost::with_type_id(value, type_id),
+                ))),
+                mutable: false,
+            },
+        });
+        self
+    }
+
     #[doc(hidden)]
     pub fn push_positional_host_ref<T>(&mut self, value: &'a T) -> &mut Self
     where
@@ -215,6 +238,26 @@ impl<'a> CallArgs<'a> {
             binding: HostArgBinding::Shared {
                 object: value,
                 leases: Arc::new(AtomicUsize::new(0)),
+            },
+        });
+        self
+    }
+
+    #[doc(hidden)]
+    pub fn push_positional_slice_ref<T>(&mut self, value: &'a [T]) -> &mut Self
+    where
+        T: ScriptHostFieldAccess + crate::type_registration::RustValueType + Send + Sync + 'static,
+    {
+        let type_id = crate::standard::standard_slice_host_type_id::<T>();
+        self.entries.push(CallArg::PositionalHost {
+            host_ref: None,
+            identity: None,
+            type_id,
+            binding: HostArgBinding::Scoped {
+                object: Arc::new(parking_lot::RwLock::new(Box::new(
+                    SharedScopedHost::with_type_id(value, type_id),
+                ))),
+                mutable: false,
             },
         });
         self
@@ -278,6 +321,28 @@ impl<'a> CallArgs<'a> {
         self
     }
 
+    /// Adds an exclusive, fixed-length Rust slice without copying its elements.
+    #[doc(hidden)]
+    pub fn push_slice_mut<T>(&mut self, name: impl Into<String>, value: &'a mut [T]) -> &mut Self
+    where
+        T: ScriptHostFieldAccess + crate::type_registration::RustValueType + Send + Sync + 'static,
+    {
+        let type_id = crate::standard::standard_slice_host_type_id::<T>();
+        self.entries.push(CallArg::NamedHost {
+            name: name.into(),
+            host_ref: None,
+            identity: None,
+            type_id,
+            binding: HostArgBinding::Scoped {
+                object: Arc::new(parking_lot::RwLock::new(Box::new(
+                    ExclusiveScopedHost::with_type_id(value, type_id),
+                ))),
+                mutable: true,
+            },
+        });
+        self
+    }
+
     #[doc(hidden)]
     pub fn push_positional_host_mut<T>(&mut self, value: &'a mut T) -> &mut Self
     where
@@ -305,6 +370,26 @@ impl<'a> CallArgs<'a> {
             type_id: crate::standard::standard_collection_host_type_id::<T>(),
             binding: HostArgBinding::Mutable {
                 object: Arc::new(parking_lot::RwLock::new(value)),
+            },
+        });
+        self
+    }
+
+    #[doc(hidden)]
+    pub fn push_positional_slice_mut<T>(&mut self, value: &'a mut [T]) -> &mut Self
+    where
+        T: ScriptHostFieldAccess + crate::type_registration::RustValueType + Send + Sync + 'static,
+    {
+        let type_id = crate::standard::standard_slice_host_type_id::<T>();
+        self.entries.push(CallArg::PositionalHost {
+            host_ref: None,
+            identity: None,
+            type_id,
+            binding: HostArgBinding::Scoped {
+                object: Arc::new(parking_lot::RwLock::new(Box::new(
+                    ExclusiveScopedHost::with_type_id(value, type_id),
+                ))),
+                mutable: true,
             },
         });
         self
@@ -672,6 +757,33 @@ impl<'a> CallArgs<'a> {
                 }
                 Ok(ErasedHostLease::Exclusive { object: leased })
             }
+            (HostArgBinding::Scoped { object, .. }, HostLeaseKind::Shared) => {
+                let Some(leased) = object.try_read_arc() else {
+                    return Err(host_object_busy(root));
+                };
+                if !supports_shared_lease(&**leased) {
+                    return Err(host_lease_unsupported(root));
+                }
+                Ok(ErasedHostLease::ScopedShared { object: leased })
+            }
+            (
+                HostArgBinding::Scoped {
+                    object,
+                    mutable: true,
+                },
+                HostLeaseKind::Exclusive,
+            ) => {
+                let Some(mut leased) = object.try_write_arc() else {
+                    return Err(host_object_busy(root));
+                };
+                if !supports_shared_lease(&**leased) || !supports_exclusive_lease(&mut **leased) {
+                    return Err(host_lease_unsupported(root));
+                }
+                Ok(ErasedHostLease::ScopedExclusive { object: leased })
+            }
+            (HostArgBinding::Scoped { mutable: false, .. }, HostLeaseKind::Exclusive) => {
+                Err(host_object_busy(root))
+            }
         }
     }
 
@@ -777,6 +889,63 @@ pub(super) enum HostArgBinding<'a> {
     Mutable {
         object: MutableHostLeaseSlot<'a>,
     },
+    Scoped {
+        object: ScopedHostLeaseSlot<'a>,
+        mutable: bool,
+    },
+}
+
+impl HostArgBinding<'_> {
+    pub(super) const fn receiver_access(&self) -> HostLeaseKind {
+        match self {
+            Self::Shared { .. } | Self::Scoped { mutable: false, .. } => HostLeaseKind::Shared,
+            Self::Mutable { .. } | Self::Scoped { mutable: true, .. } => HostLeaseKind::Exclusive,
+        }
+    }
+
+    pub(super) fn inspect<T>(
+        &self,
+        root: HostRef,
+        inspect: impl FnOnce(&dyn ScriptHostObject) -> HostResult<T>,
+    ) -> HostResult<T> {
+        match self {
+            Self::Shared { object, .. } => inspect(*object),
+            Self::Mutable { object } => object
+                .try_read()
+                .ok_or_else(|| host_object_busy(root))
+                .and_then(|object| inspect(&**object)),
+            Self::Scoped { object, .. } => object
+                .try_read()
+                .ok_or_else(|| host_object_busy(root))
+                .and_then(|object| inspect(&**object)),
+        }
+    }
+
+    pub(super) fn mutate<T>(
+        &mut self,
+        root: HostRef,
+        mutate: impl FnOnce(&mut dyn ScriptHostObject) -> HostResult<T>,
+    ) -> HostResult<T> {
+        match self {
+            Self::Shared { .. } => Err(host_object_busy(root)),
+            Self::Mutable { object } => object
+                .try_write()
+                .ok_or_else(|| host_object_busy(root))
+                .and_then(|mut object| mutate(&mut **object)),
+            Self::Scoped { object, .. } => object
+                .try_write()
+                .ok_or_else(|| host_object_busy(root))
+                .and_then(|mut object| mutate(&mut **object)),
+        }
+    }
+}
+
+fn supports_shared_lease(object: &dyn ScriptHostObject) -> bool {
+    object.lease_any().is_some() || object.supports_slice_ref()
+}
+
+fn supports_exclusive_lease(object: &mut dyn ScriptHostObject) -> bool {
+    object.lease_any_mut().is_some() || object.supports_slice_mut()
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

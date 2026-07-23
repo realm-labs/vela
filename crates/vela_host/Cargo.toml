@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+better_any = { workspace = true }
 parking_lot = { workspace = true }
 self_cell = { workspace = true }
 smallvec = { workspace = true }

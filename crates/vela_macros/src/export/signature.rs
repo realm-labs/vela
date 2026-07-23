@@ -103,6 +103,7 @@ pub(super) enum TypeShape {
 #[derive(Clone)]
 pub(super) struct BorrowedCollectionShape {
     pub(super) rust_ty: Type,
+    pub(super) slice_element: Option<Box<Type>>,
     pub(super) kind: BorrowedCollectionKind,
     pub(super) access: HostAccess,
     pub(super) mutation: vela_common::CollectionViewMutation,
@@ -604,6 +605,23 @@ fn direct_host_type(ty: &Type) -> Result<Type> {
 }
 
 fn borrowed_collection_type(ty: &Type, access: HostAccess) -> Result<Option<TypeShape>> {
+    if let Type::Slice(slice) = ty {
+        if type_ident(&slice.elem).is_some_and(|ident| ident == "u8") {
+            return Err(syn::Error::new_spanned(
+                ty,
+                "borrowed [u8] views are not supported yet; use an owned byte value",
+            ));
+        }
+        return Ok(Some(TypeShape::BorrowedCollection(
+            BorrowedCollectionShape {
+                rust_ty: ty.clone(),
+                slice_element: Some(Box::new((*slice.elem).clone())),
+                kind: BorrowedCollectionKind::Array(Box::new(classify_owned_type(&slice.elem)?)),
+                access,
+                mutation: vela_common::CollectionViewMutation::Fixed,
+            },
+        )));
+    }
     if let Type::Array(array) = ty {
         if type_ident(&array.elem).is_some_and(|ident| ident == "u8") {
             return Err(syn::Error::new_spanned(
@@ -614,6 +632,7 @@ fn borrowed_collection_type(ty: &Type, access: HostAccess) -> Result<Option<Type
         return Ok(Some(TypeShape::BorrowedCollection(
             BorrowedCollectionShape {
                 rust_ty: ty.clone(),
+                slice_element: None,
                 kind: BorrowedCollectionKind::Array(Box::new(classify_owned_type(&array.elem)?)),
                 access,
                 mutation: vela_common::CollectionViewMutation::Fixed,
@@ -666,6 +685,7 @@ fn borrowed_collection_type(ty: &Type, access: HostAccess) -> Result<Option<Type
     Ok(Some(TypeShape::BorrowedCollection(
         BorrowedCollectionShape {
             rust_ty: ty.clone(),
+            slice_element: None,
             kind,
             access,
             mutation: vela_common::CollectionViewMutation::Growable,
@@ -777,6 +797,15 @@ impl TypeShape {
         match self {
             Self::Host(ty, access) => Some((ty, *access)),
             Self::BorrowedCollection(collection) => Some((&collection.rust_ty, collection.access)),
+            _ => None,
+        }
+    }
+
+    pub(super) fn borrowed_slice_element(&self) -> Option<&Type> {
+        match self {
+            Self::BorrowedCollection(collection) => {
+                collection.slice_element.as_ref().map(Box::as_ref)
+            }
             _ => None,
         }
     }

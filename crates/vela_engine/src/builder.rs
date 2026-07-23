@@ -90,6 +90,19 @@ impl EngineBuilder {
         T::register_value_type_closure(self)
     }
 
+    /// Registers one concrete borrowed slice view and its element dependency.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn register_rust_slice<T>(self) -> Self
+    where
+        T: crate::type_registration::RustValueType,
+    {
+        let builder = T::register_value_type_closure(self);
+        builder.register_generated_rust_value::<crate::standard::SliceBinding<T>>(
+            crate::standard::standard_slice_type_binding::<T>(),
+        )
+    }
+
     /// Installs one generated member of a recursive Value type closure.
     ///
     /// This remains public only because derive and service macros expand in

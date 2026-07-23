@@ -39,9 +39,13 @@ pub(super) fn binding_use_tokens(contract: TokenStream, shape: &TypeShape) -> To
             }
         }
     };
+    let binding = collection.slice_element.as_ref().map_or_else(
+        || quote! { ::vela_engine::standard::standard_type_binding::<#rust_ty>() },
+        |element| quote! { ::vela_engine::standard::standard_slice_type_binding::<#element>() },
+    );
     quote! {
         (#contract).with_binding(
-            ::vela_engine::standard::standard_type_binding::<#rust_ty>()
+            #binding
                 .interop_contract(#representation)
                 .expect("generated borrowed collection representation must be registered"),
         )
@@ -54,10 +58,15 @@ pub(super) fn host_type_id_tokens(shape: &TypeShape) -> Option<TokenStream> {
             Some(quote! { <#ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_id() })
         }
         TypeShape::BorrowedCollection(collection) => {
-            let ty = &collection.rust_ty;
-            Some(quote! {
-                ::vela_engine::standard::standard_collection_host_type_id::<#ty>()
-            })
+            Some(collection.slice_element.as_ref().map_or_else(
+                || {
+                    let ty = &collection.rust_ty;
+                    quote! { ::vela_engine::standard::standard_collection_host_type_id::<#ty>() }
+                },
+                |element| {
+                    quote! { ::vela_engine::standard::standard_slice_host_type_id::<#element>() }
+                },
+            ))
         }
         _ => None,
     }
@@ -67,10 +76,15 @@ pub(super) fn collection_registration_tokens(signature: &ClassifiedSignature) ->
     fn collect(shape: &TypeShape, output: &mut Vec<TokenStream>) {
         match shape {
             TypeShape::BorrowedCollection(collection) => {
-                let ty = &collection.rust_ty;
-                output.push(quote! {
-                    let builder = builder.register_rust_value_closure::<#ty>();
-                });
+                output.push(collection.slice_element.as_ref().map_or_else(
+                    || {
+                        let ty = &collection.rust_ty;
+                        quote! { let builder = builder.register_rust_value_closure::<#ty>(); }
+                    },
+                    |element| {
+                        quote! { let builder = builder.register_rust_slice::<#element>(); }
+                    },
+                ));
             }
             TypeShape::Option(inner) => collect(inner, output),
             TypeShape::Result(ok, err) => {
@@ -92,6 +106,28 @@ pub(super) fn collection_registration_tokens(signature: &ClassifiedSignature) ->
     }
     collect(&signature.returns.ty, &mut registrations);
     registrations
+}
+
+pub(super) fn shared_host_value_tokens(shape: &TypeShape, object: TokenStream) -> TokenStream {
+    if let Some(element) = shape.borrowed_slice_element() {
+        quote! { ::vela_host::object::lease_slice_ref::<#element>(#object) }
+    } else {
+        let (ty, _) = shape
+            .host_boundary()
+            .expect("shared host extraction requires a host boundary");
+        quote! { (#object).lease_any().and_then(|object| object.downcast_ref::<#ty>()) }
+    }
+}
+
+pub(super) fn exclusive_host_value_tokens(shape: &TypeShape, object: TokenStream) -> TokenStream {
+    if let Some(element) = shape.borrowed_slice_element() {
+        quote! { ::vela_host::object::lease_slice_mut::<#element>(#object) }
+    } else {
+        let (ty, _) = shape
+            .host_boundary()
+            .expect("exclusive host extraction requires a host boundary");
+        quote! { (#object).lease_any_mut().and_then(|object| object.downcast_mut::<#ty>()) }
+    }
 }
 
 pub(super) fn hint_tokens(shape: &TypeShape) -> TokenStream {

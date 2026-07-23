@@ -143,9 +143,9 @@ self_cell::self_cell!(
     }
 );
 
-pub struct SharedScopedHost<'host, T>(&'host T, Option<vela_common::HostTypeId>);
+pub struct SharedScopedHost<'host, T: ?Sized>(&'host T, Option<vela_common::HostTypeId>);
 
-impl<'host, T> SharedScopedHost<'host, T> {
+impl<'host, T: ?Sized> SharedScopedHost<'host, T> {
     #[must_use]
     pub const fn new(value: &'host T) -> Self {
         Self(value, None)
@@ -157,9 +157,9 @@ impl<'host, T> SharedScopedHost<'host, T> {
     }
 }
 
-pub struct ExclusiveScopedHost<'host, T>(&'host mut T, Option<vela_common::HostTypeId>);
+pub struct ExclusiveScopedHost<'host, T: ?Sized>(&'host mut T, Option<vela_common::HostTypeId>);
 
-impl<'host, T> ExclusiveScopedHost<'host, T> {
+impl<'host, T: ?Sized> ExclusiveScopedHost<'host, T> {
     #[must_use]
     pub const fn new(value: &'host mut T) -> Self {
         Self(value, None)
@@ -222,14 +222,14 @@ impl ScopedBorrowedHostGroupCell<'_> {
 
 pub fn shared_scoped_host<T>(value: &T) -> ScopedHostDependent<'_>
 where
-    T: ScriptHostObject + Send + Sync + 'static,
+    T: ScriptHostObject + Send + Sync + ?Sized + 'static,
 {
     Box::new(SharedScopedHost::new(value))
 }
 
 pub fn exclusive_scoped_host<T>(value: &mut T) -> ScopedHostDependent<'_>
 where
-    T: ScriptHostObject + Send + Sync + 'static,
+    T: ScriptHostObject + Send + Sync + ?Sized + 'static,
 {
     Box::new(ExclusiveScopedHost::new(value))
 }
@@ -239,7 +239,7 @@ pub fn shared_scoped_host_with_type_id<T>(
     type_id: vela_common::HostTypeId,
 ) -> ScopedHostDependent<'_>
 where
-    T: ScriptHostObject + Send + Sync + 'static,
+    T: ScriptHostObject + Send + Sync + ?Sized + 'static,
 {
     Box::new(SharedScopedHost::with_type_id(value, type_id))
 }
@@ -249,7 +249,7 @@ pub fn exclusive_scoped_host_with_type_id<T>(
     type_id: vela_common::HostTypeId,
 ) -> ScopedHostDependent<'_>
 where
-    T: ScriptHostObject + Send + Sync + 'static,
+    T: ScriptHostObject + Send + Sync + ?Sized + 'static,
 {
     Box::new(ExclusiveScopedHost::with_type_id(value, type_id))
 }
@@ -272,6 +272,21 @@ macro_rules! impl_scoped_host_common {
 
         fn lease_any(&self) -> Option<&dyn std::any::Any> {
             self.0.lease_any()
+        }
+
+        fn visit_slice_ref<'a>(
+            &'a self,
+            visitor: &mut dyn crate::object::HostSliceRefVisitor<'a>,
+        ) -> bool {
+            self.0.visit_slice_ref(visitor)
+        }
+
+        fn supports_slice_ref(&self) -> bool {
+            self.0.supports_slice_ref()
+        }
+
+        fn supports_slice_mut(&self) -> bool {
+            self.0.supports_slice_mut()
         }
 
         fn resolve_host_target(
@@ -310,7 +325,7 @@ macro_rules! impl_scoped_host_common {
     };
 }
 
-impl<T> ScriptHostObject for SharedScopedHost<'_, T>
+impl<T: ?Sized> ScriptHostObject for SharedScopedHost<'_, T>
 where
     T: ScriptHostObject + Send + Sync + 'static,
 {
@@ -363,7 +378,7 @@ where
     }
 }
 
-impl<T> ScriptHostObject for ExclusiveScopedHost<'_, T>
+impl<T: ?Sized> ScriptHostObject for ExclusiveScopedHost<'_, T>
 where
     T: ScriptHostObject + Send + Sync + 'static,
 {
@@ -371,6 +386,13 @@ where
 
     fn lease_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
         self.0.lease_any_mut()
+    }
+
+    fn visit_slice_mut<'a>(
+        &'a mut self,
+        visitor: &mut dyn crate::object::HostSliceMutVisitor<'a>,
+    ) -> bool {
+        self.0.visit_slice_mut(visitor)
     }
 
     fn mutate_collection_resolved_host(
@@ -432,6 +454,28 @@ impl ScriptHostObject for ScopedBorrowedHostCell<'_> {
 
     fn lease_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
         self.with_dependent_mut(|_, object| object.lease_any_mut())
+    }
+
+    fn visit_slice_ref<'a>(
+        &'a self,
+        visitor: &mut dyn crate::object::HostSliceRefVisitor<'a>,
+    ) -> bool {
+        self.borrow_dependent().visit_slice_ref(visitor)
+    }
+
+    fn visit_slice_mut<'a>(
+        &'a mut self,
+        visitor: &mut dyn crate::object::HostSliceMutVisitor<'a>,
+    ) -> bool {
+        self.with_dependent_mut(|_, object| object.visit_slice_mut(visitor))
+    }
+
+    fn supports_slice_ref(&self) -> bool {
+        self.borrow_dependent().supports_slice_ref()
+    }
+
+    fn supports_slice_mut(&self) -> bool {
+        self.borrow_dependent().supports_slice_mut()
     }
 
     fn resolve_host_target(

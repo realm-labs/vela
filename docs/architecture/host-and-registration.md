@@ -370,6 +370,19 @@ original Rust array; there is no mutable copy-in/copy-out. A separately owned
 Vela Array remains growable, and the fixed-array value codec checks the exact
 length when crossing back into Rust.
 
+Concrete Rust `[T]` uses a separate borrowed-only TypeBinding identity and is
+always represented as a HostRef-backed fixed Array view. `&[T]` and
+`&mut [T]` are never converted to `Vec<T>`: HostAccess reads or replaces
+elements against the original slice, and a generated Rust adapter obtains only
+an invocation-scoped reborrow under the active shared/exclusive lease. Because
+standard `Any` cannot erase a dynamically-sized slice with a non-`'static`
+lifetime, the host boundary uses safe lifetime-aware temporary reborrow
+visitors. Vela never receives the Rust reference, and the workspace continues
+to forbid local unsafe code. Returned slices retain their parent lease and may
+be passed to another sync or async Rust/Vela call in the same call tree.
+Structural growth remains unavailable; `[u8]` byte-view behavior is a separate
+capability decision.
+
 Low-level Rust native methods may use typed handles such as `HostRef` and
 `PathProxy`. The approved ordinary interop target instead permits authored
 `&T`/`&mut T` parameters when generated registration code can prove the exact

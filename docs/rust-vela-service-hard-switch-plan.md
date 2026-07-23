@@ -1089,8 +1089,8 @@ must implement the explicit `VelaValueKeyBoundary`; ordinary structural value
 conversion does not imply stable key semantics. Owned `Vec<T>` now supplies a
 growable Sequence/Iterable Array binding, `Vec<u8>` supplies Bytes, and
 `BTreeSet<T>`/`HashSet<T>` supply distinct SetLike/Iterable bindings. Fixed
-arrays remain open until their non-growable capability can be retained by the
-runtime representation. Concrete `Option<T>` and `Result<T, E>` bindings now
+arrays and borrowed slices now retain non-growable capability in the runtime
+representation. Concrete `Option<T>` and `Result<T, E>` bindings now
 carry recursively specialized Rust ABI identity while their codecs use the
 existing dynamic Vela Option/Result enum values and standard behavior in both
 directions. Unit, bool, char, exact-width numeric scalars, and String now carry
@@ -1114,8 +1114,11 @@ references returned by one Rust export preserve the parent lease and concrete
 binding identity when reborrowed into another Rust export; mutable views write
 through immediately. Concrete `[T; N]` identity and generated
 `&[T; N]`/`&mut [T; N]` adapters now carry exact fixed mutation capability and
-write indexed elements through HostAccess; slices and byte-view capability
-remain open.
+write indexed elements through HostAccess. Concrete `&[T]`/`&mut [T]`
+signatures use a distinct host-backed slice binding, preserve DST length and
+reference semantics without copying, and work for sync/async free functions,
+methods, retained returns, nested reborrow, indexing, and collection
+projections. Byte-view capability remains open.
 Restricted
 `ArrayView`/`ArrayMut`, `MapView`/`MapMut`, and `SetView`/`SetMut` hints now
 retain distinct analysis facts and exact hidden fixed/growable mutation facts.
@@ -1134,7 +1137,7 @@ the Rust-side exact conversion without string serialization. Read-only
 path; `MissingCollectionEntry` alone becomes missing/fallback behavior, while
 other host errors propagate. Borrowed complex-element views, remaining
 element/key methods, live/resumable iteration, remaining bulk mutation
-protocols, slices, richer user-defined collection adapters, full
+protocols, richer user-defined collection adapters, full
 service macro traversal, and prepared operations are still open. Growable
 `MapMut.set` and keyed index
 assignment insert supported leaf values through HostAccess; `MapMut.remove`

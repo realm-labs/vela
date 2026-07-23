@@ -50,6 +50,22 @@ pub fn fixed_bump(values: &mut [i64; 3]) -> i64 {
     values[1]
 }
 
+#[export(path = "collections::slice_sum")]
+pub fn slice_sum(values: &[i64]) -> i64 {
+    values.iter().sum()
+}
+
+#[export(path = "collections::slice_bump")]
+pub fn slice_bump(values: &mut [i64]) -> i64 {
+    values[1] += 4;
+    values[1]
+}
+
+#[export(path = "collections::slice_sum_async")]
+pub async fn slice_sum_async(values: &[i64]) -> i64 {
+    slice_sum(values)
+}
+
 #[derive(ScriptHost)]
 #[script(path = "host::CollectionService")]
 struct CollectionService {
@@ -66,6 +82,14 @@ impl CollectionService {
 
     pub async fn add_async(&self, totals: &mut BTreeMap<String, i64>, amount: i64) -> i64 {
         add(totals, amount + self.offset)
+    }
+
+    pub fn slice_sum(&self, values: &[i64]) -> i64 {
+        values.iter().sum::<i64>() + self.offset
+    }
+
+    pub async fn slice_sum_async(&self, values: &[i64]) -> i64 {
+        self.slice_sum(values)
     }
 }
 
@@ -84,6 +108,14 @@ impl CollectionOwner {
 
     pub fn totals_mut(&mut self) -> &mut BTreeMap<String, i64> {
         &mut self.totals
+    }
+
+    pub fn slice(&self) -> &[i64] {
+        self.values.as_slice()
+    }
+
+    pub fn slice_mut(&mut self) -> &mut [i64] {
+        self.values.as_mut_slice()
     }
 }
 
@@ -187,6 +219,86 @@ fn fixed_array_views_reborrow_and_preserve_non_growable_mutation() {
     assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(10)));
     drop(result);
     assert_eq!(values, [3, 7, 5]);
+}
+
+#[test]
+fn slice_views_preserve_reference_semantics_across_vela_and_rust() {
+    let shared = vela_callable_contract_slice_sum();
+    assert_eq!(
+        shared.parameters[0]
+            .binding
+            .expect("shared slice binding")
+            .representation,
+        InteropRepresentation::CollectionView(CollectionViewKind::Array)
+    );
+    let mutable = vela_callable_contract_slice_bump();
+    assert_eq!(
+        mutable.parameters[0]
+            .binding
+            .expect("mutable slice binding")
+            .representation,
+        InteropRepresentation::CollectionMut {
+            kind: CollectionViewKind::Array,
+            mutation: CollectionViewMutation::Fixed,
+        }
+    );
+
+    let mut runtime = runtime(
+        "fn read(values: ArrayView<i64>) { let selected = values.filter(|value| value > 2); return collections::slice_sum(values) + selected.len(); } fn write(values: ArrayMut<i64>) { values[0] = values[0] + 1; return collections::slice_bump(values) + values[0]; }",
+    );
+    let values = [2_i64, 3, 5, 7];
+    let mut args = CallArgs::new();
+    args.push_slice_ref("values", &values[1..]);
+    let result = runtime
+        .call("read", args, CallOptions::unbounded())
+        .expect("shared slice should be readable and reborrow into Rust");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(18)));
+    drop(result);
+
+    let mut values = [2_i64, 3, 5, 7];
+    let mut args = CallArgs::new();
+    args.push_slice_mut("values", &mut values[1..]);
+    let result = runtime
+        .call("write", args, CallOptions::unbounded())
+        .expect("mutable slice should write through before the Rust reborrow");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(13)));
+    drop(result);
+    assert_eq!(values, [2, 4, 9, 7]);
+}
+
+#[test]
+fn returned_slices_reborrow_into_other_rust_exports() {
+    let mut runtime = runtime(
+        "fn shared(owner: CollectionOwner) { let values = owner.slice(); return collections::slice_sum(values); } fn exclusive(owner: CollectionOwner) { let values = owner.slice_mut(); values[0] = 6; return collections::slice_bump(values); }",
+    );
+    let owner = CollectionOwner {
+        values: vec![2_i64, 3, 5],
+        totals: BTreeMap::new(),
+    };
+    let result = runtime
+        .call(
+            "shared",
+            CallArgs::new().with_host_ref("owner", &owner),
+            CallOptions::unbounded(),
+        )
+        .expect("returned shared slice should retain and reborrow its parent lease");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(10)));
+    drop(result);
+
+    let mut owner = CollectionOwner {
+        values: vec![2_i64, 3, 5],
+        totals: BTreeMap::new(),
+    };
+    let result = runtime
+        .call(
+            "exclusive",
+            CallArgs::new().with_host_mut("owner", &mut owner),
+            CallOptions::unbounded(),
+        )
+        .expect("returned mutable slice should retain and reborrow its parent lease");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(7)));
+    drop(result);
+    assert_eq!(owner.values, [6, 7, 5]);
 }
 
 #[test]
@@ -723,6 +835,31 @@ fn generated_async_adapters_hold_collection_leases_to_completion() {
     assert_eq!(totals["sum"], 12);
 }
 
+#[test]
+fn generated_async_slice_adapter_holds_the_slice_lease_to_completion() {
+    let mut runtime = runtime(
+        "async fn main(service: CollectionService, values: ArrayView<i64>) { let direct = collections::slice_sum_async(values).await; return direct + service.slice_sum_async(values).await; }",
+    );
+    let service = CollectionService { offset: 4 };
+    let values = [2_i64, 3, 5];
+    let mut args = CallArgs::new();
+    args.push_host_ref("service", &service)
+        .push_slice_ref("values", &values);
+    let mut future = Box::pin(runtime.call_async("main", args, CallOptions::unbounded()));
+    let waker = std::task::Waker::noop();
+    let mut context = std::task::Context::from_waker(waker);
+    let result = loop {
+        match std::future::Future::poll(future.as_mut(), &mut context) {
+            std::task::Poll::Ready(result) => {
+                break result.expect("async slice adapter should complete");
+            }
+            std::task::Poll::Pending => continue,
+        }
+    };
+    drop(future);
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(24)));
+}
+
 fn runtime(source: &str) -> Runtime {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
@@ -736,6 +873,9 @@ fn runtime(source: &str) -> Runtime {
         .register_exports(vela_export_bundle_merge_async())
         .register_exports(vela_export_bundle_fixed_sum())
         .register_exports(vela_export_bundle_fixed_bump())
+        .register_exports(vela_export_bundle_slice_sum())
+        .register_exports(vela_export_bundle_slice_bump())
+        .register_exports(vela_export_bundle_slice_sum_async())
         .register_exports(CollectionService::vela_inherent_exports())
         .register_exports(CollectionOwner::vela_inherent_exports())
         .build()

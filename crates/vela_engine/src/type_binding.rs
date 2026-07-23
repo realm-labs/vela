@@ -598,7 +598,7 @@ fn validate_representation(
         StoragePolicy::Value => desc.host_type_id.is_none() && registration.value_codec.is_some(),
         StoragePolicy::Host => {
             desc.host_type_id.is_some()
-                && desc.kind == TypeKind::Host
+                && (desc.kind == TypeKind::Host || registration.collection_views.is_some())
                 && registration.value_codec.is_none()
         }
     };

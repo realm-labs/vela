@@ -23,7 +23,7 @@ use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::value::Value;
 use vela_vm::{NativeCallFuture, PreparedAsyncCall};
 
-use super::call_args::{CallArgRuntime, HostArgBinding};
+use super::call_args::CallArgRuntime;
 use super::{CallArgs, RuntimeExternStateBindings, RuntimeHostArena};
 
 mod fallback;
@@ -528,8 +528,7 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
 
     fn host_receiver_access(&self, root: HostRef) -> HostLeaseKind {
         match self.args.direct_binding(root) {
-            Some(HostArgBinding::Shared { .. }) => HostLeaseKind::Shared,
-            Some(HostArgBinding::Mutable { .. }) => HostLeaseKind::Exclusive,
+            Some(binding) => binding.receiver_access(),
             None => self.parent.host_receiver_access(root),
         }
     }
@@ -584,11 +583,9 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
 
     fn resolve_host_access(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
         match self.args.direct_binding_by_type(spec.plan.root_type) {
-            Some((_, HostArgBinding::Shared { object, .. })) => object.resolve_host_target(spec),
-            Some((root, HostArgBinding::Mutable { object })) => object
-                .try_read()
-                .ok_or_else(|| host_object_busy(root))?
-                .resolve_host_target(spec),
+            Some((root, binding)) => {
+                binding.inspect(root, |object| object.resolve_host_target(spec))
+            }
             None => self.parent.resolve_host_access(spec),
         }
     }
@@ -599,13 +596,9 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         target: HostTargetInstance<'_>,
     ) -> HostResult<HostValue> {
         match self.args.direct_binding(target.root) {
-            Some(HostArgBinding::Shared { object, .. }) => {
+            Some(binding) => binding.inspect(target.root, |object| {
                 object.read_resolved_host(access, target)
-            }
-            Some(HostArgBinding::Mutable { object }) => object
-                .try_read()
-                .ok_or_else(|| host_object_busy(target.root))?
-                .read_resolved_host(access, target),
+            }),
             None => self.parent.read_host(access, target),
         }
     }
@@ -617,13 +610,9 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         query: HostCollectionQuery,
     ) -> HostResult<HostValue> {
         match self.args.direct_binding(target.root) {
-            Some(HostArgBinding::Shared { object, .. }) => {
+            Some(binding) => binding.inspect(target.root, |object| {
                 object.query_collection_resolved_host(access, target, query)
-            }
-            Some(HostArgBinding::Mutable { object }) => object
-                .try_read()
-                .ok_or_else(|| host_object_busy(target.root))?
-                .query_collection_resolved_host(access, target, query),
+            }),
             None => self.parent.query_collection_host(access, target, query),
         }
     }
@@ -635,13 +624,9 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         projection: HostCollectionProjection,
     ) -> HostResult<HostCollectionSnapshot> {
         match self.args.direct_binding(target.root) {
-            Some(HostArgBinding::Shared { object, .. }) => {
+            Some(binding) => binding.inspect(target.root, |object| {
                 object.snapshot_collection_resolved_host(access, target, projection)
-            }
-            Some(HostArgBinding::Mutable { object }) => object
-                .try_read()
-                .ok_or_else(|| host_object_busy(target.root))?
-                .snapshot_collection_resolved_host(access, target, projection),
+            }),
             None => self
                 .parent
                 .snapshot_collection_host(access, target, projection),
@@ -655,13 +640,12 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         mutation: HostCollectionMutation<'_>,
     ) -> HostResult<()> {
         match self.args.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared { .. }) => {
+            Some(binding) if binding.receiver_access() == HostLeaseKind::Shared => {
                 Err(ExecutionHost::direct_access_error(target, "write"))
             }
-            Some(HostArgBinding::Mutable { object }) => object
-                .try_write()
-                .ok_or_else(|| host_object_busy(target.root))?
-                .mutate_collection_resolved_host(access, target, mutation),
+            Some(binding) => binding.mutate(target.root, |object| {
+                object.mutate_collection_resolved_host(access, target, mutation)
+            }),
             None => self.parent.mutate_collection_host(access, target, mutation),
         }
     }
@@ -673,13 +657,12 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         value: HostValue,
     ) -> HostResult<()> {
         match self.args.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared { .. }) => {
+            Some(binding) if binding.receiver_access() == HostLeaseKind::Shared => {
                 Err(ExecutionHost::direct_access_error(target, "write"))
             }
-            Some(HostArgBinding::Mutable { object }) => object
-                .try_write()
-                .ok_or_else(|| host_object_busy(target.root))?
-                .write_resolved_host(access, target, value),
+            Some(binding) => binding.mutate(target.root, |object| {
+                object.write_resolved_host(access, target, value)
+            }),
             None => self.parent.write_host(access, target, value),
         }
     }
@@ -692,13 +675,12 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         rhs: HostValue,
     ) -> HostResult<()> {
         match self.args.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared { .. }) => {
+            Some(binding) if binding.receiver_access() == HostLeaseKind::Shared => {
                 Err(ExecutionHost::direct_access_error(target, "write"))
             }
-            Some(HostArgBinding::Mutable { object }) => object
-                .try_write()
-                .ok_or_else(|| host_object_busy(target.root))?
-                .mutate_resolved_host(access, target, op, rhs),
+            Some(binding) => binding.mutate(target.root, |object| {
+                object.mutate_resolved_host(access, target, op, rhs)
+            }),
             None => self.parent.mutate_host(access, target, op, rhs),
         }
     }
@@ -709,13 +691,12 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         target: HostTargetInstance<'_>,
     ) -> HostResult<()> {
         match self.args.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared { .. }) => {
+            Some(binding) if binding.receiver_access() == HostLeaseKind::Shared => {
                 Err(ExecutionHost::direct_access_error(target, "write"))
             }
-            Some(HostArgBinding::Mutable { object }) => object
-                .try_write()
-                .ok_or_else(|| host_object_busy(target.root))?
-                .remove_resolved_host(access, target),
+            Some(binding) => binding.mutate(target.root, |object| {
+                object.remove_resolved_host(access, target)
+            }),
             None => self.parent.remove_host(access, target),
         }
     }
@@ -728,13 +709,12 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         args: &[HostValue],
     ) -> HostResult<HostValue> {
         match self.args.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared { .. }) => {
+            Some(binding) if binding.receiver_access() == HostLeaseKind::Shared => {
                 Err(ExecutionHost::direct_access_error(target, "call"))
             }
-            Some(HostArgBinding::Mutable { object }) => object
-                .try_write()
-                .ok_or_else(|| host_object_busy(target.root))?
-                .call_resolved_host(access, target, method, args),
+            Some(binding) => binding.mutate(target.root, |object| {
+                object.call_resolved_host(access, target, method, args)
+            }),
             None => self.parent.call_host(access, target, method, args),
         }
     }
@@ -756,8 +736,7 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             return binding.access;
         }
         match self.args.direct_binding(root) {
-            Some(HostArgBinding::Shared { .. }) => HostLeaseKind::Shared,
-            Some(HostArgBinding::Mutable { .. }) => HostLeaseKind::Exclusive,
+            Some(binding) => binding.receiver_access(),
             None => self.fallback.host_receiver_access(root),
         }
     }
@@ -861,11 +840,9 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             return result;
         }
         match self.args.direct_binding_by_type(spec.plan.root_type) {
-            Some((_, HostArgBinding::Shared { object, .. })) => object.resolve_host_target(spec),
-            Some((root, HostArgBinding::Mutable { object })) => object
-                .try_read()
-                .ok_or_else(|| host_object_busy(root))?
-                .resolve_host_target(spec),
+            Some((root, binding)) => {
+                binding.inspect(root, |object| object.resolve_host_target(spec))
+            }
             None => self.fallback.resolve_host_access(spec),
         }
     }
@@ -887,13 +864,9 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             return result;
         }
         match self.args.direct_binding(target.root) {
-            Some(HostArgBinding::Shared { object, .. }) => {
+            Some(binding) => binding.inspect(target.root, |object| {
                 object.read_resolved_host(access, target)
-            }
-            Some(HostArgBinding::Mutable { object }) => object
-                .try_read()
-                .ok_or_else(|| host_object_busy(target.root))?
-                .read_resolved_host(access, target),
+            }),
             None => self.fallback.read_host(access, target),
         }
     }
@@ -918,13 +891,9 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             return result;
         }
         match self.args.direct_binding(target.root) {
-            Some(HostArgBinding::Shared { object, .. }) => {
+            Some(binding) => binding.inspect(target.root, |object| {
                 object.query_collection_resolved_host(access, target, query)
-            }
-            Some(HostArgBinding::Mutable { object }) => object
-                .try_read()
-                .ok_or_else(|| host_object_busy(target.root))?
-                .query_collection_resolved_host(access, target, query),
+            }),
             None => self.fallback.query_collection_host(access, target, query),
         }
     }
@@ -952,13 +921,9 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             return result;
         }
         match self.args.direct_binding(target.root) {
-            Some(HostArgBinding::Shared { object, .. }) => {
+            Some(binding) => binding.inspect(target.root, |object| {
                 object.snapshot_collection_resolved_host(access, target, projection)
-            }
-            Some(HostArgBinding::Mutable { object }) => object
-                .try_read()
-                .ok_or_else(|| host_object_busy(target.root))?
-                .snapshot_collection_resolved_host(access, target, projection),
+            }),
             None => self
                 .fallback
                 .snapshot_collection_host(access, target, projection),
@@ -990,11 +955,12 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 .expect("scoped host root remains present");
         }
         match self.args.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
-            Some(HostArgBinding::Mutable { object }) => object
-                .try_write()
-                .ok_or_else(|| host_object_busy(target.root))?
-                .mutate_collection_resolved_host(access, target, mutation),
+            Some(binding) if binding.receiver_access() == HostLeaseKind::Shared => {
+                Err(Self::direct_access_error(target, "write"))
+            }
+            Some(binding) => binding.mutate(target.root, |object| {
+                object.mutate_collection_resolved_host(access, target, mutation)
+            }),
             None => self
                 .fallback
                 .mutate_collection_host(access, target, mutation),
@@ -1024,11 +990,12 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 .expect("scoped host root remains present");
         }
         match self.args.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
-            Some(HostArgBinding::Mutable { object }) => object
-                .try_write()
-                .ok_or_else(|| host_object_busy(target.root))?
-                .write_resolved_host(access, target, value),
+            Some(binding) if binding.receiver_access() == HostLeaseKind::Shared => {
+                Err(Self::direct_access_error(target, "write"))
+            }
+            Some(binding) => binding.mutate(target.root, |object| {
+                object.write_resolved_host(access, target, value)
+            }),
             None => self.fallback.write_host(access, target, value),
         }
     }
@@ -1057,11 +1024,12 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 .expect("scoped host root remains present");
         }
         match self.args.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
-            Some(HostArgBinding::Mutable { object }) => object
-                .try_write()
-                .ok_or_else(|| host_object_busy(target.root))?
-                .mutate_resolved_host(access, target, op, rhs),
+            Some(binding) if binding.receiver_access() == HostLeaseKind::Shared => {
+                Err(Self::direct_access_error(target, "write"))
+            }
+            Some(binding) => binding.mutate(target.root, |object| {
+                object.mutate_resolved_host(access, target, op, rhs)
+            }),
             None => self.fallback.mutate_host(access, target, op, rhs),
         }
     }
@@ -1083,11 +1051,12 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             return result;
         }
         match self.args.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "write")),
-            Some(HostArgBinding::Mutable { object }) => object
-                .try_write()
-                .ok_or_else(|| host_object_busy(target.root))?
-                .remove_resolved_host(access, target),
+            Some(binding) if binding.receiver_access() == HostLeaseKind::Shared => {
+                Err(Self::direct_access_error(target, "write"))
+            }
+            Some(binding) => binding.mutate(target.root, |object| {
+                object.remove_resolved_host(access, target)
+            }),
             None => self.fallback.remove_host(access, target),
         }
     }
@@ -1113,11 +1082,12 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             return result;
         }
         match self.args.direct_binding_mut(target.root) {
-            Some(HostArgBinding::Shared { .. }) => Err(Self::direct_access_error(target, "call")),
-            Some(HostArgBinding::Mutable { object }) => object
-                .try_write()
-                .ok_or_else(|| host_object_busy(target.root))?
-                .call_resolved_host(access, target, method, args),
+            Some(binding) if binding.receiver_access() == HostLeaseKind::Shared => {
+                Err(Self::direct_access_error(target, "call"))
+            }
+            Some(binding) => binding.mutate(target.root, |object| {
+                object.call_resolved_host(access, target, method, args)
+            }),
             None => self.fallback.call_host(access, target, method, args),
         }
     }

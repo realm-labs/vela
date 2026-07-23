@@ -82,6 +82,10 @@ through reflection and compiler registries. Concrete `[T; N]` bindings include
 `N` in stable identity and expose shared plus exact fixed MutView capability;
 generated `&[T; N]`/`&mut [T; N]` adapters reborrow through HostRef, permit
 indexed replacement, and withhold structural mutation.
+Concrete borrowed `[T]` bindings now use a distinct stable slice identity and
+the same shared/fixed Array view surface. Generated sync/async free-function
+and method adapters preserve the original DST reference without copying,
+including slices returned from one service and reborrowed into another.
 Callable contracts can now carry an exact binding-use proof containing the
 concrete `InteropTypeId`, `TypeAbiFingerprint`, and owned/Host/View/MutView
 representation. Engine sealing rejects unregistered, stale, unsupported, or
@@ -115,7 +119,7 @@ resolved keyed HostAccess path without materializing the collection. A distinct
 missing-entry error ensures only absent keys become `false`, `Option::None`, or
 the caller fallback; other host errors propagate. Complex borrowed element
 views, remaining element/key methods, live/resumable iteration, remaining bulk
-mutation, slices, user-defined collection adapters, and prepared
+mutation, user-defined collection adapters, and prepared
 index plans remain open. Growable `MapMut.set` and missing-key index assignment now insert
 scalar/String/Bytes leaves through the keyed HostAccess write, while
 `MapMut.remove` uses a keyed HostAccess remove and returns the prior value as
@@ -319,7 +323,7 @@ shared/exclusive boundary rows allocate zero times and still reject the
 complete conflict set before lease acquisition. Generated host functions and
 methods now reuse registration-time prepared parameter plans instead of
 rebuilding contracts and request metadata on each call. Service-signature and
-Host/View/MutView closure traversal, slices, remaining borrowed collection
+Host/View/MutView closure traversal, remaining borrowed collection
 runtime views and type hints, compact root-local HostRef storage, dense prepared
 field/method thunks, and a post-S2 shorter
 owned-host reclamation policy remain open. Runtime receiver enforcement is

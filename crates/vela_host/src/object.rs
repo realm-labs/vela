@@ -5,7 +5,7 @@ use std::hash::Hash;
 use vela_common::{HostMethodId, HostTypeId, ScalarValue};
 
 use crate::{
-    error::{HostError, HostErrorKind, HostResult},
+    error::HostResult,
     protocol::{
         HostCollectionKey, HostCollectionKeyRef, HostCollectionMutation, HostCollectionProjection,
         HostCollectionQuery, HostCollectionSnapshot,
@@ -17,9 +17,11 @@ use crate::{
 
 mod collection_protocol;
 mod collection_snapshot;
+mod errors;
 mod fixed_array;
 mod keys;
 mod mutation;
+mod slice;
 mod target;
 
 use collection_protocol::{
@@ -27,7 +29,13 @@ use collection_protocol::{
     mutate_vec, unsupported_collection_mutation, unsupported_collection_query,
 };
 use collection_snapshot::{snapshot_map_entries, snapshot_set_values};
+use errors::{
+    invalid_arg, missing_collection_entry, missing_target, permission_denied, unsupported_method,
+};
 pub use mutation::mutate_host_value;
+#[doc(hidden)]
+pub use slice::{HostSliceMutVisitor, HostSliceRefVisitor};
+pub use slice::{lease_slice_mut, lease_slice_ref};
 use target::{target_index, target_is_leaf, target_key};
 
 pub trait ScriptHostObject {
@@ -42,6 +50,29 @@ pub trait ScriptHostObject {
     /// Mutable counterpart to [`ScriptHostObject::lease_any`].
     fn lease_any_mut(&mut self) -> Option<&mut dyn Any> {
         None
+    }
+
+    /// Exposes a borrowed dynamically-sized Rust slice to generated adapters.
+    ///
+    /// Unlike [`Any`], this preserves the slice length without materializing an
+    /// owned `Vec`. The erased handle never crosses into script values.
+    fn visit_slice_ref<'a>(&'a self, visitor: &mut dyn HostSliceRefVisitor<'a>) -> bool {
+        let _ = visitor;
+        false
+    }
+
+    /// Mutable counterpart to [`ScriptHostObject::visit_slice_ref`].
+    fn visit_slice_mut<'a>(&'a mut self, visitor: &mut dyn HostSliceMutVisitor<'a>) -> bool {
+        let _ = visitor;
+        false
+    }
+
+    fn supports_slice_ref(&self) -> bool {
+        false
+    }
+
+    fn supports_slice_mut(&self) -> bool {
+        false
     }
 
     fn resolve_host_target(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
@@ -1136,45 +1167,3 @@ where
 }
 
 impl_script_host_object_via_field!(<K> HashSet<K> where K: ScriptHostKey + Hash + 'static);
-
-fn invalid_arg(expected: &'static str) -> HostError {
-    HostError {
-        kind: HostErrorKind::InvalidArgument { expected },
-        source_span: None,
-    }
-}
-
-fn missing_target(target: HostTargetInstance<'_>) -> HostError {
-    HostError {
-        kind: HostErrorKind::MissingPath {
-            path: target.to_diagnostic_path().to_host_path(),
-        },
-        source_span: None,
-    }
-}
-
-fn missing_collection_entry(target: HostTargetInstance<'_>) -> HostError {
-    HostError {
-        kind: HostErrorKind::MissingCollectionEntry {
-            path: target.to_diagnostic_path().to_host_path(),
-        },
-        source_span: None,
-    }
-}
-
-fn permission_denied(target: HostTargetInstance<'_>, action: &'static str) -> HostError {
-    HostError {
-        kind: HostErrorKind::PermissionDenied {
-            path: target.to_diagnostic_path().to_host_path(),
-            action,
-        },
-        source_span: None,
-    }
-}
-
-fn unsupported_method(method: HostMethodId) -> HostError {
-    HostError {
-        kind: HostErrorKind::UnsupportedMethod { method },
-        source_span: None,
-    }
-}

@@ -2699,6 +2699,19 @@ live resumable host iteration and complex element HostRefs remain open and
 must add generation checks rather than silently changing the snapshot into an
 escaping Rust borrow.
 
+### Borrowed Rust Slices Use Safe Lifetime-Aware Host Reborrows
+
+Concrete `[T]` has a distinct borrowed-only TypeBinding identity and maps to
+the fixed Array View/MutView surface. It never crosses the boundary through an
+owned `Vec<T>` codec. Root arguments and retained returned slices stay behind
+HostRef/HostAccess, and generated sync/async free-function and method adapters
+obtain only invocation-scoped `&[T]`/`&mut [T]` reborrows under the active
+lease. Since standard `Any` cannot erase a non-`'static` DST reference and the
+workspace forbids local unsafe code, Vela uses a safe lifetime-aware temporary
+visitor for typed Rust recovery. This mechanism is internal to the host
+boundary: scripts still hold only HostRefs and cannot retain a Rust reference.
+`[u8]` remains reserved for the separate Bytes/view capability decision.
+
 ### Service Deployment Supports Snapshots And Exact-Base Deltas
 
 A Snapshot describes the complete desired Vela service state and composes

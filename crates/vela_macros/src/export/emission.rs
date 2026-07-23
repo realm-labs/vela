@@ -11,7 +11,8 @@ use super::signature::{
 mod binding;
 
 use binding::{
-    binding_use_tokens, collection_registration_tokens, hint_tokens, host_type_id_tokens,
+    binding_use_tokens, collection_registration_tokens, exclusive_host_value_tokens, hint_tokens,
+    host_type_id_tokens, shared_host_value_tokens,
 };
 
 pub(crate) fn function_contract(
@@ -310,25 +311,31 @@ fn function_sync_scoped_host_adapter(
         .find(|parameter| parameter.ty.host_boundary().is_some())
         .expect("scoped free return has one host origin");
     let host_name = format_ident!("__vela_arg_{}", host_parameter.name);
-    let (host_ty, host_access) = host_parameter
+    let (_, host_access) = host_parameter
         .ty
         .host_boundary()
         .expect("scoped free return origin is host-backed");
     let host_binding = match host_access {
-        HostAccess::Shared => quote! {
-            let #host_name = __vela_parent_lease
-                .object()
-                .lease_any()
-                .and_then(|object| object.downcast_ref::<#host_ty>())
-                .expect("preflight-validated scoped shared owner");
-        },
-        HostAccess::Exclusive => quote! {
-            let #host_name = __vela_parent_lease
-                .object_mut()
-                .and_then(|object| object.lease_any_mut())
-                .and_then(|object| object.downcast_mut::<#host_ty>())
-                .expect("preflight-validated scoped exclusive owner");
-        },
+        HostAccess::Shared => {
+            let value = shared_host_value_tokens(
+                &host_parameter.ty,
+                quote! { __vela_parent_lease.object() },
+            );
+            quote! {
+                let #host_name = #value
+                    .expect("preflight-validated scoped shared owner");
+            }
+        }
+        HostAccess::Exclusive => {
+            let value = exclusive_host_value_tokens(
+                &host_parameter.ty,
+                quote! { __vela_parent_lease.object_mut().expect("exclusive parent lease") },
+            );
+            quote! {
+                let #host_name = #value
+                    .expect("preflight-validated scoped exclusive owner");
+            }
+        }
     };
     let argument_names = signature
         .parameters
@@ -610,22 +617,22 @@ fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -
         .map(|(index, parameter)| {
             let name = format_ident!("__vela_arg_{}", parameter.name);
             match parameter.ty.host_boundary() {
-                Some((ty, HostAccess::Shared)) => {
+                Some((_, HostAccess::Shared)) => {
+                    let value = shared_host_value_tokens(&parameter.ty, quote! { lease.object() });
                     quote! {
                         let #name = __vela_leases
                             .next()
-                            .and_then(|lease| lease.object().lease_any())
-                            .and_then(|object| object.downcast_ref::<#ty>())
+                            .and_then(|lease| #value)
                             .expect("preflight-validated shared host lease");
                     }
                 }
-                Some((ty, HostAccess::Exclusive)) => {
+                Some((_, HostAccess::Exclusive)) => {
+                    let value = exclusive_host_value_tokens(&parameter.ty, quote! { object });
                     quote! {
                         let #name = __vela_leases
                             .next()
                             .and_then(|lease| lease.object_mut())
-                            .and_then(|object| object.lease_any_mut())
-                            .and_then(|object| object.downcast_mut::<#ty>())
+                            .and_then(|object| #value)
                             .expect("preflight-validated exclusive host lease");
                     }
                 }
@@ -752,28 +759,28 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
             let argument_index = runtime_argument_index;
             runtime_argument_index += 1;
             match parameter.ty.host_boundary() {
-                Some((ty, HostAccess::Shared)) => {
+                Some((_, HostAccess::Shared)) => {
                     let lease_index = host_lease_index;
                     host_lease_index += 1;
+                    let value = shared_host_value_tokens(&parameter.ty, quote! { lease.object() });
                     quote! {
                         let #name = __vela_leases
                             .next()
-                            .and_then(|lease| lease.object().lease_any())
-                            .and_then(|object| object.downcast_ref::<#ty>())
+                            .and_then(|lease| #value)
                             .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
                                 __vela_lease_requests[#lease_index].0,
                             ))?;
                     }
                 }
-                Some((ty, HostAccess::Exclusive)) => {
+                Some((_, HostAccess::Exclusive)) => {
                     let lease_index = host_lease_index;
                     host_lease_index += 1;
+                    let value = exclusive_host_value_tokens(&parameter.ty, quote! { object });
                     quote! {
                         let #name = __vela_leases
                             .next()
                             .and_then(|lease| lease.object_mut())
-                            .and_then(|object| object.lease_any_mut())
-                            .and_then(|object| object.downcast_mut::<#ty>())
+                            .and_then(|object| #value)
                             .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
                                 __vela_lease_requests[#lease_index].0,
                             ))?;

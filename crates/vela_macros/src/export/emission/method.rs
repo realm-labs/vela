@@ -3,8 +3,9 @@ use quote::{format_ident, quote};
 use syn::ImplItemFn;
 
 use super::{
-    binding_use_tokens, collection_registration_tokens, effect_tokens, hint_tokens,
-    host_type_id_tokens, parameter_mode_tokens, return_mode_tokens,
+    binding_use_tokens, collection_registration_tokens, effect_tokens, exclusive_host_value_tokens,
+    hint_tokens, host_type_id_tokens, parameter_mode_tokens, return_mode_tokens,
+    shared_host_value_tokens,
 };
 use crate::export::signature::{
     ClassifiedSignature, ErrorMode, HostAccess, ParameterMode, ReturnMode, ScopedReturnContainer,
@@ -177,28 +178,28 @@ pub(crate) fn method_adapter(
             runtime_argument_index += 1;
             let name = format_ident!("__vela_arg_{}", parameter.name);
             match parameter.ty.host_boundary() {
-                Some((ty, HostAccess::Shared)) => {
+                Some((_, HostAccess::Shared)) => {
                     let lease_index = host_lease_index;
                     host_lease_index += 1;
+                    let value = shared_host_value_tokens(&parameter.ty, quote! { lease.object() });
                     quote! {
                         let #name = __vela_leases
                             .next()
-                            .and_then(|lease| lease.object().lease_any())
-                            .and_then(|object| object.downcast_ref::<#ty>())
+                            .and_then(|lease| #value)
                             .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
                                 __vela_lease_requests[#lease_index].0,
                             ))?;
                     }
                 }
-                Some((ty, HostAccess::Exclusive)) => {
+                Some((_, HostAccess::Exclusive)) => {
                     let lease_index = host_lease_index;
                     host_lease_index += 1;
+                    let value = exclusive_host_value_tokens(&parameter.ty, quote! { object });
                     quote! {
                         let #name = __vela_leases
                             .next()
                             .and_then(|lease| lease.object_mut())
-                            .and_then(|object| object.lease_any_mut())
-                            .and_then(|object| object.downcast_mut::<#ty>())
+                            .and_then(|object| #value)
                             .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
                                 __vela_lease_requests[#lease_index].0,
                             ))?;
@@ -767,21 +768,25 @@ fn method_async_adapter(
             let index = runtime_index;
             runtime_index += 1;
             match parameter.ty.host_boundary() {
-                Some((ty, HostAccess::Shared)) => quote! {
-                    let #name = __vela_leases
-                        .next()
-                        .and_then(|lease| lease.object().lease_any())
-                        .and_then(|object| object.downcast_ref::<#ty>())
-                        .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(root))?;
-                },
-                Some((ty, HostAccess::Exclusive)) => quote! {
-                    let #name = __vela_leases
-                        .next()
-                        .and_then(|lease| lease.object_mut())
-                        .and_then(|object| object.lease_any_mut())
-                        .and_then(|object| object.downcast_mut::<#ty>())
-                        .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(root))?;
-                },
+                Some((_, HostAccess::Shared)) => {
+                    let value = shared_host_value_tokens(&parameter.ty, quote! { lease.object() });
+                    quote! {
+                        let #name = __vela_leases
+                            .next()
+                            .and_then(|lease| #value)
+                            .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(root))?;
+                    }
+                }
+                Some((_, HostAccess::Exclusive)) => {
+                    let value = exclusive_host_value_tokens(&parameter.ty, quote! { object });
+                    quote! {
+                        let #name = __vela_leases
+                            .next()
+                            .and_then(|lease| lease.object_mut())
+                            .and_then(|object| #value)
+                            .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(root))?;
+                    }
+                }
                 None => {
                     let ty = parameter
                         .rust_ty
