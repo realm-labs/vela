@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use smallvec::SmallVec;
 use vela_bytecode::LinkedProgram;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::HostResult;
@@ -23,6 +24,8 @@ use super::VelaValue;
 #[derive(Default)]
 pub struct CallArgs<'a> {
     entries: Vec<CallArg<'a>>,
+    direct_host_slots: SmallVec<[usize; 8]>,
+    direct_host_object_id_base: Option<u64>,
     fallback: Option<&'a mut (dyn ScriptStateAdapter + Send)>,
 }
 
@@ -74,6 +77,8 @@ impl<'a> CallArgs<'a> {
     pub fn from_positional(args: impl IntoIterator<Item = OwnedValue>) -> Self {
         Self {
             entries: args.into_iter().map(CallArg::Positional).collect(),
+            direct_host_slots: SmallVec::new(),
+            direct_host_object_id_base: None,
             fallback: None,
         }
     }
@@ -82,6 +87,8 @@ impl<'a> CallArgs<'a> {
     pub fn from_values(args: impl IntoIterator<Item = VelaValue>) -> Self {
         Self {
             entries: args.into_iter().map(CallArg::PositionalValue).collect(),
+            direct_host_slots: SmallVec::new(),
+            direct_host_object_id_base: None,
             fallback: None,
         }
     }
@@ -634,7 +641,11 @@ impl<'a> CallArgs<'a> {
     }
 
     pub(super) fn assign_direct_host_refs(&mut self, next_object_id: &mut u64) {
-        for entry in &mut self.entries {
+        debug_assert!(
+            self.direct_host_slots.is_empty() && self.direct_host_object_id_base.is_none(),
+            "direct host identities are assigned once per CallArgs"
+        );
+        for (entry_index, entry) in self.entries.iter_mut().enumerate() {
             if let CallArg::NamedHost {
                 host_ref,
                 identity,
@@ -649,9 +660,13 @@ impl<'a> CallArgs<'a> {
             } = entry
                 && host_ref.is_none()
             {
+                if self.direct_host_object_id_base.is_none() {
+                    self.direct_host_object_id_base = Some(*next_object_id);
+                }
                 let assigned =
                     HostRef::new(*type_id, vela_common::HostObjectId::new(*next_object_id), 1);
                 *host_ref = Some(assigned);
+                self.direct_host_slots.push(entry_index);
                 if let Some(identity) = identity {
                     *identity.0.lock() = Some(assigned);
                 }
@@ -665,7 +680,8 @@ impl<'a> CallArgs<'a> {
     }
 
     pub(super) fn direct_binding(&self, root: HostRef) -> Option<&HostArgBinding<'a>> {
-        self.entries.iter().find_map(|entry| match entry {
+        let entry = self.entries.get(self.direct_binding_entry_index(root)?)?;
+        match entry {
             CallArg::NamedHost {
                 host_ref: Some(host_ref),
                 binding,
@@ -677,11 +693,13 @@ impl<'a> CallArgs<'a> {
                 ..
             } if *host_ref == root => Some(binding),
             _ => None,
-        })
+        }
     }
 
     pub(super) fn direct_binding_mut(&mut self, root: HostRef) -> Option<&mut HostArgBinding<'a>> {
-        self.entries.iter_mut().find_map(|entry| match entry {
+        let entry_index = self.direct_binding_entry_index(root)?;
+        let entry = self.entries.get_mut(entry_index)?;
+        match entry {
             CallArg::NamedHost {
                 host_ref: Some(host_ref),
                 binding,
@@ -693,28 +711,37 @@ impl<'a> CallArgs<'a> {
                 ..
             } if *host_ref == root => Some(binding),
             _ => None,
-        })
+        }
     }
 
     pub(super) fn direct_binding_by_type(
         &self,
         type_id: vela_common::HostTypeId,
     ) -> Option<(HostRef, &HostArgBinding<'a>)> {
-        self.entries.iter().find_map(|entry| match entry {
-            CallArg::NamedHost {
-                host_ref: Some(host_ref),
-                type_id: binding_type,
-                binding,
-                ..
-            }
-            | CallArg::PositionalHost {
-                host_ref: Some(host_ref),
-                type_id: binding_type,
-                binding,
-                ..
-            } if *binding_type == type_id => Some((*host_ref, binding)),
-            _ => None,
-        })
+        self.direct_host_slots
+            .iter()
+            .find_map(|entry_index| match &self.entries[*entry_index] {
+                CallArg::NamedHost {
+                    host_ref: Some(host_ref),
+                    type_id: binding_type,
+                    binding,
+                    ..
+                }
+                | CallArg::PositionalHost {
+                    host_ref: Some(host_ref),
+                    type_id: binding_type,
+                    binding,
+                    ..
+                } if *binding_type == type_id => Some((*host_ref, binding)),
+                _ => None,
+            })
+    }
+
+    fn direct_binding_entry_index(&self, root: HostRef) -> Option<usize> {
+        let base = self.direct_host_object_id_base?;
+        let slot = root.object_id.get().checked_sub(base)?;
+        let slot = usize::try_from(slot).ok()?;
+        self.direct_host_slots.get(slot).copied()
     }
 
     pub(super) fn take_host_lease(
@@ -955,7 +982,7 @@ mod lease_tests {
     use vela_host::target::HostTargetInstance;
     use vela_host::value::HostValue;
 
-    use super::{CallArg, CallArgs};
+    use super::{CallArg, CallArgs, HostRef};
 
     struct LeaseHost;
 
@@ -1037,6 +1064,43 @@ mod lease_tests {
             .take_host_leases(&[(root, HostLeaseKind::Shared); 9])
             .expect("wide shared lease sets should still be supported");
         assert!(spilled.spilled());
+    }
+
+    #[test]
+    fn direct_host_bindings_use_dense_slots_across_mixed_arguments() {
+        let first = LeaseHost;
+        let second = LeaseHost;
+        let mut args = CallArgs::new();
+        args.push(1_i64)
+            .push_host_ref("first", &first)
+            .push(2_i64)
+            .push_host_ref("second", &second);
+        let base = 1_u64 << 63;
+        let mut next = base;
+        args.assign_direct_host_refs(&mut next);
+
+        assert_eq!(args.direct_host_slots.as_slice(), &[1, 3]);
+        assert!(!args.direct_host_slots.spilled());
+        assert_eq!(next, base + 2);
+
+        let roots = args
+            .direct_host_slots
+            .iter()
+            .map(|entry_index| match &args.entries[*entry_index] {
+                CallArg::NamedHost {
+                    host_ref: Some(root),
+                    ..
+                } => *root,
+                _ => panic!("dense direct-host slot should point at a bound host argument"),
+            })
+            .collect::<Vec<_>>();
+        assert!(args.direct_binding(roots[0]).is_some());
+        assert!(args.direct_binding(roots[1]).is_some());
+
+        let wrong_type = HostRef::new(HostTypeId::new(9), roots[0].object_id, roots[0].generation);
+        let wrong_generation = HostRef::new(roots[0].type_id, roots[0].object_id, 2);
+        assert!(args.direct_binding(wrong_type).is_none());
+        assert!(args.direct_binding(wrong_generation).is_none());
     }
 
     #[test]

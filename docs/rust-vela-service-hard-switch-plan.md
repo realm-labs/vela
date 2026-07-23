@@ -1048,8 +1048,11 @@ into one registration-time `PreparedHostLeasePlan`; successful calls no longer
 rebuild their `CallableContract` or parameter request descriptions. Generated
 `ScriptHost` adapters now execute resolved dense slots directly for root-level
 field reads/writes/mutations and synchronous root methods rather than repeating
-stable-ID dispatch. Remaining standard bindings, compact HostRef storage, and
-nested prepared field/method adapter chains remain open.
+stable-ID dispatch. Direct call arguments also maintain an inline dense
+host-slot index, so an alias reaches its single binding/lease metadata entry in
+O(1) without a common-arity allocation. Remaining standard bindings, the
+compact script `HostRef` payload and unified root table, and nested prepared
+field/method adapter chains remain open.
 
 ### S3 — Standard Rust types, views, and collection protocols
 

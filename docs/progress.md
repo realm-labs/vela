@@ -66,6 +66,11 @@ method slots for root-level field reads/writes/mutations and synchronous root
 method calls. Those successful accesses no longer repeat stable field/method ID
 dispatch; nested prepared adapter chains remain open and continue through the
 validated HostTarget traversal.
+Direct call arguments now keep an inline dense host-slot index separate from
+their mixed positional/named value entries. Every copied alias resolves its one
+binding/lease metadata entry in O(1) from the execution-assigned object range,
+including exact type and generation validation; the script `HostRef` payload
+itself is still expanded and remains an open S2 item.
 The first S3 standard binding family is also live: concrete
 `BTreeMap<K, V>` and `HashMap<K, V>` bindings synthesize stable recursive
 key/value facts, share the Vela `MapLike` surface and owned Map codec, and keep
