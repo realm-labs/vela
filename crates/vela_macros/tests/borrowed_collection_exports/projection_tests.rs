@@ -5,7 +5,8 @@ fn untyped_dynamic_borrowed_collections_discover_supported_standard_methods() {
     let mut runtime = runtime(concat!(
         "fn array(values) { return values.max().unwrap_or(0) ",
         "+ values.filter(|value| value >= 5).len(); }\n",
-        "fn map(scores) { return scores.get_or(7i32, 0) ",
+        "fn map(scores) { if !scores.contains_key(7i32) || scores.contains_key(8i32) ",
+        "{ return 0; } return scores.get_or(7i32, 0) ",
         "+ scores.filter(|key, value| key >= 7i32 && value >= 6).values().count(); }\n",
         "fn set(values) { return values.has(7i32) ",
         "&& values.filter(|value| value >= 7i32).len() == 2; }\n",

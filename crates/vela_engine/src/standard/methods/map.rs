@@ -21,6 +21,12 @@ const MAP_METHODS: &[MethodSpec] = &[
         "Returns true when a key exists.",
     ),
     MethodSpec::new(
+        "contains_key",
+        &[ParamSpec::new("key", "any")],
+        "bool",
+        "Returns true when a key exists.",
+    ),
+    MethodSpec::new(
         "get",
         &[ParamSpec::new("key", "any")],
         "Option<Any>",

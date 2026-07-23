@@ -13,7 +13,7 @@ mod mutation;
 
 pub(crate) use higher_order::{all, any, count, filter, find, map_values};
 pub(crate) use introspection::{entries, keys, values};
-pub(crate) use lookup::{get, get_or, has};
+pub(crate) use lookup::{contains_key, get, get_or, has};
 pub(crate) use merge::{merge, merge_payload};
 pub(crate) use mutation::{clear, extend, remove, set};
 
@@ -488,8 +488,9 @@ fn main() {
 fn main() {
     let states = {"daily": "done", "raid": "active", "boss": "ready"};
     let scores = {"daily": 3, "raid": 8, "boss": 13};
-    if states.has("raid")
-        && !states.has("missing")
+    if states.contains_key("raid")
+        && !states.contains_key("missing")
+        && states.has("boss")
         && option::unwrap_or(states.get("boss"), "") == "ready"
         && states.get_or("missing", "fallback") == "fallback"
         && scores.get_or("raid", 0) == 8

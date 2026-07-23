@@ -49,6 +49,7 @@ const MAP_METHOD_NAMES: &[&str] = &[
     "len",
     "is_empty",
     "has",
+    "contains_key",
     "get",
     "get_or",
     "set",

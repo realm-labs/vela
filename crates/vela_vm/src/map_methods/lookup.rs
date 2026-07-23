@@ -9,16 +9,34 @@ pub(crate) fn has(
     args: &[Value],
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<bool> {
-    expect_arity("has", args, 1)?;
+    contains_key_with_name(receiver, args, heap, "has", "method has")
+}
+
+pub(crate) fn contains_key(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<bool> {
+    contains_key_with_name(receiver, args, heap, "contains_key", "method contains_key")
+}
+
+fn contains_key_with_name(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+    method: &str,
+    operation: &'static str,
+) -> VmResult<bool> {
+    expect_arity(method, args, 1)?;
     match receiver {
         Value::HeapRef(reference) => {
             let Some(HeapValue::Map(values)) = heap.and_then(|heap| heap.heap.get(*reference))
             else {
-                return type_error("method has");
+                return type_error(operation);
             };
-            values.contains_key_value(&args[0], heap, "method has")
+            values.contains_key_value(&args[0], heap, operation)
         }
-        _ => type_error("method has"),
+        _ => type_error(operation),
     }
 }
 

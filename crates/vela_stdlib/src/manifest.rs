@@ -794,7 +794,7 @@ mod tests {
         assert_eq!(STD_VARIANTS.len(), 4);
         assert_eq!(STD_FIELDS.len(), 3);
         assert_eq!(STD_FUNCTIONS.len(), 51);
-        assert_eq!(STD_METHODS.len(), 154);
+        assert_eq!(STD_METHODS.len(), 155);
     }
 
     #[test]
@@ -853,6 +853,11 @@ mod tests {
             STD_METHODS
                 .iter()
                 .any(|spec| spec.owner == "Array" && spec.name == "get")
+        );
+        assert!(
+            STD_METHODS
+                .iter()
+                .any(|spec| spec.owner == "Map" && spec.name == "contains_key")
         );
         assert!(
             STD_METHODS

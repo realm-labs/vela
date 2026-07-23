@@ -549,6 +549,13 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
     ),
     StdMethodSpec::new(
         "Map",
+        "contains_key",
+        &[StdParamSpec::new("key", "any")],
+        "bool",
+        "Returns true when a key exists.",
+    ),
+    StdMethodSpec::new(
+        "Map",
         "get",
         &[StdParamSpec::new("key", "any")],
         "Option<Any>",

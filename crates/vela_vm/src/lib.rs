@@ -630,6 +630,7 @@ pub enum StandardMethodInlineCacheTarget {
     TrimStart,
     TrimEnd,
     Has,
+    ContainsKey,
     IsSubset,
     IsSuperset,
     IsDisjoint,

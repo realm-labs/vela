@@ -165,6 +165,10 @@ pub(super) fn map_method_fact(
         "has" => Some(
             StdlibMethodFact::new(receiver, "has", TypeFact::BOOL).with_params(vec![key.clone()]),
         ),
+        "contains_key" => Some(
+            StdlibMethodFact::new(receiver, "contains_key", TypeFact::BOOL)
+                .with_params(vec![key.clone()]),
+        ),
         "get" => Some(
             StdlibMethodFact::new(receiver, "get", TypeFact::option(value.clone()))
                 .with_params(vec![key.clone()]),

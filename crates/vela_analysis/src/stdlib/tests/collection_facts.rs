@@ -38,6 +38,11 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
         assert!(stdlib_method_fact(receiver, "set", None).is_none());
         assert!(stdlib_method_fact(receiver, "remove", None).is_none());
         assert!(stdlib_method_fact(receiver, "group_by", None).is_none());
+        let contains_key =
+            stdlib_method_fact(receiver, "contains_key", None).expect("membership method fact");
+        assert_eq!(contains_key.receiver, receiver.clone());
+        assert_eq!(contains_key.params, vec![TypeFact::STRING]);
+        assert_eq!(contains_key.returns, TypeFact::BOOL);
         let values = stdlib_method_fact(receiver, "values", None).expect("read method fact");
         assert_eq!(values.receiver, receiver.clone());
     }

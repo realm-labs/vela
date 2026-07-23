@@ -78,6 +78,7 @@ pub(crate) struct StdMethodIds {
     pub(crate) map_len: MethodId,
     pub(crate) map_is_empty: MethodId,
     pub(crate) map_has: MethodId,
+    pub(crate) map_contains_key: MethodId,
     pub(crate) map_get: MethodId,
     pub(crate) map_get_or: MethodId,
     pub(crate) map_set: MethodId,
@@ -209,6 +210,7 @@ impl StdMethodIds {
             map_len: standard_method_id("Map", "len"),
             map_is_empty: standard_method_id("Map", "is_empty"),
             map_has: standard_method_id("Map", "has"),
+            map_contains_key: standard_method_id("Map", "contains_key"),
             map_get: standard_method_id("Map", "get"),
             map_get_or: standard_method_id("Map", "get_or"),
             map_set: standard_method_id("Map", "set"),
@@ -292,6 +294,7 @@ pub(crate) enum HostCollectionLookup {
     ArrayGet,
     ArrayIndexOf,
     ArrayLast,
+    MapContainsKey,
     MapHas,
     MapGet,
     MapGetOr,
@@ -307,6 +310,7 @@ impl HostCollectionLookup {
             Self::ArrayGet => "get",
             Self::ArrayIndexOf => "index_of",
             Self::ArrayLast => "last",
+            Self::MapContainsKey => "contains_key",
             Self::MapHas | Self::SetHas => "has",
             Self::MapGet => "get",
             Self::MapGetOr => "get_or",
@@ -320,6 +324,7 @@ impl HostCollectionLookup {
             Self::ArrayContains
             | Self::ArrayGet
             | Self::ArrayIndexOf
+            | Self::MapContainsKey
             | Self::MapHas
             | Self::MapGet
             | Self::SetHas => 1,
@@ -340,6 +345,8 @@ pub(crate) fn host_collection_lookup(method_id: MethodId) -> Option<HostCollecti
         Some(HostCollectionLookup::ArrayIndexOf)
     } else if method_id == ids.array_last {
         Some(HostCollectionLookup::ArrayLast)
+    } else if method_id == ids.map_contains_key {
+        Some(HostCollectionLookup::MapContainsKey)
     } else if method_id == ids.map_has {
         Some(HostCollectionLookup::MapHas)
     } else if method_id == ids.map_get {

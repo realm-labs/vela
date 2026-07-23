@@ -371,6 +371,7 @@ fn map_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "len" => ids.map_len,
         "is_empty" => ids.map_is_empty,
         "has" => ids.map_has,
+        "contains_key" => ids.map_contains_key,
         "get" => ids.map_get,
         "get_or" => ids.map_get_or,
         "set" => ids.map_set,
