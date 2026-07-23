@@ -2778,6 +2778,13 @@ live resumable host iteration and complex element HostRefs remain open and
 must add generation checks rather than silently changing the snapshot into an
 escaping Rust borrow.
 
+Non-callback Array transforms `distinct`, `reverse`, `slice`, and `join` reuse
+the same completely precharged values projection but call the shared owned
+algorithms directly. They return ordinary owned Array/String results and do
+not allocate a temporary receiver Array. Ordering operations such as
+`sort/min/max` remain separate because their resumable comparison and error
+semantics require an explicit host-backed design.
+
 ### Borrowed Rust Slices Use A Quarantined Erased-Borrow Boundary
 
 Concrete `[T]` has a distinct borrowed-only TypeBinding identity and maps to

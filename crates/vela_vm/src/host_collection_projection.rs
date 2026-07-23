@@ -9,7 +9,7 @@ use crate::host_access::{
 };
 use crate::{
     HostInlineCacheTarget, StandardMethodReceiver, Value, VmError, VmErrorKind, VmResult,
-    expect_host_ref,
+    expect_host_ref, std_method_ids::HostArrayTransform,
 };
 
 pub(crate) fn execute_host_root_collection_projection(
@@ -106,6 +106,43 @@ pub(crate) fn project_host_root_collection_items(
         }));
     };
     host_items_to_values(items, runtime)
+}
+
+pub(crate) fn execute_host_root_array_transform(
+    mut runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    transform: HostArrayTransform,
+    args: &[Value],
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<Value> {
+    if args.len() != transform.arity() {
+        return Err(VmError::new(VmErrorKind::ArityMismatch {
+            name: transform.name().to_owned(),
+            expected: transform.arity(),
+            actual: args.len(),
+        }));
+    }
+    let values = project_host_root_collection_items(&mut runtime, receiver, cache_site)?;
+    match transform {
+        HostArrayTransform::Distinct => {
+            crate::array_methods::distinct_projected(values, &mut runtime.heap, &mut runtime.budget)
+        }
+        HostArrayTransform::Join => crate::array_methods::join_projected(
+            values,
+            args,
+            &mut runtime.heap,
+            &mut runtime.budget,
+        ),
+        HostArrayTransform::Reverse => {
+            crate::array_methods::reverse_projected(values, &mut runtime.heap, &mut runtime.budget)
+        }
+        HostArrayTransform::Slice => crate::array_methods::slice_projected(
+            values,
+            args,
+            &mut runtime.heap,
+            &mut runtime.budget,
+        ),
+    }
 }
 
 fn snapshot_host_root_collection(

@@ -208,10 +208,14 @@ the caller fallback; other host errors propagate. Read-only Array
 `contains/index_of` consume one bounded values projection, charge one execution
 unit per projected element, compare exact `ValueKey` identities, and preserve
 false/`Option::None` behavior for empty or absent values without materializing
-a script Array. Complex borrowed element
-views, remaining element/key methods, live/resumable iteration, remaining bulk
-mutation, user-defined collection adapters, and prepared
-index plans remain open. Growable `MapMut.set` and missing-key index assignment now insert
+a script Array. Read-only Array `distinct/reverse/slice/join` consume the same
+single precharged values projection and reuse the owned transform algorithms
+directly. They return ordinary owned Array/String results without creating a
+temporary receiver Array or mutating the Rust backing collection. Complex
+borrowed element views, remaining element/key methods, live/resumable
+iteration, remaining bulk mutation, user-defined collection adapters, and
+prepared index plans remain open. Growable `MapMut.set` and missing-key index
+assignment now insert
 scalar/String/Bytes leaves through the keyed HostAccess write, while
 `MapMut.remove` uses a keyed HostAccess remove and returns the prior value as
 `Option<V>`. `SetMut.add/remove` write membership through the same path and
@@ -434,11 +438,11 @@ Root execution-host lease guards and grouped scoped child/activity sets now use
 the same eight-entry inline threshold while retaining acquire-all-or-clean-up
 behavior on conflict.
 S3 is active. Its remaining gaps are complex-element borrowed views, remaining
-element/key and live/resumable collection operations, borrowed-source and
-write-through bulk mutations, richer adapters, and prepared
-element/grouping/traversal operations. Service-signature traversal and
-service-generation pinning belong to S4-S6. A shorter owned-host reclamation
-policy remains post-S2 follow-up.
+element/key and live/resumable collection operations (including Array
+`sort/min/max`), borrowed-source and write-through bulk mutations, richer
+adapters, and prepared element/grouping/traversal operations.
+Service-signature traversal and service-generation pinning belong to S4-S6. A
+shorter owned-host reclamation policy remains post-S2 follow-up.
 Runtime receiver enforcement is live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-
 signature facts.

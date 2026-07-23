@@ -1,6 +1,69 @@
 use super::*;
 
 #[test]
+fn borrowed_array_transforms_use_one_bounded_projection() {
+    let mut runtime = runtime(
+        "fn numeric(values: ArrayView<i64>) { let unique = values.distinct(); let reversed = values.reverse(); let middle = values.slice(1, 3); return unique.len() == 3 && unique[2] == 8 && reversed[0] == 8 && reversed[3] == 3 && middle[0] == 5 && middle[1] == 3; } fn retained(owner: CollectionOwner) { let values = owner.values(); return values.reverse()[0] + values.slice(1, 3)[0]; } fn joined(values: ArrayView<String>) { return values.join(\"|\"); } fn empty(values: ArrayView<i64>) { return values.distinct().is_empty() && values.reverse().is_empty() && values.slice(0, 0).is_empty(); } fn invalid(values: ArrayView<i64>) { return values.slice(0, 9); }",
+    );
+
+    let values = vec![3_i64, 5, 3, 8];
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call("numeric", args, CallOptions::unbounded())
+        .expect("borrowed array transforms should return owned projected results");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    drop(result);
+    assert_eq!(values, vec![3, 5, 3, 8]);
+
+    let owner = CollectionOwner {
+        values: vec![5, 7, 11],
+        totals: BTreeMap::new(),
+    };
+    let result = runtime
+        .call(
+            "retained",
+            CallArgs::new().with_host_ref("owner", &owner),
+            CallOptions::unbounded(),
+        )
+        .expect("retained borrowed array transforms should use the parent lease");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(18)));
+    drop(result);
+    assert_eq!(owner.values, vec![5, 7, 11]);
+
+    let words = vec!["north".to_owned(), "star".to_owned()];
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &words);
+    let result = runtime
+        .call("joined", args, CallOptions::unbounded())
+        .expect("borrowed string arrays should join projected strings");
+    assert_eq!(
+        runtime.value_to_owned(&result),
+        Ok(OwnedValue::String("north|star".to_owned()))
+    );
+    drop(result);
+
+    let empty = Vec::<i64>::new();
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &empty);
+    let result = runtime
+        .call("empty", args, CallOptions::unbounded())
+        .expect("empty borrowed transforms should preserve owned array semantics");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    drop(result);
+
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let error = runtime
+        .call("invalid", args, CallOptions::unbounded())
+        .expect_err("borrowed slice past the projected length must fail");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::IndexOutOfBounds { index: 9, len: 4 }
+    ));
+}
+
+#[test]
 fn borrowed_array_searches_use_one_bounded_projection() {
     let mut runtime = runtime(
         "fn direct(values: ArrayView<i64>) { return values.contains(12) && !values.contains(14) && values.index_of(13).unwrap_or(9) == 2 && values.index_of(14).unwrap_or(4) == 4; } fn retained(owner: CollectionOwner) { let values = owner.values(); return values.contains(7) && values.index_of(11).unwrap_or(0) == 2; } fn empty(values: ArrayView<i64>) { return !values.contains(1) && values.index_of(1).unwrap_or(6) == 6; }",

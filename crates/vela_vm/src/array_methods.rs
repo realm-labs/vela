@@ -12,7 +12,10 @@ pub(crate) use mutation::{clear, extend, insert, pop, push, remove_at};
 pub(crate) use ordering::{
     ResumableArrayOrdering, ResumableArrayOrderingKind, ResumableArrayOrderingStep,
 };
-pub(crate) use transform::{distinct_by_key, join, reverse, slice};
+pub(crate) use transform::{
+    distinct_by_key, distinct_projected, join, join_projected, reverse, reverse_projected, slice,
+    slice_projected,
+};
 
 use crate::collection_mutation::check_collection_len;
 use crate::heap::HeapValue;

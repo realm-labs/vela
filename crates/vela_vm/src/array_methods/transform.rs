@@ -28,6 +28,17 @@ pub(crate) fn join(
         return make_string_value(joined, heap, budget, "method join");
     }
     let values = array_values(receiver, heap.as_deref(), "method join")?;
+    join_projected(values, args, heap, budget)
+}
+
+pub(crate) fn join_projected(
+    values: Vec<Value>,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    expect_arity("join", args, 1)?;
+    let separator = string_value(&args[0], heap.as_deref(), "method join")?.to_owned();
     let mut parts = Vec::with_capacity(values.len());
     for value in values {
         parts.push(string_value(&value, heap.as_deref(), "method join")?.to_owned());
@@ -43,6 +54,14 @@ pub(crate) fn distinct_by_key(
 ) -> VmResult<Value> {
     expect_arity("distinct", args, 0)?;
     let values = array_values(receiver, heap.as_deref(), "method distinct")?;
+    distinct_projected(values, heap, budget)
+}
+
+pub(crate) fn distinct_projected(
+    values: Vec<Value>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
     let heap_ref = heap.as_deref();
     let mut seen = BTreeSet::new();
     let mut distinct = Vec::new();
@@ -71,7 +90,15 @@ pub(crate) fn reverse(
         let values = reverse_runtime_values(values);
         return make_array_value(values, heap, budget, "method reverse");
     }
-    let mut values = array_values(receiver, heap.as_deref(), "method reverse")?;
+    let values = array_values(receiver, heap.as_deref(), "method reverse")?;
+    reverse_projected(values, heap, budget)
+}
+
+pub(crate) fn reverse_projected(
+    mut values: Vec<Value>,
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
     values.reverse();
     make_array_value(values, heap, budget, "method reverse")
 }
@@ -93,6 +120,15 @@ pub(crate) fn slice(
         return make_array_value(values, heap, budget, "method slice");
     }
     let values = array_values(receiver, heap.as_deref(), "method slice")?;
+    slice_projected(values, args, heap, budget)
+}
+
+pub(crate) fn slice_projected(
+    values: Vec<Value>,
+    args: &[Value],
+    heap: &mut Option<&mut HeapExecution<'_>>,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
     let start = index_value(&args[0], "method slice")?;
     let end = index_value(&args[1], "method slice")?;
     if start > end {

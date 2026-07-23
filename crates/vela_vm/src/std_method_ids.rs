@@ -347,6 +347,50 @@ pub(crate) fn host_collection_lookup(method_id: MethodId) -> Option<HostCollecti
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum HostArrayTransform {
+    Distinct,
+    Join,
+    Reverse,
+    Slice,
+}
+
+impl HostArrayTransform {
+    #[must_use]
+    pub(crate) const fn name(self) -> &'static str {
+        match self {
+            Self::Distinct => "distinct",
+            Self::Join => "join",
+            Self::Reverse => "reverse",
+            Self::Slice => "slice",
+        }
+    }
+
+    #[must_use]
+    pub(crate) const fn arity(self) -> usize {
+        match self {
+            Self::Distinct | Self::Reverse => 0,
+            Self::Join => 1,
+            Self::Slice => 2,
+        }
+    }
+}
+
+pub(crate) fn host_array_transform(method_id: MethodId) -> Option<HostArrayTransform> {
+    let ids = std_method_ids();
+    if method_id == ids.array_distinct {
+        Some(HostArrayTransform::Distinct)
+    } else if method_id == ids.array_join {
+        Some(HostArrayTransform::Join)
+    } else if method_id == ids.array_reverse {
+        Some(HostArrayTransform::Reverse)
+    } else if method_id == ids.array_slice {
+        Some(HostArrayTransform::Slice)
+    } else {
+        None
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum HostCollectionMutation {
     Clear,
     ArrayExtend,
