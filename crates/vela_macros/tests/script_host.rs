@@ -5,7 +5,8 @@ use vela_def::{FieldId, TypeId};
 use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
 use vela_host::resolved::{HostAccessOp, HostAccessSpec, ResolvedHostAccessKind};
-use vela_host::target::HostTargetPlan;
+use vela_host::target::{HostTargetInstance, HostTargetPlan};
+use vela_host::value::HostValue;
 use vela_macros::{ScriptHost, ScriptReflect};
 use vela_reflect::access::FieldAccess;
 use vela_reflect::registry::{FieldDesc, TraitDesc, TypeDesc, TypeKey, TypeKind, VariantDesc};
@@ -346,6 +347,33 @@ fn script_host_derive_resolves_leaf_fields_to_direct_access() {
     .expect("generated host field resolver should resolve level");
 
     assert_eq!(access.adapter_kind, ResolvedHostAccessKind::DirectField(0));
+}
+
+#[test]
+fn script_host_derive_executes_dense_field_slots() {
+    let root = HostRef::new(Player::vela_host_type_id(), HostObjectId::new(42), 3);
+    let plan =
+        HostTargetPlan::new(Player::vela_host_type_id()).field(Player::vela_field_id_level());
+    let target = HostTargetInstance::new(root, &plan, &[]);
+    let mut player = Player {
+        level: 7,
+        name: "Ada".to_owned(),
+        internal_revision: 1,
+    };
+
+    let value =
+        <Player as vela_host::object::ScriptHostFieldAccess>::read_direct_field(&player, 0, target)
+            .expect("generated dense field read should execute");
+    assert_eq!(value, HostValue::Scalar(vela_common::ScalarValue::U32(7)));
+
+    <Player as vela_host::object::ScriptHostFieldAccess>::write_direct_field(
+        &mut player,
+        0,
+        target,
+        HostValue::Scalar(vela_common::ScalarValue::U32(11)),
+    )
+    .expect("generated dense field write should execute");
+    assert_eq!(player.level, 11);
 }
 
 #[test]

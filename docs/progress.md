@@ -61,6 +61,11 @@ Generated host-argument preflight and the corresponding acquired lease-guard
 set now both stay inline for up to eight leases. Wider service boundaries still
 spill, and failed multi-lease acquisition drops the partially acquired inline
 set before returning, preserving atomic rollback.
+Generated `ScriptHost` adapters now consume their resolved dense field and
+method slots for root-level field reads/writes/mutations and synchronous root
+method calls. Those successful accesses no longer repeat stable field/method ID
+dispatch; nested prepared adapter chains remain open and continue through the
+validated HostTarget traversal.
 The first S3 standard binding family is also live: concrete
 `BTreeMap<K, V>` and `HashMap<K, V>` bindings synthesize stable recursive
 key/value facts, share the Vela `MapLike` surface and owned Map codec, and keep

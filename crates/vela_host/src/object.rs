@@ -171,6 +171,46 @@ pub trait ScriptHostObject {
 pub trait ScriptHostFieldAccess {
     fn script_host_type_id(&self) -> HostTypeId;
 
+    /// Reads a field selected by the adapter's dense, schema-local slot.
+    ///
+    /// Generated host adapters override this entry point. The default keeps
+    /// handwritten adapters compatible with ordinary target traversal.
+    #[doc(hidden)]
+    fn read_direct_field(
+        &self,
+        slot: u32,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
+        let _ = slot;
+        self.read_host_target_from(target, 0)
+    }
+
+    /// Writes a field selected by the adapter's dense, schema-local slot.
+    #[doc(hidden)]
+    fn write_direct_field(
+        &mut self,
+        slot: u32,
+        target: HostTargetInstance<'_>,
+        value: HostValue,
+    ) -> HostResult<()> {
+        let _ = slot;
+        self.write_host_target_from(target, 0, value)
+    }
+
+    /// Mutates a field selected by the adapter's dense, schema-local slot.
+    #[doc(hidden)]
+    fn mutate_direct_field(
+        &mut self,
+        slot: u32,
+        target: HostTargetInstance<'_>,
+        op: HostMutationOp,
+        rhs: HostValue,
+    ) -> HostResult<()> {
+        let current = self.read_direct_field(slot, target)?;
+        let next = mutate_host_value(op, &current, &rhs, target)?;
+        self.write_direct_field(slot, target, next)
+    }
+
     fn from_host_collection_value(_value: HostValue) -> HostResult<Self>
     where
         Self: Sized,

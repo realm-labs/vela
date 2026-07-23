@@ -122,6 +122,12 @@ pub(super) fn script_host_object_impl_tokens(
         .iter()
         .filter(|method| method.receiver != MethodReceiver::HostBoundary && !method.is_async)
         .map(host_method_arm_tokens);
+    let direct_arms = methods
+        .iter()
+        .filter(|method| method.receiver != MethodReceiver::HostBoundary)
+        .enumerate()
+        .filter(|(_, method)| !method.is_async)
+        .map(host_method_direct_arm_tokens);
     let resolve_arms = methods
         .iter()
         .filter(|method| method.receiver != MethodReceiver::HostBoundary)
@@ -167,7 +173,17 @@ pub(super) fn script_host_object_impl_tokens(
                 access: ::vela_host::resolved::ResolvedHostAccess,
                 target: ::vela_host::target::HostTargetInstance<'_>,
             ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
-                let _ = access;
+                if target.plan.parts.len() == 1 {
+                    if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
+                        access.adapter_kind
+                    {
+                        return ::vela_host::object::ScriptHostFieldAccess::read_direct_field(
+                            self,
+                            slot,
+                            target,
+                        );
+                    }
+                }
                 ::vela_host::object::ScriptHostFieldAccess::read_host_target_from(self, target, 0)
             }
 
@@ -177,7 +193,18 @@ pub(super) fn script_host_object_impl_tokens(
                 target: ::vela_host::target::HostTargetInstance<'_>,
                 value: ::vela_host::value::HostValue,
             ) -> ::vela_host::error::HostResult<()> {
-                let _ = access;
+                if target.plan.parts.len() == 1 {
+                    if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
+                        access.adapter_kind
+                    {
+                        return ::vela_host::object::ScriptHostFieldAccess::write_direct_field(
+                            self,
+                            slot,
+                            target,
+                            value,
+                        );
+                    }
+                }
                 ::vela_host::object::ScriptHostFieldAccess::write_host_target_from(self, target, 0, value)
             }
 
@@ -188,7 +215,19 @@ pub(super) fn script_host_object_impl_tokens(
                 op: ::vela_host::resolved::HostMutationOp,
                 rhs: ::vela_host::value::HostValue,
             ) -> ::vela_host::error::HostResult<()> {
-                let _ = access;
+                if target.plan.parts.len() == 1 {
+                    if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
+                        access.adapter_kind
+                    {
+                        return ::vela_host::object::ScriptHostFieldAccess::mutate_direct_field(
+                            self,
+                            slot,
+                            target,
+                            op,
+                            rhs,
+                        );
+                    }
+                }
                 ::vela_host::object::ScriptHostFieldAccess::mutate_host_target_from(
                     self,
                     target,
@@ -205,7 +244,6 @@ pub(super) fn script_host_object_impl_tokens(
                 method: ::vela_common::HostMethodId,
                 args: &[::vela_host::value::HostValue],
             ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
-                let _ = access;
                 if !target.plan.parts.is_empty() {
                     return ::vela_host::object::ScriptHostFieldAccess::call_host_target_from(
                         self,
@@ -214,6 +252,17 @@ pub(super) fn script_host_object_impl_tokens(
                         method,
                         args,
                     );
+                }
+                if let ::vela_host::resolved::ResolvedHostAccessKind::DirectMethod(slot) =
+                    access.adapter_kind
+                {
+                    return match slot {
+                        #(#direct_arms)*
+                        _ => Err(::vela_host::error::HostError {
+                            kind: ::vela_host::error::HostErrorKind::UnsupportedMethod { method },
+                            source_span: None,
+                        }),
+                    };
                 }
                 let owner_stable_path = Self::vela_stable_type_path();
                 match method {
@@ -426,6 +475,30 @@ fn host_method_resolve_arm_tokens((slot, method): (usize, &MethodMeta)) -> Token
 
 fn host_method_arm_tokens(method: &MethodMeta) -> TokenStream {
     let stable_name = &method.stable_name;
+    let call = host_method_call_tokens(method);
+
+    quote! {
+        method if method == ::vela_common::HostMethodId::new(::core::primitive::u128::from(::vela_common::stable_id(
+            "host_method",
+            owner_stable_path,
+            #stable_name,
+        ))) => {
+            #call
+        }
+    }
+}
+
+fn host_method_direct_arm_tokens((slot, method): (usize, &MethodMeta)) -> TokenStream {
+    let slot = u32::try_from(slot).expect("host method slot index fits u32");
+    let call = host_method_call_tokens(method);
+    quote! {
+        #slot => {
+            #call
+        }
+    }
+}
+
+fn host_method_call_tokens(method: &MethodMeta) -> TokenStream {
     let ident = &method.ident;
     let arg_bindings = method
         .params
@@ -444,15 +517,9 @@ fn host_method_arm_tokens(method: &MethodMeta) -> TokenStream {
     };
 
     quote! {
-        method if method == ::vela_common::HostMethodId::new(::core::primitive::u128::from(::vela_common::stable_id(
-            "host_method",
-            owner_stable_path,
-            #stable_name,
-        ))) => {
-            #(#arg_bindings)*
-            let __vela_result = #receiver.#ident(#(#arg_names),*);
-            ::vela_host::object::HostValueInto::into_host_value(__vela_result)
-        }
+        #(#arg_bindings)*
+        let __vela_result = #receiver.#ident(#(#arg_names),*);
+        ::vela_host::object::HostValueInto::into_host_value(__vela_result)
     }
 }
 

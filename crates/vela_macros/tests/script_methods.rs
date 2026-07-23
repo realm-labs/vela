@@ -11,7 +11,7 @@ use vela_host::path::HostPath;
 use vela_host::path::HostRef;
 use vela_host::proxy::PathProxy;
 use vela_host::resolved::{HostAccessOp, HostAccessSpec, ResolvedHostAccessKind};
-use vela_host::target::HostTargetPlan;
+use vela_host::target::{HostTargetInstance, HostTargetPlan};
 use vela_host::value::HostValue;
 use vela_macros::{ScriptHost, script_methods};
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeKind};
@@ -320,7 +320,7 @@ fn method_id(name: &str) -> HostMethodId {
 
 #[test]
 fn script_methods_resolve_root_methods_to_direct_access() {
-    let counter = DirectCounter { total: 1 };
+    let mut counter = DirectCounter { total: 1 };
     let plan = HostTargetPlan::new(DirectCounter::vela_host_type_id());
     let method = HostMethodId::new(u128::from(stable_id(
         "host_method",
@@ -335,4 +335,16 @@ fn script_methods_resolve_root_methods_to_direct_access() {
     .expect("generated script method resolver should resolve direct self method");
 
     assert_eq!(access.adapter_kind, ResolvedHostAccessKind::DirectMethod(0));
+
+    let root = HostRef::new(DirectCounter::vela_host_type_id(), HostObjectId::new(7), 1);
+    let result = <DirectCounter as vela_host::object::ScriptHostObject>::call_resolved_host(
+        &mut counter,
+        access,
+        HostTargetInstance::new(root, &plan, &[]),
+        method,
+        &[HostValue::Scalar(vela_common::ScalarValue::I64(4))],
+    )
+    .expect("generated dense method adapter should execute");
+    assert_eq!(result, HostValue::Scalar(vela_common::ScalarValue::I64(5)));
+    assert_eq!(counter.total, 5);
 }
