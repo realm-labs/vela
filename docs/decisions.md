@@ -2807,6 +2807,12 @@ Rust objects into script storage. Consolidating borrow-group, provenance,
 prepared-adapter, and pinned-generation metadata into the dense slot entry
 remains S2 work.
 
+The transient active-provenance proof used by generated native reborrow keeps
+the common eight host arguments inline in `NativeCallContext`. Each entry still
+records the exact root, access mode, and leased object address, so this removes
+the routine setup allocation without changing reborrow validation or treating
+the transient proof as durable script state.
+
 ### Prepared Host Traversal Uses Inline Typed Steps
 
 A resolved host access carries one bounded copyable chain whose steps

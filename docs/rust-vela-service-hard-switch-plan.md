@@ -1052,7 +1052,10 @@ rebuild their `CallableContract` or parameter request descriptions. Generated
 field reads/writes/mutations and synchronous root methods rather than repeating
 stable-ID dispatch. Direct call arguments also maintain an inline dense
 host-slot index, so an alias reaches its single binding/lease metadata entry in
-O(1) without a common-arity allocation. The final pointer-free table key now
+O(1) without a common-arity allocation. Active native-reborrow provenance also
+keeps the common eight exact root/mode/object-address proofs inline, avoiding a
+routine vector allocation without weakening the live-lease check. The final
+pointer-free table key now
 exists as an 8-byte `(u32 slot, u32 generation)` `HostSlotRef`, and the direct
 table now uses one reusable inline `HostSlotTable` that invalidates stale
 aliases and advances generation before slot reuse. The root execution adapter

@@ -1,3 +1,4 @@
+use smallvec::SmallVec;
 use vela_common::{HostMethodId, Span};
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
@@ -75,7 +76,7 @@ pub struct NativeCallContext<'ctx, 'host> {
     host: Option<&'ctx mut HostExecution<'host>>,
     budget: Option<&'ctx mut ExecutionBudget>,
     reentry: Option<&'ctx mut dyn NativeReentry>,
-    host_provenance: Vec<ActiveHostProvenance>,
+    host_provenance: ActiveHostProvenanceSet,
     effect_ceiling: CapabilitySet,
 }
 
@@ -85,6 +86,8 @@ struct ActiveHostProvenance {
     mode: HostLeaseKind,
     object_address: usize,
 }
+
+type ActiveHostProvenanceSet = SmallVec<[ActiveHostProvenance; 8]>;
 
 impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
     pub(crate) fn new(
@@ -99,7 +102,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             host: Some(host),
             budget,
             reentry,
-            host_provenance: Vec::new(),
+            host_provenance: ActiveHostProvenanceSet::new(),
             effect_ceiling,
         }
     }
@@ -114,7 +117,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             host: None,
             budget: None,
             reentry: Some(reentry),
-            host_provenance: Vec::new(),
+            host_provenance: ActiveHostProvenanceSet::new(),
             effect_ceiling,
         }
     }
@@ -563,4 +566,27 @@ fn reentry_unavailable() -> vela_vm::error::VmError {
     vela_vm::error::VmError::new(vela_vm::error::VmErrorKind::TypeMismatch {
         operation: "native call context reentry outside an active async execution",
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn common_arity_host_provenance_stays_inline() {
+        let provenance = (0_u32..8)
+            .map(|slot| ActiveHostProvenance {
+                root: HostRef::new(
+                    vela_common::HostTypeId::new(1),
+                    vela_common::HostObjectId::new(u64::from(slot) + 1),
+                    1,
+                ),
+                mode: HostLeaseKind::Shared,
+                object_address: slot as usize,
+            })
+            .collect::<ActiveHostProvenanceSet>();
+
+        assert_eq!(provenance.len(), 8);
+        assert!(!provenance.spilled());
+    }
 }

@@ -397,12 +397,14 @@ generated request arrays and an eight-entry inline result set; the
 shared/exclusive boundary rows allocate zero times and still reject the
 complete conflict set before lease acquisition. Generated host functions and
 methods now reuse registration-time prepared parameter plans instead of
-rebuilding contracts and request metadata on each call. Service-signature and
-Host/View/MutView closure traversal, remaining borrowed collection runtime
-views and type hints, consolidation of borrow-group, provenance,
-prepared-adapter, and pinned-generation metadata behind the compact slot table,
-prepared element method calls, and a post-S2 shorter owned-host reclamation
-policy remain open.
+rebuilding contracts and request metadata on each call. Active native-reborrow
+provenance now keeps the common eight exact root/mode/object-address proofs
+inline, so ordinary nested host calls do not allocate a provenance vector.
+Service-signature and Host/View/MutView closure traversal, remaining borrowed
+collection runtime views and type hints, consolidation of borrow-group,
+provenance, prepared-adapter, and pinned-generation metadata behind the compact
+slot table, prepared element method calls, and a post-S2 shorter owned-host
+reclamation policy remain open.
 Runtime receiver enforcement is live; compile-time
 View/MutView enforcement awaits receiver-capable expression and service-
 signature facts.
