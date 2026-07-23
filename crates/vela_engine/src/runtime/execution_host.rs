@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use smallvec::SmallVec;
 use vela_common::{HostMethodId, HostTypeId};
 use vela_host::adapter::{
     ExternStateBinding, HostLeaseInvoker, ScopedHostReturn, ScopedHostReturnGroup,
@@ -8,7 +9,7 @@ use vela_host::adapter::{
 };
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::lease::{
-    BorrowLeaseId, ErasedHostLease, HostLeaseKind, ScopedBorrowedHostGroupCell,
+    BorrowLeaseId, ErasedHostLease, ErasedHostLeaseSet, HostLeaseKind, ScopedBorrowedHostGroupCell,
     ScopedHostLeaseSlot, host_lease_unsupported, host_object_busy,
 };
 use vela_host::object::ScriptHostObject;
@@ -214,8 +215,8 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
     fn take_execution_host_leases(
         &mut self,
         requests: &[(HostRef, HostLeaseKind)],
-    ) -> HostResult<Vec<ErasedHostLease<'host>>> {
-        let mut leases = Vec::with_capacity(requests.len());
+    ) -> HostResult<ErasedHostLeaseSet<'host>> {
+        let mut leases = ErasedHostLeaseSet::with_capacity(requests.len());
         for (root, kind) in requests {
             match self.take_execution_host_lease(*root, *kind) {
                 Ok(lease) => leases.push(lease),
@@ -284,7 +285,9 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
         invoke: &mut HostLeaseInvoker<'_>,
     ) -> Option<HostResult<()>> {
         let mut group = None;
-        let mut children = Vec::with_capacity(requests.len());
+        let mut children = SmallVec::<[(HostRef, usize, HostLeaseKind, Arc<()>); 8]>::with_capacity(
+            requests.len(),
+        );
         for (root, kind) in requests {
             let binding = self.scoped_binding(*root)?;
             let ScopedHostObjectBinding::Group { object, index } = &binding.object else {
@@ -304,8 +307,8 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
         }
         let group = group?;
         Some(group.with_dependent(move |_, objects| {
-            let mut leases = Vec::with_capacity(children.len());
-            let mut activities = Vec::with_capacity(children.len());
+            let mut leases = ErasedHostLeaseSet::with_capacity(children.len());
+            let mut activities = SmallVec::<[Arc<()>; 8]>::with_capacity(children.len());
             for (root, index, kind, activity) in children {
                 let child = objects
                     .get(index)

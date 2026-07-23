@@ -1042,7 +1042,9 @@ descriptors plus executable thunks into the same registration consumed by
 `register_script_host::<T>()`. Host-argument preflight now builds generated
 request arrays without a temporary heap vector and returns an inline request
 set for up to eight leases; acquired lease guards use the same inline threshold
-and spill only for wider calls. The shared and exclusive S0 preflight benchmark
+through direct and root execution-host acquisition. Grouped scoped child
+requests and activity guards also remain inline at that arity and spill only
+for wider calls. The shared and exclusive S0 preflight benchmark
 rows both measure zero allocations while retaining the full conflict pass
 before lease acquisition. Generated host functions and methods now compile
 parameter source, index, concrete type, lease mode, and diagnostic metadata

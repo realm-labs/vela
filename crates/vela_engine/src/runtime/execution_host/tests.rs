@@ -149,6 +149,32 @@ fn direct_host_ids_are_allocated_by_the_execution_owner() {
 }
 
 #[test]
+fn execution_host_lease_guards_stay_inline_for_common_arities() {
+    let value = vec![1_i64];
+    let args = CallArgs::new().with_host_ref("value", &value);
+    let mut extern_states = RuntimeExternStateBindings::new();
+    let mut host_arena = RuntimeHostArena::new();
+    let mut host_slots = HostRefSlots::new();
+    let mut host = ExecutionHost::new(args, &mut extern_states, &mut host_arena, &mut host_slots);
+    let root = HostRef::new(
+        value.host_type_id(),
+        vela_common::HostObjectId::new(EXECUTION_HOST_OBJECT_ID_BASE),
+        1,
+    );
+
+    let inline = host
+        .take_execution_host_leases(&[(root, HostLeaseKind::Shared); 8])
+        .expect("common-arity execution-host leases should be acquired");
+    assert!(!inline.spilled());
+    drop(inline);
+
+    let spilled = host
+        .take_execution_host_leases(&[(root, HostLeaseKind::Shared); 9])
+        .expect("wide execution-host lease sets should remain supported");
+    assert!(spilled.spilled());
+}
+
+#[test]
 fn nested_execution_uses_one_canonical_generational_slot_namespace() {
     let value = vec![1_i64];
     let args = CallArgs::new().with_host_ref("value", &value);

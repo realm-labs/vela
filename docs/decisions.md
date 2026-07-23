@@ -2815,6 +2815,12 @@ records the exact root, access mode, and leased object address, so this removes
 the routine setup allocation without changing reborrow validation or treating
 the transient proof as durable script state.
 
+Root `ExecutionHost` acquisition uses the same eight-entry inline
+`ErasedHostLeaseSet` as direct call arguments. Grouped scoped returns also keep
+their child requests and activity guards inline at that arity. Acquisition
+still drops every earlier guard on a later conflict before authored Rust runs;
+unusually wide boundaries may spill without changing semantics.
+
 ### Prepared Host Traversal Uses Inline Typed Steps
 
 A resolved host access carries one bounded copyable chain whose steps

@@ -402,6 +402,9 @@ methods now reuse registration-time prepared parameter plans instead of
 rebuilding contracts and request metadata on each call. Active native-reborrow
 provenance now keeps the common eight exact root/mode/object-address proofs
 inline, so ordinary nested host calls do not allocate a provenance vector.
+Root execution-host lease guards and grouped scoped child/activity sets now use
+the same eight-entry inline threshold while retaining acquire-all-or-clean-up
+behavior on conflict.
 Service-signature and Host/View/MutView closure traversal, remaining borrowed
 collection runtime views and type hints, consolidation of provenance,
 prepared-adapter, and pinned-generation metadata behind the compact slot table,
