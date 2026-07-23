@@ -1293,14 +1293,14 @@ in the cache entry.
 ### Collection Index Plans Use Adapter-Local Resolution
 
 Standard `Vec<T>` adapters classify empty or index-shaped target suffixes, and
-`BTreeMap<K, V>`/`HashMap<K, V>` classify empty or key-shaped suffixes, as
-schema-local adapter slot zero during host-target resolution. This is a
-prepared traversal identity, not an embedded index or key: constant and
-dynamic operands remain in the linked target plan and are validated by the
-collection adapter under the active HostAccess lease. Because the result is no
-longer generic, generated parent-field slots remain in `ResolvedHostAccess` up
-to the collection boundary. Suffixes with the wrong collection shape still
-degrade to generic validated traversal.
+maps and sets classify empty or key-shaped suffixes, as schema-local adapter
+slot zero during host-target resolution. This is a prepared traversal
+identity, not an embedded index or key: constant and dynamic operands remain
+in the linked target plan and are validated by the collection adapter under
+the active HostAccess lease. Because the result is no longer generic,
+generated parent-field slots remain in `ResolvedHostAccess` up to the
+collection boundary. Suffixes with the wrong collection shape still degrade
+to generic validated traversal.
 
 ### Unlinked Bytecode Naming
 

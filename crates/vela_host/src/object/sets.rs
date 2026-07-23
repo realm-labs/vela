@@ -11,7 +11,8 @@ use crate::{
         HostCollectionMutation, HostCollectionProjection, HostCollectionQuery,
         HostCollectionSnapshot,
     },
-    target::HostTargetInstance,
+    resolved::{HostAccessSpec, HostSchemaEpoch, ResolvedHostAccess},
+    target::{HostPathPart, HostTargetInstance},
     value::HostValue,
 };
 
@@ -29,6 +30,19 @@ where
 {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
+    }
+
+    fn resolve_host_target_from(
+        &self,
+        spec: HostAccessSpec<'_>,
+        offset: usize,
+    ) -> HostResult<ResolvedHostAccess> {
+        Ok(match spec.plan.parts.as_slice().get(offset) {
+            None | Some(HostPathPart::ConstKey(_) | HostPathPart::DynKey { .. }) => {
+                ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0))
+            }
+            Some(_) => ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
+        })
     }
 
     fn read_host_target_from(
@@ -106,6 +120,19 @@ where
 {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
+    }
+
+    fn resolve_host_target_from(
+        &self,
+        spec: HostAccessSpec<'_>,
+        offset: usize,
+    ) -> HostResult<ResolvedHostAccess> {
+        Ok(match spec.plan.parts.as_slice().get(offset) {
+            None | Some(HostPathPart::ConstKey(_) | HostPathPart::DynKey { .. }) => {
+                ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0))
+            }
+            Some(_) => ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
+        })
     }
 
     fn read_host_target_from(

@@ -1067,7 +1067,8 @@ pinned-generation metadata behind the compact table, and dense prepared slots
 inside the remaining collection/index adapters remain open. `Vec<T>` already
 classifies index-shaped suffixes with an `AdapterLocal` slot so generated field
 prefixes remain prepared through the sequence boundary; `BTreeMap<K, V>` and
-`HashMap<K, V>` do the same for key-shaped suffixes. Nested field and method
+`HashMap<K, V>` plus `BTreeSet<K>` and `HashSet<K>` do the same for key-shaped
+suffixes. Nested field and method
 resolution and execution reuse the original linked `HostTargetPlan` through
 checked spec/instance offsets rather than allocating and cloning suffix plans.
 Generated adapters cache up to four schema-local field slots in the copyable

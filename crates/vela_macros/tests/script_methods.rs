@@ -1,6 +1,6 @@
 #![allow(clippy::result_large_err)]
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{HostMethodId, HostObjectId, stable_id};
 use vela_engine::engine::Engine;
@@ -211,6 +211,8 @@ struct CollectionLeaf {
     groups: Vec<Vec<i64>>,
     #[script(get)]
     entries: BTreeMap<String, i64>,
+    #[script(get)]
+    tags: BTreeSet<String>,
 }
 
 #[script_methods]
@@ -508,6 +510,7 @@ fn nested_collection_protocols_execute_prepared_field_slots() {
             values: vec![1, 2],
             groups: vec![vec![4, 5]],
             entries: BTreeMap::from([("x".to_owned(), 8)]),
+            tags: BTreeSet::from(["ready".to_owned()]),
         },
     };
     let plan = HostTargetPlan::new(CollectionOuter::vela_host_type_id())
@@ -626,6 +629,26 @@ fn nested_collection_protocols_execute_prepared_field_slots() {
         keyed_value,
         HostValue::Scalar(vela_common::ScalarValue::I64(8))
     );
+
+    let set_plan = HostTargetPlan::new(CollectionOuter::vela_host_type_id())
+        .field(CollectionOuter::vela_field_id_leaf())
+        .field(CollectionLeaf::vela_field_id_tags())
+        .const_key("ready");
+    let set_target = HostTargetInstance::new(root, &set_plan, &[]);
+    let set_access = <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+        &outer,
+        HostAccessSpec::new(HostAccessOp::Read, &set_plan),
+    )
+    .expect("keyed nested set should resolve through an adapter-local slot");
+    assert_eq!(
+        set_access.adapter_kind,
+        ResolvedHostAccessKind::AdapterLocal(0)
+    );
+    let membership = <CollectionOuter as vela_host::object::ScriptHostObject>::read_resolved_host(
+        &outer, set_access, set_target,
+    )
+    .expect("prepared keyed read should reach the set adapter");
+    assert_eq!(membership, HostValue::Bool(true));
 
     let remove_access =
         <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(

@@ -77,8 +77,9 @@ traversal. Indexed removal through generated host-field prefixes reaches the
 collection adapter via that fallback. `Vec<T>` index-shaped plans now resolve
 to an `AdapterLocal` slot, preserving the prepared generated-field prefix
 through the sequence adapter. `BTreeMap<K, V>` and `HashMap<K, V>` do the same
-for key-shaped suffixes; dense element-field suffixes and the remaining
-collection families remain open.
+for key-shaped suffixes, as do `BTreeSet<K>` and `HashSet<K>` membership paths;
+dense element-field suffixes and the remaining collection families remain
+open.
 Default/manual adapters preserve that cursor during read-modify-write and use
 it when distinguishing a nested leaf from a missing target.
 Direct call arguments now keep an inline dense host-slot index separate from
