@@ -7,7 +7,10 @@ use crate::heap::HeapValue;
 use crate::host_access::{
     HostAccessRuntime, missing_host_context, resolve_cached_access, runtime_value_from_host,
 };
-use crate::{HostInlineCacheTarget, Value, VmError, VmErrorKind, VmResult, expect_host_ref};
+use crate::{
+    HostInlineCacheTarget, StandardMethodReceiver, Value, VmError, VmErrorKind, VmResult,
+    expect_host_ref,
+};
 
 pub(crate) fn execute_host_root_collection_projection(
     mut runtime: HostAccessRuntime<'_, '_, '_>,
@@ -23,6 +26,74 @@ pub(crate) fn execute_host_root_collection_projection(
             actual: args.len(),
         }));
     }
+    let snapshot = snapshot_host_root_collection(&mut runtime, receiver, projection, cache_site)?;
+    charge_projection(&snapshot, runtime.budget.as_deref_mut())?;
+    let values = snapshot_values(snapshot, &mut runtime)?;
+    let heap = runtime.heap.as_deref_mut().ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host collection projection",
+        })
+    })?;
+    crate::heap_values::allocate_heap_value(
+        HeapValue::Iterator(crate::iteration::IteratorState::from_values(values)),
+        heap,
+        runtime.budget.as_deref_mut(),
+    )
+}
+
+/// Captures one HostRef-backed collection and materializes only the temporary
+/// script collection needed by an existing resumable callback method.
+///
+/// The host adapter sees a semantic projection, never a Vela method ID. The
+/// resulting Array/Map/Set is script-owned and detached from later structural
+/// host changes; HostRef leaves keep their ordinary handle identity.
+pub(crate) fn materialize_host_root_collection_for_callback(
+    mut runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    receiver_kind: StandardMethodReceiver,
+    projection: HostCollectionProjection,
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<Value> {
+    let snapshot = snapshot_host_root_collection(&mut runtime, receiver, projection, cache_site)?;
+    charge_projection(&snapshot, runtime.budget.as_deref_mut())?;
+    match (receiver_kind, snapshot) {
+        (StandardMethodReceiver::Array, HostCollectionSnapshot::Items(items)) => {
+            let values = host_items_to_values(items, &mut runtime)?;
+            let heap = runtime
+                .heap
+                .as_deref_mut()
+                .ok_or_else(missing_projection_heap)?;
+            crate::heap_values::make_array_value(values, heap, runtime.budget.as_deref_mut())
+        }
+        (StandardMethodReceiver::Map, HostCollectionSnapshot::Entries(entries)) => {
+            let entries = host_entries_to_values(entries, &mut runtime)?;
+            crate::map_methods::make_map_from_entries(
+                entries,
+                &mut runtime.heap,
+                &mut runtime.budget,
+                "host collection callback snapshot",
+            )
+        }
+        (StandardMethodReceiver::Set, HostCollectionSnapshot::Items(items)) => {
+            let values = host_items_to_values(items, &mut runtime)?;
+            let heap = runtime
+                .heap
+                .as_deref_mut()
+                .ok_or_else(missing_projection_heap)?;
+            crate::heap_values::make_set_value(values, heap, runtime.budget.as_deref_mut())
+        }
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host collection callback snapshot",
+        })),
+    }
+}
+
+fn snapshot_host_root_collection(
+    runtime: &mut HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    projection: HostCollectionProjection,
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<HostCollectionSnapshot> {
     let root = expect_host_ref(&runtime.frame.read(receiver)?, "host collection projection")?;
     let target = HostTargetPlan::new(root.type_id);
     let instance = HostTargetInstance::new(root, &target, &[]);
@@ -45,25 +116,13 @@ pub(crate) fn execute_host_root_collection_projection(
             .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &target))
             .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?
     };
-    let snapshot = host.access.snapshot_collection_resolved(
+    Ok(host.access.snapshot_collection_resolved(
         host.adapter,
         resolved,
         instance,
         projection,
         runtime.source_span,
-    )?;
-    charge_projection(&snapshot, runtime.budget.as_deref_mut())?;
-    let values = snapshot_values(snapshot, &mut runtime)?;
-    let heap = runtime.heap.as_deref_mut().ok_or_else(|| {
-        VmError::new(VmErrorKind::TypeMismatch {
-            operation: "host collection projection",
-        })
-    })?;
-    crate::heap_values::allocate_heap_value(
-        HeapValue::Iterator(crate::iteration::IteratorState::from_values(values)),
-        heap,
-        runtime.budget.as_deref_mut(),
-    )
+    )?)
 }
 
 fn charge_projection(
@@ -118,4 +177,48 @@ fn snapshot_values(
             Ok(values)
         }
     }
+}
+
+fn host_items_to_values(
+    items: Vec<vela_host::value::HostValue>,
+    runtime: &mut HostAccessRuntime<'_, '_, '_>,
+) -> VmResult<Vec<Value>> {
+    items
+        .into_iter()
+        .map(|item| {
+            runtime_value_from_host(
+                item,
+                runtime.heap.as_deref_mut(),
+                runtime.budget.as_deref_mut(),
+            )
+        })
+        .collect()
+}
+
+fn host_entries_to_values(
+    entries: Vec<(vela_host::value::HostValue, vela_host::value::HostValue)>,
+    runtime: &mut HostAccessRuntime<'_, '_, '_>,
+) -> VmResult<Vec<(Value, Value)>> {
+    entries
+        .into_iter()
+        .map(|(key, value)| {
+            let key = runtime_value_from_host(
+                key,
+                runtime.heap.as_deref_mut(),
+                runtime.budget.as_deref_mut(),
+            )?;
+            let value = runtime_value_from_host(
+                value,
+                runtime.heap.as_deref_mut(),
+                runtime.budget.as_deref_mut(),
+            )?;
+            Ok((key, value))
+        })
+        .collect()
+}
+
+fn missing_projection_heap() -> VmError {
+    VmError::new(VmErrorKind::TypeMismatch {
+        operation: "host collection callback snapshot",
+    })
 }

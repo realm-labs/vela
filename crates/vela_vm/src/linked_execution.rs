@@ -26,11 +26,10 @@ use crate::{
     store_value_in_heap_if_needed, validate_inline_cache_layout,
 };
 use crate::{
-    array_methods, callback_method_dispatch, closure_calls, constant_loads, field_access,
-    format_strings, host_access, i64_ops, indexing, iteration, native_function_calls,
-    runtime_type_guards, script_aggregate_construction, script_builtin_methods,
-    script_function_calls, script_method_calls, script_object_construction, try_propagation,
-    tuple_fields,
+    array_methods, closure_calls, constant_loads, field_access, format_strings, host_access,
+    i64_ops, indexing, iteration, native_function_calls, runtime_type_guards,
+    script_aggregate_construction, script_builtin_methods, script_function_calls,
+    script_method_calls, script_object_construction, try_propagation, tuple_fields,
 };
 
 pub(crate) struct LinkedExecutionCall<'a> {
@@ -1404,24 +1403,36 @@ impl Vm {
                         &dispatch_target.kind
                     {
                         let receiver_value = frame.read(*receiver)?;
-                        if let Some(callback_cache) = callback_method_dispatch::callback_cache_entry(
-                            *method_id,
-                            &receiver_value,
-                            heap.as_deref(),
-                        ) {
+                        if let Some(prepared) =
+                            crate::host_collection_callback::prepare_callback_receiver(
+                                *method_id,
+                                receiver_value,
+                                crate::host_access::HostAccessRuntime {
+                                    frame,
+                                    heap: heap.as_deref_mut(),
+                                    budget: budget.as_deref_mut(),
+                                    host: host.as_deref_mut(),
+                                    inline_caches: call.inline_caches,
+                                    source_span: instruction.span,
+                                },
+                                *receiver,
+                                *cache_site,
+                            )?
+                        {
                             let values =
                                 script_function_calls::script_call_args_from_call_arguments(
                                     frame, args,
                                 )?;
                             if let Some(callback) = ResumableCallbackMethod::new(
-                                &receiver_value,
-                                callback_cache,
+                                &prepared.value,
+                                prepared.cache,
                                 values.as_slice(),
                                 heap.as_deref(),
                             ) {
                                 let callback = callback?;
-                                if let (Some(site), Some(caches)) =
-                                    (*cache_site, call.inline_caches)
+                                if prepared.cacheable_receiver
+                                    && let (Some(site), Some(caches)) =
+                                        (*cache_site, call.inline_caches)
                                 {
                                     let existing = caches.method_dispatch(site);
                                     let cached = existing.is_some_and(|entry| {
@@ -1433,7 +1444,7 @@ impl Vm {
                                                     method_id: cached_method,
                                                     callback_method,
                                                 } if cached_method == *method_id
-                                                    && callback_method == callback_cache
+                                                    && callback_method == prepared.cache
                                             )
                                     });
                                     if !cached {
@@ -1445,7 +1456,7 @@ impl Vm {
                                                 target:
                                                     crate::MethodInlineCacheTarget::CallbackValue {
                                                         method_id: *method_id,
-                                                        callback_method: callback_cache,
+                                                        callback_method: prepared.cache,
                                                     },
                                             },
                                         );
@@ -1648,18 +1659,29 @@ impl Vm {
                     ) = &resolution
                     {
                         let receiver_value = frame.read(*receiver)?;
-                        if let Some(callback_cache) = callback_method_dispatch::callback_cache_entry(
-                            *method_id,
-                            &receiver_value,
-                            heap.as_deref(),
-                        ) {
+                        if let Some(prepared) =
+                            crate::host_collection_callback::prepare_callback_receiver(
+                                *method_id,
+                                receiver_value,
+                                crate::host_access::HostAccessRuntime {
+                                    frame,
+                                    heap: heap.as_deref_mut(),
+                                    budget: budget.as_deref_mut(),
+                                    host: host.as_deref_mut(),
+                                    inline_caches: call.inline_caches,
+                                    source_span: instruction.span,
+                                },
+                                *receiver,
+                                *cache_site,
+                            )?
+                        {
                             let values =
                                 script_method_calls::dynamic_value_args_from_linked_arguments(
                                     frame, args,
                                 )?;
                             if let Some(callback) = ResumableCallbackMethod::new(
-                                &receiver_value,
-                                callback_cache,
+                                &prepared.value,
+                                prepared.cache,
                                 values.as_slice(),
                                 heap.as_deref(),
                             ) {

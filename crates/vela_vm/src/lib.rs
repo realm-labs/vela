@@ -26,6 +26,7 @@ pub mod heap_execution;
 mod heap_graph;
 mod heap_values;
 mod host_access;
+mod host_collection_callback;
 mod host_collection_mutation;
 mod host_collection_projection;
 mod host_values;

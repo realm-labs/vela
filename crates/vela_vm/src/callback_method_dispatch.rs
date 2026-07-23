@@ -11,6 +11,7 @@ use crate::{
     HeapExecution, StandardMethodReceiver, Value, VmResult, array_methods, iteration, map_methods,
     option_result_methods, set_methods,
 };
+use vela_host::protocol::HostCollectionProjection;
 
 pub(crate) struct CallbackMethodDispatch<'a, 'heap> {
     pub(crate) program: &'a LinkedProgram,
@@ -165,6 +166,42 @@ pub(crate) fn callback_cache_entry(
     };
     let target = callback_method_target(receiver, method_id)?;
     Some(CallbackMethodInlineCacheEntry { receiver, target })
+}
+
+/// Resolves a callback-bearing standard collection method without inspecting
+/// the receiver value.
+///
+/// HostRef-backed collection views retain their concrete Rust identity at
+/// runtime, so they do not look like an owned Array, Map, or Set to the normal
+/// value classifier. Their linked method identity still names exactly one
+/// standard collection surface. This helper recovers that surface before the
+/// host collection is projected into a temporary script-owned snapshot.
+pub(crate) fn host_collection_callback_cache_entry(
+    method_id: MethodId,
+) -> Option<(CallbackMethodInlineCacheEntry, HostCollectionProjection)> {
+    [
+        (
+            StandardMethodReceiver::Array,
+            HostCollectionProjection::Values,
+        ),
+        (
+            StandardMethodReceiver::Map,
+            HostCollectionProjection::Entries,
+        ),
+        (
+            StandardMethodReceiver::Set,
+            HostCollectionProjection::Values,
+        ),
+    ]
+    .into_iter()
+    .find_map(|(receiver, projection)| {
+        callback_method_target(receiver, method_id).map(|target| {
+            (
+                CallbackMethodInlineCacheEntry { receiver, target },
+                projection,
+            )
+        })
+    })
 }
 
 pub(crate) fn callback_cache_entry_matches_method_id(

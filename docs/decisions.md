@@ -2688,10 +2688,16 @@ not a Rust iterator object or a serialized container. `HostCollectionProjection`
 captures Array values, Map keys/values/entries, or Set values while the exact
 lease is active; HashMap/HashSet projections are sorted by `ScriptHostKey` for
 determinism, and exact scalar/String/Bytes/HostRef tags are retained. The VM
-wraps the projected boundary values in its existing Iterator pipeline. This is
-an intentionally staged snapshot iterator; live resumable host iteration and
-complex element HostRefs remain open and must add generation checks rather
-than silently changing this snapshot into an escaping Rust borrow.
+wraps the projected boundary values in its existing Iterator pipeline. Direct
+callback methods such as Array `filter`/`group_by`, Map `filter`/`map_values`,
+and Set `filter`/`map` reuse the same projection and materialize one temporary
+script-owned collection before entering the ordinary resumable callback state
+machine. The adapter never receives a Vela method ID, projection size is
+charged before callback execution, and the temporary result cannot mutate the
+Rust container structurally. This is an intentionally staged snapshot model;
+live resumable host iteration and complex element HostRefs remain open and
+must add generation checks rather than silently changing the snapshot into an
+escaping Rust borrow.
 
 ### Service Deployment Supports Snapshots And Exact-Base Deltas
 

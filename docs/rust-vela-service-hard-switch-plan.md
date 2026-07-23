@@ -1144,8 +1144,13 @@ materialization. Array `iter/values`, Map `keys/values/entries/iter`, and Set
 `values/iter` now use a deterministic bounded `HostCollectionProjection` under
 the active lease and then reuse the ordinary Vela Iterator pipeline. This
 snapshot slice preserves exact boundary tags and supports
-`filter/count/collect`; live host iterators, complex element HostRefs, and
-generation validation at resumable boundaries remain planned
+`filter/count/collect`. Direct borrowed collection callback methods also reuse
+one budgeted projection, materialize the matching temporary script-owned
+Array/Map/Set, and enter the existing resumable callback state machine. Array
+`filter/group_by`, Map `filter/map_values`, and Set `filter/map` therefore keep
+their owned semantics while host adapters remain independent of Vela method
+IDs. Live host iterators, complex element HostRefs, and generation validation
+at resumable boundaries remain planned
 prepared-operation work. The first bulk write protocol is now live:
 growable collection `clear` precharges one execution unit per removed element
 and then performs one domain-neutral `HostCollectionMutation::Clear` through
@@ -1158,7 +1163,8 @@ sequence/map/set mutation request. Standard Vec, Map, and Set adapters prepare
 all concrete Rust values before applying the batch, so type conversion and
 budget failures are non-mutating. Map replacement and Set uniqueness follow
 their Rust container semantics. Complex element HostRefs, borrowed-source
-extension, retain/filter, grouping, and prepared live traversal remain open.
+extension, write-through retain/filter, and prepared live grouping/traversal
+remain open.
 
 ### S4 — Service contract and Rust-only generation
 
