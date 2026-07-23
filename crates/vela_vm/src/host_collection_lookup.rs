@@ -134,7 +134,7 @@ pub(crate) fn execute_host_root_collection_lookup(
         HostCollectionLookup::MapContainsKey | HostCollectionLookup::MapHas => {
             Ok(Value::Bool(payload.is_some()))
         }
-        HostCollectionLookup::SetHas => match payload {
+        HostCollectionLookup::SetContains | HostCollectionLookup::SetHas => match payload {
             Some(HostValue::Bool(value)) => Ok(Value::Bool(value)),
             None => Ok(Value::Bool(false)),
             Some(_) => Err(VmError::new(VmErrorKind::TypeMismatch {

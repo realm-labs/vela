@@ -436,6 +436,9 @@ fn standard_method_target(
         (StandardMethodReceiver::Set, id) if id == ids.set_has => {
             StandardMethodInlineCacheTarget::Has
         }
+        (StandardMethodReceiver::Set, id) if id == ids.set_contains => {
+            StandardMethodInlineCacheTarget::Contains
+        }
         (StandardMethodReceiver::Set, id) if id == ids.set_add => {
             StandardMethodInlineCacheTarget::Add
         }
@@ -1029,6 +1032,11 @@ fn call_readonly_cached(
         {
             return call_cached_array_contains(receiver, args, heap);
         }
+        StandardMethodInlineCacheTarget::Contains
+            if cache.receiver == StandardMethodReceiver::Set =>
+        {
+            return Some(set_methods::contains(receiver, args, heap).map(Value::Bool));
+        }
         StandardMethodInlineCacheTarget::IsSubset
         | StandardMethodInlineCacheTarget::IsSuperset
         | StandardMethodInlineCacheTarget::IsDisjoint => {
@@ -1087,6 +1095,9 @@ fn call_readonly_cached(
         ) => script_builtin_methods::has(receiver, args, heap).map(Value::Bool),
         (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::ContainsKey) => {
             map_methods::contains_key(receiver, args, heap).map(Value::Bool)
+        }
+        (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::Contains) => {
+            set_methods::contains(receiver, args, heap).map(Value::Bool)
         }
         (StandardMethodReceiver::Map, StandardMethodInlineCacheTarget::GetOr) => {
             map_methods::get_or(receiver, args, heap)

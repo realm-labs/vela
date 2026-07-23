@@ -690,6 +690,13 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
     ),
     StdMethodSpec::new(
         "Set",
+        "contains",
+        &[StdParamSpec::new("value", "any")],
+        "bool",
+        "Returns true when a value exists.",
+    ),
+    StdMethodSpec::new(
+        "Set",
         "add",
         &[StdParamSpec::new("value", "any")],
         "bool",

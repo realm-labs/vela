@@ -55,6 +55,11 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
         assert!(stdlib_method_fact(receiver, "add", None).is_none());
         assert!(stdlib_method_fact(receiver, "clear", None).is_none());
         assert!(stdlib_method_fact(receiver, "filter", None).is_some());
+        let contains =
+            stdlib_method_fact(receiver, "contains", None).expect("membership method fact");
+        assert_eq!(contains.receiver, receiver.clone());
+        assert_eq!(contains.params, vec![TypeFact::STRING]);
+        assert_eq!(contains.returns, TypeFact::BOOL);
     }
     assert!(stdlib_method_fact(&set_growable, "add", None).is_some());
 

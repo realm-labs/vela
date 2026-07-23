@@ -19,18 +19,36 @@ pub(crate) fn has(
     args: &[Value],
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<bool> {
-    expect_arity("has", args, 1)?;
+    contains_with_name(receiver, args, heap, "has", "method has")
+}
+
+pub(crate) fn contains(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+) -> VmResult<bool> {
+    contains_with_name(receiver, args, heap, "contains", "method contains")
+}
+
+fn contains_with_name(
+    receiver: &Value,
+    args: &[Value],
+    heap: Option<&HeapExecution<'_>>,
+    method: &str,
+    operation: &'static str,
+) -> VmResult<bool> {
+    expect_arity(method, args, 1)?;
     match receiver {
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
-                return type_error("method has");
+                return type_error(operation);
             };
             let Some(HeapValue::Set(values)) = heap.heap.get(*reference) else {
-                return type_error("method has");
+                return type_error(operation);
             };
-            contains_value(values, &args[0], heap, "method has")
+            contains_value(values, &args[0], heap, operation)
         }
-        _ => type_error("method has"),
+        _ => type_error(operation),
     }
 }
 

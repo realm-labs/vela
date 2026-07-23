@@ -1210,10 +1210,11 @@ return `Option::None` for an absent index or empty view, and work for direct
 and retained borrows without snapshotting or length-proportional budget cost.
 `HostCollectionKey` preserves bool, char, exact-width
 integer, String, Bytes, and HostRef key identity, and `ScriptHostKey` performs
-the Rust-side exact conversion without string serialization. Standard Map
-membership now exposes baseline `contains_key` on owned, shared, and exclusive
-Maps while preserving `has`; both names and read-only `MapView.get/get_or` plus
-`SetView.has` reuse the resolved keyed HostAccess path.
+the Rust-side exact conversion without string serialization. Standard
+membership now exposes baseline Map `contains_key` and Set `contains` on owned,
+shared, and exclusive collections while preserving `has` for both families.
+Those names and read-only `MapView.get/get_or` reuse the resolved keyed
+HostAccess path.
 `MissingCollectionEntry` alone becomes missing/fallback behavior, while other
 host errors propagate. Array `contains/index_of` reuse one bounded values
 projection, charge its complete length, compare exact `ValueKey` identities,

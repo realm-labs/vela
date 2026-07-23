@@ -93,6 +93,7 @@ pub(crate) struct StdMethodIds {
     pub(crate) set_len: MethodId,
     pub(crate) set_is_empty: MethodId,
     pub(crate) set_has: MethodId,
+    pub(crate) set_contains: MethodId,
     pub(crate) set_add: MethodId,
     pub(crate) set_remove: MethodId,
     pub(crate) set_extend: MethodId,
@@ -225,6 +226,7 @@ impl StdMethodIds {
             set_len: standard_method_id("Set", "len"),
             set_is_empty: standard_method_id("Set", "is_empty"),
             set_has: standard_method_id("Set", "has"),
+            set_contains: standard_method_id("Set", "contains"),
             set_add: standard_method_id("Set", "add"),
             set_remove: standard_method_id("Set", "remove"),
             set_extend: standard_method_id("Set", "extend"),
@@ -298,6 +300,7 @@ pub(crate) enum HostCollectionLookup {
     MapHas,
     MapGet,
     MapGetOr,
+    SetContains,
     SetHas,
 }
 
@@ -314,6 +317,7 @@ impl HostCollectionLookup {
             Self::MapHas | Self::SetHas => "has",
             Self::MapGet => "get",
             Self::MapGetOr => "get_or",
+            Self::SetContains => "contains",
         }
     }
 
@@ -327,6 +331,7 @@ impl HostCollectionLookup {
             | Self::MapContainsKey
             | Self::MapHas
             | Self::MapGet
+            | Self::SetContains
             | Self::SetHas => 1,
             Self::MapGetOr => 2,
         }
@@ -353,6 +358,8 @@ pub(crate) fn host_collection_lookup(method_id: MethodId) -> Option<HostCollecti
         Some(HostCollectionLookup::MapGet)
     } else if method_id == ids.map_get_or {
         Some(HostCollectionLookup::MapGetOr)
+    } else if method_id == ids.set_contains {
+        Some(HostCollectionLookup::SetContains)
     } else if method_id == ids.set_has {
         Some(HostCollectionLookup::SetHas)
     } else {

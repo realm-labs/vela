@@ -21,6 +21,12 @@ const SET_METHODS: &[MethodSpec] = &[
         "Returns true when a value exists.",
     ),
     MethodSpec::new(
+        "contains",
+        &[ParamSpec::new("value", "any")],
+        "bool",
+        "Returns true when a value exists.",
+    ),
+    MethodSpec::new(
         "add",
         &[ParamSpec::new("value", "any")],
         "bool",

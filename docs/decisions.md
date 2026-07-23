@@ -2616,13 +2616,13 @@ teaching host adapters Vela standard-library IDs. This prevents implicit
 copy-in/copy-out and lets standard and user-defined Rust collections share one
 adapter model.
 
-The baseline Map membership name is `contains_key`; the existing `has` spelling
-remains a compatibility alias. Both names, plus read-only Map `get` and
-`get_or` and Set `has`, reuse resolved keyed HostAccess reads rather than
-introducing collection-family adapter calls. Map absence is represented by
-`MissingCollectionEntry`, distinct from a general `MissingPath`; only entry
-absence is converted to optional/fallback semantics. This prevents an
-unsupported value projection or nested adapter error from being silently
+The baseline membership names are Map `contains_key` and Set `contains`; the
+existing `has` spelling remains a compatibility alias for both families. Those
+names, plus read-only Map `get` and `get_or`, reuse resolved keyed HostAccess
+reads rather than introducing collection-family adapter calls. Map absence is
+represented by `MissingCollectionEntry`, distinct from a general `MissingPath`;
+only entry absence is converted to optional/fallback semantics. This prevents
+an unsupported value projection or nested adapter error from being silently
 reported as a missing key.
 
 Array `get(index)` is a shared standard method on owned Array, `ArrayView`, and

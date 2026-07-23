@@ -8,7 +8,7 @@ mod combination;
 mod higher_order;
 mod mutation;
 
-pub(crate) use basic::{from_array, has, values};
+pub(crate) use basic::{contains, from_array, has, values};
 pub(crate) use combination::{
     SetCombination, combination_payload, difference, intersection, is_disjoint, is_subset,
     is_superset, symmetric_difference, union,
@@ -307,7 +307,12 @@ fn main() {
 fn main() {
     let tags = set::from_array(["daily", "quest", "raid"]);
     let ids = set::from_array([2, 4, 8]);
-    if tags.has("quest") && !tags.has("missing") && ids.has(8) && !ids.has(16) {
+    if tags.contains("quest")
+        && !tags.contains("missing")
+        && tags.has("daily")
+        && ids.contains(8)
+        && !ids.contains(16)
+    {
         return tags.len() + ids.len();
     }
     return 0;

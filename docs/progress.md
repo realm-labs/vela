@@ -203,12 +203,12 @@ The dynamic key boundary preserves bool, char, exact-width signed/unsigned
 integers, String, Bytes, and HostRef identity, so a `BTreeMap<i32, V>` is
 indexed by an actual `i32` rather than a serialized path string. Standard key
 implementations and the public `ScriptHostKey` conversion contract share this
-model. Standard Map membership now exposes baseline `contains_key` on owned,
-shared, and exclusive Maps while preserving `has`; both names and read-only
-`MapView.get/get_or` plus `SetView.has` reuse the same resolved keyed HostAccess
-path without materializing the collection. A distinct missing-entry error
-ensures only absent keys become `false`, `Option::None`, or the caller fallback;
-other host errors propagate. Read-only Array
+model. Standard membership now exposes baseline Map `contains_key` and Set
+`contains` on owned, shared, and exclusive collections while preserving `has`
+for both families. Those names and read-only `MapView.get/get_or` reuse the same
+resolved keyed HostAccess path without materializing the collection. A distinct
+missing-entry error ensures only absent keys become `false`, `Option::None`, or
+the caller fallback; other host errors propagate. Read-only Array
 `contains/index_of` consume one bounded values projection, charge one execution
 unit per projected element, compare exact `ValueKey` identities, and preserve
 false/`Option::None` behavior for empty or absent values without materializing

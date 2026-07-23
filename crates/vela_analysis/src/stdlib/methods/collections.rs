@@ -295,6 +295,10 @@ pub(super) fn set_method_fact(
             StdlibMethodFact::new(receiver, "has", TypeFact::BOOL)
                 .with_params(vec![element.clone()]),
         ),
+        "contains" => Some(
+            StdlibMethodFact::new(receiver, "contains", TypeFact::BOOL)
+                .with_params(vec![element.clone()]),
+        ),
         "add" => Some(
             StdlibMethodFact::new(receiver, "add", TypeFact::BOOL)
                 .with_params(vec![element.clone()]),
