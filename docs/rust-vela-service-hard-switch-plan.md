@@ -1065,11 +1065,13 @@ direct and scoped entries are generation-invalidated at their call-tree
 boundary. Early release retires the live slot and preserves only a call-local
 expired-borrow diagnostic tombstone. Runtime-owned object/type metadata now
 lives in a dense generational `HostSlotTable`; expanded internal roots derive
-from the slot and validate exact type/generation identity. Remaining standard
-bindings, movement of scoped, extern, borrow-group, provenance,
-prepared-adapter, and pinned-generation metadata behind the compact table, and
-dense prepared slots inside the remaining collection/index adapters remain
-open. `Vec<T>` already
+from the slot and validate exact type/generation identity. Live scoped-return
+object/type/access metadata now uses a dense generational table too; private
+internal roots encode the slot/generation and validate exact type, while
+expired diagnostic tombstones retain no Rust borrow. Remaining standard
+bindings, movement of extern, borrow-group, provenance, prepared-adapter, and
+pinned-generation metadata behind the compact table, and dense prepared slots
+inside the remaining collection/index adapters remain open. `Vec<T>` already
 classifies index-shaped suffixes with an `AdapterLocal` slot so generated field
 prefixes remain prepared through the sequence boundary; fixed arrays and
 borrowed slices use the same index classification, while `BTreeMap<K, V>` and

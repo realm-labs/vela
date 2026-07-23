@@ -2786,10 +2786,18 @@ plus the dense slot, and its generation is the slot generation; lookup also
 checks the stored exact type. Vela still carries only the separate canonical
 compact handle, and Runtime drop remains the owned-object reclamation boundary.
 
+Live scoped-return objects use the same dense generational shape. Their
+expanded internal roots occupy a private reserved object-ID range and encode
+the dense slot plus generation; every lookup also checks the stored exact
+type. Releasing a scoped return removes that live entry before the slot can be
+reused. The small call-local expired-root and compact-handle tombstones remain
+separate because they preserve the user-facing `ExpiredBorrowedHostRef`
+diagnostic without retaining the Rust borrow.
+
 This handle hard switch does not weaken HostRef/HostAccess validation or move
 Rust objects into script storage. Consolidating borrow-group, provenance,
-prepared-adapter, pinned-generation, scoped, and extern metadata into the dense
-slot entry remains S2 work.
+prepared-adapter, pinned-generation, and extern metadata into the dense slot
+entry remains S2 work.
 
 ### Prepared Host Traversal Uses Inline Typed Steps
 

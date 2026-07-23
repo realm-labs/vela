@@ -1,17 +1,51 @@
+use vela_common::{HostObjectId, HostTypeId};
 use vela_host::error::HostResult;
 use vela_host::lease::{host_lease_unsupported, host_object_busy};
 use vela_host::object::ScriptHostObject;
-use vela_host::path::HostRef;
+use vela_host::path::{HostRef, HostSlotRef};
 
-use super::{ExecutionHost, ScopedHostObjectBinding};
+use super::{
+    ExecutionHost, SCOPED_HOST_OBJECT_ID_BASE, ScopedHostBinding, ScopedHostObjectBinding,
+};
 
-impl ExecutionHost<'_, '_> {
+impl<'state, 'host> ExecutionHost<'state, 'host> {
+    pub(super) fn scoped_handle(&self, root: HostRef) -> Option<HostSlotRef> {
+        let slot = root
+            .object_id
+            .get()
+            .checked_sub(SCOPED_HOST_OBJECT_ID_BASE)
+            .and_then(|slot| u32::try_from(slot).ok())?;
+        let handle = HostSlotRef::new(slot, root.generation);
+        let binding = self.scoped_hosts.get(handle)?;
+        (binding.type_id == root.type_id).then_some(handle)
+    }
+
+    pub(super) fn scoped_binding(&self, root: HostRef) -> Option<&ScopedHostBinding<'host>> {
+        self.scoped_hosts.get(self.scoped_handle(root)?)
+    }
+
+    pub(super) fn scoped_binding_mut(
+        &mut self,
+        root: HostRef,
+    ) -> Option<&mut ScopedHostBinding<'host>> {
+        let handle = self.scoped_handle(root)?;
+        self.scoped_hosts.get_mut(handle)
+    }
+
+    pub(super) fn scoped_root(handle: HostSlotRef, type_id: HostTypeId) -> HostRef {
+        HostRef::new(
+            type_id,
+            HostObjectId::new(SCOPED_HOST_OBJECT_ID_BASE + u64::from(handle.slot())),
+            handle.generation(),
+        )
+    }
+
     pub(super) fn inspect_scoped_host<T>(
         &self,
         root: HostRef,
         inspect: impl FnOnce(&dyn ScriptHostObject) -> HostResult<T>,
     ) -> Option<HostResult<T>> {
-        let binding = self.scoped_hosts.get(&root)?;
+        let binding = self.scoped_binding(root)?;
         Some(match &binding.object {
             ScopedHostObjectBinding::Single(object) => object
                 .try_read()
@@ -35,7 +69,7 @@ impl ExecutionHost<'_, '_> {
         root: HostRef,
         mutate: impl FnOnce(&mut dyn ScriptHostObject) -> HostResult<T>,
     ) -> Option<HostResult<T>> {
-        let binding = self.scoped_hosts.get_mut(&root)?;
+        let binding = self.scoped_binding_mut(root)?;
         Some(match &mut binding.object {
             ScopedHostObjectBinding::Single(object) => object
                 .try_write()

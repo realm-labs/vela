@@ -1,15 +1,15 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use vela_common::HostMethodId;
+use vela_common::{HostMethodId, HostTypeId};
 use vela_host::adapter::{
     ExternStateBinding, HostLeaseInvoker, ScopedHostReturn, ScopedHostReturnGroup,
     ScopedHostReturnInvoker, ScopedHostReturns, ScriptStateAdapter,
 };
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::lease::{
-    BorrowLeaseId, ErasedHostLease, HostLeaseKind, ScopedBorrowedHostGroupCell,
-    ScopedHostLeaseSlot, host_lease_unsupported, host_object_busy,
+    ErasedHostLease, HostLeaseKind, ScopedBorrowedHostGroupCell, ScopedHostLeaseSlot,
+    host_lease_unsupported, host_object_busy,
 };
 use vela_host::object::ScriptHostObject;
 use vela_host::path::{HostRef, HostSlotRef};
@@ -17,7 +17,7 @@ use vela_host::protocol::{
     HostCollectionMutation, HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot,
 };
 use vela_host::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, ResolvedHostAccess};
-use vela_host::slot::HostRefSlots;
+use vela_host::slot::{HostRefSlots, HostSlotTable};
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
@@ -33,6 +33,7 @@ mod scoped_access;
 use fallback::FallbackAdapter;
 
 const EXECUTION_HOST_OBJECT_ID_BASE: u64 = 1 << 63;
+const SCOPED_HOST_OBJECT_ID_BASE: u64 = u64::MAX - 0xffff_ffff;
 
 pub(super) trait DirectContextInvoker: Send {
     fn invoke<'invoke, 'lease>(
@@ -50,14 +51,14 @@ pub(super) struct ExecutionHost<'state, 'host> {
     host_arena: &'state mut RuntimeHostArena,
     fallback: FallbackAdapter<'host>,
     next_direct_object_id: u64,
-    scoped_hosts: BTreeMap<HostRef, ScopedHostBinding<'host>>,
+    scoped_hosts: HostSlotTable<ScopedHostBinding<'host>>,
     expired_scoped_hosts: BTreeSet<HostRef>,
     expired_scoped_slots: BTreeMap<HostSlotRef, HostRef>,
     host_slots: &'state mut HostRefSlots,
 }
 
 struct ScopedHostBinding<'host> {
-    _borrow_lease_id: BorrowLeaseId,
+    type_id: HostTypeId,
     access: HostLeaseKind,
     object: ScopedHostObjectBinding<'host>,
     activity: Arc<()>,
@@ -121,7 +122,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             host_arena,
             fallback,
             next_direct_object_id: EXECUTION_HOST_OBJECT_ID_BASE,
-            scoped_hosts: BTreeMap::new(),
+            scoped_hosts: HostSlotTable::new(),
             expired_scoped_hosts: BTreeSet::new(),
             expired_scoped_slots: BTreeMap::new(),
             host_slots,
@@ -190,7 +191,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
                 source_span: None,
             });
         }
-        if let Some(binding) = self.scoped_hosts.get(&root) {
+        if let Some(binding) = self.scoped_binding(root) {
             let ScopedHostObjectBinding::Single(object) = &binding.object else {
                 return Err(host_lease_unsupported(root));
             };
@@ -228,24 +229,15 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
 
     fn retain_scoped_host(&mut self, returned: ScopedHostReturn<'host>) -> HostRef {
         let type_id = returned.object.host_type_id();
-        let root = HostRef::new(
+        let handle = self.scoped_hosts.insert(ScopedHostBinding {
             type_id,
-            vela_common::HostObjectId::new(self.next_direct_object_id),
-            1,
-        );
-        self.next_direct_object_id = self.next_direct_object_id.saturating_add(1);
-        self.scoped_hosts.insert(
-            root,
-            ScopedHostBinding {
-                _borrow_lease_id: BorrowLeaseId::new(root.object_id.get()),
-                access: returned.access,
-                object: ScopedHostObjectBinding::Single(Arc::new(parking_lot::RwLock::new(
-                    Box::new(returned.object),
-                ))),
-                activity: Arc::new(()),
-            },
-        );
-        root
+            access: returned.access,
+            object: ScopedHostObjectBinding::Single(Arc::new(parking_lot::RwLock::new(Box::new(
+                returned.object,
+            )))),
+            activity: Arc::new(()),
+        });
+        Self::scoped_root(handle, type_id)
     }
 
     fn retain_scoped_host_group(
@@ -269,25 +261,16 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
                 },
                 source_span: None,
             })?;
-            let root = HostRef::new(
+            let handle = self.scoped_hosts.insert(ScopedHostBinding {
                 type_id,
-                vela_common::HostObjectId::new(self.next_direct_object_id),
-                1,
-            );
-            self.next_direct_object_id = self.next_direct_object_id.saturating_add(1);
-            self.scoped_hosts.insert(
-                root,
-                ScopedHostBinding {
-                    _borrow_lease_id: BorrowLeaseId::new(root.object_id.get()),
-                    access,
-                    object: ScopedHostObjectBinding::Group {
-                        object: Arc::clone(&object),
-                        index,
-                    },
-                    activity: Arc::new(()),
+                access,
+                object: ScopedHostObjectBinding::Group {
+                    object: Arc::clone(&object),
+                    index,
                 },
-            );
-            roots.push(root);
+                activity: Arc::new(()),
+            });
+            roots.push(Self::scoped_root(handle, type_id));
         }
         Ok(roots)
     }
@@ -300,7 +283,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
         let mut group = None;
         let mut children = Vec::with_capacity(requests.len());
         for (root, kind) in requests {
-            let binding = self.scoped_hosts.get(root)?;
+            let binding = self.scoped_binding(*root)?;
             let ScopedHostObjectBinding::Group { object, index } = &binding.object else {
                 return None;
             };
@@ -348,7 +331,11 @@ impl Drop for ExecutionHost<'_, '_> {
         let roots = self
             .args
             .direct_host_refs()
-            .chain(self.scoped_hosts.keys().copied())
+            .chain(
+                self.scoped_hosts
+                    .iter()
+                    .map(|(handle, binding)| Self::scoped_root(handle, binding.type_id)),
+            )
             .collect::<Vec<_>>();
         for root in roots {
             self.release_interned_host_ref(root);
@@ -788,7 +775,7 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         if self.extern_states.binding(root).is_some() {
             return HostLeaseKind::Exclusive;
         }
-        if let Some(binding) = self.scoped_hosts.get(&root) {
+        if let Some(binding) = self.scoped_binding(root) {
             return binding.access;
         }
         match self.args.direct_binding(root) {
@@ -868,7 +855,7 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
     }
 
     fn release_scoped_host(&mut self, root: HostRef) -> HostResult<()> {
-        let Some(binding) = self.scoped_hosts.get(&root) else {
+        let Some(handle) = self.scoped_handle(root) else {
             let kind = if self.expired_scoped_hosts.contains(&root) {
                 HostErrorKind::ExpiredBorrowedHostRef {
                     path: vela_host::path::HostPath::new(root),
@@ -883,6 +870,10 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 source_span: None,
             });
         };
+        let binding = self
+            .scoped_hosts
+            .get(handle)
+            .expect("validated scoped host handle remains present");
         let in_use = match &binding.object {
             ScopedHostObjectBinding::Single(object) => Arc::strong_count(object) != 1,
             ScopedHostObjectBinding::Group { .. } => Arc::strong_count(&binding.activity) != 1,
@@ -895,7 +886,9 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 source_span: None,
             });
         }
-        self.scoped_hosts.remove(&root);
+        self.scoped_hosts
+            .remove(handle)
+            .expect("validated scoped host handle remains present");
         self.expired_scoped_hosts.insert(root);
         if let Some(handle) = self.host_slots.handle_for(root) {
             let _ = self.host_slots.release(handle);
@@ -911,14 +904,17 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         if let Some(result) = self.host_arena.resolve(spec) {
             return result;
         }
-        if let Some((root, _)) = self
+        if let Some((handle, binding)) = self
             .scoped_hosts
             .iter()
-            .find(|(root, _)| root.type_id == spec.plan.root_type)
-            && let Some(result) =
-                self.inspect_scoped_host(*root, |object| object.resolve_host_target(spec))
+            .find(|(_, binding)| binding.type_id == spec.plan.root_type)
         {
-            return result;
+            let root = Self::scoped_root(handle, binding.type_id);
+            if let Some(result) =
+                self.inspect_scoped_host(root, |object| object.resolve_host_target(spec))
+            {
+                return result;
+            }
         }
         match self.args.direct_binding_by_type(spec.plan.root_type) {
             Some((root, binding)) => {
@@ -1028,7 +1024,7 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 .mutate_collection(access, target, mutation)
                 .expect("owned host root remains present");
         }
-        if self.scoped_hosts.contains_key(&target.root) {
+        if self.scoped_handle(target.root).is_some() {
             return self
                 .mutate_scoped_host(target.root, |object| {
                     object.mutate_collection_resolved_host(access, target, mutation)
@@ -1063,7 +1059,7 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 .write(access, target, value)
                 .expect("owned host root remains present");
         }
-        if self.scoped_hosts.contains_key(&target.root) {
+        if self.scoped_handle(target.root).is_some() {
             return self
                 .mutate_scoped_host(target.root, |object| {
                     object.write_resolved_host(access, target, value)
@@ -1097,7 +1093,7 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 .mutate(access, target, op, rhs)
                 .expect("owned host root remains present");
         }
-        if self.scoped_hosts.contains_key(&target.root) {
+        if self.scoped_handle(target.root).is_some() {
             return self
                 .mutate_scoped_host(target.root, |object| {
                     object.mutate_resolved_host(access, target, op, rhs)

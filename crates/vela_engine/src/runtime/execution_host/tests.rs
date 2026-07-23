@@ -1,14 +1,107 @@
+use std::sync::Arc;
+
+use parking_lot::RwLock;
+use vela_common::HostTypeId;
 use vela_host::adapter::ScriptStateAdapter;
-use vela_host::error::HostErrorKind;
+use vela_host::error::{HostErrorKind, HostResult};
+use vela_host::lease::{HostLeaseKind, ScopedHostLeaseSlot};
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
 use vela_host::slot::HostRefSlots;
+use vela_host::target::HostTargetInstance;
+use vela_host::value::HostValue;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::heap::ScriptHeap;
 use vela_vm::value::Value;
 
-use super::{CallArgRuntime, EXECUTION_HOST_OBJECT_ID_BASE, ExecutionHost, ReentryExecutionHost};
+use super::{
+    CallArgRuntime, EXECUTION_HOST_OBJECT_ID_BASE, ExecutionHost, ReentryExecutionHost,
+    ScopedHostBinding, ScopedHostObjectBinding,
+};
 use crate::runtime::{CallArgs, RuntimeExternStateBindings, RuntimeHostArena};
+
+struct DenseScopedObject;
+
+impl ScriptHostObject for DenseScopedObject {
+    fn host_type_id(&self) -> HostTypeId {
+        HostTypeId::new(93)
+    }
+
+    fn read_resolved_host(
+        &self,
+        _access: vela_host::resolved::ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
+        Ok(HostValue::Unit)
+    }
+}
+
+#[test]
+fn scoped_hosts_use_dense_generation_checked_identity() {
+    let args = CallArgs::new();
+    let mut extern_states = RuntimeExternStateBindings::new();
+    let mut host_arena = RuntimeHostArena::new();
+    let mut host_slots = HostRefSlots::new();
+    let mut host = ExecutionHost::new(args, &mut extern_states, &mut host_arena, &mut host_slots);
+    let type_id = HostTypeId::new(93);
+    let object: ScopedHostLeaseSlot<'_> = Arc::new(RwLock::new(Box::new(DenseScopedObject)));
+    let dense_handle = host.scoped_hosts.insert(ScopedHostBinding {
+        type_id,
+        access: HostLeaseKind::Shared,
+        object: ScopedHostObjectBinding::Single(object),
+        activity: Arc::new(()),
+    });
+    let root = ExecutionHost::scoped_root(dense_handle, type_id);
+
+    assert!(!host.scoped_hosts.spilled());
+    assert_eq!(host.host_receiver_access(root), HostLeaseKind::Shared);
+    assert_eq!(
+        host.host_receiver_access(HostRef::new(
+            HostTypeId::new(94),
+            root.object_id,
+            root.generation,
+        )),
+        HostLeaseKind::Exclusive
+    );
+    assert_eq!(
+        host.host_receiver_access(HostRef::new(
+            root.type_id,
+            root.object_id,
+            root.generation + 1,
+        )),
+        HostLeaseKind::Exclusive
+    );
+
+    let compact = host
+        .intern_host_ref(root)
+        .expect("scoped host should enter the canonical compact table");
+    host.release_scoped_host(root)
+        .expect("uncontended scoped host should release");
+    assert!(host.scoped_hosts.is_empty());
+    assert_eq!(
+        host.resolve_host_ref(compact)
+            .expect("released compact alias should retain its diagnostic root"),
+        root
+    );
+    assert!(matches!(
+        host.take_execution_host_lease(root, HostLeaseKind::Shared),
+        Err(error) if matches!(error.kind, HostErrorKind::ExpiredBorrowedHostRef { .. })
+    ));
+
+    let replacement: ScopedHostLeaseSlot<'_> = Arc::new(RwLock::new(Box::new(DenseScopedObject)));
+    let replacement_handle = host.scoped_hosts.insert(ScopedHostBinding {
+        type_id,
+        access: HostLeaseKind::Shared,
+        object: ScopedHostObjectBinding::Single(replacement),
+        activity: Arc::new(()),
+    });
+    let replacement_root = ExecutionHost::scoped_root(replacement_handle, type_id);
+    assert_eq!(replacement_handle.slot(), dense_handle.slot());
+    assert_ne!(replacement_handle.generation(), dense_handle.generation());
+    assert_ne!(replacement_root, root);
+    assert!(host.scoped_binding(root).is_none());
+    assert!(host.scoped_binding(replacement_root).is_some());
+}
 
 #[test]
 fn direct_host_ids_are_allocated_by_the_execution_owner() {
