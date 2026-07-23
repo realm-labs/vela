@@ -1304,9 +1304,10 @@ and stale structural snapshots are non-mutating; retained child views use
 their parent lease, and shared/fixed views do not expose the method. Growable
 HostRef targets also accept matching borrowed Array/Map/Set `extend` sources:
 the source is snapshotted through its active lease, both traversals are
-precharged, and same-alias extension snapshots before write-through. Complex
-element HostRefs, write-through filter, and prepared live grouping/traversal
-remain open.
+precharged, and same-alias extension snapshots before write-through. Ordinary
+`filter` remains the detached, script-owned transform required by section 4.5;
+`retain` is the explicit write-through counterpart. Complex element HostRefs
+and prepared live grouping/traversal remain open.
 
 ### S4 — Service contract and Rust-only generation
 

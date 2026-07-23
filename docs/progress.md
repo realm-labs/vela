@@ -296,8 +296,10 @@ matching borrowed Array/Map/Set sources can now extend a growable HostRef
 target without owned materialization. The source is snapshotted through its
 active lease before one target batch, source and mutation traversals are
 precharged, and same-alias extension reads the complete old snapshot before
-write-through. Complex element handles, write-through filter, and prepared
-live grouping/traversal remain open.
+write-through. Ordinary `filter` remains a detached, script-owned transform as
+required by the collection-view contract; `retain` is its explicit
+write-through counterpart. Complex element handles and prepared live
+grouping/traversal remain open.
 
 Ordinary Rust/Vela exports, exact lease adapters, owner-frozen borrowed
 returns, generated typed bindings, and `NativeCallContext` sync/async re-entry
@@ -483,9 +485,9 @@ Root execution-host lease guards and grouped scoped child/activity sets now use
 the same eight-entry inline threshold while retaining acquire-all-or-clean-up
 behavior on conflict.
 S3 is active. Its remaining gaps are complex-element borrowed views, remaining
-element/key and live/resumable collection operations, borrowed-source and
-write-through bulk mutations, richer adapters, and prepared
-element/grouping/traversal operations.
+element/key and live/resumable collection operations, remaining write-through
+bulk mutations, richer adapters, and prepared element/grouping/traversal
+operations.
 Service-signature traversal and service-generation pinning belong to S4-S6. A
 shorter owned-host reclamation policy remains post-S2 follow-up.
 Runtime receiver enforcement is live; compile-time
