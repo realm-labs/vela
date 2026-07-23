@@ -303,6 +303,10 @@ pub(super) fn set_method_fact(
             StdlibMethodFact::new(receiver, "add", TypeFact::BOOL)
                 .with_params(vec![element.clone()]),
         ),
+        "insert" => Some(
+            StdlibMethodFact::new(receiver, "insert", TypeFact::BOOL)
+                .with_params(vec![element.clone()]),
+        ),
         "remove" => Some(
             StdlibMethodFact::new(receiver, "remove", TypeFact::BOOL)
                 .with_params(vec![element.clone()]),

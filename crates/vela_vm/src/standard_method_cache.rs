@@ -442,6 +442,9 @@ fn standard_method_target(
         (StandardMethodReceiver::Set, id) if id == ids.set_add => {
             StandardMethodInlineCacheTarget::Add
         }
+        (StandardMethodReceiver::Set, id) if id == ids.set_insert => {
+            StandardMethodInlineCacheTarget::Insert
+        }
         (StandardMethodReceiver::Set, id) if id == ids.set_remove => {
             StandardMethodInlineCacheTarget::Remove
         }
@@ -574,6 +577,7 @@ pub(crate) fn call_standard_cached(
             return call_cached_set_materialization(receiver, cache.target, args, heap, budget);
         }
         StandardMethodInlineCacheTarget::Add
+        | StandardMethodInlineCacheTarget::Insert
         | StandardMethodInlineCacheTarget::Remove
         | StandardMethodInlineCacheTarget::Clear
         | StandardMethodInlineCacheTarget::Extend
@@ -914,6 +918,15 @@ pub(crate) fn call_standard_cached(
         (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::Add) => {
             let mut receiver = *receiver;
             set_methods::add(
+                &mut receiver,
+                args,
+                heap.as_deref_mut(),
+                budget.as_deref_mut(),
+            )
+        }
+        (StandardMethodReceiver::Set, StandardMethodInlineCacheTarget::Insert) => {
+            let mut receiver = *receiver;
+            set_methods::insert(
                 &mut receiver,
                 args,
                 heap.as_deref_mut(),

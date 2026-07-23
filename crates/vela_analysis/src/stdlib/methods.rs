@@ -74,6 +74,7 @@ const SET_METHOD_NAMES: &[&str] = &[
     "has",
     "contains",
     "add",
+    "insert",
     "remove",
     "extend",
     "clear",
@@ -348,11 +349,13 @@ fn collection_method_allowed(receiver: &TypeFact, method: &str) -> bool {
             mutation: CollectionViewMutation::Growable,
             ..
         } => true,
-        TypeFact::SetView { .. } => !matches!(method, "add" | "remove" | "extend" | "clear"),
+        TypeFact::SetView { .. } => {
+            !matches!(method, "add" | "insert" | "remove" | "extend" | "clear")
+        }
         TypeFact::SetMut {
             mutation: CollectionViewMutation::Fixed,
             ..
-        } => !matches!(method, "add" | "remove" | "extend" | "clear"),
+        } => !matches!(method, "add" | "insert" | "remove" | "extend" | "clear"),
         TypeFact::SetMut {
             mutation: CollectionViewMutation::Growable,
             ..

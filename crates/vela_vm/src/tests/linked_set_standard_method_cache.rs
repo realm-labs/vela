@@ -39,6 +39,15 @@ fn linked_standard_value_method_caches_set_add_target() {
 }
 
 #[test]
+fn linked_standard_value_method_caches_set_insert_target() {
+    assert_set_runtime_cache(
+        linked_set_mutator_cache_program("insert", &[2], &[4]),
+        StandardMethodInlineCacheTarget::Insert,
+        RuntimeValue::Bool(true),
+    );
+}
+
+#[test]
 fn linked_standard_value_method_caches_set_remove_target() {
     assert_set_runtime_cache(
         linked_set_mutator_cache_program("remove", &[2, 4], &[4]),

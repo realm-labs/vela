@@ -1215,6 +1215,10 @@ membership now exposes baseline Map `contains_key` and Set `contains` on owned,
 shared, and exclusive collections while preserving `has` for both families.
 Those names and read-only `MapView.get/get_or` reuse the resolved keyed
 HostAccess path.
+Standard Set insertion now exposes baseline `insert(value) -> bool` on owned
+sets and exclusive growable `SetMut` views while preserving `add`. Both names
+share the same checked membership write and changed/not-changed result;
+shared and fixed views withhold both structural mutators.
 `MissingCollectionEntry` alone becomes missing/fallback behavior, while other
 host errors propagate. Array `contains/index_of` reuse one bounded values
 projection, charge its complete length, compare exact `ValueKey` identities,
@@ -1240,7 +1244,7 @@ open. Growable
 `MapMut.set` and keyed index
 assignment insert supported leaf values through HostAccess; `MapMut.remove`
 uses a keyed remove and returns the prior value as `Option<V>`;
-`SetMut.add/remove` use keyed boolean membership writes without
+`SetMut.add/insert/remove` use keyed boolean membership writes without
 materialization. Growable `ArrayMut.remove_at` performs the corresponding
 indexed read/remove through HostAccess, returns the prior value as `Option<T>`,
 and preserves retained method-return view identity and missing-index

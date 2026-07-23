@@ -54,6 +54,7 @@ arr.group_by(|x| key) gives x: E and returns Map(key = TypeFact(key), value = Ar
 ```rust
 map.len()
 map.has(key)
+map.contains_key(key)
 map.get(key)
 map.get_or(key, default)
 map.set(key, value)
@@ -102,7 +103,9 @@ standard library metadata consumed by `vela_analysis` and future LSP tooling.
 set.len()
 set.is_empty()
 set.has(value)
+set.contains(value)
 set.add(value)
+set.insert(value)
 set.remove(value)
 set.extend(other)
 set.clear()

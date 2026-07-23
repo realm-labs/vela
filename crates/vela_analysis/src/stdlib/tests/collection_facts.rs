@@ -53,6 +53,7 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
     let set_growable = TypeFact::set_mut(TypeFact::STRING, CollectionViewMutation::Growable);
     for receiver in [&set_view, &set_fixed] {
         assert!(stdlib_method_fact(receiver, "add", None).is_none());
+        assert!(stdlib_method_fact(receiver, "insert", None).is_none());
         assert!(stdlib_method_fact(receiver, "clear", None).is_none());
         assert!(stdlib_method_fact(receiver, "filter", None).is_some());
         let contains =
@@ -62,6 +63,7 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
         assert_eq!(contains.returns, TypeFact::BOOL);
     }
     assert!(stdlib_method_fact(&set_growable, "add", None).is_some());
+    assert!(stdlib_method_fact(&set_growable, "insert", None).is_some());
 
     let completion_methods = stdlib_method_facts(&array_view, None)
         .into_iter()
@@ -352,6 +354,9 @@ fn scalar_collection_methods_return_non_generic_facts() {
             .returns,
         TypeFact::UNIT
     );
+    let set_insert = stdlib_method_fact(&set, "insert", None).expect("set insert fact");
+    assert_eq!(set_insert.params, vec![TypeFact::STRING]);
+    assert_eq!(set_insert.returns, TypeFact::BOOL);
     let set_extend = stdlib_method_fact(&set, "extend", None).expect("set extend fact");
     assert_eq!(set_extend.params, vec![TypeFact::set(TypeFact::STRING)]);
     assert_eq!(set_extend.returns, TypeFact::UNIT);

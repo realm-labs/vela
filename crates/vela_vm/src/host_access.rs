@@ -873,7 +873,9 @@ pub(crate) fn execute_host_root_collection_mutation(
             })?;
             crate::option_result::option_value(current, heap, runtime.budget.as_deref_mut())
         }
-        HostCollectionMutation::SetAdd | HostCollectionMutation::SetRemove => {
+        HostCollectionMutation::SetAdd
+        | HostCollectionMutation::SetInsert
+        | HostCollectionMutation::SetRemove => {
             let read = resolve_collection_key_access(
                 host,
                 runtime.inline_caches,
@@ -890,7 +892,10 @@ pub(crate) fn execute_host_root_collection_mutation(
                     operation: "host set mutation",
                 }));
             };
-            let desired = matches!(mutation, HostCollectionMutation::SetAdd);
+            let desired = matches!(
+                mutation,
+                HostCollectionMutation::SetAdd | HostCollectionMutation::SetInsert
+            );
             let changed = current != desired;
             if changed {
                 let write = resolve_collection_key_access(

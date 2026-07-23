@@ -704,6 +704,13 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
     ),
     StdMethodSpec::new(
         "Set",
+        "insert",
+        &[StdParamSpec::new("value", "any")],
+        "bool",
+        "Inserts a value and returns whether it was new.",
+    ),
+    StdMethodSpec::new(
+        "Set",
         "remove",
         &[StdParamSpec::new("value", "any")],
         "bool",

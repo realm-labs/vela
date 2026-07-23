@@ -13,7 +13,7 @@ fn untyped_dynamic_borrowed_collections_discover_supported_standard_methods() {
         "fn grow(values) { values.push(13); return values.pop().unwrap_or(0); }\n",
         "fn mutate_map(values) { values.set(9i32, 13); ",
         "return values.get_or(9i32, 0); }\n",
-        "fn mutate_set(values) { return values.add(11i32); }\n",
+        "fn mutate_set(values) { return values.insert(11i32); }\n",
         "fn reject_fixed(values) { values.push(13); }\n",
     ));
 

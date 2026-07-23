@@ -233,8 +233,9 @@ prepared index plans remain open. Growable `MapMut.set` and missing-key index
 assignment now insert
 scalar/String/Bytes leaves through the keyed HostAccess write, while
 `MapMut.remove` uses a keyed HostAccess remove and returns the prior value as
-`Option<V>`. `SetMut.add/remove` write membership through the same path and
-retain standard changed/not-changed results. Growable `ArrayMut.remove_at`
+`Option<V>`. `SetMut.add/insert/remove` write membership through the same path
+and retain standard changed/not-changed results; `insert` is the baseline name
+while `add` remains available. Growable `ArrayMut.remove_at`
 reads and removes through one indexed HostAccess path, returns the prior value
 as `Option<T>`, preserves missing-index behavior, and works on retained
 method-return views without materialization. `ArrayMut.pop` shares the live

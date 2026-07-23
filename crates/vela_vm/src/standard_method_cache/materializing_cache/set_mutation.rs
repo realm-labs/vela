@@ -14,9 +14,22 @@ pub(in crate::standard_method_cache) fn call_cached_set_mutation(
     budget: &mut Option<&mut ExecutionBudget>,
 ) -> Option<VmResult<Value>> {
     match target {
-        StandardMethodInlineCacheTarget::Add => {
-            Some(call_cached_set_add(receiver, args, heap, budget))
-        }
+        StandardMethodInlineCacheTarget::Add => Some(call_cached_set_insert(
+            receiver,
+            args,
+            heap,
+            budget,
+            "add",
+            "method add",
+        )),
+        StandardMethodInlineCacheTarget::Insert => Some(call_cached_set_insert(
+            receiver,
+            args,
+            heap,
+            budget,
+            "insert",
+            "method insert",
+        )),
         StandardMethodInlineCacheTarget::Remove => {
             Some(call_cached_set_remove(receiver, args, heap))
         }
@@ -28,23 +41,25 @@ pub(in crate::standard_method_cache) fn call_cached_set_mutation(
     }
 }
 
-fn call_cached_set_add(
+fn call_cached_set_insert(
     receiver: &Value,
     args: &[Value],
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
+    method: &'static str,
+    operation: &'static str,
 ) -> VmResult<Value> {
-    crate::runtime_checks::expect_arity("add", args, 1)?;
-    let reference = set_reference(receiver, "method add")?;
+    crate::runtime_checks::expect_arity(method, args, 1)?;
+    let reference = set_reference(receiver, operation)?;
     let Some(heap) = heap.as_deref_mut() else {
-        return type_error("method add");
+        return type_error(operation);
     };
-    let key = ValueKey::from_value(&args[0], Some(&*heap), "method add")?;
-    if set_slots(heap, reference, "method add")?.contains_key(&key) {
+    let key = ValueKey::from_value(&args[0], Some(&*heap), operation)?;
+    if set_slots(heap, reference, operation)?.contains_key(&key) {
         return Ok(Value::Bool(false));
     }
     let slot = store_runtime_value(&args[0], heap, budget.as_deref_mut())?;
-    collection_mutation::push_set_slot(heap, reference, slot, budget.as_deref_mut(), "method add")?;
+    collection_mutation::push_set_slot(heap, reference, slot, budget.as_deref_mut(), operation)?;
     Ok(Value::Bool(true))
 }
 

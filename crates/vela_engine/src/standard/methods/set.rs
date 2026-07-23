@@ -33,6 +33,12 @@ const SET_METHODS: &[MethodSpec] = &[
         "Adds a value and returns whether it was new.",
     ),
     MethodSpec::new(
+        "insert",
+        &[ParamSpec::new("value", "any")],
+        "bool",
+        "Inserts a value and returns whether it was new.",
+    ),
+    MethodSpec::new(
         "remove",
         &[ParamSpec::new("value", "any")],
         "bool",

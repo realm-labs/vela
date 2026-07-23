@@ -9,26 +9,46 @@ pub(crate) fn add(
     receiver: &mut Value,
     args: &[Value],
     heap: Option<&mut HeapExecution<'_>>,
-    mut budget: Option<&mut ExecutionBudget>,
+    budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
-    expect_arity("add", args, 1)?;
+    insert_with_name(receiver, args, heap, budget, "add", "method add")
+}
+
+pub(crate) fn insert(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+    budget: Option<&mut ExecutionBudget>,
+) -> VmResult<Value> {
+    insert_with_name(receiver, args, heap, budget, "insert", "method insert")
+}
+
+fn insert_with_name(
+    receiver: &mut Value,
+    args: &[Value],
+    heap: Option<&mut HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
+    method: &'static str,
+    operation: &'static str,
+) -> VmResult<Value> {
+    expect_arity(method, args, 1)?;
     match receiver {
         Value::HeapRef(reference) => {
             let Some(heap) = heap else {
-                return type_error("method add");
+                return type_error(operation);
             };
-            let key = ValueKey::from_value(&args[0], Some(&*heap), "method add")?;
+            let key = ValueKey::from_value(&args[0], Some(&*heap), operation)?;
             let Some(HeapValue::Set(values)) = heap.heap.get(*reference) else {
-                return type_error("method add");
+                return type_error(operation);
             };
             if values.contains_key(&key) {
                 return Ok(Value::Bool(false));
             }
             let slot = store_runtime_value(&args[0], heap, budget.as_deref_mut())?;
-            collection_mutation::push_set_slot(heap, *reference, slot, budget, "method add")?;
+            collection_mutation::push_set_slot(heap, *reference, slot, budget, operation)?;
             Ok(Value::Bool(true))
         }
-        _ => type_error("method add"),
+        _ => type_error(operation),
     }
 }
 

@@ -638,6 +638,8 @@ fn main() {
     rewards.remove("xp");
     tags.add("bonus");
     tags.remove("bonus");
+    tags.insert("inserted");
+    tags.remove("inserted");
     if names.contains("gold")
         && rewards.has("gold")
         && tags.has("daily")
@@ -681,6 +683,7 @@ fn main() {
     assert!(value_methods.contains(&("clear", Some(std_method_id("Map", "clear")))));
     assert!(value_methods.contains(&("has", Some(std_method_id("Set", "has")))));
     assert!(value_methods.contains(&("add", Some(std_method_id("Set", "add")))));
+    assert!(value_methods.contains(&("insert", Some(std_method_id("Set", "insert")))));
     assert!(value_methods.contains(&("remove", Some(std_method_id("Set", "remove")))));
     assert!(value_methods.contains(&("clear", Some(std_method_id("Set", "clear")))));
     assert!(value_methods.contains(&("is_subset", Some(std_method_id("Set", "is_subset")))));

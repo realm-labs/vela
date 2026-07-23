@@ -14,7 +14,7 @@ pub(crate) use combination::{
     is_superset, symmetric_difference, union,
 };
 pub(crate) use higher_order::{all, any, count, filter, find, map};
-pub(crate) use mutation::{add, clear, extend, remove};
+pub(crate) use mutation::{add, clear, extend, insert, remove};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum SetRelation {
@@ -709,8 +709,9 @@ fn main() {
 fn main() {
     let ids = set::from_array([2, 4, 6]);
     ids.clear();
-    ids.add(9);
-    if ids.len() == 1 && ids.has(9) {
+    let inserted = ids.insert(9);
+    let duplicate = ids.insert(9);
+    if inserted && !duplicate && ids.len() == 1 && ids.has(9) {
         let values = ids.values().collect_array();
         return values[0];
     }

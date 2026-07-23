@@ -95,6 +95,7 @@ pub(crate) struct StdMethodIds {
     pub(crate) set_has: MethodId,
     pub(crate) set_contains: MethodId,
     pub(crate) set_add: MethodId,
+    pub(crate) set_insert: MethodId,
     pub(crate) set_remove: MethodId,
     pub(crate) set_extend: MethodId,
     pub(crate) set_clear: MethodId,
@@ -228,6 +229,7 @@ impl StdMethodIds {
             set_has: standard_method_id("Set", "has"),
             set_contains: standard_method_id("Set", "contains"),
             set_add: standard_method_id("Set", "add"),
+            set_insert: standard_method_id("Set", "insert"),
             set_remove: standard_method_id("Set", "remove"),
             set_extend: standard_method_id("Set", "extend"),
             set_clear: standard_method_id("Set", "clear"),
@@ -423,6 +425,7 @@ pub(crate) enum HostCollectionMutation {
     MapRemove,
     MapExtend,
     SetAdd,
+    SetInsert,
     SetRemove,
     SetExtend,
 }
@@ -433,7 +436,7 @@ impl HostCollectionMutation {
         match self {
             Self::Clear => "clear",
             Self::ArrayExtend | Self::MapExtend | Self::SetExtend => "extend",
-            Self::ArrayInsert => "insert",
+            Self::ArrayInsert | Self::SetInsert => "insert",
             Self::ArrayPush => "push",
             Self::ArrayPop => "pop",
             Self::ArrayRemoveAt => "remove_at",
@@ -454,6 +457,7 @@ impl HostCollectionMutation {
             | Self::MapRemove
             | Self::MapExtend
             | Self::SetAdd
+            | Self::SetInsert
             | Self::SetRemove
             | Self::SetExtend => 1,
             Self::ArrayInsert => 2,
@@ -483,6 +487,8 @@ pub(crate) fn host_collection_mutation(method_id: MethodId) -> Option<HostCollec
         Some(HostCollectionMutation::MapExtend)
     } else if method_id == ids.set_add {
         Some(HostCollectionMutation::SetAdd)
+    } else if method_id == ids.set_insert {
+        Some(HostCollectionMutation::SetInsert)
     } else if method_id == ids.set_remove {
         Some(HostCollectionMutation::SetRemove)
     } else if method_id == ids.set_extend {

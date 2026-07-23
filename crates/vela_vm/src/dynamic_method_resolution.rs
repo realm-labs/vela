@@ -397,6 +397,7 @@ fn set_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "has" => ids.set_has,
         "contains" => ids.set_contains,
         "add" => ids.set_add,
+        "insert" => ids.set_insert,
         "remove" => ids.set_remove,
         "extend" => ids.set_extend,
         "clear" => ids.set_clear,
