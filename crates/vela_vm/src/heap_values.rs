@@ -686,12 +686,21 @@ fn heap_value_to_owned(
                     captures,
                 })
             }),
-        HeapValue::Iterator(iterator) => iterator
-            .values()
-            .iter()
-            .map(|value| value_to_owned_inner(value, heap, host))
-            .collect::<VmResult<Vec<_>>>()
-            .map(|values| OwnedValue::Iterator(OwnedIteratorState::from_runtime(iterator, values))),
+        HeapValue::Iterator(iterator) => {
+            if iterator.is_host_backed() {
+                return Err(VmError::new(VmErrorKind::TypeMismatch {
+                    operation: "host-backed iterator escape",
+                }));
+            }
+            iterator
+                .values()
+                .iter()
+                .map(|value| value_to_owned_inner(value, heap, host))
+                .collect::<VmResult<Vec<_>>>()
+                .map(|values| {
+                    OwnedValue::Iterator(OwnedIteratorState::from_runtime(iterator, values))
+                })
+        }
         HeapValue::PathProxy(proxy) => Ok(OwnedValue::PathProxy(proxy.clone())),
     }
 }

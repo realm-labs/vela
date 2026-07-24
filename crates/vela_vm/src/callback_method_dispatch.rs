@@ -17,6 +17,7 @@ pub(crate) struct CallbackMethodDispatch<'a, 'heap> {
     pub(crate) program: &'a LinkedProgram,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
+    pub(crate) host: Option<&'a mut dyn crate::method_runtime::HostIteratorAccess>,
 }
 
 #[derive(Clone, Copy)]
@@ -127,11 +128,12 @@ fn standard_method_id(owner: &str, name: &str) -> MethodId {
 }
 
 impl<'a, 'heap> CallbackMethodDispatch<'a, 'heap> {
-    fn runtime<'dispatch>(&'dispatch mut self) -> MethodRuntime<'dispatch, 'heap> {
+    fn runtime<'dispatch>(&'dispatch mut self) -> MethodRuntime<'dispatch, 'heap, 'a> {
         MethodRuntime {
             program: self.program,
             heap: self.heap.as_deref_mut(),
             budget: self.budget.as_deref_mut(),
+            host: self.host.as_deref_mut(),
         }
     }
 

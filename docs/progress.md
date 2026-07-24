@@ -31,12 +31,13 @@ Phase status:
 
 S3 already provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared
-field, index, and key access; read-only collection projections; and immediate
+field, index, and key access; call-scoped Array iterators with a fixed extent
+and live prepared element reads; bounded collection projections; and immediate
 write-through for the implemented Array, Map, and Set mutations. The remaining
 S3 exit work is:
 
 - complex-element borrowed views and their identity/lifetime proof;
-- remaining element/key methods and live or resumable traversal operations;
+- remaining element/key methods and live or resumable Map/Set traversal;
 - remaining transactional bulk write-through operations;
 - richer user-defined collection adapters; and
 - prepared element-method, grouping, and traversal paths without runtime name

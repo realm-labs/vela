@@ -257,6 +257,24 @@ pub(crate) fn dispatch_linked_method_call(
                 return Ok(());
             }
             if matches!(frame.read(call.receiver)?, Value::HostRef(_))
+                && crate::std_method_ids::is_host_array_iteration(method_id)
+            {
+                let result = crate::host_collection_projection::execute_host_root_array_iteration(
+                    host_access::HostAccessRuntime {
+                        frame,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        host: host.as_deref_mut(),
+                        inline_caches: context.inline_caches,
+                        source_span: context.call_site,
+                    },
+                    call.receiver,
+                    values,
+                )?;
+                frame.write(call.dst, result)?;
+                return Ok(());
+            }
+            if matches!(frame.read(call.receiver)?, Value::HostRef(_))
                 && let Some(projection) =
                     crate::std_method_ids::host_collection_projection(method_id)
             {
@@ -560,6 +578,23 @@ pub(crate) fn dispatch_resolved_linked_dynamic_method_call(
                 return frame.write(call.dst, result);
             }
             if matches!(receiver, Value::HostRef(_))
+                && crate::std_method_ids::is_host_array_iteration(method_id)
+            {
+                let result = crate::host_collection_projection::execute_host_root_array_iteration(
+                    host_access::HostAccessRuntime {
+                        frame,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        host: host.as_deref_mut(),
+                        inline_caches: context.inline_caches,
+                        source_span: context.call_site,
+                    },
+                    call.receiver,
+                    values_storage.as_slice(),
+                )?;
+                return frame.write(call.dst, result);
+            }
+            if matches!(receiver, Value::HostRef(_))
                 && let Some(projection) =
                     crate::std_method_ids::host_collection_projection(method_id)
             {
@@ -653,6 +688,9 @@ pub(crate) fn dispatch_resolved_linked_dynamic_method_call(
                 program: context.program,
                 heap: heap.as_deref_mut(),
                 budget: budget.as_deref_mut(),
+                host: host
+                    .as_deref_mut()
+                    .map(|host| host as &mut dyn crate::method_runtime::HostIteratorAccess),
             };
             let result = callback_method_dispatch::call_by_id(
                 method_id,
@@ -1193,7 +1231,7 @@ struct LinkedCallbackValueMethodCall<'a> {
 fn linked_callback_value_method_result(
     _vm: &Vm,
     context: &LinkedScriptMethodCallContext<'_>,
-    _host: &mut Option<&mut HostExecution<'_>>,
+    host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     frame: &CallFrame,
@@ -1207,6 +1245,9 @@ fn linked_callback_value_method_result(
         program: context.program,
         heap: heap.as_deref_mut(),
         budget: budget.as_deref_mut(),
+        host: host
+            .as_deref_mut()
+            .map(|host| host as &mut dyn crate::method_runtime::HostIteratorAccess),
     };
     if let Some(callback_method) = call.callback_method
         && callback_method_dispatch::callback_cache_entry_matches_method_id(

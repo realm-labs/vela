@@ -305,19 +305,22 @@ impl ResumableCallbackMethod {
         &mut self,
         vm: &crate::Vm,
         program_owner: &Arc<LinkedArtifact>,
-        host: Option<&crate::HostExecution<'_>>,
+        mut host: Option<&mut crate::HostExecution<'_>>,
         heap: &mut Option<&mut HeapExecution<'_>>,
         budget: &mut Option<&mut ExecutionBudget>,
         returned: Option<Value>,
     ) -> VmResult<ResumableCallbackStep> {
         if matches!(self.state, CallbackState::Iterator(_)) {
-            return self.step_iterator(program_owner, heap, budget, returned);
+            let mut iterator_host = host
+                .as_deref_mut()
+                .map(|host| host as &mut dyn crate::method_runtime::HostIteratorAccess);
+            return self.step_iterator(program_owner, &mut iterator_host, heap, budget, returned);
         }
         if matches!(self.state, CallbackState::Enum { .. }) {
             return self.step_enum(heap, budget, returned);
         }
         if matches!(self.state, CallbackState::SortBy(_)) {
-            return self.step_sort_by(vm, program_owner, host, heap, budget, returned);
+            return self.step_sort_by(vm, program_owner, host.as_deref(), heap, budget, returned);
         }
         match &mut self.state {
             CallbackState::Sequence {
@@ -665,6 +668,7 @@ impl ResumableCallbackMethod {
     fn step_iterator(
         &mut self,
         program_owner: &Arc<LinkedArtifact>,
+        host: &mut Option<&mut dyn crate::method_runtime::HostIteratorAccess>,
         heap: &mut Option<&mut HeapExecution<'_>>,
         budget: &mut Option<&mut ExecutionBudget>,
         returned: Option<Value>,
@@ -672,7 +676,7 @@ impl ResumableCallbackMethod {
         let CallbackState::Iterator(iterator) = &mut self.state else {
             return Err(incomplete_callback());
         };
-        match iterator.step(program_owner, heap, budget, returned)? {
+        match iterator.step(program_owner, host, heap, budget, returned)? {
             crate::iteration::ResumableIteratorMethodStep::Complete(value) => {
                 Ok(ResumableCallbackStep::Complete(value))
             }

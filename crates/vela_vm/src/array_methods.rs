@@ -92,7 +92,7 @@ pub(super) fn index_value(value: &Value, operation: &'static str) -> VmResult<us
 }
 
 pub(super) fn call_unary_callback(
-    runtime: &mut MethodRuntime<'_, '_>,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
     operation: &'static str,
     callback: &Value,
     value: Value,

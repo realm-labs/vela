@@ -1,9 +1,11 @@
 use vela_bytecode::{CacheSiteId, Register};
-use vela_host::protocol::{HostCollectionProjection, HostCollectionSnapshot};
+use vela_common::ScalarValue;
+use vela_host::protocol::{HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot};
 use vela_host::resolved::{HostAccessOp, HostAccessSpec};
 use vela_host::target::{HostTargetInstance, HostTargetPlan};
 
 use crate::heap::HeapValue;
+use crate::heap_values::allocate_heap_value;
 use crate::host_access::{
     HostAccessRuntime, missing_host_context, resolve_cached_access, runtime_value_from_host,
 };
@@ -11,6 +13,80 @@ use crate::{
     HostInlineCacheTarget, StandardMethodReceiver, Value, VmError, VmErrorKind, VmResult,
     expect_host_ref, std_method_ids::HostArrayTransform,
 };
+
+pub(crate) fn execute_host_root_array_iteration(
+    mut runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    args: &[Value],
+) -> VmResult<Value> {
+    if !args.is_empty() {
+        return Err(VmError::new(VmErrorKind::ArityMismatch {
+            name: "host array iteration".to_owned(),
+            expected: 0,
+            actual: args.len(),
+        }));
+    }
+    let root = expect_host_ref(
+        &runtime.frame.read(receiver)?,
+        runtime.host.as_deref(),
+        "host array iteration",
+    )?;
+    let root_target = HostTargetPlan::new(root.type_id);
+    let root_instance = HostTargetInstance::new(root, &root_target, &[]);
+    let element_target = HostTargetPlan::new(root.type_id).dyn_index(0);
+    let host = runtime.host.as_deref_mut().ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host context",
+        })
+    })?;
+    let root_access = host
+        .adapter
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &root_target))
+        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    let len = host
+        .access
+        .query_collection_resolved(
+            host.adapter,
+            root_access,
+            root_instance,
+            HostCollectionQuery::Len,
+            runtime.source_span,
+        )
+        .and_then(|value| match value {
+            vela_host::value::HostValue::Scalar(ScalarValue::I64(value)) => usize::try_from(value)
+                .map_err(|_| vela_host::error::HostError {
+                    kind: vela_host::error::HostErrorKind::InvalidArgument {
+                        expected: "host array length",
+                    },
+                    source_span: runtime.source_span,
+                }),
+            _ => Err(vela_host::error::HostError {
+                kind: vela_host::error::HostErrorKind::InvalidArgument {
+                    expected: "host array length",
+                },
+                source_span: runtime.source_span,
+            }),
+        })?;
+    let element_access = host
+        .adapter
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &element_target))
+        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    let Some(heap) = runtime.heap.as_deref_mut() else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host array iterator heap",
+        }));
+    };
+    allocate_heap_value(
+        HeapValue::Iterator(crate::iteration::IteratorState::from_host_array(
+            root,
+            element_target,
+            element_access,
+            len,
+        )),
+        heap,
+        runtime.budget.as_deref_mut(),
+    )
+}
 
 pub(crate) fn execute_host_root_collection_projection(
     mut runtime: HostAccessRuntime<'_, '_, '_>,

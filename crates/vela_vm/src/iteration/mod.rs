@@ -1,3 +1,4 @@
+mod host_array;
 mod methods;
 mod resumable;
 mod resumable_method;

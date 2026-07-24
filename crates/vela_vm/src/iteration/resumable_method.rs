@@ -100,6 +100,7 @@ impl ResumableIteratorMethod {
     pub(crate) fn step(
         &mut self,
         program_owner: &Arc<LinkedArtifact>,
+        host: &mut Option<&mut dyn crate::method_runtime::HostIteratorAccess>,
         heap: &mut Option<&mut HeapExecution<'_>>,
         budget: &mut Option<&mut ExecutionBudget>,
         mut returned: Option<Value>,
@@ -130,7 +131,7 @@ impl ResumableIteratorMethod {
             let next = self.next.get_or_insert_with(|| {
                 ResumableIteratorNext::new(self.receiver, self.operation, true)
             });
-            match next.step(program_owner, heap, budget, returned.take())? {
+            match next.step(program_owner, host, heap, budget, returned.take())? {
                 ResumableIteratorStep::Call {
                     owner,
                     function,

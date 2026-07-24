@@ -527,6 +527,11 @@ pub(crate) fn host_collection_projection(method_id: MethodId) -> Option<HostColl
     }
 }
 
+pub(crate) fn is_host_array_iteration(method_id: MethodId) -> bool {
+    let ids = std_method_ids();
+    method_id == ids.array_iter || method_id == ids.array_values
+}
+
 pub(crate) fn is_host_map_merge(method_id: MethodId) -> bool {
     method_id == std_method_ids().map_merge
 }

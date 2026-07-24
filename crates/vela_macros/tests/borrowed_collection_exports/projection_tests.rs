@@ -834,6 +834,114 @@ fn borrowed_collection_projections_feed_iterator_pipelines() {
 }
 
 #[test]
+fn borrowed_array_iterators_read_live_values_with_a_frozen_extent() {
+    let mut runtime = runtime(
+        "fn next_values(owner: CollectionOwner) { let values = owner.values_mut(); let cursor = values.iter(); values[0] = 10; let first = cursor.next().unwrap_or(0); values[1] = 20; values.push(30); return first + cursor.next().unwrap_or(0) + cursor.next().unwrap_or(7); } fn pipeline(values: ArrayMut<i64>) { let cursor = values.values(); values[0] = 11; values[1] = 13; return cursor.map(|value| value).collect_array().sum(); } fn shrink(owner: CollectionOwner) { let values = owner.values_mut(); let cursor = values.iter(); cursor.next(); values.pop(); return cursor.next(); }",
+    );
+
+    let mut owner = CollectionOwner {
+        values: vec![2_i64, 3_i64],
+        totals: BTreeMap::new(),
+    };
+    let result = runtime
+        .call(
+            "next_values",
+            CallArgs::new().with_host_mut("owner", &mut owner),
+            CallOptions::unbounded(),
+        )
+        .expect("borrowed Array iterator should read each live value on demand");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(37)));
+    drop(result);
+    assert_eq!(owner.values, vec![10, 20, 30]);
+
+    let mut values = vec![5_i64, 7_i64];
+    let mut args = CallArgs::new();
+    args.push_collection_mut("values", &mut values);
+    let result = runtime
+        .call("pipeline", args, CallOptions::unbounded())
+        .expect("live host iterator should survive resumable callback pipelines");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(24)));
+    drop(result);
+    assert_eq!(values, vec![11, 13]);
+
+    let mut owner = CollectionOwner {
+        values: vec![2_i64, 3_i64],
+        totals: BTreeMap::new(),
+    };
+    runtime
+        .call(
+            "shrink",
+            CallArgs::new().with_host_mut("owner", &mut owner),
+            CallOptions::unbounded(),
+        )
+        .expect_err("removing an unvisited fixed-extent element should fail its live read");
+    assert_eq!(owner.values, vec![2]);
+}
+
+#[test]
+fn borrowed_array_iterators_do_not_escape_the_host_call() {
+    let mut runtime = runtime(concat!(
+        "fn direct(values) { return values.iter(); }\n",
+        "fn pipeline(values) { return values.iter().map(|value| value).take(1); }",
+    ));
+    let values = vec![2_i64, 3, 5];
+    for function in ["direct", "pipeline"] {
+        let mut args = CallArgs::new();
+        args.push_collection_ref("values", &values);
+        let result = runtime
+            .call(function, args, CallOptions::unbounded())
+            .expect("creating a borrowed iterator should succeed inside its host call");
+        let error = runtime
+            .value_to_owned(&result)
+            .expect_err("a live borrowed iterator must not become an owned snapshot on escape");
+        assert!(matches!(
+            error.kind(),
+            VmErrorKind::TypeMismatch { operation }
+                if operation == "host-backed iterator escape"
+        ));
+    }
+}
+
+#[test]
+fn borrowed_array_iterator_creation_does_not_charge_for_all_elements() {
+    let mut runtime = runtime(concat!(
+        "fn create(values) { return values.iter().take(0).count(); }\n",
+        "fn count(values) { return values.iter().count(); }",
+    ));
+
+    let minimum_limit = |runtime: &mut Runtime, function: &str, values: &Vec<i64>| {
+        (0..256)
+            .find(|limit| {
+                let mut args = CallArgs::new();
+                args.push_collection_ref("values", values);
+                runtime
+                    .call(
+                        function,
+                        args,
+                        CallOptions::new(*limit, usize::MAX, usize::MAX),
+                    )
+                    .is_ok()
+            })
+            .expect("borrowed iterator fixture should fit the bounded budget search")
+    };
+
+    let empty = Vec::<i64>::new();
+    let large = vec![7_i64; 128];
+    assert_eq!(
+        minimum_limit(&mut runtime, "create", &empty),
+        minimum_limit(&mut runtime, "create", &large),
+        "creating a host iterator must retain a prepared traversal instead of materializing values",
+    );
+
+    let three = vec![2_i64, 3, 5];
+    assert_eq!(
+        minimum_limit(&mut runtime, "count", &three) - minimum_limit(&mut runtime, "count", &empty),
+        3,
+        "consuming the iterator should charge once per live host element",
+    );
+}
+
+#[test]
 fn borrowed_collection_callbacks_reuse_owned_collection_semantics() {
     let mut runtime = runtime(
         "fn array_callbacks(values: ArrayView<i64>) { let filtered = values.filter(|value| value >= 6); let groups = values.group_by(|value| if value % 2 == 0 { \"even\" } else { \"odd\" }); return filtered.sum() + groups[\"even\"].sum() + groups[\"odd\"].len(); } fn map_callbacks(scores: MapView<i32, i64>) { return scores.filter(|key, value| key >= 7i32 && value >= 6).values().collect_array().sum(); } fn set_callbacks(values: SetView<i32>) { return values.filter(|value| value >= 7i32).map(|value| value + 1i32).len(); }",

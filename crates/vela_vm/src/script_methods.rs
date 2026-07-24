@@ -36,6 +36,7 @@ pub(crate) fn call_method_id(
             program: dispatch.program,
             heap: dispatch.heap.as_deref_mut(),
             budget: dispatch.budget.as_deref_mut(),
+            host: None,
         };
         if let Some(result) =
             callback_method_dispatch::call_by_id(method_id, receiver, args, &mut callback_dispatch)

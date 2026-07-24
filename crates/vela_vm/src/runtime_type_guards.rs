@@ -285,7 +285,7 @@ pub(crate) fn execute_linked_return_guard(
 pub(crate) fn execute_iterator_item_guard(
     value: &Value,
     guard: &IteratorItemGuard,
-    runtime: &mut MethodRuntime<'_, '_>,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
 ) -> VmResult<()> {
     let mut context =
         GuardExecutionContext::new(runtime.heap.as_deref_mut(), runtime.budget.as_deref_mut());

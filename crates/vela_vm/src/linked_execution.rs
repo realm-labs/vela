@@ -791,7 +791,7 @@ impl Vm {
                     .step(
                         self,
                         &current_owner,
-                        host.as_deref(),
+                        host.as_deref_mut(),
                         heap,
                         budget,
                         returned,
@@ -842,7 +842,15 @@ impl Vm {
                     returned,
                     source_span,
                 } => match next
-                    .step(&current_owner, heap, budget, returned)
+                    .step(
+                        &current_owner,
+                        &mut host
+                            .as_deref_mut()
+                            .map(|host| host as &mut dyn crate::method_runtime::HostIteratorAccess),
+                        heap,
+                        budget,
+                        returned,
+                    )
                     .map_err(|error| error.with_source_span_if_absent(source_span))?
                 {
                     iteration::ResumableIteratorStep::Complete(Some(value)) => {

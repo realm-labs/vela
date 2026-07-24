@@ -10,7 +10,7 @@ use super::access::{
 pub(crate) fn map(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_>,
+    mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
     expect_arity("map", args, 1)?;
     let tag = enum_tag(receiver, runtime.heap.as_deref()).ok_or_else(|| {
@@ -54,7 +54,7 @@ pub(crate) fn map(
 pub(crate) fn map_err(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_>,
+    mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
     expect_arity("map_err", args, 1)?;
     let tag = enum_tag(receiver, runtime.heap.as_deref()).ok_or_else(|| {
@@ -86,7 +86,7 @@ pub(crate) fn map_err(
 pub(crate) fn and_then(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_>,
+    mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
     expect_arity("and_then", args, 1)?;
     let tag = enum_tag(receiver, runtime.heap.as_deref()).ok_or_else(|| {
@@ -140,7 +140,7 @@ pub(crate) fn and_then(
 pub(crate) fn or_else(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_>,
+    mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
     expect_arity("or_else", args, 1)?;
     let tag = enum_tag(receiver, runtime.heap.as_deref()).ok_or_else(|| {
@@ -196,7 +196,7 @@ pub(crate) fn or_else(
 pub(crate) fn filter(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_>,
+    mut runtime: MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
     expect_arity("filter", args, 1)?;
     let tag = enum_tag(receiver, runtime.heap.as_deref()).ok_or_else(|| {
@@ -226,7 +226,10 @@ pub(crate) fn filter(
     }
 }
 
-fn option_result(payload: Option<Value>, runtime: &mut MethodRuntime<'_, '_>) -> VmResult<Value> {
+fn option_result(
+    payload: Option<Value>,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
     let Some(heap) = runtime.heap.as_deref_mut() else {
         return type_error("method option");
     };
@@ -236,7 +239,7 @@ fn option_result(payload: Option<Value>, runtime: &mut MethodRuntime<'_, '_>) ->
 fn result_result(
     variant: StdEnumVariant,
     payload: Value,
-    runtime: &mut MethodRuntime<'_, '_>,
+    runtime: &mut MethodRuntime<'_, '_, '_>,
 ) -> VmResult<Value> {
     let Some(heap) = runtime.heap.as_deref_mut() else {
         return type_error("method result");
