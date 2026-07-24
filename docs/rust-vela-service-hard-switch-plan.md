@@ -5,7 +5,7 @@
 > publication, host-reference and collection interop, and deletion of
 > callable-level replacement
 >
-> Status: S0-S2 accepted; S3 implementation is active
+> Status: S0-S3 accepted; S4 implementation is active
 >
 > Switch policy: pre-release hard switch; no public compatibility layer and no
 > second Rust hot-replacement model
@@ -204,27 +204,15 @@ linked static host paths and methods use prepared dense operations
 bulk host-backed operations preserve budgets, identity, and immediate writes
 ```
 
-Status: **Active.** The accepted foundation already covers recursive concrete
-standard bindings; exact owned, shared, fixed, and growable representation
-facts; generated sync/async borrowed collection adapters; scoped retained
-reborrow; exact complex child identity and lifetime; prepared field/index/key
-plans; live iterator fold and collection; live callback filtering and grouping;
-deterministic budgeted collection projections; transactional bulk mutations;
-richer user-defined adapters; the complete owned/shared/fixed/growable
-collection matrix; and immediate write-through for the implemented Array, Map,
-and Set mutations.
-
-The remaining exit work is deliberately expressed as capability gaps, not a
-method-by-method chronology:
-
-- remaining element/key methods and live or resumable traversal behavior;
-- prepared element-method and remaining traversal operations with
-  no successful-path name lookup, reflection walk, or HostPath materialization;
-  and
-- the phase-wide validation gate.
-
-Current details and the next selected gap live in
-[progress.md](progress.md). Do not append completed method lists here.
+Status: **Accepted.** The checkpoint proves recursive standard bindings; exact
+owned/shared/fixed/growable representations; complete Array, Map, and Set
+protocol behavior; live and resumable borrowed traversal; complex child
+identity; prepared field/index/key and element-method operations; bounded bulk
+operations; user-defined adapters; and immediate write-through. Typed
+collection-view methods link to dense IDs, dynamic HostRef method caches guard
+type, schema epoch, and lease kind, and traversal target resolution is
+independent of element count. The repository baseline and hard-switch deletion
+audit are green.
 
 ### S4 — Service contract and Rust-only generation
 
@@ -249,6 +237,9 @@ the complete transitive parameter/return type closure is validated
 old and new roots retain their exact generations across activation/rollback
 the Rust-default service branch pays no cross-language HostRef conversion
 ```
+
+Status: **Active.** The first slice is the generated Rust-only service
+generation and its zero-VM, zero-HostRef default branch.
 
 ### S5 — Partial Vela service and cross-service vertical slice
 

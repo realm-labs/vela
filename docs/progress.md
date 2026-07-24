@@ -25,11 +25,13 @@ Phase status:
 - S2 accepted: one sealed `TypeBinding` registry, compact root-local `HostRef`
   slots, prepared typed thunks, and allocation-free common-arity preflight are
   validated.
-- S3 active: standard Rust type bindings, borrowed collection views, collection
-  protocols, and prepared host operations are being completed.
-- S4-S7 have not started. No generated service-generation API is accepted yet.
+- S3 accepted: standard Rust type bindings, borrowed collection views,
+  collection protocols, prepared host operations, and the phase-wide gate are
+  complete.
+- S4 active: the generated Rust-only service generation is the current
+  checkpoint. S5-S7 have not started.
 
-S3 already provides recursive standard bindings; exact owned/shared/exclusive
+S3 provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared
 field, index, and key access; call-scoped Array, Map, and Set iterators with
 frozen traversal structure and live prepared reads; terminal iterator fold and
@@ -43,17 +45,12 @@ budget, and mutation paths. Bulk clear/extend/retain operations preflight
 budgets, conversions, and stale snapshots before mutation. The explicit
 standard collection matrix covers owned round trips, shared reads and mutation
 rejection, fixed mutable replacement and growth rejection, growable mutable
-write-through, Bytes views, and distinct BTree/Hash ABI. The remaining S3 exit
-work is:
-
-- remaining element/key methods and live or resumable traversal behavior;
-- prepared element-method and remaining traversal paths without runtime name
-  or reflection lookup;
-- the phase-wide validation gate.
-
-S4 begins only after the complete S3 gate is green. Its first accepted slice is
-the generated Rust-only service generation; it must create no `HostRef` and
-perform no VM entry when a method selects the Rust default.
+write-through, Bytes views, and distinct BTree/Hash ABI. The S3 exit
+proof covers the complete element/key method surface, resumable traversal,
+dense typed element methods, lease-aware dynamic caches, and target resolution
+independent of element count. The generated S4 Rust-only service generation
+must create no `HostRef` and perform no VM entry when a method selects the Rust
+default.
 
 ## Milestone Snapshot
 
@@ -65,7 +62,7 @@ perform no VM entry when a method selects the Rust default.
 | M19.5 | Complete enough | Cache-ready IDs, linked bytecode, profile ownership, and prepared host paths are validated. |
 | M20 | Complete enough | Actor Runtime/cache ownership, lifetime, reload, and concurrency gates are accepted. |
 | M20.5 | Queued | Resume editor-visible work after the service hard switch. |
-| Rust/Vela service interop | S2 accepted; S3 active | Close the collection-view and prepared-operation gate before service dispatch. |
+| Rust/Vela service interop | S3 accepted; S4 active | Generate and validate the Rust-only whole-service generation. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, and debugger contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation, and performance targets. |
@@ -124,13 +121,12 @@ The phase gates are authoritative:
 | S0 | Accepted | None |
 | S1 | Accepted | None |
 | S2 | Accepted | None |
-| S3 | Active | Complete remaining collection methods, prepared traversal/method paths, and the phase-wide matrix. |
-| S4 | Pending | Requires S3 acceptance. |
+| S3 | Accepted | Complete collection protocols, prepared traversal/method paths, and the phase-wide gate are green. |
+| S4 | Active | Implement the Rust-only generated service generation and direct default branch. |
 | S5 | Pending | Requires the Rust-only generated service generation. |
 | S6 | Pending | Requires the synchronous partial-service vertical slice. |
 | S7 | Pending | Requires async/deployment/tooling integration. |
 
-Do not start a public service dispatch surface to work around an S3 gap.
 Service-signature traversal and service-generation pinning belong to S4-S6.
 Compile-time View/MutView enforcement remains dependent on receiver-capable
 expression and service-signature facts. A shorter Runtime-owned host
@@ -181,9 +177,10 @@ changes.
 
 ## Next Up
 
-1. Close one named S3 gap with focused behavioral and failure-path tests.
-2. Re-run the complete S3 gate and record one acceptance checkpoint.
-3. Implement the S4 Rust-only generated service generation.
+1. Implement the minimal generated Rust-only service contract and service set.
+2. Prove complete transitive signature validation and pinned generation
+   identity.
+3. Prove the Rust-default branch creates no `HostRef` and performs no VM entry.
 4. Resume M20.5 only after the service hard switch or a newly prioritized
    editor-visible blocker.
 
