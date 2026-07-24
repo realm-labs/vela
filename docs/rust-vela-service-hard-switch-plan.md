@@ -52,901 +52,40 @@ ownership capabilities when it crosses into Vela. Service dispatch must not
 land before that prerequisite and leave patches unable to express the Rust
 logic they replace.
 
-## 1. Non-Negotiable Model
-
-### 1.1 One service set, one published generation
-
-The host owns one generated service set for a deployment domain:
-
-```text
-ArcSwap<GameServiceGeneration>
-               |
-               +-- inventory: Arc<dyn InventoryServiceDispatch>
-               +-- reward:    Arc<dyn RewardServiceDispatch>
-               +-- combat:    Arc<dyn CombatServiceDispatch>
-               +-- handlers:  Arc<dyn HandlerServiceDispatch>
-```
-
-The exact generated Rust representation may use hidden object-safe dispatch
-traits, especially for authored `async fn`, but the semantic unit is always a
-whole immutable `ServiceGeneration`. Individual fields are never published
-independently. Staging may change one method, but activation publishes the full
-generation in one atomic operation. This prevents a call chain from observing
-half of a multi-service patch.
-
-The Vela core provides immutable generation construction, validation, pinning,
-and rollback facts. The generated host integration publishes the generation
-with `ArcSwap` or an equivalent single-pointer atomic primitive. There is no
-global mutable Runtime inside the service set.
-
-### 1.2 Pin once at the host safe point
-
-An actor mailbox turn, request, tick, or equivalent host operation pins one
-`Arc<GameServiceGeneration>` before invoking business logic. Every Rust-to-Rust,
-Rust-to-Vela, Vela-to-Rust, and Vela-to-Vela service call underneath that root
-uses the same generation.
-
-```text
-actor/request safe point
-        |
-        +-- pin generation G17
-        +-- inventory.grant  -> Vela in G17
-        |      +-- reward.apply -> Vela in G17
-        |      +-- audit.write  -> Rust fallback in G17
-        +-- root completes
-        +-- release G17
-```
-
-Activation affects only roots pinned afterward. Active sync calls, suspended
-async calls, nested service calls, closures, and borrowed-return lifetimes keep
-their old linked artifact and service generation. Rollback republishes a prior
-validated generation; it never retries or rewinds an in-flight call.
-
-### 1.3 No per-callable interception
-
-The generated service object is the dispatch boundary. Authored Rust method
-bodies are not moved into private fallbacks and their public entries are not
-instrumented. The Rust default implementation remains an ordinary trait
-implementation. A generated composite service selects either:
-
-- the staged Vela method for the pinned generation; or
-- the Rust default implementation held by that generation.
-
-Selection is prelinked by stable `ServiceId` and `ServiceMethodId`; it performs
-no runtime string lookup, source parsing, reflection search, or mutable global
-registry access. Missing Vela methods are resolved to Rust during staging, not
-interpreted as missing-method errors during a production call.
-
-### 1.4 Partial Vela implementation is the default
-
-A Vela patch implements only the methods it intends to replace. Repeating
-unmodified methods is forbidden as a deployment requirement because copied
-fallback logic increases patch risk. Completeness is obtained by composing the
-sparse Vela method table over the Rust default implementation.
-
-A Vela error from a selected method propagates to its caller. The runtime must
-not catch it and execute the Rust fallback, because the Vela body may already
-have performed irreversible host writes or nested calls.
-
-### 1.5 Explicit base and cross-service calls
-
-Inside a Vela service method, two compiler-provided lexical bindings are
-available:
-
-- `base` calls the Rust default implementation of the current service and
-  bypasses the current Vela method selection.
-- `services` calls any service from the same pinned generation, including
-  another Vela-patched method.
-
-Neither binding is a global singleton, a script-storable value, or part of the
-business method ABI. They are scoped capabilities created by the generated
-service invocation. `base` prevents accidental recursion when a patch wants to
-wrap the original Rust behavior. `services` preserves the original service call
-chain and generation coherence.
-
-### 1.6 One Rust type interaction model
-
-Vela uses one `TypeBinding` contract for standard-library and user-defined Rust
-types. `T`, `&T`, and `&mut T` share one stable `InteropTypeId` and method
-catalog; only their storage and receiver capabilities differ. The binding also
-owns value conversion, HostRef views, constructors, fields, indexes,
-iteration, standard protocols, escape rules, effects, and ABI fingerprint.
-
-A Rust value does not become an untyped serialized blob. A registered value
-policy lowers it directly into typed Vela values, while a registered host
-policy keeps the exact Rust object in a host-owned arena and exposes only a
-typed handle. Rust references always become scoped shared or exclusive views.
-No real Rust reference or Rust-owned object enters the script GC.
-
-## 2. Authoring Shape
-
-### 2.1 Rust business authoring
-
-The intended Rust surface is:
-
-```rust,ignore
-#[vela::service(path = "game::inventory")]
-pub trait InventoryService: Send + Sync {
-    fn grant(
-        &self,
-        turn: &mut GameTurn,
-        player: &mut Player,
-        items: &[ItemGrant],
-    ) -> GameResult<Vec<DisplayItem>>;
-
-    fn remove(
-        &self,
-        turn: &mut GameTurn,
-        player: &mut Player,
-        item_ids: &[i64],
-    ) -> GameResult<()>;
-}
-
-pub struct RustInventoryService;
-
-impl InventoryService for RustInventoryService {
-    fn grant(
-        &self,
-        turn: &mut GameTurn,
-        player: &mut Player,
-        items: &[ItemGrant],
-    ) -> GameResult<Vec<DisplayItem>> {
-        // Ordinary Rust business logic. No patch branch or Vela wrapper.
-        todo!()
-    }
-
-    fn remove(
-        &self,
-        turn: &mut GameTurn,
-        player: &mut Player,
-        item_ids: &[i64],
-    ) -> GameResult<()> {
-        todo!()
-    }
-}
-
-#[vela::service_set(context = GameTurn)]
-pub struct GameServices {
-    #[vela::default(RustInventoryService)]
-    pub inventory: dyn InventoryService,
-
-    #[vela::default(RustRewardService)]
-    pub reward: dyn RewardService,
-}
-```
-
-The spelling is normative for the initial implementation. A later ergonomic
-alias may shorten it only if it generates the same schema and does not create a
-second runtime path.
-
-The business author supplies only:
-
-1. a service trait;
-2. its Rust default implementation;
-3. one service-set declaration; and
-4. ordinary boundary derives for business types when required.
-
-The macro supplies service IDs, method IDs, ABI descriptors, type-closure
-registration, Rust fallback thunks, Vela entry thunks, partial-composition
-logic, the hidden object-safe async dispatch surface, registration bundles,
-staging validation, and generation accessors. No Vela implementation is
-written until a real patch is needed.
-
-The service set declares its execution-authority carrier once. In an actor
-server this is usually the normal `&mut GameTurn` or actor context already
-present in business signatures. Generated code borrows that actor's Runtime;
-it never finds one through ambient thread-local or process-global state. A
-service contract that cannot reach an explicit Runtime authority is callable
-only through its Rust default until the host gives it one.
-
-### 2.2 Rust call sites
-
-The actor or request framework pins the generation at its safe point and
-exposes it as ordinary dependency injection:
-
-```rust,ignore
-fn handle_grant(turn: &mut GameTurn, command: GrantCommand) -> GameResult<()> {
-    let services = turn.services().clone(); // already pinned for this turn
-    services.inventory().grant(
-        turn,
-        &mut command.player,
-        &command.items,
-    )?;
-    Ok(())
-}
-```
-
-The caller does not test whether `grant` is patched. It does not hold a
-`DispatchRoot`, choose a slot, construct a proxy, or call a Vela-specific API.
-Existing frameworks may generate the `services` accessor or inject the pinned
-handle, but they must preserve the same explicit root authority and generation
-semantics.
-
-Calls made directly on `RustInventoryService` intentionally bypass Vela. Code
-that needs hotfix behavior must depend on the generated service contract, not a
-concrete implementation. This is the one unavoidable architectural opt-in: a
-call cannot be replaceable without crossing a stable dispatch boundary.
-
-### 2.3 Vela patch authoring
-
-The Vela patch surface is a partial implementation of the imported Rust
-contract:
-
-```vela
-#[service_impl(game::inventory::InventoryService)]
-impl InventoryHotfix {
-    fn grant(turn, player, items) {
-        let grouped = items.group_by(|item| item.template_id);
-        let rewards = services.reward.apply(turn, player, grouped)?;
-
-        if rewards.is_empty() {
-            return base.grant(turn, player, items);
-        }
-
-        player.last_reward_count += rewards.len();
-        return Ok(rewards);
-    }
-}
-```
-
-`remove` is absent and therefore remains Rust. The compiler imports parameter
-and return facts from the Rust service schema, so the Vela author does not
-repeat types unless an optional local annotation improves readability. Method
-matching is positional; Rust and Vela parameter names are not ABI.
-
-`#[service_impl(...)]` is a declaration-level contract, not monkey patching.
-It is legal only for a registered Rust service trait and only at compile/link
-time. It cannot add fields, methods, implementations, or type structure at
-runtime. Two Vela implementations of the same service method in one candidate
-are a link error.
-
-### 2.4 Handler, rule, and event shape
-
-There is no `HandlerSlot`, `RuleSlot`, or `EventOverride` API. Framework-facing
-traits are service contracts:
-
-```rust,ignore
-#[vela::service(path = "game::handlers::login")]
-pub trait LoginHandlerService: Send + Sync {
-    async fn handle(
-        &self,
-        turn: &mut GameTurn,
-        request: LoginRequest,
-    ) -> GameResult<LoginResponse>;
-}
-```
-
-Routing, mailbox decoding, protocol framing, and transport ownership remain in
-Rust. The routed business operation crosses the generated service boundary.
-The same rule applies to scheduled jobs, combat rules, event consumers, and
-administrative commands.
-
-## 3. Generated Contract And Runtime Objects
-
-### 3.1 Stable identity and ABI
-
-Each service schema contains:
-
-```text
-ServiceId
-stable service path
-ServiceAbiFingerprint
-ordered ServiceMethodDescriptor[]
-  ServiceMethodId
-  stable method path
-  sync/async shape
-  receiver mode
-  positional parameter modes and type descriptors
-  InteropTypeId, representation capability, and TypeAbiFingerprint
-  return/error family
-  borrowed-return origin and freeze rules
-  normalized effect ceiling
-  derived capability requirements
-  source origin and diagnostics metadata
-transitive boundary type closure
-```
-
-`ServiceId` and `ServiceMethodId` are semantic stable IDs, not dense authored
-indices. A generation may build dense internal tables after validation, but no
-index enters macro input, source syntax, deployment manifests, or public APIs.
-
-Parameter names, docs, source positions, Runtime grants, allowlists, budgets,
-and active policy are not ABI. Parameter order/mode, supported type shape,
-return/error family, asyncness, borrowed-return provenance, and effect ceiling
-are ABI. A patch with a strict effect subset is valid; a patch exceeding the
-Rust contract is rejected before publication.
-
-Changing the Rust trait schema requires a new server build unless an explicit
-future service-schema migration plan says otherwise. The initial model does not
-attempt to hot-add Rust trait methods, migrate concrete Rust types, or bridge
-two incompatible service manifests.
-
-### 3.2 Service candidate
-
-Compiling or loading a deployment update produces an immutable
-`ServiceUpdateBundle`:
-
-```text
-ServiceUpdateBundle
-  UpdateMode
-    Snapshot
-    Delta { base_generation_id, base_artifact_checksum }
-  package identity and checksum
-  VelaProgramUpdate
-    SnapshotArtifact
-    DeltaArtifact { FunctionId -> Replace | Remove }
-  service manifest checksum
-  sealed TypeBinding registry checksum
-  ServiceMethodId -> Replace(linked Vela callable) | RustDefault
-  Vela state/schema reload facts
-```
-
-The two modes have different omission semantics:
-
-| Update mode | Unmentioned service method | Explicit `RustDefault` |
-|---|---|---|
-| `Snapshot` | select the registered Rust default | also select Rust default |
-| `Delta` | inherit the exact base generation selection | replace any inherited Vela implementation with Rust default |
-
-The same distinction applies to ordinary Vela modules and functions. A
-Snapshot contains the complete desired program graph. A Delta inherits
-unmentioned functions from its exact base and applies explicit replacements or
-validated removals. This covers both Vela-authored baseline logic and emergency
-service patches without publishing their code maps separately.
-
-A normal release should prefer `Snapshot`: the bundle describes the complete
-desired Vela service state and does not depend on deployment history. An
-emergency `Delta` may contain only changed Vela functions and service methods,
-but it must name the exact generation and linked-artifact checksum it was built
-against. Delta inheritance is a staging rule, never a runtime fallback chain.
-
-Staging a Snapshot composes its declarations over every registered Rust
-default. Staging a Delta composes its operations over the named complete base
-generation. Both produce one flattened `ServiceGenerationCandidate` and one
-coherent linked artifact; unchanged immutable CodeObjects may be Arc-shared
-from the base, but runtime target lookup never walks prior generations. Before
-publication staging validates:
-
-- exact host service-set identity;
-- every service and method ID;
-- complete callable ABI and effect compatibility;
-- transitive TypeBinding availability, representation capability, and ABI;
-- host-reference parameter and borrowed-return provenance;
-- collection element/key/value descriptors and mutation mode;
-- sync/async form and cancellation-safe adapter shape;
-- linked artifact, state, and hot-reload compatibility;
-- duplicate method claims and unknown service declarations; and
-- deployment capabilities and policy.
-
-A failed candidate changes no active state. Validation performs no business
-method invocation and no host mutation. Vela module/function changes, service
-method selections, and state/schema reload facts belong to the same candidate;
-they cannot be staged or published as independently visible updates.
-
-### 3.3 Service generation and publication
-
-The accepted candidate becomes an immutable `Arc<ServiceGeneration>`. The
-generated `GameServiceGeneration` holds the complete set of generated composite
-services plus its linked artifact and exact generation identity. A candidate
-records its expected current generation. Publication uses one conditional
-ArcSwap/CAS operation and fails with `StaleBaseGeneration` if the active
-generation changed after staging; it never silently rebases or overwrites a
-concurrent release.
-
-Successful activation returns a controller/schema-bound rollback token holding
-the replaced generation and the generation that replaced it. Rollback is also
-conditional: it republishes the prior complete generation only while the
-expected replacement is still current. A later deployment makes the old token
-stale rather than allowing it to overwrite newer code.
-
-The runtime must not use one `ArcSwap` per method or per service. Such a layout
-would allow a nested call to mix generations and would reintroduce slot-like
-deployment semantics.
-
-The intended deployment API is conceptually:
-
-```rust,ignore
-let base = services.current_generation();
-let update = engine.load_service_update(bundle_bytes)?;
-let candidate = services.stage_delta(&base, update, StageOptions::default())?;
-let rollback = services.activate_if_current(candidate)?;
-
-// Only succeeds if the generation installed above is still current.
-services.rollback_if_current(rollback)?;
-```
-
-Snapshot staging has the corresponding `stage_snapshot` entry and does not
-inherit Vela method selections from `base`. Production control planes should
-compile or load and validate immutable bundles away from request execution;
-activation itself is the bounded pointer publication step.
-
-### 3.4 Execution ownership
-
-Service generations own immutable selection and code metadata only. One logical
-Runtime per actor continues to own persistent Vela state, heap, roots, extern
-bindings, HostRef allocator and leases, suspended sessions, and adopted code
-generation. A generated service invocation borrows the current actor turn's
-`&mut Runtime`.
-
-A selected Vela method enters the existing `Runtime::call` /
-`Runtime::call_async` and `ExecutionSession` driver. A nested call made through
-`services` or a generated Rust binding uses the active `NativeCallContext` and
-pushes onto the same session. It inherits:
-
-- pinned service and linked-artifact generations;
-- heap, script state, and extern state view;
-- `HostAccess`, host identities, leases, and reborrow provenance;
-- remaining execution, memory, collection, and call-depth budgets;
-- effect ceiling, capabilities, and allowlists;
-- tracing and diagnostics context; and
-- cancellation and async suspension ownership.
-
-There is no target-owned `Runtime`, Runtime mutex, reentrant global lock,
-thread-local Runtime, target-local default budget, or fresh nested session.
-
-### 3.5 Successive Vela updates
-
-Suppose generation G12 selects Vela implementations for two methods and Rust
-for a third. A Delta built against G12 that replaces only the first method
-produces G13 with the new first implementation, the inherited second Vela
-implementation, and the inherited Rust third implementation. Old roots retain
-G12; new roots pin G13. An explicit `RustDefault` operation is required to
-remove the second Vela implementation in a later Delta.
-
-`base.method(...)` always names the registered Rust default, never the prior
-Vela implementation. The runtime therefore does not build `patch v3 -> patch
-v2 -> patch v1 -> Rust` call chains. Shared Vela behavior that a later patch
-needs to reuse must remain an ordinary named Vela function and enter the same
-module/function update artifact. Operators should periodically fold accepted
-Deltas into a new Snapshot so deployment history is not a permanent source
-dependency even though each runtime generation is already flattened.
-
-## 4. Unified Rust Type Interop Model
-
-### 4.1 `TypeBinding` is the single registration unit
-
-Every reachable Rust type has one deterministic binding:
-
-```text
-TypeBinding
-  InteropTypeId and stable Vela path
-  StoragePolicy: Value | Host
-  owned/shared/exclusive representations
-  constructors and static methods
-  instance methods with receiver capability
-  fields, indexes, iteration, and standard protocols
-  value codec or host-object adapter
-  lifetime, escape, effects, and capabilities
-  TypeAbiFingerprint and diagnostic origin
-```
-
-`T`, `&T`, and `&mut T` never create unrelated method registries. They share
-the same nominal type and method IDs. The receiver capability decides which
-methods are callable:
-
-| Rust receiver | Capability | Legal method families |
-|---|---|---|
-| owned `T` | owned + shared + exclusive | consuming, shared, and mutating |
-| `&T` | shared | shared only |
-| `&mut T` | exclusive + shared reborrow | shared and mutating |
-| type/static | construct | registered constructors and static methods |
-
-Known capability violations are compile errors; dynamic paths repeat the check
-before entering Rust. Registration rejects duplicate IDs, unsupported
-signatures, ambiguous storage policy, and methods whose declared receiver does
-not match their Rust receiver.
-
-### 4.2 Value and host storage policies
-
-Every binding selects an explicit storage policy:
-
-| Policy | Rust examples | Vela representation | Ownership |
-|---|---|---|---|
-| `Value` | scalar, String, enum, DTO, owned collection | scalar, record, enum, Array/Map/Set | script-owned after direct typed lowering |
-| `Host` | identity-bearing or opaque Rust object | typed `OwnedHost<T>` / HostRef handle | external host arena owns Rust state |
-| borrowed view | `&T`, `&mut T` under either policy | typed View/MutView backed by HostRef | Rust-owned, invocation-scoped capability |
-
-Value lowering is generated field/element conversion, not JSON, bincode, or
-runtime serde reflection. A host-owned value moved into Vela remains an exact
-Rust object and may call its registered Rust methods; construction uses a
-registered host factory. The script GC may trace the handle but never owns or
-traces the Rust object. Promotion beyond a root call is an explicit host policy,
-not an accidental consequence of storing a handle.
-
-`Arc<T>`, `Rc<T>`, boxes, engine handles, ECS handles, database sessions, and
-other Rust ownership wrappers do not infer a policy automatically. Their
-binding must say whether they lower to a value or resolve to a host object.
-
-### 4.3 Value objects
-
-An owned boundary DTO derives one generated structural contract:
-
-```rust,ignore
-#[derive(vela::Value)]
-pub struct ItemGrant {
-    pub template_id: i32,
-    pub count: i32,
-    pub metadata: HashMap<String, String>,
-}
-```
-
-The derive emits conversion and deterministic schema metadata. It does not use
-runtime serde reflection as the linked call path. Nested records, enums,
-Option, Result, tuples, and supported collections are recursively included in
-the service type closure. Cycles that require identity must use a host object
-or a future explicit graph-value contract; the initial DTO conversion does not
-invent object identity.
-
-### 4.4 Host objects and Rust references
-
-An authored service signature may use ordinary call-scoped `&T` and `&mut T`.
-Generated adapters represent them in Vela with typed HostRefs and acquire the
-complete lease set atomically before creating any Rust reference:
-
-```text
-&T      -> shared HostRef capability
-&mut T  -> exclusive HostRef capability
-```
-
-Vela never stores a real Rust reference. A nested service call derives a scoped
-child reborrow from the active parent lease. It preserves canonical identity,
-host type, path provenance, and shared/exclusive mode. A shared-to-exclusive
-upgrade, overlapping exclusive alias, expired parent, or mismatched type fails
-before the nested body executes.
-
-Returned Rust borrows use the existing call-tree-scoped child HostRef and
-parent-freeze rules. They may flow through Vela locals, temporary collections,
-and nested service calls in the same root, but cannot escape to persistent
-state, globals, native caches, unscoped tasks, or the root result. Early
-compiler-proven release and `host::release` remain valid; GC timing is never a
-correctness dependency.
-
-The S0-S7 hard switch deliberately keeps this accepted borrowed-return model
-conservative. It requires an unambiguous retained origin, uses owner-level
-freeze when a finer safe domain is not registered, and treats every returned
-borrow as root-call-tree scoped. The following refinements are deferred until
-the unified service path is accepted and a concrete workload demonstrates the
-need:
-
-- origin sets for signatures whose result may borrow from one of several
-  declared parameters, with runtime provenance selecting the actual origin;
-- registered projection metadata and optional lease domains for proving safe
-  disjoint subobject borrows without guessing from pointer addresses or paths;
-- finer owner-conflict checks where a `TypeBinding` can prove that operations
-  touch independent lease domains; and
-- a separate durable `HostHandle<T>` contract for identity that must survive a
-  root call, rather than allowing `View<T>` or `MutView<T>` to escape.
-
-These refinements must preserve the existing rules: scripts never receive real
-Rust references, shared capability never upgrades to exclusive, conflicting
-aliases fail before Rust references exist, nested service calls keep the same
-pinned generation, and scoped borrows never become durable through GC or
-implicit promotion. They are not prerequisites for returning one
-unambiguous-origin `&T` or `&mut T` and passing it through nested Rust/Vela
-services in the same root.
-
-#### Required HostRef hot-path contract
-
-HostRef optimization is part of S0-S7, not a post-hard-switch follow-up. The
-script-visible reference is a compact, copyable generational handle into the
-current root execution's dense host-slot table. Canonical identity, type,
-capability, owner, borrow-group state, provenance, prepared adapter, and pinned
-generation live once in root-owned metadata rather than being copied into every
-Vela alias. Copying a View/MutView must not allocate, clone an `Arc`, increment
-an atomic reference count, or create another host lease.
-
-The linked fast path follows these rules:
-
-- statically resolved fields, indexes, and methods use dense IDs, prepared
-  `HostTargetPlan` data, and generated typed thunks; a successful known access
-  performs no string/hash/reflection lookup and materializes no owned
-  `HostPath` or segment vector;
-- one Rust invocation preflights its complete host-argument request set before
-  creating any reference, using allocation-free inline storage for the common
-  service arities and one canonical identity/conflict pass;
-- a same-session nested call derives a child reborrow from the active root-local
-  lease/provenance entry instead of globally reacquiring the owner, resolving a
-  business ID, or allocating a second host object;
-- all aliases of one scoped borrow share one `BorrowLeaseId`; early or explicit
-  release invalidates the group without per-alias lifetime bookkeeping;
-- a method selected to the Rust default passes ordinary Rust values and
-  references directly and does not create HostRefs or enter the VM; and
-- collection protocols expose prepared bulk operations so realistic filter,
-  grouping, iteration, and mutation do not require avoidable per-element
-  dynamic boundary setup.
-
-These are representation and preparation optimizations, not weaker semantics.
-Epoch/freshness, type, capability, provenance, escape, generation, HostAccess,
-and complete alias-conflict checks remain mandatory. They may be linked,
-hoisted, combined, or made O(1), but never skipped merely because a call site
-was previously successful.
-
-### 4.5 Collection views and standard protocols
-
-Vela exposes one standard collection vocabulary with explicit borrowed
-representations:
-
-```text
-Array<T> / ArrayView<T> / ArrayMut<T>
-Map<K, V> / MapView<K, V> / MapMut<K, V>
-Set<T> / SetView<T> / SetMut<T>
-Iterator<T>
-```
-
-These are restricted builtin type hints, not general script-language generics.
-Users cannot define generic types, generic functions, or arbitrary generic
-implementations. The compiler and registry may carry element/key/value facts
-internally because service ABI and method validation require them.
-
-Rust mapping is:
-
-| Rust input | Vela surface | Mutation semantics |
-|---|---|---|
-| `Vec<T>` | owned `Array<T>` | full Array mutation |
-| `&[T]`, `&Vec<T>` | `ArrayView<T>` | read-only |
-| `&mut [T]` | `ArrayMut<T>` | element replacement, fixed length |
-| `&mut Vec<T>` | `ArrayMut<T>` | write-through element and length mutation |
-| owned `HashMap<K,V>` / `BTreeMap<K,V>` | owned `Map<K,V>` | full Map mutation |
-| shared borrowed map | `MapView<K,V>` | read-only |
-| exclusive borrowed map | `MapMut<K,V>` | write-through mutation |
-| owned `HashSet<T>` / `BTreeSet<T>` | owned `Set<T>` | full Set mutation |
-| shared/exclusive borrowed set | `SetView<T>` / `SetMut<T>` | capability-derived |
-
-The owned and view types share standard `Sequence`, `Iterable`, `MapLike`, or
-`SetLike` protocols, so normal read, iteration, `filter`, `group_by`, `fold`,
-and collection syntax is identical. The explicit View/Mut type facts make
-borrow and mutation diagnostics honest. The compiler rejects a statically
-known write through a shared view, and the runtime repeats the check for
-dynamic paths.
-`&mut [T]` rejects `push`, `remove`, and every length-changing operation even
-though element writes are legal.
-
-Host-backed methods call generated `HostAccess` container operations and mutate
-Rust immediately. They do not use copy-in/copy-out. Iterators retain the
-parent view lease and generation for their lifetime. Operations such as
-`map`, `filter`, `group_by`, `collect`, and sorting produce script-owned
-collections unless a method explicitly documents an in-place host mutation.
-
-### 4.6 Passing collections across services
-
-The bridge follows these rules:
-
-1. A host-backed view passed to another service is reborrowed; it is not
-   materialized. Rust and Vela callees therefore observe the same collection.
-2. A script-owned Array/Map/Set passed to an owned Rust parameter is
-   materialized with one checked conversion.
-3. A script-owned value collection may back a temporary Rust shared borrow for
-   the duration of one call when every element has a safe value conversion.
-4. A script-owned collection cannot satisfy a Rust mutable borrow through
-   implicit copy-in/copy-out. It must already be an exact mutable host-backed
-   view, because failure, suspension, aliasing, and partial mutation make
-   copy-back semantics unsafe and surprising.
-5. A borrowed container or iterator cannot escape its root call tree. A
-   collected script-owned result may escape subject to normal value rules.
-
-The same rules apply whether the next method is implemented in Rust or Vela.
-The caller never performs a language-direction-specific conversion.
-
-### 4.7 Map and set keys
-
-Map and Set identity uses Vela's deterministic `ValueKey` contract, not an
-arbitrary Rust `Hash`/`Eq` implementation. Supported keys are key-safe scalars,
-strings, bytes, enums, tuples, and explicitly derived stable value keys. Float
-NaN and mutable host identity do not silently enter the key model. Rust map
-registration fails at build time when `K` cannot supply the exact stable key
-contract.
-
-### 4.8 Standard and user-defined type registration
-
-Vela supplies built-in binding families for supported Rust primitives,
-`String`, `Vec`, slices, arrays, `BTreeMap`, `HashMap`, `BTreeSet`, `HashSet`,
-Option, Result, tuples, and their view forms. These bindings register Rust-like
-constructors and methods where meaningful and implement Vela standard
-protocols once. `filter` and `group_by` belong to the shared protocols rather
-than handwritten implementations for every Rust collection.
-
-Hosts register custom types through the same low-level API used by standard
-bindings:
-
-```rust,ignore
-Engine::builder().register_rust_type::<Inventory>(
-    TypeBinding::host("host::Inventory")
-        .constructor("new", Inventory::new)
-        .shared_method("contains", Inventory::contains)
-        .exclusive_method("grant", Inventory::grant)
-        .iterator(Inventory::iter),
-);
-```
-
-`#[derive(vela::Value)]`, `#[derive(vela::Host)]`, and `#[vela::methods]` are
-generators for this contract, not parallel registries. Manual registration is
-available for external types that cannot be annotated. Constructors are always
-explicit; Vela does not infer that every Rust `Default` or inherent `new`
-method is script-visible.
-
-### 4.9 Registration closure, not per-instantiation boilerplate
-
-Authors do not register `Vec<i32>`, `Vec<Item>`, `HashMap<i32, Item>`, and every
-method separately. The service macro walks the transitive signature graph and
-emits a deterministic type-registration bundle. Collection behavior is
-implemented once by standard Array/Map/Set/Iterator protocols. Concrete
-element/key/value descriptors specialize validation and conversion but do not
-duplicate method implementations.
-
-External generators, including protobuf, Luban, ECS, or game-schema tooling,
-may emit `vela::Value`, `vela::Host`, stable-key, and service-registration
-facts. They must feed the same registry and ABI model rather than introduce a
-generator-specific runtime bridge.
-
-## 5. Standard Library Requirements
-
-The service hard switch is not useful until Vela can manipulate the business
-containers it receives. The supported baseline is:
-
-### Array
-
-```text
-len, is_empty, get, first, last, contains
-iter, enumerate, windows, chunks
-map, filter, filter_map, flat_map, fold, any, all, find, position
-group_by, associate_by, count_by, collect
-push, pop, insert, remove, clear, retain, sort, sort_by, dedup
-```
-
-Mutating methods are available only when the receiver capability permits them.
-Order and allocation behavior must be deterministic and budgeted.
-
-### Map
-
-```text
-len, is_empty, contains_key, get
-keys, values, entries, iter
-get_or_insert, insert, remove, clear, retain
-map_values, filter, group_by, merge, collect
-```
-
-Indexing a missing key must use the language's documented Option/error
-semantics rather than create an entry implicitly.
-
-### Set
-
-```text
-len, is_empty, contains, iter
-insert, remove, clear, retain
-union, intersection, difference, symmetric_difference, collect
-```
-
-### Iteration and budgets
-
-Every traversal, materialization, sort, grouping, hash operation, and growth
-operation charges execution and memory/collection budgets. Host-backed
-iteration validates generation and lease authority on every resumable boundary.
-No iterator may create an unbudgeted infinite execution path.
-
-## 6. Macro And Tooling Responsibilities
-
-### 6.1 Rust type bindings and derives
-
-The registry and macros must:
-
-- expose one public `register_rust_type::<T>(TypeBinding)` path for standard
-  and user-defined types;
-- generate stable identity, storage policy, conversion/view adapters,
-  constructors, receiver-qualified methods, protocols, effects, and ABI;
-- provide manual bindings for unannotatable external Rust types;
-- synthesize concrete standard collection bindings from internal element/key/
-  value facts without adding script-language generics; and
-- make the compiler, Runtime, reflection, LSP, and service schema consume the
-  same sealed binding snapshot.
-
-### 6.2 `#[vela::service]`
-
-The trait macro must:
-
-- reject generic service traits, generic methods, unsupported associated types,
-  variadics, unsafe functions, and non-boundary-safe signatures;
-- accept ordinary values, Result/Option/tuples, supported collections,
-  call-scoped shared/exclusive host references, and supported async methods;
-- generate stable service/method metadata and ABI fingerprints;
-- generate type-checked Rust default thunks and hidden object-safe dispatch;
-- generate Vela imported declarations and diagnostics origins;
-- generate partial-composite dispatch without altering authored bodies; and
-- expose one registration bundle, never one handwritten function per method.
-
-### 6.3 `#[vela::service_set]`
-
-The set macro must:
-
-- validate unique service identities and one Rust default per service;
-- declare the Runtime authority carrier once;
-- generate the immutable service generation and controller;
-- generate the `ArcSwap` publication owner and safe-point pin handle;
-- generate Snapshot and exact-base Delta staging, conditional activate,
-  conditional rollback, and current-generation APIs;
-- provide same-generation access for Rust and Vela cross-service calls; and
-- generate framework adapters without exposing Runtime or lease internals to
-  business callers.
-
-### 6.4 `#[service_impl]`
-
-The Vela compiler must:
-
-- resolve the imported service contract statically;
-- accept a sparse method set;
-- infer method parameter/return contracts from Rust metadata;
-- expose lexical `base` and `services` capabilities;
-- reject unknown, duplicate, incompatible, or over-effect methods;
-- include exact source spans in stage diagnostics; and
-- emit sparse `Replace` operations and never mutate a live service table. The
-  deployment bundle builder/manifest owns explicit `RustDefault` operations
-  and the enclosing Snapshot/Delta omission semantics; Vela does not gain
-  another patch-control statement for deployment bookkeeping.
-
-### 6.5 Diagnostics and reflection
-
-Diagnostics name the service path, method, positional parameter, expected and
-actual type/mode, source span, and generation when available. Reflection may
-query service and method metadata and may perform controlled calls through the
-same linked target. It cannot add a service, method, field, trait
-implementation, or patch to a live generation.
-
-The language service consumes the imported service schema for completion,
-hover, signature help, navigation, diagnostics, and rename safety. It must not
-reparse Rust or infer contracts from macro-expanded source text.
-
-## 7. Hard-Switch Deletion Contract
-
-The following concepts are removed from production source, public exports,
-tests, examples, benchmarks, and active documentation:
-
-```text
-ReplaceableSlotDescriptor
-ReplaceableSlotId
-InterceptSlotIndex
-DispatchController
-DispatchGeneration as a callable-slot table
-DispatchRoot
-DispatchInvocation
-DispatchAuthority
-VelaOverrideTarget
-#[vela::replaceable]
-#[override(...)]
-register_replaceable_slots
-vela_replaceable_slot_*
-vela_replaceable_slots
-replaceable_handler example
-replaceable_service_method example
-```
-
-Names may remain only in archived historical reports and in this deletion
-checklist. There are no deprecated aliases, compatibility traits, feature
-flags, dual reads/writes, slot-to-service adapters, old/new source syntaxes, or
-fallback target strings.
-
-The following general mechanisms are retained under service-neutral ownership
-where they remain valid:
-
-- `CallableContract` and boundary ABI comparison;
-- `ProgramVersion`, `CodeObject`, and linked-artifact generation pinning;
-- `NativeCallContext` same-session re-entry;
-- host argument conversion, atomic lease acquisition, child reborrow, and
-  borrowed-return provenance/freeze;
-- actor-owned Runtime and scoped async execution;
-- staging, validation, atomic activation, prior-generation rollback, and
-  no-retry semantics; and
-- budget, capability, effect, tracing, cancellation, and diagnostic plumbing.
-
-Retained code must be renamed and relocated when its current owner or name is
-slot-specific. Copying the old dispatch module under a new name without
-changing its service-generation semantics does not satisfy the switch.
-
-## 8. Phased Execution
-
-Each phase ends with focused tests, workspace formatting/lint/tests, active-doc
-updates, and one small Conventional Commit checkpoint. The implementation may
-use a short-lived internal construction sequence, but no accepted checkpoint
-may advertise both callable replacement and service replacement as supported
-authoring models.
+## 1. Normative Service Contract
+
+The stable technical contract is
+[Rust/Vela Unified Service Model](architecture/rust-vela-service-model.md).
+It owns the non-negotiable generation model, authoring shape, runtime objects,
+TypeBinding and collection interop, macro responsibilities, and hard-switch
+deletion boundary. This document owns only execution order, phase gates,
+acceptance, performance, validation, and completion.
+
+## 2. Phased Execution
+
+The phase definitions and gates below are stable contracts. Current phase
+status and remaining gaps live only in [progress.md](progress.md); this plan
+must not accumulate per-commit implementation chronology.
+
+Execution discipline:
+
+- choose one independently verifiable behavior inside the active phase;
+- add focused success and failure-path proof before committing it;
+- keep local implementation commits coherent, but integrate a short sequence
+  only after its focused checks pass;
+- update this plan only when the model, phase boundary, deliverable, gate, or
+  completion definition changes;
+- update `progress.md` only when focus, phase status, validation expectations,
+  or the named remaining gaps change;
+- run the repository-wide validation gate once at phase acceptance, record the
+  commands and result in the checkpoint commit or acceptance report, and do
+  not infer phase acceptance from focused tests alone; and
+- fold unpublished immediate fixups into the triggering change before shared
+  integration.
+
+The implementation may use a short-lived internal construction sequence, but
+no accepted checkpoint may advertise both callable replacement and service
+replacement as supported authoring models.
 
 ### S0 — Freeze, inventory, and executable fixtures
 
@@ -1025,89 +164,13 @@ copying View/MutView allocates nothing and creates no new lease/refcount
 common-arity alias preflight allocates nothing and remains atomic
 ```
 
-S2 acceptance: the sealed registry, manual Value codec, receiver-capability
-enforcement, and type-owned Value constructor path are implemented. A
-constructor is associated with its binding but reuses the ordinary native
-function registry and `host::Type::new` resolution. Host factories now transfer
-exact Rust objects into actor-local Runtime-owned storage and expose only
-HostRef handles to Vela; the owned arena uses dense generational slots with
-exact type/generation validation, and Runtime drop is the current reclamation
-boundary.
-Structural `Value` derive generation now emits the same qualified schema,
-direct codec, and `TypeBinding` for named structs plus unit/named-field enums.
-Rust arguments and native results are linked to nominal identity before script
-guards and enum matching. `ScriptHost` derives the base Host TypeBinding, and
-`#[script_methods]` composes synchronous, async-direct, and async-context
-descriptors plus executable thunks into the same registration consumed by
-`register_script_host::<T>()`. Host-argument preflight now builds generated
-request arrays without a temporary heap vector and returns an inline request
-set for up to eight leases; acquired lease guards use the same inline threshold
-through direct and root execution-host acquisition. Grouped scoped child
-requests and activity guards also remain inline at that arity and spill only
-for wider calls. The shared and exclusive S0 preflight benchmark
-rows both measure zero allocations while retaining the full conflict pass
-before lease acquisition. Generated host functions and methods now compile
-parameter source, index, concrete type, lease mode, and diagnostic metadata
-into one registration-time `PreparedHostLeasePlan`; successful calls no longer
-rebuild their `CallableContract` or parameter request descriptions. Generated
-`ScriptHost` adapters now execute resolved dense slots directly for root-level
-field reads/writes/mutations and synchronous root methods rather than repeating
-stable-ID dispatch. Direct call arguments also maintain an inline dense
-host-slot index, so an alias reaches its single binding/lease metadata entry in
-O(1) without a common-arity allocation. Active native-reborrow provenance also
-keeps the common eight exact root/mode/object-address proofs inline, avoiding a
-routine vector allocation without weakening the live-lease check. The final
-pointer-free table key now
-exists as an 8-byte `(u32 slot, u32 generation)` `HostSlotRef`, and the direct
-table now uses one reusable inline `HostSlotTable` that invalidates stale
-aliases and advances generation before slot reuse. The root execution adapter
-now shares canonical HostRef interning/resolution/release with nested re-entry.
-`Value::HostRef` carries only the compact handle; expanded HostRef metadata is
-resolved at active host boundaries for recursive value/native/async,
-reflection, collection, comparison, and guard operations. Runtime owns the
-namespace so durable Runtime-owned and extern identities survive calls, while
-direct and scoped entries are generation-invalidated at their call-tree
-boundary. Early release retires the live slot and preserves only a call-local
-expired-borrow diagnostic tombstone. Runtime-owned object/type metadata now
-lives in a dense generational `HostSlotTable`; expanded internal roots derive
-from the slot and validate exact type/generation identity. Live scoped-return
-object/type/access metadata now uses a dense generational table too; private
-internal roots encode the slot/generation and validate exact type, while
-each scoped root's `BorrowLeaseId` derives from that slot/generation and is
-retained by its borrow-free expired diagnostic tombstone. Runtime extern-state
-object/type/activation metadata now uses dense generational slots too;
-`StateId` and staged-name maps remain boundary indexes, staged roots remain
-inactive until commit, and replacement/reclamation invalidate the prior
-generation. Transient lease provenance stays in the active inline
-`NativeCallContext` proof, prepared adapters stay in sealed registration and
-linked access plans, and generation pinning stays in the root execution or
-service session; none is copied into HostRef aliases. Standard collection and
-deeper prepared-operation work is owned by S3. `Vec<T>` already
-classifies index-shaped suffixes with an `AdapterLocal` slot so generated field
-prefixes remain prepared through the sequence boundary; fixed arrays and
-borrowed slices use the same index classification, while `BTreeMap<K, V>` and
-`HashMap<K, V>` plus `BTreeSet<K>` and `HashSet<K>` do the same for key-shaped
-suffixes. The inline prepared plan can interleave generated field slots with
-adapter-local steps, and sequence element-field reads, writes, and compound
-mutations execute the terminal dense field thunk after consuming the index
-step; fixed arrays and borrowed slices use the same mixed-step execution. Calls
-remain open; `BTreeMap<K, V>` and `HashMap<K, V>` now consume typed key steps
-and execute dense value-field reads, writes, and compound mutations. Nested
-field and method resolution and execution reuse the original linked
-`HostTargetPlan` through
-checked spec/instance offsets rather than allocating and cloning suffix plans.
-Generated adapters cache up to four schema-local field slots in the copyable
-resolved access and execute common field reads, writes, mutations, and method
-paths through typed slot thunks; deeper or non-preparable paths fall back to
-validated generic traversal. Collection queries, snapshots, and batch
-mutations use the prepared field prefix through the leaf collection, while
-index/key segments retain validated generic traversal.
-
-S2 is accepted. Focused TypeBinding, derive, and receiver tests are green; the
-hard-switch audit returns no production matches; and the 2026-07-23 quick
-boundary rerun reports zero allocations for HostRef alias copy and both
-legacy/prepared shared/exclusive common-arity preflight. The quick run is
-acceptance evidence, not a replacement for the frozen S0 stable baseline.
+Status: **Accepted.** The checkpoint proves one sealed registry and ABI,
+manual and derive-generated Value/Host registration, exact receiver
+capabilities, compact generational `HostRef` slots, prepared field/method and
+lease plans, and allocation-free common-arity alias preflight. Rust host
+objects remain outside the script GC, and copied aliases share one metadata and
+lease entry. Detailed implementation chronology remains in Git; current status
+is tracked in [progress.md](progress.md).
 
 ### S3 — Standard Rust types, views, and collection protocols
 
@@ -1141,181 +204,29 @@ linked static host paths and methods use prepared dense operations
 bulk host-backed operations preserve budgets, identity, and immediate writes
 ```
 
-Current S3 state: the first owned collection family is implemented.
-`StandardTypeBinding` synthesizes concrete `BTreeMap<K, V>` and
-`HashMap<K, V>` bindings from stable recursive key/value facts. Both lower
-directly to Vela Map values and declare the same `MapLike` protocol, while
-their concrete family remains part of stable interop identity and ABI. Keys
-must implement the explicit `VelaValueKeyBoundary`; ordinary structural value
-conversion does not imply stable key semantics. Owned `Vec<T>` now supplies a
-growable Sequence/Iterable Array binding, `Vec<u8>` supplies Bytes, and
-`BTreeSet<T>`/`HashSet<T>` supply distinct SetLike/Iterable bindings. Fixed
-arrays and borrowed slices now retain non-growable capability in the runtime
-representation. Concrete `Option<T>` and `Result<T, E>` bindings now
-carry recursively specialized Rust ABI identity while their codecs use the
-existing dynamic Vela Option/Result enum values and standard behavior in both
-directions. Unit, bool, char, exact-width numeric scalars, and String now carry
-concrete Rust ABI bindings over their existing Vela value representations.
-Rust tuples of arity two through four now preserve ordered recursive element
-facts in a real reflected Tuple kind, project those facts through both registry
-views, and round-trip through ordinary Vela tuple projections.
-`RustValueType` now gives supported standard values and `#[derive(Value)]`
-DTOs one recursive concrete registration contract. Registering an owned root
-installs nested field/variant, collection, Option/Result, tuple, and scalar
-bindings once, while a conflicting manual binding still fails during sealing.
-Standard `Vec` (including the owned-Bytes `Vec<u8>` specialization), map, and
-set bindings now advertise shared View plus exact growable MutView capability
-on the same `InteropTypeId`; that
-representation fact participates in `TypeAbiFingerprint` and projects through
-reflection and compiler registries. Export and method macros now traverse
-borrowed standard collection signatures, register their concrete binding
-closures, emit exact View/MutView ABI proofs, and generate sync/async lease
-adapters. A `&Vec`, borrowed map, or borrowed set therefore crosses as an exact
-HostRef-backed view rather than an owned Vela collection. Scoped collection
-references returned by one Rust export preserve the parent lease and concrete
-binding identity when reborrowed into another Rust export; mutable views write
-through immediately. Concrete `[T; N]` identity and generated
-`&[T; N]`/`&mut [T; N]` adapters now carry exact fixed mutation capability and
-write indexed elements through HostAccess. Concrete `&[T]`/`&mut [T]`
-signatures use a distinct host-backed slice binding, preserve DST length and
-reference semantics without copying, and work for sync/async free functions,
-methods, retained returns, nested reborrow, indexing, and collection
-projections. Slice recovery is confined to one private lifetime-aware erased-
-borrow module in `vela_host`; mutable reconstruction consumes its exclusive
-token, `better_any` and the visitor/support surface are removed, and a source
-audit restricts unsafe Rust to reviewed boundary files. Focused regressions
-cover shared/exclusive recovery, wrong types, empty/ZST slices, alias conflict,
-retained returns, nested re-entry, actual async suspension/cancellation,
-error/panic cleanup, and generation pinning. Borrowed `Vec<u8>`, `[u8; N]`, and
-`[u8]` now use HostRef-backed `ArrayView<u8>`/`ArrayMut<u8>` contracts with
-exact growable/fixed capability; direct and retained views reborrow without
-copying and mutate Rust bytes immediately, while owned `Vec<u8>` remains Vela
-`Bytes`. Restricted
-`ArrayView`/`ArrayMut`, `MapView`/`MapMut`, and `SetView`/`SetMut` hints now
-retain distinct analysis facts and exact hidden fixed/growable mutation facts.
-Host-method returns carry that mutation fact separately from their visible
-type spelling, project it into compiler facts, and include it in binding ABI
-identity. Their shared collection methods are visible without materialization,
-structural mutators are statically absent from shared/fixed views, and
-growable exclusive views retain them. Linked calls on a HostRef-backed view now
-route `len` and `is_empty` through the domain-neutral
-`HostCollectionQuery`/HostAccess boundary for direct arguments and retained
-borrowed returns; shared views remain read-only and no collection is
-materialized. Array positional indexing and typed Map indexing now read and
-write through HostAccess for direct and retained borrowed views; shared write
-attempts fail closed. Standard Array `get(index) -> Option<T>` is available on
-owned, shared, and exclusive representations. HostRef-backed `get`, `first`,
-and `last` reuse a live length query plus at most one indexed HostAccess read,
-return `Option::None` for an absent index or empty view, and work for direct
-and retained borrows without snapshotting or length-proportional budget cost.
-`HostCollectionKey` preserves bool, char, exact-width
-integer, String, Bytes, and HostRef key identity, and `ScriptHostKey` performs
-the Rust-side exact conversion without string serialization. Standard
-membership now exposes baseline Map `contains_key` and Set `contains` on owned,
-shared, and exclusive collections while preserving `has` for both families.
-Those names and read-only `MapView.get/get_or` reuse the resolved keyed
-HostAccess path.
-Standard Set insertion now exposes baseline `insert(value) -> bool` on owned
-sets and exclusive growable `SetMut` views while preserving `add`. Both names
-share the same checked membership write and changed/not-changed result;
-shared and fixed views withhold both structural mutators.
-`MissingCollectionEntry` alone becomes missing/fallback behavior, while other
-host errors propagate. Array `contains/index_of` reuse one bounded values
-projection, charge its complete length, compare exact `ValueKey` identities,
-and return the ordinary bool/`Option<i64>` results without materializing a
-script Array. Array `distinct/reverse/slice/join` reuse that one completely
-precharged values projection and the owned transform algorithms, then return
-ordinary owned Array/String results without a temporary receiver Array or Rust
-backing-collection mutation. Array `sort/min/max` likewise use one completely
-precharged values projection, then enter the existing resumable comparison
-state after the HostAccess lease ends. The state owns only Vela values, roots
-projected heap values across nested comparison calls, and returns an ordinary
-owned Array or Option without mutating Rust. Untyped dynamic HostRef method
-resolution now combines the canonical HostRef with its sealed collection-view
-facts and live adapter access mode. It advertises only standard methods with
-an implemented HostRef route; structural mutators additionally require an
-exclusive growable view. Shared/fixed receivers and unimplemented HostRef
-collection methods remain `UnknownMethod`, and access-sensitive HostRef
-results do not enter the ordinary dynamic StandardValue inline cache. Borrowed
-complex-element views, remaining element/key methods, live/resumable
-iteration, remaining bulk mutation protocols, richer user-defined collection
-adapters, full service macro traversal, and prepared operations are still
-open. Growable
-`MapMut.set` and keyed index
-assignment insert supported leaf values through HostAccess; `MapMut.remove`
-uses a keyed remove and returns the prior value as `Option<V>`. Map
-`get_or_insert` now preserves the live existing value or performs one
-missing-key write for owned Maps and growable exclusive HostRef views;
-shared/fixed views withhold it, retained child views keep their parent lease,
-existing entries do not convert the unused default, and missing-value
-conversion failure precedes mutation. Baseline Map `insert` now returns the
-replaced value as `Option<V>` for owned Maps and the same growable HostRef
-views; shared/fixed views withhold it, retained children preserve their parent
-lease, and conversion failure precedes write-through.
-`SetMut.add/insert/remove` use keyed boolean membership writes without
-materialization. Growable `ArrayMut.remove_at` performs the corresponding
-indexed read/remove through HostAccess, returns the prior value as `Option<T>`,
-and preserves retained method-return view identity and missing-index
-semantics. `ArrayMut.pop` queries the live final index under the same lease,
-reuses that read/remove path, and returns `Option::None` for an empty view.
-`ArrayMut.push` prepares one exact boundary element, precharges one execution
-unit, and reuses a stack-backed one-item `ExtendSequence` mutation, so it
-writes through once without allocating a temporary batch or partially
-mutating on conversion or budget failure.
-`ArrayMut.insert` performs a live length query under the same exclusive lease,
-accepts indexes through the current length, rejects sparse insertion with the
-ordinary Vela bounds error, and then submits one preconverted, precharged
-`InsertSequence` mutation. Standard Vec validates the index again before its
-single write.
-Array `iter/values`, Map `keys/values/entries/iter`, and Set
-`values/iter` now use a deterministic bounded `HostCollectionProjection` under
-the active lease and then reuse the ordinary Vela Iterator pipeline. This
-snapshot slice preserves exact boundary tags and supports
-`filter/count/collect`. Direct borrowed collection callback methods also reuse
-one budgeted projection, materialize the matching temporary script-owned
-Array/Map/Set, and enter the existing resumable callback state machine. Array
-`filter/group_by`, Map `filter/map_values`, and Set `filter/map` therefore keep
-their owned semantics while host adapters remain independent of Vela method
-IDs. Borrowed Set combinations and relation predicates likewise use one
-completely precharged values projection, then call the shared owned/cached Set
-algebra against an owned Set operand. Combination results are detached owned
-Sets, relation results are booleans, and neither path mutates the Rust backing
-collection. Static and untyped dynamic receivers use the same route. Live host
-iterators, complex element HostRefs, and generation validation at resumable
-boundaries remain planned prepared-operation work. Borrowed Map `merge` uses
-the same bounded snapshot rule: one completely precharged entries projection
-feeds the shared owned/cached merge payload against an owned Map operand.
-Duplicate keys use the right operand, the detached owned Map result cannot
-mutate its Rust source, and static and untyped dynamic receivers share the
-route. The first bulk write
-protocol is now live:
-growable collection `clear` precharges one execution unit per removed element
-and then performs one domain-neutral `HostCollectionMutation::Clear` through
-HostAccess. Standard Vec, Map, and Set host objects implement the same
-operation; budget failure precedes mutation, shared/fixed method facts remain
-non-mutating, and Rust adapters do not receive Vela method IDs. Batched
-`extend` is now live for owned Vela Array/Map/Set sources: the VM preserves
-exact boundary tags, precharges one unit per input, and submits one borrowed
-sequence/map/set mutation request. Standard Vec, Map, and Set adapters prepare
-all concrete Rust values before applying the batch, so type conversion and
-budget failures are non-mutating. Map replacement and Set uniqueness follow
-their Rust container semantics. Transactional retain requests are now
-available at the domain-neutral host boundary: sequence requests validate an
-unchanged length and a complete decision mask, while keyed requests convert
-the complete expected/retained key sets and validate the current Map or Set
-key snapshot before one standard-container mutation. The public resumable
-callback and completion path are now live for owned Array/Map/Set and
-growable exclusive HostRef views. Decisions remain resumable until every
-callback succeeds, then owned storage or the original HostRef alias receives
-one checked retain mutation. Callback errors, final traversal budget failure,
-and stale structural snapshots are non-mutating; retained child views use
-their parent lease, and shared/fixed views do not expose the method. Growable
-HostRef targets also accept matching borrowed Array/Map/Set `extend` sources:
-the source is snapshotted through its active lease, both traversals are
-precharged, and same-alias extension snapshots before write-through. Ordinary
-`filter` remains the detached, script-owned transform required by section 4.5;
-`retain` is the explicit write-through counterpart. Complex element HostRefs
-and prepared live grouping/traversal remain open.
+Status: **Active.** The accepted foundation already covers recursive concrete
+standard bindings; exact owned, shared, fixed, and growable representation
+facts; generated sync/async borrowed collection adapters; scoped retained
+reborrow; prepared field/index/key plans; deterministic budgeted collection
+projections; and immediate write-through for the implemented Array, Map, and
+Set mutations.
+
+The remaining exit work is deliberately expressed as capability gaps, not a
+method-by-method chronology:
+
+- complex-element borrowed views with exact identity, lease, escape, and nested
+  reborrow proof;
+- remaining element/key methods and live or resumable traversal behavior;
+- remaining transactional bulk mutations with conversion, budget, and stale
+  snapshot failure before mutation;
+- richer user-defined collection adapters through the same protocol surface;
+- prepared element-method, grouping, filtering, and traversal operations with
+  no successful-path name lookup, reflection walk, or HostPath materialization;
+  and
+- the complete owned/shared/exclusive matrix and phase-wide validation gate.
+
+Current details and the next selected gap live in
+[progress.md](progress.md). Do not append completed method lists here.
 
 ### S4 — Service contract and Rust-only generation
 
@@ -1428,7 +339,7 @@ rollback is publication only and never retries host effects
 all old replacement production identifiers remain absent
 ```
 
-## 9. Acceptance Matrix
+## 3. Acceptance Matrix
 
 ### Authoring
 
@@ -1517,7 +428,7 @@ all old replacement production identifiers remain absent
 - No per-concrete standard collection implementation is handwritten.
 - Rust host state remains outside the script GC.
 
-## 10. Performance Contract
+## 4. Performance Contract
 
 Correctness and authoring coherence come first, but the Rust-default path must
 remain suitable for a high-frequency game server.
@@ -1560,7 +471,7 @@ reflection lookup, common-arity preflight allocation, or HostRef conversion on
 the Rust-default branch. A regression cannot be hidden by weakening generation
 coherence, lease safety, type identity, HostAccess policy, or error semantics.
 
-## 11. Validation Commands
+## 5. Validation Commands
 
 Every implementation checkpoint runs the focused crate/macro/UI/example tests
 for its changed area plus the repository baseline:
@@ -1580,21 +491,22 @@ cargo bench --workspace --no-run
 cargo check --manifest-path fuzz/Cargo.toml --bins
 ```
 
-The hard-switch audit excludes only `docs/archive/**` and this plan's deletion
-history:
+The hard-switch audit excludes historical archives, this execution plan, and
+the normative model's explicit deletion contract:
 
 ```bash
 rg -n 'ReplaceableSlot|InterceptSlot|DispatchRoot|DispatchController|DispatchAuthority|register_replaceable_slots|vela_replaceable|#\[override' \
   crates examples tests fuzz docs \
   --glob '!docs/archive/**' \
-  --glob '!docs/rust-vela-service-hard-switch-plan.md'
+  --glob '!docs/rust-vela-service-hard-switch-plan.md' \
+  --glob '!docs/architecture/rust-vela-service-model.md'
 ```
 
 At S1 and every later accepted checkpoint, the command must return no
 production/API/example matches. Active migration notes may name deleted terms
 only when they clearly state that the model is unavailable.
 
-## 12. Explicitly Deferred
+## 6. Explicitly Deferred
 
 The hard switch does not include:
 
@@ -1613,7 +525,7 @@ The hard switch does not include:
 - more replacement abstractions for handlers, rules, events, providers, or
   individual functions.
 
-## 13. Completion Definition
+## 7. Completion Definition
 
 This plan is complete only when S0-S7 and the full acceptance matrix are green,
 the host-framework integration demonstrates the intended authoring form, Vela

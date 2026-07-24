@@ -216,6 +216,7 @@ contract before changing that subsystem:
 - [Tooling, performance, security, and testing](architecture/tooling-performance-security-testing.md)
 - [Native LSP architecture](architecture/lsp.md)
 - [Packages and service providers](packages-and-providers.md)
+- [Rust/Vela unified service model](architecture/rust-vela-service-model.md)
 - [Rust/Vela unified service hard-switch plan](rust-vela-service-hard-switch-plan.md)
 - [Rust/Vela interop authoring and deployment](rust-vela-interop.md)
 - [Clean identity refactor](architecture/clean-identity-refactor.md)
