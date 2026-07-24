@@ -501,6 +501,48 @@ pub trait ScriptHostFieldAccess {
     }
 
     #[doc(hidden)]
+    fn borrow_prepared_field_shared(
+        &self,
+        _slot: u32,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        Ok(None)
+    }
+
+    #[doc(hidden)]
+    fn borrow_prepared_field_exclusive(
+        &mut self,
+        _slot: u32,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        Ok(None)
+    }
+
+    #[doc(hidden)]
+    fn borrow_collection_prepared_field_shared(
+        &self,
+        _slot: u32,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+        _projection: HostCollectionProjection,
+    ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+        Ok(None)
+    }
+
+    #[doc(hidden)]
+    fn borrow_collection_prepared_field_exclusive(
+        &mut self,
+        _slot: u32,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+        _projection: HostCollectionProjection,
+    ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+        Ok(None)
+    }
+
+    #[doc(hidden)]
     fn write_prepared_field_target(
         &mut self,
         slot: u32,

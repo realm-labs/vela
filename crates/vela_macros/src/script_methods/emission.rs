@@ -199,6 +199,68 @@ pub(super) fn script_host_object_impl_tokens(
                 )
             }
 
+            fn borrow_resolved_host_shared(
+                &self,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+            ) -> ::vela_host::error::HostResult<
+                Option<::vela_host::lease::ScopedHostDependent<'_>>
+            > {
+                ::vela_host::object::ScriptHostFieldAccess::borrow_resolved_host_shared(
+                    self,
+                    access,
+                    target,
+                )
+            }
+
+            fn borrow_resolved_host_exclusive(
+                &mut self,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+            ) -> ::vela_host::error::HostResult<
+                Option<::vela_host::lease::ScopedHostDependent<'_>>
+            > {
+                ::vela_host::object::ScriptHostFieldAccess::borrow_resolved_host_exclusive(
+                    self,
+                    access,
+                    target,
+                )
+            }
+
+            fn borrow_collection_resolved_host_shared(
+                &self,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                projection: ::vela_host::protocol::HostCollectionProjection,
+            ) -> ::vela_host::error::HostResult<
+                Option<::vela_host::object::ScopedHostCollectionDependents<'_>>
+            > {
+                ::vela_host::object::ScriptHostFieldAccess::
+                    borrow_collection_resolved_host_shared(
+                        self,
+                        access,
+                        target,
+                        projection,
+                    )
+            }
+
+            fn borrow_collection_resolved_host_exclusive(
+                &mut self,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                projection: ::vela_host::protocol::HostCollectionProjection,
+            ) -> ::vela_host::error::HostResult<
+                Option<::vela_host::object::ScopedHostCollectionDependents<'_>>
+            > {
+                ::vela_host::object::ScriptHostFieldAccess::
+                    borrow_collection_resolved_host_exclusive(
+                        self,
+                        access,
+                        target,
+                        projection,
+                    )
+            }
+
             fn query_collection_resolved_host(
                 &self,
                 access: ::vela_host::resolved::ResolvedHostAccess,

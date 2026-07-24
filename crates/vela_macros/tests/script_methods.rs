@@ -978,6 +978,84 @@ fn collection_elements_call_methods_through_mixed_prepared_steps() {
 }
 
 #[test]
+fn complex_collection_fields_route_scoped_borrows_through_prepared_slots() {
+    let mut outer = CollectionOuter {
+        leaf: CollectionLeaf {
+            values: vec![],
+            groups: vec![],
+            entries: BTreeMap::new(),
+            tags: BTreeSet::new(),
+            fixed: [0, 0],
+            counters: vec![DirectCounter { total: 10 }],
+            fixed_counters: [DirectCounter { total: 20 }],
+            counter_entries: BTreeMap::new(),
+            hash_counters: HashMap::new(),
+        },
+    };
+    let root = HostRef::new(
+        CollectionOuter::vela_host_type_id(),
+        HostObjectId::new(13),
+        1,
+    );
+    let element_plan = HostTargetPlan::new(CollectionOuter::vela_host_type_id())
+        .field(CollectionOuter::vela_field_id_leaf())
+        .field(CollectionLeaf::vela_field_id_counters())
+        .const_index(0);
+    let element_target = HostTargetInstance::new(root, &element_plan, &[]);
+    let element_access =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+            &outer,
+            HostAccessSpec::new(HostAccessOp::Read, &element_plan),
+        )
+        .expect("complex collection field element should resolve");
+    let mut child =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::borrow_resolved_host_exclusive(
+            &mut outer,
+            element_access,
+            element_target,
+        )
+        .expect("prepared field borrow should execute")
+        .expect("complex element should return one scoped dependent");
+    assert_eq!(child.host_type_id(), DirectCounter::vela_host_type_id());
+    child
+        .lease_any_mut()
+        .expect("complex host child should retain its concrete identity")
+        .downcast_mut::<DirectCounter>()
+        .expect("complex host child should keep the exact Rust type")
+        .total = 12;
+    drop(child);
+    assert_eq!(outer.leaf.counters[0].total, 12);
+
+    let collection_plan = HostTargetPlan::new(CollectionOuter::vela_host_type_id())
+        .field(CollectionOuter::vela_field_id_leaf())
+        .field(CollectionLeaf::vela_field_id_counters());
+    let collection_target = HostTargetInstance::new(root, &collection_plan, &[]);
+    let collection_access =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+            &outer,
+            HostAccessSpec::new(HostAccessOp::Read, &collection_plan),
+        )
+        .expect("complex collection field projection should resolve");
+    let dependents = <CollectionOuter as vela_host::object::ScriptHostObject>::
+        borrow_collection_resolved_host_shared(
+            &outer,
+            collection_access,
+            collection_target,
+            HostCollectionProjection::Values,
+        )
+        .expect("prepared collection field projection should execute")
+        .expect("complex collection field should return dependents");
+    let vela_host::object::ScopedHostCollectionDependents::Items(children) = dependents else {
+        panic!("array field projection should return child items");
+    };
+    assert_eq!(children.len(), 1);
+    assert_eq!(
+        children[0].host_type_id(),
+        DirectCounter::vela_host_type_id()
+    );
+}
+
+#[test]
 fn borrowed_slice_element_fields_execute_mixed_prepared_steps() {
     let mut values = [DirectCounter { total: 8 }];
     let slice: &mut [DirectCounter] = &mut values;

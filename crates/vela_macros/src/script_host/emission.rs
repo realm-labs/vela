@@ -4,6 +4,14 @@ use syn::Ident;
 
 use super::schema::{FieldMeta, VariantMeta};
 
+mod scoped_borrow;
+
+use scoped_borrow::{
+    prepared_field_borrow_exclusive_arm_tokens, prepared_field_borrow_shared_arm_tokens,
+    prepared_field_collection_borrow_exclusive_arm_tokens,
+    prepared_field_collection_borrow_shared_arm_tokens,
+};
+
 pub(super) fn field_tokens(field: &FieldMeta) -> TokenStream {
     let id = u128::from(field.id);
     let script_name = &field.script_name;
@@ -120,6 +128,26 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
         .enumerate()
         .filter(|(_, field)| field.readable)
         .map(prepared_field_read_arm_tokens);
+    let prepared_borrow_shared_arms = fields
+        .iter()
+        .enumerate()
+        .filter(|(_, field)| field.readable)
+        .map(prepared_field_borrow_shared_arm_tokens);
+    let prepared_borrow_exclusive_arms = fields
+        .iter()
+        .enumerate()
+        .filter(|(_, field)| field.readable || field.writable)
+        .map(prepared_field_borrow_exclusive_arm_tokens);
+    let prepared_collection_borrow_shared_arms = fields
+        .iter()
+        .enumerate()
+        .filter(|(_, field)| field.readable)
+        .map(prepared_field_collection_borrow_shared_arm_tokens);
+    let prepared_collection_borrow_exclusive_arms = fields
+        .iter()
+        .enumerate()
+        .filter(|(_, field)| field.readable || field.writable)
+        .map(prepared_field_collection_borrow_exclusive_arm_tokens);
     let prepared_write_arms = fields
         .iter()
         .enumerate()
@@ -260,6 +288,132 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
                     target,
                     target.offset,
                 )
+            }
+
+            fn borrow_resolved_host_shared(
+                &self,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+            ) -> ::vela_host::error::HostResult<
+                Option<::vela_host::lease::ScopedHostDependent<'_>>
+            > {
+                if let Some((
+                    ::vela_host::resolved::PreparedHostStep::Field(slot),
+                    child_access,
+                )) = access.next_prepared_step() {
+                    return ::vela_host::object::ScriptHostFieldAccess::
+                        borrow_prepared_field_shared(self, slot, child_access, target);
+                }
+                if target.offset + 1 == target.plan.parts.len() {
+                    if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
+                        access.adapter_kind
+                    {
+                        return ::vela_host::object::ScriptHostFieldAccess::
+                            borrow_prepared_field_shared(self, slot, access, target);
+                    }
+                }
+                Ok(None)
+            }
+
+            fn borrow_resolved_host_exclusive(
+                &mut self,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+            ) -> ::vela_host::error::HostResult<
+                Option<::vela_host::lease::ScopedHostDependent<'_>>
+            > {
+                if let Some((
+                    ::vela_host::resolved::PreparedHostStep::Field(slot),
+                    child_access,
+                )) = access.next_prepared_step() {
+                    return ::vela_host::object::ScriptHostFieldAccess::
+                        borrow_prepared_field_exclusive(self, slot, child_access, target);
+                }
+                if target.offset + 1 == target.plan.parts.len() {
+                    if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
+                        access.adapter_kind
+                    {
+                        return ::vela_host::object::ScriptHostFieldAccess::
+                            borrow_prepared_field_exclusive(self, slot, access, target);
+                    }
+                }
+                Ok(None)
+            }
+
+            fn borrow_collection_resolved_host_shared(
+                &self,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                projection: ::vela_host::protocol::HostCollectionProjection,
+            ) -> ::vela_host::error::HostResult<
+                Option<::vela_host::object::ScopedHostCollectionDependents<'_>>
+            > {
+                if let Some((
+                    ::vela_host::resolved::PreparedHostStep::Field(slot),
+                    child_access,
+                )) = access.next_prepared_step() {
+                    return ::vela_host::object::ScriptHostFieldAccess::
+                        borrow_collection_prepared_field_shared(
+                            self,
+                            slot,
+                            child_access,
+                            target,
+                            projection,
+                        );
+                }
+                if target.offset + 1 == target.plan.parts.len() {
+                    if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
+                        access.adapter_kind
+                    {
+                        return ::vela_host::object::ScriptHostFieldAccess::
+                            borrow_collection_prepared_field_shared(
+                                self,
+                                slot,
+                                access,
+                                target,
+                                projection,
+                            );
+                    }
+                }
+                Ok(None)
+            }
+
+            fn borrow_collection_resolved_host_exclusive(
+                &mut self,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                projection: ::vela_host::protocol::HostCollectionProjection,
+            ) -> ::vela_host::error::HostResult<
+                Option<::vela_host::object::ScopedHostCollectionDependents<'_>>
+            > {
+                if let Some((
+                    ::vela_host::resolved::PreparedHostStep::Field(slot),
+                    child_access,
+                )) = access.next_prepared_step() {
+                    return ::vela_host::object::ScriptHostFieldAccess::
+                        borrow_collection_prepared_field_exclusive(
+                            self,
+                            slot,
+                            child_access,
+                            target,
+                            projection,
+                        );
+                }
+                if target.offset + 1 == target.plan.parts.len() {
+                    if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
+                        access.adapter_kind
+                    {
+                        return ::vela_host::object::ScriptHostFieldAccess::
+                            borrow_collection_prepared_field_exclusive(
+                                self,
+                                slot,
+                                access,
+                                target,
+                                projection,
+                            );
+                    }
+                }
+                Ok(None)
             }
 
             fn write_host_target_from(
@@ -510,6 +664,64 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
                         },
                         source_span: None,
                     }),
+                }
+            }
+
+            fn borrow_prepared_field_shared(
+                &self,
+                slot: u32,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+            ) -> ::vela_host::error::HostResult<
+                Option<::vela_host::lease::ScopedHostDependent<'_>>
+            > {
+                match slot {
+                    #(#prepared_borrow_shared_arms)*
+                    _ => Ok(None),
+                }
+            }
+
+            fn borrow_prepared_field_exclusive(
+                &mut self,
+                slot: u32,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+            ) -> ::vela_host::error::HostResult<
+                Option<::vela_host::lease::ScopedHostDependent<'_>>
+            > {
+                match slot {
+                    #(#prepared_borrow_exclusive_arms)*
+                    _ => Ok(None),
+                }
+            }
+
+            fn borrow_collection_prepared_field_shared(
+                &self,
+                slot: u32,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                projection: ::vela_host::protocol::HostCollectionProjection,
+            ) -> ::vela_host::error::HostResult<
+                Option<::vela_host::object::ScopedHostCollectionDependents<'_>>
+            > {
+                match slot {
+                    #(#prepared_collection_borrow_shared_arms)*
+                    _ => Ok(None),
+                }
+            }
+
+            fn borrow_collection_prepared_field_exclusive(
+                &mut self,
+                slot: u32,
+                access: ::vela_host::resolved::ResolvedHostAccess,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                projection: ::vela_host::protocol::HostCollectionProjection,
+            ) -> ::vela_host::error::HostResult<
+                Option<::vela_host::object::ScopedHostCollectionDependents<'_>>
+            > {
+                match slot {
+                    #(#prepared_collection_borrow_exclusive_arms)*
+                    _ => Ok(None),
                 }
             }
 
