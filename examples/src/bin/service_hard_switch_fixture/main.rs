@@ -2,14 +2,17 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
 
-type ServiceResult<T> = Result<T, ServiceError>;
+use vela_engine::engine::Engine;
+use vela_macros::{ScriptHost, Value, service, service_set};
+
+pub type ServiceResult<T> = Result<T, ServiceError>;
 type ServiceFuture<'call, T> = Pin<Box<dyn Future<Output = T> + Send + 'call>>;
 
-#[derive(Debug)]
-struct ServiceError {
+#[derive(Debug, Value)]
+#[script(path = "fixture::ServiceError")]
+pub struct ServiceError {
     message: String,
 }
 
@@ -29,15 +32,17 @@ impl std::fmt::Display for ServiceError {
 
 impl Error for ServiceError {}
 
-#[derive(Clone, Debug)]
-struct ItemGrant {
+#[derive(Clone, Debug, Value)]
+#[script(path = "fixture::ItemGrant")]
+pub struct ItemGrant {
     template_id: i32,
     count: i32,
     tags: BTreeMap<String, String>,
 }
 
-#[derive(Clone, Debug)]
-struct DisplayItem {
+#[derive(Clone, Debug, Value)]
+#[script(path = "fixture::DisplayItem")]
+pub struct DisplayItem {
     template_id: i32,
     count: i32,
     label: String,
@@ -54,18 +59,32 @@ struct GrantResponse {
     granted: Vec<DisplayItem>,
 }
 
-#[derive(Debug)]
-struct HostActor {
+#[derive(Debug, ScriptHost)]
+#[script(path = "fixture::HostActor")]
+pub struct HostActor {
+    #[script(skip)]
     item_counts: BTreeMap<i32, i32>,
+    #[script(skip)]
     last_reward_count: usize,
 }
 
-struct HostTurn {
+#[vela_macros::script_methods]
+impl HostActor {}
+
+#[derive(ScriptHost)]
+#[script(path = "fixture::HostTurn")]
+pub struct HostTurn {
+    #[script(skip)]
     actor: HostActor,
-    services: Arc<RustServices>,
+    #[script(skip)]
+    services: GameServicesRoot,
 }
 
-trait RewardService: Send + Sync {
+#[vela_macros::script_methods]
+impl HostTurn {}
+
+#[service(path = "fixture::reward")]
+pub trait RewardService: Send + Sync {
     fn apply(
         &self,
         actor: &mut HostActor,
@@ -74,7 +93,8 @@ trait RewardService: Send + Sync {
     ) -> ServiceResult<Vec<DisplayItem>>;
 }
 
-trait InventoryService: Send + Sync {
+#[service(path = "fixture::inventory")]
+pub trait InventoryService: Send + Sync {
     fn grant(
         &self,
         turn: &mut HostTurn,
@@ -142,8 +162,10 @@ impl InventoryService for RustInventoryService {
             }
         }
 
-        let reward = Arc::clone(&turn.services.reward);
-        let granted = reward.apply(&mut turn.actor, &grouped, &labels)?;
+        let granted = turn
+            .services
+            .reward()
+            .apply(&mut turn.actor, &grouped, &labels)?;
         turn.actor.last_reward_count = granted.len();
         Ok(granted)
     }
@@ -167,27 +189,21 @@ impl GrantHandlerService for RustGrantHandlerService {
     ) -> ServiceFuture<'call, ServiceResult<GrantResponse>> {
         Box::pin(async move {
             std::future::ready(()).await;
-            let inventory = Arc::clone(&turn.services.inventory);
-            let granted = inventory.grant(turn, &request.items, &request.multipliers)?;
+            let services = turn.services.clone();
+            let granted = services
+                .inventory()
+                .grant(turn, &request.items, &request.multipliers)?;
             Ok(GrantResponse { granted })
         })
     }
 }
 
-struct RustServices {
-    inventory: Arc<dyn InventoryService>,
-    reward: Arc<dyn RewardService>,
-    handler: Arc<dyn GrantHandlerService>,
-}
-
-impl RustServices {
-    fn defaults() -> Arc<Self> {
-        Arc::new(Self {
-            inventory: Arc::new(RustInventoryService),
-            reward: Arc::new(RustRewardService),
-            handler: Arc::new(RustGrantHandlerService),
-        })
-    }
+#[service_set(context = HostTurn)]
+pub struct GameServices {
+    #[vela::default(RustInventoryService)]
+    pub inventory: dyn InventoryService,
+    #[vela::default(RustRewardService)]
+    pub reward: dyn RewardService,
 }
 
 fn block_on<T>(future: impl Future<Output = T>) -> T {
@@ -203,13 +219,19 @@ fn block_on<T>(future: impl Future<Output = T>) -> T {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let services = RustServices::defaults();
+    let engine = GameServices::register_types(
+        Engine::builder()
+            .register_rust_type::<HostActor>(HostActor::vela_type_binding())
+            .register_rust_type::<HostTurn>(HostTurn::vela_type_binding()),
+    )
+    .build()?;
+    let services = GameServices::new(&engine.type_bindings())?;
     let mut turn = HostTurn {
         actor: HostActor {
             item_counts: BTreeMap::new(),
             last_reward_count: 0,
         },
-        services: Arc::clone(&services),
+        services: services.pin(),
     };
     let request = GrantRequest {
         items: vec![
@@ -232,9 +254,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         multipliers: BTreeMap::from([(7, 2)]),
     };
 
-    let handler = Arc::clone(&services.handler);
-    let response = block_on(handler.handle(&mut turn, request))?;
-    let count = services.inventory.current_count(&turn, 7);
+    let response = block_on(RustGrantHandlerService.handle(&mut turn, request))?;
+    let count = turn.services.inventory().current_count(&turn, 7);
     let checksum = response.granted.iter().fold(0_i64, |checksum, item| {
         checksum
             + i64::from(item.template_id) * 100

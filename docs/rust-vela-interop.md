@@ -12,8 +12,9 @@ service trait, provider, manual `CallArgs`, erased value, or runtime target
 string is not required.
 
 The runnable primary example is `examples/src/bin/interop_round_trip`. The
-pure-Rust service baseline for the hard switch is
-`examples/src/bin/service_hard_switch_fixture`.
+generated Rust-default service baseline for the hard switch is
+`examples/src/bin/service_hard_switch_fixture`; it pins one whole service
+generation and keeps the default call chain on direct Rust trait dispatch.
 
 ## Export Rust To Vela
 

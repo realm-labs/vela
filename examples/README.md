@@ -41,11 +41,12 @@ hand-write `ScriptHostObject` or `PathSegment` dispatch.
 
 Other useful embedding examples:
 
-- `service_hard_switch_fixture`: the S0 pure-Rust service baseline. Two
-  services and one async handler exercise a mutable actor, value DTOs,
-  Array/Map-shaped arguments, `Result`, and a nested handler-to-inventory-to-
-  reward call chain entirely through Rust defaults. Later service phases
-  migrate this fixture without adding patch-aware business branches.
+- `service_hard_switch_fixture`: the generated Rust-default service baseline.
+  One request pins a complete `GameServices` generation, then an async Rust
+  handler drives a handler-to-inventory-to-reward call chain through the same
+  root. The fixture exercises a mutable actor, Value DTOs, Array/Map-shaped
+  arguments, business `Result`, and cross-service calls without patch-aware
+  business branches or Vela entry on the Rust-default path.
 - `interop_round_trip`: the primary ordinary interop workflow. Vela calls an
   exported Rust function and methods using normal syntax, while Rust calls the
   Vela entry through build-time generated typed bindings. Authored calls do not
