@@ -1,0 +1,5 @@
+error: service-set fields must use `dyn ServiceTrait`
+ --> tests/ui/service/fail/service_set_owned_field.rs:9:17
+  |
+9 |     pub reward: RustRewardService,
+  |                 ^^^^^^^^^^^^^^^^^

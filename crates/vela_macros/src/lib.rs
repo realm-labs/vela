@@ -12,6 +12,7 @@ mod script_function;
 mod script_host;
 mod script_methods;
 mod service;
+mod service_set;
 mod signature;
 mod trait_export;
 mod value;
@@ -47,6 +48,12 @@ pub fn trait_export(attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn service(attr: TokenStream, input: TokenStream) -> TokenStream {
     service::expand(attr.into(), input.into()).into()
+}
+
+/// Generates one whole-generation service set from Rust defaults.
+#[proc_macro_attribute]
+pub fn service_set(attr: TokenStream, input: TokenStream) -> TokenStream {
+    service_set::expand(attr.into(), input.into()).into()
 }
 
 /// Generates declaration-only UFCS adapters for an existing external trait
