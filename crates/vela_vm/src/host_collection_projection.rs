@@ -27,6 +27,23 @@ pub(crate) fn execute_host_root_array_iteration(
             actual: args.len(),
         }));
     }
+    let iterator = prepare_host_root_array_iterator(&mut runtime, receiver)?;
+    let Some(heap) = runtime.heap.as_deref_mut() else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host array iterator heap",
+        }));
+    };
+    allocate_heap_value(
+        HeapValue::Iterator(iterator),
+        heap,
+        runtime.budget.as_deref_mut(),
+    )
+}
+
+pub(crate) fn prepare_host_root_array_iterator(
+    runtime: &mut HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+) -> VmResult<crate::iteration::IteratorState> {
     let root = expect_host_ref(
         &runtime.frame.read(receiver)?,
         runtime.host.as_deref(),
@@ -72,21 +89,12 @@ pub(crate) fn execute_host_root_array_iteration(
         .adapter
         .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &element_target))
         .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
-    let Some(heap) = runtime.heap.as_deref_mut() else {
-        return Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "host array iterator heap",
-        }));
-    };
-    allocate_heap_value(
-        HeapValue::Iterator(crate::iteration::IteratorState::from_host_array(
-            root,
-            element_target,
-            element_access,
-            len,
-        )),
-        heap,
-        runtime.budget.as_deref_mut(),
-    )
+    Ok(crate::iteration::IteratorState::from_host_array(
+        root,
+        element_target,
+        element_access,
+        len,
+    ))
 }
 
 pub(crate) fn execute_host_root_map_iteration(

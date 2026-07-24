@@ -1472,6 +1472,7 @@ impl Vm {
                                 values.as_slice(),
                                 heap.as_deref(),
                                 prepared.host_retain_writeback,
+                                prepared.host_sequence,
                             ) {
                                 let callback = callback?;
                                 if prepared.cacheable_receiver
@@ -1738,6 +1739,7 @@ impl Vm {
                                 values.as_slice(),
                                 heap.as_deref(),
                                 prepared.host_retain_writeback,
+                                prepared.host_sequence,
                             ) {
                                 frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
                                 frame_state.pending_operation =
