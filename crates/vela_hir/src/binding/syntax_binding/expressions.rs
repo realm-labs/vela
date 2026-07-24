@@ -104,10 +104,19 @@ impl SyntaxBindingLowerer<'_> {
             }
             SyntaxExpressionKind::Field => {
                 let field = expr.as_field();
+                let receiver_usage = match usage {
+                    PathUsage::Callee => PathUsage::CalleeFieldBase(1),
+                    PathUsage::CalleeFieldBase(depth) => {
+                        PathUsage::CalleeFieldBase(depth.saturating_add(1))
+                    }
+                    PathUsage::Value | PathUsage::FieldBase | PathUsage::AssignmentTarget => {
+                        PathUsage::FieldBase
+                    }
+                };
                 let receiver = field
                     .as_ref()
                     .and_then(|field| field.receiver())
-                    .map(|base| self.bind_expr(&base, PathUsage::FieldBase))
+                    .map(|base| self.bind_expr(&base, receiver_usage))
                     .unwrap_or_else(|| self.missing_expr(span));
                 let member_token = field
                     .and_then(|field| field.name_token().or_else(|| field.tuple_index_token()));

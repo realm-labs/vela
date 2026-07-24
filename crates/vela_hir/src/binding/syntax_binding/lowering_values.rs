@@ -136,6 +136,9 @@ pub(super) fn last_segment_span(source: SourceId, tokens: Vec<SyntaxToken>) -> O
 pub(super) const fn hir_path_kind_for_usage(usage: PathUsage) -> HirPathKind {
     match usage {
         PathUsage::Callee => HirPathKind::Callee,
-        PathUsage::Value | PathUsage::FieldBase | PathUsage::AssignmentTarget => HirPathKind::Value,
+        PathUsage::Value
+        | PathUsage::FieldBase
+        | PathUsage::CalleeFieldBase(_)
+        | PathUsage::AssignmentTarget => HirPathKind::Value,
     }
 }

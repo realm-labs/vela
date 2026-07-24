@@ -9,6 +9,7 @@ use vela_syntax::ast::{
 
 use crate::binding::{
     BindingMap, BindingResolution, ImportBinding, LocalBinding, LocalBindingKind, PathUsage,
+    ServiceLexicalCapability,
 };
 use crate::body::{
     HirBody, HirBodyOwner, HirBodyRoot, HirPathKind, HirPathOwner, HirPatternKind,
@@ -42,6 +43,7 @@ pub(crate) struct SyntaxFunctionBindingInput<'a> {
     pub imports: Vec<ImportBinding>,
     pub body_id: HirBodyId,
     pub owner: HirBodyOwner,
+    pub service_capabilities_enabled: bool,
     pub next_expr_id: &'a mut u32,
     pub next_local_id: &'a mut u32,
     pub next_body_id: &'a mut u32,
@@ -120,6 +122,8 @@ struct SyntaxBindingLowerer<'a> {
     bodies: BTreeMap<HirBodyId, HirBody>,
     capture_keys: BTreeMap<(HirBodyId, HirLocalId), HirCaptureId>,
     diagnostics: Vec<Diagnostic>,
+    service_capabilities_enabled: bool,
+    service_capabilities: BTreeMap<HirExprId, ServiceLexicalCapability>,
 }
 
 struct ActiveScope {
@@ -189,6 +193,8 @@ impl<'a> SyntaxBindingLowerer<'a> {
             bodies: BTreeMap::from([(input.body_id, root_body)]),
             capture_keys: BTreeMap::new(),
             diagnostics: Vec::new(),
+            service_capabilities_enabled: input.service_capabilities_enabled,
+            service_capabilities: BTreeMap::new(),
         };
 
         for param in input.params {
@@ -300,6 +306,8 @@ impl<'a> SyntaxBindingLowerer<'a> {
             bodies: BTreeMap::from([(input.body_id, root_body)]),
             capture_keys: BTreeMap::new(),
             diagnostics: Vec::new(),
+            service_capabilities_enabled: false,
+            service_capabilities: BTreeMap::new(),
         };
         let value = lowerer.bind_expr(&input.expression, PathUsage::Value);
         lowerer.body_mut(input.body_id).root = HirBodyRoot::Expr(value);
@@ -317,6 +325,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 pattern_resolutions: self.pattern_resolutions,
                 pending_constructor_paths: self.pending_constructor_paths,
                 pending_pattern_paths: self.pending_pattern_paths,
+                service_capabilities: self.service_capabilities,
             },
             self.bodies.into_values().collect(),
             self.diagnostics,
@@ -659,6 +668,47 @@ impl<'a> SyntaxBindingLowerer<'a> {
             return;
         }
 
+        if let Some(capability) = service_lexical_capability(name) {
+            if !self.service_capabilities_enabled {
+                self.diagnostics.push(
+                    Diagnostic::error(format!(
+                        "`{name}` is only available inside #[service_impl] methods"
+                    ))
+                    .with_code("hir::service_capability_outside_impl")
+                    .with_span(span),
+                );
+                return;
+            }
+            self.service_capabilities.insert(id, capability);
+            if self.current_body() != self.root_body {
+                self.diagnostics.push(
+                    Diagnostic::error(format!("`{name}` cannot be captured by a nested function"))
+                        .with_code("hir::service_capability_capture")
+                        .with_span(span),
+                );
+                return;
+            }
+            let expected_depth = match capability {
+                ServiceLexicalCapability::Base => 1,
+                ServiceLexicalCapability::Services => 2,
+            };
+            if usage != PathUsage::CalleeFieldBase(expected_depth) {
+                let expected = match capability {
+                    ServiceLexicalCapability::Base => "base.method(...)",
+                    ServiceLexicalCapability::Services => "services.service.method(...)",
+                };
+                self.diagnostics.push(
+                    Diagnostic::error(format!(
+                        "`{name}` is a scoped service capability and cannot be used as a value"
+                    ))
+                    .with_code("hir::invalid_service_capability_use")
+                    .with_span(span)
+                    .with_label(span, format!("call it directly as `{expected}`")),
+                );
+            }
+            return;
+        }
+
         if matches!(
             usage,
             PathUsage::Value | PathUsage::Callee | PathUsage::AssignmentTarget
@@ -717,5 +767,13 @@ impl<'a> SyntaxBindingLowerer<'a> {
             origin_span,
             segment_span,
         ))
+    }
+}
+
+fn service_lexical_capability(name: &str) -> Option<ServiceLexicalCapability> {
+    match name {
+        "base" => Some(ServiceLexicalCapability::Base),
+        "services" => Some(ServiceLexicalCapability::Services),
+        _ => None,
     }
 }

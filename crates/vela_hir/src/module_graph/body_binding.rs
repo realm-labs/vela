@@ -181,8 +181,13 @@ impl ModuleGraph {
     pub(super) fn bind_function_body(&mut self, module: &HirModule, source: FunctionBodySource) {
         let declaration = source.declaration;
         let body = self.next_body_id();
-        let (bindings, diagnostics) =
-            self.bind_body(module, source, body, HirBodyOwner::Declaration(declaration));
+        let (bindings, diagnostics) = self.bind_body(
+            module,
+            source,
+            body,
+            HirBodyOwner::Declaration(declaration),
+            false,
+        );
         self.function_bodies.insert(declaration, body);
         self.bindings.insert(declaration, bindings);
         self.diagnostics.extend(diagnostics);
@@ -200,6 +205,7 @@ impl ModuleGraph {
             source,
             body,
             HirBodyOwner::TraitDefaultMethod(method),
+            false,
         );
         self.trait_default_method_bodies.insert(method, body);
         self.trait_default_method_bindings.insert(method, bindings);
@@ -213,8 +219,15 @@ impl ModuleGraph {
         source: FunctionBodySource,
     ) {
         let body = self.next_body_id();
-        let (bindings, diagnostics) =
-            self.bind_body(module, source, body, HirBodyOwner::ImplMethod(method));
+        let service_capabilities_enabled =
+            crate::service_impl::is_service_impl(self.declaration_attrs(source.declaration));
+        let (bindings, diagnostics) = self.bind_body(
+            module,
+            source,
+            body,
+            HirBodyOwner::ImplMethod(method),
+            service_capabilities_enabled,
+        );
         self.impl_method_bodies.insert(method, body);
         self.impl_method_bindings.insert(method, bindings);
         self.diagnostics.extend(diagnostics);
@@ -272,6 +285,7 @@ impl ModuleGraph {
         source: FunctionBodySource,
         body: HirBodyId,
         owner: HirBodyOwner,
+        service_capabilities_enabled: bool,
     ) -> (BindingMap, Vec<Diagnostic>) {
         let module_declarations = module
             .declarations
@@ -297,6 +311,7 @@ impl ModuleGraph {
             imports,
             body_id: body,
             owner,
+            service_capabilities_enabled,
             next_expr_id: &mut self.next_expr_id,
             next_local_id: &mut self.next_local_id,
             next_body_id: &mut self.next_body_id,
