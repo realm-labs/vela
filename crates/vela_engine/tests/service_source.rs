@@ -49,7 +49,10 @@ impl InventoryHotfix {
     let manifest =
         ServiceSourceManifest::link(sources.graph(), &schema).expect("schema-linked manifest");
     assert_eq!(manifest.len(), 1);
-    let table = manifest.into_snapshot(&schema).expect("complete snapshot");
+    let table = manifest
+        .clone()
+        .into_snapshot(&schema)
+        .expect("complete snapshot");
     let inventory = service(&schema);
     let grant = method(inventory, "grant");
     let remove = method(inventory, "remove");
@@ -70,6 +73,9 @@ impl InventoryHotfix {
     let artifact = engine
         .link_compiled_program(compiled)
         .expect("service bytecode should link");
+    manifest
+        .validate_artifact(&artifact)
+        .expect("manifest should match its linked artifact");
     assert!(
         artifact
             .program()
@@ -94,6 +100,37 @@ impl InventoryHotfix {
         table.get(inventory.id(), remove.id),
         Some(&ServiceMethodSelection::RustDefault)
     );
+}
+
+#[test]
+fn source_manifest_rejects_an_unrelated_linked_artifact() {
+    let schema = schema();
+    let service_text = r#"
+#[service_impl(test::inventory)]
+impl InventoryHotfix {
+    fn grant(value) {
+        return value + 1;
+    }
+}
+"#;
+    let sources = source(service_text);
+    let manifest =
+        ServiceSourceManifest::link(sources.graph(), &schema).expect("schema-linked manifest");
+    let engine = engine();
+    let unrelated = engine
+        .compile_source("fn unrelated(value) { return value; }")
+        .expect("unrelated source should compile");
+    let artifact = engine
+        .link_compiled_program(unrelated)
+        .expect("unrelated source should link");
+
+    assert!(matches!(
+        manifest
+            .validate_artifact(&artifact)
+            .expect_err("unrelated artifact must not satisfy service targets")
+            .kind(),
+        ServiceSourceErrorKind::MissingCompiledTarget { .. }
+    ));
 }
 
 #[test]

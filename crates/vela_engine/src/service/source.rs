@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
+use vela_bytecode::LinkedArtifact;
 use vela_common::{CallableAsyncness, Span};
 use vela_def::{FunctionId, script_function_id};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirNodeId, ModuleId};
@@ -12,8 +13,8 @@ use vela_hir::type_hint::FunctionSignature;
 use vela_vm::error::VmResult;
 
 use super::{
-    ServiceMethodKey, ServiceMethodUpdate, ServiceSchema, ServiceSelectionError,
-    ServiceSelectionTable, ServiceSetSchema,
+    ServiceMethodKey, ServiceMethodSelection, ServiceMethodUpdate, ServiceSchema,
+    ServiceSelectionError, ServiceSelectionTable, ServiceSetSchema,
 };
 use crate::runtime::{CallArgs, CallOptions, Runtime, VelaValue};
 
@@ -196,6 +197,22 @@ impl ServiceSourceManifest {
         ServiceSelectionTable::snapshot(schema, self.updates)
     }
 
+    /// Proves that every selected Vela method is present with the linked
+    /// signature expected by this source manifest.
+    ///
+    /// Candidate construction must call this before retaining the artifact.
+    /// A stable [`FunctionId`] alone is not sufficient because the caller may
+    /// accidentally pair a manifest with an unrelated compile generation.
+    pub fn validate_artifact(&self, artifact: &LinkedArtifact) -> Result<(), ServiceSourceError> {
+        for update in &self.updates {
+            let ServiceMethodSelection::Vela(target) = update.selection() else {
+                continue;
+            };
+            validate_compiled_target(target, artifact)?;
+        }
+        Ok(())
+    }
+
     pub fn into_updates(self) -> Vec<ServiceMethodUpdate<VelaServiceMethod>> {
         self.updates
     }
@@ -248,6 +265,15 @@ impl ServiceSourceError {
             ServiceSourceErrorKind::ParameterDefaultUnsupported { .. } => {
                 "service.source.parameter_default"
             }
+            ServiceSourceErrorKind::MissingCompiledTarget { .. } => {
+                "service.source.missing_compiled_target"
+            }
+            ServiceSourceErrorKind::CompiledAsyncnessMismatch { .. } => {
+                "service.source.compiled_asyncness_mismatch"
+            }
+            ServiceSourceErrorKind::CompiledParameterCountMismatch { .. } => {
+                "service.source.compiled_parameter_count"
+            }
         }
     }
 }
@@ -286,6 +312,20 @@ pub enum ServiceSourceErrorKind {
         service: String,
         method: String,
         parameter: String,
+    },
+    MissingCompiledTarget {
+        symbol: String,
+        function: FunctionId,
+    },
+    CompiledAsyncnessMismatch {
+        symbol: String,
+        expected: CallableAsyncness,
+        actual: CallableAsyncness,
+    },
+    CompiledParameterCountMismatch {
+        symbol: String,
+        expected: usize,
+        actual: usize,
     },
 }
 
@@ -338,6 +378,26 @@ impl fmt::Display for ServiceSourceError {
             } => write!(
                 formatter,
                 "service method `{service}::{method}` parameter `{parameter}` cannot declare a default"
+            ),
+            ServiceSourceErrorKind::MissingCompiledTarget { symbol, function } => write!(
+                formatter,
+                "linked artifact does not contain service target `{symbol}` ({function:?})"
+            ),
+            ServiceSourceErrorKind::CompiledAsyncnessMismatch {
+                symbol,
+                expected,
+                actual,
+            } => write!(
+                formatter,
+                "compiled service target `{symbol}` expects {expected:?}, found {actual:?}"
+            ),
+            ServiceSourceErrorKind::CompiledParameterCountMismatch {
+                symbol,
+                expected,
+                actual,
+            } => write!(
+                formatter,
+                "compiled service target `{symbol}` expects {expected} parameters, found {actual}"
             ),
         }
     }
@@ -399,4 +459,53 @@ fn validate_signature(
         ));
     }
     Ok(())
+}
+
+fn validate_compiled_target(
+    target: &VelaServiceMethod,
+    artifact: &LinkedArtifact,
+) -> Result<(), ServiceSourceError> {
+    let Some(_handle) = artifact.program().entry_point_by_id(target.function()) else {
+        return Err(missing_compiled_target(target));
+    };
+    let Some(verified) = artifact.verified_mir().root(target.function()) else {
+        return Err(missing_compiled_target(target));
+    };
+    let Some(function_id) = verified.program().function_by_id(target.function()) else {
+        return Err(missing_compiled_target(target));
+    };
+    let Some(function) = verified.program().function(function_id) else {
+        return Err(missing_compiled_target(target));
+    };
+    if function.asyncness() != target.signature().asyncness {
+        return Err(ServiceSourceError::new(
+            target.span(),
+            ServiceSourceErrorKind::CompiledAsyncnessMismatch {
+                symbol: target.symbol().to_owned(),
+                expected: target.signature().asyncness,
+                actual: function.asyncness(),
+            },
+        ));
+    }
+    if function.parameters().len() != target.signature().params.len() {
+        return Err(ServiceSourceError::new(
+            target.span(),
+            ServiceSourceErrorKind::CompiledParameterCountMismatch {
+                symbol: target.symbol().to_owned(),
+                expected: target.signature().params.len(),
+                actual: function.parameters().len(),
+            },
+        ));
+    }
+    Ok(())
+}
+
+fn missing_compiled_target(target: &VelaServiceMethod) -> ServiceSourceError {
+    ServiceSourceError::new(
+        target.span(),
+        ServiceSourceErrorKind::MissingCompiledTarget {
+            symbol: target.symbol().to_owned(),
+            function: target.function(),
+        },
+    )
 }
