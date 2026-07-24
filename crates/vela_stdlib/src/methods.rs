@@ -1076,6 +1076,16 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
     ),
     StdMethodSpec::new(
         "Iterator",
+        "fold",
+        &[
+            StdParamSpec::new("initial", "any"),
+            StdParamSpec::new("callback", "function"),
+        ],
+        "any",
+        "Consumes the iterator by combining an accumulator with each value.",
+    ),
+    StdMethodSpec::new(
+        "Iterator",
         "take",
         &[StdParamSpec::new("count", "i64")],
         "iterator",

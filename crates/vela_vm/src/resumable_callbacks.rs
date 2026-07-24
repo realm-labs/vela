@@ -62,7 +62,11 @@ impl ResumableCallbackMethod {
             crate::iteration::ResumableIteratorMethod::new(*receiver, cache, args)
         {
             return Some(iterator.map(|iterator| Self {
-                callback_value: args.first().copied().unwrap_or(Value::Missing),
+                callback_value: if cache.target == CallbackMethodInlineCacheTarget::Fold {
+                    args.get(1).copied().unwrap_or(Value::Missing)
+                } else {
+                    args.first().copied().unwrap_or(Value::Missing)
+                },
                 callback: None,
                 state: CallbackState::Iterator(Box::new(iterator)),
                 host_retain_writeback: None,

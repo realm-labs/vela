@@ -50,6 +50,15 @@ const ITERATOR_METHODS: &[MethodSpec] = &[
         "Returns a lazy iterator that yields values accepted by a callback.",
     ),
     MethodSpec::new(
+        "fold",
+        &[
+            ParamSpec::new("initial", "any"),
+            ParamSpec::new("callback", "function"),
+        ],
+        "any",
+        "Consumes the iterator by combining an accumulator with each value.",
+    ),
+    MethodSpec::new(
         "take",
         &[ParamSpec::new("count", "i64")],
         "iterator",

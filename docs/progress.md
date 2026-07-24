@@ -32,9 +32,10 @@ Phase status:
 S3 already provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared
 field, index, and key access; call-scoped Array, Map, and Set iterators with
-frozen traversal structure and live prepared reads; prepared Array searches;
-live read-only Array, Map, and Set callback traversal, including Array
-and Map grouping; bounded collection projections; complex child views with
+frozen traversal structure and live prepared reads; terminal iterator fold and
+collection; prepared Array searches; live read-only Array, Map, and Set
+callback traversal, including Array and Map grouping; bounded collection
+projections; complex child views with
 exact nested identity and lifetime enforcement; and immediate write-through
 for the implemented Array, Map, and Set mutations. User-defined Sequence,
 MapLike, and SetLike adapters reuse the same protocol, traversal, callback,

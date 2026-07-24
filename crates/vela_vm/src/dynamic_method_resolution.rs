@@ -465,6 +465,7 @@ fn iterator_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "find" => ids.iterator_find,
         "map" => ids.iterator_map,
         "filter" => ids.iterator_filter,
+        "fold" => ids.iterator_fold,
         "take" => ids.iterator_take,
         "skip" => ids.iterator_skip,
         "collect_array" => ids.iterator_collect_array,

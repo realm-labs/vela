@@ -49,6 +49,21 @@ impl StdlibMethodFact {
         self.lambda = Some(LambdaFact::new(params, returns));
         self
     }
+
+    fn with_params_and_lambda(
+        mut self,
+        mut params: Vec<TypeFact>,
+        lambda_params: Vec<TypeFact>,
+        lambda_returns: TypeFact,
+    ) -> Self {
+        params.push(TypeFact::function(
+            lambda_params.clone(),
+            lambda_returns.clone(),
+        ));
+        self.params = params;
+        self.lambda = Some(LambdaFact::new(lambda_params, lambda_returns));
+        self
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

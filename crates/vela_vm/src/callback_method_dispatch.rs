@@ -58,6 +58,7 @@ struct CallbackMethodIds {
     iterator_next: MethodId,
     iterator_map: MethodId,
     iterator_filter: MethodId,
+    iterator_fold: MethodId,
     iterator_find: MethodId,
     iterator_any: MethodId,
     iterator_all: MethodId,
@@ -106,6 +107,7 @@ impl CallbackMethodIds {
             iterator_next: standard_method_id("Iterator", "next"),
             iterator_map: standard_method_id("Iterator", "map"),
             iterator_filter: standard_method_id("Iterator", "filter"),
+            iterator_fold: standard_method_id("Iterator", "fold"),
             iterator_find: standard_method_id("Iterator", "find"),
             iterator_any: standard_method_id("Iterator", "any"),
             iterator_all: standard_method_id("Iterator", "all"),
@@ -335,6 +337,9 @@ fn callback_method_target(
         (StandardMethodReceiver::Iterator, id) if id == ids.iterator_filter => {
             CallbackMethodInlineCacheTarget::Filter
         }
+        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_fold => {
+            CallbackMethodInlineCacheTarget::Fold
+        }
         (StandardMethodReceiver::Iterator, id) if id == ids.iterator_find => {
             CallbackMethodInlineCacheTarget::Find
         }
@@ -534,6 +539,9 @@ pub(crate) fn call_cached(
         }
         (StandardMethodReceiver::Iterator, CallbackMethodInlineCacheTarget::Filter) => {
             iteration::filter_method(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Iterator, CallbackMethodInlineCacheTarget::Fold) => {
+            iteration::fold_method(receiver, args, dispatch.runtime())
         }
         (StandardMethodReceiver::Iterator, CallbackMethodInlineCacheTarget::Find) => {
             iteration::find_method(receiver, args, dispatch.runtime())

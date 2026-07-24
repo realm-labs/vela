@@ -604,6 +604,23 @@ fn main() {
 }
 
 #[test]
+fn linked_callback_value_method_caches_iterator_fold_target() {
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
+    return [2, 3, 5].iter().fold(10, |acc, value| acc + value);
+}
+"#,
+        "fold",
+        "Iterator",
+        "fold",
+        StandardMethodReceiver::Iterator,
+        CallbackMethodInlineCacheTarget::Fold,
+        Value::i64(20),
+    );
+}
+
+#[test]
 fn linked_callback_value_method_caches_set_targets() {
     assert_callback_value_method_cache(
         r#"

@@ -724,6 +724,7 @@ fn main() {
     let range_iter = reflect::method(range_type, "iter");
     let iterator_next = reflect::method(iterator_type, "next");
     let iterator_map = reflect::method(iterator_type, "map");
+    let iterator_fold = reflect::method(iterator_type, "fold");
     let iterator_take = reflect::method(iterator_type, "take");
     let iterator_collect_array = reflect::method(iterator_type, "collect_array");
     let iterator_collect_set = reflect::method(iterator_type, "collect_set");
@@ -872,7 +873,7 @@ fn main() {
         && map_methods.len() >= 19
         && set_methods.len() >= 21
         && range_methods.len() == 3
-        && iterator_methods.len() == 12
+        && iterator_methods.len() == 13
         && option_methods.len() >= 9
         && result_methods.len() >= 10
         && reflect::has_method(array_type, "push")
@@ -891,6 +892,7 @@ fn main() {
         && reflect::has_method(iterator_type, "find")
         && reflect::has_method(iterator_type, "map")
         && reflect::has_method(iterator_type, "filter")
+        && reflect::has_method(iterator_type, "fold")
         && reflect::has_method(iterator_type, "take")
         && reflect::has_method(iterator_type, "skip")
         && reflect::has_method(iterator_type, "collect_array")
@@ -922,6 +924,11 @@ fn main() {
         && iterator_map.params[0].name == "callback"
         && iterator_map.params[0].type.unwrap_or("") == "Function"
         && reflect::returns(iterator_map).unwrap_or("") == "Iterator"
+        && iterator_fold.params[0].name == "initial"
+        && iterator_fold.params[0].type.unwrap_or("") == "Any"
+        && iterator_fold.params[1].name == "callback"
+        && iterator_fold.params[1].type.unwrap_or("") == "Function"
+        && reflect::returns(iterator_fold).unwrap_or("") == "Any"
         && iterator_take.params[0].name == "count"
         && iterator_take.params[0].type.unwrap_or("") == "i64"
         && reflect::returns(iterator_take).unwrap_or("") == "Iterator"

@@ -342,8 +342,9 @@ freezes the Array extent or deterministic Map/Set key order; each poll then
 performs one prepared live read through HostAccess, revalidating the root and
 lease. Later value replacement is visible, structural growth is outside the
 frozen traversal, and removal of a pending indexed/keyed item fails instead of
-silently substituting a stale value. Read-only collection callbacks and Array
-`group_by` use the same resumable path and charge only consumed items.
+silently substituting a stale value. Read-only collection callbacks, Array and
+Map `group_by`, and `Iterator.fold` use the same resumable path and charge only
+consumed items.
 Host-backed iterators cannot escape their root call. Full bounded
 `HostCollectionProjection` snapshots remain for operations whose contract
 requires detached input, stable ordering, or transactional write-back, such as

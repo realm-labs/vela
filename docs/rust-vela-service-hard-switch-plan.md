@@ -207,20 +207,17 @@ bulk host-backed operations preserve budgets, identity, and immediate writes
 Status: **Active.** The accepted foundation already covers recursive concrete
 standard bindings; exact owned, shared, fixed, and growable representation
 facts; generated sync/async borrowed collection adapters; scoped retained
-reborrow; prepared field/index/key plans; deterministic budgeted collection
-projections; and immediate write-through for the implemented Array, Map, and
-Set mutations.
+reborrow; exact complex child identity and lifetime; prepared field/index/key
+plans; live iterator fold and collection; live callback filtering and grouping;
+deterministic budgeted collection projections; transactional bulk mutations;
+richer user-defined adapters; and immediate write-through for the implemented
+Array, Map, and Set mutations.
 
 The remaining exit work is deliberately expressed as capability gaps, not a
 method-by-method chronology:
 
-- complex-element borrowed views with exact identity, lease, escape, and nested
-  reborrow proof;
 - remaining element/key methods and live or resumable traversal behavior;
-- remaining transactional bulk mutations with conversion, budget, and stale
-  snapshot failure before mutation;
-- richer user-defined collection adapters through the same protocol surface;
-- prepared element-method, grouping, filtering, and traversal operations with
+- prepared element-method and remaining traversal operations with
   no successful-path name lookup, reflection walk, or HostPath materialization;
   and
 - the complete owned/shared/exclusive matrix and phase-wide validation gate.

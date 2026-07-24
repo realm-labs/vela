@@ -489,6 +489,30 @@ fn main() {
 }
 
 #[test]
+fn iterator_fold_consumes_owned_values_and_preserves_initial_on_empty() {
+    let code = compile_test_function(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let total = [2, 3, 5].iter().fold(10, |acc, value| acc * 2 + value);
+    let entry_total = {"gold": 4, "xp": 6}
+        .entries()
+        .fold(0, |acc, entry| acc + entry.value);
+    let empty = [].iter().fold(7, |acc, value| acc + value);
+    return total * 100 + entry_total * 10 + empty;
+}
+"#,
+        "main",
+    )
+    .expect("compile iterator fold source");
+
+    assert_eq!(
+        run_linked_test_code(code),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10007)))
+    );
+}
+
+#[test]
 fn iterator_lazy_adapters_collect_without_intermediate_arrays() {
     let code = compile_test_function(
         SourceId::new(1),

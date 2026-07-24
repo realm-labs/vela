@@ -565,6 +565,32 @@ fn iterator_methods_expose_item_and_callback_facts_without_generics() {
     );
     assert_eq!(filter.returns, iterator.clone());
 
+    let fold = stdlib_method_fact_for_call(
+        &iterator,
+        "fold",
+        Some(&TypeFact::I64),
+        Some(2),
+        &[
+            TypeFact::I64,
+            TypeFact::function(
+                vec![TypeFact::I64, TypeFact::record("Reward")],
+                TypeFact::I64,
+            ),
+        ],
+    )
+    .expect("fold fact");
+    assert_eq!(fold.returns, TypeFact::I64);
+    assert_eq!(
+        fold.params,
+        vec![
+            TypeFact::I64,
+            TypeFact::function(
+                vec![TypeFact::I64, TypeFact::record("Reward")],
+                TypeFact::I64,
+            )
+        ]
+    );
+
     let take = stdlib_method_fact(&iterator, "take", None).expect("take fact");
     assert_eq!(take.params, vec![TypeFact::I64]);
     assert_eq!(take.returns, TypeFact::iterator(TypeFact::record("Reward")));

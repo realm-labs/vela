@@ -604,6 +604,7 @@ pub(super) fn iterator_method_fact(
     item: TypeFact,
     method: &str,
     lambda_return: Option<&TypeFact>,
+    arguments: Option<&[TypeFact]>,
 ) -> Option<StdlibMethodFact> {
     let receiver = TypeFact::iterator(item.clone());
     match method {
@@ -636,6 +637,22 @@ pub(super) fn iterator_method_fact(
             StdlibMethodFact::new(receiver, "filter", TypeFact::iterator(item.clone()))
                 .with_lambda(vec![item], TypeFact::BOOL),
         ),
+        "fold" => {
+            let initial = arguments
+                .and_then(|arguments| arguments.first())
+                .filter(|fact| !matches!(fact, TypeFact::Unknown))
+                .cloned()
+                .unwrap_or(TypeFact::Any);
+            let accumulator = lambda_return.cloned().unwrap_or_else(|| initial.clone());
+            Some(
+                StdlibMethodFact::new(receiver, "fold", accumulator.clone())
+                    .with_params_and_lambda(
+                        vec![initial],
+                        vec![accumulator.clone(), item],
+                        accumulator,
+                    ),
+            )
+        }
         "take" => Some(
             StdlibMethodFact::new(receiver, "take", TypeFact::iterator(item.clone()))
                 .with_params(vec![TypeFact::I64]),

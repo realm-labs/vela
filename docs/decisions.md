@@ -2797,6 +2797,13 @@ charge only items actually read. Map grouping returns
 deterministic traversal order inside its group. Host-backed iterators are
 call-scoped and fail on escape.
 
+`Iterator.fold(initial, callback)` is the shared reduction surface for owned
+collections and borrowed collection views. It consumes the iterator, calls the
+callback with `(accumulator, item)`, returns `initial` unchanged for an empty
+iterator, and retains the current accumulator as a GC root across resumable
+callback frames. A host-backed source stays live and call-scoped and charges
+the same prepared poll and callback budget as other terminal iterator methods.
+
 Bounded `HostCollectionProjection` remains the explicit detached-snapshot
 boundary for ordering, transforms, set algebra, Map merge, extend sources, and
 transactional retain. The adapter receives semantic collection operations,

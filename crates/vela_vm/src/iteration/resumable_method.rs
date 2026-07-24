@@ -32,6 +32,7 @@ pub(crate) struct ResumableIteratorMethod {
     count: i64,
     found: Option<Value>,
     decision: Option<bool>,
+    accumulator: Option<Value>,
 }
 
 pub(crate) enum ResumableIteratorMethodStep {
@@ -68,6 +69,7 @@ impl ResumableIteratorMethod {
             CallbackMethodInlineCacheTarget::Find => ("method find", 1),
             CallbackMethodInlineCacheTarget::Any => ("method any", 1),
             CallbackMethodInlineCacheTarget::All => ("method all", 1),
+            CallbackMethodInlineCacheTarget::Fold => ("method fold", 2),
             CallbackMethodInlineCacheTarget::Map | CallbackMethodInlineCacheTarget::Filter => {
                 return None;
             }
@@ -84,7 +86,11 @@ impl ResumableIteratorMethod {
             receiver,
             target: cache.target,
             operation,
-            callback_value: args.first().copied(),
+            callback_value: if cache.target == CallbackMethodInlineCacheTarget::Fold {
+                args.get(1).copied()
+            } else {
+                args.first().copied()
+            },
             callback: None,
             next: None,
             awaiting_outer: None,
@@ -94,6 +100,7 @@ impl ResumableIteratorMethod {
             count: 0,
             found: None,
             decision: None,
+            accumulator: (cache.target == CallbackMethodInlineCacheTarget::Fold).then(|| args[0]),
         }))
     }
 
@@ -116,6 +123,9 @@ impl ResumableIteratorMethod {
                 }
                 CallbackMethodInlineCacheTarget::All if !is_truthy(&predicate) => {
                     self.decision = Some(false);
+                }
+                CallbackMethodInlineCacheTarget::Fold => {
+                    self.accumulator = Some(predicate);
                 }
                 CallbackMethodInlineCacheTarget::Find
                 | CallbackMethodInlineCacheTarget::Any
@@ -179,17 +189,26 @@ impl ResumableIteratorMethod {
                         }
                         CallbackMethodInlineCacheTarget::Find
                         | CallbackMethodInlineCacheTarget::Any
-                        | CallbackMethodInlineCacheTarget::All => {
+                        | CallbackMethodInlineCacheTarget::All
+                        | CallbackMethodInlineCacheTarget::Fold => {
                             self.awaiting_outer = Some(value);
                             if let Some(budget) = budget.as_deref_mut() {
                                 budget.charge_execution_units(1)?;
                             }
+                            let args = if self.target == CallbackMethodInlineCacheTarget::Fold {
+                                vec![
+                                    self.accumulator.ok_or_else(incomplete_iterator_method)?,
+                                    value,
+                                ]
+                            } else {
+                                vec![value]
+                            };
                             let callback = self.prepare_callback(heap.as_deref())?;
                             return Ok(ResumableIteratorMethodStep::Call {
                                 owner: Arc::clone(&callback.owner),
                                 function: callback.function,
                                 captures: callback.captures.clone(),
-                                args: vec![value],
+                                args,
                             });
                         }
                         _ => return Err(incomplete_iterator_method()),
@@ -213,6 +232,9 @@ impl ResumableIteratorMethod {
         }
         if let Some(value) = self.awaiting_outer {
             heap.protect_values(&[value]);
+        }
+        if let Some(accumulator) = self.accumulator {
+            heap.protect_values(&[accumulator]);
         }
         heap.protect_values(&self.values);
         for value in self.set.values() {
@@ -283,6 +305,9 @@ impl ResumableIteratorMethod {
             }
             CallbackMethodInlineCacheTarget::Any => Value::Bool(self.decision == Some(true)),
             CallbackMethodInlineCacheTarget::All => Value::Bool(self.decision != Some(false)),
+            CallbackMethodInlineCacheTarget::Fold => {
+                self.accumulator.ok_or_else(incomplete_iterator_method)?
+            }
             CallbackMethodInlineCacheTarget::CollectArray => {
                 check_collect_array_len(self.values.len(), budget.as_deref())?;
                 let Some(heap) = heap.as_deref_mut() else {

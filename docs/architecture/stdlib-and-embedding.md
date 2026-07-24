@@ -20,6 +20,7 @@ arr.iter().find(|x| predicate)
 arr.iter().any(|x| predicate)
 arr.iter().all(|x| predicate)
 arr.iter().count(|x| predicate)
+arr.iter().fold(initial, |acc, x| next_acc)
 ```
 
 The retained eager array helpers are convenience wrappers over the same
@@ -47,7 +48,14 @@ arr.iter().map(|x| value) gives x: E and returns Iterator(item = TypeFact(value)
 arr.iter().find(|x| predicate) gives x: E and returns Option-like enum containing E
 arr.sum(|x| value) gives x: E and returns the concrete scalar type produced by value
 arr.group_by(|x| key) gives x: E and returns Map(key = TypeFact(key), value = Array<E>)
+arr.iter().fold(initial, |acc, x| next_acc) returns the callback accumulator fact
 ```
+
+`Iterator.fold` consumes the iterator in deterministic traversal order. The
+callback receives the current accumulator and one item; an empty iterator
+returns the initial value without invoking the callback. Host-backed iterators
+use the same prepared live polling, call-scoped lifetime, and per-item budget
+rules as their other terminal methods.
 
 ### Map
 

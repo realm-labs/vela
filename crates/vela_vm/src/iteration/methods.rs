@@ -325,6 +325,38 @@ pub(crate) fn find_method(
     option_value(found, heap_ref, runtime.budget.as_deref_mut())
 }
 
+pub(crate) fn fold_method(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    runtime_checks::expect_arity("fold", args, 2)?;
+    let mut accumulator = args[0];
+    let callback = args[1];
+    with_taken_iterator(
+        receiver,
+        &mut runtime,
+        "method fold",
+        |iterator, runtime| {
+            while let Some(value) =
+                iterator.next_with_runtime(runtime, "method fold", &[accumulator])?
+            {
+                let mut protected = iterator.protected_values();
+                protected.push(accumulator);
+                accumulator = crate::method_runtime::call_callback(
+                    runtime,
+                    "method fold",
+                    &callback,
+                    &[accumulator, value],
+                    &protected,
+                )?;
+            }
+            Ok(())
+        },
+    )?;
+    Ok(accumulator)
+}
+
 pub(crate) fn collect_values(
     iterator: &mut IteratorState,
     runtime: &mut MethodRuntime<'_, '_, '_>,

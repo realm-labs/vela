@@ -587,6 +587,7 @@ pub enum CallbackMethodInlineCacheTarget {
     Any,
     All,
     Count,
+    Fold,
     Sum,
     GroupBy,
     SortBy,

@@ -156,6 +156,7 @@ const ITERATOR_METHOD_NAMES: &[&str] = &[
     "find",
     "map",
     "filter",
+    "fold",
     "take",
     "skip",
     "collect_array",
@@ -234,7 +235,7 @@ pub(super) fn method_fact(
             ),
         ),
         TypeFact::Iterator { item } => {
-            iterator_method_fact((**item).clone(), method, lambda_return)
+            iterator_method_fact((**item).clone(), method, lambda_return, arguments)
         }
         TypeFact::Primitive(PrimitiveTag::String) => string_method_fact(method),
         TypeFact::Primitive(PrimitiveTag::Bytes) => bytes_method_fact(method),
