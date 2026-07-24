@@ -106,14 +106,15 @@ impl ServiceSchema {
     pub fn new(
         id: ServiceId,
         path: impl Into<String>,
-        methods: Vec<ServiceMethodDescriptor>,
+        mut methods: Vec<ServiceMethodDescriptor>,
         registry: &TypeBindingRegistry,
     ) -> Result<Self, ServiceSchemaError> {
         let path = path.into();
         validate_qualified_path(&path, ServicePathKind::Service)?;
         let mut method_ids = BTreeSet::new();
         let mut method_paths = BTreeSet::new();
-        for method in &methods {
+        for method in &mut methods {
+            complete_transitive_type_closure(method, registry)?;
             if !method_ids.insert(method.id) {
                 return Err(ServiceSchemaError::DuplicateMethodId {
                     service: path,
@@ -292,6 +293,18 @@ pub enum ServiceSchemaError {
         location: String,
         type_id: InteropTypeId,
     },
+    MissingTransitiveTypeBinding {
+        method: String,
+        location: String,
+        type_id: InteropTypeId,
+        type_name: String,
+    },
+    UnsupportedTransitiveTypeBinding {
+        method: String,
+        location: String,
+        type_id: InteropTypeId,
+        type_name: String,
+    },
     MissingRustTypeBinding {
         location: String,
         rust_type: &'static str,
@@ -381,6 +394,26 @@ impl fmt::Display for ServiceSchemaError {
                 "service method {method} omits {location} type {} from its closure",
                 type_id.get()
             ),
+            Self::MissingTransitiveTypeBinding {
+                method,
+                location,
+                type_id,
+                type_name,
+            } => write!(
+                formatter,
+                "service method {method} has no registered binding for transitive {location} type {type_name} ({})",
+                type_id.get()
+            ),
+            Self::UnsupportedTransitiveTypeBinding {
+                method,
+                location,
+                type_id,
+                type_name,
+            } => write!(
+                formatter,
+                "service method {method} transitive {location} type {type_name} ({}) has no owned representation",
+                type_id.get()
+            ),
             Self::MissingRustTypeBinding {
                 location,
                 rust_type,
@@ -416,6 +449,125 @@ impl fmt::Display for ServiceSchemaError {
 }
 
 impl std::error::Error for ServiceSchemaError {}
+
+fn complete_transitive_type_closure(
+    method: &mut ServiceMethodDescriptor,
+    registry: &TypeBindingRegistry,
+) -> Result<(), ServiceSchemaError> {
+    let mut additions = Vec::new();
+    let mut known = method
+        .type_closure
+        .iter()
+        .map(|requirement| requirement.contract.type_id)
+        .collect::<BTreeSet<_>>();
+    for parameter in &method.callable.parameters {
+        if parameter.mode != BoundaryMode::HiddenContext {
+            collect_transitive_type_requirements(
+                method.path.as_str(),
+                &format!("parameter {}", parameter.name),
+                &parameter.ty,
+                registry,
+                &mut known,
+                &mut additions,
+            )?;
+        }
+    }
+    collect_transitive_type_requirements(
+        method.path.as_str(),
+        "return",
+        &method.callable.returns.ty,
+        registry,
+        &mut known,
+        &mut additions,
+    )?;
+    method.type_closure.extend(additions);
+    Ok(())
+}
+
+fn collect_transitive_type_requirements(
+    method: &str,
+    location: &str,
+    hint: &TypeHint,
+    registry: &TypeBindingRegistry,
+    known: &mut BTreeSet<InteropTypeId>,
+    additions: &mut Vec<ServiceTypeRequirement>,
+) -> Result<(), ServiceSchemaError> {
+    match hint {
+        TypeHint::Record(key) | TypeHint::Enum(key) => {
+            let type_id = InteropTypeId::from_type_id(key.id);
+            if !known.insert(type_id) {
+                return Ok(());
+            }
+            let Some(binding) = registry.get(type_id).filter(|binding| binding.key == *key) else {
+                return Err(ServiceSchemaError::MissingTransitiveTypeBinding {
+                    method: method.to_owned(),
+                    location: location.to_owned(),
+                    type_id,
+                    type_name: key.name.clone(),
+                });
+            };
+            if !binding.supports_representation(InteropRepresentation::Owned) {
+                return Err(ServiceSchemaError::UnsupportedTransitiveTypeBinding {
+                    method: method.to_owned(),
+                    location: location.to_owned(),
+                    type_id,
+                    type_name: key.name.clone(),
+                });
+            }
+            additions.push(ServiceTypeRequirement::from_contract(
+                format!("{location} -> {}", key.name),
+                InteropBindingContract::new(
+                    binding.id,
+                    InteropRepresentation::Owned,
+                    binding.abi_fingerprint,
+                ),
+            ));
+            Ok(())
+        }
+        TypeHint::ArrayOf(element)
+        | TypeHint::ArrayViewOf(element)
+        | TypeHint::ArrayMutOf { element, .. }
+        | TypeHint::SetOf(element)
+        | TypeHint::SetViewOf(element)
+        | TypeHint::SetMutOf { element, .. }
+        | TypeHint::IteratorOf(element)
+        | TypeHint::OptionOf(element) => collect_transitive_type_requirements(
+            method, location, element, registry, known, additions,
+        ),
+        TypeHint::MapOf { key, value }
+        | TypeHint::MapViewOf { key, value }
+        | TypeHint::MapMutOf { key, value, .. }
+        | TypeHint::ResultOf {
+            ok: key,
+            err: value,
+        } => {
+            collect_transitive_type_requirements(
+                method, location, key, registry, known, additions,
+            )?;
+            collect_transitive_type_requirements(
+                method, location, value, registry, known, additions,
+            )
+        }
+        TypeHint::TupleOf(elements) => {
+            for element in elements {
+                collect_transitive_type_requirements(
+                    method, location, element, registry, known, additions,
+                )?;
+            }
+            Ok(())
+        }
+        TypeHint::Any
+        | TypeHint::Primitive(_)
+        | TypeHint::Array
+        | TypeHint::Map
+        | TypeHint::Set
+        | TypeHint::Iterator
+        | TypeHint::PathProxy
+        | TypeHint::Host(_)
+        | TypeHint::Trait(_)
+        | TypeHint::Function => Ok(()),
+    }
+}
 
 fn validate_method(
     service_path: &str,
@@ -724,6 +876,7 @@ mod tests {
     fn registry() -> std::sync::Arc<crate::type_binding::TypeBindingRegistry> {
         Engine::builder()
             .register_rust_value_closure::<i64>()
+            .register_rust_value_closure::<String>()
             .register_rust_value_closure::<()>()
             .build()
             .expect("standard scalar bindings should seal")
@@ -819,7 +972,7 @@ mod tests {
     }
 
     #[test]
-    fn nested_custom_type_must_appear_in_transitive_closure() {
+    fn nested_custom_type_must_have_a_registered_transitive_binding() {
         let registry = registry();
         let mut method = method(&registry);
         method.callable.parameters[0].ty = TypeHint::array_of(TypeHint::Record(TypeKey::new(
@@ -832,13 +985,33 @@ mod tests {
 
         assert!(matches!(
             error,
-            ServiceSchemaError::MissingTypeClosureEntry {
+            ServiceSchemaError::MissingTransitiveTypeBinding {
                 location,
                 type_id,
                 ..
             } if location == "parameter amount"
                 && type_id == vela_common::InteropTypeId::from_type_id(TypeId::new(0x404))
         ));
+    }
+
+    #[test]
+    fn sealed_registry_completes_alias_hidden_transitive_value_types() {
+        let registry = registry();
+        let mut method = method(&registry);
+        let string = registry
+            .get_for::<String>()
+            .expect("String binding in test registry");
+        method.callable.parameters[0].ty = TypeHint::array_of(TypeHint::Record(string.key.clone()));
+
+        let schema = ServiceSchema::new(SERVICE_ID, "game::reward", vec![method], &registry)
+            .expect("registered alias-hidden type should complete the closure");
+
+        assert!(
+            schema.methods()[0]
+                .type_closure
+                .iter()
+                .any(|requirement| requirement.contract().type_id == string.id)
+        );
     }
 
     #[test]
