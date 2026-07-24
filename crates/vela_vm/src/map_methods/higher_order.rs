@@ -80,6 +80,56 @@ pub(crate) fn filter(
     )
 }
 
+pub(crate) fn group_by(
+    receiver: &Value,
+    args: &[Value],
+    mut runtime: MethodRuntime<'_, '_, '_>,
+) -> VmResult<Value> {
+    expect_arity("group_by", args, 1)?;
+    let operation = "method group_by";
+    let entries = map_entries(receiver, runtime.heap.as_deref(), operation)?;
+    let param_len = callback_param_len_for_entries(&runtime, operation, &args[0], &entries)?;
+    let mut groups = std::collections::BTreeMap::<ValueKey, GroupEntries>::new();
+    for (key, value) in entries {
+        if let Some(budget) = runtime.budget.as_deref_mut() {
+            budget.charge_execution_units(1)?;
+        }
+        let grouped = call_map_callback(
+            &mut runtime,
+            operation,
+            &args[0],
+            param_len,
+            &key,
+            value,
+            &protected_group_entries(&groups),
+        )?;
+        let identity = ValueKey::from_value(&grouped, runtime.heap.as_deref(), operation)?;
+        match groups.entry(identity) {
+            std::collections::btree_map::Entry::Vacant(entry) => {
+                entry.insert(GroupEntries {
+                    key: grouped,
+                    entries: vec![(key, value)],
+                });
+            }
+            std::collections::btree_map::Entry::Occupied(mut entry) => {
+                entry.get_mut().entries.push((key, value));
+            }
+        }
+    }
+
+    let mut grouped = Vec::with_capacity(groups.len());
+    for group in groups.into_values() {
+        let values = make_map_from_entries(
+            group.entries,
+            &mut runtime.heap,
+            &mut runtime.budget,
+            operation,
+        )?;
+        grouped.push((group.key, values));
+    }
+    make_map_from_entries(grouped, &mut runtime.heap, &mut runtime.budget, operation)
+}
+
 pub(crate) fn retain(
     receiver: &Value,
     args: &[Value],
@@ -276,4 +326,21 @@ fn call_map_callback(
             )
         }
     }
+}
+
+struct GroupEntries {
+    key: Value,
+    entries: Vec<(Value, Value)>,
+}
+
+fn protected_group_entries(
+    groups: &std::collections::BTreeMap<ValueKey, GroupEntries>,
+) -> Vec<Value> {
+    groups
+        .values()
+        .flat_map(|group| {
+            std::iter::once(group.key)
+                .chain(group.entries.iter().flat_map(|(key, value)| [*key, *value]))
+        })
+        .collect()
 }

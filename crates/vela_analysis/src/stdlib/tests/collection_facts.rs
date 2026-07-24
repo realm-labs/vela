@@ -42,7 +42,16 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
         assert!(stdlib_method_fact(receiver, "insert", None).is_none());
         assert!(stdlib_method_fact(receiver, "remove", None).is_none());
         assert!(stdlib_method_fact(receiver, "retain", None).is_none());
-        assert!(stdlib_method_fact(receiver, "group_by", None).is_none());
+        let group_by =
+            stdlib_method_fact(receiver, "group_by", None).expect("read-only grouping method fact");
+        assert_eq!(group_by.receiver, receiver.clone());
+        assert_eq!(
+            group_by.returns,
+            TypeFact::map(
+                TypeFact::Any,
+                TypeFact::map(TypeFact::STRING, TypeFact::I64)
+            )
+        );
         let contains_key =
             stdlib_method_fact(receiver, "contains_key", None).expect("membership method fact");
         assert_eq!(contains_key.receiver, receiver.clone());
@@ -70,6 +79,7 @@ fn borrowed_collection_methods_follow_view_mutation_capabilities() {
         assert!(stdlib_method_fact(receiver, "clear", None).is_none());
         assert!(stdlib_method_fact(receiver, "retain", None).is_none());
         assert!(stdlib_method_fact(receiver, "filter", None).is_some());
+        assert!(stdlib_method_fact(receiver, "group_by", None).is_none());
         let contains =
             stdlib_method_fact(receiver, "contains", None).expect("membership method fact");
         assert_eq!(contains.receiver, receiver.clone());
@@ -182,6 +192,20 @@ fn map_lambda_methods_expose_key_and_value_parameter_facts() {
         vec![TypeFact::STRING, TypeFact::I64]
     );
 
+    let grouped =
+        stdlib_method_fact(&receiver, "group_by", Some(&TypeFact::BOOL)).expect("group_by fact");
+    assert_eq!(
+        grouped.returns,
+        TypeFact::map(
+            TypeFact::BOOL,
+            TypeFact::map(TypeFact::STRING, TypeFact::I64)
+        )
+    );
+    assert_eq!(
+        grouped.lambda.expect("group_by lambda").params,
+        vec![TypeFact::STRING, TypeFact::I64]
+    );
+
     let merged = stdlib_method_fact(&receiver, "merge", None).expect("merge fact");
     assert_eq!(
         merged.params,
@@ -256,6 +280,21 @@ fn map_lambda_methods_expose_value_only_parameter_facts_by_arity() {
         vec![TypeFact::function(Vec::<TypeFact>::new(), TypeFact::BOOL)]
     );
     assert_eq!(filter.returns, receiver);
+
+    let grouped =
+        stdlib_method_fact_with_lambda_arity(&receiver, "group_by", Some(&TypeFact::BOOL), Some(1))
+            .expect("group_by fact");
+    assert_eq!(
+        grouped.lambda.expect("group_by lambda").params,
+        vec![TypeFact::I64]
+    );
+    assert_eq!(
+        grouped.returns,
+        TypeFact::map(
+            TypeFact::BOOL,
+            TypeFact::map(TypeFact::STRING, TypeFact::I64)
+        )
+    );
 }
 
 #[test]

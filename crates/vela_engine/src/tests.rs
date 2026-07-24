@@ -12,6 +12,7 @@ mod reflection;
 mod runtime_args;
 mod script_identity;
 mod source_reload;
+mod standard_collection_views;
 mod strings;
 mod type_binding;
 mod typed_host;

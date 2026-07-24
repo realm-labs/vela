@@ -250,6 +250,20 @@ pub(super) fn map_method_fact(
                 TypeFact::BOOL,
             ),
         ),
+        "group_by" => {
+            let group = lambda_return.cloned().unwrap_or(TypeFact::Any);
+            Some(
+                StdlibMethodFact::new(
+                    receiver,
+                    "group_by",
+                    TypeFact::map(group.clone(), TypeFact::map(key.clone(), value.clone())),
+                )
+                .with_lambda(
+                    map_lambda_params(key.clone(), value.clone(), lambda_param_count),
+                    group,
+                ),
+            )
+        }
         "find" => Some(
             StdlibMethodFact::new(
                 receiver,

@@ -11,7 +11,7 @@ mod lookup;
 mod merge;
 mod mutation;
 
-pub(crate) use higher_order::{all, any, count, filter, find, map_values, retain};
+pub(crate) use higher_order::{all, any, count, filter, find, group_by, map_values, retain};
 pub(crate) use introspection::{entries, keys, values};
 pub(crate) use lookup::{contains_key, get, get_or, has};
 pub(crate) use merge::{merge, merge_payload};
@@ -190,10 +190,14 @@ fn main() {
     let scores = quests.map_values(|key, value| key.len() + value.len());
     let done = quests.filter(|key, value| key.starts_with("w") && value == "done");
     let active = quests.filter(|value| value == "active");
+    let grouped = quests.group_by(|key, value| if value == "done" { "closed" } else { key });
     if lengths["wolf"] == 6 && lengths["boar"] == 4
         && scores["boar"] == 8 && scores["wolf"] == 10
         && done.len() == 1 && done["wyrm"] == "done"
         && active.len() == 1 && active["wolf"] == "active"
+        && grouped["closed"].len() == 2
+        && grouped["closed"]["boar"] == "done"
+        && grouped["wolf"]["wolf"] == "active"
         && quests.count(|key, value| key.starts_with("w") && value.len() >= 4) == 2
     {
         return quests.any(|key, value| key == "wolf" && value == "active")

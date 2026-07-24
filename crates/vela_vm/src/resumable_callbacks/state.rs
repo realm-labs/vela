@@ -47,6 +47,14 @@ pub(super) enum CallbackState {
         groups: BTreeMap<ValueKey, GroupValues>,
         awaiting: Option<Value>,
     },
+    MapGroupBy {
+        operation: &'static str,
+        entries: Vec<(Value, Value)>,
+        index: usize,
+        host_sequence: Option<Box<crate::iteration::IteratorState>>,
+        groups: BTreeMap<ValueKey, GroupEntries>,
+        awaiting: Option<(Value, Value)>,
+    },
     SortBy(SortByState),
     Enum {
         receiver_kind: StandardMethodReceiver,
@@ -64,6 +72,11 @@ pub(super) enum CallbackState {
 pub(super) struct GroupValues {
     pub(super) key: Value,
     pub(super) values: Vec<Value>,
+}
+
+pub(super) struct GroupEntries {
+    pub(super) key: Value,
+    pub(super) entries: Vec<(Value, Value)>,
 }
 
 pub(super) struct SortByState {

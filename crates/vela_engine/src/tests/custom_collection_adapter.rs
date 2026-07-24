@@ -301,13 +301,55 @@ fn user_defined_sequence_bulk_budget_failure_precedes_mutation() {
 }
 
 #[test]
+fn user_defined_map_group_by_charges_the_prepared_live_traversal() {
+    let mut runtime = runtime(
+        "fn group(values) { \
+             return values.group_by(|key, value| \
+                 if key <= 8i32 && value >= 8 { \"selected\" } else { \"other\" }).len(); \
+         }",
+    );
+    let values = Ledger(BTreeMap::from([(3, 8), (8, 13), (13, 21)]));
+    let baseline = (0..160)
+        .find(|limit| {
+            runtime
+                .call(
+                    "group",
+                    CallArgs::new().with_host_ref("values", &values),
+                    CallOptions::new(*limit, usize::MAX, usize::MAX),
+                )
+                .is_ok()
+        })
+        .expect("prepared host Map grouping should fit a bounded call");
+
+    let error = runtime
+        .call(
+            "group",
+            CallArgs::new().with_host_ref("values", &values),
+            CallOptions::new(baseline - 1, usize::MAX, usize::MAX),
+        )
+        .expect_err("one unit below the complete grouping budget must reject the call");
+    assert!(matches!(
+        error.kind(),
+        vela_vm::error::VmErrorKind::BudgetExceeded { .. }
+    ));
+    assert_eq!(
+        values.0,
+        BTreeMap::from([(3, 8), (8, 13), (13, 21)]),
+        "read-only grouping must not mutate the host map"
+    );
+}
+
+#[test]
 fn user_defined_map_and_set_share_keyed_callbacks_and_bulk_mutations() {
     let mut runtime = runtime(
         "fn update_map(values, extra) { \
              values.extend(extra); \
              values.retain(|key, value| key >= 3i32 && value >= 5); \
-             return values.filter(|key, value| key <= 8i32 && value >= 8) \
+             let selected = values.filter(|key, value| key <= 8i32 && value >= 8) \
                  .values().collect_array().sum(); \
+             let grouped = values.group_by(|key, value| \
+                 if key <= 8i32 && value >= 8 { \"selected\" } else { \"other\" }); \
+             return selected + grouped[\"selected\"].values().collect_array().sum(); \
          } \
          fn update_set(values, extra) { \
              values.extend(extra); \
@@ -326,7 +368,7 @@ fn user_defined_map_and_set_share_keyed_callbacks_and_bulk_mutations() {
     let result = runtime
         .call("update_map", args, CallOptions::unbounded())
         .expect("custom MapLike should share keyed callbacks and bulk mutation");
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(21)));
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(42)));
     drop(result);
     assert_eq!(
         ledger.0,

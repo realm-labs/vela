@@ -1,5 +1,9 @@
-use crate::option_result::{StdEnumVariant, StdEnumVariant::Err, StdEnumVariant::None};
-use crate::{CallbackMethodInlineCacheTarget, StandardMethodReceiver};
+use crate::heap::HeapValue;
+use crate::option_result::{StdEnumVariant, std_enum_tag};
+use crate::{
+    CallbackMethodInlineCacheTarget, HeapExecution, StandardMethodReceiver, Value, VmError,
+    VmErrorKind, VmResult,
+};
 
 pub(super) fn callback_operation(
     receiver: StandardMethodReceiver,
@@ -23,6 +27,7 @@ pub(super) fn callback_operation(
             target,
             CallbackMethodInlineCacheTarget::MapValues
                 | CallbackMethodInlineCacheTarget::Filter
+                | CallbackMethodInlineCacheTarget::GroupBy
                 | CallbackMethodInlineCacheTarget::Retain
                 | CallbackMethodInlineCacheTarget::Find
                 | CallbackMethodInlineCacheTarget::Any
@@ -80,7 +85,7 @@ pub(super) fn enum_callback_is_active(
         ) | (
             StandardMethodReceiver::Option,
             CallbackMethodInlineCacheTarget::OrElse,
-            None,
+            StdEnumVariant::None,
         ) | (
             StandardMethodReceiver::Result,
             CallbackMethodInlineCacheTarget::Map | CallbackMethodInlineCacheTarget::AndThen,
@@ -88,7 +93,39 @@ pub(super) fn enum_callback_is_active(
         ) | (
             StandardMethodReceiver::Result,
             CallbackMethodInlineCacheTarget::MapErr | CallbackMethodInlineCacheTarget::OrElse,
-            Err,
+            StdEnumVariant::Err,
         )
     )
+}
+
+pub(super) fn enum_value(
+    receiver: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    operation: &'static str,
+) -> VmResult<(StdEnumVariant, Option<Value>)> {
+    let Value::HeapRef(reference) = receiver else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+    };
+    let Some(HeapValue::Enum {
+        identity: Some(identity),
+        fields,
+        ..
+    }) = heap.and_then(|heap| heap.heap.get(*reference))
+    else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+    };
+    let Some((_, variant)) = std_enum_tag(*identity) else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+    };
+    let payload = if variant.has_payload() {
+        Some(
+            fields
+                .get_slot(0, "0")
+                .map(crate::stored_runtime_value)
+                .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?,
+        )
+    } else {
+        None
+    };
+    Ok((variant, payload))
 }

@@ -521,6 +521,20 @@ fn main() {
     assert_callback_value_method_cache(
         r#"
 fn main() {
+    let grouped = {"gold": 4, "xp": 6}.group_by(|value| if value >= 6 { "high" } else { "low" });
+    return grouped["high"]["xp"];
+}
+"#,
+        "group_by",
+        "Map",
+        "group_by",
+        StandardMethodReceiver::Map,
+        CallbackMethodInlineCacheTarget::GroupBy,
+        Value::i64(6),
+    );
+    assert_callback_value_method_cache(
+        r#"
+fn main() {
     let rewards = {"gold": 4, "xp": 6, "quest": 8};
     rewards.retain(|key, value| key != "gold" && value >= 6);
     return rewards.values().collect_array().sum();

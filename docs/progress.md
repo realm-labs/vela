@@ -34,17 +34,18 @@ View and MutView facts; scoped reborrow for borrowed collections; prepared
 field, index, and key access; call-scoped Array, Map, and Set iterators with
 frozen traversal structure and live prepared reads; prepared Array searches;
 live read-only Array, Map, and Set callback traversal, including Array
-grouping; bounded collection projections; and immediate write-through for the
-implemented Array, Map, and Set mutations. User-defined Sequence, MapLike, and
-SetLike adapters reuse the same protocol, traversal, callback, budget, and
-mutation paths. Bulk clear/extend/retain operations preflight budgets,
-conversions, and stale snapshots before mutation. The remaining S3 exit work
-is:
+and Map grouping; bounded collection projections; complex child views with
+exact nested identity and lifetime enforcement; and immediate write-through
+for the implemented Array, Map, and Set mutations. User-defined Sequence,
+MapLike, and SetLike adapters reuse the same protocol, traversal, callback,
+budget, and mutation paths. Bulk clear/extend/retain operations preflight
+budgets, conversions, and stale snapshots before mutation. The remaining S3
+exit work is:
 
-- complex-element borrowed views and their identity/lifetime proof;
-- remaining element/key methods and collection-level grouping/filtering paths;
-- prepared element-method, grouping, and traversal paths without runtime name
-  or reflection lookup.
+- remaining element/key methods and live or resumable traversal behavior;
+- prepared element-method and remaining traversal paths without runtime name
+  or reflection lookup;
+- the complete owned/shared/exclusive matrix and phase-wide validation gate.
 
 S4 begins only after the complete S3 gate is green. Its first accepted slice is
 the generated Rust-only service generation; it must create no `HostRef` and
@@ -119,7 +120,7 @@ The phase gates are authoritative:
 | S0 | Accepted | None |
 | S1 | Accepted | None |
 | S2 | Accepted | None |
-| S3 | Active | Complete complex views, remaining collection operations, richer adapters, and prepared traversal/method paths. |
+| S3 | Active | Complete remaining collection methods, prepared traversal/method paths, and the phase-wide matrix. |
 | S4 | Pending | Requires S3 acceptance. |
 | S5 | Pending | Requires the Rust-only generated service generation. |
 | S6 | Pending | Requires the synchronous partial-service vertical slice. |

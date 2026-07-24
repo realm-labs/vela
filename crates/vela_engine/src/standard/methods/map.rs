@@ -103,6 +103,12 @@ const MAP_METHODS: &[MethodSpec] = &[
         "Keeps entries accepted by a callback.",
     ),
     MethodSpec::new(
+        "group_by",
+        &[ParamSpec::new("callback", "function")],
+        "map",
+        "Groups entries into maps by value-keyed callback keys.",
+    ),
+    MethodSpec::new(
         "find",
         &[ParamSpec::new("callback", "function")],
         "Option<Any>",

@@ -2791,8 +2791,11 @@ live collection, preserving exact scalar/String/Bytes/HostRef tags and
 revalidating root generation and lease authority. Later replacement of an
 unread value is visible, structural growth is outside the frozen traversal,
 and removal of a pending item fails. Array, Map, and Set read-only callbacks,
-including Array `group_by`, consume the same resumable states and charge only
-items actually read. Host-backed iterators are call-scoped and fail on escape.
+including Array and Map `group_by`, consume the same resumable states and
+charge only items actually read. Map grouping returns
+`Map<GroupKey, Map<Key, Value>>`, preserving each original entry and the
+deterministic traversal order inside its group. Host-backed iterators are
+call-scoped and fail on escape.
 
 Bounded `HostCollectionProjection` remains the explicit detached-snapshot
 boundary for ordering, transforms, set algebra, Map merge, extend sources, and

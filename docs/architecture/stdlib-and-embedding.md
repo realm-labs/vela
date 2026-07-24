@@ -81,6 +81,7 @@ the result should be materialized as a map or scalar immediately:
 ```rust
 map.map_values(|v| ...)
 map.filter(|k, v| ...)
+map.group_by(|k, v| ...)
 map.find(|k, v| ...)
 map.any(|k, v| ...)
 map.all(|k, v| ...)
@@ -92,7 +93,10 @@ Map methods follow the same rule. If `map` has
 `Iterator(item = MapEntry)` facts, `map.keys()` exposes `Iterator(item = K)`,
 and `map.values()` exposes `Iterator(item = V)`. Eager helpers such as
 `map.filter(|k, v| ...)` give `k: K`, `v: V`, and return
-`Map(key = K, value = V)` as an internal fact only.
+`Map(key = K, value = V)` as an internal fact only. `map.group_by` uses the
+same callback parameter rules and returns
+`Map(key = GroupKey, value = Map(key = K, value = V))`, preserving original
+entries within each group.
 
 These analysis rules are not user-visible generic syntax. They are part of the
 standard library metadata consumed by `vela_analysis` and future LSP tooling.

@@ -389,7 +389,7 @@ fn map_method_id(ids: &StdMethodIds, method: &str) -> Option<MethodId> {
         "values" => ids.map_values,
         "entries" => ids.map_entries,
         "merge" => ids.map_merge,
-        "map_values" | "filter" | "retain" | "find" | "any" | "all" | "count" => {
+        "map_values" | "filter" | "group_by" | "retain" | "find" | "any" | "all" | "count" => {
             return vela_stdlib::std_method_id("Map", method);
         }
         "iter" => ids.map_iter,

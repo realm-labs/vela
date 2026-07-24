@@ -4,28 +4,25 @@ use std::sync::Arc;
 
 use vela_bytecode::{LinkedArtifact, ScriptFunctionHandle};
 
-use crate::collection_mutation::check_collection_len;
 use crate::equality::{ResumableComparison, ResumableComparisonStep};
-use crate::heap::HeapValue;
 use crate::heap_execution::HeapExecution;
-use crate::heap_values::allocate_heap_value;
 use crate::host_collection_callback::HostRetainWriteback;
-use crate::option_result::{StdEnumKind, StdEnumVariant, option_value, result_value, std_enum_tag};
+use crate::option_result::{StdEnumKind, StdEnumVariant, option_value, result_value};
 use crate::runtime_checks::{expect_closure_ref, is_truthy};
-use crate::script_set::ScriptSet;
-use crate::value_key::ValueKey;
 use crate::{
     CallbackMethodInlineCacheEntry, CallbackMethodInlineCacheTarget, ExecutionBudget,
     StandardMethodReceiver, Value, VmError, VmErrorKind, VmResult, array_methods, map_methods,
     set_methods,
 };
 
+mod completion;
+mod group_by;
 mod operations;
 mod retain;
 mod state;
 
 pub(crate) use retain::HostCollectionRetain;
-use state::{CallbackState, GroupValues, NumericTotal, SortByEntry, SortByState};
+use state::{CallbackState, NumericTotal, SortByEntry, SortByState};
 
 pub(crate) struct ResumableCallbackMethod {
     callback_value: Value,
@@ -120,6 +117,23 @@ impl ResumableCallbackMethod {
                     awaiting: None,
                 }
             }
+            (StandardMethodReceiver::Map, CallbackMethodInlineCacheTarget::GroupBy) => {
+                CallbackState::MapGroupBy {
+                    operation,
+                    entries: if host_sequence.is_some() {
+                        Vec::new()
+                    } else {
+                        match map_methods::map_entries(receiver, heap, operation) {
+                            Ok(entries) => entries,
+                            Err(error) => return Some(Err(error)),
+                        }
+                    },
+                    index: 0,
+                    host_sequence: host_sequence.take().map(Box::new),
+                    groups: BTreeMap::new(),
+                    awaiting: None,
+                }
+            }
             (StandardMethodReceiver::Array, _) => CallbackState::Sequence {
                 receiver: cache.receiver,
                 source: *receiver,
@@ -188,7 +202,7 @@ impl ResumableCallbackMethod {
                 awaiting: None,
             },
             (StandardMethodReceiver::Option | StandardMethodReceiver::Result, _) => {
-                let (variant, payload) = match enum_value(receiver, heap, operation) {
+                let (variant, payload) = match operations::enum_value(receiver, heap, operation) {
                     Ok(value) => value,
                     Err(error) => return Some(Err(error)),
                 };
@@ -348,19 +362,16 @@ impl ResumableCallbackMethod {
                 groups, awaiting, ..
             } => {
                 if let Some(returned) = returned {
-                    let value = awaiting.take().ok_or_else(incomplete_callback)?;
-                    let key = ValueKey::from_value(&returned, heap.as_deref(), "method group_by")?;
-                    match groups.entry(key) {
-                        std::collections::btree_map::Entry::Vacant(entry) => {
-                            entry.insert(GroupValues {
-                                key: returned,
-                                values: vec![value],
-                            });
-                        }
-                        std::collections::btree_map::Entry::Occupied(mut entry) => {
-                            entry.get_mut().values.push(value);
-                        }
-                    }
+                    group_by::accept_value(groups, awaiting, returned, heap.as_deref())?;
+                } else if awaiting.is_some() {
+                    return Err(incomplete_callback());
+                }
+            }
+            CallbackState::MapGroupBy {
+                groups, awaiting, ..
+            } => {
+                if let Some(returned) = returned {
+                    group_by::accept_entry(groups, awaiting, returned, heap.as_deref())?;
                 } else if awaiting.is_some() {
                     return Err(incomplete_callback());
                 }
@@ -392,6 +403,12 @@ impl ResumableCallbackMethod {
                 host_sequence,
                 ..
             } => host_sequence.is_some() || *index < values.len(),
+            CallbackState::MapGroupBy {
+                entries,
+                index,
+                host_sequence,
+                ..
+            } => host_sequence.is_some() || *index < entries.len(),
             CallbackState::Iterator(_) | CallbackState::SortBy(_) => false,
             CallbackState::Enum { .. } => false,
             CallbackState::Complete => false,
@@ -530,6 +547,45 @@ impl ResumableCallbackMethod {
                 *awaiting = Some(value);
                 vec![value]
             }
+            CallbackState::MapGroupBy {
+                operation,
+                entries,
+                index,
+                host_sequence,
+                awaiting,
+                ..
+            } => {
+                if host_sequence.is_none() && *index >= entries.len() {
+                    return self.finish(heap, budget);
+                }
+                let entry = if let Some(iterator) = host_sequence {
+                    let iterator_host = host.as_mut().map(|host| {
+                        &mut **host as &mut dyn crate::method_runtime::HostIteratorAccess
+                    });
+                    let mut runtime = crate::method_runtime::MethodRuntime {
+                        program: program_owner.program(),
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        host: iterator_host,
+                    };
+                    let Some(entry) =
+                        iterator.next_host_map_entry_with_runtime(&mut runtime, operation)?
+                    else {
+                        return self.finish(heap, budget);
+                    };
+                    entry
+                } else {
+                    let entry = entries[*index];
+                    *index = index.saturating_add(1);
+                    entry
+                };
+                *awaiting = Some(entry);
+                match callback_param_len.expect("a pending map entry prepares its callback") {
+                    0 => Vec::new(),
+                    1 => vec![entry.1],
+                    _ => vec![entry.0, entry.1],
+                }
+            }
             CallbackState::Iterator(_)
             | CallbackState::SortBy(_)
             | CallbackState::Enum { .. }
@@ -611,19 +667,26 @@ impl ResumableCallbackMethod {
                 groups,
                 awaiting,
                 ..
-            } => {
-                heap.protect_values(values);
-                if let Some(iterator) = host_sequence {
-                    heap.protect_values(&iterator.protected_values());
-                }
-                for group in groups.values() {
-                    heap.protect_values(&[group.key]);
-                    heap.protect_values(&group.values);
-                }
-                if let Some(value) = awaiting {
-                    heap.protect_values(&[*value]);
-                }
-            }
+            } => group_by::protect_values(
+                values,
+                host_sequence.as_deref(),
+                groups,
+                awaiting.as_ref(),
+                heap,
+            ),
+            CallbackState::MapGroupBy {
+                entries,
+                host_sequence,
+                groups,
+                awaiting,
+                ..
+            } => group_by::protect_entries(
+                entries,
+                host_sequence.as_deref(),
+                groups,
+                awaiting.as_ref(),
+                heap,
+            ),
             CallbackState::SortBy(state) => {
                 heap.protect_values(&state.values);
                 for entry in &state.entries {
@@ -910,7 +973,7 @@ impl ResumableCallbackMethod {
                             array_methods::make_array_value(output, heap, budget, operation)?
                         }
                         StandardMethodReceiver::Set => {
-                            make_set_value(output, heap, budget, operation)?
+                            completion::set(output, heap, budget, operation)?
                         }
                         _ => return Err(incomplete_callback()),
                     }
@@ -932,7 +995,7 @@ impl ResumableCallbackMethod {
                     Value::Unit
                 }
                 CallbackMethodInlineCacheTarget::Find => {
-                    make_option_value(found, heap, budget, operation)?
+                    completion::option(found, heap, budget, operation)?
                 }
                 CallbackMethodInlineCacheTarget::Any => Value::Bool(decision.unwrap_or(false)),
                 CallbackMethodInlineCacheTarget::All => Value::Bool(decision.unwrap_or(true)),
@@ -978,7 +1041,7 @@ impl ResumableCallbackMethod {
                         }
                         None => None,
                     };
-                    make_option_value(payload, heap, budget, operation)?
+                    completion::option(payload, heap, budget, operation)?
                 }
                 CallbackMethodInlineCacheTarget::Any => Value::Bool(decision.unwrap_or(false)),
                 CallbackMethodInlineCacheTarget::All => Value::Bool(decision.unwrap_or(true)),
@@ -987,15 +1050,10 @@ impl ResumableCallbackMethod {
             },
             CallbackState::GroupBy {
                 operation, groups, ..
-            } => {
-                let mut entries = Vec::with_capacity(groups.len());
-                for group in groups.into_values() {
-                    let values =
-                        array_methods::make_array_value(group.values, heap, budget, operation)?;
-                    entries.push((group.key, values));
-                }
-                map_methods::make_map_from_entries(entries, heap, budget, operation)?
-            }
+            } => group_by::finish_values(groups, heap, budget, operation)?,
+            CallbackState::MapGroupBy {
+                operation, groups, ..
+            } => group_by::finish_entries(groups, heap, budget, operation)?,
             CallbackState::Iterator(_)
             | CallbackState::SortBy(_)
             | CallbackState::Enum { .. }
@@ -1005,38 +1063,6 @@ impl ResumableCallbackMethod {
         };
         Ok(ResumableCallbackStep::Complete(value))
     }
-}
-
-fn enum_value(
-    receiver: &Value,
-    heap: Option<&HeapExecution<'_>>,
-    operation: &'static str,
-) -> VmResult<(StdEnumVariant, Option<Value>)> {
-    let Value::HeapRef(reference) = receiver else {
-        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
-    };
-    let Some(HeapValue::Enum {
-        identity: Some(identity),
-        fields,
-        ..
-    }) = heap.and_then(|heap| heap.heap.get(*reference))
-    else {
-        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
-    };
-    let Some((_, variant)) = std_enum_tag(*identity) else {
-        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
-    };
-    let payload = if variant.has_payload() {
-        Some(
-            fields
-                .get_slot(0, "0")
-                .map(crate::stored_runtime_value)
-                .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?,
-        )
-    } else {
-        None
-    };
-    Ok((variant, payload))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1074,7 +1100,7 @@ fn finish_active_enum_callback(
                 _ => unreachable!(),
             };
             let Some((returned_variant, _)) =
-                enum_value(&returned, heap.as_deref(), operation).ok()
+                operations::enum_value(&returned, heap.as_deref(), operation).ok()
             else {
                 return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
             };
@@ -1132,34 +1158,6 @@ fn copy_enum_value(
             budget.as_deref_mut(),
         ),
     }
-}
-
-fn make_option_value(
-    payload: Option<Value>,
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-    operation: &'static str,
-) -> VmResult<Value> {
-    let Some(heap) = heap.as_deref_mut() else {
-        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
-    };
-    option_value(payload, heap, budget.as_deref_mut())
-}
-
-fn make_set_value(
-    values: Vec<Value>,
-    heap: &mut Option<&mut HeapExecution<'_>>,
-    budget: &mut Option<&mut ExecutionBudget>,
-    operation: &'static str,
-) -> VmResult<Value> {
-    let Some(heap) = heap.as_deref_mut() else {
-        return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
-    };
-    let values = ScriptSet::from_values(values, Some(&*heap), operation)?;
-    check_collection_len("set", 0, values.len(), budget.as_deref(), |budget| {
-        budget.collection_limits().max_set_len
-    })?;
-    allocate_heap_value(HeapValue::Set(values), heap, budget.as_deref_mut())
 }
 
 fn update_sort_position(state: &mut SortByState, ordering: Ordering) {

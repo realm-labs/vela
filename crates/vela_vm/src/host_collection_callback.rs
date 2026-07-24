@@ -122,6 +122,7 @@ fn supports_live_host_sequence(cache: CallbackMethodInlineCacheEntry) -> bool {
         StandardMethodReceiver::Map => matches!(
             cache.target,
             CallbackMethodInlineCacheTarget::Filter
+                | CallbackMethodInlineCacheTarget::GroupBy
                 | CallbackMethodInlineCacheTarget::Find
                 | CallbackMethodInlineCacheTarget::Any
                 | CallbackMethodInlineCacheTarget::All

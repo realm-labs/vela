@@ -33,6 +33,7 @@ struct CallbackMethodIds {
     array_group_by: MethodId,
     array_sort_by: MethodId,
     map_filter: MethodId,
+    map_group_by: MethodId,
     map_retain: MethodId,
     map_find: MethodId,
     map_any: MethodId,
@@ -80,6 +81,7 @@ impl CallbackMethodIds {
             array_group_by: standard_method_id("Array", "group_by"),
             array_sort_by: standard_method_id("Array", "sort_by"),
             map_filter: standard_method_id("Map", "filter"),
+            map_group_by: standard_method_id("Map", "group_by"),
             map_retain: standard_method_id("Map", "retain"),
             map_find: standard_method_id("Map", "find"),
             map_any: standard_method_id("Map", "any"),
@@ -257,6 +259,9 @@ fn callback_method_target(
         }
         (StandardMethodReceiver::Map, id) if id == ids.map_filter => {
             CallbackMethodInlineCacheTarget::Filter
+        }
+        (StandardMethodReceiver::Map, id) if id == ids.map_group_by => {
+            CallbackMethodInlineCacheTarget::GroupBy
         }
         (StandardMethodReceiver::Map, id) if id == ids.map_retain => {
             CallbackMethodInlineCacheTarget::Retain
@@ -438,6 +443,9 @@ pub(crate) fn call_cached(
         }
         (StandardMethodReceiver::Map, CallbackMethodInlineCacheTarget::Filter) => {
             map_methods::filter(receiver, args, dispatch.runtime())
+        }
+        (StandardMethodReceiver::Map, CallbackMethodInlineCacheTarget::GroupBy) => {
+            map_methods::group_by(receiver, args, dispatch.runtime())
         }
         (StandardMethodReceiver::Set, CallbackMethodInlineCacheTarget::Filter) => {
             set_methods::filter(receiver, args, dispatch.runtime())

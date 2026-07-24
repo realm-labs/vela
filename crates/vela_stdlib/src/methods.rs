@@ -674,6 +674,13 @@ pub const STD_METHODS: &[StdMethodSpec] = &[
     ),
     StdMethodSpec::new(
         "Map",
+        "group_by",
+        &[StdParamSpec::new("callback", "function")],
+        "map",
+        "Groups entries into maps by value-keyed callback keys.",
+    ),
+    StdMethodSpec::new(
+        "Map",
         "find",
         &[StdParamSpec::new("callback", "function")],
         "Option<Any>",
