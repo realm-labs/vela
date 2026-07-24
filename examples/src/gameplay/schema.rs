@@ -184,6 +184,9 @@ pub(crate) struct ItemStack {
     count: i64,
 }
 
+#[script_methods]
+impl ItemStack {}
+
 #[derive(ScriptReflect)]
 #[script(path = "game::quest::HostQuestProgress")]
 enum HostQuestProgress {
@@ -280,5 +283,19 @@ impl vela_host::object::ScriptHostFieldAccess for KillRewardConfig {
             },
             source_span: None,
         })
+    }
+}
+
+impl vela_host::object::ScriptHostObject for KillRewardConfig {
+    fn host_type_id(&self) -> vela_common::HostTypeId {
+        vela_host::object::ScriptHostFieldAccess::script_host_type_id(self)
+    }
+
+    fn read_resolved_host(
+        &self,
+        _access: vela_host::resolved::ResolvedHostAccess,
+        target: vela_host::target::HostTargetInstance<'_>,
+    ) -> vela_host::error::HostResult<vela_host::value::HostValue> {
+        vela_host::object::ScriptHostFieldAccess::read_host_target_from(self, target, 0)
     }
 }

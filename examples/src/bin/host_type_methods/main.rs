@@ -115,6 +115,9 @@ struct ItemStack {
     count: i64,
 }
 
+#[script_methods]
+impl ItemStack {}
+
 #[derive(Debug, Default, ScriptHost)]
 #[script(path = "examples::host_type_methods::IntIntMap")]
 struct IntIntMap {
