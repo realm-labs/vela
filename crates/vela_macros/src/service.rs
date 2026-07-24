@@ -21,6 +21,8 @@ use crate::signature::{
     type_generic_args,
 };
 
+mod dispatch;
+
 pub(crate) fn expand(attr: TokenStream, input: TokenStream) -> TokenStream {
     match expand_result(attr, input) {
         Ok(tokens) => tokens,
@@ -81,14 +83,17 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
 
     let trait_ident = &item.ident;
     let schema_ident = schema_function_ident(trait_ident);
+    let service_id_ident = service_id_function_ident(trait_ident);
     let register_ident = registration_function_ident(trait_ident);
     let compose_ident = composition_function_ident(trait_ident);
+    let dispatch_ident = rust_dispatch_function_ident(trait_ident);
     let adapter_ident = format_ident!("__VelaServiceAdapter{trait_ident}");
     let registration_tokens = registrations.iter().map(RegistrationSpec::tokens);
     let method_tokens = methods.iter().map(|method| &method.tokens);
     let adapter_fields = methods.iter().map(|method| &method.adapter_field);
     let adapter_initializers = methods.iter().map(|method| &method.adapter_initializer);
     let adapter_methods = methods.iter().map(|method| &method.adapter_method);
+    let rust_dispatch_arms = methods.iter().map(|method| &method.rust_dispatch_arm);
     let docs = docs_from_attrs(&item.attrs)
         .map_or_else(|| quote! { None }, |docs| quote! { Some(#docs.to_owned()) });
 
@@ -104,6 +109,12 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             let builder = builder;
             #(#registration_tokens)*
             builder
+        }
+
+        #[doc(hidden)]
+        #[allow(non_snake_case)]
+        pub const fn #service_id_ident() -> ::vela_common::ServiceId {
+            ::vela_common::ServiceId::new(#service_id)
         }
 
         #[doc(hidden)]
@@ -128,6 +139,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             __vela_default: ::std::sync::Arc<dyn #trait_ident>,
             __vela_runtime: ::vela_engine::service::ServiceRuntimeBinding,
             __vela_options: ::vela_engine::runtime::CallOptions,
+            __vela_dispatcher: ::std::sync::Arc<
+                dyn ::vela_engine::service::ServiceCallDispatcher
+            >,
             __vela_selections: &::vela_engine::service::ServiceSelectionTable<
                 ::vela_engine::service::LinkedVelaServiceMethod
             >,
@@ -136,8 +150,30 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 __vela_default,
                 __vela_runtime,
                 __vela_options,
+                __vela_dispatcher,
                 #(#adapter_initializers,)*
             })
+        }
+
+        #[doc(hidden)]
+        pub fn #dispatch_ident(
+            __vela_default: &(dyn #trait_ident + 'static),
+            __vela_method: ::vela_common::ServiceMethodId,
+            __vela_args: &[::vela_vm::owned_value::OwnedValue],
+            __vela_context: &mut ::vela_engine::context::NativeCallContext<'_, '_>,
+        ) -> ::vela_vm::error::VmResult<::vela_vm::owned_value::OwnedValue> {
+            match __vela_method.get() {
+                #(#rust_dispatch_arms,)*
+                _ => Err(::vela_vm::error::VmError::new(
+                    ::vela_vm::error::VmErrorKind::UnknownMethod {
+                        method: ::std::format!(
+                            "{}::{}",
+                            #service_path,
+                            __vela_method.get(),
+                        ),
+                    },
+                )),
+            }
         }
 
         #[doc(hidden)]
@@ -145,6 +181,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             __vela_default: ::std::sync::Arc<dyn #trait_ident>,
             __vela_runtime: ::vela_engine::service::ServiceRuntimeBinding,
             __vela_options: ::vela_engine::runtime::CallOptions,
+            __vela_dispatcher: ::std::sync::Arc<
+                dyn ::vela_engine::service::ServiceCallDispatcher
+            >,
             #(#adapter_fields,)*
         }
 
@@ -158,12 +197,20 @@ pub(crate) fn schema_function_ident(trait_ident: &syn::Ident) -> syn::Ident {
     format_ident!("__vela_service_schema_{trait_ident}")
 }
 
+pub(crate) fn service_id_function_ident(trait_ident: &syn::Ident) -> syn::Ident {
+    format_ident!("__vela_service_id_{trait_ident}")
+}
+
 pub(crate) fn registration_function_ident(trait_ident: &syn::Ident) -> syn::Ident {
     format_ident!("__vela_register_service_{trait_ident}")
 }
 
 pub(crate) fn composition_function_ident(trait_ident: &syn::Ident) -> syn::Ident {
     format_ident!("__vela_compose_service_{trait_ident}")
+}
+
+pub(crate) fn rust_dispatch_function_ident(trait_ident: &syn::Ident) -> syn::Ident {
+    format_ident!("__vela_dispatch_rust_service_{trait_ident}")
 }
 
 fn validate_trait(item: &ItemTrait) -> Result<()> {
@@ -327,6 +374,7 @@ struct EmittedMethod {
     adapter_field: TokenStream,
     adapter_initializer: TokenStream,
     adapter_method: TokenStream,
+    rust_dispatch_arm: TokenStream,
 }
 
 fn emit_method(
@@ -462,11 +510,14 @@ fn emit_method(
         }
     };
     let adapter_method = emit_adapter_method(service_path, method, signature, &target_ident)?;
+    let rust_dispatch_arm =
+        dispatch::emit_rust_dispatch_arm(service_path, method, signature, method_id)?;
     Ok(EmittedMethod {
         tokens,
         adapter_field,
         adapter_initializer,
         adapter_method,
+        rust_dispatch_arm,
     })
 }
 
@@ -529,10 +580,11 @@ fn emit_adapter_method(
                         |__vela_runtime, #context_ident| {
                             let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
                             #(#call_arguments)*
-                            let __vela_value = __vela_target.method().call(
+                            let __vela_value = __vela_target.method().call_with_dispatcher(
                                 __vela_runtime,
                                 __vela_args,
                                 self.__vela_options.clone(),
+                                ::std::sync::Arc::clone(&self.__vela_dispatcher),
                             )?;
                             __vela_runtime.value_to_owned(&__vela_value)
                         },

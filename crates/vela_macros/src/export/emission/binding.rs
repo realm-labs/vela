@@ -108,7 +108,7 @@ pub(super) fn collection_registration_tokens(signature: &ClassifiedSignature) ->
     registrations
 }
 
-pub(super) fn shared_host_value_tokens(shape: &TypeShape, object: TokenStream) -> TokenStream {
+pub(crate) fn shared_host_value_tokens(shape: &TypeShape, object: TokenStream) -> TokenStream {
     if let Some(element) = shape.borrowed_slice_element() {
         quote! { ::vela_host::object::lease_slice_ref::<#element>(#object) }
     } else {
@@ -119,7 +119,7 @@ pub(super) fn shared_host_value_tokens(shape: &TypeShape, object: TokenStream) -
     }
 }
 
-pub(super) fn exclusive_host_value_tokens(shape: &TypeShape, object: TokenStream) -> TokenStream {
+pub(crate) fn exclusive_host_value_tokens(shape: &TypeShape, object: TokenStream) -> TokenStream {
     if let Some(element) = shape.borrowed_slice_element() {
         quote! { ::vela_host::object::lease_slice_mut::<#element>(#object) }
     } else {

@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::{LinkError, LinkedArtifact, Linker, ProgramImage, UnlinkedProgram};
-use vela_common::{HostMethodId, ReceiverCapability};
+use vela_common::{HostMethodId, ReceiverCapability, ServiceCallMode, service_dispatch_stable_id};
 use vela_def::FunctionId;
 use vela_host::error::HostErrorKind;
 use vela_host::lease::HostLeaseKind;
@@ -25,7 +25,7 @@ use crate::method::{
 use crate::native::{
     AsyncContextHostNativeFunctionEntry, AsyncDirectHostNativeFunctionEntry,
     AsyncHostNativeFunctionEntry, AsyncNativeFunctionEntry, ContextHostNativeFunctionEntry,
-    HostNativeFunctionEntry, NativeFunctionDesc, NativeFunctionEntry,
+    EffectSet, HostNativeFunctionEntry, NativeFunctionDesc, NativeFunctionEntry,
     ScopedHostNativeFunctionEntry, ScopedHostNativeOutcome,
 };
 use crate::permission::CapabilitySet;
@@ -55,6 +55,15 @@ pub struct Engine {
     service_set_schema: Option<Arc<crate::service::ServiceSetSchema>>,
     service_compilation_schema:
         Option<Arc<vela_bytecode::compiler::service_schema::ServiceCompilationSchema>>,
+    service_dispatch_natives: BTreeMap<FunctionId, ServiceDispatchNative>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct ServiceDispatchNative {
+    pub(crate) target: crate::service::ServiceCallTarget,
+    pub(crate) name: String,
+    pub(crate) effects: EffectSet,
+    pub(crate) asyncness: vela_common::CallableAsyncness,
 }
 
 pub(crate) struct EngineParts {
@@ -87,6 +96,9 @@ impl Engine {
         let mut linker = Linker::with_registry(&self.definition_registry);
         for id in self.native_implementation_ids() {
             linker.add_native_implementation(id);
+        }
+        for (id, entry) in &self.service_dispatch_natives {
+            linker.add_internal_native_implementation(*id, entry.asyncness);
         }
         linker.link_test_program(program)
     }
@@ -185,6 +197,11 @@ impl Engine {
             .as_ref()
             .map(crate::service::ServiceSetSchema::compilation_schema)
             .map(Arc::new);
+        let service_dispatch_natives = parts
+            .service_set_schema
+            .as_ref()
+            .map(service_dispatch_natives)
+            .unwrap_or_default();
         Self {
             registry: Arc::new(parts.registry),
             type_bindings: Arc::new(parts.type_bindings),
@@ -209,6 +226,7 @@ impl Engine {
             )),
             service_set_schema: parts.service_set_schema.map(Arc::new),
             service_compilation_schema,
+            service_dispatch_natives,
         }
     }
 
@@ -249,6 +267,10 @@ impl Engine {
         &self,
     ) -> Option<&vela_bytecode::compiler::service_schema::ServiceCompilationSchema> {
         self.service_compilation_schema.as_deref()
+    }
+
+    pub(crate) fn service_dispatch_native(&self, id: FunctionId) -> Option<&ServiceDispatchNative> {
+        self.service_dispatch_natives.get(&id)
     }
 
     #[must_use]
@@ -503,6 +525,9 @@ impl Engine {
         for id in self.native_implementation_ids() {
             linker.add_native_implementation(id);
         }
+        for (id, entry) in &self.service_dispatch_natives {
+            linker.add_internal_native_implementation(*id, entry.asyncness);
+        }
         linker.link_compiled_program(program)
     }
 
@@ -532,6 +557,7 @@ impl Engine {
         self.install_async_native_methods(vm);
         self.install_host_native_functions(vm);
         self.install_context_host_native_functions(vm);
+        self.install_service_dispatch_natives(vm);
         if let Some(policy) = &self.reflection_policy {
             let policy = policy.clone();
             vm.register_reflection_natives_with_policy(registry, policy.clone());
@@ -827,6 +853,25 @@ impl Engine {
         }
     }
 
+    fn install_service_dispatch_natives(&self, vm: &mut Vm) {
+        for (id, entry) in &self.service_dispatch_natives {
+            let id = *id;
+            let entry = entry.clone();
+            let engine = self.clone();
+            vm.register_context_host_native_with_id(id, move |args, host, budget| {
+                check_capabilities(&entry.name, &entry.effects, engine.capabilities)?;
+                let mut context = crate::context::NativeCallContext::new(
+                    &engine,
+                    host,
+                    budget,
+                    None,
+                    entry.effects.required_capability_set(),
+                );
+                context.dispatch_service(entry.target, args)
+            });
+        }
+    }
+
     fn install_native_function_aliases(&self, vm: &mut Vm, abi: &HotReloadAbi) {
         for (id, alias) in abi.host_function_aliases() {
             if self.native_function_names.contains_key(alias) {
@@ -1083,6 +1128,45 @@ impl Engine {
         self.install_with_registry_and_abi(&mut vm, self.registry_for_program_image(image), abi);
         vm
     }
+}
+
+fn service_dispatch_natives(
+    schema: &crate::service::ServiceSetSchema,
+) -> BTreeMap<FunctionId, ServiceDispatchNative> {
+    schema
+        .services()
+        .iter()
+        .flat_map(|service| {
+            service.methods().iter().flat_map(move |method| {
+                [ServiceCallMode::Base, ServiceCallMode::Pinned].map(move |mode| {
+                    let target =
+                        crate::service::ServiceCallTarget::new(mode, service.id(), method.id);
+                    let id =
+                        FunctionId::new(service_dispatch_stable_id(mode, service.id(), method.id));
+                    let method_name = method
+                        .path
+                        .rsplit("::")
+                        .next()
+                        .unwrap_or(method.path.as_str());
+                    let name = format!(
+                        "__vela_service.{}.{}.{}",
+                        mode.abi_name(),
+                        service.path().replace("::", "."),
+                        method_name,
+                    );
+                    (
+                        id,
+                        ServiceDispatchNative {
+                            target,
+                            name,
+                            effects: method.callable.effects,
+                            asyncness: method.callable.asyncness,
+                        },
+                    )
+                })
+            })
+        })
+        .collect()
 }
 
 #[derive(Clone, Copy)]

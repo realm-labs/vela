@@ -10,11 +10,8 @@ use super::signature::{
 
 mod binding;
 
-pub(crate) use binding::hint_tokens;
-use binding::{
-    binding_use_tokens, collection_registration_tokens, exclusive_host_value_tokens,
-    host_type_id_tokens, shared_host_value_tokens,
-};
+use binding::{binding_use_tokens, collection_registration_tokens, host_type_id_tokens};
+pub(crate) use binding::{exclusive_host_value_tokens, hint_tokens, shared_host_value_tokens};
 
 pub(crate) fn function_contract(
     item: &ItemFn,

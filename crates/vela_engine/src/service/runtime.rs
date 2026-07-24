@@ -5,11 +5,43 @@ use std::fmt;
 use std::sync::Arc;
 
 use vela_bytecode::{ExecutableGenerationId, LinkedArtifact};
+use vela_common::{ServiceCallMode, ServiceId, ServiceMethodId};
 use vela_vm::error::{VmError, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
+use crate::context::NativeCallContext;
 use crate::engine::Engine;
 use crate::runtime::{Runtime, RuntimeBuildError};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ServiceCallTarget {
+    pub mode: ServiceCallMode,
+    pub service: ServiceId,
+    pub method: ServiceMethodId,
+}
+
+impl ServiceCallTarget {
+    #[must_use]
+    pub const fn new(mode: ServiceCallMode, service: ServiceId, method: ServiceMethodId) -> Self {
+        Self {
+            mode,
+            service,
+            method,
+        }
+    }
+}
+
+/// Immutable, generation-pinned routing for compiler-provided `base` and
+/// `services` calls made from a Vela service method.
+#[doc(hidden)]
+pub trait ServiceCallDispatcher: Send + Sync {
+    fn dispatch(
+        &self,
+        target: ServiceCallTarget,
+        args: &[OwnedValue],
+        context: &mut NativeCallContext<'_, '_>,
+    ) -> VmResult<OwnedValue>;
+}
 
 /// A service-set context that can lend one mutable Runtime to a selected Vela
 /// method without placing mutable runtime state in an immutable generation.

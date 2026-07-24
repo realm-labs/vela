@@ -14,9 +14,10 @@ use vela_hir::type_hint::FunctionSignature;
 use vela_vm::error::VmResult;
 
 use super::{
-    ServiceMethodKey, ServiceMethodSelection, ServiceMethodUpdate, ServiceSchema,
-    ServiceSelectionError, ServiceSelectionTable, ServiceSetSchema,
+    ServiceCallDispatcher, ServiceMethodKey, ServiceMethodSelection, ServiceMethodUpdate,
+    ServiceSchema, ServiceSelectionError, ServiceSelectionTable, ServiceSetSchema,
 };
+use crate::context::NativeCallContext;
 use crate::native::EffectSet;
 use crate::runtime::{CallArgs, CallOptions, Runtime, RuntimeBuildError, VelaValue};
 
@@ -94,6 +95,37 @@ impl VelaServiceMethod {
     ) -> VmResult<VelaValue> {
         runtime.call_stable_function(self.function, self.symbol.clone(), args, options)
     }
+
+    #[doc(hidden)]
+    pub fn call_with_dispatcher<'host>(
+        &self,
+        runtime: &mut Runtime,
+        args: CallArgs<'host>,
+        options: CallOptions,
+        dispatcher: Arc<dyn ServiceCallDispatcher>,
+    ) -> VmResult<VelaValue> {
+        runtime.call_service_stable_function(
+            self.function,
+            self.symbol.clone(),
+            args,
+            options,
+            dispatcher,
+        )
+    }
+
+    pub(crate) fn call_in_context(
+        &self,
+        context: &mut NativeCallContext<'_, '_>,
+        args: CallArgs<'_>,
+    ) -> VmResult<VelaValue> {
+        context.call(
+            crate::runtime::handles::StableVelaFunction {
+                function: self.function,
+                diagnostic_name: self.symbol.clone(),
+            },
+            args,
+        )
+    }
 }
 
 /// One schema-linked Vela method retained with the exact artifact that
@@ -124,6 +156,17 @@ impl LinkedVelaServiceMethod {
         C: super::ServiceRuntimeAuthority,
     {
         context.with_service_runtime(&self.artifact, invoke)
+    }
+
+    #[doc(hidden)]
+    pub fn call_in_context(
+        &self,
+        context: &mut NativeCallContext<'_, '_>,
+        args: &[vela_vm::owned_value::OwnedValue],
+    ) -> VmResult<vela_vm::owned_value::OwnedValue> {
+        let args = CallArgs::from_positional(args.iter().cloned());
+        let value = self.method.call_in_context(context, args)?;
+        context.value_to_owned(&value)
     }
 
     fn rebind(&self, artifact: Arc<LinkedArtifact>) -> Result<Self, ServiceSourceError> {

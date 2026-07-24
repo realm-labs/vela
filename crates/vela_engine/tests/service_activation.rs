@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use vela_common::SourceId;
 use vela_engine::engine::Engine;
+use vela_engine::permission::{Capability, CapabilitySet};
 use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
 use vela_engine::service::{
     LinkedServiceSourceManifest, ServiceMethodSelection, ServiceMethodUpdate,
@@ -83,16 +84,34 @@ impl CalculatorService for RustCalculatorService {
     }
 }
 
+#[service(path = "test::audit")]
+pub trait AuditService: Send + Sync {
+    fn record(&self, context: &mut RequestContext, value: i64) -> i64;
+}
+
+pub struct RustAuditService;
+
+impl AuditService for RustAuditService {
+    fn record(&self, context: &mut RequestContext, value: i64) -> i64 {
+        context.counter += 100;
+        value * 2
+    }
+}
+
 #[service_set(context = RequestContext)]
 pub struct TestServices {
     #[vela::default(RustCalculatorService)]
     pub calculator: dyn CalculatorService,
+    #[vela::default(RustAuditService)]
+    pub audit: dyn AuditService,
 }
 
 #[test]
 fn snapshot_activates_one_vela_method_keeps_adjacent_rust_and_rolls_back() {
     let engine = TestServices::register_types(
-        Engine::builder().register_rust_type::<RequestContext>(RequestContext::vela_type_binding()),
+        Engine::builder()
+            .capabilities(CapabilitySet::new().with(Capability::HostWrite))
+            .register_rust_type::<RequestContext>(RequestContext::vela_type_binding()),
     )
     .build()
     .expect("service engine");
@@ -341,6 +360,126 @@ impl CalculatorTrap {
         context.counter, 0,
         "a Vela failure must not retry the Rust default"
     );
+}
+
+#[test]
+fn lexical_base_and_pinned_cross_service_calls_keep_one_generation() {
+    let engine = TestServices::register_types(
+        Engine::builder()
+            .capabilities(CapabilitySet::new().with(Capability::HostWrite))
+            .register_rust_type::<RequestContext>(RequestContext::vela_type_binding()),
+    )
+    .build()
+    .expect("service engine");
+    let services = TestServices::new(&engine.type_bindings()).expect("service set");
+    let base = services.pin();
+    let mut context = RequestContext {
+        counter: 0,
+        runtime: Mutex::new(ServiceRuntimeSlot::new(engine.clone())),
+    };
+    let snapshot_source = r#"
+#[service_impl(test::calculator)]
+impl CalculatorHotfix {
+    fn adjust(context, value) {
+        let original = base.adjust(context, value);
+        return services.audit.record(context, original);
+    }
+}
+"#;
+    let snapshot_update = linked_update(&engine, services.schema(), 11, snapshot_source);
+    let snapshot = services
+        .stage_snapshot(
+            &base,
+            snapshot_update,
+            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            call_options(),
+        )
+        .expect("lexical snapshot");
+    services
+        .activate_if_current(snapshot)
+        .expect("activate lexical snapshot");
+    let first = services.pin();
+
+    assert_eq!(first.calculator().adjust(&mut context, 5), 12);
+    assert_eq!(
+        context.counter, 101,
+        "base and the pinned Rust service must see one host object"
+    );
+
+    let delta_source = r#"
+#[service_impl(test::calculator)]
+impl CalculatorHotfix {
+    fn adjust(context, value) {
+        let original = base.adjust(context, value);
+        return services.audit.record(context, original);
+    }
+}
+
+#[service_impl(test::audit)]
+impl AuditHotfix {
+    fn record(context, value) {
+        return value + 7;
+    }
+}
+"#;
+    let linked_delta = linked_update(&engine, services.schema(), 12, delta_source);
+    let audit = services
+        .schema()
+        .service("audit")
+        .expect("audit service schema");
+    let sparse_delta = LinkedServiceSourceManifest::from_updates(
+        linked_delta
+            .into_updates()
+            .into_iter()
+            .filter(|update| update.key().service_id == audit.id()),
+    )
+    .expect("audit-only Delta");
+    let delta = services
+        .stage_delta(
+            &first,
+            sparse_delta,
+            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            call_options(),
+        )
+        .expect("exact-base cross-service Delta");
+    services
+        .activate_if_current(delta)
+        .expect("activate cross-service Delta");
+    let second = services.pin();
+
+    context.counter = 0;
+    assert_eq!(first.calculator().adjust(&mut context, 5), 12);
+    assert_eq!(
+        context.counter, 101,
+        "old root retains the Rust audit selection"
+    );
+    context.counter = 0;
+    assert_eq!(second.calculator().adjust(&mut context, 5), 13);
+    assert_eq!(
+        context.counter, 1,
+        "new root inherits calculator Vela and pins the patched audit service"
+    );
+}
+
+fn linked_update(
+    engine: &Engine,
+    schema: &vela_engine::service::ServiceSetSchema,
+    source_id: u32,
+    source: &str,
+) -> LinkedServiceSourceManifest {
+    let sources =
+        build_single_source(SourceId::new(source_id), source).expect("valid service source");
+    let manifest =
+        ServiceSourceManifest::link(sources.graph(), schema).expect("schema-linked update");
+    let compiled = engine
+        .compile_source(source)
+        .expect("compiled service update");
+    let artifact = engine
+        .link_compiled_program(compiled)
+        .expect("linked service update");
+    manifest
+        .bind_artifact(artifact)
+        .expect("artifact-bound service update")
 }
 
 fn call_options() -> CallOptions {

@@ -523,12 +523,46 @@ where
         )
     }
 
+    pub(crate) fn call_service_stable_function<'host>(
+        &mut self,
+        function: vela_def::FunctionId,
+        diagnostic_name: impl Into<String>,
+        args: CallArgs<'host>,
+        options: CallOptions,
+        dispatcher: std::sync::Arc<dyn crate::service::ServiceCallDispatcher>,
+    ) -> VmResult<VelaValue> {
+        self.call_impl_with_service_dispatcher(
+            handles::StableVelaFunction {
+                function,
+                diagnostic_name: diagnostic_name.into(),
+            },
+            args,
+            options,
+            false,
+            Some(dispatcher),
+        )
+    }
+
     fn call_impl<'host, T>(
         &mut self,
         entry: T,
         args: CallArgs<'host>,
         options: CallOptions,
         allow_async_entry: bool,
+    ) -> VmResult<VelaValue>
+    where
+        T: RuntimeCallTarget,
+    {
+        self.call_impl_with_service_dispatcher(entry, args, options, allow_async_entry, None)
+    }
+
+    fn call_impl_with_service_dispatcher<'host, T>(
+        &mut self,
+        entry: T,
+        args: CallArgs<'host>,
+        options: CallOptions,
+        allow_async_entry: bool,
+        service_dispatcher: Option<std::sync::Arc<dyn crate::service::ServiceCallDispatcher>>,
     ) -> VmResult<VelaValue>
     where
         T: RuntimeCallTarget,
@@ -556,6 +590,7 @@ where
             target,
             args,
             budget: &mut budget,
+            service_dispatcher,
         })
     }
 
@@ -600,6 +635,7 @@ where
             target,
             args,
             budget: &mut budget,
+            service_dispatcher: None,
         })
         .await
     }
@@ -918,6 +954,7 @@ where
                             vm_state_values,
                             retained_values: std::sync::Arc::clone(&retained_values),
                             generations: &mut *call.generations,
+                            service_dispatcher: call.service_dispatcher.as_deref(),
                         };
                         invoke_prepared_context(&prepared, &mut active)
                     };
@@ -1041,6 +1078,7 @@ where
                             vm_state_values,
                             retained_values: std::sync::Arc::clone(&retained_values),
                             generations: &mut *call.generations,
+                            service_dispatcher: call.service_dispatcher.as_deref(),
                         };
                         invoke_prepared_async(&prepared, &mut active).await
                     };
@@ -1073,6 +1111,7 @@ where
                             vm_state_values,
                             retained_values: std::sync::Arc::clone(&retained_values),
                             generations: &mut *call.generations,
+                            service_dispatcher: call.service_dispatcher.as_deref(),
                         };
                         invoke_prepared_context(&prepared, &mut active)
                     };

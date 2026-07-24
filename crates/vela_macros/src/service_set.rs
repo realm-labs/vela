@@ -6,7 +6,8 @@ use syn::{
 };
 
 use crate::service::{
-    composition_function_ident, registration_function_ident, schema_function_ident,
+    composition_function_ident, registration_function_ident, rust_dispatch_function_ident,
+    schema_function_ident, service_id_function_ident,
 };
 use crate::signature::reject_generic_signature;
 
@@ -41,6 +42,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let root_ident = format_ident!("{set_ident}Root");
     let candidate_ident = format_ident!("{set_ident}Candidate");
     let rollback_ident = format_ident!("{set_ident}Rollback");
+    let dispatcher_ident = format_ident!("__VelaServiceDispatcher{set_ident}");
     let register_calls = services.iter().map(|service| {
         let function = service.registration_path();
         quote! {
@@ -67,16 +69,56 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             #field: ::std::sync::Arc<dyn #trait_path>
         }
     });
-    let composed_services = services.iter().map(|service| {
+    let composed_defaults = services.iter().map(|service| {
         let field = &service.field;
         let trait_path = &service.trait_path;
         let default = &service.default;
+        let default_ident = format_ident!("__vela_default_{field}");
+        quote! {
+            let #default_ident: ::std::sync::Arc<dyn #trait_path> =
+                ::std::sync::Arc::new(#default);
+        }
+    });
+    let dispatcher_fields = services.iter().map(|service| {
+        let field = &service.field;
+        let trait_path = &service.trait_path;
+        quote! {
+            #field: ::std::sync::Arc<dyn #trait_path>
+        }
+    });
+    let dispatcher_initializers = services.iter().map(|service| {
+        let field = &service.field;
+        let default_ident = format_ident!("__vela_default_{field}");
+        quote! {
+            #field: ::std::sync::Arc::clone(&#default_ident)
+        }
+    });
+    let dispatcher_rust_branches = services.iter().map(|service| {
+        let field = &service.field;
+        let service_id = service.service_id_path();
+        let dispatch = service.rust_dispatch_path();
+        quote! {
+            if __vela_target.service == #service_id() {
+                return #dispatch(
+                    self.#field.as_ref(),
+                    __vela_target.method,
+                    __vela_args,
+                    __vela_context,
+                );
+            }
+        }
+    });
+    let composed_services = services.iter().map(|service| {
+        let field = &service.field;
+        let trait_path = &service.trait_path;
         let composition = service.composition_path();
+        let default_ident = format_ident!("__vela_default_{field}");
         quote! {
             let #field: ::std::sync::Arc<dyn #trait_path> = #composition(
-                ::std::sync::Arc::new(#default),
+                ::std::sync::Arc::clone(&#default_ident),
                 runtime,
                 options.clone(),
+                ::std::sync::Arc::clone(&__vela_dispatcher),
                 &selections,
             );
         }
@@ -184,6 +226,13 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     ::vela_engine::service::LinkedVelaServiceMethod
                 >,
             ) -> Self {
+                #(#composed_defaults)*
+                let __vela_dispatcher: ::std::sync::Arc<
+                    dyn ::vela_engine::service::ServiceCallDispatcher
+                > = ::std::sync::Arc::new(#dispatcher_ident {
+                    #(#dispatcher_initializers,)*
+                    selections: selections.clone(),
+                });
                 #(#composed_services)*
                 Self {
                     #(#generation_initializers,)*
@@ -203,6 +252,87 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             }
 
             #(#generation_accessors)*
+        }
+
+        struct #dispatcher_ident {
+            #(#dispatcher_fields,)*
+            selections: ::vela_engine::service::ServiceSelectionTable<
+                ::vela_engine::service::LinkedVelaServiceMethod
+            >,
+        }
+
+        impl #dispatcher_ident {
+            fn __vela_dispatch_rust(
+                &self,
+                __vela_target: ::vela_engine::service::ServiceCallTarget,
+                __vela_args: &[::vela_vm::owned_value::OwnedValue],
+                __vela_context: &mut
+                    ::vela_engine::context::NativeCallContext<'_, '_>,
+            ) -> ::vela_vm::error::VmResult<
+                ::vela_vm::owned_value::OwnedValue
+            > {
+                #(#dispatcher_rust_branches)*
+                Err(::vela_vm::error::VmError::new(
+                    ::vela_vm::error::VmErrorKind::UnknownMethod {
+                        method: ::std::format!(
+                            "service {} method {}",
+                            __vela_target.service.get(),
+                            __vela_target.method.get(),
+                        ),
+                    },
+                ))
+            }
+        }
+
+        impl ::vela_engine::service::ServiceCallDispatcher for #dispatcher_ident {
+            fn dispatch(
+                &self,
+                __vela_target: ::vela_engine::service::ServiceCallTarget,
+                __vela_args: &[::vela_vm::owned_value::OwnedValue],
+                __vela_context: &mut
+                    ::vela_engine::context::NativeCallContext<'_, '_>,
+            ) -> ::vela_vm::error::VmResult<
+                ::vela_vm::owned_value::OwnedValue
+            > {
+                match __vela_target.mode {
+                    ::vela_common::ServiceCallMode::Base => self.__vela_dispatch_rust(
+                        __vela_target,
+                        __vela_args,
+                        __vela_context,
+                    ),
+                    ::vela_common::ServiceCallMode::Pinned => {
+                        match self.selections.get(
+                            __vela_target.service,
+                            __vela_target.method,
+                        ) {
+                            Some(
+                                ::vela_engine::service::ServiceMethodSelection::RustDefault
+                            ) => self.__vela_dispatch_rust(
+                                __vela_target,
+                                __vela_args,
+                                __vela_context,
+                            ),
+                            Some(
+                                ::vela_engine::service::ServiceMethodSelection::Vela(
+                                    __vela_method,
+                                )
+                            ) => __vela_method.call_in_context(
+                                __vela_context,
+                                __vela_args,
+                            ),
+                            None => Err(::vela_vm::error::VmError::new(
+                                ::vela_vm::error::VmErrorKind::UnknownMethod {
+                                    method: ::std::format!(
+                                        "service {} method {}",
+                                        __vela_target.service.get(),
+                                        __vela_target.method.get(),
+                                    ),
+                                },
+                            )),
+                        }
+                    }
+                }
+            }
         }
 
         #vis struct #set_ident {
@@ -519,6 +649,34 @@ impl ServiceField {
         replace_trait_ident(
             &self.trait_path,
             composition_function_ident(
+                &self
+                    .trait_path
+                    .segments
+                    .last()
+                    .expect("service trait path is non-empty")
+                    .ident,
+            ),
+        )
+    }
+
+    fn service_id_path(&self) -> Path {
+        replace_trait_ident(
+            &self.trait_path,
+            service_id_function_ident(
+                &self
+                    .trait_path
+                    .segments
+                    .last()
+                    .expect("service trait path is non-empty")
+                    .ident,
+            ),
+        )
+    }
+
+    fn rust_dispatch_path(&self) -> Path {
+        replace_trait_ident(
+            &self.trait_path,
+            rust_dispatch_function_ident(
                 &self
                     .trait_path
                     .segments

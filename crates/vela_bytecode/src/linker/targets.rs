@@ -33,7 +33,13 @@ impl LinkContext<'_, '_> {
             return Ok(handle);
         }
 
-        if let Some(registry) = self.linker.registry
+        let internal_asyncness = self
+            .linker
+            .internal_native_implementations
+            .get(&id)
+            .copied();
+        if internal_asyncness.is_none()
+            && let Some(registry) = self.linker.registry
             && registry.get(id.def_id()).and_then(Def::function_id) != Some(id)
         {
             return Err(LinkError::UnresolvedNative {
@@ -42,21 +48,22 @@ impl LinkContext<'_, '_> {
             });
         }
 
-        if !self.linker.native_implementations.contains(&id) {
+        if internal_asyncness.is_none() && !self.linker.native_implementations.contains(&id) {
             return Err(LinkError::MissingNativeImplementation {
                 name: name.to_owned(),
                 id,
             });
         }
 
-        let asyncness = self
-            .linker
-            .registry
-            .and_then(|registry| registry.get(id.def_id()))
-            .and_then(Def::function_signature)
-            .map_or(vela_common::CallableAsyncness::Sync, |signature| {
-                signature.asyncness
-            });
+        let asyncness = internal_asyncness.unwrap_or_else(|| {
+            self.linker
+                .registry
+                .and_then(|registry| registry.get(id.def_id()))
+                .and_then(Def::function_signature)
+                .map_or(vela_common::CallableAsyncness::Sync, |signature| {
+                    signature.asyncness
+                })
+        });
         let debug_name = self.linked.intern_debug_name(name.to_owned());
         let handle = self.linked.push_native_function(
             LinkedNativeFunction::new(id, debug_name).with_asyncness(asyncness),

@@ -78,6 +78,7 @@ pub struct NativeCallContext<'ctx, 'host> {
     reentry: Option<&'ctx mut dyn NativeReentry>,
     host_provenance: ActiveHostProvenanceSet,
     effect_ceiling: CapabilitySet,
+    service_dispatcher: Option<&'ctx dyn crate::service::ServiceCallDispatcher>,
 }
 
 #[derive(Clone, Copy)]
@@ -104,6 +105,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             reentry,
             host_provenance: ActiveHostProvenanceSet::new(),
             effect_ceiling,
+            service_dispatcher: None,
         }
     }
 
@@ -111,6 +113,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         engine: &'ctx Engine,
         reentry: &'ctx mut dyn NativeReentry,
         effect_ceiling: CapabilitySet,
+        service_dispatcher: Option<&'ctx dyn crate::service::ServiceCallDispatcher>,
     ) -> Self {
         Self {
             engine,
@@ -119,7 +122,21 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             reentry: Some(reentry),
             host_provenance: ActiveHostProvenanceSet::new(),
             effect_ceiling,
+            service_dispatcher,
         }
+    }
+
+    pub(crate) fn dispatch_service(
+        &mut self,
+        target: crate::service::ServiceCallTarget,
+        args: &[OwnedValue],
+    ) -> VmResult<OwnedValue> {
+        let dispatcher = self.service_dispatcher.ok_or_else(|| {
+            vela_vm::error::VmError::new(vela_vm::error::VmErrorKind::TypeMismatch {
+                operation: "service call outside a pinned service generation",
+            })
+        })?;
+        dispatcher.dispatch(target, args, self)
     }
 
     pub fn call<'args, T>(&mut self, target: T, args: CallArgs<'args>) -> VmResult<VelaValue>

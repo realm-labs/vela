@@ -29,6 +29,7 @@ use support::{
 pub struct Linker<'registry> {
     registry: Option<&'registry DefinitionRegistry>,
     native_implementations: BTreeSet<FunctionId>,
+    internal_native_implementations: BTreeMap<FunctionId, vela_common::CallableAsyncness>,
 }
 
 impl<'registry> Linker<'registry> {
@@ -42,6 +43,7 @@ impl<'registry> Linker<'registry> {
         Self {
             registry: Some(registry),
             native_implementations: BTreeSet::new(),
+            internal_native_implementations: BTreeMap::new(),
         }
     }
 
@@ -53,6 +55,17 @@ impl<'registry> Linker<'registry> {
 
     pub fn add_native_implementation(&mut self, id: FunctionId) {
         self.native_implementations.insert(id);
+    }
+
+    /// Registers an engine-internal native that is intentionally absent from
+    /// the source-visible definition registry.
+    #[doc(hidden)]
+    pub fn add_internal_native_implementation(
+        &mut self,
+        id: FunctionId,
+        asyncness: vela_common::CallableAsyncness,
+    ) {
+        self.internal_native_implementations.insert(id, asyncness);
     }
 
     #[cfg(any(test, feature = "test-support"))]

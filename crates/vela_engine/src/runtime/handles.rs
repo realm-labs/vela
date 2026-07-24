@@ -380,6 +380,7 @@ pub(super) struct RuntimeCallExecution<'program, 'state, 'host, 'budget> {
     pub(super) target: EntryRequest,
     pub(super) args: CallArgs<'host>,
     pub(super) budget: &'budget mut vela_vm::budget::ExecutionBudget,
+    pub(super) service_dispatcher: Option<Arc<dyn crate::service::ServiceCallDispatcher>>,
 }
 
 fn linked_function_by_name<'program>(

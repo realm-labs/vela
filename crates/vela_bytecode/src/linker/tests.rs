@@ -39,6 +39,38 @@ fn linker_fails_on_unresolved_native_calls() {
 }
 
 #[test]
+fn linker_accepts_explicit_internal_native_without_source_definition() {
+    let native = FunctionId::new(101);
+    let mut code = UnlinkedCodeObject::new("main", 1);
+    let cache_site = code.push_cache_site(CacheSiteKind::NativeCall, InstructionOffset(0));
+    code.push_instruction(UnlinkedInstruction::new(
+        UnlinkedInstructionKind::CallNative {
+            dst: None,
+            name: "__internal".to_owned(),
+            native,
+            cache_site: Some(cache_site),
+            args: Vec::new(),
+        },
+    ));
+    let mut program = UnlinkedProgram::new();
+    program.insert_function(code);
+    let registry = DefinitionRegistry::new();
+    let mut linker = Linker::with_registry(&registry);
+    linker.add_internal_native_implementation(native, CallableAsyncness::Sync);
+
+    let linked = linker
+        .link_test_program(&program)
+        .expect("explicit internal native should bypass only source lookup");
+    let linked_native = linked
+        .native_function(NativeHandle::new(0))
+        .expect("internal native side-table entry");
+
+    assert_eq!(linked_native.id, native);
+    assert_eq!(linked_native.asyncness, CallableAsyncness::Sync);
+    assert_eq!(linked.debug_name(linked_native.debug_name), "__internal");
+}
+
+#[test]
 fn linker_fails_on_missing_native_implementation() {
     let path = DefPath::function("host", std::iter::empty::<&str>(), "award");
     let native = FunctionId::from_def_id(path.id());
