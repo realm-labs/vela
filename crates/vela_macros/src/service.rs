@@ -82,8 +82,13 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let trait_ident = &item.ident;
     let schema_ident = schema_function_ident(trait_ident);
     let register_ident = registration_function_ident(trait_ident);
+    let compose_ident = composition_function_ident(trait_ident);
+    let adapter_ident = format_ident!("__VelaServiceAdapter{trait_ident}");
     let registration_tokens = registrations.iter().map(RegistrationSpec::tokens);
     let method_tokens = methods.iter().map(|method| &method.tokens);
+    let adapter_fields = methods.iter().map(|method| &method.adapter_field);
+    let adapter_initializers = methods.iter().map(|method| &method.adapter_initializer);
+    let adapter_methods = methods.iter().map(|method| &method.adapter_method);
     let docs = docs_from_attrs(&item.attrs)
         .map_or_else(|| quote! { None }, |docs| quote! { Some(#docs.to_owned()) });
 
@@ -117,6 +122,35 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 registry,
             )
         }
+
+        #[doc(hidden)]
+        pub fn #compose_ident(
+            __vela_default: ::std::sync::Arc<dyn #trait_ident>,
+            __vela_runtime: ::vela_engine::service::ServiceRuntimeBinding,
+            __vela_options: ::vela_engine::runtime::CallOptions,
+            __vela_selections: &::vela_engine::service::ServiceSelectionTable<
+                ::vela_engine::service::LinkedVelaServiceMethod
+            >,
+        ) -> ::std::sync::Arc<dyn #trait_ident> {
+            ::std::sync::Arc::new(#adapter_ident {
+                __vela_default,
+                __vela_runtime,
+                __vela_options,
+                #(#adapter_initializers,)*
+            })
+        }
+
+        #[doc(hidden)]
+        struct #adapter_ident {
+            __vela_default: ::std::sync::Arc<dyn #trait_ident>,
+            __vela_runtime: ::vela_engine::service::ServiceRuntimeBinding,
+            __vela_options: ::vela_engine::runtime::CallOptions,
+            #(#adapter_fields,)*
+        }
+
+        impl #trait_ident for #adapter_ident {
+            #(#adapter_methods)*
+        }
     })
 }
 
@@ -126,6 +160,10 @@ pub(crate) fn schema_function_ident(trait_ident: &syn::Ident) -> syn::Ident {
 
 pub(crate) fn registration_function_ident(trait_ident: &syn::Ident) -> syn::Ident {
     format_ident!("__vela_register_service_{trait_ident}")
+}
+
+pub(crate) fn composition_function_ident(trait_ident: &syn::Ident) -> syn::Ident {
+    format_ident!("__vela_compose_service_{trait_ident}")
 }
 
 fn validate_trait(item: &ItemTrait) -> Result<()> {
@@ -286,6 +324,9 @@ fn parse_path(attr: TokenStream) -> Result<String> {
 
 struct EmittedMethod {
     tokens: TokenStream,
+    adapter_field: TokenStream,
+    adapter_initializer: TokenStream,
+    adapter_method: TokenStream,
 }
 
 fn emit_method(
@@ -302,6 +343,7 @@ fn emit_method(
         service_path,
         &method_ident.to_string(),
     ));
+    let service_id = u128::from(vela_common::stable_id("vela_service", "", service_path));
     let mut requirements = Vec::new();
     let mut requirement_keys = HashSet::new();
     let mut parameter_bindings = Vec::new();
@@ -399,7 +441,202 @@ fn emit_method(
             vec![#(#requirement_values),*],
         )
     }};
-    Ok(EmittedMethod { tokens })
+    let target_ident = format_ident!("__vela_target_{method_ident}");
+    let adapter_field = quote! {
+        #target_ident: ::std::option::Option<
+            ::vela_engine::service::LinkedVelaServiceMethod
+        >
+    };
+    let adapter_initializer = quote! {
+        #target_ident: match __vela_selections
+            .get(
+                ::vela_common::ServiceId::new(#service_id),
+                ::vela_common::ServiceMethodId::new(#method_id),
+            )
+            .expect("complete service selection table must contain every method")
+        {
+            ::vela_engine::service::ServiceMethodSelection::RustDefault => None,
+            ::vela_engine::service::ServiceMethodSelection::Vela(__vela_target) => {
+                Some(__vela_target.clone())
+            }
+        }
+    };
+    let adapter_method = emit_adapter_method(service_path, method, signature, &target_ident)?;
+    Ok(EmittedMethod {
+        tokens,
+        adapter_field,
+        adapter_initializer,
+        adapter_method,
+    })
+}
+
+fn emit_adapter_method(
+    service_path: &str,
+    method: &syn::TraitItemFn,
+    signature: &ClassifiedSignature,
+    target_ident: &syn::Ident,
+) -> Result<TokenStream> {
+    let method_signature = &method.sig;
+    let method_ident = &method.sig.ident;
+    let argument_idents = signature
+        .parameters
+        .iter()
+        .skip(1)
+        .map(|parameter| format_ident!("{}", parameter.name))
+        .collect::<Vec<_>>();
+    let default_call = quote! {
+        self.__vela_default.#method_ident(#(#argument_idents),*)
+    };
+    if matches!(signature.returns.mode, ReturnMode::ScopedHost { .. }) {
+        return Ok(quote! {
+            #method_signature {
+                if self.#target_ident.is_some() {
+                    panic!(
+                        "Vela-selected borrowed service return `{}` is not executable yet",
+                        ::core::concat!(#service_path, "::", ::core::stringify!(#method_ident)),
+                    );
+                }
+                #default_call
+            }
+        });
+    }
+
+    let context_candidates = signature
+        .parameters
+        .iter()
+        .skip(1)
+        .filter_map(|parameter| match (&parameter.ty, parameter.mode) {
+            (TypeShape::Host(ty, HostAccess::Exclusive), ParameterMode::ExclusiveHost) => {
+                Some((format_ident!("{}", parameter.name), ty))
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    let call_arguments = signature
+        .parameters
+        .iter()
+        .skip(1)
+        .map(service_call_argument_tokens)
+        .collect::<Result<Vec<_>>>()?;
+    let context_branches = context_candidates
+        .iter()
+        .map(|(context_ident, context_ty)| {
+            quote! {
+                if self.__vela_runtime.matches::<#context_ty>() {
+                    self.__vela_runtime.invoke(
+                        #context_ident,
+                        __vela_target.artifact(),
+                        |__vela_runtime, #context_ident| {
+                            let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
+                            #(#call_arguments)*
+                            let __vela_value = __vela_target.method().call(
+                                __vela_runtime,
+                                __vela_args,
+                                self.__vela_options.clone(),
+                            )?;
+                            __vela_runtime.value_to_owned(&__vela_value)
+                        },
+                    )
+                } else
+            }
+        });
+    let return_ty: Type = match &method.sig.output {
+        ReturnType::Default => parse_quote!(()),
+        ReturnType::Type(_, ty) => ty.as_ref().clone(),
+    };
+
+    Ok(quote! {
+        #method_signature {
+            let Some(__vela_target) = self.#target_ident.as_ref() else {
+                return #default_call;
+            };
+            let __vela_result = #(#context_branches)* {
+                Err(::vela_engine::service::ServiceInvocationError::MissingRuntimeContext {
+                    service: #service_path.to_owned(),
+                    method: ::core::stringify!(#method_ident).to_owned(),
+                    expected: self.__vela_runtime.context_name(),
+                })
+            };
+            match __vela_result {
+                Ok(__vela_value) => {
+                    <#return_ty as ::vela_engine::args::FromScriptArg>::from_script_arg(
+                        &__vela_value,
+                    )
+                    .unwrap_or_else(|__vela_error| {
+                        panic!(
+                            "Vela service return conversion failed for `{}`: {}",
+                            ::core::concat!(
+                                #service_path,
+                                "::",
+                                ::core::stringify!(#method_ident),
+                            ),
+                            __vela_error,
+                        )
+                    })
+                }
+                Err(__vela_error) => panic!("{}", __vela_error),
+            }
+        }
+    })
+}
+
+fn service_call_argument_tokens(parameter: &ClassifiedParameter) -> Result<TokenStream> {
+    let ident = format_ident!("{}", parameter.name);
+    match (&parameter.ty, parameter.mode) {
+        (TypeShape::Host(_, HostAccess::Shared), ParameterMode::SharedHost) => Ok(quote! {
+            __vela_args.push_positional_host_ref(#ident);
+        }),
+        (TypeShape::Host(_, HostAccess::Exclusive), ParameterMode::ExclusiveHost) => Ok(quote! {
+            __vela_args.push_positional_host_mut(#ident);
+        }),
+        (TypeShape::BorrowedCollection(collection), ParameterMode::SharedHost) => {
+            if collection.slice_element.is_some() {
+                if matches!(
+                    &collection.kind,
+                    BorrowedCollectionKind::Array(element)
+                        if matches!(element.as_ref(), TypeShape::Value(_))
+                ) {
+                    Ok(quote! {
+                        __vela_args.push(::vela_vm::owned_value::OwnedValue::Array(
+                            #ident
+                                .iter()
+                                .cloned()
+                                .map(::vela_engine::args::IntoScriptArg::into_script_arg)
+                                .collect()
+                        ));
+                    })
+                } else {
+                    Ok(quote! {
+                        __vela_args.push_positional_slice_ref(#ident);
+                    })
+                }
+            } else {
+                Ok(quote! {
+                    __vela_args.push_positional_collection_ref(#ident);
+                })
+            }
+        }
+        (TypeShape::BorrowedCollection(collection), ParameterMode::ExclusiveHost) => {
+            if collection.slice_element.is_some() {
+                Ok(quote! {
+                    __vela_args.push_positional_slice_mut(#ident);
+                })
+            } else {
+                Ok(quote! {
+                    __vela_args.push_positional_collection_mut(#ident);
+                })
+            }
+        }
+        (_, ParameterMode::Value | ParameterMode::ReadOnlyValueBorrow) => Ok(quote! {
+            __vela_args.push(
+                ::vela_engine::args::IntoScriptArg::into_script_arg(#ident)
+            );
+        }),
+        (_, mode) => Err(syn::Error::new_spanned(
+            parameter.rust_ty.as_ref().unwrap_or(&parse_quote!(())),
+            format!("unsupported Vela service call parameter mode {mode:?}"),
+        )),
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -836,8 +1073,10 @@ mod tests {
         assert!(output.contains("__vela_register_service_RewardService"));
         assert!(output.contains("RustTraitMethod"));
         assert!(output.contains("ServiceTypeRequirement"));
+        assert!(output.contains("__vela_compose_service_RewardService"));
+        assert!(output.contains("ServiceRuntimeBinding"));
         assert!(!output.contains("HostRef"));
-        assert!(!output.contains("Runtime"));
+        assert!(!output.contains("__vela_runtime : :: vela_engine :: runtime :: Runtime"));
     }
 
     #[test]
