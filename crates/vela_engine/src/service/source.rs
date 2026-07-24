@@ -9,11 +9,13 @@ use vela_hir::ids::{HirBodyId, HirDeclId, HirNodeId, ModuleId};
 use vela_hir::module_graph::ModuleGraph;
 use vela_hir::service_impl::{ServiceImplCatalog, ServiceImplCatalogError};
 use vela_hir::type_hint::FunctionSignature;
+use vela_vm::error::VmResult;
 
 use super::{
     ServiceMethodKey, ServiceMethodUpdate, ServiceSchema, ServiceSelectionError,
     ServiceSelectionTable, ServiceSetSchema,
 };
+use crate::runtime::{CallArgs, CallOptions, Runtime, VelaValue};
 
 /// One Vela method body resolved against an imported Rust service schema.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -73,6 +75,15 @@ impl VelaServiceMethod {
     #[must_use]
     pub const fn span(&self) -> Span {
         self.span
+    }
+
+    pub fn call<'host>(
+        &self,
+        runtime: &mut Runtime,
+        args: CallArgs<'host>,
+        options: CallOptions,
+    ) -> VmResult<VelaValue> {
+        runtime.call_stable_function(self.function, self.symbol.clone(), args, options)
     }
 }
 

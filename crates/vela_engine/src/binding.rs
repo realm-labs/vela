@@ -655,7 +655,7 @@ binding_tuple_args!(
 fn stable_target(spec: &'static BindingCallableSpec) -> StableVelaFunction {
     StableVelaFunction {
         function: FunctionId::new(spec.executable),
-        diagnostic_name: spec.public_path,
+        diagnostic_name: spec.public_path.to_owned(),
     }
 }
 

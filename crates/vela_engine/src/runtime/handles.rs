@@ -165,7 +165,7 @@ pub enum RuntimeCallTargetKind {
 #[derive(Clone, Debug)]
 pub struct StableVelaFunction {
     pub(crate) function: FunctionId,
-    pub(crate) diagnostic_name: &'static str,
+    pub(crate) diagnostic_name: String,
 }
 
 pub trait RuntimeMethodSelector: method_selector_sealed::Sealed {}
@@ -341,9 +341,9 @@ pub(super) fn resolve_function_target(
         }
         RuntimeCallTargetKind::StableFunction(target) => {
             let (function, code) =
-                linked_function_by_id(program, target.function, target.diagnostic_name)?;
+                linked_function_by_id(program, target.function, &target.diagnostic_name)?;
             Ok(EntryRequest {
-                name: target.diagnostic_name.to_owned(),
+                name: target.diagnostic_name,
                 asyncness: code.asyncness,
                 function,
                 params: linked_params(program, code),

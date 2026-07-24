@@ -1,10 +1,12 @@
 use vela_common::SourceId;
+use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_engine::service::{
     ServiceMethodSelection, ServiceSchema, ServiceSetSchema, ServiceSourceErrorKind,
     ServiceSourceManifest,
 };
 use vela_hir::source_ingestion::build_single_source;
 use vela_macros::{service, service_set};
+use vela_vm::owned_value::OwnedValue;
 
 #[service(path = "test::inventory")]
 pub trait InventoryService: Send + Sync {
@@ -74,6 +76,19 @@ impl InventoryHotfix {
             .entry_point_by_id(target.function())
             .is_some(),
         "schema-linked target must name compiled bytecode"
+    );
+    let mut runtime =
+        Runtime::from_linked_artifact(engine, artifact).expect("service execution runtime");
+    let output = target
+        .call(
+            &mut runtime,
+            CallArgs::from_positional([OwnedValue::i64(6)]),
+            CallOptions::unbounded(),
+        )
+        .expect("selected Vela service method");
+    assert_eq!(
+        runtime.value_to_owned(&output).expect("owned result"),
+        OwnedValue::i64(7)
     );
     assert_eq!(
         table.get(inventory.id(), remove.id),

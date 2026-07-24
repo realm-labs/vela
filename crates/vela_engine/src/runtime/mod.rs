@@ -505,6 +505,24 @@ where
         self.call_impl(entry, args, options, false)
     }
 
+    pub(crate) fn call_stable_function<'host>(
+        &mut self,
+        function: vela_def::FunctionId,
+        diagnostic_name: impl Into<String>,
+        args: CallArgs<'host>,
+        options: CallOptions,
+    ) -> VmResult<VelaValue> {
+        self.call_impl(
+            handles::StableVelaFunction {
+                function,
+                diagnostic_name: diagnostic_name.into(),
+            },
+            args,
+            options,
+            false,
+        )
+    }
+
     fn call_impl<'host, T>(
         &mut self,
         entry: T,
