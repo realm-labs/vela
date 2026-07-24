@@ -1,5 +1,12 @@
 //! Whole-generation publication for generated Rust/Vela service sets.
 
+mod schema;
+
+pub use schema::{
+    ServiceMethodDescriptor, ServiceSchema, ServiceSchemaError, ServiceSetSchema,
+    ServiceTypeRequirement,
+};
+
 use std::fmt;
 use std::ops::Deref;
 use std::sync::Arc;
