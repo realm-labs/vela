@@ -90,6 +90,16 @@ the [S0 baseline report](archive/service-hard-switch-s0-baseline-2026-07-23.md).
 Use `cargo bench -p vela_engine --bench service_boundary_baseline` for quick
 sampling and append `-- --stable` for the frozen 100,000-iteration shape.
 
+The 2026-07-24 S4 quick checkpoint added the generated Rust-default row after
+pinning one complete service generation outside the timed loop. On the local
+Windows release build, 1,000 calls measured 2 ns/call for the ordinary Rust
+trait object and 3 ns/call for generated Rust-default dispatch; both reported
+zero allocations and zero allocated bytes. A dedicated 10,000-call regression
+test also requires zero allocations after pinning. These quick numbers set the
+S4 structural budget—one pinned-generation access plus ordinary trait
+dispatch, with no HostRef or VM work—but do not replace a stable multi-sample
+latency run.
+
 The Batch E pre-optimization quick checkpoint on 2026-07-17 used parent commit
 `87e871439`, Rust/Cargo 1.97.0, macOS 26.5.2 arm64, the optimized bench profile,
 one sample, 1,000 measured iterations, and 100 warmups. It recorded 0.4 ns/call

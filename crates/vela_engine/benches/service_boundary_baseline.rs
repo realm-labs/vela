@@ -17,7 +17,7 @@ use vela_engine::permission::Capability;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_host::lease::HostLeaseKind;
 use vela_host::path::HostRef;
-use vela_macros::{ScriptHost, ScriptReflect, export, methods};
+use vela_macros::{ScriptHost, ScriptReflect, export, methods, service, service_set};
 use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
@@ -135,7 +135,8 @@ pub fn exclusive_pair(first: &mut BoundaryHost, second: &mut BoundaryHost) -> i6
     first.value + second.value
 }
 
-trait BoundaryDefaultService {
+#[service(path = "bench::boundary_default")]
+pub trait BoundaryDefaultService: Send + Sync {
     fn apply(&self, host: &mut BoundaryHost) -> i64;
 }
 
@@ -146,6 +147,12 @@ impl BoundaryDefaultService for RustBoundaryDefaultService {
         host.value += 1;
         host.value
     }
+}
+
+#[service_set(context = BoundaryHost)]
+pub struct BoundaryServices {
+    #[vela::default(RustBoundaryDefaultService)]
+    pub boundary: dyn BoundaryDefaultService,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -171,6 +178,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     let default_service: &dyn BoundaryDefaultService = &default_service;
     report("direct_rust_trait_dispatch", iterations, || {
         Ok(black_box(default_service).apply(black_box(&mut host)) as u64)
+    })?;
+    let service_engine = BoundaryServices::register_types(
+        Engine::builder().register_rust_type::<BoundaryHost>(BoundaryHost::vela_type_binding()),
+    )
+    .build()?;
+    let services = BoundaryServices::new(&service_engine.type_bindings())?;
+    let services = services.pin();
+    report("generated_rust_default", iterations, || {
+        Ok(black_box(services.boundary()).apply(black_box(&mut host)) as u64)
     })?;
 
     let root = HostRef::new(BoundaryHost::vela_host_type_id(), HostObjectId::new(1), 1);
