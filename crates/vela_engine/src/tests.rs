@@ -3,6 +3,7 @@ use vela_def::{FieldId, TraitId, TypeId};
 use vela_reflect::registry::{FieldDesc, TraitDesc, TypeDesc, TypeKey};
 
 mod context;
+mod custom_collection_adapter;
 mod host_methods;
 mod io;
 mod native;

@@ -35,12 +35,13 @@ field, index, and key access; call-scoped Array, Map, and Set iterators with
 frozen traversal structure and live prepared reads; prepared Array searches;
 live read-only Array, Map, and Set callback traversal, including Array
 grouping; bounded collection projections; and immediate write-through for the
-implemented Array, Map, and Set mutations. The remaining S3 exit work is:
+implemented Array, Map, and Set mutations. User-defined Sequence, MapLike, and
+SetLike adapters reuse the same protocol, traversal, callback, budget, and
+mutation paths. The remaining S3 exit work is:
 
 - complex-element borrowed views and their identity/lifetime proof;
 - remaining element/key methods and collection-level grouping/filtering paths;
 - remaining transactional bulk write-through operations;
-- richer user-defined collection adapters; and
 - prepared element-method, grouping, and traversal paths without runtime name
   or reflection lookup.
 

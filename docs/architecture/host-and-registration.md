@@ -337,13 +337,17 @@ changed return value without materializing the set. Types that cannot be
 constructed from a scalar `HostValue` fail closed instead of cloning a complex
 Rust value through the script heap.
 Borrowed Array `iter/values`, Map `keys/values/entries/iter`, and Set
-`values/iter` use a bounded `HostCollectionProjection` under the active lease.
-The projection preserves
-exact key/value tags, sorts unordered Rust families by their stable key
-contract, and becomes an ordinary one-shot Vela Iterator so existing
-filter/map/count/collect behavior and budgets apply. This first projection
-slice snapshots boundary values; resumable live host iterators with
-per-resume generation validation remain a later prepared-operation step.
+`values/iter` use prepared call-scoped host iterators. Iterator construction
+freezes the Array extent or deterministic Map/Set key order; each poll then
+performs one prepared live read through HostAccess, revalidating the root and
+lease. Later value replacement is visible, structural growth is outside the
+frozen traversal, and removal of a pending indexed/keyed item fails instead of
+silently substituting a stale value. Read-only collection callbacks and Array
+`group_by` use the same resumable path and charge only consumed items.
+Host-backed iterators cannot escape their root call. Full bounded
+`HostCollectionProjection` snapshots remain for operations whose contract
+requires detached input, stable ordering, or transactional write-back, such as
+sorting, collection transforms, algebra, merge, extend sources, and retain.
 Growable borrowed collection `clear` uses one semantic
 `HostCollectionMutation::Clear` write rather than Vela method IDs or
 per-element boundary calls. The VM reads the collection length and charges its

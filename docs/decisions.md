@@ -2783,21 +2783,23 @@ access can differ between calls for the same concrete Rust type, these
 StandardValue targets are not stored in the ordinary dynamic-method inline
 cache.
 
-Borrowed collection traversal first crosses one bounded semantic projection,
-not a Rust iterator object or a serialized container. `HostCollectionProjection`
-captures Array values, Map keys/values/entries, or Set values while the exact
-lease is active; HashMap/HashSet projections are sorted by `ScriptHostKey` for
-determinism, and exact scalar/String/Bytes/HostRef tags are retained. The VM
-wraps the projected boundary values in its existing Iterator pipeline. Direct
-callback methods such as Array `filter`/`group_by`, Map `filter`/`map_values`,
-and Set `filter`/`map` reuse the same projection and materialize one temporary
-script-owned collection before entering the ordinary resumable callback state
-machine. The adapter never receives a Vela method ID, projection size is
-charged before callback execution, and the temporary result cannot mutate the
-Rust container structurally. This is an intentionally staged snapshot model;
-live resumable host iteration and complex element HostRefs remain open and
-must add generation checks rather than silently changing the snapshot into an
-escaping Rust borrow.
+Borrowed collection traversal uses prepared call-scoped host iterators rather
+than Rust iterator objects or serialized containers. Construction freezes the
+Array extent or deterministic Map/Set key order; HashMap/HashSet order follows
+`ScriptHostKey`. Each poll performs one prepared HostAccess read against the
+live collection, preserving exact scalar/String/Bytes/HostRef tags and
+revalidating root generation and lease authority. Later replacement of an
+unread value is visible, structural growth is outside the frozen traversal,
+and removal of a pending item fails. Array, Map, and Set read-only callbacks,
+including Array `group_by`, consume the same resumable states and charge only
+items actually read. Host-backed iterators are call-scoped and fail on escape.
+
+Bounded `HostCollectionProjection` remains the explicit detached-snapshot
+boundary for ordering, transforms, set algebra, Map merge, extend sources, and
+transactional retain. The adapter receives semantic collection operations,
+never Vela method IDs. Complex element child HostRefs remain open and must
+preserve exact identity and parent provenance rather than serializing the
+element or exposing a Rust borrow.
 
 Non-callback Array transforms `distinct`, `reverse`, `slice`, and `join` reuse
 the same completely precharged values projection but call the shared owned
