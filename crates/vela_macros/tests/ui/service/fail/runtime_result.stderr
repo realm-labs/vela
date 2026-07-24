@@ -1,0 +1,5 @@
+error: service methods return business values or Result<T, E>, not VmResult<T>
+ --> tests/ui/service/fail/runtime_result.rs:5:34
+  |
+5 |     fn apply(&self, amount: i64) -> vela_vm::error::VmResult<i64>;
+  |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

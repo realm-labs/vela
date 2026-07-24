@@ -55,7 +55,7 @@ impl EffectName {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum ParameterMode {
+pub(crate) enum ParameterMode {
     Value,
     ReadOnlyValueBorrow,
     SharedHost,
@@ -64,15 +64,15 @@ pub(super) enum ParameterMode {
 }
 
 #[derive(Clone)]
-pub(super) struct ClassifiedParameter {
-    pub(super) name: String,
-    pub(super) ty: TypeShape,
-    pub(super) mode: ParameterMode,
-    pub(super) rust_ty: Option<Type>,
+pub(crate) struct ClassifiedParameter {
+    pub(crate) name: String,
+    pub(crate) ty: TypeShape,
+    pub(crate) mode: ParameterMode,
+    pub(crate) rust_ty: Option<Type>,
 }
 
 #[derive(Clone)]
-pub(super) enum TypeShape {
+pub(crate) enum TypeShape {
     Unit,
     Bool,
     Char,
@@ -100,29 +100,29 @@ pub(super) enum TypeShape {
 }
 
 #[derive(Clone)]
-pub(super) struct BorrowedCollectionShape {
-    pub(super) rust_ty: Type,
-    pub(super) slice_element: Option<Box<Type>>,
-    pub(super) kind: BorrowedCollectionKind,
-    pub(super) access: HostAccess,
-    pub(super) mutation: vela_common::CollectionViewMutation,
+pub(crate) struct BorrowedCollectionShape {
+    pub(crate) rust_ty: Type,
+    pub(crate) slice_element: Option<Box<Type>>,
+    pub(crate) kind: BorrowedCollectionKind,
+    pub(crate) access: HostAccess,
+    pub(crate) mutation: vela_common::CollectionViewMutation,
 }
 
 #[derive(Clone)]
-pub(super) enum BorrowedCollectionKind {
+pub(crate) enum BorrowedCollectionKind {
     Array(Box<TypeShape>),
     Map(Box<TypeShape>, Box<TypeShape>),
     Set(Box<TypeShape>),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum HostAccess {
+pub(crate) enum HostAccess {
     Shared,
     Exclusive,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum ReturnMode {
+pub(crate) enum ReturnMode {
     Owned,
     Structured,
     Boundary,
@@ -134,13 +134,13 @@ pub(super) enum ReturnMode {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum BorrowOrigin {
+pub(crate) enum BorrowOrigin {
     Receiver,
     Parameter(u16),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum ErrorMode {
+pub(crate) enum ErrorMode {
     Value,
     RuntimeResult,
 }
@@ -153,18 +153,18 @@ pub(crate) enum ScopedReturnContainer {
 }
 
 #[derive(Clone)]
-pub(super) struct ClassifiedReturn {
-    pub(super) ty: TypeShape,
-    pub(super) mode: ReturnMode,
-    pub(super) error_mode: ErrorMode,
+pub(crate) struct ClassifiedReturn {
+    pub(crate) ty: TypeShape,
+    pub(crate) mode: ReturnMode,
+    pub(crate) error_mode: ErrorMode,
 }
 
 #[derive(Clone)]
 pub(crate) struct ClassifiedSignature {
-    pub(super) parameters: Vec<ClassifiedParameter>,
-    pub(super) returns: ClassifiedReturn,
-    pub(super) effects: BTreeSet<EffectName>,
-    pub(super) is_async: bool,
+    pub(crate) parameters: Vec<ClassifiedParameter>,
+    pub(crate) returns: ClassifiedReturn,
+    pub(crate) effects: BTreeSet<EffectName>,
+    pub(crate) is_async: bool,
 }
 
 pub(crate) fn classify_function(

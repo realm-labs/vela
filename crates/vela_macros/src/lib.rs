@@ -11,6 +11,7 @@ mod methods;
 mod script_function;
 mod script_host;
 mod script_methods;
+mod service;
 mod signature;
 mod trait_export;
 mod value;
@@ -40,6 +41,12 @@ pub fn methods(attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn trait_export(attr: TokenStream, input: TokenStream) -> TokenStream {
     trait_export::expand(attr.into(), input.into()).into()
+}
+
+/// Declares one Rust default service trait and its sealed Vela ABI schema.
+#[proc_macro_attribute]
+pub fn service(attr: TokenStream, input: TokenStream) -> TokenStream {
+    service::expand(attr.into(), input.into()).into()
 }
 
 /// Generates declaration-only UFCS adapters for an existing external trait

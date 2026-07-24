@@ -1,0 +1,5 @@
+error: service methods require an &self receiver
+ --> tests/ui/service/fail/mutable_receiver.rs:5:14
+  |
+5 |     fn apply(&mut self, amount: i64);
+  |              ^^^^^^^^^

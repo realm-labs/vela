@@ -10,8 +10,9 @@ use super::signature::{
 
 mod binding;
 
+pub(crate) use binding::hint_tokens;
 use binding::{
-    binding_use_tokens, collection_registration_tokens, exclusive_host_value_tokens, hint_tokens,
+    binding_use_tokens, collection_registration_tokens, exclusive_host_value_tokens,
     host_type_id_tokens, shared_host_value_tokens,
 };
 
@@ -975,7 +976,7 @@ pub(crate) fn protocol_contract(
     }
 }
 
-fn parameter_mode_tokens(mode: ParameterMode) -> TokenStream {
+pub(crate) fn parameter_mode_tokens(mode: ParameterMode) -> TokenStream {
     match mode {
         ParameterMode::Value => quote! { ::vela_engine::interop::BoundaryMode::Value },
         ParameterMode::ReadOnlyValueBorrow => {
@@ -991,7 +992,7 @@ fn parameter_mode_tokens(mode: ParameterMode) -> TokenStream {
     }
 }
 
-fn return_mode_tokens(mode: ReturnMode, shape: &TypeShape) -> TokenStream {
+pub(crate) fn return_mode_tokens(mode: ReturnMode, shape: &TypeShape) -> TokenStream {
     match mode {
         ReturnMode::Owned => quote! { ::vela_engine::interop::ReturnMode::OwnedValue },
         ReturnMode::Structured => quote! { ::vela_engine::interop::ReturnMode::StructuredValue },
@@ -1034,7 +1035,7 @@ fn host_access_tokens(access: HostAccess) -> TokenStream {
     }
 }
 
-fn effect_tokens(effects: &std::collections::BTreeSet<EffectName>) -> TokenStream {
+pub(crate) fn effect_tokens(effects: &std::collections::BTreeSet<EffectName>) -> TokenStream {
     let mut tokens = quote! { ::vela_engine::native::EffectSet::pure() };
     for effect in effects {
         let next = match effect {

@@ -130,7 +130,7 @@ pub(super) fn exclusive_host_value_tokens(shape: &TypeShape, object: TokenStream
     }
 }
 
-pub(super) fn hint_tokens(shape: &TypeShape) -> TokenStream {
+pub(crate) fn hint_tokens(shape: &TypeShape) -> TokenStream {
     match shape {
         TypeShape::Unit => quote! { ::vela_engine::native::TypeHint::unit() },
         TypeShape::Bool => quote! { ::vela_engine::native::TypeHint::boolean() },
