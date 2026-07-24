@@ -5,7 +5,7 @@
 > publication, host-reference and collection interop, and deletion of
 > callable-level replacement
 >
-> Status: S0-S3 accepted; S4 implementation is active
+> Status: S0-S4 accepted; S5 implementation is active
 >
 > Switch policy: pre-release hard switch; no public compatibility layer and no
 > second Rust hot-replacement model
@@ -243,8 +243,13 @@ old and new roots retain their exact generations across activation/rollback
 the Rust-default service branch pays no cross-language HostRef conversion
 ```
 
-Status: **Active.** The first slice is the generated Rust-only service
-generation and its zero-VM, zero-HostRef default branch.
+Status: **Accepted.** Generated service and service-set macros seal complete
+transitive schemas, construct one immutable whole-service generation, and
+publish it through one controller with exact-base activation and rollback.
+The migrated fixture pins one root for nested calls. Focused allocation proof
+shows the Rust-default branch performs direct trait dispatch with zero VM
+entry, zero `HostRef`, and zero allocation after pinning; the repository,
+examples, benchmark-build, fuzz-build, and deletion-audit gates are green.
 
 ### S5 — Partial Vela service and cross-service vertical slice
 
@@ -279,6 +284,9 @@ nested reborrow retains complete alias preflight without global lookup/allocatio
 
 This is the first accepted end-to-end service hotfix slice because it proves
 that a patch can express realistic Rust-side logic, not only scalar arithmetic.
+
+Status: **Active.** The first slice imports sealed service schemas and builds
+validated sparse method selections before adding Vela execution.
 
 ### S6 — Async, handlers, deployment, and tooling
 
