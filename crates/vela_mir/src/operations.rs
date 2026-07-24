@@ -1,5 +1,6 @@
 use vela_analysis::literals::DeferredNumericLiteral;
 use vela_common::ShapeId;
+use vela_common::{ServiceCallMode, ServiceId, ServiceMethodId};
 use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId, VariantId};
 
 use crate::input::{
@@ -242,6 +243,14 @@ pub enum MirCall {
         method: MethodId,
         debug_name: String,
         receiver: MirOperand,
+        signature: CompileSignature,
+        arguments: Vec<MirOperand>,
+    },
+    Service {
+        mode: ServiceCallMode,
+        service: ServiceId,
+        method: ServiceMethodId,
+        debug_name: String,
         signature: CompileSignature,
         arguments: Vec<MirOperand>,
     },
@@ -641,6 +650,11 @@ impl MirCall {
                 signature,
                 arguments,
                 ..
+            }
+            | Self::Service {
+                signature,
+                arguments,
+                ..
             } => external_arguments_match(signature, arguments.len()),
             Self::DynamicMethod {
                 target, arguments, ..
@@ -658,9 +672,8 @@ impl MirCall {
             | Self::DynamicMethod { .. } => MirEffect::dynamic_call(),
             Self::NativeFunction { signature, .. }
             | Self::StdlibFunction { signature, .. }
-            | Self::ValueMethod { signature, .. } => {
-                MirEffect::external_call().union(signature.effect)
-            }
+            | Self::ValueMethod { signature, .. }
+            | Self::Service { signature, .. } => MirEffect::external_call().union(signature.effect),
         }
     }
 
@@ -670,7 +683,8 @@ impl MirCall {
             | Self::ScriptMethod { signature, .. }
             | Self::NativeFunction { signature, .. }
             | Self::StdlibFunction { signature, .. }
-            | Self::ValueMethod { signature, .. } => Some(signature.asyncness),
+            | Self::ValueMethod { signature, .. }
+            | Self::Service { signature, .. } => Some(signature.asyncness),
             Self::CallableValue { .. }
             | Self::DynamicCallable { .. }
             | Self::DynamicMethod { .. } => None,

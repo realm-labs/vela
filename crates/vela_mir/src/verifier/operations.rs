@@ -1113,6 +1113,11 @@ fn verify_call_argument_contracts(
             signature,
             arguments,
             ..
+        }
+        | MirCall::Service {
+            signature,
+            arguments,
+            ..
         } => {
             for (argument, parameter) in arguments.iter().zip(&signature.parameters) {
                 if let Some(contract) = parameter.contract.as_ref() {

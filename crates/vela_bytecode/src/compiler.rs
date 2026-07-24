@@ -9,6 +9,7 @@ pub mod options;
 mod schema_defaults;
 mod semantic;
 mod semantic_input;
+pub mod service_schema;
 #[cfg(test)]
 #[allow(clippy::result_large_err)]
 mod test_support;
@@ -187,6 +188,7 @@ pub fn compile_function(
         schema_defaults: &schema_defaults,
         options: request.options,
         registry: request.registry,
+        service_schema: None,
     })?;
     let (mut code, _) = compile_mir_roots(&input, graph)?;
     match code.len() {
@@ -198,7 +200,26 @@ pub fn compile_function(
 }
 
 pub fn compile_program(request: ProgramCompilationRequest<'_>) -> CompileResult<CompiledProgram> {
-    compile_program_inner(request.sources, request.options, request.registry, None)
+    compile_program_inner(
+        request.sources,
+        request.options,
+        request.registry,
+        None,
+        None,
+    )
+}
+
+pub fn compile_program_with_service_schema(
+    request: ProgramCompilationRequest<'_>,
+    service_schema: &service_schema::ServiceCompilationSchema,
+) -> CompileResult<CompiledProgram> {
+    compile_program_inner(
+        request.sources,
+        request.options,
+        request.registry,
+        None,
+        Some(service_schema),
+    )
 }
 
 pub fn compile_package_program(
@@ -209,6 +230,7 @@ pub fn compile_package_program(
         request.options,
         request.registry,
         Some((request.roots, request.packages, request.providers)),
+        None,
     )
 }
 
@@ -221,6 +243,7 @@ fn compile_program_inner(
         &[crate::PackageCompilationInput],
         &[crate::ProviderCompilationInput],
     )>,
+    service_schema: Option<&service_schema::ServiceCompilationSchema>,
 ) -> CompileResult<CompiledProgram> {
     let graph = sources.graph();
     reject_invalid_graph(graph)?;
@@ -255,6 +278,7 @@ fn compile_program_inner(
         schema_defaults: &schema_defaults,
         options,
         registry,
+        service_schema,
     })?;
 
     let mut program = UnlinkedProgram::new();

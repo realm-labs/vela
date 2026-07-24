@@ -54,6 +54,11 @@ impl CompileTargetSnapshot {
 }
 
 impl CompileTargetSnapshotBuilder {
+    #[must_use]
+    pub fn service_function_for_node(&self, node: HirNodeId) -> Option<FunctionId> {
+        self.snapshot.service_function_for_node(node)
+    }
+
     pub fn insert_service_function(
         &mut self,
         node: HirNodeId,

@@ -34,6 +34,36 @@ impl CallableAsyncness {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum ServiceCallMode {
+    Base,
+    Pinned,
+}
+
+impl ServiceCallMode {
+    #[must_use]
+    pub const fn abi_name(self) -> &'static str {
+        match self {
+            Self::Base => "base",
+            Self::Pinned => "pinned",
+        }
+    }
+}
+
+#[doc(hidden)]
+#[must_use]
+pub fn service_dispatch_stable_id(
+    mode: ServiceCallMode,
+    service: ServiceId,
+    method: ServiceMethodId,
+) -> u128 {
+    stable_id(
+        "vela_service_dispatch",
+        mode.abi_name(),
+        &format!("{:032x}:{:032x}", service.get(), method.get()),
+    ) as u128
+}
+
 macro_rules! stable_id {
     ($name:ident, $inner:ty) => {
         #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

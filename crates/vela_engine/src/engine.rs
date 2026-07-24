@@ -53,6 +53,8 @@ pub struct Engine {
     standard_natives: bool,
     execution_data: crate::runtime::execution_data::SharedGenerationExecutionRegistry,
     service_set_schema: Option<Arc<crate::service::ServiceSetSchema>>,
+    service_compilation_schema:
+        Option<Arc<vela_bytecode::compiler::service_schema::ServiceCompilationSchema>>,
 }
 
 pub(crate) struct EngineParts {
@@ -178,6 +180,11 @@ impl Engine {
             )
             .map(|desc| (desc.name.clone(), desc.id))
             .collect();
+        let service_compilation_schema = parts
+            .service_set_schema
+            .as_ref()
+            .map(crate::service::ServiceSetSchema::compilation_schema)
+            .map(Arc::new);
         Self {
             registry: Arc::new(parts.registry),
             type_bindings: Arc::new(parts.type_bindings),
@@ -201,6 +208,7 @@ impl Engine {
                 crate::runtime::execution_data::GenerationExecutionRegistry::new(),
             )),
             service_set_schema: parts.service_set_schema.map(Arc::new),
+            service_compilation_schema,
         }
     }
 
@@ -235,6 +243,12 @@ impl Engine {
     #[must_use]
     pub fn service_set_schema(&self) -> Option<&crate::service::ServiceSetSchema> {
         self.service_set_schema.as_deref()
+    }
+
+    pub(crate) fn service_compilation_schema(
+        &self,
+    ) -> Option<&vela_bytecode::compiler::service_schema::ServiceCompilationSchema> {
+        self.service_compilation_schema.as_deref()
     }
 
     #[must_use]

@@ -607,6 +607,22 @@ fn write_call(formatter: &mut fmt::Formatter<'_>, call: &MirCall) -> fmt::Result
             )?;
             write_operand_values(formatter, arguments)?;
         }
+        MirCall::Service {
+            mode,
+            service,
+            method,
+            debug_name,
+            signature,
+            arguments,
+        } => {
+            write!(
+                formatter,
+                "call service mode={mode:?} service#{} method#{} name={debug_name:?} signature={signature:?}(",
+                service.get(),
+                method.get(),
+            )?;
+            write_operand_values(formatter, arguments)?;
+        }
         MirCall::DynamicMethod {
             target,
             receiver,

@@ -107,6 +107,7 @@ pub(super) fn verify_call(
             }
             signature.return_contract.as_ref()
         }
+        MirCall::Service { signature, .. } => signature.return_contract.as_ref(),
         MirCall::CallableValue { .. }
         | MirCall::DynamicCallable { .. }
         | MirCall::DynamicMethod { .. } => None,

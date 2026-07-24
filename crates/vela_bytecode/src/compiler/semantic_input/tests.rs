@@ -185,6 +185,7 @@ fn prepare_source_inner(
         schema_defaults: &schema_defaults,
         options: &options,
         registry,
+        service_schema: None,
     })?;
     Ok(SemanticFixture {
         input,

@@ -122,6 +122,22 @@ impl<'a> FunctionBackend<'a> {
                     .map(CallArgument::Register)
                     .collect(),
             },
+            MirCall::Service {
+                mode,
+                service,
+                method,
+                debug_name,
+                arguments,
+                ..
+            } => UnlinkedInstructionKind::CallNative {
+                dst: Some(dst),
+                name: debug_name.clone(),
+                native: vela_def::FunctionId::new(vela_common::service_dispatch_stable_id(
+                    *mode, *service, *method,
+                )),
+                cache_site: None,
+                args: self.operands(arguments, span)?,
+            },
             MirCall::DynamicMethod {
                 target,
                 receiver,

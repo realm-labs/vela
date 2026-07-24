@@ -637,7 +637,9 @@ fn visit_call(
             visitor(callee)?;
             visit_dynamic_args(arguments, visitor)?;
         }
-        MirCall::NativeFunction { arguments, .. } | MirCall::StdlibFunction { arguments, .. } => {
+        MirCall::NativeFunction { arguments, .. }
+        | MirCall::StdlibFunction { arguments, .. }
+        | MirCall::Service { arguments, .. } => {
             for value in arguments {
                 visitor(value)?;
             }

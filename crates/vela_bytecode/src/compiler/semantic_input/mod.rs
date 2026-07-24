@@ -65,6 +65,7 @@ pub(super) struct SemanticInputRequest<'graph, 'methods, 'registry> {
     pub(super) schema_defaults: &'graph EvaluatedSchemaDefaults,
     pub(super) options: &'graph CompilerOptions,
     pub(super) registry: Option<RegistryCompileView<'registry>>,
+    pub(super) service_schema: Option<&'methods super::service_schema::ServiceCompilationSchema>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -227,6 +228,7 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
             schema_defaults: request.schema_defaults,
             options: request.options,
             registry: None,
+            service_schema: request.service_schema,
         };
         Self {
             request,

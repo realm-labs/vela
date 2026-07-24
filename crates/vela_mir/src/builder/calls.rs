@@ -304,6 +304,28 @@ impl FunctionBuilder<'_> {
                     effect,
                 )
             }
+            CompileCalleeTarget::Service {
+                mode,
+                service,
+                method,
+                debug_name,
+                signature,
+            } => {
+                let arguments =
+                    self.lower_external_arguments(&target.arguments, &signature, origin)?;
+                let effect = MirEffect::external_call().union(signature.effect);
+                (
+                    MirCall::Service {
+                        mode,
+                        service,
+                        method,
+                        debug_name,
+                        signature,
+                        arguments,
+                    },
+                    effect,
+                )
+            }
             CompileCalleeTarget::DynamicCallable => {
                 if self.direct_local_callee(call.callee)?.is_some()
                     || self.direct_lambda_body(call.callee)?.is_some()
@@ -792,7 +814,8 @@ fn call_return_contract(call: &MirCall) -> Option<&crate::MirTypeContract> {
         | MirCall::ScriptMethod { signature, .. }
         | MirCall::NativeFunction { signature, .. }
         | MirCall::StdlibFunction { signature, .. }
-        | MirCall::ValueMethod { signature, .. } => signature.return_contract.as_ref(),
+        | MirCall::ValueMethod { signature, .. }
+        | MirCall::Service { signature, .. } => signature.return_contract.as_ref(),
         MirCall::CallableValue { .. }
         | MirCall::DynamicCallable { .. }
         | MirCall::DynamicMethod { .. } => None,

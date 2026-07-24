@@ -3,7 +3,9 @@ use std::path::{Path, PathBuf};
 
 use vela_bytecode::compiler::CompiledProgram;
 use vela_bytecode::compiler::error::CompileError;
-use vela_bytecode::compiler::{ProgramCompilationRequest, compile_program};
+use vela_bytecode::compiler::{
+    ProgramCompilationRequest, compile_program, compile_program_with_service_schema,
+};
 use vela_common::SourceId;
 use vela_hir::module_graph::ModuleSource;
 use vela_hir::source_ingestion::{
@@ -151,11 +153,15 @@ impl Engine {
         sources: &HirSourceSet,
     ) -> Result<CompiledProgram, EngineSourceError> {
         let options = self.compiler_options();
-        compile_program(ProgramCompilationRequest {
+        let request = ProgramCompilationRequest {
             sources,
             options: &options,
             registry: Some(self.compiler_registry()),
-        })
+        };
+        match self.service_compilation_schema() {
+            Some(schema) => compile_program_with_service_schema(request, schema),
+            None => compile_program(request),
+        }
         .map_err(EngineSourceError::backend)
     }
 }

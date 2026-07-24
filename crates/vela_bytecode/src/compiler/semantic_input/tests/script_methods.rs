@@ -174,6 +174,7 @@ fn main() {
         schema_defaults: &schema_defaults,
         options: &options,
         registry: None,
+        service_schema: None,
     })
     .expect("qualified record semantic input");
     let targets = input.targets();
@@ -278,6 +279,7 @@ fn prepare_modules(sources: &[ModuleSource]) -> PreparedSemanticInput {
         schema_defaults: &schema_defaults,
         options: &options,
         registry: None,
+        service_schema: None,
     })
     .expect("module semantic input")
 }

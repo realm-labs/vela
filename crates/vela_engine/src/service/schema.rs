@@ -308,6 +308,41 @@ impl ServiceSetSchema {
     pub const fn type_binding_checksum(&self) -> TypeBindingRegistryChecksum {
         self.type_binding_checksum
     }
+
+    #[doc(hidden)]
+    #[must_use]
+    pub fn compilation_schema(
+        &self,
+    ) -> vela_bytecode::compiler::service_schema::ServiceCompilationSchema {
+        use vela_bytecode::compiler::service_schema::{
+            ServiceCompilationMethod, ServiceCompilationSchema, ServiceCompilationService,
+        };
+
+        ServiceCompilationSchema::new(
+            self.id,
+            self.named_services().map(|(member, service)| {
+                ServiceCompilationService::new(
+                    service.id(),
+                    member,
+                    service.path(),
+                    service.methods().iter().map(|method| {
+                        ServiceCompilationMethod::new(
+                            method.id,
+                            method
+                                .path
+                                .rsplit("::")
+                                .next()
+                                .unwrap_or(method.path.as_str()),
+                            u32::try_from(method.callable.parameters.len())
+                                .expect("sealed service arity fits u32"),
+                            method.callable.asyncness,
+                            service_compile_effect(method.callable.effects),
+                        )
+                    }),
+                )
+            }),
+        )
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -908,6 +943,22 @@ fn valid_service_member_name(name: &str) -> bool {
         .next()
         .is_some_and(|first| first == '_' || first.is_ascii_alphabetic())
         && chars.all(|character| character == '_' || character.is_ascii_alphanumeric())
+}
+
+const fn service_compile_effect(effect: crate::native::EffectSet) -> vela_mir::MirEffect {
+    vela_mir::MirEffect {
+        host_read: effect.reads_host(),
+        host_write: effect.writes_host(),
+        reflection_read: effect.reads_reflection(),
+        reflection_write: effect.writes_reflection(),
+        reflection_call: effect.calls_reflection(),
+        emits_event: effect.emits_events(),
+        reads_time: effect.reads_time(),
+        uses_random: effect.uses_random(),
+        reads_io: effect.reads_io(),
+        writes_io: effect.writes_io(),
+        ..vela_mir::MirEffect::PURE
+    }
 }
 
 #[derive(Clone, Copy)]

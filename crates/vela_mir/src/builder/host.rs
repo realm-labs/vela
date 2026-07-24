@@ -298,6 +298,7 @@ impl FunctionBuilder<'_> {
             | CompileCalleeTarget::ValueMethod { .. }
             | CompileCalleeTarget::Reflection { .. }
             | CompileCalleeTarget::SetFromArray { .. }
+            | CompileCalleeTarget::Service { .. }
             | CompileCalleeTarget::DynamicCallable
             | CompileCalleeTarget::DynamicMethod(_) => {
                 Err(self.inconsistent(origin, "non-host call target reached HostAccess lowering"))

@@ -7,6 +7,7 @@ use vela_analysis::type_fact::TypeFact;
 use vela_analysis::validation::{
     CallPlacementModeFact, HostAccessUseFact, HostAccessUseKind, HostIndexCapabilityResolutionFact,
 };
+use vela_common::ServiceCallMode;
 use vela_common::{PrimitiveTag, ScalarValue};
 use vela_def::{FieldId, FunctionId, TypeId};
 use vela_hir::body::{
@@ -168,6 +169,12 @@ impl GenerationBuilder<'_, '_> {
         let origin = self
             .expression_origin(expression)
             .ok_or_else(registry_input_error)?;
+        if let Some(target) = self.service_call_target(executable, body, call, origin)? {
+            self.targets
+                .insert_call(executable, expression, target, origin)
+                .map_err(input_error)?;
+            return Ok(());
+        }
         let placement = self.checked_call_placement(executable, call, origin)?;
         let target = require_analysis_call_target(
             self.executable_analysis(executable)?
@@ -356,6 +363,156 @@ impl GenerationBuilder<'_, '_> {
         self.targets
             .insert_call(executable, expression, placed, origin)
             .map_err(input_error)
+    }
+
+    fn service_call_target(
+        &self,
+        executable: FunctionId,
+        body: &HirBody,
+        call: &vela_hir::body::HirCall,
+        origin: MirSourceOrigin,
+    ) -> CompileResult<Option<CompileCallTarget>> {
+        let bindings = self
+            .request
+            .graph
+            .bindings_for_body(body.id)
+            .ok_or_else(registry_input_error)?;
+        let Some(callee) = body.field(call.callee) else {
+            return Ok(None);
+        };
+
+        let target = if let Some(capability) = bindings.service_capability(callee.receiver) {
+            match capability {
+                vela_hir::binding::ServiceLexicalCapability::Base => {
+                    let current = self.current_service_path(executable).ok_or_else(|| {
+                        service_call_error(
+                            "base call is not owned by a compiled service method",
+                            origin,
+                        )
+                    })?;
+                    Some((
+                        ServiceCallMode::Base,
+                        current,
+                        callee.name.as_str().to_owned(),
+                    ))
+                }
+                vela_hir::binding::ServiceLexicalCapability::Services => {
+                    return Err(service_call_error(
+                        "`services` calls require `services.service.method(...)`",
+                        origin,
+                    ));
+                }
+            }
+        } else if let Some(service_member) = body.field(callee.receiver)
+            && bindings.service_capability(service_member.receiver)
+                == Some(vela_hir::binding::ServiceLexicalCapability::Services)
+        {
+            Some((
+                ServiceCallMode::Pinned,
+                service_member.name.as_str().to_owned(),
+                callee.name.as_str().to_owned(),
+            ))
+        } else {
+            None
+        };
+        let Some((mode, service_name, method_name)) = target else {
+            return Ok(None);
+        };
+        let schema = self.request.service_schema.ok_or_else(|| {
+            service_call_error(
+                "service calls require the generated service-set schema",
+                origin,
+            )
+        })?;
+        let service = match mode {
+            ServiceCallMode::Base => schema.service_by_path(&service_name),
+            ServiceCallMode::Pinned => schema.service_by_member(&service_name),
+        }
+        .ok_or_else(|| {
+            service_call_error(format!("unknown service target `{service_name}`"), origin)
+        })?;
+        let method = service.method(&method_name).ok_or_else(|| {
+            service_call_error(
+                format!("unknown service method `{}::{method_name}`", service.path),
+                origin,
+            )
+        })?;
+        if call
+            .arguments
+            .iter()
+            .any(|argument| argument.name.is_some())
+        {
+            return Err(service_call_error(
+                "service calls accept positional arguments only",
+                origin,
+            ));
+        }
+        let arguments = call
+            .arguments
+            .iter()
+            .map(|argument| {
+                argument.value.ok_or_else(|| {
+                    service_call_error("service call argument is missing a value", origin)
+                })
+            })
+            .collect::<CompileResult<Vec<_>>>()?;
+        let parameter_count = usize::try_from(method.parameter_count)
+            .expect("service method parameter count fits usize");
+        if arguments.len() != parameter_count {
+            return Err(service_call_error(
+                format!(
+                    "service method `{}::{}` expects {} arguments, found {}",
+                    service.path,
+                    method.name,
+                    method.parameter_count,
+                    arguments.len()
+                ),
+                origin,
+            ));
+        }
+        let signature = vela_mir::CompileSignature {
+            asyncness: method.asyncness,
+            parameters: (0..method.parameter_count)
+                .map(|index| vela_mir::CompileParameter {
+                    name: format!("arg{index}"),
+                    contract: None,
+                    default: vela_mir::CompileParameterDefault::Required,
+                    origin: None,
+                })
+                .collect(),
+            positional: vela_mir::CompilePositionalPolicy::ExactOrTrailingDefaults,
+            return_contract: None,
+            effect: method.effect,
+        };
+        Ok(Some(CompileCallTarget::positional(
+            CompileCalleeTarget::Service {
+                mode,
+                service: service.id,
+                method: method.id,
+                debug_name: format!(
+                    "__vela_service.{}.{}.{}",
+                    mode.abi_name(),
+                    service.path.replace("::", "."),
+                    method.name
+                ),
+                signature,
+            },
+            arguments,
+        )))
+    }
+
+    fn current_service_path(&self, executable: FunctionId) -> Option<String> {
+        self.request
+            .service_impls
+            .implementations()
+            .find_map(|implementation| {
+                implementation
+                    .methods()
+                    .any(|method| {
+                        self.targets.service_function_for_node(method.node()) == Some(executable)
+                    })
+                    .then(|| implementation.service_path_text())
+            })
     }
 
     fn external_function_call(
@@ -1158,6 +1315,10 @@ fn external_parameter_expression(
             }),
         CompileCallArguments::Dynamic(_) => None,
     }
+}
+
+fn service_call_error(message: impl Into<String>, origin: MirSourceOrigin) -> CompileError {
+    CompileError::new(CompileErrorKind::ServiceCall(message.into())).with_span(origin.span)
 }
 
 pub(super) fn runtime_semantic_body(body: &HirBody) -> bool {

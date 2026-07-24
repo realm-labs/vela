@@ -115,6 +115,9 @@ impl CompileError {
                 "invalid compile-target registry snapshot: {message}"
             ))
             .with_code("compiler::invalid_registry_snapshot"),
+            CompileErrorKind::ServiceCall(message) => {
+                Diagnostic::error(message.clone()).with_code("compiler::invalid_service_call")
+            }
             CompileErrorKind::InvalidStateInitializer { state, reason } => Diagnostic::error(
                 format!("state initializer for `{state}` is not effect-restricted: {reason}"),
             )
@@ -149,6 +152,7 @@ pub enum CompileErrorKind {
     UnsupportedRecordPattern,
     MirInput(Box<vela_mir::MirBuildError>),
     RegistrySnapshot(String),
+    ServiceCall(String),
     InvalidStateInitializer { state: String, reason: String },
     InvalidExternStateContract { state: String, actual: String },
 }
