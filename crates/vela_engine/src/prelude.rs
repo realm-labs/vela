@@ -28,12 +28,12 @@ pub use crate::schema::{
     ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema, ScriptValueSchema,
 };
 pub use crate::service::{
-    ServiceController, ServiceGeneration, ServiceGenerationCandidate, ServiceMethodDescriptor,
-    ServiceMethodKey, ServiceMethodSelection, ServiceMethodUpdate, ServicePublicationError,
-    ServiceRollbackToken, ServiceRoot, ServiceRuntimeAuthority, ServiceRuntimeSlot, ServiceSchema,
-    ServiceSchemaError, ServiceSelectionError, ServiceSelectionTable, ServiceSetSchema,
-    ServiceSourceError, ServiceSourceErrorKind, ServiceSourceManifest, ServiceTypeRequirement,
-    VelaServiceMethod,
+    LinkedServiceSourceManifest, LinkedVelaServiceMethod, ServiceController, ServiceGeneration,
+    ServiceGenerationCandidate, ServiceMethodDescriptor, ServiceMethodKey, ServiceMethodSelection,
+    ServiceMethodUpdate, ServicePublicationError, ServiceRollbackToken, ServiceRoot,
+    ServiceRuntimeAuthority, ServiceRuntimeSlot, ServiceSchema, ServiceSchemaError,
+    ServiceSelectionError, ServiceSelectionTable, ServiceSetSchema, ServiceSourceError,
+    ServiceSourceErrorKind, ServiceSourceManifest, ServiceTypeRequirement, VelaServiceMethod,
 };
 pub use crate::source::{
     EnginePackageError, EnginePackageErrorKind, PackageCompilationSnapshot,

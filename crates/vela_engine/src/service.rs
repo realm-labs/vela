@@ -15,7 +15,8 @@ pub use selection::{
     ServiceSelectionTable,
 };
 pub use source::{
-    ServiceSourceError, ServiceSourceErrorKind, ServiceSourceManifest, VelaServiceMethod,
+    LinkedServiceSourceManifest, LinkedVelaServiceMethod, ServiceSourceError,
+    ServiceSourceErrorKind, ServiceSourceManifest, VelaServiceMethod,
 };
 
 use std::fmt;

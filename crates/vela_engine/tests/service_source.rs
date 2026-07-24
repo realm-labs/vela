@@ -1,8 +1,8 @@
 use vela_common::SourceId;
-use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
+use vela_engine::runtime::{CallArgs, CallOptions, Runtime, RuntimeBuildError};
 use vela_engine::service::{
-    ServiceMethodSelection, ServiceSchema, ServiceSetSchema, ServiceSourceErrorKind,
-    ServiceSourceManifest,
+    ServiceMethodSelection, ServiceRuntimeAuthority, ServiceRuntimeSlot, ServiceSchema,
+    ServiceSetSchema, ServiceSourceErrorKind, ServiceSourceManifest,
 };
 use vela_hir::source_ingestion::build_single_source;
 use vela_macros::{service, service_set};
@@ -27,6 +27,27 @@ impl InventoryService for RustInventoryService {
 }
 
 pub struct RequestContext;
+
+struct RuntimeContext {
+    slot: ServiceRuntimeSlot,
+}
+
+impl ServiceRuntimeAuthority for RuntimeContext {
+    fn take_service_runtime(
+        &mut self,
+        artifact: &std::sync::Arc<vela_bytecode::LinkedArtifact>,
+    ) -> Result<Runtime, RuntimeBuildError> {
+        self.slot.take(artifact)
+    }
+
+    fn restore_service_runtime(
+        &mut self,
+        artifact: &std::sync::Arc<vela_bytecode::LinkedArtifact>,
+        runtime: Runtime,
+    ) {
+        self.slot.restore(artifact, runtime);
+    }
+}
 
 #[service_set(context = RequestContext)]
 pub struct TestServices {
@@ -76,6 +97,33 @@ impl InventoryHotfix {
     manifest
         .validate_artifact(&artifact)
         .expect("manifest should match its linked artifact");
+    let linked = manifest
+        .bind_artifact(std::sync::Arc::clone(&artifact))
+        .expect("linked service manifest");
+    let linked_table = linked.into_snapshot(&schema).expect("linked snapshot");
+    let ServiceMethodSelection::Vela(linked_target) = linked_table
+        .get(inventory.id(), grant.id)
+        .expect("linked grant selection")
+    else {
+        panic!("grant should retain a linked Vela target");
+    };
+    let mut context = RuntimeContext {
+        slot: ServiceRuntimeSlot::new(engine.clone()),
+    };
+    let linked_output = linked_target
+        .with_runtime(&mut context, |runtime, _context| {
+            linked_target
+                .method()
+                .call(
+                    runtime,
+                    CallArgs::from_positional([OwnedValue::i64(8)]),
+                    CallOptions::unbounded(),
+                )
+                .and_then(|value| runtime.value_to_owned(&value))
+        })
+        .expect("runtime authority")
+        .expect("linked target call");
+    assert_eq!(linked_output, OwnedValue::i64(9));
     assert!(
         artifact
             .program()

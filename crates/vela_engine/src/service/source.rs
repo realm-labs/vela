@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 use std::fmt;
+use std::sync::Arc;
 
 use vela_bytecode::LinkedArtifact;
 use vela_common::{CallableAsyncness, Span};
@@ -16,7 +17,7 @@ use super::{
     ServiceMethodKey, ServiceMethodSelection, ServiceMethodUpdate, ServiceSchema,
     ServiceSelectionError, ServiceSelectionTable, ServiceSetSchema,
 };
-use crate::runtime::{CallArgs, CallOptions, Runtime, VelaValue};
+use crate::runtime::{CallArgs, CallOptions, Runtime, RuntimeBuildError, VelaValue};
 
 /// One Vela method body resolved against an imported Rust service schema.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -87,6 +88,45 @@ impl VelaServiceMethod {
         runtime.call_stable_function(self.function, self.symbol.clone(), args, options)
     }
 }
+
+/// One schema-linked Vela method retained with the exact artifact that
+/// satisfied its stable target identity and compiled signature.
+#[derive(Clone, Debug)]
+pub struct LinkedVelaServiceMethod {
+    method: VelaServiceMethod,
+    artifact: Arc<LinkedArtifact>,
+}
+
+impl LinkedVelaServiceMethod {
+    #[must_use]
+    pub const fn method(&self) -> &VelaServiceMethod {
+        &self.method
+    }
+
+    #[must_use]
+    pub fn artifact(&self) -> &Arc<LinkedArtifact> {
+        &self.artifact
+    }
+
+    pub fn with_runtime<C, R>(
+        &self,
+        context: &mut C,
+        invoke: impl FnOnce(&mut Runtime, &mut C) -> R,
+    ) -> Result<R, RuntimeBuildError>
+    where
+        C: super::ServiceRuntimeAuthority,
+    {
+        context.with_service_runtime(&self.artifact, invoke)
+    }
+}
+
+impl PartialEq for LinkedVelaServiceMethod {
+    fn eq(&self, other: &Self) -> bool {
+        self.method == other.method && self.artifact.generation() == other.artifact.generation()
+    }
+}
+
+impl Eq for LinkedVelaServiceMethod {}
 
 /// Sparse source claims resolved to stable service and method IDs.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -213,7 +253,68 @@ impl ServiceSourceManifest {
         Ok(())
     }
 
+    /// Retains the exact validated artifact on every Vela target.
+    pub fn bind_artifact(
+        self,
+        artifact: Arc<LinkedArtifact>,
+    ) -> Result<LinkedServiceSourceManifest, ServiceSourceError> {
+        self.validate_artifact(&artifact)?;
+        let updates = self
+            .updates
+            .into_iter()
+            .map(|update| {
+                let selection = match update.selection() {
+                    ServiceMethodSelection::RustDefault => ServiceMethodSelection::RustDefault,
+                    ServiceMethodSelection::Vela(method) => {
+                        ServiceMethodSelection::Vela(LinkedVelaServiceMethod {
+                            method: method.clone(),
+                            artifact: Arc::clone(&artifact),
+                        })
+                    }
+                };
+                ServiceMethodUpdate::new(update.key(), update.expected_service_abi(), selection)
+            })
+            .collect();
+        Ok(LinkedServiceSourceManifest { updates })
+    }
+
     pub fn into_updates(self) -> Vec<ServiceMethodUpdate<VelaServiceMethod>> {
+        self.updates
+    }
+}
+
+/// Sparse service updates whose Vela targets retain one validated linked
+/// artifact.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct LinkedServiceSourceManifest {
+    updates: Vec<ServiceMethodUpdate<LinkedVelaServiceMethod>>,
+}
+
+impl LinkedServiceSourceManifest {
+    pub fn updates(
+        &self,
+    ) -> impl ExactSizeIterator<Item = &ServiceMethodUpdate<LinkedVelaServiceMethod>> {
+        self.updates.iter()
+    }
+
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.updates.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.updates.is_empty()
+    }
+
+    pub fn into_snapshot(
+        self,
+        schema: &ServiceSetSchema,
+    ) -> Result<ServiceSelectionTable<LinkedVelaServiceMethod>, ServiceSelectionError> {
+        ServiceSelectionTable::snapshot(schema, self.updates)
+    }
+
+    pub fn into_updates(self) -> Vec<ServiceMethodUpdate<LinkedVelaServiceMethod>> {
         self.updates
     }
 }
