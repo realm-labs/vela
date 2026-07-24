@@ -300,6 +300,47 @@ impl CalculatorHotfix {
             .get(calculator.id(), adjacent.id),
         Some(&ServiceMethodSelection::RustDefault)
     );
+
+    let trap_source = r#"
+#[service_impl(test::calculator)]
+impl CalculatorTrap {
+    fn adjust(context, value) {
+        return value / 0;
+    }
+}
+"#;
+    let trap_sources =
+        build_single_source(SourceId::new(3), trap_source).expect("valid trap source");
+    let trap_manifest =
+        ServiceSourceManifest::link(trap_sources.graph(), services.schema()).expect("trap schema");
+    let trap_compiled = engine.compile_source(trap_source).expect("compiled trap");
+    let trap_artifact = engine
+        .link_compiled_program(trap_compiled)
+        .expect("linked trap");
+    let trap_update = trap_manifest
+        .bind_artifact(trap_artifact)
+        .expect("artifact-bound trap");
+    let trap_candidate = services
+        .stage_snapshot(
+            &default_root,
+            trap_update,
+            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            call_options(),
+        )
+        .expect("trap snapshot");
+    services
+        .activate_if_current(trap_candidate)
+        .expect("trap activation");
+    let trap_root = services.pin();
+    context.counter = 0;
+    let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        trap_root.calculator().adjust(&mut context, 5)
+    }));
+    assert!(failure.is_err());
+    assert_eq!(
+        context.counter, 0,
+        "a Vela failure must not retry the Rust default"
+    );
 }
 
 fn call_options() -> CallOptions {
