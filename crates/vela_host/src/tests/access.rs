@@ -1,4 +1,6 @@
 use super::*;
+use std::collections::{BTreeSet, HashSet};
+
 use crate::protocol::{HostCollectionKey, HostCollectionMutation};
 
 struct FailingMapValue;
@@ -127,6 +129,20 @@ fn batch_map_extension_converts_every_entry_before_mutating_host_state() {
         HostErrorKind::InvalidArgument { expected: "i64" }
     );
     assert_eq!(map, BTreeMap::from([(1_i32, 2_i64)]));
+
+    let mut hashed = HashMap::from([(1_i32, 2_i64)]);
+    let error = hashed
+        .mutate_collection_resolved_host(
+            access,
+            target,
+            HostCollectionMutation::ExtendMap(&entries),
+        )
+        .expect_err("HashMap must also validate the complete extension batch");
+    assert_eq!(
+        error.kind,
+        HostErrorKind::InvalidArgument { expected: "i64" }
+    );
+    assert_eq!(hashed, HashMap::from([(1_i32, 2_i64)]));
 }
 
 #[test]
@@ -150,6 +166,77 @@ fn batch_sequence_extension_writes_exact_values_to_standard_vec() {
         .expect("exact sequence values should extend a standard Vec in one batch");
 
     assert_eq!(values, vec![2, 3, 5]);
+}
+
+#[test]
+fn batch_sequence_extension_converts_every_value_before_mutating_host_state() {
+    let root = HostRef::new(HostTypeId::new(0), HostObjectId::new(1), 0);
+    let plan = HostTargetPlan::new(root.type_id);
+    let target = HostTargetInstance::new(root, &plan, &[]);
+    let access = ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0));
+    let extension = [
+        HostValue::Scalar(ScalarValue::I64(3)),
+        HostValue::String("not an i64".to_owned()),
+    ];
+    let mut values = vec![2_i64];
+
+    let error = values
+        .mutate_collection_resolved_host(
+            access,
+            target,
+            HostCollectionMutation::ExtendSequence(&extension),
+        )
+        .expect_err("one invalid value must reject the complete sequence batch");
+
+    assert_eq!(
+        error.kind,
+        HostErrorKind::InvalidArgument { expected: "i64" }
+    );
+    assert_eq!(values, vec![2]);
+}
+
+#[test]
+fn batch_set_extension_converts_every_key_before_mutating_host_state() {
+    let root = HostRef::new(HostTypeId::new(0), HostObjectId::new(1), 0);
+    let plan = HostTargetPlan::new(root.type_id);
+    let target = HostTargetInstance::new(root, &plan, &[]);
+    let access = ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0));
+    let extension = [
+        HostCollectionKey::I32(3),
+        HostCollectionKey::String("not an i32".to_owned()),
+    ];
+
+    let mut ordered = BTreeSet::from([2_i32]);
+    let error = ordered
+        .mutate_collection_resolved_host(
+            access,
+            target,
+            HostCollectionMutation::ExtendSet(&extension),
+        )
+        .expect_err("one invalid key must reject the complete BTreeSet batch");
+    assert_eq!(
+        error.kind,
+        HostErrorKind::InvalidArgument {
+            expected: "i32 collection key"
+        }
+    );
+    assert_eq!(ordered, BTreeSet::from([2_i32]));
+
+    let mut hashed = HashSet::from([2_i32]);
+    let error = hashed
+        .mutate_collection_resolved_host(
+            access,
+            target,
+            HostCollectionMutation::ExtendSet(&extension),
+        )
+        .expect_err("HashSet must also validate the complete extension batch");
+    assert_eq!(
+        error.kind,
+        HostErrorKind::InvalidArgument {
+            expected: "i32 collection key"
+        }
+    );
+    assert_eq!(hashed, HashSet::from([2_i32]));
 }
 
 #[test]
