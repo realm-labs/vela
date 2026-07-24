@@ -136,6 +136,15 @@ impl ServiceImpl {
     pub fn methods(&self) -> impl ExactSizeIterator<Item = &ServiceImplMethod> {
         self.methods.iter()
     }
+
+    #[must_use]
+    pub fn method_symbol(&self, method: &ServiceImplMethod) -> String {
+        format!(
+            "__service_impl.{}.{}",
+            self.service_path.join("."),
+            method.name
+        )
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

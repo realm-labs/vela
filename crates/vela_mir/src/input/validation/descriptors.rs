@@ -370,11 +370,16 @@ fn validate_functions(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildE
                 .target_table()
                 .states()
                 .any(|(_, state)| state.initializer == Some(function));
-            if !declaration_owned && !method_owned && !state_initializer_owned {
+            let service_owned = validator
+                .snapshot
+                .service_functions_by_node
+                .values()
+                .any(|candidate| *candidate == function);
+            if !declaration_owned && !method_owned && !state_initializer_owned && !service_owned {
                 return Err(validator.error(
                     origin,
                     format!(
-                        "script function #{} has no declaration or method identity",
+                        "script function #{} has no declaration, method, or service identity",
                         function.get()
                     ),
                 ));
@@ -545,6 +550,18 @@ fn validate_identity_indexes(validator: &SnapshotValidator<'_>) -> Result<(), Mi
         );
         validator.require_script_function(*function, origin, "function declaration index")?;
     }
+    for function in validator.snapshot.service_functions_by_node.values() {
+        let root = validator.snapshot.function(*function).ok_or_else(|| {
+            let origin = validator
+                .retained_origin(&validator.snapshot.origins.function_descriptors, function);
+            validator.error(origin, "service function index references a missing root")
+        })?;
+        let origin = validator.retained_origin(&validator.snapshot.origins.roots, function);
+        validator.require_script_function(*function, origin, "service function index")?;
+        if root.identity != CompileFunctionIdentity::Function(*function) {
+            return Err(validator.error(origin, "service function index references a method root"));
+        }
+    }
     for (declaration, type_id) in &validator.snapshot.types_by_declaration {
         let origin =
             validator.retained_origin(&validator.snapshot.origins.type_declarations, declaration);
@@ -591,10 +608,16 @@ fn validate_roots(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildError
                     .target_table()
                     .states()
                     .any(|(_, state)| state.initializer == Some(function));
-                if !declaration_owned && !state_initializer_owned {
-                    return Err(
-                        validator.error(origin, "script function root has no declaration identity")
-                    );
+                let service_owned = validator
+                    .snapshot
+                    .service_functions_by_node
+                    .values()
+                    .any(|candidate| *candidate == function);
+                if !declaration_owned && !state_initializer_owned && !service_owned {
+                    return Err(validator.error(
+                        origin,
+                        "script function root has no declaration or service identity",
+                    ));
                 }
             }
             CompileFunctionIdentity::Method(method) => {

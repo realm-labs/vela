@@ -139,6 +139,7 @@ pub struct CompileTargetSnapshot {
     functions: BTreeMap<FunctionId, CompileFunctionTarget>,
     functions_by_body: BTreeMap<HirBodyId, Vec<FunctionId>>,
     functions_by_declaration: BTreeMap<HirDeclId, FunctionId>,
+    service_functions_by_node: BTreeMap<HirNodeId, FunctionId>,
     methods_by_node: BTreeMap<HirNodeId, Vec<MethodExecutableTarget>>,
     lambdas: BTreeMap<(FunctionId, HirBodyId), CompileLambdaTarget>,
     types_by_declaration: BTreeMap<HirDeclId, TypeId>,

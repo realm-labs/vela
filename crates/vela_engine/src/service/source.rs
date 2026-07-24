@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use vela_common::{CallableAsyncness, Span};
+use vela_def::{FunctionId, script_function_id};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirNodeId, ModuleId};
 use vela_hir::module_graph::ModuleGraph;
 use vela_hir::service_impl::{ServiceImplCatalog, ServiceImplCatalogError};
@@ -23,6 +24,8 @@ pub struct VelaServiceMethod {
     body: HirBodyId,
     module: ModuleId,
     signature: FunctionSignature,
+    function: FunctionId,
+    symbol: String,
     span: Span,
 }
 
@@ -55,6 +58,16 @@ impl VelaServiceMethod {
     #[must_use]
     pub const fn signature(&self) -> &FunctionSignature {
         &self.signature
+    }
+
+    #[must_use]
+    pub const fn function(&self) -> FunctionId {
+        self.function
+    }
+
+    #[must_use]
+    pub fn symbol(&self) -> &str {
+        &self.symbol
     }
 
     #[must_use]
@@ -102,6 +115,9 @@ impl ServiceSourceManifest {
                 ));
             }
             let implementation_path = implementation.implementation_path().join("::");
+            let package = graph
+                .module_package(implementation.module())
+                .expect("catalogued service impl module has a package");
             for method in implementation.methods() {
                 let descriptor = find_method(service, method.name()).ok_or_else(|| {
                     ServiceSourceError::new(
@@ -124,6 +140,7 @@ impl ServiceSourceManifest {
                         },
                     ));
                 }
+                let symbol = implementation.method_symbol(method);
                 updates.push(ServiceMethodUpdate::vela(
                     service.id(),
                     descriptor.id,
@@ -135,6 +152,8 @@ impl ServiceSourceManifest {
                         body: method.body(),
                         module: method.module(),
                         signature: method.signature().clone(),
+                        function: script_function_id(package.as_str(), &symbol),
+                        symbol,
                         span: method.origin().span,
                     },
                 ));

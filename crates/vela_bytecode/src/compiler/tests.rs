@@ -1175,6 +1175,7 @@ mod loops_and_errors;
 mod module_resolution;
 mod phase0_frozen_contracts;
 mod script_methods;
+mod service_impl;
 mod state;
 mod type_contract_constructors;
 mod value_method_shapes;

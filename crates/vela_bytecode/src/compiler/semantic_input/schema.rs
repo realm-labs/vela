@@ -360,7 +360,58 @@ impl GenerationBuilder<'_, '_> {
     pub(super) fn insert_script_callables(&mut self) -> CompileResult<()> {
         self.insert_script_functions()?;
         self.insert_state_initializers()?;
-        self.insert_script_methods()
+        self.insert_script_methods()?;
+        self.insert_service_methods()
+    }
+
+    fn insert_service_methods(&mut self) -> CompileResult<()> {
+        let implementations = self
+            .request
+            .service_impls
+            .implementations()
+            .cloned()
+            .collect::<Vec<_>>();
+        for implementation in &implementations {
+            let package = self
+                .request
+                .graph
+                .module_package(implementation.module())
+                .ok_or_else(registry_input_error)?;
+            for method in implementation.methods() {
+                let body = self
+                    .request
+                    .graph
+                    .body(method.body())
+                    .ok_or_else(registry_input_error)?;
+                let origin = MirSourceOrigin::body(body.id, body.origin.span);
+                let symbol = implementation.method_symbol(method);
+                let function = script_function_id(package.as_str(), &symbol);
+                let signature =
+                    self.script_signature(function, body, method.signature(), method.module())?;
+                self.remember_signature_contracts(&signature, origin);
+                self.function_code_symbols.insert(function, symbol.clone());
+                self.targets
+                    .insert_service_function(
+                        method.node(),
+                        body.id,
+                        CompileFunctionDescriptor {
+                            id: function,
+                            class: CompileFunctionClass::Script,
+                            canonical_symbol: symbol.clone(),
+                            debug_name: format!(
+                                "{}::{}",
+                                implementation.service_path_text(),
+                                method.name()
+                            ),
+                            signature,
+                            access: CompileFunctionAccess::script(false),
+                        },
+                        origin,
+                    )
+                    .map_err(input_error)?;
+            }
+        }
+        Ok(())
     }
 
     fn insert_state_initializers(&mut self) -> CompileResult<()> {

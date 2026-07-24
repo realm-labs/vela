@@ -32,6 +32,7 @@ use vela_hir::body::HirBody;
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::script_methods::{ScriptMethod, ScriptMethodCatalog};
+use vela_hir::service_impl::ServiceImplCatalog;
 use vela_mir::{
     CompileTargetSnapshot, CompileTargetSnapshotBuilder, MethodExecutableTarget, MirBuildError,
     MirEvaluatedConstant, MirLoweringConfig, MirLoweringInput, MirSourceOrigin, MirTypeContract,
@@ -57,6 +58,7 @@ pub(super) struct SemanticInputRequest<'graph, 'methods, 'registry> {
     pub(super) roots: SemanticRoots,
     pub(super) script_function_symbols: &'graph BTreeMap<HirDeclId, String>,
     pub(super) script_methods: &'methods ScriptMethodCatalog,
+    pub(super) service_impls: &'methods ServiceImplCatalog,
     pub(super) type_symbols: &'graph BTreeMap<HirDeclId, String>,
     pub(super) state_symbols: &'graph BTreeMap<HirDeclId, String>,
     pub(super) evaluated_constants: &'graph BTreeMap<HirDeclId, MirEvaluatedConstant>,
@@ -218,6 +220,7 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
             roots: request.roots,
             script_function_symbols: request.script_function_symbols,
             script_methods: request.script_methods,
+            service_impls: request.service_impls,
             type_symbols: request.type_symbols,
             state_symbols: request.state_symbols,
             evaluated_constants: request.evaluated_constants,
@@ -345,6 +348,24 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
                         method.body(),
                     )
                 }));
+                roots.extend(self.request.service_impls.implementations().flat_map(
+                    |implementation| {
+                        let package = self
+                            .request
+                            .graph
+                            .module_package(implementation.module())
+                            .expect("service impl module has package");
+                        implementation.methods().map(move |method| {
+                            (
+                                script_function_id(
+                                    package.as_str(),
+                                    &implementation.method_symbol(method),
+                                ),
+                                method.body(),
+                            )
+                        })
+                    },
+                ));
                 roots.extend(self.state_initializer_ids.iter().filter_map(
                     |(declaration, function)| {
                         self.request

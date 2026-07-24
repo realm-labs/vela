@@ -35,16 +35,15 @@ pub struct TestServices {
 #[test]
 fn source_manifest_imports_schema_and_keeps_adjacent_methods_on_rust() {
     let schema = schema();
-    let sources = source(
-        r#"
+    let text = r#"
 #[service_impl(test::inventory)]
 impl InventoryHotfix {
     fn grant(value) {
         return value + 1;
     }
 }
-"#,
-    );
+"#;
+    let sources = source(text);
     let manifest =
         ServiceSourceManifest::link(sources.graph(), &schema).expect("schema-linked manifest");
     assert_eq!(manifest.len(), 1);
@@ -61,6 +60,21 @@ impl InventoryHotfix {
     };
     assert_eq!(target.implementation(), "InventoryHotfix");
     assert_eq!(target.signature().params[0].name, "value");
+    assert_eq!(target.symbol(), "__service_impl.test.inventory.grant");
+    let engine = engine();
+    let compiled = engine
+        .compile_source(text)
+        .expect("service source should compile into hidden bytecode");
+    let artifact = engine
+        .link_compiled_program(compiled)
+        .expect("service bytecode should link");
+    assert!(
+        artifact
+            .program()
+            .entry_point_by_id(target.function())
+            .is_some(),
+        "schema-linked target must name compiled bytecode"
+    );
     assert_eq!(
         table.get(inventory.id(), remove.id),
         Some(&ServiceMethodSelection::RustDefault)
@@ -159,13 +173,17 @@ fn source(text: &str) -> vela_hir::source_ingestion::HirSourceSet {
 }
 
 fn schema() -> ServiceSetSchema {
-    let engine = TestServices::register_types(vela_engine::engine::Engine::builder())
-        .build()
-        .expect("generated registrations");
+    let engine = engine();
     TestServices::new(&engine.type_bindings())
         .expect("generated service schema")
         .schema()
         .clone()
+}
+
+fn engine() -> vela_engine::engine::Engine {
+    TestServices::register_types(vela_engine::engine::Engine::builder())
+        .build()
+        .expect("generated registrations")
 }
 
 fn service(schema: &ServiceSetSchema) -> &ServiceSchema {

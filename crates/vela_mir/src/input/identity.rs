@@ -15,6 +15,11 @@ impl CompileTargetSnapshot {
     }
 
     #[must_use]
+    pub fn service_function_for_node(&self, node: HirNodeId) -> Option<FunctionId> {
+        self.service_functions_by_node.get(&node).copied()
+    }
+
+    #[must_use]
     pub fn method_for_node(
         &self,
         node: HirNodeId,
@@ -49,6 +54,36 @@ impl CompileTargetSnapshot {
 }
 
 impl CompileTargetSnapshotBuilder {
+    pub fn insert_service_function(
+        &mut self,
+        node: HirNodeId,
+        body: HirBodyId,
+        descriptor: CompileFunctionDescriptor,
+        origin: MirSourceOrigin,
+    ) -> Result<(), MirBuildError> {
+        if self.snapshot.service_functions_by_node.contains_key(&node) {
+            return Err(inconsistent(
+                origin,
+                format!("duplicate service function node {node:?}"),
+            ));
+        }
+        let function = descriptor.id;
+        if self.snapshot.function_descriptor(function).is_some()
+            || self.snapshot.functions.contains_key(&function)
+        {
+            return Err(inconsistent(
+                origin,
+                format!("duplicate service function #{}", function.get()),
+            ));
+        }
+        self.insert_function_descriptor(descriptor, origin)?;
+        self.insert_function(body, CompileFunctionIdentity::Function(function), origin)?;
+        self.snapshot
+            .service_functions_by_node
+            .insert(node, function);
+        Ok(())
+    }
+
     pub fn insert_script_function(
         &mut self,
         declaration: HirDeclId,

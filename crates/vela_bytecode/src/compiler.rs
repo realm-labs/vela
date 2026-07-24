@@ -180,6 +180,7 @@ pub fn compile_function(
         roots: semantic_input::SemanticRoots::Function(function),
         script_function_symbols: &script_function_symbols,
         script_methods: semantic.script_method_catalog(),
+        service_impls: semantic.service_impl_catalog(),
         type_symbols: &type_symbols,
         state_symbols: &state_symbols,
         evaluated_constants: &evaluated_constants,
@@ -235,13 +236,19 @@ fn compile_program_inner(
         .methods()
         .cloned()
         .collect::<Vec<_>>();
-    let executable_packages =
-        executable_packages(graph, &script_function_symbols, &state_symbols, &methods)?;
+    let executable_packages = executable_packages(
+        graph,
+        &script_function_symbols,
+        &state_symbols,
+        &methods,
+        semantic.service_impl_catalog(),
+    )?;
     let input = semantic_input::prepare_semantic_input(semantic_input::SemanticInputRequest {
         graph,
         roots: semantic_input::SemanticRoots::Program,
         script_function_symbols: &script_function_symbols,
         script_methods: semantic.script_method_catalog(),
+        service_impls: semantic.service_impl_catalog(),
         type_symbols: &type_symbols,
         state_symbols: &state_symbols,
         evaluated_constants: &evaluated_constants,
@@ -315,6 +322,7 @@ fn executable_packages(
     function_symbols: &BTreeMap<HirDeclId, String>,
     state_symbols: &BTreeMap<HirDeclId, String>,
     methods: &[vela_hir::script_methods::ScriptMethod],
+    service_impls: &vela_hir::service_impl::ServiceImplCatalog,
 ) -> CompileResult<BTreeMap<vela_def::FunctionId, PackageId>> {
     let mut packages = BTreeMap::new();
     for (declaration, symbol) in function_symbols {
@@ -357,6 +365,24 @@ fn executable_packages(
             vela_def::script_function_id(method.owner().package().as_str(), &method.symbol_seed()),
             method.owner().package().clone(),
         );
+    }
+    for implementation in service_impls.implementations() {
+        let package = graph
+            .module_package(implementation.module())
+            .ok_or_else(|| {
+                CompileError::new(CompileErrorKind::RegistrySnapshot(
+                    "service implementation has no package owner".to_owned(),
+                ))
+            })?;
+        for method in implementation.methods() {
+            packages.insert(
+                vela_def::script_function_id(
+                    package.as_str(),
+                    &implementation.method_symbol(method),
+                ),
+                package.clone(),
+            );
+        }
     }
     Ok(packages)
 }
