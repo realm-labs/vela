@@ -1,7 +1,7 @@
 use vela_bytecode::{CacheSiteId, Register};
 use vela_host::error::HostErrorKind;
 use vela_host::resolved::{HostAccessOp, HostAccessSpec};
-use vela_host::target::HostTargetInstance;
+use vela_host::target::{HostPathArg, HostTargetInstance, HostTargetPlan};
 use vela_host::value::HostValue;
 
 use crate::host_access::{
@@ -30,13 +30,7 @@ pub(crate) fn execute_host_root_collection_lookup(
         lookup,
         HostCollectionLookup::ArrayContains | HostCollectionLookup::ArrayIndexOf
     ) {
-        return execute_host_root_array_search(
-            &mut runtime,
-            receiver,
-            lookup,
-            &args[0],
-            cache_site,
-        );
+        return execute_host_root_array_search(&mut runtime, receiver, lookup, &args[0]);
     }
     let root = expect_host_ref(
         &runtime.frame.read(receiver)?,
@@ -174,7 +168,6 @@ fn execute_host_root_array_search(
     receiver: Register,
     lookup: HostCollectionLookup,
     needle: &Value,
-    cache_site: Option<CacheSiteId>,
 ) -> VmResult<Value> {
     let operation = match lookup {
         HostCollectionLookup::ArrayContains => "method contains",
@@ -183,29 +176,54 @@ fn execute_host_root_array_search(
     };
     let needle =
         crate::value_key::ValueKey::from_value(needle, runtime.heap.as_deref(), operation)?;
-    let values = crate::host_collection_projection::project_host_root_collection_items(
-        runtime, receiver, cache_site,
+    let root = expect_host_ref(
+        &runtime.frame.read(receiver)?,
+        runtime.host.as_deref(),
+        operation,
     )?;
-    let found = {
-        let heap = runtime.heap.as_deref();
-        let mut found = None;
-        for (index, value) in values.iter().enumerate() {
-            if crate::value_key::ValueKey::from_value(value, heap, operation)? == needle {
-                found = Some(index);
-                break;
-            }
+    let len = host_array_len(runtime, root, operation)?;
+    let target = HostTargetPlan::new(root.type_id).dyn_index(0);
+    let resolved = runtime
+        .host
+        .as_deref_mut()
+        .ok_or_else(missing_host_context)?
+        .adapter
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &target))
+        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    let mut found = None;
+    for index in 0..len {
+        if let Some(budget) = runtime.budget.as_deref_mut() {
+            budget.charge_execution_units(1)?;
         }
-        found
-    };
+        let index = u32::try_from(index)
+            .map_err(|_| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
+        let args = [HostPathArg::Index(index)];
+        let instance = HostTargetInstance::new(root, &target, &args);
+        let host = runtime
+            .host
+            .as_deref_mut()
+            .ok_or_else(missing_host_context)?;
+        let value =
+            host.access
+                .read_resolved(host.adapter, resolved, instance, runtime.source_span)?;
+        let value = runtime_value_from_host(
+            value,
+            runtime.heap.as_deref_mut(),
+            runtime.budget.as_deref_mut(),
+            host,
+        )?;
+        if crate::value_key::ValueKey::from_value(&value, runtime.heap.as_deref(), operation)?
+            == needle
+        {
+            found = Some(index);
+            break;
+        }
+    }
     match lookup {
         HostCollectionLookup::ArrayContains => Ok(Value::Bool(found.is_some())),
         HostCollectionLookup::ArrayIndexOf => {
             let payload = found
-                .map(|index| {
-                    i64::try_from(index)
-                        .map(Value::I64)
-                        .map_err(|_| VmError::new(VmErrorKind::TypeMismatch { operation }))
-                })
+                .map(|index| Ok::<_, VmError>(Value::I64(i64::from(index))))
                 .transpose()?;
             let heap = runtime.heap.as_deref_mut().ok_or_else(|| {
                 VmError::new(VmErrorKind::TypeMismatch {
