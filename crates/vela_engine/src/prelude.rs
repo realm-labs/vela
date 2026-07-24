@@ -27,6 +27,10 @@ pub use crate::runtime::{
 pub use crate::schema::{
     ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema, ScriptValueSchema,
 };
+pub use crate::service::{
+    ServiceController, ServiceGeneration, ServiceGenerationCandidate, ServicePublicationError,
+    ServiceRollbackToken, ServiceRoot,
+};
 pub use crate::source::{
     EnginePackageError, EnginePackageErrorKind, PackageCompilationSnapshot,
     PackageCompilationSnapshotId, PackageCompileRequest, ProviderCatalog, ProviderCatalogError,
@@ -44,7 +48,7 @@ pub use vela_bytecode::{
 };
 pub use vela_common::{
     CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, HostMethodId,
-    HostObjectId, HostTypeId,
+    HostObjectId, HostTypeId, ServiceGenerationId, ServiceId, ServiceMethodId, ServiceSetId,
 };
 pub use vela_def::{FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId};
 pub use vela_hir::ids::{HirDeclId, ModuleId};

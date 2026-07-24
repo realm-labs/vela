@@ -29,6 +29,7 @@ pub mod random;
 pub mod reload;
 pub mod runtime;
 pub mod schema;
+pub mod service;
 pub mod source;
 pub mod standard;
 pub mod type_binding;

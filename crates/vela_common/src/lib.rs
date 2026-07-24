@@ -58,6 +58,10 @@ stable_id!(StateSlot, usize);
 stable_id!(HostMethodId, u128);
 stable_id!(HostObjectId, u64);
 stable_id!(HostTypeId, u64);
+stable_id!(ServiceGenerationId, u64);
+stable_id!(ServiceId, u128);
+stable_id!(ServiceMethodId, u128);
+stable_id!(ServiceSetId, u128);
 stable_id!(ShapeId, u32);
 stable_id!(SourceId, u32);
 
