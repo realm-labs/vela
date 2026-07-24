@@ -52,6 +52,7 @@ pub struct Engine {
     hot_reload_policy: HotReloadPolicy,
     standard_natives: bool,
     execution_data: crate::runtime::execution_data::SharedGenerationExecutionRegistry,
+    service_set_schema: Option<Arc<crate::service::ServiceSetSchema>>,
 }
 
 pub(crate) struct EngineParts {
@@ -72,6 +73,7 @@ pub(crate) struct EngineParts {
     pub(crate) reflection_policy: Option<ReflectPolicy>,
     pub(crate) hot_reload_policy: HotReloadPolicy,
     pub(crate) standard_natives: bool,
+    pub(crate) service_set_schema: Option<crate::service::ServiceSetSchema>,
 }
 
 impl Engine {
@@ -198,6 +200,7 @@ impl Engine {
             execution_data: Arc::new(Mutex::new(
                 crate::runtime::execution_data::GenerationExecutionRegistry::new(),
             )),
+            service_set_schema: parts.service_set_schema.map(Arc::new),
         }
     }
 
@@ -227,6 +230,11 @@ impl Engine {
     #[must_use]
     pub fn type_bindings(&self) -> Arc<TypeBindingRegistry> {
         Arc::clone(&self.type_bindings)
+    }
+
+    #[must_use]
+    pub fn service_set_schema(&self) -> Option<&crate::service::ServiceSetSchema> {
+        self.service_set_schema.as_deref()
     }
 
     #[must_use]

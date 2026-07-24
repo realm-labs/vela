@@ -47,10 +47,13 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             let builder = #function(builder);
         }
     });
-    let schema_calls = services.iter().map(|service| {
-        let function = service.schema_path();
-        quote! { #function(registry)? }
-    });
+    let schema_calls = services
+        .iter()
+        .map(|service| {
+            let function = service.schema_path();
+            quote! { #function(registry)? }
+        })
+        .collect::<Vec<_>>();
     let generation_fields = services.iter().map(|service| {
         let field = &service.field;
         let trait_path = &service.trait_path;
@@ -115,8 +118,32 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         .iter()
         .filter(|attribute| attribute.path().is_ident("doc"));
     let vis = &item.vis;
+    let schema_factory_ident = format_ident!("__vela_service_set_schema_{set_ident}");
 
     Ok(quote! {
+        #[doc(hidden)]
+        fn #schema_factory_ident(
+            registry: &::vela_engine::type_binding::TypeBindingRegistry,
+        ) -> ::std::result::Result<
+            ::vela_engine::service::ServiceSetSchema,
+            ::vela_engine::service::ServiceSchemaError,
+        > {
+            let path = ::std::concat!(
+                ::std::module_path!(),
+                "::",
+                ::std::stringify!(#set_ident),
+            );
+            let id = ::vela_common::ServiceSetId::new(
+                u128::from(::vela_common::stable_id("vela_service_set", "", path)),
+            );
+            ::vela_engine::service::ServiceSetSchema::new(
+                id,
+                path,
+                vec![#(#schema_calls),*],
+                registry,
+            )
+        }
+
         #(#doc_attrs)*
         #vis struct #generation_ident {
             #(#generation_fields,)*
@@ -185,7 +212,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             ) -> ::vela_engine::builder::EngineBuilder {
                 let builder = builder;
                 #(#register_calls)*
-                builder
+                builder.register_service_set_schema(#schema_factory_ident)
             }
 
             pub fn new(
@@ -194,16 +221,8 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 Self,
                 ::vela_engine::service::ServiceSchemaError,
             > {
-                let path = ::std::concat!(::std::module_path!(), "::", ::std::stringify!(#set_ident));
-                let id = ::vela_common::ServiceSetId::new(
-                    u128::from(::vela_common::stable_id("vela_service_set", "", path)),
-                );
-                let schema = ::vela_engine::service::ServiceSetSchema::new(
-                    id,
-                    path,
-                    vec![#(#schema_calls),*],
-                    registry,
-                )?;
+                let schema = #schema_factory_ident(registry)?;
+                let id = schema.id();
                 Ok(Self {
                     controller: ::vela_engine::service::ServiceController::new(
                         id,
@@ -612,6 +631,7 @@ mod tests {
         assert!(output.contains("stage_snapshot"));
         assert!(output.contains("stage_delta"));
         assert!(output.contains("__vela_compose_service_RewardService"));
+        assert!(output.contains("register_service_set_schema"));
         assert_eq!(output.matches("ServiceController <").count(), 1);
         assert!(!output.contains("HostRef"));
         assert!(!output.contains("runtime : :: vela_engine :: runtime :: Runtime"));

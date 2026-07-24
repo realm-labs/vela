@@ -10,7 +10,7 @@ pub use runtime::{
 };
 pub use schema::{
     ServiceMethodDescriptor, ServiceSchema, ServiceSchemaError, ServiceSetSchema,
-    ServiceTypeRequirement,
+    ServiceSetSchemaFactory, ServiceTypeRequirement,
 };
 pub use selection::{
     ServiceMethodKey, ServiceMethodSelection, ServiceMethodUpdate, ServiceSelectionError,

@@ -57,6 +57,7 @@ pub struct EngineBuilder {
     controlled_random: bool,
     stdio: bool,
     fs_io: bool,
+    service_set_factories: Vec<crate::service::ServiceSetSchemaFactory>,
 }
 
 impl EngineBuilder {
@@ -75,6 +76,16 @@ impl EngineBuilder {
     #[must_use]
     pub fn register_rust_type<T: 'static>(self, binding: TypeBinding<T>) -> Self {
         self.push_rust_type::<T>(binding)
+    }
+
+    #[doc(hidden)]
+    #[must_use]
+    pub fn register_service_set_schema(
+        mut self,
+        factory: crate::service::ServiceSetSchemaFactory,
+    ) -> Self {
+        self.service_set_factories.push(factory);
+        self
     }
 
     /// Registers the complete owned-Value dependency closure rooted at `T`.
@@ -654,6 +665,19 @@ impl EngineBuilder {
         )?;
         validation::validate_types(&types, self.standard_natives)?;
         let type_bindings = TypeBindingRegistry::seal(self.type_bindings, &types)?;
+        let service_set_schema = match self.service_set_factories.as_slice() {
+            [] => None,
+            [factory] => Some(factory(&type_bindings).map_err(|error| {
+                EngineError::new(EngineErrorKind::ServiceSchema {
+                    message: error.to_string(),
+                })
+            })?),
+            factories => {
+                return Err(EngineError::new(EngineErrorKind::MultipleServiceSets {
+                    count: factories.len(),
+                }));
+            }
+        };
         let module_options = validation::ModuleValidationOptions::default()
             .include_standard_modules(self.standard_natives)
             .include_time_module(self.time_clock)
@@ -740,6 +764,7 @@ impl EngineBuilder {
             reflection_policy: self.reflection_policy,
             hot_reload_policy: self.hot_reload_policy,
             standard_natives: self.standard_natives,
+            service_set_schema,
         }))
     }
 }

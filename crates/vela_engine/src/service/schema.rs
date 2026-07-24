@@ -13,6 +13,10 @@ use crate::interop::{BoundaryMode, CallableContract, CallableKind, ReturnMode};
 use crate::native::TypeHint;
 use crate::type_binding::TypeBindingRegistry;
 
+#[doc(hidden)]
+pub type ServiceSetSchemaFactory =
+    fn(&TypeBindingRegistry) -> Result<ServiceSetSchema, ServiceSchemaError>;
+
 /// One exact Rust type representation reachable from a service boundary.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ServiceTypeRequirement {

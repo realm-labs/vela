@@ -312,10 +312,25 @@ fn source(text: &str) -> vela_hir::source_ingestion::HirSourceSet {
 
 fn schema() -> ServiceSetSchema {
     let engine = engine();
-    TestServices::new(&engine.type_bindings())
-        .expect("generated service schema")
-        .schema()
-        .clone()
+    let services = TestServices::new(&engine.type_bindings()).expect("generated service schema");
+    assert_eq!(
+        engine.service_set_schema(),
+        Some(services.schema()),
+        "Engine compilation and publication must share one schema"
+    );
+    services.schema().clone()
+}
+
+#[test]
+fn engine_rejects_multiple_service_set_registrations() {
+    let builder = TestServices::register_types(vela_engine::engine::Engine::builder());
+    let Err(error) = TestServices::register_types(builder).build() else {
+        panic!("one Engine must not own two service sets");
+    };
+    assert!(matches!(
+        error.kind,
+        vela_engine::error::EngineErrorKind::MultipleServiceSets { count: 2 }
+    ));
 }
 
 fn engine() -> vela_engine::engine::Engine {

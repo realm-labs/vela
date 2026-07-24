@@ -166,6 +166,12 @@ pub enum EngineErrorKind {
     DefinitionRegistry {
         message: String,
     },
+    ServiceSchema {
+        message: String,
+    },
+    MultipleServiceSets {
+        count: usize,
+    },
     DuplicateTraitMethodParamName {
         type_name: String,
         trait_name: String,
@@ -396,6 +402,15 @@ impl fmt::Display for EngineError {
             }
             EngineErrorKind::DefinitionRegistry { message } => {
                 write!(formatter, "definition registry error: {message}")
+            }
+            EngineErrorKind::ServiceSchema { message } => {
+                write!(formatter, "service schema error: {message}")
+            }
+            EngineErrorKind::MultipleServiceSets { count } => {
+                write!(
+                    formatter,
+                    "one Engine can register only one service set, found {count}"
+                )
             }
             EngineErrorKind::DuplicateTraitMethodParamName {
                 type_name,
