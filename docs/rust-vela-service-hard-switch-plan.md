@@ -221,12 +221,17 @@ Deliverables:
 - implement `#[vela::service]` and `#[vela::service_set]` schema generation on
   the sealed TypeBinding registry;
 - reject service signatures whose transitive types lack complete bindings;
-- generate object-safe sync/async dispatch and Rust default composites;
+- generate object-safe synchronous dispatch and Rust default composites;
 - implement whole-set generation identity, `ArcSwap` publication, safe-point
   pinning, and same-controller rollback validation;
 - migrate the fixture's callers to the generated service set; and
 - keep the generated Rust-default branch as a direct Rust call that creates no
   HostRef, performs no VM entry, and allocates nothing after root pinning.
+
+Authored `async fn` service adapters remain an S6 deliverable together with
+suspension, cancellation, dropped-future, and lease-lifetime proof. S4 rejects
+that spelling with a focused diagnostic instead of exposing a trait that the
+generated Rust-only service set cannot dispatch.
 
 Gate:
 

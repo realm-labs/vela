@@ -2969,6 +2969,15 @@ Unchanged immutable CodeObjects may be shared from the base. Normal releases
 should periodically fold accepted Deltas into a Snapshot so deployment history
 does not become a permanent source dependency.
 
+### Authored Async Service Adapters Land With S6
+
+S4 closes the synchronous Rust-default service generation, publication, and
+zero-boundary-cost path. Authored `async fn` service methods require the hidden
+object-safe adapter, pinned Runtime/artifact/lease ownership across suspension,
+and cancellation/drop/unwind proof, so they land together in S6. Until then the
+service macro rejects authored async methods explicitly; it does not emit a
+schema that `service_set` cannot dispatch.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

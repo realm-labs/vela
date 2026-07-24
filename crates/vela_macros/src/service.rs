@@ -187,6 +187,12 @@ fn validate_method(method: &syn::TraitItemFn) -> Result<()> {
             "#[vela::service] does not support const or variadic methods",
         ));
     }
+    if method.sig.asyncness.is_some() {
+        return Err(syn::Error::new_spanned(
+            method.sig.asyncness,
+            "authored async service methods require the S6 object-safe adapter; S4 service methods are synchronous",
+        ));
+    }
     let Some(FnArg::Receiver(receiver)) = method.sig.inputs.first() else {
         return Err(syn::Error::new_spanned(
             &method.sig,
