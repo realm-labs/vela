@@ -25,7 +25,7 @@ pub(crate) struct HostRetainWriteback {
 /// Prepares one standard callback receiver.
 ///
 /// Owned script values retain their existing zero-copy dispatch. Read-only
-/// HostRef Array callbacks use a prepared live iterator, while operations that
+/// HostRef collection callbacks use a prepared live iterator, while operations that
 /// require a stable transactional or ordering snapshot still materialize the
 /// corresponding temporary Array, Map, or Set before callback execution.
 pub(crate) fn prepare_callback_receiver(
@@ -53,10 +53,30 @@ pub(crate) fn prepare_callback_receiver(
         return Ok(None);
     };
     if supports_live_host_sequence(cache) {
-        let host_sequence = crate::host_collection_projection::prepare_host_root_array_iterator(
-            &mut runtime,
-            receiver,
-        )?;
+        let host_sequence = match cache.receiver {
+            StandardMethodReceiver::Array => {
+                crate::host_collection_projection::prepare_host_root_array_iterator(
+                    &mut runtime,
+                    receiver,
+                )?
+            }
+            StandardMethodReceiver::Map => {
+                crate::host_collection_projection::prepare_host_root_map_iterator(
+                    &mut runtime,
+                    receiver,
+                    crate::std_method_ids::HostMapIteration::Entries,
+                    cache_site,
+                )?
+            }
+            StandardMethodReceiver::Set => {
+                crate::host_collection_projection::prepare_host_root_set_iterator(
+                    &mut runtime,
+                    receiver,
+                    cache_site,
+                )?
+            }
+            _ => unreachable!("only collection receivers support live host callbacks"),
+        };
         return Ok(Some(PreparedCallbackReceiver {
             value: receiver_value,
             cache,
@@ -87,8 +107,8 @@ pub(crate) fn prepare_callback_receiver(
 }
 
 fn supports_live_host_sequence(cache: CallbackMethodInlineCacheEntry) -> bool {
-    cache.receiver == StandardMethodReceiver::Array
-        && matches!(
+    match cache.receiver {
+        StandardMethodReceiver::Array => matches!(
             cache.target,
             CallbackMethodInlineCacheTarget::Map
                 | CallbackMethodInlineCacheTarget::Filter
@@ -98,5 +118,25 @@ fn supports_live_host_sequence(cache: CallbackMethodInlineCacheEntry) -> bool {
                 | CallbackMethodInlineCacheTarget::Count
                 | CallbackMethodInlineCacheTarget::GroupBy
                 | CallbackMethodInlineCacheTarget::Sum
-        )
+        ),
+        StandardMethodReceiver::Map => matches!(
+            cache.target,
+            CallbackMethodInlineCacheTarget::Filter
+                | CallbackMethodInlineCacheTarget::Find
+                | CallbackMethodInlineCacheTarget::Any
+                | CallbackMethodInlineCacheTarget::All
+                | CallbackMethodInlineCacheTarget::Count
+                | CallbackMethodInlineCacheTarget::MapValues
+        ),
+        StandardMethodReceiver::Set => matches!(
+            cache.target,
+            CallbackMethodInlineCacheTarget::Map
+                | CallbackMethodInlineCacheTarget::Filter
+                | CallbackMethodInlineCacheTarget::Find
+                | CallbackMethodInlineCacheTarget::Any
+                | CallbackMethodInlineCacheTarget::All
+                | CallbackMethodInlineCacheTarget::Count
+        ),
+        _ => false,
+    }
 }

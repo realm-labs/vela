@@ -46,6 +46,36 @@ impl HostMapCursor {
         runtime: &mut MethodRuntime<'_, '_, '_>,
         operation: &'static str,
     ) -> VmResult<Option<Value>> {
+        let Some((key, value)) = self.read_current(runtime, operation)? else {
+            return Ok(None);
+        };
+        let value = match self.kind {
+            HostMapCursorKind::Values => value,
+            HostMapCursorKind::Entries => {
+                crate::map_methods::map_entry(key, value, &mut runtime.heap, &mut runtime.budget)?
+            }
+        };
+        self.next = self.next.saturating_add(1);
+        Ok(Some(value))
+    }
+
+    pub(super) fn next_entry(
+        &mut self,
+        runtime: &mut MethodRuntime<'_, '_, '_>,
+        operation: &'static str,
+    ) -> VmResult<Option<(Value, Value)>> {
+        let entry = self.read_current(runtime, operation)?;
+        if entry.is_some() {
+            self.next = self.next.saturating_add(1);
+        }
+        Ok(entry)
+    }
+
+    fn read_current(
+        &self,
+        runtime: &mut MethodRuntime<'_, '_, '_>,
+        operation: &'static str,
+    ) -> VmResult<Option<(Value, Value)>> {
         let Some(key) = self.keys.get(self.next).copied() else {
             return Ok(None);
         };
@@ -64,14 +94,7 @@ impl HostMapCursor {
             runtime.budget.as_deref_mut(),
             operation,
         )?;
-        let value = match self.kind {
-            HostMapCursorKind::Values => value,
-            HostMapCursorKind::Entries => {
-                crate::map_methods::map_entry(key, value, &mut runtime.heap, &mut runtime.budget)?
-            }
-        };
-        self.next = self.next.saturating_add(1);
-        Ok(Some(value))
+        Ok(Some((key, value)))
     }
 
     pub(super) fn keys(&self) -> &[Value] {

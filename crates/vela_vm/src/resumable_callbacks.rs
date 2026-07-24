@@ -148,12 +148,16 @@ impl ResumableCallbackMethod {
                 source: *receiver,
                 target: cache.target,
                 operation,
-                values: match set_methods::set_values(receiver, heap, operation) {
-                    Ok(values) => values,
-                    Err(error) => return Some(Err(error)),
+                values: if host_sequence.is_some() {
+                    Vec::new()
+                } else {
+                    match set_methods::set_values(receiver, heap, operation) {
+                        Ok(values) => values,
+                        Err(error) => return Some(Err(error)),
+                    }
                 },
                 index: 0,
-                host_sequence: None,
+                host_sequence: host_sequence.take().map(Box::new),
                 output: Vec::new(),
                 count: 0,
                 total: NumericTotal::Int(0),
@@ -166,11 +170,16 @@ impl ResumableCallbackMethod {
                 source: *receiver,
                 target: cache.target,
                 operation,
-                entries: match map_methods::map_entries(receiver, heap, operation) {
-                    Ok(entries) => entries,
-                    Err(error) => return Some(Err(error)),
+                entries: if host_sequence.is_some() {
+                    Vec::new()
+                } else {
+                    match map_methods::map_entries(receiver, heap, operation) {
+                        Ok(entries) => entries,
+                        Err(error) => return Some(Err(error)),
+                    }
                 },
                 index: 0,
+                host_sequence: host_sequence.take().map(Box::new),
                 output: Vec::new(),
                 count: 0,
                 found: None,
@@ -371,7 +380,12 @@ impl ResumableCallbackMethod {
                 host_sequence,
                 ..
             } => host_sequence.is_some() || *index < values.len(),
-            CallbackState::Map { entries, index, .. } => *index < entries.len(),
+            CallbackState::Map {
+                entries,
+                index,
+                host_sequence,
+                ..
+            } => host_sequence.is_some() || *index < entries.len(),
             CallbackState::GroupBy {
                 values,
                 index,
@@ -435,8 +449,10 @@ impl ResumableCallbackMethod {
             }
             CallbackState::Map {
                 target,
+                operation,
                 entries,
                 index,
+                host_sequence,
                 found,
                 decision,
                 awaiting,
@@ -448,11 +464,30 @@ impl ResumableCallbackMethod {
                         && *decision == Some(true)
                     || matches!(target, CallbackMethodInlineCacheTarget::All)
                         && *decision == Some(false);
-                if terminal || *index >= entries.len() {
+                if terminal || (host_sequence.is_none() && *index >= entries.len()) {
                     return self.finish(heap, budget);
                 }
-                let entry = entries[*index];
-                *index = index.saturating_add(1);
+                let entry = if let Some(iterator) = host_sequence {
+                    let iterator_host = host.as_mut().map(|host| {
+                        &mut **host as &mut dyn crate::method_runtime::HostIteratorAccess
+                    });
+                    let mut runtime = crate::method_runtime::MethodRuntime {
+                        program: program_owner.program(),
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        host: iterator_host,
+                    };
+                    let Some(entry) =
+                        iterator.next_host_map_entry_with_runtime(&mut runtime, operation)?
+                    else {
+                        return self.finish(heap, budget);
+                    };
+                    entry
+                } else {
+                    let entry = entries[*index];
+                    *index = index.saturating_add(1);
+                    entry
+                };
                 *awaiting = Some(entry);
                 match callback_param_len.expect("a pending map entry prepares its callback") {
                     0 => Vec::new(),
@@ -550,12 +585,16 @@ impl ResumableCallbackMethod {
             CallbackState::Map {
                 source,
                 entries,
+                host_sequence,
                 output,
                 found,
                 awaiting,
                 ..
             } => {
                 heap.protect_values(&[*source]);
+                if let Some(iterator) = host_sequence {
+                    heap.protect_values(&iterator.protected_values());
+                }
                 for (key, value) in entries.iter().chain(output) {
                     heap.protect_values(&[*key, *value]);
                 }

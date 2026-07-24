@@ -1148,6 +1148,8 @@ mod borrowed_host_array_callback_tests;
 mod borrowed_host_array_search_tests;
 #[path = "borrowed_collection_exports/host_iterator_tests.rs"]
 mod borrowed_host_iterator_tests;
+#[path = "borrowed_collection_exports/keyed_callback_tests.rs"]
+mod borrowed_host_keyed_callback_tests;
 
 #[path = "borrowed_collection_exports/async_tests.rs"]
 mod borrowed_collection_async_tests;

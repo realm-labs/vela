@@ -31,6 +31,7 @@ pub(super) enum CallbackState {
         operation: &'static str,
         entries: Vec<(Value, Value)>,
         index: usize,
+        host_sequence: Option<Box<crate::iteration::IteratorState>>,
         output: Vec<(Value, Value)>,
         count: i64,
         found: Option<(Value, Value)>,
