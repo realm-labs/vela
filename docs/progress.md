@@ -40,13 +40,16 @@ exact nested identity and lifetime enforcement; and immediate write-through
 for the implemented Array, Map, and Set mutations. User-defined Sequence,
 MapLike, and SetLike adapters reuse the same protocol, traversal, callback,
 budget, and mutation paths. Bulk clear/extend/retain operations preflight
-budgets, conversions, and stale snapshots before mutation. The remaining S3
-exit work is:
+budgets, conversions, and stale snapshots before mutation. The explicit
+standard collection matrix covers owned round trips, shared reads and mutation
+rejection, fixed mutable replacement and growth rejection, growable mutable
+write-through, Bytes views, and distinct BTree/Hash ABI. The remaining S3 exit
+work is:
 
 - remaining element/key methods and live or resumable traversal behavior;
 - prepared element-method and remaining traversal paths without runtime name
   or reflection lookup;
-- the complete owned/shared/exclusive matrix and phase-wide validation gate.
+- the phase-wide validation gate.
 
 S4 begins only after the complete S3 gate is green. Its first accepted slice is
 the generated Rust-only service generation; it must create no `HostRef` and

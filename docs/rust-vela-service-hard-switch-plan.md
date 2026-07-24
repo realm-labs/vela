@@ -210,8 +210,9 @@ facts; generated sync/async borrowed collection adapters; scoped retained
 reborrow; exact complex child identity and lifetime; prepared field/index/key
 plans; live iterator fold and collection; live callback filtering and grouping;
 deterministic budgeted collection projections; transactional bulk mutations;
-richer user-defined adapters; and immediate write-through for the implemented
-Array, Map, and Set mutations.
+richer user-defined adapters; the complete owned/shared/fixed/growable
+collection matrix; and immediate write-through for the implemented Array, Map,
+and Set mutations.
 
 The remaining exit work is deliberately expressed as capability gaps, not a
 method-by-method chronology:
@@ -220,7 +221,7 @@ method-by-method chronology:
 - prepared element-method and remaining traversal operations with
   no successful-path name lookup, reflection walk, or HostPath materialization;
   and
-- the complete owned/shared/exclusive matrix and phase-wide validation gate.
+- the phase-wide validation gate.
 
 Current details and the next selected gap live in
 [progress.md](progress.md). Do not append completed method lists here.
