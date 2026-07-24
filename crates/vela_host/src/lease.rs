@@ -297,6 +297,24 @@ macro_rules! impl_scoped_host_common {
             self.0.read_resolved_host(access, target)
         }
 
+        fn borrow_resolved_host_shared(
+            &self,
+            access: ResolvedHostAccess,
+            target: HostTargetInstance<'_>,
+        ) -> crate::error::HostResult<Option<ScopedHostDependent<'_>>> {
+            self.0.borrow_resolved_host_shared(access, target)
+        }
+
+        fn borrow_collection_resolved_host_shared(
+            &self,
+            access: ResolvedHostAccess,
+            target: HostTargetInstance<'_>,
+            projection: crate::protocol::HostCollectionProjection,
+        ) -> crate::error::HostResult<Option<crate::object::ScopedHostCollectionDependents<'_>>> {
+            self.0
+                .borrow_collection_resolved_host_shared(access, target, projection)
+        }
+
         fn query_collection_resolved_host(
             &self,
             access: ResolvedHostAccess,
@@ -385,6 +403,24 @@ where
         self.0.erased_slice_mut()
     }
 
+    fn borrow_resolved_host_exclusive(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> crate::error::HostResult<Option<ScopedHostDependent<'_>>> {
+        self.0.borrow_resolved_host_exclusive(access, target)
+    }
+
+    fn borrow_collection_resolved_host_exclusive(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: crate::protocol::HostCollectionProjection,
+    ) -> crate::error::HostResult<Option<crate::object::ScopedHostCollectionDependents<'_>>> {
+        self.0
+            .borrow_collection_resolved_host_exclusive(access, target, projection)
+    }
+
     fn mutate_collection_resolved_host(
         &mut self,
         access: ResolvedHostAccess,
@@ -467,6 +503,44 @@ impl ScriptHostObject for ScopedBorrowedHostCell<'_> {
         target: HostTargetInstance<'_>,
     ) -> crate::error::HostResult<HostValue> {
         self.borrow_dependent().read_resolved_host(access, target)
+    }
+
+    fn borrow_resolved_host_shared(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> crate::error::HostResult<Option<ScopedHostDependent<'_>>> {
+        self.borrow_dependent()
+            .borrow_resolved_host_shared(access, target)
+    }
+
+    fn borrow_resolved_host_exclusive(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> crate::error::HostResult<Option<ScopedHostDependent<'_>>> {
+        self.with_dependent_mut(|_, object| object.borrow_resolved_host_exclusive(access, target))
+    }
+
+    fn borrow_collection_resolved_host_shared(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: crate::protocol::HostCollectionProjection,
+    ) -> crate::error::HostResult<Option<crate::object::ScopedHostCollectionDependents<'_>>> {
+        self.borrow_dependent()
+            .borrow_collection_resolved_host_shared(access, target, projection)
+    }
+
+    fn borrow_collection_resolved_host_exclusive(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: crate::protocol::HostCollectionProjection,
+    ) -> crate::error::HostResult<Option<crate::object::ScopedHostCollectionDependents<'_>>> {
+        self.with_dependent_mut(|_, object| {
+            object.borrow_collection_resolved_host_exclusive(access, target, projection)
+        })
     }
 
     fn query_collection_resolved_host(

@@ -11,8 +11,9 @@ use crate::target::{HostPathPart, HostTargetInstance};
 use crate::value::HostValue;
 
 use super::{
-    ScriptHostFieldAccess, ScriptHostObject, collection_query_result, invalid_arg, missing_target,
-    target_index, target_is_leaf, unsupported_collection_mutation,
+    ScopedHostCollectionDependents, ScriptHostFieldAccess, ScriptHostObject,
+    collection_query_result, invalid_arg, missing_target, target_index, target_is_leaf,
+    unsupported_collection_mutation,
 };
 
 /// Safely reborrows a dynamically-sized slice from a host object without
@@ -30,7 +31,7 @@ pub fn lease_slice_mut<T: 'static>(object: &mut dyn ScriptHostObject) -> Option<
 
 impl<T> ScriptHostFieldAccess for [T]
 where
-    T: ScriptHostFieldAccess,
+    T: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static,
 {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
@@ -76,6 +77,87 @@ where
                 .read_resolved_host_target_from(child_access, target.at_offset(target.offset + 1));
         }
         self.read_host_target_from(target, target.offset)
+    }
+
+    fn borrow_resolved_host_shared(
+        &self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        if target.offset + 1 != target.plan.parts.len() {
+            return Ok(None);
+        }
+        let value = self
+            .get(checked_index(target, target.offset)?)
+            .ok_or_else(|| missing_target(target))?;
+        Ok(Some(Box::new(
+            crate::lease::SharedScopedHost::with_type_id(value, value.host_type_id()),
+        )))
+    }
+
+    fn borrow_resolved_host_exclusive(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        if target.offset + 1 != target.plan.parts.len() {
+            return Ok(None);
+        }
+        let value = self
+            .get_mut(checked_index(target, target.offset)?)
+            .ok_or_else(|| missing_target(target))?;
+        let type_id = value.host_type_id();
+        Ok(Some(Box::new(
+            crate::lease::ExclusiveScopedHost::with_type_id(value, type_id),
+        )))
+    }
+
+    fn borrow_collection_resolved_host_shared(
+        &self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+        if !target_is_leaf(target, target.offset) {
+            return Ok(None);
+        }
+        if projection != HostCollectionProjection::Values {
+            return Err(invalid_arg(projection.name()));
+        }
+        Ok(Some(ScopedHostCollectionDependents::Items(
+            self.iter()
+                .map(|value| {
+                    Box::new(crate::lease::SharedScopedHost::with_type_id(
+                        value,
+                        value.host_type_id(),
+                    )) as crate::lease::ScopedHostDependent<'_>
+                })
+                .collect(),
+        )))
+    }
+
+    fn borrow_collection_resolved_host_exclusive(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+        if !target_is_leaf(target, target.offset) {
+            return Ok(None);
+        }
+        if projection != HostCollectionProjection::Values {
+            return Err(invalid_arg(projection.name()));
+        }
+        Ok(Some(ScopedHostCollectionDependents::Items(
+            self.iter_mut()
+                .map(|value| {
+                    let type_id = value.host_type_id();
+                    Box::new(crate::lease::ExclusiveScopedHost::with_type_id(
+                        value, type_id,
+                    )) as crate::lease::ScopedHostDependent<'_>
+                })
+                .collect(),
+        )))
     }
 
     fn write_resolved_host_target_from(
@@ -213,7 +295,7 @@ where
 
 impl<T: 'static> ScriptHostObject for [T]
 where
-    T: ScriptHostFieldAccess,
+    T: ScriptHostFieldAccess + ScriptHostObject + Send + Sync,
 {
     fn host_type_id(&self) -> HostTypeId {
         ScriptHostFieldAccess::script_host_type_id(self)
@@ -237,6 +319,44 @@ where
         target: HostTargetInstance<'_>,
     ) -> HostResult<HostValue> {
         ScriptHostFieldAccess::read_resolved_host_target_from(self, access, target)
+    }
+
+    fn borrow_resolved_host_shared(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        ScriptHostFieldAccess::borrow_resolved_host_shared(self, access, target)
+    }
+
+    fn borrow_resolved_host_exclusive(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        ScriptHostFieldAccess::borrow_resolved_host_exclusive(self, access, target)
+    }
+
+    fn borrow_collection_resolved_host_shared(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+        ScriptHostFieldAccess::borrow_collection_resolved_host_shared(
+            self, access, target, projection,
+        )
+    }
+
+    fn borrow_collection_resolved_host_exclusive(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+        ScriptHostFieldAccess::borrow_collection_resolved_host_exclusive(
+            self, access, target, projection,
+        )
     }
 
     fn query_collection_resolved_host(

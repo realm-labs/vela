@@ -205,7 +205,12 @@ impl<'a> CallArgs<'a> {
     #[doc(hidden)]
     pub fn push_slice_ref<T>(&mut self, name: impl Into<String>, value: &'a [T]) -> &mut Self
     where
-        T: ScriptHostFieldAccess + crate::type_registration::RustValueType + Send + Sync + 'static,
+        T: ScriptHostFieldAccess
+            + ScriptHostObject
+            + crate::type_registration::RustValueType
+            + Send
+            + Sync
+            + 'static,
     {
         let type_id = crate::standard::standard_slice_host_type_id::<T>();
         self.entries.push(CallArg::NamedHost {
@@ -260,7 +265,12 @@ impl<'a> CallArgs<'a> {
     #[doc(hidden)]
     pub fn push_positional_slice_ref<T>(&mut self, value: &'a [T]) -> &mut Self
     where
-        T: ScriptHostFieldAccess + crate::type_registration::RustValueType + Send + Sync + 'static,
+        T: ScriptHostFieldAccess
+            + ScriptHostObject
+            + crate::type_registration::RustValueType
+            + Send
+            + Sync
+            + 'static,
     {
         let type_id = crate::standard::standard_slice_host_type_id::<T>();
         self.entries.push(CallArg::PositionalHost {
@@ -339,7 +349,12 @@ impl<'a> CallArgs<'a> {
     #[doc(hidden)]
     pub fn push_slice_mut<T>(&mut self, name: impl Into<String>, value: &'a mut [T]) -> &mut Self
     where
-        T: ScriptHostFieldAccess + crate::type_registration::RustValueType + Send + Sync + 'static,
+        T: ScriptHostFieldAccess
+            + ScriptHostObject
+            + crate::type_registration::RustValueType
+            + Send
+            + Sync
+            + 'static,
     {
         let type_id = crate::standard::standard_slice_host_type_id::<T>();
         self.entries.push(CallArg::NamedHost {
@@ -392,7 +407,12 @@ impl<'a> CallArgs<'a> {
     #[doc(hidden)]
     pub fn push_positional_slice_mut<T>(&mut self, value: &'a mut [T]) -> &mut Self
     where
-        T: ScriptHostFieldAccess + crate::type_registration::RustValueType + Send + Sync + 'static,
+        T: ScriptHostFieldAccess
+            + ScriptHostObject
+            + crate::type_registration::RustValueType
+            + Send
+            + Sync
+            + 'static,
     {
         let type_id = crate::standard::standard_slice_host_type_id::<T>();
         self.entries.push(CallArg::PositionalHost {

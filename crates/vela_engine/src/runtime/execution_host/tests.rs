@@ -1,3 +1,4 @@
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use parking_lot::RwLock;
@@ -195,6 +196,182 @@ fn empty_complex_vec_projection_does_not_create_a_scoped_group() {
         .expect("empty complex projection should not require a non-empty lease group");
     assert_eq!(snapshot, HostCollectionSnapshot::Items(Vec::new()));
     assert!(host.scoped_hosts.is_empty());
+}
+
+#[test]
+fn complex_map_values_preserve_key_identity_and_write_through() {
+    let mut values = BTreeMap::from([("primary".to_owned(), vec![7_i64])]);
+    let parent_type = values.host_type_id();
+    let args = CallArgs::new().with_host_mut("values", &mut values);
+    let mut extern_states = RuntimeExternStateBindings::new();
+    let mut host_arena = RuntimeHostArena::new();
+    let mut host_slots = HostRefSlots::new();
+    let mut host = ExecutionHost::new(args, &mut extern_states, &mut host_arena, &mut host_slots);
+    let parent = HostRef::new(
+        parent_type,
+        HostObjectId::new(EXECUTION_HOST_OBJECT_ID_BASE),
+        1,
+    );
+    let value_plan = HostTargetPlan::new(parent.type_id).const_key("primary");
+    let value_target = HostTargetInstance::new(parent, &value_plan, &[]);
+    let value_access = host
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &value_plan))
+        .expect("complex map value access should resolve");
+    let mut access = HostAccess::new();
+    let HostValue::HostRef(child) = access
+        .read_resolved_scoped(&mut host, value_access, value_target, None)
+        .expect("complex map value should retain a scoped child")
+    else {
+        panic!("complex map value must preserve host identity");
+    };
+    let nested_plan = HostTargetPlan::new(child.type_id).const_index(0);
+    let nested_target = HostTargetInstance::new(child, &nested_plan, &[]);
+    let nested_write = host
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Write, &nested_plan))
+        .expect("nested map child write should resolve");
+    access
+        .write_resolved(
+            &mut host,
+            nested_write,
+            nested_target,
+            HostValue::Scalar(ScalarValue::I64(9)),
+            None,
+        )
+        .expect("nested map child write should mutate the keyed value");
+    host.release_scoped_host(child)
+        .expect("map value child should release");
+    drop(host);
+    assert_eq!(values["primary"], vec![9]);
+}
+
+#[test]
+fn complex_hash_map_entry_projection_is_deterministic() {
+    let values = HashMap::from([
+        ("zeta".to_owned(), vec![2_i64]),
+        ("alpha".to_owned(), vec![1_i64]),
+    ]);
+    let parent_type = values.host_type_id();
+    let args = CallArgs::new().with_host_ref("values", &values);
+    let mut extern_states = RuntimeExternStateBindings::new();
+    let mut host_arena = RuntimeHostArena::new();
+    let mut host_slots = HostRefSlots::new();
+    let mut host = ExecutionHost::new(args, &mut extern_states, &mut host_arena, &mut host_slots);
+    let parent = HostRef::new(
+        parent_type,
+        HostObjectId::new(EXECUTION_HOST_OBJECT_ID_BASE),
+        1,
+    );
+    let plan = HostTargetPlan::new(parent.type_id);
+    let target = HostTargetInstance::new(parent, &plan, &[]);
+    let resolved = host
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &plan))
+        .expect("complex hash map projection should resolve");
+    let HostCollectionSnapshot::Entries(entries) = HostAccess::new()
+        .snapshot_collection_resolved_scoped(
+            &mut host,
+            resolved,
+            target,
+            HostCollectionProjection::Entries,
+            None,
+        )
+        .expect("complex hash map entries should retain scoped value children")
+    else {
+        panic!("map entry projection should return entries");
+    };
+    assert_eq!(
+        entries
+            .iter()
+            .map(|(key, _)| key.clone())
+            .collect::<Vec<_>>(),
+        vec![
+            HostValue::String("alpha".to_owned()),
+            HostValue::String("zeta".to_owned())
+        ]
+    );
+    for (_, value) in entries {
+        let HostValue::HostRef(root) = value else {
+            panic!("complex map entry value must preserve host identity");
+        };
+        host.release_scoped_host(root)
+            .expect("projected map child should release");
+    }
+}
+
+#[test]
+fn complex_fixed_array_elements_are_scoped_children() {
+    let mut values = [vec![3_i64], vec![4]];
+    let parent_type = values.host_type_id();
+    let args = CallArgs::new().with_host_mut("values", &mut values);
+    let mut extern_states = RuntimeExternStateBindings::new();
+    let mut host_arena = RuntimeHostArena::new();
+    let mut host_slots = HostRefSlots::new();
+    let mut host = ExecutionHost::new(args, &mut extern_states, &mut host_arena, &mut host_slots);
+    let parent = HostRef::new(
+        parent_type,
+        HostObjectId::new(EXECUTION_HOST_OBJECT_ID_BASE),
+        1,
+    );
+    let element_plan = HostTargetPlan::new(parent.type_id).const_index(1);
+    let element_target = HostTargetInstance::new(parent, &element_plan, &[]);
+    let element_access = host
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &element_plan))
+        .expect("complex fixed-array element should resolve");
+    let HostValue::HostRef(child) = HostAccess::new()
+        .read_resolved_scoped(&mut host, element_access, element_target, None)
+        .expect("complex fixed-array element should retain a scoped child")
+    else {
+        panic!("complex fixed-array element must preserve host identity");
+    };
+    host.release_scoped_host(child)
+        .expect("fixed-array child should release");
+}
+
+#[test]
+fn complex_slice_elements_are_scoped_children() {
+    let mut values = [vec![5_i64]];
+    let parent_type = crate::standard::standard_slice_host_type_id::<Vec<i64>>();
+    let mut args = CallArgs::new();
+    args.push_slice_mut("values", values.as_mut_slice());
+    let mut extern_states = RuntimeExternStateBindings::new();
+    let mut host_arena = RuntimeHostArena::new();
+    let mut host_slots = HostRefSlots::new();
+    let mut host = ExecutionHost::new(args, &mut extern_states, &mut host_arena, &mut host_slots);
+    let parent = HostRef::new(
+        parent_type,
+        HostObjectId::new(EXECUTION_HOST_OBJECT_ID_BASE),
+        1,
+    );
+    let outer_plan = HostTargetPlan::new(parent.type_id).const_index(0);
+    let outer_target = HostTargetInstance::new(parent, &outer_plan, &[]);
+    let outer_access = host
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &outer_plan))
+        .expect("complex slice element should resolve");
+    let mut access = HostAccess::new();
+    let HostValue::HostRef(child) = access
+        .read_resolved_scoped(&mut host, outer_access, outer_target, None)
+        .expect("complex slice element should retain a scoped child")
+    else {
+        panic!("complex slice element must preserve host identity");
+    };
+
+    let scalar_plan = HostTargetPlan::new(child.type_id).const_index(0);
+    let scalar_target = HostTargetInstance::new(child, &scalar_plan, &[]);
+    let scalar_write = host
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Write, &scalar_plan))
+        .expect("slice child scalar write should resolve");
+    access
+        .write_resolved(
+            &mut host,
+            scalar_write,
+            scalar_target,
+            HostValue::Scalar(ScalarValue::I64(8)),
+            None,
+        )
+        .expect("slice child should write through its parent lease");
+    host.release_scoped_host(child)
+        .expect("slice child should release after nested use");
+    drop(host);
+    assert_eq!(values[0], vec![8]);
 }
 
 #[test]

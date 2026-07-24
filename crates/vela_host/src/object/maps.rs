@@ -14,7 +14,7 @@ use crate::target::{HostPathPart, HostTargetInstance};
 use crate::value::HostValue;
 
 use super::{
-    ScriptHostFieldAccess, ScriptHostKey, ScriptHostObject,
+    ScopedHostCollectionDependents, ScriptHostFieldAccess, ScriptHostKey, ScriptHostObject,
     collection_protocol::{collection_query_result, mutate_btree_map, mutate_hash_map},
     collection_snapshot::snapshot_map_entries,
     errors::missing_collection_entry,
@@ -24,7 +24,7 @@ use super::{
 impl<K, V> ScriptHostFieldAccess for BTreeMap<K, V>
 where
     K: ScriptHostKey,
-    V: ScriptHostFieldAccess + ScriptHostObject,
+    V: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static,
 {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
@@ -59,6 +59,46 @@ where
                 .read_resolved_host_target_from(child_access, target.at_offset(target.offset + 1));
         }
         self.read_host_target_from(target, target.offset)
+    }
+
+    fn borrow_resolved_host_shared(
+        &self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        borrow_map_value_shared(self, target)
+    }
+
+    fn borrow_resolved_host_exclusive(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        borrow_map_value_exclusive(self, target)
+    }
+
+    fn borrow_collection_resolved_host_shared(
+        &self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+        if !target_is_leaf(target, target.offset) {
+            return Ok(None);
+        }
+        borrow_map_collection_shared(self.iter(), projection)
+    }
+
+    fn borrow_collection_resolved_host_exclusive(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+        if !target_is_leaf(target, target.offset) {
+            return Ok(None);
+        }
+        borrow_map_collection_exclusive(self.iter_mut(), projection)
     }
 
     fn write_resolved_host_target_from(
@@ -236,7 +276,7 @@ where
 impl<K, V> ScriptHostFieldAccess for HashMap<K, V>
 where
     K: ScriptHostKey + Hash,
-    V: ScriptHostFieldAccess + ScriptHostObject,
+    V: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static,
 {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
@@ -271,6 +311,50 @@ where
                 .read_resolved_host_target_from(child_access, target.at_offset(target.offset + 1));
         }
         self.read_host_target_from(target, target.offset)
+    }
+
+    fn borrow_resolved_host_shared(
+        &self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        borrow_map_value_shared(self, target)
+    }
+
+    fn borrow_resolved_host_exclusive(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        borrow_map_value_exclusive(self, target)
+    }
+
+    fn borrow_collection_resolved_host_shared(
+        &self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+        if !target_is_leaf(target, target.offset) {
+            return Ok(None);
+        }
+        let mut entries = self.iter().collect::<Vec<_>>();
+        entries.sort_by_key(|(key, _)| (*key).clone());
+        borrow_map_collection_shared(entries, projection)
+    }
+
+    fn borrow_collection_resolved_host_exclusive(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+        if !target_is_leaf(target, target.offset) {
+            return Ok(None);
+        }
+        let mut entries = self.iter_mut().collect::<Vec<_>>();
+        entries.sort_by_key(|(key, _)| (*key).clone());
+        borrow_map_collection_exclusive(entries, projection)
     }
 
     fn write_resolved_host_target_from(
@@ -463,5 +547,155 @@ fn resolve_map_target<V: ScriptHostFieldAccess + ScriptHostObject>(
             }
         }
         Some(_) => ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
+    })
+}
+
+fn borrow_map_value_shared<'a, K, V>(
+    map: &'a impl MapValueRef<K, V>,
+    target: HostTargetInstance<'_>,
+) -> HostResult<Option<crate::lease::ScopedHostDependent<'a>>>
+where
+    K: ScriptHostKey,
+    V: ScriptHostObject + Send + Sync + 'static,
+{
+    if target.offset + 1 != target.plan.parts.len() {
+        return Ok(None);
+    }
+    let key = K::from_host_collection_key(target_key(target, target.offset)?)?;
+    let value = map
+        .map_value_ref(&key)
+        .ok_or_else(|| missing_collection_entry(target))?;
+    Ok(Some(Box::new(
+        crate::lease::SharedScopedHost::with_type_id(value, value.host_type_id()),
+    )))
+}
+
+fn borrow_map_value_exclusive<'a, K, V, M>(
+    map: &'a mut M,
+    target: HostTargetInstance<'_>,
+) -> HostResult<Option<crate::lease::ScopedHostDependent<'a>>>
+where
+    K: ScriptHostKey,
+    V: ScriptHostObject + Send + Sync + 'static,
+    M: MapValueMut<K, V>,
+{
+    if target.offset + 1 != target.plan.parts.len() {
+        return Ok(None);
+    }
+    let key = K::from_host_collection_key(target_key(target, target.offset)?)?;
+    let value = map
+        .map_value_mut(&key)
+        .ok_or_else(|| missing_collection_entry(target))?;
+    let type_id = value.host_type_id();
+    Ok(Some(Box::new(
+        crate::lease::ExclusiveScopedHost::with_type_id(value, type_id),
+    )))
+}
+
+trait MapValueMut<K, V> {
+    fn map_value_mut(&mut self, key: &K) -> Option<&mut V>;
+}
+
+trait MapValueRef<K, V> {
+    fn map_value_ref(&self, key: &K) -> Option<&V>;
+}
+
+impl<K: Ord, V> MapValueRef<K, V> for BTreeMap<K, V> {
+    fn map_value_ref(&self, key: &K) -> Option<&V> {
+        self.get(key)
+    }
+}
+
+impl<K: Eq + Hash, V> MapValueRef<K, V> for HashMap<K, V> {
+    fn map_value_ref(&self, key: &K) -> Option<&V> {
+        self.get(key)
+    }
+}
+
+impl<K: Ord, V> MapValueMut<K, V> for BTreeMap<K, V> {
+    fn map_value_mut(&mut self, key: &K) -> Option<&mut V> {
+        self.get_mut(key)
+    }
+}
+
+impl<K: Eq + Hash, V> MapValueMut<K, V> for HashMap<K, V> {
+    fn map_value_mut(&mut self, key: &K) -> Option<&mut V> {
+        self.get_mut(key)
+    }
+}
+
+fn borrow_map_collection_shared<'a, K, V>(
+    entries: impl IntoIterator<Item = (&'a K, &'a V)>,
+    projection: HostCollectionProjection,
+) -> HostResult<Option<ScopedHostCollectionDependents<'a>>>
+where
+    K: ScriptHostKey + 'a,
+    V: ScriptHostObject + Send + Sync + 'static,
+{
+    Ok(match projection {
+        HostCollectionProjection::Keys => None,
+        HostCollectionProjection::Values => Some(ScopedHostCollectionDependents::Items(
+            entries
+                .into_iter()
+                .map(|(_, value)| {
+                    Box::new(crate::lease::SharedScopedHost::with_type_id(
+                        value,
+                        value.host_type_id(),
+                    )) as crate::lease::ScopedHostDependent<'a>
+                })
+                .collect(),
+        )),
+        HostCollectionProjection::Entries => Some(ScopedHostCollectionDependents::Entries(
+            entries
+                .into_iter()
+                .map(|(key, value)| {
+                    (
+                        key.to_host_collection_key().into_host_value(),
+                        Box::new(crate::lease::SharedScopedHost::with_type_id(
+                            value,
+                            value.host_type_id(),
+                        )) as crate::lease::ScopedHostDependent<'a>,
+                    )
+                })
+                .collect(),
+        )),
+    })
+}
+
+fn borrow_map_collection_exclusive<'a, K, V>(
+    entries: impl IntoIterator<Item = (&'a K, &'a mut V)>,
+    projection: HostCollectionProjection,
+) -> HostResult<Option<ScopedHostCollectionDependents<'a>>>
+where
+    K: ScriptHostKey + 'a,
+    V: ScriptHostObject + Send + Sync + 'static,
+{
+    Ok(match projection {
+        HostCollectionProjection::Keys => None,
+        HostCollectionProjection::Values => Some(ScopedHostCollectionDependents::Items(
+            entries
+                .into_iter()
+                .map(|(_, value)| {
+                    let type_id = value.host_type_id();
+                    Box::new(crate::lease::ExclusiveScopedHost::with_type_id(
+                        value, type_id,
+                    )) as crate::lease::ScopedHostDependent<'a>
+                })
+                .collect(),
+        )),
+        HostCollectionProjection::Entries => Some(ScopedHostCollectionDependents::Entries(
+            entries
+                .into_iter()
+                .map(|(key, value)| {
+                    let type_id = value.host_type_id();
+                    (
+                        key.to_host_collection_key().into_host_value(),
+                        Box::new(crate::lease::ExclusiveScopedHost::with_type_id(
+                            value, type_id,
+                        )) as crate::lease::ScopedHostDependent<'a>,
+                    )
+                })
+                .collect(),
+        )),
     })
 }
