@@ -2,6 +2,7 @@
 
 mod schema;
 mod selection;
+mod source;
 
 pub use schema::{
     ServiceMethodDescriptor, ServiceSchema, ServiceSchemaError, ServiceSetSchema,
@@ -10,6 +11,9 @@ pub use schema::{
 pub use selection::{
     ServiceMethodKey, ServiceMethodSelection, ServiceMethodUpdate, ServiceSelectionError,
     ServiceSelectionTable,
+};
+pub use source::{
+    ServiceSourceError, ServiceSourceErrorKind, ServiceSourceManifest, VelaServiceMethod,
 };
 
 use std::fmt;
