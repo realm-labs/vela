@@ -25,7 +25,23 @@ where
     T: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static,
 {
     fn script_host_type_id(&self) -> HostTypeId {
-        HostTypeId::new(0)
+        let Some(element) = T::script_host_type_shape() else {
+            return HostTypeId::new(0);
+        };
+        if TypeId::of::<T>() == TypeId::of::<u8>() {
+            HostTypeId::new(vela_common::rust_standard_type_id("vec_bytes", "u8"))
+        } else {
+            HostTypeId::new(vela_common::rust_standard_type_id("vec", &element))
+        }
+    }
+
+    fn script_host_type_shape() -> Option<String> {
+        let element = T::script_host_type_shape()?;
+        if TypeId::of::<T>() == TypeId::of::<u8>() {
+            Some("Bytes".to_owned())
+        } else {
+            Some(format!("Array<{element}>"))
+        }
     }
 
     fn from_host_collection_value(value: HostValue) -> HostResult<Self> {

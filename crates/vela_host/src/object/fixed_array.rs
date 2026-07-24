@@ -21,7 +21,17 @@ where
     T: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static,
 {
     fn script_host_type_id(&self) -> HostTypeId {
-        HostTypeId::new(0)
+        let Some(element) = T::script_host_type_shape() else {
+            return HostTypeId::new(0);
+        };
+        HostTypeId::new(vela_common::rust_standard_type_id(
+            "fixed_array",
+            &format!("{element};{N}"),
+        ))
+    }
+
+    fn script_host_type_shape() -> Option<String> {
+        Some(format!("Array<{}>", T::script_host_type_shape()?))
     }
 
     fn resolve_host_type_target_from(

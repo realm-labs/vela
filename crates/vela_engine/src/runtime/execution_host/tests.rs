@@ -375,6 +375,97 @@ fn complex_slice_elements_are_scoped_children() {
 }
 
 #[test]
+fn nested_standard_collection_views_keep_exact_identity_and_release_order() {
+    let mut values = [vec![vec![10_i64, 20]]];
+    let parent_type = crate::standard::standard_slice_host_type_id::<Vec<Vec<i64>>>();
+    let outer_type = crate::standard::standard_collection_host_type_id::<Vec<Vec<i64>>>();
+    let inner_type = crate::standard::standard_collection_host_type_id::<Vec<i64>>();
+    assert_ne!(parent_type, outer_type);
+    assert_ne!(outer_type, inner_type);
+
+    let mut args = CallArgs::new();
+    args.push_slice_mut("values", values.as_mut_slice());
+    let mut extern_states = RuntimeExternStateBindings::new();
+    let mut host_arena = RuntimeHostArena::new();
+    let mut host_slots = HostRefSlots::new();
+    let mut host = ExecutionHost::new(args, &mut extern_states, &mut host_arena, &mut host_slots);
+    let parent = HostRef::new(
+        parent_type,
+        HostObjectId::new(EXECUTION_HOST_OBJECT_ID_BASE),
+        1,
+    );
+    let outer_plan = HostTargetPlan::new(parent.type_id).const_index(0);
+    let outer_target = HostTargetInstance::new(parent, &outer_plan, &[]);
+    let outer_access = host
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &outer_plan))
+        .expect("outer standard collection access should resolve");
+    let mut access = HostAccess::new();
+    let HostValue::HostRef(outer) = access
+        .read_resolved_scoped(&mut host, outer_access, outer_target, None)
+        .expect("outer standard collection should retain a scoped HostRef")
+    else {
+        panic!("outer standard collection must preserve host identity");
+    };
+    assert_eq!(outer.type_id, outer_type);
+
+    let inner_plan = HostTargetPlan::new(outer.type_id).const_index(0);
+    let inner_target = HostTargetInstance::new(outer, &inner_plan, &[]);
+    let inner_access = host
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &inner_plan))
+        .expect("inner standard collection access should resolve");
+    let HostValue::HostRef(inner) = access
+        .read_resolved_scoped(&mut host, inner_access, inner_target, None)
+        .expect("inner standard collection should retain a distinct scoped HostRef")
+    else {
+        panic!("inner standard collection must preserve host identity");
+    };
+    assert_eq!(inner.type_id, inner_type);
+
+    let error = host
+        .release_scoped_host(outer)
+        .expect_err("a parent view cannot release while its child is live");
+    assert!(matches!(error.kind, HostErrorKind::BorrowStillInUse { .. }));
+
+    let scalar_plan = HostTargetPlan::new(inner.type_id).const_index(1);
+    let scalar_target = HostTargetInstance::new(inner, &scalar_plan, &[]);
+    let scalar_write = host
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Write, &scalar_plan))
+        .expect("scalar write through the inner view should resolve");
+    access
+        .write_resolved(
+            &mut host,
+            scalar_write,
+            scalar_target,
+            HostValue::Scalar(ScalarValue::I64(25)),
+            None,
+        )
+        .expect("inner standard collection should write through both parent leases");
+
+    host.release_scoped_host(inner)
+        .expect("inner view should release first");
+    host.release_scoped_host(outer)
+        .expect("outer view should release after its child");
+
+    let inner_error = access
+        .read_resolved_scoped(&mut host, scalar_write, scalar_target, None)
+        .expect_err("released inner aliases must expire");
+    assert!(matches!(
+        inner_error.kind,
+        HostErrorKind::ExpiredBorrowedHostRef { .. }
+    ));
+    let outer_error = access
+        .read_resolved_scoped(&mut host, inner_access, inner_target, None)
+        .expect_err("released outer aliases must expire");
+    assert!(matches!(
+        outer_error.kind,
+        HostErrorKind::ExpiredBorrowedHostRef { .. }
+    ));
+
+    drop(host);
+    assert_eq!(values[0][0], vec![10, 25]);
+}
+
+#[test]
 fn scoped_hosts_use_dense_generation_checked_identity() {
     let args = CallArgs::new();
     let mut extern_states = RuntimeExternStateBindings::new();

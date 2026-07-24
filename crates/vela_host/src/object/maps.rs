@@ -27,7 +27,22 @@ where
     V: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static,
 {
     fn script_host_type_id(&self) -> HostTypeId {
-        HostTypeId::new(0)
+        let (Some(key), Some(value)) = (K::script_host_key_shape(), V::script_host_type_shape())
+        else {
+            return HostTypeId::new(0);
+        };
+        HostTypeId::new(vela_common::rust_standard_type_id(
+            "btree_map",
+            &format!("{key}|{value}"),
+        ))
+    }
+
+    fn script_host_type_shape() -> Option<String> {
+        Some(format!(
+            "Map<{}, {}>",
+            K::script_host_key_shape()?,
+            V::script_host_type_shape()?
+        ))
     }
 
     fn resolve_host_type_target_from(
@@ -279,7 +294,22 @@ where
     V: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static,
 {
     fn script_host_type_id(&self) -> HostTypeId {
-        HostTypeId::new(0)
+        let (Some(key), Some(value)) = (K::script_host_key_shape(), V::script_host_type_shape())
+        else {
+            return HostTypeId::new(0);
+        };
+        HostTypeId::new(vela_common::rust_standard_type_id(
+            "hash_map",
+            &format!("{key}|{value}"),
+        ))
+    }
+
+    fn script_host_type_shape() -> Option<String> {
+        Some(format!(
+            "Map<{}, {}>",
+            K::script_host_key_shape()?,
+            V::script_host_type_shape()?
+        ))
     }
 
     fn resolve_host_type_target_from(

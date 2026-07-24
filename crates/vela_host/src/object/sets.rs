@@ -29,7 +29,13 @@ where
     K: ScriptHostKey,
 {
     fn script_host_type_id(&self) -> HostTypeId {
-        HostTypeId::new(0)
+        K::script_host_key_shape().map_or(HostTypeId::new(0), |element| {
+            HostTypeId::new(vela_common::rust_standard_type_id("btree_set", element))
+        })
+    }
+
+    fn script_host_type_shape() -> Option<String> {
+        Some(format!("Set<{}>", K::script_host_key_shape()?))
     }
 
     fn resolve_host_target_from(
@@ -119,7 +125,13 @@ where
     K: ScriptHostKey + Hash,
 {
     fn script_host_type_id(&self) -> HostTypeId {
-        HostTypeId::new(0)
+        K::script_host_key_shape().map_or(HostTypeId::new(0), |element| {
+            HostTypeId::new(vela_common::rust_standard_type_id("hash_set", element))
+        })
+    }
+
+    fn script_host_type_shape() -> Option<String> {
+        Some(format!("Set<{}>", K::script_host_key_shape()?))
     }
 
     fn resolve_host_target_from(

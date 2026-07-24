@@ -2933,6 +2933,15 @@ materializing a HostPath, consulting reflection, or inspecting a live element
 during resolution. Paths deeper than the inline capacity retain the validated
 generic fallback.
 
+### Standard Collection Views Reuse Sealed Binding Identity
+
+Borrowed `Vec`, map, set, fixed-array, and slice adapters derive their
+`HostTypeId` from the same canonical family and nested Vela-facing type facts
+used by concrete standard `TypeBinding` registration. Generated host schemas
+publish their canonical type name as an element fact. Nested borrowed views
+therefore retain exact registered identity; adapters must not use a generic
+zero ID or invent a runtime-only `type_name` identity.
+
 ### Service Deployment Supports Snapshots And Exact-Base Deltas
 
 A Snapshot describes the complete desired Vela service state and composes

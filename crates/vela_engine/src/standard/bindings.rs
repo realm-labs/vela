@@ -447,10 +447,8 @@ pub(super) fn concrete_type_desc(
     facts: &str,
     kind: TypeKind,
 ) -> TypeDesc {
-    let type_id = TypeId::new(u128::from(vela_common::stable_id(
-        "rust_standard_type",
-        family,
-        facts,
+    let type_id = TypeId::new(u128::from(vela_common::rust_standard_type_id(
+        family, facts,
     )));
     TypeDesc::new(TypeKey::new(type_id, path))
         .kind(kind)
@@ -464,6 +462,10 @@ pub(super) fn concrete_type_desc(
 #[cfg(test)]
 #[path = "bindings_byte_view_tests.rs"]
 mod byte_view_tests;
+
+#[cfg(test)]
+#[path = "bindings_identity_tests.rs"]
+mod identity_tests;
 
 #[cfg(test)]
 mod tests {

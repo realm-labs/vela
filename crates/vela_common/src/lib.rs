@@ -61,6 +61,17 @@ stable_id!(HostTypeId, u64);
 stable_id!(ShapeId, u32);
 stable_id!(SourceId, u32);
 
+/// Returns the sealed identity used by one concrete Rust standard-library
+/// binding.
+///
+/// Both reflection bindings and borrowed host views use this helper so a
+/// concrete collection cannot acquire a second runtime-only identity.
+#[doc(hidden)]
+#[must_use]
+pub const fn rust_standard_type_id(family: &str, facts: &str) -> u64 {
+    stable_id("rust_standard_type", family, facts)
+}
+
 #[must_use]
 pub fn script_shape_id<'a>(owner: &str, field_names: impl Iterator<Item = &'a str>) -> ShapeId {
     let mut hash = 0x811c_9dc5;

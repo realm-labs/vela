@@ -180,6 +180,10 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
                 Self::vela_host_type_id()
             }
 
+            fn script_host_type_shape() -> Option<::std::string::String> {
+                Some(Self::vela_host_type_desc().key.name)
+            }
+
             fn resolve_host_type_target_from(
                 spec: ::vela_host::resolved::HostAccessSpec<'_>,
                 offset: usize,

@@ -5,6 +5,10 @@ use crate::protocol::{HostCollectionKey, HostCollectionKeyRef};
 use super::{ScriptHostKey, invalid_arg};
 
 impl ScriptHostKey for String {
+    fn script_host_key_shape() -> Option<&'static str> {
+        Some("String")
+    }
+
     fn from_host_collection_key(key: HostCollectionKeyRef<'_>) -> HostResult<Self> {
         match key {
             HostCollectionKeyRef::String(key) => Ok(key.to_owned()),
@@ -21,6 +25,10 @@ macro_rules! impl_script_host_key {
     ($($ty:ty => $variant:ident),* $(,)?) => {
         $(
             impl ScriptHostKey for $ty {
+                fn script_host_key_shape() -> Option<&'static str> {
+                    Some(stringify!($ty))
+                }
+
                 fn from_host_collection_key(
                     key: HostCollectionKeyRef<'_>,
                 ) -> HostResult<Self> {
@@ -52,6 +60,10 @@ impl_script_host_key!(
 );
 
 impl ScriptHostKey for Vec<u8> {
+    fn script_host_key_shape() -> Option<&'static str> {
+        Some("Bytes")
+    }
+
     fn from_host_collection_key(key: HostCollectionKeyRef<'_>) -> HostResult<Self> {
         match key {
             HostCollectionKeyRef::Bytes(key) => Ok(key.to_owned()),

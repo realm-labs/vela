@@ -34,7 +34,9 @@ where
     T: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static,
 {
     fn script_host_type_id(&self) -> HostTypeId {
-        HostTypeId::new(0)
+        T::script_host_type_shape().map_or(HostTypeId::new(0), |element| {
+            HostTypeId::new(vela_common::rust_standard_type_id("slice", &element))
+        })
     }
 
     fn resolve_host_type_target_from(

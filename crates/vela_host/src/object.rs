@@ -231,6 +231,20 @@ pub enum ScopedHostCollectionDependents<'host> {
 pub trait ScriptHostFieldAccess {
     fn script_host_type_id(&self) -> HostTypeId;
 
+    /// Returns the canonical Vela-facing shape used when this Rust type is
+    /// nested inside a concrete standard collection binding.
+    ///
+    /// Handwritten host adapters may omit the shape when they can never be a
+    /// standard collection element. Generated and built-in adapters provide
+    /// it so nested collection HostRefs retain the sealed binding identity.
+    #[doc(hidden)]
+    fn script_host_type_shape() -> Option<String>
+    where
+        Self: Sized,
+    {
+        None
+    }
+
     /// Resolves a target from Rust type structure without requiring a live
     /// collection element. Generated adapters override this for field paths.
     #[doc(hidden)]
@@ -618,6 +632,11 @@ pub trait HostValueFrom: Sized {
 }
 
 pub trait ScriptHostKey: Clone + Eq + Ord {
+    #[doc(hidden)]
+    fn script_host_key_shape() -> Option<&'static str> {
+        None
+    }
+
     fn from_host_collection_key(key: HostCollectionKeyRef<'_>) -> HostResult<Self>;
 
     fn to_host_collection_key(&self) -> HostCollectionKey;
@@ -823,6 +842,10 @@ macro_rules! impl_scalar_host_value {
                     HostTypeId::new(0)
                 }
 
+                fn script_host_type_shape() -> Option<String> {
+                    Some(stringify!($ty).to_owned())
+                }
+
                 fn from_host_collection_value(value: HostValue) -> HostResult<Self> {
                     <$ty as HostValueFrom>::from_host_value(&value)
                 }
@@ -890,6 +913,10 @@ impl HostValueFrom for bool {
 impl ScriptHostFieldAccess for bool {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
+    }
+
+    fn script_host_type_shape() -> Option<String> {
+        Some("bool".to_owned())
     }
 
     fn from_host_collection_value(value: HostValue) -> HostResult<Self> {
@@ -970,6 +997,10 @@ impl HostValueFrom for Vec<u8> {
 impl ScriptHostFieldAccess for String {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
+    }
+
+    fn script_host_type_shape() -> Option<String> {
+        Some("String".to_owned())
     }
 
     fn from_host_collection_value(value: HostValue) -> HostResult<Self> {
