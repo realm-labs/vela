@@ -11,7 +11,8 @@ use crate::host_access::{
 };
 use crate::{
     HostInlineCacheTarget, StandardMethodReceiver, Value, VmError, VmErrorKind, VmResult,
-    expect_host_ref, std_method_ids::HostArrayTransform,
+    expect_host_ref,
+    std_method_ids::{HostArrayTransform, HostMapIteration},
 };
 
 pub(crate) fn execute_host_root_array_iteration(
@@ -83,6 +84,116 @@ pub(crate) fn execute_host_root_array_iteration(
             element_access,
             len,
         )),
+        heap,
+        runtime.budget.as_deref_mut(),
+    )
+}
+
+pub(crate) fn execute_host_root_map_iteration(
+    mut runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    iteration: HostMapIteration,
+    args: &[Value],
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<Value> {
+    if !args.is_empty() {
+        return Err(VmError::new(VmErrorKind::ArityMismatch {
+            name: "host map iteration".to_owned(),
+            expected: 0,
+            actual: args.len(),
+        }));
+    }
+    let root = expect_host_ref(
+        &runtime.frame.read(receiver)?,
+        runtime.host.as_deref(),
+        "host map iteration",
+    )?;
+    let snapshot = snapshot_host_collection_root(
+        &mut runtime,
+        root,
+        HostCollectionProjection::Keys,
+        cache_site,
+    )?;
+    charge_projection(&snapshot, runtime.budget.as_deref_mut())?;
+    let HostCollectionSnapshot::Items(keys) = snapshot else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host map iteration keys",
+        }));
+    };
+    let keys = host_items_to_values(keys, &mut runtime)?;
+    let target = HostTargetPlan::new(root.type_id).dyn_key(0);
+    let access = runtime
+        .host
+        .as_deref_mut()
+        .ok_or_else(missing_host_context)?
+        .adapter
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &target))
+        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    let iterator = match iteration {
+        HostMapIteration::Values => {
+            crate::iteration::IteratorState::from_host_map_values(root, target, access, keys)
+        }
+        HostMapIteration::Entries => {
+            crate::iteration::IteratorState::from_host_map_entries(root, target, access, keys)
+        }
+    };
+    let heap = runtime
+        .heap
+        .as_deref_mut()
+        .ok_or_else(missing_projection_heap)?;
+    allocate_heap_value(
+        HeapValue::Iterator(iterator),
+        heap,
+        runtime.budget.as_deref_mut(),
+    )
+}
+
+pub(crate) fn execute_host_root_set_iteration(
+    mut runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    args: &[Value],
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<Value> {
+    if !args.is_empty() {
+        return Err(VmError::new(VmErrorKind::ArityMismatch {
+            name: "host set iteration".to_owned(),
+            expected: 0,
+            actual: args.len(),
+        }));
+    }
+    let root = expect_host_ref(
+        &runtime.frame.read(receiver)?,
+        runtime.host.as_deref(),
+        "host set iteration",
+    )?;
+    let snapshot = snapshot_host_collection_root(
+        &mut runtime,
+        root,
+        HostCollectionProjection::Values,
+        cache_site,
+    )?;
+    charge_projection(&snapshot, runtime.budget.as_deref_mut())?;
+    let HostCollectionSnapshot::Items(values) = snapshot else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host set iteration values",
+        }));
+    };
+    let values = host_items_to_values(values, &mut runtime)?;
+    let target = HostTargetPlan::new(root.type_id).dyn_key(0);
+    let access = runtime
+        .host
+        .as_deref_mut()
+        .ok_or_else(missing_host_context)?
+        .adapter
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &target))
+        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    let iterator = crate::iteration::IteratorState::from_host_set(root, target, access, values);
+    let heap = runtime
+        .heap
+        .as_deref_mut()
+        .ok_or_else(missing_projection_heap)?;
+    allocate_heap_value(
+        HeapValue::Iterator(iterator),
         heap,
         runtime.budget.as_deref_mut(),
     )

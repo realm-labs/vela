@@ -1,3 +1,6 @@
+use super::host_array::HostArrayCursor;
+use super::host_map::HostMapCursor;
+use super::host_set::HostSetCursor;
 use crate::heap::GcRef;
 use crate::heap::HeapValue;
 use crate::heap_values::stored_runtime_value;
@@ -7,10 +10,8 @@ use crate::runtime_checks::is_truthy;
 use crate::value_key::ValueKey;
 use crate::{ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 use vela_bytecode::TypeGuardPlan;
-use vela_host::resolved::ResolvedHostAccess;
-use vela_host::target::HostTargetPlan;
 
-use super::host_array::HostArrayCursor;
+mod host;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct IteratorState {
@@ -75,6 +76,8 @@ enum IteratorCursor {
         len: usize,
     },
     HostArray(Box<HostArrayCursor>),
+    HostMap(Box<HostMapCursor>),
+    HostSet(Box<HostSetCursor>),
     Range(RangeCursor),
     Map {
         source: Box<IteratorState>,
@@ -154,6 +157,16 @@ impl IteratorState {
             }
             IteratorCursor::Range(_) => {}
             IteratorCursor::HostArray(_) => {}
+            IteratorCursor::HostMap(cursor) => {
+                for key in cursor.keys_mut() {
+                    remap_value(key, references)?;
+                }
+            }
+            IteratorCursor::HostSet(cursor) => {
+                for value in cursor.values_mut() {
+                    remap_value(value, references)?;
+                }
+            }
             IteratorCursor::Map {
                 source, callback, ..
             }
@@ -275,20 +288,6 @@ impl IteratorState {
         }
     }
 
-    pub(crate) fn from_host_array(
-        root: vela_host::path::HostRef,
-        target: HostTargetPlan,
-        access: ResolvedHostAccess,
-        len: usize,
-    ) -> Self {
-        Self {
-            cursor: IteratorCursor::HostArray(Box::new(HostArrayCursor::new(
-                root, target, access, len,
-            ))),
-            item_guards: Vec::new(),
-        }
-    }
-
     pub(crate) fn map(source: Self, callback: Value) -> Self {
         Self {
             cursor: IteratorCursor::Map {
@@ -391,6 +390,8 @@ impl IteratorState {
             | IteratorCursor::StringBytes { .. }
             | IteratorCursor::Bytes { .. }
             | IteratorCursor::HostArray(_)
+            | IteratorCursor::HostMap(_)
+            | IteratorCursor::HostSet(_)
             | IteratorCursor::Map { .. }
             | IteratorCursor::Filter { .. } => Ok(None),
         }
@@ -457,6 +458,8 @@ impl IteratorState {
                 HeapSequenceKind::Bytes,
             ),
             IteratorCursor::HostArray(cursor) => cursor.next(runtime, operation),
+            IteratorCursor::HostMap(cursor) => cursor.next(runtime, operation),
+            IteratorCursor::HostSet(cursor) => cursor.next(runtime, operation),
             IteratorCursor::Take {
                 source, remaining, ..
             } => {
@@ -597,6 +600,12 @@ impl IteratorState {
             IteratorCursor::HostArray(cursor) => {
                 IteratorPollStep::Complete(cursor.next(runtime, operation)?)
             }
+            IteratorCursor::HostMap(cursor) => {
+                IteratorPollStep::Complete(cursor.next(runtime, operation)?)
+            }
+            IteratorCursor::HostSet(cursor) => {
+                IteratorPollStep::Complete(cursor.next(runtime, operation)?)
+            }
             IteratorCursor::Take {
                 source,
                 remaining,
@@ -723,6 +732,18 @@ impl IteratorState {
             | IteratorCursor::Bytes { source, .. } => refs.push(*source),
             IteratorCursor::Range(_) => {}
             IteratorCursor::HostArray(_) => {}
+            IteratorCursor::HostMap(cursor) => {
+                cursor
+                    .keys()
+                    .iter()
+                    .for_each(|key| key.trace_heap_refs(refs));
+            }
+            IteratorCursor::HostSet(cursor) => {
+                cursor
+                    .values()
+                    .iter()
+                    .for_each(|value| value.trace_heap_refs(refs));
+            }
             IteratorCursor::Map {
                 source, callback, ..
             }
@@ -757,6 +778,12 @@ impl IteratorState {
             | IteratorCursor::Bytes { source, .. } => protected.push(Value::HeapRef(*source)),
             IteratorCursor::Range(_) => {}
             IteratorCursor::HostArray(_) => {}
+            IteratorCursor::HostMap(cursor) => {
+                protected.extend(cursor.keys().iter().copied());
+            }
+            IteratorCursor::HostSet(cursor) => {
+                protected.extend(cursor.values().iter().copied());
+            }
             IteratorCursor::Map {
                 source, callback, ..
             }
@@ -775,6 +802,8 @@ impl IteratorState {
     pub(crate) fn values(&self) -> &[Value] {
         match &self.cursor {
             IteratorCursor::Values { values, .. } => values,
+            IteratorCursor::HostMap(cursor) => cursor.keys(),
+            IteratorCursor::HostSet(cursor) => cursor.values(),
             IteratorCursor::Range(_)
             | IteratorCursor::Array { .. }
             | IteratorCursor::Set { .. }
@@ -794,7 +823,9 @@ impl IteratorState {
 
     pub(crate) fn is_host_backed(&self) -> bool {
         match &self.cursor {
-            IteratorCursor::HostArray(_) => true,
+            IteratorCursor::HostArray(_)
+            | IteratorCursor::HostMap(_)
+            | IteratorCursor::HostSet(_) => true,
             IteratorCursor::Map { source, .. }
             | IteratorCursor::Filter { source, .. }
             | IteratorCursor::Take { source, .. }
@@ -825,6 +856,8 @@ impl IteratorState {
             | IteratorCursor::StringBytes { .. }
             | IteratorCursor::Bytes { .. }
             | IteratorCursor::HostArray(_)
+            | IteratorCursor::HostMap(_)
+            | IteratorCursor::HostSet(_)
             | IteratorCursor::Map { .. }
             | IteratorCursor::Filter { .. }
             | IteratorCursor::Take { .. }

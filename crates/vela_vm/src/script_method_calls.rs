@@ -275,6 +275,45 @@ pub(crate) fn dispatch_linked_method_call(
                 return Ok(());
             }
             if matches!(frame.read(call.receiver)?, Value::HostRef(_))
+                && let Some(iteration) = crate::std_method_ids::host_map_iteration(method_id)
+            {
+                let result = crate::host_collection_projection::execute_host_root_map_iteration(
+                    host_access::HostAccessRuntime {
+                        frame,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        host: host.as_deref_mut(),
+                        inline_caches: context.inline_caches,
+                        source_span: context.call_site,
+                    },
+                    call.receiver,
+                    iteration,
+                    values,
+                    context.cache_site,
+                )?;
+                frame.write(call.dst, result)?;
+                return Ok(());
+            }
+            if matches!(frame.read(call.receiver)?, Value::HostRef(_))
+                && crate::std_method_ids::is_host_set_iteration(method_id)
+            {
+                let result = crate::host_collection_projection::execute_host_root_set_iteration(
+                    host_access::HostAccessRuntime {
+                        frame,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        host: host.as_deref_mut(),
+                        inline_caches: context.inline_caches,
+                        source_span: context.call_site,
+                    },
+                    call.receiver,
+                    values,
+                    context.cache_site,
+                )?;
+                frame.write(call.dst, result)?;
+                return Ok(());
+            }
+            if matches!(frame.read(call.receiver)?, Value::HostRef(_))
                 && let Some(projection) =
                     crate::std_method_ids::host_collection_projection(method_id)
             {
@@ -516,6 +555,43 @@ pub(crate) fn dispatch_resolved_linked_dynamic_method_call(
                     },
                     call.receiver,
                     query,
+                    context.cache_site,
+                )?;
+                return frame.write(call.dst, result);
+            }
+            if matches!(receiver, Value::HostRef(_))
+                && crate::std_method_ids::is_host_set_iteration(method_id)
+            {
+                let result = crate::host_collection_projection::execute_host_root_set_iteration(
+                    host_access::HostAccessRuntime {
+                        frame,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        host: host.as_deref_mut(),
+                        inline_caches: context.inline_caches,
+                        source_span: context.call_site,
+                    },
+                    call.receiver,
+                    values_storage.as_slice(),
+                    context.cache_site,
+                )?;
+                return frame.write(call.dst, result);
+            }
+            if matches!(receiver, Value::HostRef(_))
+                && let Some(iteration) = crate::std_method_ids::host_map_iteration(method_id)
+            {
+                let result = crate::host_collection_projection::execute_host_root_map_iteration(
+                    host_access::HostAccessRuntime {
+                        frame,
+                        heap: heap.as_deref_mut(),
+                        budget: budget.as_deref_mut(),
+                        host: host.as_deref_mut(),
+                        inline_caches: context.inline_caches,
+                        source_span: context.call_site,
+                    },
+                    call.receiver,
+                    iteration,
+                    values_storage.as_slice(),
                     context.cache_site,
                 )?;
                 return frame.write(call.dst, result);

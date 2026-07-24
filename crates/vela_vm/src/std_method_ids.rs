@@ -532,6 +532,28 @@ pub(crate) fn is_host_array_iteration(method_id: MethodId) -> bool {
     method_id == ids.array_iter || method_id == ids.array_values
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum HostMapIteration {
+    Values,
+    Entries,
+}
+
+pub(crate) fn host_map_iteration(method_id: MethodId) -> Option<HostMapIteration> {
+    let ids = std_method_ids();
+    if method_id == ids.map_values {
+        Some(HostMapIteration::Values)
+    } else if method_id == ids.map_entries || method_id == ids.map_iter {
+        Some(HostMapIteration::Entries)
+    } else {
+        None
+    }
+}
+
+pub(crate) fn is_host_set_iteration(method_id: MethodId) -> bool {
+    let ids = std_method_ids();
+    method_id == ids.set_iter || method_id == ids.set_values
+}
+
 pub(crate) fn is_host_map_merge(method_id: MethodId) -> bool {
     method_id == std_method_ids().map_merge
 }

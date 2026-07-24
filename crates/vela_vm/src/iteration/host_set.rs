@@ -6,29 +6,29 @@ use crate::method_runtime::{HostIteratorTarget, MethodRuntime};
 use crate::{Value, VmError, VmErrorKind, VmResult};
 
 #[derive(Clone, Debug, PartialEq)]
-pub(super) struct HostArrayCursor {
-    // The traversal extent is frozen at creation, while each value is read
-    // through the prepared access immediately before it is yielded.
+pub(super) struct HostSetCursor {
+    // Values establish deterministic traversal order and a frozen extent.
+    // Membership is checked through the prepared key target before each yield.
     root: HostRef,
     target: HostTargetPlan,
     access: ResolvedHostAccess,
+    values: Vec<Value>,
     next: usize,
-    len: usize,
 }
 
-impl HostArrayCursor {
+impl HostSetCursor {
     pub(super) fn new(
         root: HostRef,
         target: HostTargetPlan,
         access: ResolvedHostAccess,
-        len: usize,
+        values: Vec<Value>,
     ) -> Self {
         Self {
             root,
             target,
             access,
+            values,
             next: 0,
-            len,
         }
     }
 
@@ -37,26 +37,36 @@ impl HostArrayCursor {
         runtime: &mut MethodRuntime<'_, '_, '_>,
         operation: &'static str,
     ) -> VmResult<Option<Value>> {
-        if self.next >= self.len {
+        let Some(value) = self.values.get(self.next).copied() else {
             return Ok(None);
-        }
-        let index = u32::try_from(self.next)
-            .map_err(|_| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
+        };
         let host = runtime
             .host
             .as_deref_mut()
             .ok_or_else(|| VmError::new(VmErrorKind::TypeMismatch { operation }))?;
-        let value = host.read_index(
+        let present = host.read_key(
             HostIteratorTarget {
                 root: self.root,
                 plan: &self.target,
                 access: self.access,
             },
-            index,
+            &value,
             runtime.heap.as_deref_mut(),
             runtime.budget.as_deref_mut(),
+            operation,
         )?;
+        if present != Value::Bool(true) {
+            return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+        }
         self.next = self.next.saturating_add(1);
         Ok(Some(value))
+    }
+
+    pub(super) fn values(&self) -> &[Value] {
+        &self.values
+    }
+
+    pub(super) fn values_mut(&mut self) -> &mut [Value] {
+        &mut self.values
     }
 }

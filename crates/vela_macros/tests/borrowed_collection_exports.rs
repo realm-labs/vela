@@ -1142,6 +1142,8 @@ fn borrowed_collection_extend_charges_batch_size_before_mutation() {
 
 #[path = "borrowed_collection_exports/projection_tests.rs"]
 mod borrowed_collection_projection_tests;
+#[path = "borrowed_collection_exports/host_iterator_tests.rs"]
+mod borrowed_host_iterator_tests;
 
 #[path = "borrowed_collection_exports/async_tests.rs"]
 mod borrowed_collection_async_tests;

@@ -5,33 +5,67 @@ use vela_host::target::{HostPathArg, HostTargetInstance, HostTargetPlan};
 use crate::runtime_checks::expect_closure_ref;
 use crate::{ExecutionBudget, HeapExecution, HostExecution, Value, VmError, VmErrorKind, VmResult};
 
+#[derive(Clone, Copy)]
+pub(crate) struct HostIteratorTarget<'a> {
+    pub(crate) root: vela_host::path::HostRef,
+    pub(crate) plan: &'a HostTargetPlan,
+    pub(crate) access: ResolvedHostAccess,
+}
+
 pub(crate) trait HostIteratorAccess {
     fn read_index(
         &mut self,
-        root: vela_host::path::HostRef,
-        target: &HostTargetPlan,
-        access: ResolvedHostAccess,
+        target: HostIteratorTarget<'_>,
         index: u32,
         heap: Option<&mut HeapExecution<'_>>,
         budget: Option<&mut ExecutionBudget>,
+    ) -> VmResult<Value>;
+
+    fn read_key(
+        &mut self,
+        target: HostIteratorTarget<'_>,
+        key: &Value,
+        heap: Option<&mut HeapExecution<'_>>,
+        budget: Option<&mut ExecutionBudget>,
+        operation: &'static str,
     ) -> VmResult<Value>;
 }
 
 impl HostIteratorAccess for HostExecution<'_> {
     fn read_index(
         &mut self,
-        root: vela_host::path::HostRef,
-        target: &HostTargetPlan,
-        access: ResolvedHostAccess,
+        target: HostIteratorTarget<'_>,
         index: u32,
         heap: Option<&mut HeapExecution<'_>>,
         budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<Value> {
         let args = [HostPathArg::Index(index)];
-        let instance = HostTargetInstance::new(root, target, &args);
+        let instance = HostTargetInstance::new(target.root, target.plan, &args);
         let value = self
             .access
-            .read_resolved(self.adapter, access, instance, None)?;
+            .read_resolved(self.adapter, target.access, instance, None)?;
+        crate::host_access::runtime_value_from_host(value, heap, budget, self)
+    }
+
+    fn read_key(
+        &mut self,
+        target: HostIteratorTarget<'_>,
+        key: &Value,
+        heap: Option<&mut HeapExecution<'_>>,
+        budget: Option<&mut ExecutionBudget>,
+        operation: &'static str,
+    ) -> VmResult<Value> {
+        let key = crate::host_access::runtime_collection_key(
+            key,
+            heap.as_deref(),
+            Some(self),
+            operation,
+        )?;
+        let args = [HostPathArg::Key(key.as_ref())];
+        let instance = HostTargetInstance::new(target.root, target.plan, &args);
+        let value = self
+            .access
+            .read_resolved(self.adapter, target.access, instance, None)?;
         crate::host_access::runtime_value_from_host(value, heap, budget, self)
     }
 }
