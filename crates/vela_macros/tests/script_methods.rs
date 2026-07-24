@@ -852,6 +852,132 @@ fn nested_collection_protocols_execute_prepared_field_slots() {
 }
 
 #[test]
+fn collection_elements_call_methods_through_mixed_prepared_steps() {
+    let mut outer = CollectionOuter {
+        leaf: CollectionLeaf {
+            values: vec![],
+            groups: vec![],
+            entries: BTreeMap::new(),
+            tags: BTreeSet::new(),
+            fixed: [0, 0],
+            counters: vec![DirectCounter { total: 10 }],
+            fixed_counters: [DirectCounter { total: 20 }],
+            counter_entries: BTreeMap::from([("primary".to_owned(), DirectCounter { total: 30 })]),
+            hash_counters: HashMap::from([("primary".to_owned(), DirectCounter { total: 40 })]),
+        },
+    };
+    let root = HostRef::new(
+        CollectionOuter::vela_host_type_id(),
+        HostObjectId::new(12),
+        1,
+    );
+    let add = HostMethodId::new(u128::from(stable_id(
+        "host_method",
+        "game::counter::DirectCounter",
+        "add",
+    )));
+    let call_add = |outer: &mut CollectionOuter, plan: HostTargetPlan, amount: i64| -> HostValue {
+        let target = HostTargetInstance::new(root, &plan, &[]);
+        let access = <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+            outer,
+            HostAccessSpec::new(HostAccessOp::Call(add), &plan),
+        )
+        .expect("collection element method should resolve");
+        assert_eq!(access.adapter_kind, ResolvedHostAccessKind::DirectMethod(0));
+        assert_eq!(
+            access.prepared_step(2),
+            Some(PreparedHostStep::AdapterLocal(0))
+        );
+        <CollectionOuter as vela_host::object::ScriptHostObject>::call_resolved_host(
+            outer,
+            access,
+            target,
+            add,
+            &[HostValue::Scalar(vela_common::ScalarValue::I64(amount))],
+        )
+        .expect("prepared collection element method should execute")
+    };
+
+    let vec_result = call_add(
+        &mut outer,
+        HostTargetPlan::new(CollectionOuter::vela_host_type_id())
+            .field(CollectionOuter::vela_field_id_leaf())
+            .field(CollectionLeaf::vela_field_id_counters())
+            .const_index(0),
+        1,
+    );
+    assert_eq!(
+        vec_result,
+        HostValue::Scalar(vela_common::ScalarValue::I64(11))
+    );
+
+    let fixed_result = call_add(
+        &mut outer,
+        HostTargetPlan::new(CollectionOuter::vela_host_type_id())
+            .field(CollectionOuter::vela_field_id_leaf())
+            .field(CollectionLeaf::vela_field_id_fixed_counters())
+            .const_index(0),
+        2,
+    );
+    assert_eq!(
+        fixed_result,
+        HostValue::Scalar(vela_common::ScalarValue::I64(22))
+    );
+
+    let map_result = call_add(
+        &mut outer,
+        HostTargetPlan::new(CollectionOuter::vela_host_type_id())
+            .field(CollectionOuter::vela_field_id_leaf())
+            .field(CollectionLeaf::vela_field_id_counter_entries())
+            .const_key("primary"),
+        3,
+    );
+    assert_eq!(
+        map_result,
+        HostValue::Scalar(vela_common::ScalarValue::I64(33))
+    );
+
+    let hash_result = call_add(
+        &mut outer,
+        HostTargetPlan::new(CollectionOuter::vela_host_type_id())
+            .field(CollectionOuter::vela_field_id_leaf())
+            .field(CollectionLeaf::vela_field_id_hash_counters())
+            .const_key("primary"),
+        4,
+    );
+    assert_eq!(
+        hash_result,
+        HostValue::Scalar(vela_common::ScalarValue::I64(44))
+    );
+
+    let missing_plan = HostTargetPlan::new(CollectionOuter::vela_host_type_id())
+        .field(CollectionOuter::vela_field_id_leaf())
+        .field(CollectionLeaf::vela_field_id_counter_entries())
+        .const_key("missing");
+    let missing_target = HostTargetInstance::new(root, &missing_plan, &[]);
+    let missing_access =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::resolve_host_target(
+            &outer,
+            HostAccessSpec::new(HostAccessOp::Call(add), &missing_plan),
+        )
+        .expect("missing map element method should still resolve from type structure");
+    let missing_error =
+        <CollectionOuter as vela_host::object::ScriptHostObject>::call_resolved_host(
+            &mut outer,
+            missing_access,
+            missing_target,
+            add,
+            &[HostValue::Scalar(vela_common::ScalarValue::I64(5))],
+        )
+        .expect_err("missing map element should fail before method dispatch");
+    assert!(matches!(
+        missing_error.kind,
+        vela_host::error::HostErrorKind::MissingCollectionEntry { .. }
+    ));
+    assert_eq!(outer.leaf.counter_entries["primary"].total, 33);
+}
+
+#[test]
 fn borrowed_slice_element_fields_execute_mixed_prepared_steps() {
     let mut values = [DirectCounter { total: 8 }];
     let slice: &mut [DirectCounter] = &mut values;

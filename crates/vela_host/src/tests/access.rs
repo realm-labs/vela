@@ -36,6 +36,20 @@ impl ScriptHostFieldAccess for FailingMapValue {
     }
 }
 
+impl ScriptHostObject for FailingMapValue {
+    fn host_type_id(&self) -> HostTypeId {
+        ScriptHostFieldAccess::script_host_type_id(self)
+    }
+
+    fn read_resolved_host(
+        &self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> Result<HostValue, HostError> {
+        ScriptHostFieldAccess::read_resolved_host_target_from(self, access, target)
+    }
+}
+
 #[test]
 fn map_entry_absence_is_distinct_from_value_projection_failure() {
     let root = HostRef::new(HostTypeId::new(0), HostObjectId::new(1), 0);

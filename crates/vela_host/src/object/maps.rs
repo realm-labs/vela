@@ -14,7 +14,7 @@ use crate::target::{HostPathPart, HostTargetInstance};
 use crate::value::HostValue;
 
 use super::{
-    ScriptHostFieldAccess, ScriptHostKey,
+    ScriptHostFieldAccess, ScriptHostKey, ScriptHostObject,
     collection_protocol::{collection_query_result, mutate_btree_map, mutate_hash_map},
     collection_snapshot::snapshot_map_entries,
     errors::missing_collection_entry,
@@ -24,7 +24,7 @@ use super::{
 impl<K, V> ScriptHostFieldAccess for BTreeMap<K, V>
 where
     K: ScriptHostKey,
-    V: ScriptHostFieldAccess,
+    V: ScriptHostFieldAccess + ScriptHostObject,
 {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
@@ -103,6 +103,29 @@ where
                 );
         }
         self.mutate_host_target_from(target, target.offset, op, rhs)
+    }
+
+    fn call_resolved_host_target_from(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        if let Some((PreparedHostStep::AdapterLocal(0), child_access)) = access.next_prepared_step()
+        {
+            let key = K::from_host_collection_key(target_key(target, target.offset)?)?;
+            return self
+                .get_mut(&key)
+                .ok_or_else(|| missing_collection_entry(target))?
+                .call_resolved_host(
+                    child_access,
+                    target.at_offset(target.offset + 1),
+                    method,
+                    args,
+                );
+        }
+        self.call_host_target_from(target, target.offset, method, args)
     }
 
     fn read_host_target_from(
@@ -213,7 +236,7 @@ where
 impl<K, V> ScriptHostFieldAccess for HashMap<K, V>
 where
     K: ScriptHostKey + Hash,
-    V: ScriptHostFieldAccess,
+    V: ScriptHostFieldAccess + ScriptHostObject,
 {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
@@ -292,6 +315,29 @@ where
                 );
         }
         self.mutate_host_target_from(target, target.offset, op, rhs)
+    }
+
+    fn call_resolved_host_target_from(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        if let Some((PreparedHostStep::AdapterLocal(0), child_access)) = access.next_prepared_step()
+        {
+            let key = K::from_host_collection_key(target_key(target, target.offset)?)?;
+            return self
+                .get_mut(&key)
+                .ok_or_else(|| missing_collection_entry(target))?
+                .call_resolved_host(
+                    child_access,
+                    target.at_offset(target.offset + 1),
+                    method,
+                    args,
+                );
+        }
+        self.call_host_target_from(target, target.offset, method, args)
     }
 
     fn read_host_target_from(
@@ -401,19 +447,20 @@ where
     }
 }
 
-fn resolve_map_target<V: ScriptHostFieldAccess>(
+fn resolve_map_target<V: ScriptHostFieldAccess + ScriptHostObject>(
     spec: HostAccessSpec<'_>,
     offset: usize,
 ) -> HostResult<ResolvedHostAccess> {
     Ok(match spec.plan.parts.as_slice().get(offset) {
         None => ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0)),
-        Some(HostPathPart::ConstKey(_) | HostPathPart::DynKey { .. })
-            if offset + 1 == spec.plan.parts.len() =>
-        {
-            ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0))
-        }
         Some(HostPathPart::ConstKey(_) | HostPathPart::DynKey { .. }) => {
-            V::resolve_host_type_target_from(spec, offset + 1)?.prepend_prepared_adapter(0)
+            if matches!(spec.op, crate::resolved::HostAccessOp::Call(_)) {
+                V::resolve_host_type_target(spec.at_offset(offset + 1))?.prepend_prepared_adapter(0)
+            } else if offset + 1 == spec.plan.parts.len() {
+                ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0))
+            } else {
+                V::resolve_host_type_target_from(spec, offset + 1)?.prepend_prepared_adapter(0)
+            }
         }
         Some(_) => ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
     })

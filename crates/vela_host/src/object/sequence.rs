@@ -14,7 +14,7 @@ use crate::{
 };
 
 use super::{
-    HostValueFrom, ScriptHostFieldAccess,
+    HostValueFrom, ScriptHostFieldAccess, ScriptHostObject,
     collection_protocol::{collection_query_result, mutate_vec},
     errors::{invalid_arg, missing_target},
     target::{target_index, target_is_leaf},
@@ -22,7 +22,7 @@ use super::{
 
 impl<T> ScriptHostFieldAccess for Vec<T>
 where
-    T: ScriptHostFieldAccess + 'static,
+    T: ScriptHostFieldAccess + ScriptHostObject + 'static,
 {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
@@ -45,13 +45,15 @@ where
     ) -> HostResult<ResolvedHostAccess> {
         Ok(match spec.plan.parts.as_slice().get(offset) {
             None => ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0)),
-            Some(HostPathPart::ConstIndex(_) | HostPathPart::DynIndex { .. })
-                if offset + 1 == spec.plan.parts.len() =>
-            {
-                ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0))
-            }
             Some(HostPathPart::ConstIndex(_) | HostPathPart::DynIndex { .. }) => {
-                T::resolve_host_type_target_from(spec, offset + 1)?.prepend_prepared_adapter(0)
+                if matches!(spec.op, crate::resolved::HostAccessOp::Call(_)) {
+                    T::resolve_host_type_target(spec.at_offset(offset + 1))?
+                        .prepend_prepared_adapter(0)
+                } else if offset + 1 == spec.plan.parts.len() {
+                    ResolvedHostAccess::adapter_local(0, HostSchemaEpoch::new(0))
+                } else {
+                    T::resolve_host_type_target_from(spec, offset + 1)?.prepend_prepared_adapter(0)
+                }
             }
             Some(_) => ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
         })
@@ -126,6 +128,30 @@ where
                 );
         }
         self.mutate_host_target_from(target, target.offset, op, rhs)
+    }
+
+    fn call_resolved_host_target_from(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        if let Some((PreparedHostStep::AdapterLocal(0), child_access)) = access.next_prepared_step()
+        {
+            let index = usize::try_from(target_index(target, target.offset)?)
+                .map_err(|_| invalid_arg("array index"))?;
+            return self
+                .get_mut(index)
+                .ok_or_else(|| missing_target(target))?
+                .call_resolved_host(
+                    child_access,
+                    target.at_offset(target.offset + 1),
+                    method,
+                    args,
+                );
+        }
+        self.call_host_target_from(target, target.offset, method, args)
     }
 
     fn read_host_target_from(

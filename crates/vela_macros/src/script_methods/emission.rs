@@ -132,12 +132,31 @@ pub(super) fn script_host_object_impl_tokens(
         .iter()
         .filter(|method| method.receiver != MethodReceiver::HostBoundary)
         .enumerate()
-        .map(host_method_resolve_arm_tokens);
+        .map(host_method_resolve_arm_tokens)
+        .collect::<Vec<_>>();
 
     quote! {
         impl ::vela_host::object::ScriptHostObject for #self_ty {
             fn host_type_id(&self) -> ::vela_common::HostTypeId {
                 ::vela_host::object::ScriptHostFieldAccess::script_host_type_id(self)
+            }
+
+            fn resolve_host_type_target(
+                spec: ::vela_host::resolved::HostAccessSpec<'_>,
+            ) -> ::vela_host::error::HostResult<::vela_host::resolved::ResolvedHostAccess> {
+                if spec.offset < spec.plan.parts.len() {
+                    return <Self as ::vela_host::object::ScriptHostFieldAccess>::resolve_host_type_target_from(
+                        spec,
+                        spec.offset,
+                    );
+                }
+                let owner_stable_path = Self::vela_stable_type_path();
+                match spec.op {
+                    #(#resolve_arms)*
+                    _ => Ok(::vela_host::resolved::ResolvedHostAccess::generic_target(
+                        ::vela_host::resolved::HostSchemaEpoch::new(0),
+                    )),
+                }
             }
 
             fn lease_any(&self) -> Option<&dyn ::core::any::Any> {

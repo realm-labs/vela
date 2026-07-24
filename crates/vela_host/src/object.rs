@@ -38,6 +38,15 @@ use target::{target_index, target_is_leaf};
 pub trait ScriptHostObject {
     fn host_type_id(&self) -> HostTypeId;
 
+    /// Resolves a target from Rust type structure without requiring an object.
+    #[doc(hidden)]
+    fn resolve_host_type_target(_spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess>
+    where
+        Self: Sized,
+    {
+        Ok(ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)))
+    }
+
     /// Exposes a concrete `'static` direct host object to Rust-only lease
     /// wrappers. Opaque or non-`'static` implementations remain ineligible.
     fn lease_any(&self) -> Option<&dyn Any> {
@@ -274,6 +283,19 @@ pub trait ScriptHostFieldAccess {
         self.mutate_host_target_from(target, target.offset, op, rhs)
     }
 
+    /// Executes a resolved method call from the cursor carried by `target`.
+    #[doc(hidden)]
+    fn call_resolved_host_target_from(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        method: HostMethodId,
+        args: &[HostValue],
+    ) -> HostResult<HostValue> {
+        let _ = access;
+        self.call_host_target_from(target, target.offset, method, args)
+    }
+
     fn read_host_target_from(
         &self,
         target: HostTargetInstance<'_>,
@@ -477,6 +499,12 @@ macro_rules! impl_script_host_object_via_field {
                 ScriptHostFieldAccess::script_host_type_id(self)
             }
 
+            fn resolve_host_type_target(
+                spec: HostAccessSpec<'_>,
+            ) -> HostResult<ResolvedHostAccess> {
+                <Self as ScriptHostFieldAccess>::resolve_host_type_target_from(spec, spec.offset)
+            }
+
             fn lease_any(&self) -> Option<&dyn Any> {
                 Some(self)
             }
@@ -584,13 +612,8 @@ macro_rules! impl_script_host_object_via_field {
                 method: HostMethodId,
                 args: &[HostValue],
             ) -> HostResult<HostValue> {
-                let _ = access;
-                ScriptHostFieldAccess::call_host_target_from(
-                    self,
-                    target,
-                    target.offset,
-                    method,
-                    args,
+                ScriptHostFieldAccess::call_resolved_host_target_from(
+                    self, access, target, method, args,
                 )
             }
         }
@@ -831,12 +854,12 @@ impl<T: HostValueInto> HostValueInto for HostResult<T> {
     }
 }
 
-impl_script_host_object_via_field!(<K, V> BTreeMap<K, V> where K: ScriptHostKey + 'static, V: ScriptHostFieldAccess + 'static);
+impl_script_host_object_via_field!(<K, V> BTreeMap<K, V> where K: ScriptHostKey + 'static, V: ScriptHostFieldAccess + ScriptHostObject + 'static);
 
-impl_script_host_object_via_field!(<K, V> HashMap<K, V> where K: ScriptHostKey + Hash + 'static, V: ScriptHostFieldAccess + 'static);
+impl_script_host_object_via_field!(<K, V> HashMap<K, V> where K: ScriptHostKey + Hash + 'static, V: ScriptHostFieldAccess + ScriptHostObject + 'static);
 
-impl_script_host_object_via_field!(<T> Vec<T> where T: ScriptHostFieldAccess + 'static);
-impl_script_host_object_via_field!(<T, const N: usize> [T; N] where T: ScriptHostFieldAccess + 'static);
+impl_script_host_object_via_field!(<T> Vec<T> where T: ScriptHostFieldAccess + ScriptHostObject + 'static);
+impl_script_host_object_via_field!(<T, const N: usize> [T; N] where T: ScriptHostFieldAccess + ScriptHostObject + 'static);
 
 impl_script_host_object_via_field!(<K> BTreeSet<K> where K: ScriptHostKey + 'static);
 impl_script_host_object_via_field!(<K> HashSet<K> where K: ScriptHostKey + Hash + 'static);
