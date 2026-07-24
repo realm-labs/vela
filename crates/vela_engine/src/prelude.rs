@@ -29,8 +29,9 @@ pub use crate::schema::{
 };
 pub use crate::service::{
     ServiceController, ServiceGeneration, ServiceGenerationCandidate, ServiceMethodDescriptor,
-    ServicePublicationError, ServiceRollbackToken, ServiceRoot, ServiceSchema, ServiceSchemaError,
-    ServiceSetSchema, ServiceTypeRequirement,
+    ServiceMethodKey, ServiceMethodSelection, ServiceMethodUpdate, ServicePublicationError,
+    ServiceRollbackToken, ServiceRoot, ServiceSchema, ServiceSchemaError, ServiceSelectionError,
+    ServiceSelectionTable, ServiceSetSchema, ServiceTypeRequirement,
 };
 pub use crate::source::{
     EnginePackageError, EnginePackageErrorKind, PackageCompilationSnapshot,

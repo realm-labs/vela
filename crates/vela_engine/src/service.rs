@@ -1,10 +1,15 @@
 //! Whole-generation publication for generated Rust/Vela service sets.
 
 mod schema;
+mod selection;
 
 pub use schema::{
     ServiceMethodDescriptor, ServiceSchema, ServiceSchemaError, ServiceSetSchema,
     ServiceTypeRequirement,
+};
+pub use selection::{
+    ServiceMethodKey, ServiceMethodSelection, ServiceMethodUpdate, ServiceSelectionError,
+    ServiceSelectionTable,
 };
 
 use std::fmt;
