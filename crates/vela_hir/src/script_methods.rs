@@ -72,6 +72,9 @@ impl ScriptMethodCatalog {
         };
         let mut methods = Vec::new();
         for declaration in declarations {
+            if crate::service_impl::is_service_impl(graph.declaration_attrs(declaration.id)) {
+                continue;
+            }
             methods.extend(collect_impl_methods(
                 graph,
                 declaration,

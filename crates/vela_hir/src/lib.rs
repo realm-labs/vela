@@ -9,6 +9,7 @@ pub mod ids;
 pub mod module_graph;
 pub mod provider;
 pub mod script_methods;
+pub mod service_impl;
 pub mod source_ingestion;
 mod top_level;
 pub mod type_hint;
