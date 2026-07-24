@@ -5,7 +5,9 @@ mod schema;
 mod selection;
 mod source;
 
-pub use runtime::{ServiceRuntimeAuthority, ServiceRuntimeSlot};
+pub use runtime::{
+    ServiceInvocationError, ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot,
+};
 pub use schema::{
     ServiceMethodDescriptor, ServiceSchema, ServiceSchemaError, ServiceSetSchema,
     ServiceTypeRequirement,

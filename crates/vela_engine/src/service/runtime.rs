@@ -1,8 +1,12 @@
 //! Explicit runtime authority for Vela-selected service calls.
 
+use std::any::{Any, TypeId};
+use std::fmt;
 use std::sync::Arc;
 
 use vela_bytecode::{ExecutableGenerationId, LinkedArtifact};
+use vela_vm::error::{VmError, VmResult};
+use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
 use crate::runtime::{Runtime, RuntimeBuildError};
@@ -41,6 +45,134 @@ pub trait ServiceRuntimeAuthority: Sized {
         }
     }
 }
+
+type ErasedServiceInvocation<'call> =
+    Box<dyn FnOnce(&mut Runtime, &mut dyn Any) -> VmResult<OwnedValue> + 'call>;
+
+type ErasedRuntimeDispatch = for<'call> fn(
+    &mut dyn Any,
+    &Arc<LinkedArtifact>,
+    ErasedServiceInvocation<'call>,
+) -> Result<OwnedValue, ServiceInvocationError>;
+
+/// Type-checked bridge from a generated service adapter to the concrete
+/// service-set context that owns Runtime authority.
+#[derive(Clone, Copy)]
+pub struct ServiceRuntimeBinding {
+    context_type: TypeId,
+    context_name: &'static str,
+    dispatch: ErasedRuntimeDispatch,
+}
+
+impl ServiceRuntimeBinding {
+    #[must_use]
+    pub fn for_context<C>() -> Self
+    where
+        C: ServiceRuntimeAuthority + 'static,
+    {
+        Self {
+            context_type: TypeId::of::<C>(),
+            context_name: std::any::type_name::<C>(),
+            dispatch: dispatch_with_context::<C>,
+        }
+    }
+
+    #[must_use]
+    pub const fn context_name(self) -> &'static str {
+        self.context_name
+    }
+
+    #[must_use]
+    pub fn matches<T: 'static>(self) -> bool {
+        self.context_type == TypeId::of::<T>()
+    }
+
+    pub fn invoke<T>(
+        self,
+        context: &mut T,
+        artifact: &Arc<LinkedArtifact>,
+        invoke: impl FnOnce(&mut Runtime, &mut T) -> VmResult<OwnedValue>,
+    ) -> Result<OwnedValue, ServiceInvocationError>
+    where
+        T: 'static,
+    {
+        if !self.matches::<T>() {
+            return Err(ServiceInvocationError::ContextTypeMismatch {
+                expected: self.context_name,
+                actual: std::any::type_name::<T>(),
+            });
+        }
+        (self.dispatch)(
+            context,
+            artifact,
+            Box::new(move |runtime, erased| {
+                let typed = erased
+                    .downcast_mut::<T>()
+                    .expect("validated service context type must downcast");
+                invoke(runtime, typed)
+            }),
+        )
+    }
+}
+
+fn dispatch_with_context<C>(
+    erased: &mut dyn Any,
+    artifact: &Arc<LinkedArtifact>,
+    invoke: ErasedServiceInvocation<'_>,
+) -> Result<OwnedValue, ServiceInvocationError>
+where
+    C: ServiceRuntimeAuthority + 'static,
+{
+    let context =
+        erased
+            .downcast_mut::<C>()
+            .ok_or(ServiceInvocationError::ContextTypeMismatch {
+                expected: std::any::type_name::<C>(),
+                actual: "erased service context",
+            })?;
+    context
+        .with_service_runtime(artifact, |runtime, context| invoke(runtime, context))
+        .map_err(ServiceInvocationError::RuntimeBuild)?
+        .map_err(ServiceInvocationError::Vm)
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ServiceInvocationError {
+    ContextTypeMismatch {
+        expected: &'static str,
+        actual: &'static str,
+    },
+    MissingRuntimeContext {
+        service: String,
+        method: String,
+        expected: &'static str,
+    },
+    RuntimeBuild(RuntimeBuildError),
+    Vm(VmError),
+}
+
+impl fmt::Display for ServiceInvocationError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ContextTypeMismatch { expected, actual } => write!(
+                formatter,
+                "service Runtime context expects `{expected}`, found `{actual}`"
+            ),
+            Self::MissingRuntimeContext {
+                service,
+                method,
+                expected,
+            } => write!(
+                formatter,
+                "Vela service method `{service}::{method}` requires mutable context `{expected}`"
+            ),
+            Self::RuntimeBuild(error) => write!(formatter, "service Runtime build failed: {error}"),
+            Self::Vm(error) => write!(formatter, "Vela service invocation failed: {error}"),
+        }
+    }
+}
+
+impl std::error::Error for ServiceInvocationError {}
 
 /// Request-local owner for the Runtime used by Vela-selected service methods.
 ///
@@ -100,8 +232,12 @@ impl ServiceRuntimeSlot {
 mod tests {
     use std::sync::Arc;
 
-    use super::{ServiceRuntimeAuthority, ServiceRuntimeSlot};
+    use super::{
+        ServiceInvocationError, ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot,
+    };
     use crate::engine::Engine;
+    use crate::runtime::{CallArgs, CallOptions};
+    use vela_vm::owned_value::OwnedValue;
 
     struct RequestContext {
         slot: ServiceRuntimeSlot,
@@ -166,6 +302,48 @@ mod tests {
         }));
         assert!(panic.is_err());
         assert_eq!(context.slot.cached_generation(), Some(second.generation()));
+    }
+
+    #[test]
+    fn erased_binding_enters_only_its_declared_context_type() {
+        let engine = Engine::builder().build().expect("engine");
+        let artifact = linked(&engine, "fn adjust(value) { return value + 1; }");
+        let function = artifact
+            .verified_mir()
+            .roots()
+            .next()
+            .expect("one compiled function")
+            .0;
+        let mut context = RequestContext {
+            slot: ServiceRuntimeSlot::new(engine),
+            calls: 0,
+        };
+        let binding = ServiceRuntimeBinding::for_context::<RequestContext>();
+
+        let output = binding
+            .invoke(&mut context, &artifact, |runtime, context| {
+                context.calls += 1;
+                let output = runtime.call_stable_function(
+                    function,
+                    "adjust",
+                    CallArgs::from_positional([OwnedValue::i64(5)]),
+                    CallOptions::unbounded(),
+                )?;
+                runtime.value_to_owned(&output)
+            })
+            .expect("typed service binding");
+        assert_eq!(output, OwnedValue::i64(6));
+        assert_eq!(context.calls, 1);
+
+        let mut wrong = 0_u32;
+        assert!(matches!(
+            binding
+                .invoke(&mut wrong, &artifact, |_runtime, _wrong| {
+                    Ok(OwnedValue::Unit)
+                })
+                .expect_err("wrong context type"),
+            ServiceInvocationError::ContextTypeMismatch { .. }
+        ));
     }
 
     fn linked(engine: &Engine, source: &str) -> Arc<vela_bytecode::LinkedArtifact> {
