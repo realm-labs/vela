@@ -1,9 +1,11 @@
 //! Whole-generation publication for generated Rust/Vela service sets.
 
+mod runtime;
 mod schema;
 mod selection;
 mod source;
 
+pub use runtime::{ServiceRuntimeAuthority, ServiceRuntimeSlot};
 pub use schema::{
     ServiceMethodDescriptor, ServiceSchema, ServiceSchemaError, ServiceSetSchema,
     ServiceTypeRequirement,
