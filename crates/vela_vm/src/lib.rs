@@ -473,6 +473,7 @@ pub enum DynamicReceiverGuard {
     HostType {
         type_id: HostTypeId,
         schema_epoch: HostSchemaEpoch,
+        lease_kind: vela_host::lease::HostLeaseKind,
     },
 }
 

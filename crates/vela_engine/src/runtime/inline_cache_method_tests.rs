@@ -4,6 +4,7 @@ use vela_bytecode::{
 };
 use vela_common::{ScalarValue, SourceId};
 use vela_def::MethodId;
+use vela_host::object::ScriptHostObject;
 use vela_vm::{
     CallbackMethodInlineCacheTarget, DynamicMethodInlineCacheTarget, DynamicReceiverGuard,
     MethodInlineCacheEntry, MethodInlineCacheTarget, StandardMethodInlineCacheTarget,
@@ -11,6 +12,7 @@ use vela_vm::{
 };
 
 use crate::engine::Engine;
+use crate::permission::Capability;
 use crate::reload::{EngineHotReloadSourceError, EngineHotReloadSourceErrorKind};
 use crate::runtime::{CallArgs, CallOptions, Runtime};
 
@@ -432,6 +434,112 @@ fn read_match() {
         .expect("reloaded read_match should run");
     assert_eq!(runtime.value_to_owned(&second), Ok(OwnedValue::Bool(false)));
     assert_callback_value_method_cache(&runtime, reloaded_call.cache_site);
+}
+
+#[test]
+fn host_collection_element_method_uses_host_type_guarded_dynamic_cache() {
+    let engine = Engine::builder()
+        .capability(Capability::HostRead)
+        .register_rust_value_closure::<Vec<Vec<i64>>>()
+        .build()
+        .expect("nested host collection binding should seal");
+    let program = engine
+        .compile_source(
+            r#"
+fn child_len(value) {
+    return value.len();
+}
+
+fn total(values) {
+    return values.values().fold(0, |sum, value| sum + child_len(value));
+}
+"#,
+        )
+        .expect("nested host collection cache fixture should compile");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+    let site = dynamic_method_call_site_by_name(&runtime, "child_len", "len");
+    let values = vec![vec![1_i64, 2], vec![3, 5, 8]];
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+
+    let result = runtime
+        .call("total", args, CallOptions::unbounded())
+        .expect("host-backed child collection methods should run");
+    assert_eq!(
+        runtime.value_to_owned(&result),
+        Ok(OwnedValue::Scalar(ScalarValue::I64(5)))
+    );
+
+    let entry = runtime
+        .image
+        .execution_data()
+        .inline_caches()
+        .dynamic_method_dispatch(site)
+        .expect("host-backed standard method should populate the dynamic cache");
+    assert!(matches!(
+        entry.receiver_guard,
+        DynamicReceiverGuard::HostType {
+            type_id,
+            lease_kind: vela_host::lease::HostLeaseKind::Shared,
+            ..
+        } if type_id == Vec::<i64>::new().host_type_id()
+    ));
+    assert!(matches!(
+        entry.target,
+        DynamicMethodInlineCacheTarget::StandardValue {
+            method_id,
+            ..
+        } if method_id == vela_stdlib::std_method_id("Array", "len")
+            .expect("Array::len method id")
+    ));
+}
+
+#[test]
+fn typed_host_collection_element_method_links_to_dense_method_id() {
+    let engine = Engine::builder()
+        .capability(Capability::HostRead)
+        .register_rust_value_closure::<Vec<Vec<i64>>>()
+        .build()
+        .expect("nested host collection binding should seal");
+    let program = engine
+        .compile_source(
+            r#"
+fn child_len(value: ArrayView<i64>) -> i64 {
+    return value.len();
+}
+
+fn total(values: ArrayView<ArrayView<i64>>) -> i64 {
+    return values.values().fold(0, |sum, value| sum + child_len(value));
+}
+"#,
+        )
+        .expect("typed nested host collection fixture should compile");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+    let call = method_call_site_matching(&runtime, "child_len", |program, name| {
+        program.debug_name(name) == "len"
+    });
+    let dispatch = runtime
+        .image
+        .linked_program()
+        .method_dispatch(call.dispatch)
+        .expect("linked Array::len dispatch should exist");
+    assert!(matches!(
+        dispatch.kind,
+        LinkedMethodDispatchKind::Value { method_id }
+            if method_id == vela_stdlib::std_method_id("Array", "len")
+                .expect("Array::len method id")
+    ));
+
+    let values = vec![vec![1_i64, 2], vec![3, 5, 8]];
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let result = runtime
+        .call("total", args, CallOptions::unbounded())
+        .expect("typed host-backed child collection methods should run");
+    assert_eq!(
+        runtime.value_to_owned(&result),
+        Ok(OwnedValue::Scalar(ScalarValue::I64(5)))
+    );
 }
 
 #[test]

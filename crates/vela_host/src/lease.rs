@@ -10,7 +10,7 @@ use crate::resolved::{HostAccessSpec, HostMutationOp, ResolvedHostAccess};
 use crate::target::HostTargetInstance;
 use crate::value::HostValue;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum HostLeaseKind {
     Shared,
     Exclusive,

@@ -865,7 +865,7 @@ fn dynamic_receiver_guard_for_target(
 ) -> Option<DynamicReceiverGuard> {
     match target {
         DynamicMethodInlineCacheTarget::StandardValue { .. } => {
-            standard_receiver_guard(receiver, heap)
+            standard_receiver_guard(receiver, heap).or_else(|| host_receiver_guard(receiver, host))
         }
         DynamicMethodInlineCacheTarget::Script { .. } => script_receiver_guard(receiver, heap),
         DynamicMethodInlineCacheTarget::Host { .. } => host_receiver_guard(receiver, host),
@@ -899,13 +899,17 @@ fn dynamic_receiver_guard_matches(
         DynamicReceiverGuard::HostType {
             type_id,
             schema_epoch,
+            lease_kind,
         } => host_receiver_guard(receiver, host).is_some_and(|actual| {
             matches!(
                 actual,
                 DynamicReceiverGuard::HostType {
                     type_id: actual_type,
                     schema_epoch: actual_epoch,
-                } if actual_type == *type_id && actual_epoch == *schema_epoch
+                    lease_kind: actual_lease,
+                } if actual_type == *type_id
+                    && actual_epoch == *schema_epoch
+                    && actual_lease == *lease_kind
             )
         }),
     }
@@ -981,9 +985,11 @@ fn host_receiver_guard(
     let host = host?;
     let schema_epoch = host.adapter.host_schema_epoch();
     let reference = host.resolve_host_ref(*reference).ok()?;
+    let lease_kind = host.adapter.host_receiver_access(reference);
     Some(DynamicReceiverGuard::HostType {
         type_id: reference.type_id,
         schema_epoch,
+        lease_kind,
     })
 }
 

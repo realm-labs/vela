@@ -583,6 +583,7 @@ fn main(player) {
         Some(DynamicReceiverGuard::HostType {
             type_id,
             schema_epoch,
+            ..
         }) if type_id == host_ref.type_id
             && schema_epoch == vela_host::resolved::HostSchemaEpoch::new(1)
     ));
@@ -615,6 +616,7 @@ fn main(player) {
         Some(DynamicReceiverGuard::HostType {
             type_id,
             schema_epoch,
+            ..
         }) if type_id == host_ref.type_id
             && schema_epoch == vela_host::resolved::HostSchemaEpoch::new(2)
     ));

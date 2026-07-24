@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{
@@ -26,6 +27,10 @@ use crate::type_binding::TypeBinding;
 const TIMELINE_HOST_TYPE: HostTypeId = HostTypeId::new(0x7469_6d65);
 const LEDGER_HOST_TYPE: HostTypeId = HostTypeId::new(0x6c65_6467);
 const TAG_SET_HOST_TYPE: HostTypeId = HostTypeId::new(0x7461_6773);
+
+thread_local! {
+    static HOST_TARGET_RESOLUTIONS: Cell<usize> = const { Cell::new(0) };
+}
 
 /// One application-defined collection that deliberately is not a standard
 /// Vec binding. Its adapter delegates storage mechanics to Vec while exposing
@@ -61,6 +66,7 @@ macro_rules! delegate_collection_protocol {
                 &self,
                 spec: HostAccessSpec<'_>,
             ) -> HostResult<ResolvedHostAccess> {
+                HOST_TARGET_RESOLUTIONS.with(|count| count.set(count.get() + 1));
                 self.0.resolve_host_target(spec)
             }
 
@@ -385,4 +391,42 @@ fn user_defined_map_and_set_share_keyed_callbacks_and_bulk_mutations() {
     assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(3)));
     drop(result);
     assert_eq!(tags.0, BTreeSet::from([3_i32, 5, 8, 13]));
+}
+
+#[test]
+fn prepared_host_traversals_resolve_targets_independently_of_element_count() {
+    fn resolution_count(values: Vec<i64>) -> usize {
+        let mut runtime = runtime(
+            "fn traverse(values) { \
+                 let selected = values.filter(|value| value % 2 == 0); \
+                 let grouped = values.group_by(|value| \
+                     if value % 2 == 0 { \"even\" } else { \"odd\" }); \
+                 let folded = values.iter().fold(0, |total, value| total + value); \
+                 let collected = values.iter().collect_array(); \
+                 return selected.len() + grouped.len() + folded + collected.len(); \
+             }",
+        );
+        let values = Timeline(values);
+        HOST_TARGET_RESOLUTIONS.with(|count| count.set(0));
+        runtime
+            .call(
+                "traverse",
+                CallArgs::new().with_host_ref("values", &values),
+                CallOptions::unbounded(),
+            )
+            .expect("prepared host traversals should run");
+        HOST_TARGET_RESOLUTIONS.with(Cell::get)
+    }
+
+    let short = resolution_count(vec![1, 2, 3]);
+    let long = resolution_count((0..96).collect());
+
+    assert!(
+        short > 0,
+        "the adapter should observe cold target resolution"
+    );
+    assert_eq!(
+        long, short,
+        "filter, group_by, fold, and collect must reuse prepared targets instead of resolving per element"
+    );
 }
