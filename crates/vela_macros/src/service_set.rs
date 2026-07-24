@@ -50,8 +50,14 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let schema_calls = services
         .iter()
         .map(|service| {
+            let field = &service.field;
             let function = service.schema_path();
-            quote! { #function(registry)? }
+            quote! {
+                (
+                    ::std::stringify!(#field).to_owned(),
+                    #function(registry)?,
+                )
+            }
         })
         .collect::<Vec<_>>();
     let generation_fields = services.iter().map(|service| {
@@ -136,7 +142,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             let id = ::vela_common::ServiceSetId::new(
                 u128::from(::vela_common::stable_id("vela_service_set", "", path)),
             );
-            ::vela_engine::service::ServiceSetSchema::new(
+            ::vela_engine::service::ServiceSetSchema::new_named(
                 id,
                 path,
                 vec![#(#schema_calls),*],

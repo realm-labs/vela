@@ -318,6 +318,13 @@ fn schema() -> ServiceSetSchema {
         Some(services.schema()),
         "Engine compilation and publication must share one schema"
     );
+    assert_eq!(
+        services
+            .schema()
+            .service("inventory")
+            .map(ServiceSchema::path),
+        Some("test::inventory")
+    );
     services.schema().clone()
 }
 

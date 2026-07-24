@@ -190,6 +190,7 @@ impl ServiceSchema {
 pub struct ServiceSetSchema {
     id: ServiceSetId,
     path: String,
+    service_names: Vec<String>,
     services: Vec<ServiceSchema>,
     abi_fingerprint: ServiceSetAbiFingerprint,
     type_binding_checksum: TypeBindingRegistryChecksum,
@@ -202,29 +203,68 @@ impl ServiceSetSchema {
         services: Vec<ServiceSchema>,
         registry: &TypeBindingRegistry,
     ) -> Result<Self, ServiceSchemaError> {
+        let named = services
+            .into_iter()
+            .map(|service| {
+                let name = service
+                    .path()
+                    .rsplit("::")
+                    .next()
+                    .unwrap_or_default()
+                    .to_owned();
+                (name, service)
+            })
+            .collect();
+        Self::new_named(id, path, named, registry)
+    }
+
+    pub fn new_named(
+        id: ServiceSetId,
+        path: impl Into<String>,
+        named_services: Vec<(String, ServiceSchema)>,
+        registry: &TypeBindingRegistry,
+    ) -> Result<Self, ServiceSchemaError> {
         let path = path.into();
         validate_qualified_path(&path, ServicePathKind::ServiceSet)?;
+        let mut service_names = Vec::with_capacity(named_services.len());
+        let mut services = Vec::with_capacity(named_services.len());
+        let mut unique_names = BTreeSet::new();
         let mut service_ids = BTreeSet::new();
         let mut service_paths = BTreeSet::new();
-        for service in &services {
+        for (name, service) in named_services {
+            if !valid_service_member_name(&name) {
+                return Err(ServiceSchemaError::InvalidServiceMemberName {
+                    service_set: path,
+                    name,
+                });
+            }
+            if !unique_names.insert(name.clone()) {
+                return Err(ServiceSchemaError::DuplicateServiceMemberName {
+                    service_set: path,
+                    name,
+                });
+            }
             if !service_ids.insert(service.id()) {
                 return Err(ServiceSchemaError::DuplicateServiceId {
                     service_set: path,
                     service_id: service.id(),
                 });
             }
-            if !service_paths.insert(service.path()) {
+            if !service_paths.insert(service.path().to_owned()) {
                 return Err(ServiceSchemaError::DuplicateServicePath {
                     service_set: path,
                     service_path: service.path().to_owned(),
                 });
             }
             service.validate_type_bindings(registry)?;
+            service_names.push(name);
+            services.push(service);
         }
-        let abi_fingerprint = service_set_abi_fingerprint(id, &path, &services);
+        let abi_fingerprint = service_set_abi_fingerprint(id, &path, &service_names, &services);
         Ok(Self {
             id,
             path,
+            service_names,
             services,
             abi_fingerprint,
             type_binding_checksum: registry.checksum(),
@@ -244,6 +284,19 @@ impl ServiceSetSchema {
     #[must_use]
     pub fn services(&self) -> &[ServiceSchema] {
         &self.services
+    }
+
+    pub fn named_services(&self) -> impl ExactSizeIterator<Item = (&str, &ServiceSchema)> {
+        self.service_names
+            .iter()
+            .map(String::as_str)
+            .zip(&self.services)
+    }
+
+    #[must_use]
+    pub fn service(&self, name: &str) -> Option<&ServiceSchema> {
+        self.named_services()
+            .find_map(|(candidate, service)| (candidate == name).then_some(service))
     }
 
     #[must_use]
@@ -280,6 +333,14 @@ pub enum ServiceSchemaError {
     DuplicateServicePath {
         service_set: String,
         service_path: String,
+    },
+    InvalidServiceMemberName {
+        service_set: String,
+        name: String,
+    },
+    DuplicateServiceMemberName {
+        service_set: String,
+        name: String,
     },
     InvalidCallableKind {
         method: String,
@@ -372,6 +433,14 @@ impl fmt::Display for ServiceSchemaError {
             } => write!(
                 formatter,
                 "service set {service_set} has duplicate service path {service_path}"
+            ),
+            Self::InvalidServiceMemberName { service_set, name } => write!(
+                formatter,
+                "service set {service_set} has invalid service member name {name}"
+            ),
+            Self::DuplicateServiceMemberName { service_set, name } => write!(
+                formatter,
+                "service set {service_set} has duplicate service member name {name}"
             ),
             Self::InvalidCallableKind { method, actual } => {
                 write!(
@@ -811,13 +880,15 @@ fn service_abi_fingerprint(
 fn service_set_abi_fingerprint(
     id: ServiceSetId,
     path: &str,
+    service_names: &[String],
     services: &[ServiceSchema],
 ) -> ServiceSetAbiFingerprint {
-    let facts = services
+    let facts = service_names
         .iter()
-        .map(|service| {
+        .zip(services)
+        .map(|(name, service)| {
             format!(
-                "{:032x}:{:016x}",
+                "{name}:{:032x}:{:016x}",
                 service.id().get(),
                 service.abi_fingerprint().get()
             )
@@ -829,6 +900,14 @@ fn service_set_abi_fingerprint(
         path,
         &format!("{:032x}:{facts}", id.get()),
     ))
+}
+
+fn valid_service_member_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    chars
+        .next()
+        .is_some_and(|first| first == '_' || first.is_ascii_alphabetic())
+        && chars.all(|character| character == '_' || character.is_ascii_alphanumeric())
 }
 
 #[derive(Clone, Copy)]
@@ -950,7 +1029,48 @@ mod tests {
         assert_eq!(schema.methods()[0].id, METHOD_ID);
         assert_ne!(schema.abi_fingerprint().get(), 0);
         assert_eq!(service_set.services()[0].id(), SERVICE_ID);
+        assert_eq!(service_set.service("reward"), Some(&schema));
         assert_eq!(service_set.type_binding_checksum(), registry.checksum());
+    }
+
+    #[test]
+    fn service_set_rejects_duplicate_or_invalid_member_names() {
+        let registry = registry();
+        let schema = ServiceSchema::new(
+            SERVICE_ID,
+            "game::reward",
+            vec![method(&registry)],
+            &registry,
+        )
+        .expect("complete service schema");
+        let duplicate = ServiceSetSchema::new_named(
+            vela_common::ServiceSetId::new(0x92),
+            "game::services",
+            vec![
+                ("reward".to_owned(), schema.clone()),
+                ("reward".to_owned(), schema.clone()),
+            ],
+            &registry,
+        )
+        .expect_err("duplicate member names must fail");
+        assert!(matches!(
+            duplicate,
+            ServiceSchemaError::DuplicateServiceMemberName { name, .. }
+                if name == "reward"
+        ));
+
+        let invalid = ServiceSetSchema::new_named(
+            vela_common::ServiceSetId::new(0x93),
+            "game::services",
+            vec![("bad-name".to_owned(), schema)],
+            &registry,
+        )
+        .expect_err("invalid member names must fail");
+        assert!(matches!(
+            invalid,
+            ServiceSchemaError::InvalidServiceMemberName { name, .. }
+                if name == "bad-name"
+        ));
     }
 
     #[test]
