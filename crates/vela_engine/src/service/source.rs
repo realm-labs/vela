@@ -17,6 +17,7 @@ use super::{
     ServiceMethodKey, ServiceMethodSelection, ServiceMethodUpdate, ServiceSchema,
     ServiceSelectionError, ServiceSelectionTable, ServiceSetSchema,
 };
+use crate::native::EffectSet;
 use crate::runtime::{CallArgs, CallOptions, Runtime, RuntimeBuildError, VelaValue};
 
 /// One Vela method body resolved against an imported Rust service schema.
@@ -28,6 +29,7 @@ pub struct VelaServiceMethod {
     body: HirBodyId,
     module: ModuleId,
     signature: FunctionSignature,
+    effect_ceiling: EffectSet,
     function: FunctionId,
     symbol: String,
     span: Span,
@@ -62,6 +64,11 @@ impl VelaServiceMethod {
     #[must_use]
     pub const fn signature(&self) -> &FunctionSignature {
         &self.signature
+    }
+
+    #[must_use]
+    pub const fn effect_ceiling(&self) -> EffectSet {
+        self.effect_ceiling
     }
 
     #[must_use]
@@ -212,6 +219,7 @@ impl ServiceSourceManifest {
                         body: method.body(),
                         module: method.module(),
                         signature: method.signature().clone(),
+                        effect_ceiling: descriptor.callable.effects,
                         function: script_function_id(package.as_str(), &symbol),
                         symbol,
                         span: method.origin().span,
@@ -417,6 +425,7 @@ impl ServiceSourceError {
             ServiceSourceErrorKind::MixedLinkedArtifacts { .. } => {
                 "service.source.mixed_linked_artifacts"
             }
+            ServiceSourceErrorKind::EffectCeilingExceeded { .. } => "service.source.effect_ceiling",
         }
     }
 }
@@ -473,6 +482,11 @@ pub enum ServiceSourceErrorKind {
     MixedLinkedArtifacts {
         expected: ExecutableGenerationId,
         actual: ExecutableGenerationId,
+    },
+    EffectCeilingExceeded {
+        symbol: String,
+        allowed: EffectSet,
+        observed: EffectSet,
     },
 }
 
@@ -551,6 +565,16 @@ impl fmt::Display for ServiceSourceError {
                 "one service update mixes linked artifact generations {} and {}",
                 expected.get(),
                 actual.get()
+            ),
+            ServiceSourceErrorKind::EffectCeilingExceeded {
+                symbol,
+                allowed,
+                observed,
+            } => write!(
+                formatter,
+                "compiled service target `{symbol}` effects 0x{:x} exceed Rust ceiling 0x{:x}",
+                observed.bits(),
+                allowed.bits()
             ),
         }
     }
@@ -650,6 +674,17 @@ fn validate_compiled_target(
             },
         ));
     }
+    let observed = service_effects(function);
+    if !target.effect_ceiling().contains_all(observed) {
+        return Err(ServiceSourceError::new(
+            target.span(),
+            ServiceSourceErrorKind::EffectCeilingExceeded {
+                symbol: target.symbol().to_owned(),
+                allowed: target.effect_ceiling(),
+                observed,
+            },
+        ));
+    }
     Ok(())
 }
 
@@ -693,4 +728,50 @@ fn linked_manifest_artifact(
         ServiceMethodSelection::RustDefault => None,
         ServiceMethodSelection::Vela(target) => Some(target.artifact()),
     })
+}
+
+fn service_effects(function: &vela_mir::MirFunction) -> EffectSet {
+    let mut observed = vela_mir::MirEffect::PURE;
+    for (_, statement) in function.statements() {
+        observed = observed.union(statement.effect);
+    }
+    for (_, block) in function.blocks() {
+        if let Some(terminator) = block.terminator() {
+            observed = observed.union(terminator.effect);
+        }
+    }
+
+    let mut effects = EffectSet::pure();
+    effects = if observed.host_write {
+        effects.union(EffectSet::host_write())
+    } else if observed.host_read {
+        effects.union(EffectSet::host_read())
+    } else {
+        effects
+    };
+    if observed.emits_event {
+        effects = effects.union(EffectSet::event_emit());
+    }
+    if observed.reads_time {
+        effects = effects.union(EffectSet::time());
+    }
+    if observed.uses_random {
+        effects = effects.union(EffectSet::random());
+    }
+    if observed.reads_io {
+        effects = effects.union(EffectSet::io_read());
+    }
+    if observed.writes_io {
+        effects = effects.union(EffectSet::io_write());
+    }
+    if observed.reflection_read {
+        effects = effects.union(EffectSet::reflection_read());
+    }
+    if observed.reflection_write {
+        effects = effects.union(EffectSet::reflection_write());
+    }
+    if observed.reflection_call {
+        effects = effects.union(EffectSet::reflection_call());
+    }
+    effects
 }

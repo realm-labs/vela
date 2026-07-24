@@ -182,6 +182,44 @@ impl InventoryHotfix {
 }
 
 #[test]
+fn source_manifest_rejects_compiled_effects_above_the_rust_ceiling() {
+    let engine = TestServices::register_types(
+        vela_engine::engine::Engine::builder().with_time_clock(1_700_000_000, 42),
+    )
+    .build()
+    .expect("service engine with time capability");
+    let schema = TestServices::new(&engine.type_bindings())
+        .expect("service schema")
+        .schema()
+        .clone();
+    let text = r#"
+#[service_impl(test::inventory)]
+impl InventoryHotfix {
+    fn grant(value) {
+        return time::now();
+    }
+}
+"#;
+    let sources = source(text);
+    let manifest =
+        ServiceSourceManifest::link(sources.graph(), &schema).expect("schema-linked manifest");
+    let compiled = engine
+        .compile_source(text)
+        .expect("compiled service source");
+    let artifact = engine
+        .link_compiled_program(compiled)
+        .expect("linked service artifact");
+
+    assert!(matches!(
+        manifest
+            .validate_artifact(&artifact)
+            .expect_err("time effect must exceed the pure Rust method ceiling")
+            .kind(),
+        ServiceSourceErrorKind::EffectCeilingExceeded { .. }
+    ));
+}
+
+#[test]
 fn source_manifest_rejects_unknown_duplicate_and_incompatible_claims() {
     let schema = schema();
     let unknown_service = source(
