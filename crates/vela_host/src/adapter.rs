@@ -171,6 +171,28 @@ pub trait ScriptStateAdapter {
         }))
     }
 
+    /// Retains one complex collection element as a call-scoped child HostRef.
+    ///
+    /// Generic adapters do not own the parent lease machinery and therefore
+    /// decline this optional path.
+    fn read_scoped_host(
+        &mut self,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<HostRef>> {
+        Ok(None)
+    }
+
+    /// Retains one homogeneous complex-element projection as child HostRefs.
+    fn snapshot_scoped_collection_host(
+        &mut self,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+        _projection: HostCollectionProjection,
+    ) -> HostResult<Option<HostCollectionSnapshot>> {
+        Ok(None)
+    }
+
     fn mutate_collection_host(
         &mut self,
         _access: ResolvedHostAccess,

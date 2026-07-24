@@ -72,6 +72,24 @@ impl HostAccess {
             .map_err(|error| error.with_source_span_if_absent(source_span))
     }
 
+    pub fn read_resolved_scoped(
+        &self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        source_span: Option<Span>,
+    ) -> HostResult<HostValue> {
+        match adapter.read_host(access, target) {
+            Ok(value) => Ok(value),
+            Err(read_error) => match adapter.read_scoped_host(access, target) {
+                Ok(Some(root)) => Ok(HostValue::HostRef(root)),
+                Ok(None) => Err(read_error),
+                Err(error) => Err(error),
+            },
+        }
+        .map_err(|error| error.with_source_span_if_absent(source_span))
+    }
+
     pub fn query_collection_resolved(
         &self,
         adapter: &(impl ScriptStateAdapter + ?Sized),
@@ -96,6 +114,27 @@ impl HostAccess {
         adapter
             .snapshot_collection_host(access, target, projection)
             .map_err(|error| error.with_source_span_if_absent(source_span))
+    }
+
+    pub fn snapshot_collection_resolved_scoped(
+        &self,
+        adapter: &mut (impl ScriptStateAdapter + ?Sized),
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+        source_span: Option<Span>,
+    ) -> HostResult<HostCollectionSnapshot> {
+        match adapter.snapshot_collection_host(access, target, projection) {
+            Ok(snapshot) => Ok(snapshot),
+            Err(snapshot_error) => {
+                match adapter.snapshot_scoped_collection_host(access, target, projection) {
+                    Ok(Some(snapshot)) => Ok(snapshot),
+                    Ok(None) => Err(snapshot_error),
+                    Err(error) => Err(error),
+                }
+            }
+        }
+        .map_err(|error| error.with_source_span_if_absent(source_span))
     }
 
     pub fn mutate_collection_resolved(

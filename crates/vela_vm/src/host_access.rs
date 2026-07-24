@@ -8,7 +8,7 @@ use vela_host::error::HostErrorKind;
 use vela_host::path::HostPath;
 use vela_host::protocol::HostCollectionQuery;
 use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccess};
-use vela_host::target::{HostPathArg, HostTargetInstance, HostTargetPlan};
+use vela_host::target::{HostTargetInstance, HostTargetPlan};
 use vela_host::value::HostValue;
 
 use crate::heap_values::host_to_value;
@@ -22,7 +22,13 @@ use crate::{
     expect_host_ref, value_to_owned,
 };
 
+mod collection_index;
 mod map_insert;
+
+pub(crate) use collection_index::{
+    execute_host_collection_index_read, execute_host_collection_index_write,
+    execute_host_collection_string_key_read, execute_host_collection_string_key_write,
+};
 
 pub(crate) struct HostAccessRuntime<'a, 'host, 'heap> {
     pub(crate) frame: &'a CallFrame,
@@ -148,9 +154,12 @@ pub(crate) fn execute_host_read(
         HostAccessOp::Read,
         runtime.source_span,
     )?;
-    let value =
-        host.access
-            .read_resolved(host.adapter, cached_access, instance, runtime.source_span)?;
+    let value = host.access.read_resolved_scoped(
+        host.adapter,
+        cached_access,
+        instance,
+        runtime.source_span,
+    )?;
     runtime_value_from_host(value, runtime.heap, runtime.budget, host)
 }
 
@@ -840,10 +849,12 @@ pub(crate) fn execute_host_root_collection_mutation(
                 HostAccessOp::Read,
                 runtime.source_span,
             )?;
-            match host
-                .access
-                .read_resolved(host.adapter, read, instance, runtime.source_span)
-            {
+            match host.access.read_resolved_scoped(
+                host.adapter,
+                read,
+                instance,
+                runtime.source_span,
+            ) {
                 Ok(value) => runtime_value_from_host(
                     value,
                     runtime.heap.as_deref_mut(),
@@ -890,24 +901,25 @@ pub(crate) fn execute_host_root_collection_mutation(
                 HostAccessOp::Read,
                 runtime.source_span,
             )?;
-            let current =
-                match host
-                    .access
-                    .read_resolved(host.adapter, read, instance, runtime.source_span)
+            let current = match host.access.read_resolved_scoped(
+                host.adapter,
+                read,
+                instance,
+                runtime.source_span,
+            ) {
+                Ok(value) => Some(value),
+                Err(error)
+                    if matches!(&error.kind, HostErrorKind::MissingCollectionEntry { .. })
+                        || (matches!(
+                            mutation,
+                            HostCollectionMutation::ArrayPop
+                                | HostCollectionMutation::ArrayRemoveAt
+                        ) && matches!(&error.kind, HostErrorKind::MissingPath { .. })) =>
                 {
-                    Ok(value) => Some(value),
-                    Err(error)
-                        if matches!(&error.kind, HostErrorKind::MissingCollectionEntry { .. })
-                            || (matches!(
-                                mutation,
-                                HostCollectionMutation::ArrayPop
-                                    | HostCollectionMutation::ArrayRemoveAt
-                            ) && matches!(&error.kind, HostErrorKind::MissingPath { .. })) =>
-                    {
-                        None
-                    }
-                    Err(error) => return Err(error.into()),
-                };
+                    None
+                }
+                Err(error) => return Err(error.into()),
+            };
             if current.is_some() {
                 let remove = resolve_collection_key_access(
                     host,
@@ -948,9 +960,12 @@ pub(crate) fn execute_host_root_collection_mutation(
                 HostAccessOp::Read,
                 runtime.source_span,
             )?;
-            let current =
-                host.access
-                    .read_resolved(host.adapter, read, instance, runtime.source_span)?;
+            let current = host.access.read_resolved_scoped(
+                host.adapter,
+                read,
+                instance,
+                runtime.source_span,
+            )?;
             let HostValue::Bool(current) = current else {
                 return Err(VmError::new(VmErrorKind::TypeMismatch {
                     operation: "host set mutation",
@@ -1006,126 +1021,6 @@ fn resolve_collection_key_access(
             .resolve_host_access(HostAccessSpec::new(op, target.plan))
             .map_err(|error| error.with_source_span_if_absent(source_span).into())
     }
-}
-
-pub(crate) fn execute_host_collection_index_read(
-    mut runtime: HostAccessRuntime<'_, '_, '_>,
-    receiver: Register,
-    index: Register,
-) -> VmResult<Value> {
-    let root = expect_host_ref(
-        &runtime.frame.read(receiver)?,
-        runtime.host.as_deref(),
-        "host collection index",
-    )?;
-    let index = runtime_collection_index(
-        &runtime.frame.read(index)?,
-        runtime.heap.as_deref(),
-        runtime.host.as_deref(),
-        "host collection index",
-    )?;
-    let (target, arg) = index.target(root.type_id);
-    let args = [arg];
-    let instance = HostTargetInstance::new(root, &target, &args);
-    let host = runtime.host.ok_or_else(missing_host_context)?;
-    let access = host
-        .adapter
-        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &target))
-        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
-    let value = host
-        .access
-        .read_resolved(host.adapter, access, instance, runtime.source_span)?;
-    runtime_value_from_host(value, runtime.heap.take(), runtime.budget.take(), host)
-}
-
-pub(crate) fn execute_host_collection_string_key_read(
-    mut runtime: HostAccessRuntime<'_, '_, '_>,
-    receiver: Register,
-    key: &str,
-) -> VmResult<Value> {
-    let root = expect_host_ref(
-        &runtime.frame.read(receiver)?,
-        runtime.host.as_deref(),
-        "host collection index",
-    )?;
-    let target = HostTargetPlan::new(root.type_id).const_key(key);
-    let instance = HostTargetInstance::new(root, &target, &[]);
-    let host = runtime.host.ok_or_else(missing_host_context)?;
-    let access = host
-        .adapter
-        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &target))
-        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
-    let value = host
-        .access
-        .read_resolved(host.adapter, access, instance, runtime.source_span)?;
-    runtime_value_from_host(value, runtime.heap.take(), runtime.budget.take(), host)
-}
-
-pub(crate) fn execute_host_collection_index_write(
-    runtime: HostAccessRuntime<'_, '_, '_>,
-    receiver: Register,
-    index: Register,
-    src: Register,
-) -> VmResult<()> {
-    let root = expect_host_ref(
-        &runtime.frame.read(receiver)?,
-        runtime.host.as_deref(),
-        "host collection index assignment",
-    )?;
-    let index = runtime_collection_index(
-        &runtime.frame.read(index)?,
-        runtime.heap.as_deref(),
-        runtime.host.as_deref(),
-        "host collection index assignment",
-    )?;
-    let value = value_to_host(
-        &runtime.frame.read(src)?,
-        "host collection index assignment",
-        runtime.heap.as_deref(),
-        runtime.host.as_deref(),
-    )?;
-    let (target, arg) = index.target(root.type_id);
-    let args = [arg];
-    execute_host_collection_index_write_target(runtime, root, &target, &args, value)
-}
-
-pub(crate) fn execute_host_collection_string_key_write(
-    runtime: HostAccessRuntime<'_, '_, '_>,
-    receiver: Register,
-    key: &str,
-    src: Register,
-) -> VmResult<()> {
-    let root = expect_host_ref(
-        &runtime.frame.read(receiver)?,
-        runtime.host.as_deref(),
-        "host collection index assignment",
-    )?;
-    let value = value_to_host(
-        &runtime.frame.read(src)?,
-        "host collection index assignment",
-        runtime.heap.as_deref(),
-        runtime.host.as_deref(),
-    )?;
-    let target = HostTargetPlan::new(root.type_id).const_key(key);
-    execute_host_collection_index_write_target(runtime, root, &target, &[], value)
-}
-
-fn execute_host_collection_index_write_target(
-    runtime: HostAccessRuntime<'_, '_, '_>,
-    root: vela_host::path::HostRef,
-    target: &HostTargetPlan,
-    args: &[HostPathArg<'_>],
-    value: HostValue,
-) -> VmResult<()> {
-    let instance = HostTargetInstance::new(root, target, args);
-    let host = runtime.host.ok_or_else(missing_host_context)?;
-    let access = host
-        .adapter
-        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Write, target))
-        .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
-    host.access
-        .write_resolved(host.adapter, access, instance, value, runtime.source_span)?;
-    Ok(())
 }
 
 pub(crate) fn missing_host_context() -> VmError {

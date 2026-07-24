@@ -428,7 +428,7 @@ fn snapshot_host_collection_root(
             .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &target))
             .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?
     };
-    Ok(host.access.snapshot_collection_resolved(
+    Ok(host.access.snapshot_collection_resolved_scoped(
         host.adapter,
         resolved,
         instance,

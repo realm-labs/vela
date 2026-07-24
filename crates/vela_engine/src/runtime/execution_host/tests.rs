@@ -1,14 +1,17 @@
 use std::sync::Arc;
 
 use parking_lot::RwLock;
-use vela_common::HostTypeId;
+use vela_common::{HostObjectId, HostTypeId, ScalarValue};
+use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
 use vela_host::error::{HostErrorKind, HostResult};
 use vela_host::lease::{HostLeaseKind, ScopedHostLeaseSlot};
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
+use vela_host::protocol::{HostCollectionProjection, HostCollectionSnapshot};
+use vela_host::resolved::{HostAccessOp, HostAccessSpec};
 use vela_host::slot::HostRefSlots;
-use vela_host::target::HostTargetInstance;
+use vela_host::target::{HostTargetInstance, HostTargetPlan};
 use vela_host::value::HostValue;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::heap::ScriptHeap;
@@ -34,6 +37,164 @@ impl ScriptHostObject for DenseScopedObject {
     ) -> HostResult<HostValue> {
         Ok(HostValue::Unit)
     }
+}
+
+#[test]
+fn complex_vec_elements_are_scoped_children_of_the_parent_lease() {
+    let mut values = vec![vec![10_i64, 20], vec![30]];
+    let parent_type = values.host_type_id();
+    let child_type = values[0].host_type_id();
+    let args = CallArgs::new().with_host_mut("values", &mut values);
+    let mut extern_states = RuntimeExternStateBindings::new();
+    let mut host_arena = RuntimeHostArena::new();
+    let mut host_slots = HostRefSlots::new();
+    let mut host = ExecutionHost::new(args, &mut extern_states, &mut host_arena, &mut host_slots);
+    let parent = HostRef::new(
+        parent_type,
+        HostObjectId::new(EXECUTION_HOST_OBJECT_ID_BASE),
+        1,
+    );
+    let element_plan = HostTargetPlan::new(parent.type_id).const_index(0);
+    let element_target = HostTargetInstance::new(parent, &element_plan, &[]);
+    let element_access = host
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &element_plan))
+        .expect("complex element access should resolve from the collection type");
+    let access = HostAccess::new();
+    let HostValue::HostRef(child) = access
+        .read_resolved_scoped(&mut host, element_access, element_target, None)
+        .expect("complex element reads should retain a scoped child HostRef")
+    else {
+        panic!("complex element read should not serialize or expose a Rust reference");
+    };
+    let alias = child;
+    assert_eq!(child.type_id, child_type);
+    assert_eq!(
+        host.host_receiver_access(child),
+        HostLeaseKind::Exclusive,
+        "a child of a mutable collection view must preserve exclusive access"
+    );
+
+    let child_value_plan = HostTargetPlan::new(child.type_id).const_index(1);
+    let child_value_target = HostTargetInstance::new(child, &child_value_plan, &[]);
+    let child_read = host
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &child_value_plan))
+        .expect("nested child read should resolve through the child type");
+    assert_eq!(
+        access
+            .read_resolved_scoped(&mut host, child_read, child_value_target, None)
+            .expect("nested child read should observe the parent element"),
+        HostValue::Scalar(ScalarValue::I64(20))
+    );
+    let child_write = host
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Write, &child_value_plan))
+        .expect("nested child write should resolve through the child type");
+    let mut access = access;
+    access
+        .write_resolved(
+            &mut host,
+            child_write,
+            child_value_target,
+            HostValue::Scalar(ScalarValue::I64(25)),
+            None,
+        )
+        .expect("nested child write should mutate the original collection element");
+
+    host.release_scoped_host(child)
+        .expect("uncontended child should release its parent lease");
+    let error = access
+        .read_resolved_scoped(&mut host, child_read, child_value_target, None)
+        .expect_err("every copied alias must expire with the scoped child");
+    assert!(matches!(
+        error.kind,
+        HostErrorKind::ExpiredBorrowedHostRef { .. }
+    ));
+    assert_eq!(alias, child);
+    drop(host);
+    assert_eq!(values[0], vec![10, 25]);
+}
+
+#[test]
+fn complex_vec_projection_returns_one_releasable_child_per_element() {
+    let values = vec![vec![1_i64], vec![2]];
+    let parent_type = values.host_type_id();
+    let args = CallArgs::new().with_host_ref("values", &values);
+    let mut extern_states = RuntimeExternStateBindings::new();
+    let mut host_arena = RuntimeHostArena::new();
+    let mut host_slots = HostRefSlots::new();
+    let mut host = ExecutionHost::new(args, &mut extern_states, &mut host_arena, &mut host_slots);
+    let parent = HostRef::new(
+        parent_type,
+        HostObjectId::new(EXECUTION_HOST_OBJECT_ID_BASE),
+        1,
+    );
+    let plan = HostTargetPlan::new(parent.type_id);
+    let target = HostTargetInstance::new(parent, &plan, &[]);
+    let resolved = host
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &plan))
+        .expect("complex collection projection should resolve");
+    let access = HostAccess::new();
+    let HostCollectionSnapshot::Items(items) = access
+        .snapshot_collection_resolved_scoped(
+            &mut host,
+            resolved,
+            target,
+            HostCollectionProjection::Values,
+            None,
+        )
+        .expect("complex collection projection should retain scoped children")
+    else {
+        panic!("array projection should return items");
+    };
+    let roots = items
+        .into_iter()
+        .map(|value| match value {
+            HostValue::HostRef(root) => root,
+            _ => panic!("complex collection projection must preserve host identity"),
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(roots.len(), 2);
+    assert_ne!(roots[0], roots[1]);
+    assert!(
+        roots
+            .iter()
+            .all(|root| host.host_receiver_access(*root) == HostLeaseKind::Shared)
+    );
+    for root in roots {
+        host.release_scoped_host(root)
+            .expect("each projection child should release independently");
+    }
+}
+
+#[test]
+fn empty_complex_vec_projection_does_not_create_a_scoped_group() {
+    let values: Vec<Vec<i64>> = Vec::new();
+    let parent_type = values.host_type_id();
+    let args = CallArgs::new().with_host_ref("values", &values);
+    let mut extern_states = RuntimeExternStateBindings::new();
+    let mut host_arena = RuntimeHostArena::new();
+    let mut host_slots = HostRefSlots::new();
+    let mut host = ExecutionHost::new(args, &mut extern_states, &mut host_arena, &mut host_slots);
+    let parent = HostRef::new(
+        parent_type,
+        HostObjectId::new(EXECUTION_HOST_OBJECT_ID_BASE),
+        1,
+    );
+    let plan = HostTargetPlan::new(parent.type_id);
+    let target = HostTargetInstance::new(parent, &plan, &[]);
+    let resolved = host
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &plan))
+        .expect("empty complex collection projection should resolve");
+    let snapshot = HostAccess::new()
+        .snapshot_collection_resolved_scoped(
+            &mut host,
+            resolved,
+            target,
+            HostCollectionProjection::Values,
+            None,
+        )
+        .expect("empty complex projection should not require a non-empty lease group");
+    assert_eq!(snapshot, HostCollectionSnapshot::Items(Vec::new()));
+    assert!(host.scoped_hosts.is_empty());
 }
 
 #[test]

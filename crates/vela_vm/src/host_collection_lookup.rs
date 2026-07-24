@@ -107,10 +107,12 @@ pub(crate) fn execute_host_root_collection_lookup(
                 .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &target))
                 .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?
         };
-        match host
-            .access
-            .read_resolved(host.adapter, resolved, instance, runtime.source_span)
-        {
+        match host.access.read_resolved_scoped(
+            host.adapter,
+            resolved,
+            instance,
+            runtime.source_span,
+        ) {
             Ok(value) => Some(value),
             Err(error) if matches!(&error.kind, HostErrorKind::MissingCollectionEntry { .. }) => {
                 None
@@ -203,9 +205,12 @@ fn execute_host_root_array_search(
             .host
             .as_deref_mut()
             .ok_or_else(missing_host_context)?;
-        let value =
-            host.access
-                .read_resolved(host.adapter, resolved, instance, runtime.source_span)?;
+        let value = host.access.read_resolved_scoped(
+            host.adapter,
+            resolved,
+            instance,
+            runtime.source_span,
+        )?;
         let value = runtime_value_from_host(
             value,
             runtime.heap.as_deref_mut(),

@@ -41,9 +41,9 @@ impl HostIteratorAccess for HostExecution<'_> {
     ) -> VmResult<Value> {
         let args = [HostPathArg::Index(index)];
         let instance = HostTargetInstance::new(target.root, target.plan, &args);
-        let value = self
-            .access
-            .read_resolved(self.adapter, target.access, instance, None)?;
+        let value =
+            self.access
+                .read_resolved_scoped(self.adapter, target.access, instance, None)?;
         crate::host_access::runtime_value_from_host(value, heap, budget, self)
     }
 
@@ -63,9 +63,9 @@ impl HostIteratorAccess for HostExecution<'_> {
         )?;
         let args = [HostPathArg::Key(key.as_ref())];
         let instance = HostTargetInstance::new(target.root, target.plan, &args);
-        let value = self
-            .access
-            .read_resolved(self.adapter, target.access, instance, None)?;
+        let value =
+            self.access
+                .read_resolved_scoped(self.adapter, target.access, instance, None)?;
         crate::host_access::runtime_value_from_host(value, heap, budget, self)
     }
 }

@@ -83,6 +83,50 @@ pub trait ScriptHostObject {
         target: HostTargetInstance<'_>,
     ) -> HostResult<HostValue>;
 
+    /// Creates one call-scoped shared child when a collection element is a
+    /// host object rather than a copied boundary value.
+    #[doc(hidden)]
+    fn borrow_resolved_host_shared(
+        &self,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        Ok(None)
+    }
+
+    /// Exclusive counterpart to [`ScriptHostObject::borrow_resolved_host_shared`].
+    #[doc(hidden)]
+    fn borrow_resolved_host_exclusive(
+        &mut self,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        Ok(None)
+    }
+
+    /// Projects homogeneous host-object collection values as scoped children.
+    #[doc(hidden)]
+    fn borrow_collection_resolved_host_shared(
+        &self,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+        _projection: HostCollectionProjection,
+    ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+        Ok(None)
+    }
+
+    /// Exclusive counterpart to
+    /// [`ScriptHostObject::borrow_collection_resolved_host_shared`].
+    #[doc(hidden)]
+    fn borrow_collection_resolved_host_exclusive(
+        &mut self,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+        _projection: HostCollectionProjection,
+    ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+        Ok(None)
+    }
+
     fn query_collection_resolved_host(
         &self,
         access: ResolvedHostAccess,
@@ -177,6 +221,13 @@ pub trait ScriptHostObject {
     }
 }
 
+/// Borrowed collection payload retained under one parent lease by the Runtime.
+#[doc(hidden)]
+pub enum ScopedHostCollectionDependents<'host> {
+    Items(Vec<crate::lease::ScopedHostDependent<'host>>),
+    Entries(Vec<(HostValue, crate::lease::ScopedHostDependent<'host>)>),
+}
+
 pub trait ScriptHostFieldAccess {
     fn script_host_type_id(&self) -> HostTypeId;
 
@@ -256,6 +307,44 @@ pub trait ScriptHostFieldAccess {
     ) -> HostResult<HostValue> {
         let _ = access;
         self.read_host_target_from(target, target.offset)
+    }
+
+    #[doc(hidden)]
+    fn borrow_resolved_host_shared(
+        &self,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        Ok(None)
+    }
+
+    #[doc(hidden)]
+    fn borrow_resolved_host_exclusive(
+        &mut self,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        Ok(None)
+    }
+
+    #[doc(hidden)]
+    fn borrow_collection_resolved_host_shared(
+        &self,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+        _projection: HostCollectionProjection,
+    ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+        Ok(None)
+    }
+
+    #[doc(hidden)]
+    fn borrow_collection_resolved_host_exclusive(
+        &mut self,
+        _access: ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+        _projection: HostCollectionProjection,
+    ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+        Ok(None)
     }
 
     /// Executes a resolved write from the cursor carried by `target`.
@@ -526,6 +615,44 @@ macro_rules! impl_script_host_object_via_field {
                 target: HostTargetInstance<'_>,
             ) -> HostResult<HostValue> {
                 ScriptHostFieldAccess::read_resolved_host_target_from(self, access, target)
+            }
+
+            fn borrow_resolved_host_shared(
+                &self,
+                access: ResolvedHostAccess,
+                target: HostTargetInstance<'_>,
+            ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+                ScriptHostFieldAccess::borrow_resolved_host_shared(self, access, target)
+            }
+
+            fn borrow_resolved_host_exclusive(
+                &mut self,
+                access: ResolvedHostAccess,
+                target: HostTargetInstance<'_>,
+            ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+                ScriptHostFieldAccess::borrow_resolved_host_exclusive(self, access, target)
+            }
+
+            fn borrow_collection_resolved_host_shared(
+                &self,
+                access: ResolvedHostAccess,
+                target: HostTargetInstance<'_>,
+                projection: HostCollectionProjection,
+            ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+                ScriptHostFieldAccess::borrow_collection_resolved_host_shared(
+                    self, access, target, projection,
+                )
+            }
+
+            fn borrow_collection_resolved_host_exclusive(
+                &mut self,
+                access: ResolvedHostAccess,
+                target: HostTargetInstance<'_>,
+                projection: HostCollectionProjection,
+            ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+                ScriptHostFieldAccess::borrow_collection_resolved_host_exclusive(
+                    self, access, target, projection,
+                )
             }
 
             fn query_collection_resolved_host(
@@ -858,7 +985,7 @@ impl_script_host_object_via_field!(<K, V> BTreeMap<K, V> where K: ScriptHostKey 
 
 impl_script_host_object_via_field!(<K, V> HashMap<K, V> where K: ScriptHostKey + Hash + 'static, V: ScriptHostFieldAccess + ScriptHostObject + 'static);
 
-impl_script_host_object_via_field!(<T> Vec<T> where T: ScriptHostFieldAccess + ScriptHostObject + 'static);
+impl_script_host_object_via_field!(<T> Vec<T> where T: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static);
 impl_script_host_object_via_field!(<T, const N: usize> [T; N] where T: ScriptHostFieldAccess + ScriptHostObject + 'static);
 
 impl_script_host_object_via_field!(<K> BTreeSet<K> where K: ScriptHostKey + 'static);

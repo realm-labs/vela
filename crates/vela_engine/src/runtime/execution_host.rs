@@ -1,11 +1,10 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use smallvec::SmallVec;
 use vela_common::{HostMethodId, HostTypeId};
 use vela_host::adapter::{
-    ExternStateBinding, HostLeaseInvoker, ScopedHostReturn, ScopedHostReturnGroup,
-    ScopedHostReturnInvoker, ScopedHostReturns, ScriptStateAdapter,
+    ExternStateBinding, HostLeaseInvoker, ScopedHostReturnInvoker, ScopedHostReturns,
+    ScriptStateAdapter,
 };
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::lease::{
@@ -30,6 +29,7 @@ use super::{CallArgs, RuntimeExternStateBindings, RuntimeHostArena};
 
 mod fallback;
 mod scoped_access;
+mod scoped_projection;
 
 use fallback::FallbackAdapter;
 
@@ -227,108 +227,6 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             }
         }
         Ok(leases)
-    }
-
-    fn retain_scoped_host(&mut self, returned: ScopedHostReturn<'host>) -> HostRef {
-        let type_id = returned.object.host_type_id();
-        let handle = self.scoped_hosts.insert_with(|handle| ScopedHostBinding {
-            borrow_lease_id: Self::borrow_lease_id(handle),
-            type_id,
-            access: returned.access,
-            object: ScopedHostObjectBinding::Single(Arc::new(parking_lot::RwLock::new(Box::new(
-                returned.object,
-            )))),
-            activity: Arc::new(()),
-        });
-        Self::scoped_root(handle, type_id)
-    }
-
-    fn retain_scoped_host_group(
-        &mut self,
-        returned: ScopedHostReturnGroup<'host>,
-    ) -> HostResult<Vec<HostRef>> {
-        if returned.object.len() != returned.accesses.len() || returned.object.is_empty() {
-            return Err(HostError {
-                kind: HostErrorKind::InvalidArgument {
-                    expected: "matching non-empty scoped host group children and access modes",
-                },
-                source_span: None,
-            });
-        }
-        let object = Arc::new(returned.object);
-        let mut roots = Vec::with_capacity(returned.accesses.len());
-        for (index, access) in returned.accesses.into_iter().enumerate() {
-            let type_id = object.child_type_id(index).ok_or(HostError {
-                kind: HostErrorKind::InvalidArgument {
-                    expected: "uncontended scoped host group child",
-                },
-                source_span: None,
-            })?;
-            let handle = self.scoped_hosts.insert_with(|handle| ScopedHostBinding {
-                borrow_lease_id: Self::borrow_lease_id(handle),
-                type_id,
-                access,
-                object: ScopedHostObjectBinding::Group {
-                    object: Arc::clone(&object),
-                    index,
-                },
-                activity: Arc::new(()),
-            });
-            roots.push(Self::scoped_root(handle, type_id));
-        }
-        Ok(roots)
-    }
-
-    fn with_group_host_leases(
-        &mut self,
-        requests: &[(HostRef, HostLeaseKind)],
-        invoke: &mut HostLeaseInvoker<'_>,
-    ) -> Option<HostResult<()>> {
-        let mut group = None;
-        let mut children = SmallVec::<[(HostRef, usize, HostLeaseKind, Arc<()>); 8]>::with_capacity(
-            requests.len(),
-        );
-        for (root, kind) in requests {
-            let binding = self.scoped_binding(*root)?;
-            let ScopedHostObjectBinding::Group { object, index } = &binding.object else {
-                return None;
-            };
-            if let Some(group) = &group {
-                if !Arc::ptr_eq(group, object) {
-                    return None;
-                }
-            } else {
-                group = Some(Arc::clone(object));
-            }
-            if binding.access == HostLeaseKind::Shared && *kind == HostLeaseKind::Exclusive {
-                return Some(Err(host_object_busy(*root)));
-            }
-            children.push((*root, *index, *kind, Arc::clone(&binding.activity)));
-        }
-        let group = group?;
-        Some(group.with_dependent(move |_, objects| {
-            let mut leases = ErasedHostLeaseSet::with_capacity(children.len());
-            let mut activities = SmallVec::<[Arc<()>; 8]>::with_capacity(children.len());
-            for (root, index, kind, activity) in children {
-                let child = objects
-                    .get(index)
-                    .ok_or_else(|| host_lease_unsupported(root))?;
-                let lease = match kind {
-                    HostLeaseKind::Shared => child
-                        .try_read_arc()
-                        .map(|object| ErasedHostLease::ScopedShared { object })
-                        .ok_or_else(|| host_object_busy(root))?,
-                    HostLeaseKind::Exclusive => child
-                        .try_write_arc()
-                        .map(|object| ErasedHostLease::ScopedExclusive { object })
-                        .ok_or_else(|| host_object_busy(root))?,
-                };
-                leases.push(lease);
-                activities.push(activity);
-            }
-            let _activities = activities;
-            invoke(&mut leases, self)
-        }))
     }
 }
 
@@ -652,6 +550,17 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         }
     }
 
+    fn read_scoped_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<HostRef>> {
+        if self.args.direct_binding(target.root).is_some() {
+            return Ok(None);
+        }
+        self.parent.read_scoped_host(access, target)
+    }
+
     fn query_collection_host(
         &self,
         access: ResolvedHostAccess,
@@ -680,6 +589,19 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
                 .parent
                 .snapshot_collection_host(access, target, projection),
         }
+    }
+
+    fn snapshot_scoped_collection_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<Option<HostCollectionSnapshot>> {
+        if self.args.direct_binding(target.root).is_some() {
+            return Ok(None);
+        }
+        self.parent
+            .snapshot_scoped_collection_host(access, target, projection)
     }
 
     fn mutate_collection_host(
@@ -955,6 +877,14 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         }
     }
 
+    fn read_scoped_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<HostRef>> {
+        self.retain_scoped_element(access, target)
+    }
+
     fn query_collection_host(
         &self,
         access: ResolvedHostAccess,
@@ -1012,6 +942,15 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
                 .fallback
                 .snapshot_collection_host(access, target, projection),
         }
+    }
+
+    fn snapshot_scoped_collection_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<Option<HostCollectionSnapshot>> {
+        self.retain_scoped_collection(access, target, projection)
     }
 
     fn mutate_collection_host(

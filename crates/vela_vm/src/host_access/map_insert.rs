@@ -33,7 +33,7 @@ pub(super) fn execute(
         HostAccessOp::Read,
         runtime.source_span,
     )?;
-    let current = match runtime.host.access.read_resolved(
+    let current = match runtime.host.access.read_resolved_scoped(
         runtime.host.adapter,
         read,
         instance,

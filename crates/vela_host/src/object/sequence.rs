@@ -14,7 +14,7 @@ use crate::{
 };
 
 use super::{
-    HostValueFrom, ScriptHostFieldAccess, ScriptHostObject,
+    HostValueFrom, ScopedHostCollectionDependents, ScriptHostFieldAccess, ScriptHostObject,
     collection_protocol::{collection_query_result, mutate_vec},
     errors::{invalid_arg, missing_target},
     target::{target_index, target_is_leaf},
@@ -22,7 +22,7 @@ use super::{
 
 impl<T> ScriptHostFieldAccess for Vec<T>
 where
-    T: ScriptHostFieldAccess + ScriptHostObject + 'static,
+    T: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static,
 {
     fn script_host_type_id(&self) -> HostTypeId {
         HostTypeId::new(0)
@@ -82,6 +82,87 @@ where
                 .read_resolved_host_target_from(child_access, target.at_offset(target.offset + 1));
         }
         self.read_host_target_from(target, target.offset)
+    }
+
+    fn borrow_resolved_host_shared(
+        &self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        if target.offset + 1 != target.plan.parts.len() {
+            return Ok(None);
+        }
+        let index = usize::try_from(target_index(target, target.offset)?)
+            .map_err(|_| invalid_arg("array index"))?;
+        let value = self.get(index).ok_or_else(|| missing_target(target))?;
+        Ok(Some(Box::new(
+            crate::lease::SharedScopedHost::with_type_id(value, value.host_type_id()),
+        )))
+    }
+
+    fn borrow_resolved_host_exclusive(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        if target.offset + 1 != target.plan.parts.len() {
+            return Ok(None);
+        }
+        let index = usize::try_from(target_index(target, target.offset)?)
+            .map_err(|_| invalid_arg("array index"))?;
+        let value = self.get_mut(index).ok_or_else(|| missing_target(target))?;
+        let type_id = value.host_type_id();
+        Ok(Some(Box::new(
+            crate::lease::ExclusiveScopedHost::with_type_id(value, type_id),
+        )))
+    }
+
+    fn borrow_collection_resolved_host_shared(
+        &self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+        if !target_is_leaf(target, target.offset) {
+            return Ok(None);
+        }
+        if projection != HostCollectionProjection::Values {
+            return Err(invalid_arg(projection.name()));
+        }
+        Ok(Some(ScopedHostCollectionDependents::Items(
+            self.iter()
+                .map(|value| {
+                    Box::new(crate::lease::SharedScopedHost::with_type_id(
+                        value,
+                        value.host_type_id(),
+                    )) as crate::lease::ScopedHostDependent<'_>
+                })
+                .collect(),
+        )))
+    }
+
+    fn borrow_collection_resolved_host_exclusive(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        projection: HostCollectionProjection,
+    ) -> HostResult<Option<ScopedHostCollectionDependents<'_>>> {
+        if !target_is_leaf(target, target.offset) {
+            return Ok(None);
+        }
+        if projection != HostCollectionProjection::Values {
+            return Err(invalid_arg(projection.name()));
+        }
+        Ok(Some(ScopedHostCollectionDependents::Items(
+            self.iter_mut()
+                .map(|value| {
+                    let type_id = value.host_type_id();
+                    Box::new(crate::lease::ExclusiveScopedHost::with_type_id(
+                        value, type_id,
+                    )) as crate::lease::ScopedHostDependent<'_>
+                })
+                .collect(),
+        )))
     }
 
     fn write_resolved_host_target_from(
