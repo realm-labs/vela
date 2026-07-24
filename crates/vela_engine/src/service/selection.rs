@@ -162,6 +162,30 @@ impl<T> ServiceSelectionTable<T> {
             .iter()
             .map(|(key, selection)| (*key, selection))
     }
+
+    pub fn try_map_vela<U, E>(
+        &self,
+        mut map: impl FnMut(&T) -> Result<U, E>,
+    ) -> Result<ServiceSelectionTable<U>, E> {
+        let selections = self
+            .selections
+            .iter()
+            .map(|(key, selection)| {
+                let selection = match selection {
+                    ServiceMethodSelection::RustDefault => ServiceMethodSelection::RustDefault,
+                    ServiceMethodSelection::Vela(target) => {
+                        ServiceMethodSelection::Vela(map(target)?)
+                    }
+                };
+                Ok((*key, selection))
+            })
+            .collect::<Result<BTreeMap<_, _>, E>>()?;
+        Ok(ServiceSelectionTable {
+            service_set_id: self.service_set_id,
+            service_set_abi: self.service_set_abi,
+            selections,
+        })
+    }
 }
 
 impl<T: Clone> ServiceSelectionTable<T> {

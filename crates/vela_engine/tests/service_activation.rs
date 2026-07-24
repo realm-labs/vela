@@ -4,6 +4,7 @@ use vela_common::SourceId;
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
 use vela_engine::service::{
+    LinkedServiceSourceManifest, ServiceMethodSelection, ServiceMethodUpdate,
     ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot, ServiceSourceManifest,
 };
 use vela_hir::source_ingestion::build_single_source;
@@ -141,9 +142,9 @@ impl CalculatorHotfix {
     let candidate = services
         .stage_snapshot(
             &old,
-            update,
+            update.clone(),
             ServiceRuntimeBinding::for_context::<RequestContext>(),
-            CallOptions::new(100_000, 1024 * 1024, 64),
+            call_options(),
         )
         .expect("snapshot candidate");
     let installed = candidate.generation_id();
@@ -166,4 +167,141 @@ impl CalculatorHotfix {
     assert_eq!(restored.generation_id(), old.generation_id());
     assert_eq!(restored.calculator().adjust(&mut context, 5), 6);
     assert_eq!(context.counter, 13);
+
+    let snapshot = services
+        .stage_snapshot(
+            &restored,
+            update,
+            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            call_options(),
+        )
+        .expect("second snapshot candidate");
+    services
+        .activate_if_current(snapshot)
+        .expect("second snapshot activation");
+    let vela_base = services.pin();
+
+    let delta_source = r#"
+#[service_impl(test::calculator)]
+impl CalculatorHotfix {
+    fn adjust(context, value) {
+        return value + 10;
+    }
+
+    fn adjacent(context, value) {
+        return value * 3;
+    }
+}
+"#;
+    let delta_sources =
+        build_single_source(SourceId::new(2), delta_source).expect("valid Delta source");
+    let delta_manifest = ServiceSourceManifest::link(delta_sources.graph(), services.schema())
+        .expect("Delta schema");
+    let delta_compiled = engine
+        .compile_source(delta_source)
+        .expect("compiled Delta source");
+    let delta_artifact = engine
+        .link_compiled_program(delta_compiled)
+        .expect("linked Delta artifact");
+    let delta_artifact_generation = delta_artifact.generation();
+    let linked_delta = delta_manifest
+        .bind_artifact(delta_artifact)
+        .expect("artifact-bound Delta");
+    let calculator = services
+        .schema()
+        .services()
+        .iter()
+        .find(|service| service.path() == "test::calculator")
+        .expect("calculator schema");
+    let adjacent = calculator
+        .methods()
+        .iter()
+        .find(|method| method.path.ends_with("::adjacent"))
+        .expect("adjacent schema");
+    let sparse_delta = LinkedServiceSourceManifest::from_updates(
+        linked_delta
+            .into_updates()
+            .into_iter()
+            .filter(|update| update.key().method_id == adjacent.id),
+    )
+    .expect("one-artifact sparse Delta");
+    let delta_candidate = services
+        .stage_delta(
+            &vela_base,
+            sparse_delta,
+            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            call_options(),
+        )
+        .expect("exact-base Delta");
+    services
+        .activate_if_current(delta_candidate)
+        .expect("Delta activation");
+    let delta_root = services.pin();
+
+    context.counter = 0;
+    assert_eq!(delta_root.calculator().adjust(&mut context, 5), 15);
+    assert_eq!(delta_root.calculator().adjacent(&mut context, 5), 15);
+    assert_eq!(context.counter, 0);
+    let vela_targets = delta_root
+        .selections()
+        .expect("Delta selections")
+        .iter()
+        .filter_map(|(_, selection)| match selection {
+            ServiceMethodSelection::RustDefault => None,
+            ServiceMethodSelection::Vela(target) => Some(target),
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(vela_targets.len(), 2);
+    assert!(
+        vela_targets
+            .iter()
+            .all(|target| { target.artifact().generation() == delta_artifact_generation })
+    );
+
+    let rust_default =
+        LinkedServiceSourceManifest::from_updates([ServiceMethodUpdate::rust_default(
+            calculator.id(),
+            adjacent.id,
+            calculator.abi_fingerprint(),
+        )])
+        .expect("explicit RustDefault Delta");
+    let default_candidate = services
+        .stage_delta(
+            &delta_root,
+            rust_default.clone(),
+            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            call_options(),
+        )
+        .expect("RustDefault candidate");
+    let stale_candidate = services
+        .stage_delta(
+            &delta_root,
+            rust_default,
+            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            call_options(),
+        )
+        .expect("concurrent stale candidate");
+    services
+        .activate_if_current(default_candidate)
+        .expect("RustDefault activation");
+    assert!(matches!(
+        services.activate_if_current(stale_candidate),
+        Err(vela_engine::service::ServicePublicationError::StaleBaseGeneration { .. })
+    ));
+    let default_root = services.pin();
+    context.counter = 0;
+    assert_eq!(default_root.calculator().adjust(&mut context, 5), 15);
+    assert_eq!(default_root.calculator().adjacent(&mut context, 5), 10);
+    assert_eq!(context.counter, 10);
+    assert_eq!(
+        default_root
+            .selections()
+            .expect("default selections")
+            .get(calculator.id(), adjacent.id),
+        Some(&ServiceMethodSelection::RustDefault)
+    );
+}
+
+fn call_options() -> CallOptions {
+    CallOptions::new(100_000, 1024 * 1024, 64)
 }

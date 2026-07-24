@@ -4,8 +4,8 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::sync::Arc;
 
-use vela_bytecode::LinkedArtifact;
-use vela_common::{CallableAsyncness, Span};
+use vela_bytecode::{ExecutableGenerationId, LinkedArtifact};
+use vela_common::{CallableAsyncness, ServiceGenerationId, Span};
 use vela_def::{FunctionId, script_function_id};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirNodeId, ModuleId};
 use vela_hir::module_graph::ModuleGraph;
@@ -117,6 +117,14 @@ impl LinkedVelaServiceMethod {
         C: super::ServiceRuntimeAuthority,
     {
         context.with_service_runtime(&self.artifact, invoke)
+    }
+
+    fn rebind(&self, artifact: Arc<LinkedArtifact>) -> Result<Self, ServiceSourceError> {
+        validate_compiled_target(&self.method, &artifact)?;
+        Ok(Self {
+            method: self.method.clone(),
+            artifact,
+        })
     }
 }
 
@@ -274,8 +282,8 @@ impl ServiceSourceManifest {
                 };
                 ServiceMethodUpdate::new(update.key(), update.expected_service_abi(), selection)
             })
-            .collect();
-        Ok(LinkedServiceSourceManifest { updates })
+            .collect::<Vec<_>>();
+        LinkedServiceSourceManifest::from_updates(updates)
     }
 
     pub fn into_updates(self) -> Vec<ServiceMethodUpdate<VelaServiceMethod>> {
@@ -291,6 +299,14 @@ pub struct LinkedServiceSourceManifest {
 }
 
 impl LinkedServiceSourceManifest {
+    pub fn from_updates(
+        updates: impl IntoIterator<Item = ServiceMethodUpdate<LinkedVelaServiceMethod>>,
+    ) -> Result<Self, ServiceSourceError> {
+        let updates = updates.into_iter().collect::<Vec<_>>();
+        validate_linked_artifacts(&updates)?;
+        Ok(Self { updates })
+    }
+
     pub fn updates(
         &self,
     ) -> impl ExactSizeIterator<Item = &ServiceMethodUpdate<LinkedVelaServiceMethod>> {
@@ -312,6 +328,29 @@ impl LinkedServiceSourceManifest {
         schema: &ServiceSetSchema,
     ) -> Result<ServiceSelectionTable<LinkedVelaServiceMethod>, ServiceSelectionError> {
         ServiceSelectionTable::snapshot(schema, self.updates)
+    }
+
+    pub fn into_delta(
+        self,
+        schema: &ServiceSetSchema,
+        expected_base_generation: ServiceGenerationId,
+        actual_base_generation: ServiceGenerationId,
+        base: &ServiceSelectionTable<LinkedVelaServiceMethod>,
+    ) -> Result<ServiceSelectionTable<LinkedVelaServiceMethod>, super::ServiceStagingError> {
+        let artifact = linked_manifest_artifact(&self.updates).cloned();
+        let rebound = if let Some(artifact) = artifact {
+            base.try_map_vela(|target| target.rebind(Arc::clone(&artifact)))?
+        } else {
+            base.clone()
+        };
+        ServiceSelectionTable::delta(
+            schema,
+            expected_base_generation,
+            actual_base_generation,
+            &rebound,
+            self.updates,
+        )
+        .map_err(super::ServiceStagingError::from)
     }
 
     pub fn into_updates(self) -> Vec<ServiceMethodUpdate<LinkedVelaServiceMethod>> {
@@ -375,6 +414,9 @@ impl ServiceSourceError {
             ServiceSourceErrorKind::CompiledParameterCountMismatch { .. } => {
                 "service.source.compiled_parameter_count"
             }
+            ServiceSourceErrorKind::MixedLinkedArtifacts { .. } => {
+                "service.source.mixed_linked_artifacts"
+            }
         }
     }
 }
@@ -427,6 +469,10 @@ pub enum ServiceSourceErrorKind {
         symbol: String,
         expected: usize,
         actual: usize,
+    },
+    MixedLinkedArtifacts {
+        expected: ExecutableGenerationId,
+        actual: ExecutableGenerationId,
     },
 }
 
@@ -499,6 +545,12 @@ impl fmt::Display for ServiceSourceError {
             } => write!(
                 formatter,
                 "compiled service target `{symbol}` expects {expected} parameters, found {actual}"
+            ),
+            ServiceSourceErrorKind::MixedLinkedArtifacts { expected, actual } => write!(
+                formatter,
+                "one service update mixes linked artifact generations {} and {}",
+                expected.get(),
+                actual.get()
             ),
         }
     }
@@ -609,4 +661,36 @@ fn missing_compiled_target(target: &VelaServiceMethod) -> ServiceSourceError {
             function: target.function(),
         },
     )
+}
+
+fn validate_linked_artifacts(
+    updates: &[ServiceMethodUpdate<LinkedVelaServiceMethod>],
+) -> Result<(), ServiceSourceError> {
+    let Some(expected) = linked_manifest_artifact(updates) else {
+        return Ok(());
+    };
+    for update in updates {
+        let ServiceMethodSelection::Vela(target) = update.selection() else {
+            continue;
+        };
+        if target.artifact().generation() != expected.generation() {
+            return Err(ServiceSourceError::new(
+                target.method().span(),
+                ServiceSourceErrorKind::MixedLinkedArtifacts {
+                    expected: expected.generation(),
+                    actual: target.artifact().generation(),
+                },
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn linked_manifest_artifact(
+    updates: &[ServiceMethodUpdate<LinkedVelaServiceMethod>],
+) -> Option<&Arc<LinkedArtifact>> {
+    updates.iter().find_map(|update| match update.selection() {
+        ServiceMethodSelection::RustDefault => None,
+        ServiceMethodSelection::Vela(target) => Some(target.artifact()),
+    })
 }

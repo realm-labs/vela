@@ -270,6 +270,52 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     .map_err(::vela_engine::service::ServiceStagingError::from)
             }
 
+            pub fn stage_delta(
+                &self,
+                base: &#root_ident,
+                update: ::vela_engine::service::LinkedServiceSourceManifest,
+                runtime: ::vela_engine::service::ServiceRuntimeBinding,
+                options: ::vela_engine::runtime::CallOptions,
+            ) -> ::std::result::Result<
+                #candidate_ident,
+                ::vela_engine::service::ServiceStagingError,
+            > {
+                if !runtime.matches::<#context>() {
+                    return Err(
+                        ::vela_engine::service::ServiceStagingError::ContextTypeMismatch {
+                            expected: ::core::any::type_name::<#context>(),
+                            actual: runtime.context_name(),
+                        }
+                    );
+                }
+                let base_selections = match base.selections() {
+                    Some(selections) => selections.clone(),
+                    None => ::vela_engine::service::ServiceSelectionTable::snapshot(
+                        &self.schema,
+                        ::core::iter::empty::<
+                            ::vela_engine::service::ServiceMethodUpdate<
+                                ::vela_engine::service::LinkedVelaServiceMethod
+                            >
+                        >(),
+                    )?,
+                };
+                let selections = update.into_delta(
+                    &self.schema,
+                    base.generation_id(),
+                    base.generation_id(),
+                    &base_selections,
+                )?;
+                let generation = #generation_ident::__vela_composed(
+                    runtime,
+                    options,
+                    selections,
+                );
+                self.controller
+                    .stage(&base.root, generation)
+                    .map(|candidate| #candidate_ident { candidate })
+                    .map_err(::vela_engine::service::ServiceStagingError::from)
+            }
+
             pub fn activate_if_current(
                 &self,
                 candidate: #candidate_ident,
@@ -564,6 +610,7 @@ mod tests {
         assert!(output.contains("GameServicesGeneration"));
         assert!(output.contains("ServiceController < GameServicesGeneration >"));
         assert!(output.contains("stage_snapshot"));
+        assert!(output.contains("stage_delta"));
         assert!(output.contains("__vela_compose_service_RewardService"));
         assert_eq!(output.matches("ServiceController <").count(), 1);
         assert!(!output.contains("HostRef"));

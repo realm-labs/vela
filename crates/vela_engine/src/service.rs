@@ -206,6 +206,7 @@ pub enum ServiceStagingError {
         expected: &'static str,
         actual: &'static str,
     },
+    Source(ServiceSourceError),
     Selection(ServiceSelectionError),
     Publication(ServicePublicationError),
 }
@@ -217,6 +218,7 @@ impl fmt::Display for ServiceStagingError {
                 formatter,
                 "service set expects Runtime context `{expected}`, found `{actual}`"
             ),
+            Self::Source(error) => write!(formatter, "service source failed: {error}"),
             Self::Selection(error) => write!(formatter, "service selection failed: {error}"),
             Self::Publication(error) => write!(formatter, "service staging failed: {error}"),
         }
@@ -224,6 +226,12 @@ impl fmt::Display for ServiceStagingError {
 }
 
 impl std::error::Error for ServiceStagingError {}
+
+impl From<ServiceSourceError> for ServiceStagingError {
+    fn from(error: ServiceSourceError) -> Self {
+        Self::Source(error)
+    }
+}
 
 impl From<ServiceSelectionError> for ServiceStagingError {
     fn from(error: ServiceSelectionError) -> Self {
