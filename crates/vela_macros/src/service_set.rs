@@ -5,7 +5,9 @@ use syn::{
     parse2,
 };
 
-use crate::service::{registration_function_ident, schema_function_ident};
+use crate::service::{
+    composition_function_ident, registration_function_ident, schema_function_ident,
+};
 use crate::signature::reject_generic_signature;
 
 pub(crate) fn expand(attr: TokenStream, input: TokenStream) -> TokenStream {
@@ -56,6 +58,20 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             #field: ::std::sync::Arc<dyn #trait_path>
         }
     });
+    let composed_services = services.iter().map(|service| {
+        let field = &service.field;
+        let trait_path = &service.trait_path;
+        let default = &service.default;
+        let composition = service.composition_path();
+        quote! {
+            let #field: ::std::sync::Arc<dyn #trait_path> = #composition(
+                ::std::sync::Arc::new(#default),
+                runtime,
+                options.clone(),
+                &selections,
+            );
+        }
+    });
     let generation_arguments = services.iter().map(|service| {
         let field = &service.field;
         let trait_path = &service.trait_path;
@@ -63,7 +79,10 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             #field: ::std::sync::Arc<dyn #trait_path>
         }
     });
-    let generation_initializers = services.iter().map(|service| &service.field);
+    let generation_initializers = services
+        .iter()
+        .map(|service| &service.field)
+        .collect::<Vec<_>>();
     let default_initializers = services.iter().map(|service| {
         let field = &service.field;
         let default = &service.default;
@@ -101,6 +120,11 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         #(#doc_attrs)*
         #vis struct #generation_ident {
             #(#generation_fields,)*
+            selections: ::std::option::Option<
+                ::vela_engine::service::ServiceSelectionTable<
+                    ::vela_engine::service::LinkedVelaServiceMethod
+                >
+            >,
         }
 
         impl #generation_ident {
@@ -108,6 +132,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             pub fn new(#(#generation_arguments),*) -> Self {
                 Self {
                     #(#generation_initializers,)*
+                    selections: None,
                 }
             }
 
@@ -115,7 +140,33 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             pub fn defaults() -> Self {
                 Self {
                     #(#default_initializers,)*
+                    selections: None,
                 }
+            }
+
+            fn __vela_composed(
+                runtime: ::vela_engine::service::ServiceRuntimeBinding,
+                options: ::vela_engine::runtime::CallOptions,
+                selections: ::vela_engine::service::ServiceSelectionTable<
+                    ::vela_engine::service::LinkedVelaServiceMethod
+                >,
+            ) -> Self {
+                #(#composed_services)*
+                Self {
+                    #(#generation_initializers,)*
+                    selections: Some(selections),
+                }
+            }
+
+            #[must_use]
+            pub fn selections(
+                &self,
+            ) -> ::std::option::Option<
+                &::vela_engine::service::ServiceSelectionTable<
+                    ::vela_engine::service::LinkedVelaServiceMethod
+                >
+            > {
+                self.selections.as_ref()
             }
 
             #(#generation_accessors)*
@@ -189,6 +240,36 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     .map(|candidate| #candidate_ident { candidate })
             }
 
+            pub fn stage_snapshot(
+                &self,
+                base: &#root_ident,
+                update: ::vela_engine::service::LinkedServiceSourceManifest,
+                runtime: ::vela_engine::service::ServiceRuntimeBinding,
+                options: ::vela_engine::runtime::CallOptions,
+            ) -> ::std::result::Result<
+                #candidate_ident,
+                ::vela_engine::service::ServiceStagingError,
+            > {
+                if !runtime.matches::<#context>() {
+                    return Err(
+                        ::vela_engine::service::ServiceStagingError::ContextTypeMismatch {
+                            expected: ::core::any::type_name::<#context>(),
+                            actual: runtime.context_name(),
+                        }
+                    );
+                }
+                let selections = update.into_snapshot(&self.schema)?;
+                let generation = #generation_ident::__vela_composed(
+                    runtime,
+                    options,
+                    selections,
+                );
+                self.controller
+                    .stage(&base.root, generation)
+                    .map(|candidate| #candidate_ident { candidate })
+                    .map_err(::vela_engine::service::ServiceStagingError::from)
+            }
+
             pub fn activate_if_current(
                 &self,
                 candidate: #candidate_ident,
@@ -240,6 +321,17 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             #[must_use]
             pub fn service_set_id(&self) -> ::vela_common::ServiceSetId {
                 self.root.service_set_id()
+            }
+
+            #[must_use]
+            pub fn selections(
+                &self,
+            ) -> ::std::option::Option<
+                &::vela_engine::service::ServiceSelectionTable<
+                    ::vela_engine::service::LinkedVelaServiceMethod
+                >
+            > {
+                self.root.services().selections()
             }
 
             #(#root_accessors)*
@@ -342,6 +434,20 @@ impl ServiceField {
         replace_trait_ident(
             &self.trait_path,
             schema_function_ident(
+                &self
+                    .trait_path
+                    .segments
+                    .last()
+                    .expect("service trait path is non-empty")
+                    .ident,
+            ),
+        )
+    }
+
+    fn composition_path(&self) -> Path {
+        replace_trait_ident(
+            &self.trait_path,
+            composition_function_ident(
                 &self
                     .trait_path
                     .segments
@@ -457,9 +563,11 @@ mod tests {
 
         assert!(output.contains("GameServicesGeneration"));
         assert!(output.contains("ServiceController < GameServicesGeneration >"));
+        assert!(output.contains("stage_snapshot"));
+        assert!(output.contains("__vela_compose_service_RewardService"));
         assert_eq!(output.matches("ServiceController <").count(), 1);
         assert!(!output.contains("HostRef"));
-        assert!(!output.contains("Runtime"));
+        assert!(!output.contains("runtime : :: vela_engine :: runtime :: Runtime"));
     }
 
     #[test]

@@ -200,6 +200,43 @@ impl fmt::Display for ServicePublicationError {
 
 impl std::error::Error for ServicePublicationError {}
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ServiceStagingError {
+    ContextTypeMismatch {
+        expected: &'static str,
+        actual: &'static str,
+    },
+    Selection(ServiceSelectionError),
+    Publication(ServicePublicationError),
+}
+
+impl fmt::Display for ServiceStagingError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ContextTypeMismatch { expected, actual } => write!(
+                formatter,
+                "service set expects Runtime context `{expected}`, found `{actual}`"
+            ),
+            Self::Selection(error) => write!(formatter, "service selection failed: {error}"),
+            Self::Publication(error) => write!(formatter, "service staging failed: {error}"),
+        }
+    }
+}
+
+impl std::error::Error for ServiceStagingError {}
+
+impl From<ServiceSelectionError> for ServiceStagingError {
+    fn from(error: ServiceSelectionError) -> Self {
+        Self::Selection(error)
+    }
+}
+
+impl From<ServicePublicationError> for ServiceStagingError {
+    fn from(error: ServicePublicationError) -> Self {
+        Self::Publication(error)
+    }
+}
+
 /// Atomic publication owner for one generated service set.
 pub struct ServiceController<T> {
     controller_id: ServiceControllerId,

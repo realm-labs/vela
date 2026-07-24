@@ -33,8 +33,8 @@ pub use crate::service::{
     ServiceMethodSelection, ServiceMethodUpdate, ServicePublicationError, ServiceRollbackToken,
     ServiceRoot, ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot, ServiceSchema,
     ServiceSchemaError, ServiceSelectionError, ServiceSelectionTable, ServiceSetSchema,
-    ServiceSourceError, ServiceSourceErrorKind, ServiceSourceManifest, ServiceTypeRequirement,
-    VelaServiceMethod,
+    ServiceSourceError, ServiceSourceErrorKind, ServiceSourceManifest, ServiceStagingError,
+    ServiceTypeRequirement, VelaServiceMethod,
 };
 pub use crate::source::{
     EnginePackageError, EnginePackageErrorKind, PackageCompilationSnapshot,
