@@ -285,8 +285,13 @@ nested reborrow retains complete alias preflight without global lookup/allocatio
 This is the first accepted end-to-end service hotfix slice because it proves
 that a patch can express realistic Rust-side logic, not only scalar arithmetic.
 
-Status: **Active.** The first slice imports sealed service schemas and builds
-validated sparse method selections before adding Vela execution.
+Status: **Active.** Sparse declarations compile to artifact-bound targets and
+generated Snapshot/exact-base Delta candidates now execute one Vela method
+while adjacent methods remain Rust. Explicit `RustDefault`, artifact-coherent
+Delta inheritance, stale activation rejection, effect ceilings,
+failure-without-fallback, and rollback are covered. Lexical `base`, pinned
+cross-service calls, and the realistic custom-type/collection/reborrow chain
+remain.
 
 ### S6 — Async, handlers, deployment, and tooling
 

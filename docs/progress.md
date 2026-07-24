@@ -30,8 +30,9 @@ Phase status:
   complete.
 - S4 accepted: generated Rust-only service contracts publish and pin one
   complete immutable generation with direct zero-VM Rust defaults.
-- S5 active: sparse Vela service implementations and generation-coherent
-  cross-service calls are the current checkpoint. S6-S7 have not started.
+- S5 active: generated Snapshot and exact-base Delta candidates execute sparse
+  Vela methods; lexical `base`, pinned cross-service calls, and the realistic
+  Rust/Vela/Rust fixture chain remain. S6-S7 have not started.
 
 S3 provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared
@@ -64,7 +65,7 @@ pinning when a method selects the Rust default.
 | M19.5 | Complete enough | Cache-ready IDs, linked bytecode, profile ownership, and prepared host paths are validated. |
 | M20 | Complete enough | Actor Runtime/cache ownership, lifetime, reload, and concurrency gates are accepted. |
 | M20.5 | Queued | Resume editor-visible work after the service hard switch. |
-| Rust/Vela service interop | S4 accepted; S5 active | Link sparse Vela methods into complete generation-coherent service candidates. |
+| Rust/Vela service interop | S4 accepted; S5 active | Finish lexical `base`, pinned cross-service calls, and the realistic mixed-boundary fixture. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, and debugger contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation, and performance targets. |
@@ -97,7 +98,12 @@ pinning when a method selects the Rust default.
 - The former callable-level replacement implementation is absent. Generated
   `#[service]` and `#[service_set]` contracts provide sealed schemas, direct
   Rust defaults, whole-generation staging/publication, root pinning, and
-  conditional rollback. Vela-selected service methods remain the S5 gap.
+  conditional rollback. Sparse Vela methods compile to stable hidden targets,
+  bind to one verified artifact, and execute through generated Snapshot and
+  exact-base Delta adapters with explicit Runtime authority. Delta inheritance
+  rebinds all Vela targets to one artifact; explicit `RustDefault`, stale-base
+  rejection, effect ceilings, failure-without-fallback, and rollback are
+  covered.
 
 ### Standard Library, Tooling, And Proof
 
@@ -126,15 +132,18 @@ The phase gates are authoritative:
 | S2 | Accepted | None |
 | S3 | Accepted | Complete collection protocols, prepared traversal/method paths, and the phase-wide gate are green. |
 | S4 | Accepted | Sealed schemas, complete signature closure, generated service sets, whole-generation publication, fixture migration, and the zero-VM/zero-HostRef/zero-allocation Rust branch are green. |
-| S5 | Active | Import service schemas, link sparse Vela methods, and prove exact-base composition plus coherent `base`/cross-service calls. |
+| S5 | Active | Snapshot/Delta composition and execution are green; implement lexical `base`, pinned `services`, and the realistic custom-type/collection/reborrow chain. |
 | S6 | Pending | Requires the synchronous partial-service vertical slice. |
 | S7 | Pending | Requires async/deployment/tooling integration. |
 
-S5 must preserve the sealed signature facts and pinned service-generation
-identity across every Rust/Vela/Rust transition. Compile-time View/MutView
-enforcement remains dependent on receiver-capable expression facts. A shorter
-Runtime-owned host reclamation policy remains a post-S2 follow-up and is not a
-service hard-switch blocker.
+S5 must now preserve the pinned service-generation identity and active
+root-local lease provenance through lexical `base` and cross-service calls.
+The remaining fixture proof must exercise registered constructors and methods,
+custom types, collection views, immediate writes, and nested reborrow rather
+than only scalar dispatch. Compile-time View/MutView enforcement remains
+dependent on receiver-capable expression facts. A shorter Runtime-owned host
+reclamation policy remains a post-S2 follow-up and is not a service
+hard-switch blocker.
 
 ### Parameterized Container Contracts
 
