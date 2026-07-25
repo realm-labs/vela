@@ -2516,6 +2516,17 @@ from pointer addresses, expose real Rust references to Vela, upgrade shared
 access to exclusive, weaken atomic alias preflight, or mix pinned service
 generations.
 
+For service methods, the trait-object `&self` receiver is dispatch machinery,
+not a script-visible borrow origin. Lifetime-only method parameters may state
+the Rust relationship between one borrowed host parameter and its returned
+child; type and const generics remain rejected and no script generic is
+created. Generated Rust-default dispatch moves the exact parent lease into the
+existing scoped-return cell, retains the child in the active root adapter, and
+returns only its `HostRef` to Vela. A Vela-selected service method may forward
+that child through `base` and pinned `services` calls in the same session; the
+child remains owner-frozen, generation-pinned, and non-escaping, and normal
+early/root-end release unfreezes the owner.
+
 ### HostRef Hot-Path Work Ships With The Service Hard Switch
 
 S0-S7 includes the HostRef representation and access-path work needed by the

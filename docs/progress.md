@@ -30,9 +30,12 @@ Phase status:
   complete.
 - S4 accepted: generated Rust-only service contracts publish and pin one
   complete immutable generation with direct zero-VM Rust defaults.
-- S5 active: generated Snapshot and exact-base Delta candidates execute sparse
-  Vela methods; lexical `base`, pinned cross-service calls, and the realistic
-  Rust/Vela/Rust fixture chain remain. S6-S7 have not started.
+- S5 accepted: sparse Vela implementations, exact-base Delta inheritance,
+  lexical `base`, pinned cross-service calls, custom Values, host-backed
+  collections, scoped borrowed returns, and atomic nested reborrow are
+  validated in one mixed Rust/Vela generation.
+- S6 active: authored async service adapters, suspension/cancellation proof,
+  deployment metadata, handler migration, and CLI/LSP service tooling remain.
 
 S3 provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared
@@ -55,6 +58,15 @@ independent of element count. The generated Rust-only service generation
 creates no `HostRef`, performs no VM entry, and allocates nothing after root
 pinning when a method selects the Rust default.
 
+S5 adds explicit internal service-call targets that are invisible to ordinary
+source registration, one immutable dispatcher per published generation, and
+same-session re-entry for `base` and pinned `services` calls. The acceptance
+fixture constructs a custom `PatchCommand` Value in Vela, preserves a mutable
+Vec identity through Rust defaults and Vela selections, proves immediate
+write-through and old-root isolation, routes a Vela-selected scoped borrowed
+return into another Rust service, and rejects duplicate exclusive aliases
+before business Rust executes.
+
 ## Milestone Snapshot
 
 | Milestone | Status | Current note |
@@ -65,7 +77,7 @@ pinning when a method selects the Rust default.
 | M19.5 | Complete enough | Cache-ready IDs, linked bytecode, profile ownership, and prepared host paths are validated. |
 | M20 | Complete enough | Actor Runtime/cache ownership, lifetime, reload, and concurrency gates are accepted. |
 | M20.5 | Queued | Resume editor-visible work after the service hard switch. |
-| Rust/Vela service interop | S4 accepted; S5 active | Finish lexical `base`, pinned cross-service calls, and the realistic mixed-boundary fixture. |
+| Rust/Vela service interop | S5 accepted; S6 active | Add authored async adapters, lifecycle proof, deployment metadata, handler migration, and tooling. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, and debugger contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation, and performance targets. |

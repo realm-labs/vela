@@ -5,7 +5,7 @@
 > publication, host-reference and collection interop, and deletion of
 > callable-level replacement
 >
-> Status: S0-S4 accepted; S5 implementation is active
+> Status: S0-S5 accepted; S6 implementation is active
 >
 > Switch policy: pre-release hard switch; no public compatibility layer and no
 > second Rust hot-replacement model
@@ -285,13 +285,16 @@ nested reborrow retains complete alias preflight without global lookup/allocatio
 This is the first accepted end-to-end service hotfix slice because it proves
 that a patch can express realistic Rust-side logic, not only scalar arithmetic.
 
-Status: **Active.** Sparse declarations compile to artifact-bound targets and
-generated Snapshot/exact-base Delta candidates now execute one Vela method
-while adjacent methods remain Rust. Explicit `RustDefault`, artifact-coherent
-Delta inheritance, stale activation rejection, effect ceilings,
-failure-without-fallback, and rollback are covered. Lexical `base`, pinned
-cross-service calls, and the realistic custom-type/collection/reborrow chain
-remain.
+Status: **Accepted.** Sparse declarations compile to artifact-bound targets;
+Snapshot and exact-base Delta candidates publish complete immutable
+generations; lexical `base` and `services` calls stay in the pinned
+same-session dispatcher; and explicit `RustDefault`, stale activation,
+failure-without-fallback, and rollback are covered. The mixed-boundary fixture
+constructs a registered custom Value, preserves one host-backed collection
+identity across Vela/Rust/Vela/Rust calls, observes every write immediately,
+and carries a Vela-selected scoped borrowed return into another Rust service.
+Duplicate exclusive aliases fail atomically before authored Rust runs, while
+the common-arity request/provenance sets stay inline.
 
 ### S6 — Async, handlers, deployment, and tooling
 
@@ -316,6 +319,10 @@ actors keep isolated Runtime state
 cancellation/drop/unwind releases Runtime borrows and host leases
 there is no handler/rule/event-specific replacement API
 ```
+
+Status: **Active.** S5 supplies the synchronous generation-coherent service
+slice. Authored async service adapters, suspension/cancellation proof,
+deployment metadata, handler migration, and CLI/LSP service tooling remain.
 
 ### S7 — Host-framework integration and final acceptance
 
