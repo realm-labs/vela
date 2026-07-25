@@ -15,6 +15,8 @@ The runnable primary example is `examples/src/bin/interop_round_trip`. The
 generated Rust-default service baseline for the hard switch is
 `examples/src/bin/service_hard_switch_fixture`; it pins one whole service
 generation and keeps the default call chain on direct Rust trait dispatch.
+The complete target service authoring and deployment surface is collected in
+[Rust/Vela Service Patchability — Final Usage Shape](rust-vela-service-patchability-usage.md).
 
 ## Export Rust To Vela
 

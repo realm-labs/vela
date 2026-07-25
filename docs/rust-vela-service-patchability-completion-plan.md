@@ -13,6 +13,9 @@
 > [rust-vela-service-hard-switch-plan.md](rust-vela-service-hard-switch-plan.md)
 > remains authoritative. This plan closes the signature-totality and
 > borrowed-return gaps found after that switch.
+>
+> Target authoring surface:
+> [rust-vela-service-patchability-usage.md](rust-vela-service-patchability-usage.md).
 
 ## 0. Objective
 

@@ -190,6 +190,9 @@ parameter construction, target-directed collection lowering, focused test
 matrix, and domain-neutral `service_hotfix_coverage` demo. Durable handles,
 cross-root borrows, borrowed children across async suspension, and arbitrary
 nested borrowed containers remain outside that plan.
+The intended final Rust, Vela, and deployment authoring form is consolidated
+in the
+[service patchability usage guide](rust-vela-service-patchability-usage.md).
 
 ### Parameterized Container Contracts
 
