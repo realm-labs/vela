@@ -114,6 +114,18 @@ impl EngineBuilder {
         )
     }
 
+    /// Registers one concrete borrowed slice view whose elements are host objects.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn register_rust_host_slice<T>(self) -> Self
+    where
+        T: crate::interop::VelaHostBoundary,
+    {
+        self.register_generated_rust_value::<crate::standard::HostSliceBinding<T>>(
+            crate::standard::host_slice_type_binding::<T>(),
+        )
+    }
+
     /// Installs one generated member of a recursive Value type closure.
     ///
     /// This remains public only because derive and service macros expand in

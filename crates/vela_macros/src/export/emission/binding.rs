@@ -41,7 +41,13 @@ pub(super) fn binding_use_tokens(contract: TokenStream, shape: &TypeShape) -> To
     };
     let binding = collection.slice_element.as_ref().map_or_else(
         || quote! { ::vela_engine::standard::standard_type_binding::<#rust_ty>() },
-        |element| quote! { ::vela_engine::standard::standard_slice_type_binding::<#element>() },
+        |element| {
+            if collection.host_elements {
+                quote! { ::vela_engine::standard::host_slice_type_binding::<#element>() }
+            } else {
+                quote! { ::vela_engine::standard::standard_slice_type_binding::<#element>() }
+            }
+        },
     );
     quote! {
         (#contract).with_binding(
@@ -64,7 +70,11 @@ pub(crate) fn host_type_id_tokens(shape: &TypeShape) -> Option<TokenStream> {
                     quote! { ::vela_engine::standard::standard_collection_host_type_id::<#ty>() }
                 },
                 |element| {
-                    quote! { ::vela_engine::standard::standard_slice_host_type_id::<#element>() }
+                    if collection.host_elements {
+                        quote! { ::vela_engine::standard::host_slice_host_type_id::<#element>() }
+                    } else {
+                        quote! { ::vela_engine::standard::standard_slice_host_type_id::<#element>() }
+                    }
                 },
             ))
         }
@@ -82,7 +92,11 @@ pub(super) fn collection_registration_tokens(signature: &ClassifiedSignature) ->
                         quote! { let builder = builder.register_rust_value_closure::<#ty>(); }
                     },
                     |element| {
-                        quote! { let builder = builder.register_rust_slice::<#element>(); }
+                        if collection.host_elements {
+                            quote! { let builder = builder.register_rust_host_slice::<#element>(); }
+                        } else {
+                            quote! { let builder = builder.register_rust_slice::<#element>(); }
+                        }
                     },
                 ));
             }

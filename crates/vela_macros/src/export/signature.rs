@@ -105,6 +105,7 @@ pub(crate) enum TypeShape {
 pub(crate) struct BorrowedCollectionShape {
     pub(crate) rust_ty: Type,
     pub(crate) slice_element: Option<Box<Type>>,
+    pub(crate) host_elements: bool,
     pub(crate) kind: BorrowedCollectionKind,
     pub(crate) access: HostAccess,
     pub(crate) mutation: vela_common::CollectionViewMutation,
@@ -173,21 +174,28 @@ pub(crate) fn classify_function(
     signature: &Signature,
     additional_effects: &BTreeSet<EffectName>,
 ) -> Result<ClassifiedSignature> {
-    classify_signature(signature, additional_effects, false, false, false)
+    classify_signature(signature, additional_effects, false, false, false, false)
 }
 
 pub(crate) fn classify_method(
     signature: &Signature,
     additional_effects: &BTreeSet<EffectName>,
 ) -> Result<ClassifiedSignature> {
-    classify_signature(signature, additional_effects, true, true, false)
+    classify_signature(signature, additional_effects, true, true, false, false)
+}
+
+pub(crate) fn classify_method_with_host_collection_returns(
+    signature: &Signature,
+    additional_effects: &BTreeSet<EffectName>,
+) -> Result<ClassifiedSignature> {
+    classify_signature(signature, additional_effects, true, true, false, true)
 }
 
 pub(crate) fn classify_service_method(
     signature: &Signature,
     additional_effects: &BTreeSet<EffectName>,
 ) -> Result<ClassifiedSignature> {
-    classify_signature(signature, additional_effects, true, false, true)
+    classify_signature(signature, additional_effects, true, false, true, false)
 }
 
 fn classify_signature(
@@ -196,6 +204,7 @@ fn classify_signature(
     allow_receiver: bool,
     receiver_is_borrow_origin: bool,
     allow_named_lifetimes: bool,
+    host_collection_returns: bool,
 ) -> Result<ClassifiedSignature> {
     let mut parameters: Vec<ClassifiedParameter> = Vec::new();
     let mut host_origins = Vec::new();
@@ -280,8 +289,11 @@ fn classify_signature(
             "borrowed host return has no receiver or host-parameter provenance",
         ));
     }
-    let (return_shape, error_mode) =
-        classify_return_type(&signature.output, allow_named_lifetimes)?;
+    let (return_shape, error_mode) = classify_return_type(
+        &signature.output,
+        allow_named_lifetimes,
+        host_collection_returns,
+    )?;
     let host_return = host_return_access(&return_shape)?;
     let mode = if let Some(child) = host_return {
         if signature.asyncness.is_some() {
@@ -414,7 +426,7 @@ fn classify_parameter(
         } else {
             HostAccess::Shared
         };
-        if let Some(collection) = borrowed_collection_type(&reference.elem, access)? {
+        if let Some(collection) = borrowed_collection_type(&reference.elem, access, false)? {
             return Ok(ClassifiedParameter {
                 name,
                 ty: collection,
@@ -457,23 +469,28 @@ fn classify_parameter(
 fn classify_return_type(
     output: &ReturnType,
     allow_named_lifetimes: bool,
+    host_collection_returns: bool,
 ) -> Result<(TypeShape, ErrorMode)> {
     let ReturnType::Type(_, ty) = output else {
         return Ok((TypeShape::Unit, ErrorMode::Value));
     };
     if let Some(inner) = wrapper_inner_type(ty, &["VmResult"]) {
         return Ok((
-            classify_return_shape(inner, allow_named_lifetimes)?,
+            classify_return_shape(inner, allow_named_lifetimes, host_collection_returns)?,
             ErrorMode::RuntimeResult,
         ));
     }
     Ok((
-        classify_return_shape(ty, allow_named_lifetimes)?,
+        classify_return_shape(ty, allow_named_lifetimes, host_collection_returns)?,
         ErrorMode::Value,
     ))
 }
 
-fn classify_return_shape(ty: &Type, allow_named_lifetimes: bool) -> Result<TypeShape> {
+fn classify_return_shape(
+    ty: &Type,
+    allow_named_lifetimes: bool,
+    host_collection_returns: bool,
+) -> Result<TypeShape> {
     if let Type::Reference(reference) = ty {
         if !allow_named_lifetimes {
             reject_explicit_lifetime(reference)?;
@@ -489,7 +506,9 @@ fn classify_return_shape(ty: &Type, allow_named_lifetimes: bool) -> Result<TypeS
         } else {
             HostAccess::Shared
         };
-        if let Some(collection) = borrowed_collection_type(&reference.elem, access)? {
+        if let Some(collection) =
+            borrowed_collection_type(&reference.elem, access, host_collection_returns)?
+        {
             return Ok(collection);
         }
         let host_ty = direct_host_type(&reference.elem)?;
@@ -499,6 +518,7 @@ fn classify_return_shape(ty: &Type, allow_named_lifetimes: bool) -> Result<TypeS
         return Ok(TypeShape::Option(Box::new(classify_return_shape(
             inner,
             allow_named_lifetimes,
+            host_collection_returns,
         )?)));
     }
     if let Type::Tuple(tuple) = ty {
@@ -508,7 +528,9 @@ fn classify_return_shape(ty: &Type, allow_named_lifetimes: bool) -> Result<TypeS
         return tuple
             .elems
             .iter()
-            .map(|element| classify_return_shape(element, allow_named_lifetimes))
+            .map(|element| {
+                classify_return_shape(element, allow_named_lifetimes, host_collection_returns)
+            })
             .collect::<Result<Vec<_>>>()
             .map(TypeShape::Tuple);
     }
@@ -521,7 +543,11 @@ fn classify_return_shape(ty: &Type, allow_named_lifetimes: bool) -> Result<TypeS
             ));
         };
         return Ok(TypeShape::Result(
-            Box::new(classify_return_shape(ok, allow_named_lifetimes)?),
+            Box::new(classify_return_shape(
+                ok,
+                allow_named_lifetimes,
+                host_collection_returns,
+            )?),
             Box::new(classify_owned_type(err)?),
         ));
     }
@@ -672,28 +698,51 @@ fn direct_host_type(ty: &Type) -> Result<Type> {
     Ok(ty.clone())
 }
 
-fn borrowed_collection_type(ty: &Type, access: HostAccess) -> Result<Option<TypeShape>> {
+fn borrowed_collection_type(
+    ty: &Type,
+    access: HostAccess,
+    host_elements: bool,
+) -> Result<Option<TypeShape>> {
     if let Type::Slice(slice) = ty {
+        let element_shape = if host_elements {
+            TypeShape::Host(direct_host_type(&slice.elem)?, HostAccess::Shared)
+        } else {
+            classify_owned_type(&slice.elem)?
+        };
         return Ok(Some(TypeShape::BorrowedCollection(
             BorrowedCollectionShape {
                 rust_ty: ty.clone(),
                 slice_element: Some(Box::new((*slice.elem).clone())),
-                kind: BorrowedCollectionKind::Array(Box::new(classify_owned_type(&slice.elem)?)),
+                host_elements,
+                kind: BorrowedCollectionKind::Array(Box::new(element_shape)),
                 access,
                 mutation: vela_common::CollectionViewMutation::Fixed,
             },
         )));
     }
     if let Type::Array(array) = ty {
+        if host_elements {
+            return Err(syn::Error::new_spanned(
+                ty,
+                "host_collection currently supports borrowed slices only",
+            ));
+        }
         return Ok(Some(TypeShape::BorrowedCollection(
             BorrowedCollectionShape {
                 rust_ty: ty.clone(),
                 slice_element: None,
+                host_elements: false,
                 kind: BorrowedCollectionKind::Array(Box::new(classify_owned_type(&array.elem)?)),
                 access,
                 mutation: vela_common::CollectionViewMutation::Fixed,
             },
         )));
+    }
+    if host_elements {
+        return Err(syn::Error::new_spanned(
+            ty,
+            "host_collection currently supports borrowed slices only",
+        ));
     }
     let Some(ident) = type_ident(ty) else {
         return Ok(None);
@@ -736,6 +785,7 @@ fn borrowed_collection_type(ty: &Type, access: HostAccess) -> Result<Option<Type
         BorrowedCollectionShape {
             rust_ty: ty.clone(),
             slice_element: None,
+            host_elements: false,
             kind,
             access,
             mutation: vela_common::CollectionViewMutation::Growable,

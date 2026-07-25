@@ -6,7 +6,7 @@ use syn::{ImplItem, ItemImpl, LitBool, LitStr, Result, Visibility, parse::Parser
 
 use crate::attrs::parse_qualified_name;
 use crate::export::emission;
-use crate::export::signature::classify_method;
+use crate::export::signature::{classify_method, classify_method_with_host_collection_returns};
 use crate::signature::{
     docs_from_attrs, reject_extern_signature, reject_generic_signature, reject_unsafe_signature,
 };
@@ -38,7 +38,11 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         reject_extern_signature(&method.sig, "#[vela::methods]")?;
         let method_attrs = take_method_attrs(method)?;
         let additional_effects = BTreeSet::new();
-        let signature = classify_method(&method.sig, &additional_effects)?;
+        let signature = if method_attrs.host_collection {
+            classify_method_with_host_collection_returns(&method.sig, &additional_effects)?
+        } else {
+            classify_method(&method.sig, &additional_effects)?
+        };
         let docs = docs_from_attrs(&method.attrs);
         let public_name = method_attrs
             .name
@@ -132,6 +136,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
 struct MethodAttrs {
     name: Option<String>,
     reflect_callable: bool,
+    host_collection: bool,
 }
 
 fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAttrs> {
@@ -162,7 +167,13 @@ fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAttrs> {
                 parsed.name = Some(value);
                 return Ok(());
             }
-            Err(meta.error("#[methods] supports only name and reflect on #[script_method]"))
+            if meta.path.is_ident("host_collection") {
+                parsed.host_collection = true;
+                return Ok(());
+            }
+            Err(meta.error(
+                "#[methods] supports only name, reflect, and host_collection on #[script_method]",
+            ))
         })?;
     }
     method.attrs = retained;
@@ -241,5 +252,25 @@ mod tests {
         assert!(output.contains("\"config::EquipmentTable::get\""));
         assert!(!output.contains("\"config::EquipmentTable::vela_get\""));
         assert!(output.contains("vela_get"));
+    }
+
+    #[test]
+    fn methods_can_mark_borrowed_host_object_slices() {
+        let expanded = expand_result(
+            quote! { path = "config::EquipmentTable" },
+            quote! {
+                impl EquipmentTable {
+                    #[script_method(name = "values", host_collection)]
+                    pub fn vela_values(&self) -> &[Equipment] {
+                        self.values()
+                    }
+                }
+            },
+        )
+        .expect("host collection return classifies");
+        let output = expanded.to_string();
+
+        assert!(output.contains("register_rust_host_slice"));
+        assert!(output.contains("VelaHostBoundary"));
     }
 }
