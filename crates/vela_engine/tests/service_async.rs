@@ -182,14 +182,23 @@ fn pending_actors_are_isolated_and_drop_or_unwind_restores_runtime_and_leases() 
     };
     let mut third = RequestContext {
         counter: 0,
+        runtime: ServiceRuntimeSlot::new(engine.clone()),
+    };
+    let mut finishing = RequestContext {
+        counter: 0,
         runtime: ServiceRuntimeSlot::new(engine),
     };
     let mut first_future = root.calculator().apply(&mut first, 5);
+    let mut finishing_future = root.calculator().apply(&mut finishing, 4);
     assert_send(&first_future);
     let mut task = Context::from_waker(Waker::noop());
 
     assert!(matches!(
         first_future.as_mut().poll(&mut task),
+        Poll::Pending
+    ));
+    assert!(matches!(
+        finishing_future.as_mut().poll(&mut task),
         Poll::Pending
     ));
     let replacement = services
@@ -211,6 +220,15 @@ fn pending_actors_are_isolated_and_drop_or_unwind_restores_runtime_and_leases() 
     );
     assert_eq!(third.counter, 2);
     assert_ne!(root.generation_id(), new_root.generation_id());
+    assert!(matches!(
+        finishing_future.as_mut().poll(&mut task),
+        Poll::Ready(25)
+    ));
+    drop(finishing_future);
+    assert_eq!(
+        finishing.counter, 12,
+        "an in-flight old root must finish through its pinned Vela generation"
+    );
 
     drop(first_future);
     assert_eq!(first.counter, 11, "completed effects are not rolled back");
