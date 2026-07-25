@@ -2,10 +2,11 @@ use std::alloc::System;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::hint::black_box;
+use std::sync::Arc;
 use std::time::Instant;
 
 use stats_alloc::{INSTRUMENTED_SYSTEM, Region, StatsAlloc};
-use vela_common::HostObjectId;
+use vela_common::{HostObjectId, SourceId};
 use vela_engine::args::FromScriptArg;
 use vela_engine::context::NativeCallContext;
 use vela_engine::engine::Engine;
@@ -14,7 +15,11 @@ use vela_engine::interop::{
     preflight_host_parameter_leases,
 };
 use vela_engine::permission::Capability;
-use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
+use vela_engine::runtime::{CallArgs, CallOptions, Runtime, RuntimeBuildError};
+use vela_engine::service::{
+    ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot, ServiceSourceManifest,
+};
+use vela_hir::source_ingestion::build_single_source;
 use vela_host::lease::HostLeaseKind;
 use vela_host::path::HostRef;
 use vela_macros::{ScriptHost, ScriptReflect, export, methods, service, service_set};
@@ -58,6 +63,15 @@ fn host_backed_bulk_collection(host: BoundaryHost) {
 }
 "#;
 
+const SERVICE_SOURCE: &str = r#"
+#[service_impl(bench::boundary_default)]
+impl BoundaryPatch {
+    fn apply(host) {
+        return base.apply(host);
+    }
+}
+"#;
+
 #[derive(Debug, ScriptHost, ScriptReflect)]
 #[script(path = "bench::BoundaryChild")]
 pub struct BoundaryChild {
@@ -73,7 +87,7 @@ impl BoundaryChild {
     }
 }
 
-#[derive(Debug, ScriptHost, ScriptReflect)]
+#[derive(ScriptHost, ScriptReflect)]
 #[script(path = "bench::BoundaryHost")]
 pub struct BoundaryHost {
     #[script(get, set)]
@@ -84,6 +98,8 @@ pub struct BoundaryHost {
     values: BTreeMap<i64, i64>,
     #[script(skip)]
     touches: i64,
+    #[script(skip)]
+    service_runtime: ServiceRuntimeSlot,
 }
 
 #[methods(path = "bench::BoundaryHost")]
@@ -104,6 +120,23 @@ impl BoundaryHost {
 
     pub fn sum_values(&self) -> i64 {
         self.values.values().copied().sum()
+    }
+}
+
+impl ServiceRuntimeAuthority for BoundaryHost {
+    fn take_service_runtime(
+        &mut self,
+        artifact: &Arc<vela_bytecode::LinkedArtifact>,
+    ) -> Result<Runtime, RuntimeBuildError> {
+        self.service_runtime.take(artifact)
+    }
+
+    fn restore_service_runtime(
+        &mut self,
+        artifact: &Arc<vela_bytecode::LinkedArtifact>,
+        runtime: Runtime,
+    ) {
+        self.service_runtime.restore(artifact, runtime);
     }
 }
 
@@ -164,11 +197,19 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("suite=service_boundary_baseline iterations={iterations} warmup={WARMUP_ITERATIONS}");
 
     let mut runtime = boundary_runtime()?;
+    let service_engine = BoundaryServices::register_types(
+        Engine::builder()
+            .capability(Capability::HostWrite)
+            .register_rust_type::<BoundaryHost>(BoundaryHost::vela_type_binding()),
+    )
+    .build()?;
+    let services = BoundaryServices::new(&service_engine.type_bindings())?;
     let mut host = BoundaryHost {
         value: 1,
         child: BoundaryChild { value: 2 },
         values: BTreeMap::from([(1, 3), (2, 5), (3, 8), (4, 13)]),
         touches: 0,
+        service_runtime: ServiceRuntimeSlot::new(service_engine.clone()),
     };
 
     let default_service = RustBoundaryDefaultService;
@@ -179,14 +220,26 @@ fn main() -> Result<(), Box<dyn Error>> {
     report("direct_rust_trait_dispatch", iterations, || {
         Ok(black_box(default_service).apply(black_box(&mut host)) as u64)
     })?;
-    let service_engine = BoundaryServices::register_types(
-        Engine::builder().register_rust_type::<BoundaryHost>(BoundaryHost::vela_type_binding()),
-    )
-    .build()?;
-    let services = BoundaryServices::new(&service_engine.type_bindings())?;
-    let services = services.pin();
+    let rust_root = services.pin();
     report("generated_rust_default", iterations, || {
-        Ok(black_box(services.boundary()).apply(black_box(&mut host)) as u64)
+        Ok(black_box(rust_root.boundary()).apply(black_box(&mut host)) as u64)
+    })?;
+    let service_sources = build_single_source(SourceId::new(1), SERVICE_SOURCE)
+        .map_err(|error| format!("{error:?}"))?;
+    let manifest = ServiceSourceManifest::link(service_sources.graph(), services.schema())?;
+    let artifact =
+        service_engine.link_compiled_program(service_engine.compile_source(SERVICE_SOURCE)?)?;
+    let update = manifest.bind_artifact(artifact)?;
+    let candidate = services.stage_snapshot(
+        &rust_root,
+        update,
+        ServiceRuntimeBinding::for_context::<BoundaryHost>(),
+        CallOptions::unbounded(),
+    )?;
+    services.activate_if_current(candidate)?;
+    let vela_root = services.pin();
+    report("generated_active_vela", iterations, || {
+        Ok(black_box(vela_root.boundary()).apply(black_box(&mut host)) as u64)
     })?;
 
     let root = HostRef::new(BoundaryHost::vela_host_type_id(), HostObjectId::new(1), 1);

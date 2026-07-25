@@ -100,6 +100,16 @@ S4 structural budget—one pinned-generation access plus ordinary trait
 dispatch, with no HostRef or VM work—but do not replace a stable multi-sample
 latency run.
 
+The 2026-07-25 S6 quick checkpoint added a generated active-Vela row to the
+same harness. The patch calls its pinned Rust `base` implementation through
+the service session, so the timed loop covers generation dispatch, VM entry,
+and same-generation Vela-to-Rust re-entry while preserving the Rust-default
+workload and checksum contract. On the local Windows release build, 1,000
+calls measured 21,213 ns/call, 109 allocations/call, and 40,723 allocated
+bytes/call. The adjacent generated Rust-default row remained 3 ns/call with
+zero allocations. This is the S6 structural active-generation baseline, not
+an accepted optimization target or a stable multi-sample latency result.
+
 The Batch E pre-optimization quick checkpoint on 2026-07-17 used parent commit
 `87e871439`, Rust/Cargo 1.97.0, macOS 26.5.2 arm64, the optimized bench profile,
 one sample, 1,000 measured iterations, and 100 warmups. It recorded 0.4 ns/call
