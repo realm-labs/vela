@@ -114,6 +114,26 @@ fn expand_struct(
             )
         }
     });
+    let encoded_fields = if fields.is_empty() {
+        quote! {
+            ::core::iter::empty::<(
+                &'static str,
+                ::vela_vm::owned_value::OwnedValue,
+            )>()
+        }
+    } else {
+        quote! { [#(#encode_fields),*] }
+    };
+    let encoded_ref_fields = if fields.is_empty() {
+        quote! {
+            ::core::iter::empty::<(
+                &'static str,
+                ::vela_vm::owned_value::OwnedValue,
+            )>()
+        }
+    } else {
+        quote! { [#(#encode_ref_fields),*] }
+    };
     let decode_fields = fields.iter().map(|field| {
         let rust_ident = &field.rust_ident;
         let script_name = &field.script_name;
@@ -197,7 +217,7 @@ fn expand_struct(
             fn to_script_value_ref(&self) -> ::vela_vm::owned_value::OwnedValue {
                 ::vela_vm::owned_value::OwnedValue::record(
                     #qualified_type_name,
-                    [#(#encode_ref_fields),*],
+                    #encoded_ref_fields,
                 )
             }
         }
@@ -238,7 +258,7 @@ fn expand_struct(
             fn into_script_arg(self) -> ::vela_vm::owned_value::OwnedValue {
                 ::vela_vm::owned_value::OwnedValue::record(
                     #qualified_type_name,
-                    [#(#encode_fields),*],
+                    #encoded_fields,
                 )
             }
         }

@@ -39,6 +39,10 @@ struct GrantBundle {
     summary: (i64, bool),
 }
 
+#[derive(Debug, Eq, PartialEq, Value)]
+#[script(path = "host::EmptyValue")]
+struct EmptyValue {}
+
 #[script_function(name = "host::current_decision", effect = "pure")]
 fn current_decision() -> GrantDecision {
     GrantDecision::Granted {
@@ -87,6 +91,16 @@ fn value_derive_generates_schema_codec_and_unified_binding() {
         .expect("derived binding should use typed lookup");
     assert_eq!(binding.storage, StoragePolicy::Value);
     assert_eq!(binding.key, desc.key);
+}
+
+#[test]
+fn empty_value_struct_has_an_unambiguous_record_codec() {
+    let encoded = EmptyValue {}.into_script_arg();
+
+    assert_eq!(
+        EmptyValue::from_script_arg(&encoded).expect("empty structural decode"),
+        EmptyValue {}
+    );
 }
 
 #[test]
