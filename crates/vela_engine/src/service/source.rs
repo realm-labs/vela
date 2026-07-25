@@ -424,6 +424,16 @@ impl LinkedServiceSourceManifest {
         self.updates.is_empty()
     }
 
+    #[must_use]
+    pub fn artifact(&self) -> Option<&Arc<LinkedArtifact>> {
+        linked_manifest_artifact(&self.updates)
+    }
+
+    #[must_use]
+    pub fn artifact_checksum(&self) -> Option<vela_bytecode::ArtifactChecksum> {
+        self.artifact().map(|artifact| artifact.checksum())
+    }
+
     pub fn into_snapshot(
         self,
         schema: &ServiceSetSchema,

@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::fmt;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -7,6 +8,34 @@ use crate::linked::InstructionKind;
 use crate::{CacheSiteDesc, CacheSiteId, ExecutableGenerationId, LinkedProgram, ProgramImage};
 
 static NEXT_EXECUTABLE_GENERATION: AtomicU64 = AtomicU64::new(1);
+
+/// Content checksum for one immutable linked artifact.
+///
+/// The process-local executable generation ID is deliberately excluded so
+/// independently linked copies of the same deployment artifact compare equal.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ArtifactChecksum([u8; 32]);
+
+impl ArtifactChecksum {
+    #[must_use]
+    pub const fn new(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
+
+    #[must_use]
+    pub const fn as_bytes(&self) -> &[u8; 32] {
+        &self.0
+    }
+}
+
+impl fmt::Display for ArtifactChecksum {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for byte in self.0 {
+            write!(formatter, "{byte:02x}")?;
+        }
+        Ok(())
+    }
+}
 
 /// One immutable linker output for every generation-local executable layout.
 #[derive(Debug, PartialEq)]
@@ -98,6 +127,26 @@ pub mod test_support {
 }
 
 impl LinkedArtifact {
+    /// Returns a deterministic checksum of linked code and sealed metadata.
+    ///
+    /// This is computed on demand because deployment staging is off the
+    /// request path. Runtime dispatch never hashes an artifact.
+    #[must_use]
+    pub fn checksum(&self) -> ArtifactChecksum {
+        let mut program = self.program.as_ref().clone();
+        program.set_generation(ExecutableGenerationId::default());
+        let mut hasher = blake3::Hasher::new();
+        hash_debug(&mut hasher, &program);
+        hash_debug(&mut hasher, &self.image);
+        hash_debug(&mut hasher, &self.cache_layout);
+        hash_debug(&mut hasher, &self.profile_layout);
+        hash_debug(&mut hasher, &self.mir_executables);
+        hash_debug(&mut hasher, &self.verified_mir);
+        hash_debug(&mut hasher, &self.binding_schema);
+        hash_debug(&mut hasher, &self.package_metadata);
+        ArtifactChecksum::new(*hasher.finalize().as_bytes())
+    }
+
     pub(crate) fn finish_unbound(
         image: ProgramImage,
         mut program: LinkedProgram,
@@ -147,6 +196,22 @@ impl LinkedArtifact {
         self.program.verify()?;
         verify_cache_correspondence(self)
     }
+}
+
+fn hash_debug(hasher: &mut blake3::Hasher, value: &impl fmt::Debug) {
+    use fmt::Write as _;
+
+    struct HashWriter<'a>(&'a mut blake3::Hasher);
+
+    impl fmt::Write for HashWriter<'_> {
+        fn write_str(&mut self, value: &str) -> fmt::Result {
+            self.0.update(value.as_bytes());
+            Ok(())
+        }
+    }
+
+    write!(HashWriter(hasher), "{value:?}").expect("hash writer is infallible");
+    hasher.update(&[0]);
 }
 
 impl UnboundLinkedProgram {

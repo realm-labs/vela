@@ -8,6 +8,7 @@ license.workspace = true
 test-support = ["vela_mir/test-support"]
 
 [dependencies]
+blake3 = { workspace = true }
 vela_analysis = { workspace = true }
 vela_common = { workspace = true }
 vela_def = { workspace = true }

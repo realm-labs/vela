@@ -7,6 +7,7 @@ use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
 use vela_engine::service::{
     LinkedServiceSourceManifest, ServiceMethodSelection, ServiceMethodUpdate,
     ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot, ServiceSourceManifest,
+    ServiceUpdateBundle,
 };
 use vela_hir::source_ingestion::build_single_source;
 use vela_macros::{ScriptHost, service, service_set};
@@ -98,6 +99,113 @@ pub struct TestServices {
     pub calculator: dyn CalculatorService,
     #[vela::default(RustAuditService)]
     pub audit: dyn AuditService,
+}
+
+#[test]
+fn deployment_bundle_build_load_dry_run_and_exact_base_diagnostics() {
+    let engine = TestServices::register_types(
+        Engine::builder()
+            .capabilities(CapabilitySet::new().with(Capability::HostWrite))
+            .register_rust_type::<RequestContext>(RequestContext::vela_type_binding()),
+    )
+    .build()
+    .expect("service engine");
+    let services = TestServices::new(&engine.type_bindings()).expect("service set");
+    let initial = services.pin();
+    let source = r#"
+#[service_impl(test::calculator)]
+impl CalculatorHotfix {
+    fn adjust(context, value) {
+        return value + 20;
+    }
+}
+"#;
+    let sources = build_single_source(SourceId::new(90), source).expect("valid source");
+    let manifest =
+        ServiceSourceManifest::link(sources.graph(), services.schema()).expect("service manifest");
+    let artifact = engine
+        .link_compiled_program(engine.compile_source(source).expect("compiled source"))
+        .expect("linked artifact");
+    let second_artifact = engine
+        .link_compiled_program(engine.compile_source(source).expect("recompiled source"))
+        .expect("relinked artifact");
+    assert_ne!(artifact.generation(), second_artifact.generation());
+    assert_eq!(artifact.checksum(), second_artifact.checksum());
+
+    let update = manifest
+        .bind_artifact(Arc::clone(&artifact))
+        .expect("artifact-bound update");
+    let bundle =
+        ServiceUpdateBundle::snapshot(services.schema(), Arc::clone(&artifact), update.clone())
+            .expect("Snapshot bundle");
+    let metadata = bundle.metadata().clone();
+    assert_eq!(metadata.artifact_checksum(), artifact.checksum());
+    assert_eq!(metadata.update_count(), 1);
+    let loaded =
+        ServiceUpdateBundle::load(metadata, services.schema(), Arc::clone(&artifact), update)
+            .expect("loaded bundle");
+    let report = services.dry_run_bundle(&initial, &loaded);
+    assert!(report.accepted());
+    let summary = report.outcome().as_ref().expect("selection summary");
+    assert_eq!(summary.method_count(), 3);
+    assert_eq!(summary.vela_count(), 1);
+    assert_eq!(summary.rust_default_count(), 2);
+    assert_eq!(services.pin().generation_id(), initial.generation_id());
+
+    let candidate = services
+        .stage_bundle(
+            &initial,
+            loaded,
+            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            call_options(),
+        )
+        .expect("staged bundle");
+    services
+        .activate_if_current(candidate)
+        .expect("activated bundle");
+    let active = services.pin();
+    assert_eq!(active.artifact_checksum(), Some(artifact.checksum()));
+
+    let delta_update = LinkedServiceSourceManifest::from_updates(
+        active
+            .selections()
+            .expect("active selections")
+            .iter()
+            .filter_map(|(key, selection)| match selection {
+                ServiceMethodSelection::RustDefault => None,
+                ServiceMethodSelection::Vela(target) => Some(ServiceMethodUpdate::vela(
+                    key.service_id,
+                    key.method_id,
+                    services
+                        .schema()
+                        .services()
+                        .iter()
+                        .find(|service| service.id() == key.service_id)
+                        .expect("service schema")
+                        .abi_fingerprint(),
+                    target.clone(),
+                )),
+            }),
+    )
+    .expect("Delta update");
+    let wrong_base = vela_bytecode::ArtifactChecksum::new([0x5a; 32]);
+    let stale_bundle = ServiceUpdateBundle::delta(
+        services.schema(),
+        active.generation_id(),
+        wrong_base,
+        artifact,
+        delta_update,
+    )
+    .expect("structurally valid Delta bundle");
+    let stale_report = services.dry_run_bundle(&active, &stale_bundle);
+    assert!(!stale_report.accepted());
+    assert!(matches!(
+        stale_report.outcome(),
+        Err(vela_engine::service::ServiceStagingError::Deployment(
+            vela_engine::service::ServiceBundleError::BaseArtifactChecksumMismatch { .. }
+        ))
+    ));
+    assert_eq!(services.pin().generation_id(), active.generation_id());
 }
 
 #[test]

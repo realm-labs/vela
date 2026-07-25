@@ -21,7 +21,9 @@ pub mod verification;
 #[cfg(feature = "test-support")]
 #[doc(hidden)]
 pub use artifact::test_support;
-pub use artifact::{LinkedArtifact, MirExecutableLayout, ProfileFunctionLayout, ProfileLayout};
+pub use artifact::{
+    ArtifactChecksum, LinkedArtifact, MirExecutableLayout, ProfileFunctionLayout, ProfileLayout,
+};
 pub use binding_schema::{
     RUST_BINDING_SCHEMA_VERSION, RustBindingBorrowedReturnOrigin, RustBindingBoundaryMode,
     RustBindingCallable, RustBindingCallableIdentity, RustBindingEffectSet, RustBindingEnum,

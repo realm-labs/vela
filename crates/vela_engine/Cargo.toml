@@ -6,6 +6,7 @@ version.workspace = true
 
 [dependencies]
 arc-swap = { workspace = true }
+blake3 = { workspace = true }
 parking_lot = { workspace = true }
 serde = { workspace = true, optional = true }
 smallvec = { workspace = true }

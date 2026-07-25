@@ -216,6 +216,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     ::vela_engine::service::LinkedVelaServiceMethod
                 >
             >,
+            artifact: ::std::option::Option<
+                ::std::sync::Arc<::vela_engine::service::LinkedArtifact>
+            >,
         }
 
         impl #generation_ident {
@@ -224,6 +227,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 Self {
                     #(#generation_initializers,)*
                     selections: None,
+                    artifact: None,
                 }
             }
 
@@ -232,6 +236,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 Self {
                     #(#default_initializers,)*
                     selections: None,
+                    artifact: None,
                 }
             }
 
@@ -240,6 +245,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 options: ::vela_engine::runtime::CallOptions,
                 selections: ::vela_engine::service::ServiceSelectionTable<
                     ::vela_engine::service::LinkedVelaServiceMethod
+                >,
+                artifact: ::std::option::Option<
+                    ::std::sync::Arc<::vela_engine::service::LinkedArtifact>
                 >,
             ) -> Self {
                 #(#composed_defaults)*
@@ -253,6 +261,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 Self {
                     #(#generation_initializers,)*
                     selections: Some(selections),
+                    artifact,
                 }
             }
 
@@ -265,6 +274,22 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 >
             > {
                 self.selections.as_ref()
+            }
+
+            #[must_use]
+            pub fn artifact_checksum(
+                &self,
+            ) -> ::std::option::Option<::vela_engine::service::ArtifactChecksum> {
+                self.artifact.as_ref().map(|artifact| artifact.checksum())
+            }
+
+            #[must_use]
+            pub fn artifact(
+                &self,
+            ) -> ::std::option::Option<
+                &::std::sync::Arc<::vela_engine::service::LinkedArtifact>
+            > {
+                self.artifact.as_ref()
             }
 
             #(#generation_accessors)*
@@ -526,11 +551,13 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                         }
                     );
                 }
+                let artifact = update.artifact().cloned();
                 let selections = update.into_snapshot(&self.schema)?;
                 let generation = #generation_ident::__vela_composed(
                     runtime,
                     options,
                     selections,
+                    artifact,
                 );
                 self.controller
                     .stage(&base.root, generation)
@@ -567,6 +594,10 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                         >(),
                     )?,
                 };
+                let artifact = update
+                    .artifact()
+                    .cloned()
+                    .or_else(|| base.artifact().cloned());
                 let selections = update.into_delta(
                     &self.schema,
                     base.generation_id(),
@@ -577,6 +608,80 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     runtime,
                     options,
                     selections,
+                    artifact,
+                );
+                self.controller
+                    .stage(&base.root, generation)
+                    .map(|candidate| #candidate_ident { candidate })
+                    .map_err(::vela_engine::service::ServiceStagingError::from)
+            }
+
+            #[must_use]
+            pub fn dry_run_bundle(
+                &self,
+                base: &#root_ident,
+                bundle: &::vela_engine::service::ServiceUpdateBundle,
+            ) -> ::vela_engine::service::ServiceDryRunReport {
+                let base_selections = match base.selections() {
+                    Some(selections) => selections.clone(),
+                    None => ::vela_engine::service::ServiceSelectionTable::snapshot(
+                        &self.schema,
+                        ::core::iter::empty::<
+                            ::vela_engine::service::ServiceMethodUpdate<
+                                ::vela_engine::service::LinkedVelaServiceMethod
+                            >
+                        >(),
+                    ).expect("generated Rust defaults match their service schema"),
+                };
+                bundle.dry_run(
+                    &self.schema,
+                    base.generation_id(),
+                    base.artifact_checksum(),
+                    &base_selections,
+                )
+            }
+
+            pub fn stage_bundle(
+                &self,
+                base: &#root_ident,
+                bundle: ::vela_engine::service::ServiceUpdateBundle,
+                runtime: ::vela_engine::service::ServiceRuntimeBinding,
+                options: ::vela_engine::runtime::CallOptions,
+            ) -> ::std::result::Result<
+                #candidate_ident,
+                ::vela_engine::service::ServiceStagingError,
+            > {
+                if !runtime.matches::<#context>() {
+                    return Err(
+                        ::vela_engine::service::ServiceStagingError::ContextTypeMismatch {
+                            expected: ::core::any::type_name::<#context>(),
+                            actual: runtime.context_name(),
+                        }
+                    );
+                }
+                let artifact = ::std::sync::Arc::clone(bundle.artifact());
+                let base_selections = match base.selections() {
+                    Some(selections) => selections.clone(),
+                    None => ::vela_engine::service::ServiceSelectionTable::snapshot(
+                        &self.schema,
+                        ::core::iter::empty::<
+                            ::vela_engine::service::ServiceMethodUpdate<
+                                ::vela_engine::service::LinkedVelaServiceMethod
+                            >
+                        >(),
+                    )?,
+                };
+                let (selections, _) = bundle.into_selection(
+                    &self.schema,
+                    base.generation_id(),
+                    base.artifact_checksum(),
+                    &base_selections,
+                )?;
+                let generation = #generation_ident::__vela_composed(
+                    runtime,
+                    options,
+                    selections,
+                    Some(artifact),
                 );
                 self.controller
                     .stage(&base.root, generation)
@@ -646,6 +751,22 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 >
             > {
                 self.root.services().selections()
+            }
+
+            #[must_use]
+            pub fn artifact_checksum(
+                &self,
+            ) -> ::std::option::Option<::vela_engine::service::ArtifactChecksum> {
+                self.root.services().artifact_checksum()
+            }
+
+            #[must_use]
+            pub fn artifact(
+                &self,
+            ) -> ::std::option::Option<
+                &::std::sync::Arc<::vela_engine::service::LinkedArtifact>
+            > {
+                self.root.services().artifact()
             }
 
             #(#root_accessors)*

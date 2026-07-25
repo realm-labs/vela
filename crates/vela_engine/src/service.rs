@@ -1,10 +1,15 @@
 //! Whole-generation publication for generated Rust/Vela service sets.
 
+mod deployment;
 mod runtime;
 mod schema;
 mod selection;
 mod source;
 
+pub use deployment::{
+    ServiceBundleChecksum, ServiceBundleError, ServiceDryRunReport, ServicePackageIdentity,
+    ServiceSelectionSummary, ServiceUpdateBundle, ServiceUpdateMetadata, ServiceUpdateMode,
+};
 pub use runtime::{
     ServiceCallDispatcher, ServiceCallTarget, ServiceFuture, ServiceInvocationError,
     ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeLease, ServiceRuntimeSlot,
@@ -21,6 +26,7 @@ pub use source::{
     LinkedServiceSourceManifest, LinkedVelaServiceMethod, ServiceSourceError,
     ServiceSourceErrorKind, ServiceSourceManifest, VelaServiceMethod,
 };
+pub use vela_bytecode::{ArtifactChecksum, LinkedArtifact};
 
 use std::fmt;
 use std::ops::Deref;
@@ -209,6 +215,7 @@ pub enum ServiceStagingError {
     },
     Source(ServiceSourceError),
     Selection(ServiceSelectionError),
+    Deployment(ServiceBundleError),
     Publication(ServicePublicationError),
 }
 
@@ -221,6 +228,7 @@ impl fmt::Display for ServiceStagingError {
             ),
             Self::Source(error) => write!(formatter, "service source failed: {error}"),
             Self::Selection(error) => write!(formatter, "service selection failed: {error}"),
+            Self::Deployment(error) => write!(formatter, "service deployment failed: {error}"),
             Self::Publication(error) => write!(formatter, "service staging failed: {error}"),
         }
     }
@@ -237,6 +245,12 @@ impl From<ServiceSourceError> for ServiceStagingError {
 impl From<ServiceSelectionError> for ServiceStagingError {
     fn from(error: ServiceSelectionError) -> Self {
         Self::Selection(error)
+    }
+}
+
+impl From<ServiceBundleError> for ServiceStagingError {
+    fn from(error: ServiceBundleError) -> Self {
+        Self::Deployment(error)
     }
 }
 
