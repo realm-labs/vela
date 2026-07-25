@@ -3070,6 +3070,30 @@ service-return sink may restore a validated borrow to the Rust caller declared
 by that service signature; ordinary Vela root results, state, closures, async
 suspension, and cross-root storage remain forbidden escape paths.
 
+Service parameter lowering is selected by the target parameter and sealed
+TypeBinding storage policy. Owned `T` consumes only Value storage. Shared `&T`
+accepts either a temporary decoded Value for one synchronous call or a shared
+HostRef lease. Mutable `&mut T` accepts only an exclusive HostRef; Vela never
+uses implicit mutable Value copy-in/copy-out. Owned Host `T` remains rejected
+until an explicit consuming-host contract exists.
+
+Host availability is explicit: Injected by the Rust root, Constructible through
+a registered constructor, or ProducedBorrow through a registered call. A Host
+constructor declares CallScoped or RuntimeOwned lifetime. Call-scoped scratch
+objects are reclaimed at root teardown; Runtime-owned construction is explicit
+and is not inferred from constructibility. Protected resources may remain
+Injected-only, so complete patchability does not grant scripts authority to
+fabricate every Host type.
+
+Collection conversion is target-directed boundary lowering, not a general
+implicit script cast. A typed script-owned Array/Map/Set may materialize once
+for an owned Rust parameter or back one temporary shared Value borrow. Exact
+Host views reborrow without materialization and mutable Rust collection borrows
+require an exclusive Host view. Vela transformations that produce a
+script-owned collection lose Host identity and cannot satisfy a mutable Rust
+borrow. Nominal type facts and recursive guards remain mandatory; no path uses
+JSON, Serde reflection, or mutable copy-back.
+
 Implementation and acceptance are tracked in
 [rust-vela-service-patchability-completion-plan.md](rust-vela-service-patchability-completion-plan.md).
 

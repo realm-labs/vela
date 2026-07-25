@@ -178,14 +178,18 @@ Vela-selected outer Rust adapter retains a non-executable panic branch.
 `Option<&T>` is complete for ordinary synchronous exports and methods but not
 for generated services. Nested borrowed containers fail only incidentally and
 lack the explicit service compile-fail matrix required to guarantee that a
-sealed service is fully patchable.
+sealed service is fully patchable. Parameter patchability also lacks one
+uniform Value/Host construction rule: generic Value-to-`&T` temporary lowering,
+call-scoped Host scratch construction, argument-origin reporting, and
+target-directed conversion of transformed Value collections remain open.
 
 The active
 [completion plan](rust-vela-service-patchability-completion-plan.md) owns the
-signature whitelist, total-admission invariant, focused test matrix, and
-domain-neutral `service_hotfix_coverage` demo. Durable handles, cross-root
-borrows, borrowed children across async suspension, and arbitrary nested
-borrowed containers remain outside that plan.
+signature whitelist, total-admission invariant, representation-directed
+parameter construction, target-directed collection lowering, focused test
+matrix, and domain-neutral `service_hotfix_coverage` demo. Durable handles,
+cross-root borrows, borrowed children across async suspension, and arbitrary
+nested borrowed containers remain outside that plan.
 
 ### Parameterized Container Contracts
 

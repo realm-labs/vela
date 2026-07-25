@@ -134,24 +134,60 @@ Owned :=
 
 An `Owned` subtree cannot contain a Rust reference, HostRef wrapper,
 PathProxy, erased iterator, function, trait object, runtime context, or another
-boundary-only implementation type.
+boundary-only implementation type. A service parameter spelled as owned `T`
+is admitted only when `T` has `StoragePolicy::Value`; moving an object out of
+Host storage through an owned parameter remains rejected until an explicit
+consuming-host contract exists.
 
-### 2.2 Host parameters
+### 2.2 Representation-directed parameters
 
-Required parameter forms are:
+`T`, `&T`, and `&mut T` share nominal type and method identity, but the target
+parameter mode and registered storage policy choose one boundary lowering:
 
 ```text
-&T                  shared HostRef
-&mut T              exclusive HostRef
-&[T] / &Vec<T>      shared collection view
-&mut [T]             fixed exclusive collection view
-&mut Vec<T>          growable exclusive collection view
-borrowed Map/Set     capability-qualified collection view
+Rust T, Value storage       <- consume checked Vela Value<T>
+Rust &T, Value storage      <- decode one temporary T and lend it for one sync call
+Rust &T, Host storage       <- acquire a shared HostRef lease
+Rust &mut T, Host storage   <- acquire an exclusive HostRef lease
+Rust T, Host storage        <- reject
+Rust &mut T, Value storage  <- reject implicit copy-in/copy-out
 ```
 
-`T` and every collection element/key/value type must have the exact
-representation capability required by the parameter. Complete alias
-preflight remains atomic before generated code creates any Rust reference.
+The same rule specializes collection parameters:
+
+```text
+&[T] / &Vec<T>      shared host view or temporary decoded Value collection
+&mut [T]             fixed exclusive Host collection view only
+&mut Vec<T>          growable exclusive Host collection view only
+borrowed Map/Set     capability-qualified Host collection view only
+```
+
+`T` and every collection element/key/value type must have the exact storage,
+codec, and representation capability required by the parameter. Complete
+alias preflight remains atomic before generated code creates any Rust
+reference.
+
+Vela never constructs a Rust reference. It constructs or receives a typed
+Value or Host object, and the generated call boundary creates the temporary
+Rust borrow. Host availability has three explicit origins:
+
+```text
+Injected         supplied by the Rust root caller
+Constructible    created through a registered Host constructor
+ProducedBorrow   returned by a registered method or service
+```
+
+Not every Host type is constructible. Sessions, external resources, actor
+contexts, and authority objects may remain Injected-only. This is a capability
+boundary, not incomplete patchability. Tooling must report the available
+origins for each host parameter so a patch author can see whether a planned
+service call is reachable from the current entrypoint.
+
+A Host constructor declares `CallScoped` or `RuntimeOwned` lifetime.
+Call-scoped construction is the required scratch-object form for hotfix
+orchestration and releases the object at root teardown. Runtime-owned
+construction remains explicit and must not be inferred merely because a
+constructor exists.
 
 ### 2.3 Scoped borrowed returns
 
@@ -199,6 +235,33 @@ The diagnostic should recommend a direct borrowed collection view, owned
 identifier collection, or a coarser service adapter. It must not recommend
 copying a Host value into a script record.
 
+### 2.5 Target-directed collection lowering
+
+Collection conversion is automatic only at a statically known service
+boundary and is driven by the target parameter:
+
+```text
+Vela Array<T>       -> Rust Vec<T>       one checked materialization
+Vela Array<T>       -> Rust &[T]         temporary Vec<T> plus shared borrow
+Host ArrayView<T>   -> Rust &[T]         zero-copy shared reborrow
+Host ArrayMut<T>    -> Rust &mut [T]     zero-copy fixed write-through
+Host ArrayMut<T>    -> Rust &mut Vec<T>  zero-copy growable write-through
+Vela Array<T>       -> Rust &mut Vec<T>  reject
+```
+
+The same rule applies recursively to owned Map and Set parameters. It is
+boundary lowering, not a general implicit cast in Vela. `filter`, `map`,
+`group_by`, and `collect` may turn a Host view into a script-owned collection;
+that result may later materialize into an owned Rust collection or a temporary
+shared Value borrow, but it no longer has Host identity and cannot satisfy a
+mutable Rust borrow.
+
+Nominal element facts remain exact. `Array<T>` cannot satisfy `Vec<U>`, an
+anonymous same-shaped record cannot impersonate a registered Value, and an
+erased or dynamic element fact requires a recursive runtime guard before Rust
+executes. No collection lowering uses JSON, Serde reflection, or implicit
+mutable copy-back.
+
 ## 3. Admission Gates
 
 ### 3.1 Rust macro expansion
@@ -212,6 +275,10 @@ copying a Host value into a script record.
 - reject shared-to-exclusive promotion;
 - reject async borrowed returns;
 - reject every non-whitelisted borrowed envelope;
+- classify owned `T`, shared `&T`, and exclusive `&mut T` against the required
+  Value/Host representation rather than Rust spelling alone;
+- emit target-directed collection lowering only for the admitted owned and
+  shared cases;
 - reject generic methods, unsupported associated types, trait objects,
   variadics, unsafe functions, and runtime result wrappers; and
 - emit only methods for which all generated dispatch directions exist.
@@ -229,6 +296,11 @@ The generated service requirements and Engine builder own semantic admission:
   representation capability;
 - every borrowed collection has a registered family and element/key/value
   contract;
+- Value/shared-temporary/exclusive-Host lowering capabilities match every
+  service parameter;
+- every Host constructor declares call-scoped or Runtime-owned lifetime;
+- constructor, injected-root, and produced-borrow origins remain distinct
+  sealed facts;
 - stable type IDs and ABI fingerprints are present;
 - no required constructor, method, field, protocol, or conversion is missing;
 - duplicate or incompatible registrations reject the service set; and
@@ -399,6 +471,44 @@ Required outcome:
 - distinguish the accepted generation model from open signature totality; and
 - restore Complete status only after all gates below pass.
 
+### G10 — Parameter construction and origin closure are incomplete
+
+TypeBinding has explicit Value and Host constructors, and a Host factory can
+produce a Runtime-owned HostRef. The service model does not yet provide one
+uniform rule for Value `T` temporarily satisfying `&T`, call-scoped scratch
+Host construction, or tooling that distinguishes injected, constructible, and
+service-produced Host origins. Current Host factories retain constructed
+objects until Runtime drop, which is unsuitable for frequent patch-local
+scratch objects.
+
+Required outcome:
+
+- implement the representation-directed parameter table in section 2.2;
+- add call-scoped Host construction and deterministic root teardown;
+- keep Runtime-owned construction explicit;
+- reject owned Host `T` and mutable Value `&mut T`;
+- expose construct lifetime and available Host origins through sealed
+  TypeBinding/service/tooling facts; and
+- report an unavailable argument origin before a candidate can be activated.
+
+### G11 — Collection lowering is shape-specific instead of uniform
+
+Owned collection materialization and a Value-slice temporary borrow exist, but
+the service dispatcher still contains shape-specific paths rather than one
+target-directed lowering contract. A Vela `filter`/`map`/`collect` result must
+have predictable behavior when the next Rust service accepts `Vec<T>`,
+`&[T]`, or `&mut Vec<T>`.
+
+Required outcome:
+
+- centralize owned collection materialization and temporary shared Value
+  borrows;
+- reborrow Host collection views without materialization;
+- reject script-owned collections for mutable Rust borrows;
+- preserve exact nested element/key/value facts and nominal Value identity;
+- run a recursive guard for dynamic facts before authored Rust executes; and
+- prove that lowering uses no JSON, Serde reflection, or mutable copy-back.
+
 ## 5. Phased Execution
 
 Each phase produces one coherent verified checkpoint. Do not broaden the
@@ -492,7 +602,34 @@ unrelated, stale, wrong-type, and wrong-generation HostRefs fail closed
 no generated selected branch contains panic/todo/unimplemented
 ```
 
-### P4 — Close lifetime, permission, and dispatch parity
+### P4 — Complete construction and target-directed lowering
+
+Deliverables:
+
+- make owned `T`, shared `&T`, and exclusive `&mut T` dispatch by sealed
+  storage/representation capability;
+- allow a registered Value to back one invocation-scoped shared Rust borrow;
+- add call-scoped Host construction with root-owned reclamation;
+- retain explicit Runtime-owned Host construction for intentional durable
+  runtime objects;
+- surface Injected, Constructible, and ProducedBorrow origin facts;
+- centralize Array/Map/Set owned materialization and temporary shared-borrow
+  lowering;
+- keep Host collection view reborrow zero-copy; and
+- reject mutable Value and script-owned collection copy-back.
+
+Gate:
+
+```text
+Vela constructs Value<T> and passes it as Rust T and &T
+Vela constructs one call-scoped Host and passes shared/exclusive references
+root teardown reclaims the scratch Host without Runtime-drop retention
+transformed Array<T> passes to Vec<T> and &[T]
+script-owned Array<T> cannot satisfy &mut Vec<T>
+Host ArrayView/ArrayMut preserve zero-copy identity and write-through
+```
+
+### P5 — Close lifetime, permission, and dispatch parity
 
 Deliverables:
 
@@ -515,7 +652,7 @@ root service arguments retain their existing async lease semantics
 every failure path leaves owner and lease counts unchanged
 ```
 
-### P5 — Add the runnable coverage demo
+### P6 — Add the runnable coverage demo
 
 Deliverables:
 
@@ -537,7 +674,7 @@ the runnable-examples test asserts that transcript
 the demo contains no patch-aware branch in business caller code
 ```
 
-### P6 — Final acceptance and documentation
+### P7 — Final acceptance and documentation
 
 Deliverables:
 
@@ -618,6 +755,10 @@ normalized shapes, but token-string tests alone are insufficient.
 | TS-10 | CLI schema, analysis, hover, completion, and signature help agree |
 | TS-11 | generated Rust binding rejects unsupported iterator/borrowed shape |
 | TS-12 | no public re-export facade is introduced |
+| TS-13 | Value `T` exposes owned and temporary-shared lowering |
+| TS-14 | Host `T` exposes shared/exclusive but not implicit owned move |
+| TS-15 | Host constructor ABI records CallScoped or RuntimeOwned |
+| TS-16 | tooling reports Injected, Constructible, and ProducedBorrow origins |
 
 ### 6.4 HostRef and conversion matrix
 
@@ -721,6 +862,30 @@ normalized shapes, but token-string tests alone are insufficient.
 | PR-09 | existing service nested borrowed chain does not regress |
 | PR-10 | existing `service_hard_switch_fixture` output does not change |
 
+### 6.10 Construction and collection-lowering matrix
+
+| ID | Behavior |
+|---|---|
+| CL-01 | registered Value constructor result passes to Rust `T` |
+| CL-02 | registered Value constructor result temporarily backs Rust `&T` |
+| CL-03 | Value `T` cannot satisfy Rust `&mut T` |
+| CL-04 | call-scoped Host constructor result passes to Rust `&T` |
+| CL-05 | call-scoped Host constructor result passes to Rust `&mut T` |
+| CL-06 | call-scoped Host is reclaimed at root teardown |
+| CL-07 | Runtime-owned Host constructor remains explicitly durable |
+| CL-08 | Host without Construct capability cannot be fabricated |
+| CL-09 | unavailable Injected/Constructible/ProducedBorrow origin diagnoses before activation |
+| CL-10 | transformed `Array<T>` materializes once into Rust `Vec<T>` |
+| CL-11 | transformed `Array<T>` temporarily backs Rust `&[T]` |
+| CL-12 | Host `ArrayView<T>` reborrows into Rust `&[T]` without materialization |
+| CL-13 | Host `ArrayMut<T>` writes through Rust `&mut Vec<T>` |
+| CL-14 | script-owned `Array<T>` cannot satisfy Rust `&mut Vec<T>` |
+| CL-15 | nested owned Array/Map/Set lower recursively with exact facts |
+| CL-16 | nominal or element-type mismatch rejects before Rust executes |
+| CL-17 | dynamic/erased element facts run a recursive guard |
+| CL-18 | conversion failure leaves Host state and lease counts unchanged |
+| CL-19 | no lowering path uses JSON, Serde reflection, or mutable copy-back |
+
 ## 7. Runnable Demo Specification
 
 ### 7.1 Files
@@ -745,11 +910,17 @@ RequestState     host-backed mutable state
 Request          owned Value
 Response         owned Value
 ServiceError     owned Value
+ValueRow         owned Value used after Vela collection transforms
+PatchBuffer      call-scoped constructible Host scratch object
 ```
 
 `Row` deliberately implements neither `Clone` nor `Serialize`. Adjacent
 instrumentation tracks owned-codec entry so the demo can additionally assert
 that lookup never serializes or materializes a script record.
+`PatchBuffer` is constructed inside Vela, passed first as shared and then
+exclusive to Rust, and reclaimed when the root ends. `ValueRow` is produced by
+`filter`/`map`/`collect` and passed to Rust as both `Vec<ValueRow>` and
+`&[ValueRow]`.
 
 ### 7.3 Services
 
@@ -786,6 +957,14 @@ trait AuditService: Send + Sync {
     fn record(&self, state: &mut RequestState, code: i64);
 }
 
+#[service(path = "coverage::transform")]
+trait TransformService: Send + Sync {
+    fn consume(&self, values: Vec<ValueRow>) -> i64;
+    fn inspect(&self, values: &[ValueRow]) -> i64;
+    fn inspect_buffer(&self, buffer: &PatchBuffer) -> i64;
+    fn update_buffer(&self, buffer: &mut PatchBuffer, delta: i64);
+}
+
 #[service(path = "coverage::handler")]
 trait HandlerService: Send + Sync {
     async fn handle(
@@ -820,6 +999,12 @@ The binary executes one unchanged Rust caller through:
 12. A folded Snapshot equivalent to the two Deltas.
 13. Conditional rollback to the previous complete generation.
 14. Verification that rollback did not undo already committed Host effects.
+15. Construction of a call-scoped `PatchBuffer`, followed by shared and
+    exclusive Rust service calls and root-end reclamation.
+16. A Vela `filter`/`map`/`collect` chain whose `Array<ValueRow>` automatically
+    supplies Rust `Vec<ValueRow>` and temporary `&[ValueRow]`.
+17. A negative assertion that the same script-owned Array cannot supply
+    `&mut Vec<ValueRow>`.
 
 The demo also asserts:
 
@@ -827,6 +1012,11 @@ The demo also asserts:
 - shared children cannot invoke exclusive operations;
 - `None` changes no lease count;
 - no Row clone/owned codec/Serde path runs;
+- call-scoped Host construction leaves no Runtime-owned scratch object;
+- owned collection lowering materializes once and shared lowering uses one
+  invocation-scoped temporary;
+- Host collection views retain zero-copy identity while mutable views write
+  through;
 - no borrowed child remains after each root; and
 - the same caller contains no patch branch, Runtime target string, `CallArgs`,
   HostRef construction, or Vela-specific return conversion.
@@ -847,6 +1037,8 @@ service_hotfix_coverage rejected stale=true abi=true
 service_hotfix_coverage folded ...
 service_hotfix_coverage rollback ...
 service_hotfix_coverage zero-copy clones=0 codecs=0
+service_hotfix_coverage construct shared=... exclusive=... reclaimed=true
+service_hotfix_coverage collections owned=... shared=... mutable-copyback=false
 ```
 
 Assertions remain the primary correctness proof. The transcript exists so a
@@ -921,7 +1113,9 @@ At implementation completion:
 
 - `docs/architecture/rust-vela-service-model.md` records total admission, the
   exact scoped-return whitelist, parameter-only provenance, controlled
-  generated Rust-return egress, async restrictions, and escape rules.
+  generated Rust-return egress, representation-directed parameters, Host
+  origin/construction lifetime, target-directed collection lowering, async
+  restrictions, and escape rules.
 - `docs/rust-vela-interop.md` shows one admitted `Option<&T>` service and
   rejected nested borrowed-container examples.
 - `docs/progress.md` marks this plan complete only after the demo and full gate.
@@ -939,6 +1133,12 @@ This plan is complete only when:
   Rust/Vela, dynamic/reflection, and Rust caller coverage where applicable;
 - direct and optional borrowed returns preserve identity and provenance in
   both directions;
+- Value and Host parameters follow one storage-directed construction and
+  borrowing model;
+- every Host argument has an explicit Injected, Constructible, or
+  ProducedBorrow origin;
+- transformed Value collections automatically lower to owned or temporary
+  shared Rust parameters while mutable Host views remain zero-copy;
 - every unsupported borrowed shape fails before service registration;
 - no selected generated branch contains a runtime non-executable placeholder;
 - the runnable demo exercises the complete deployment sequence;
@@ -950,6 +1150,8 @@ The resulting user-facing guarantee is:
 
 ```text
 If a generated service set seals successfully, every admitted method can be
-selected by Vela and called through its authored Rust signature. Unsupported
-borrowed shapes are compile-time errors, never production invocation errors.
+selected by Vela and called through its authored Rust signature. Values,
+explicit Host origins, and target-directed owned/shared collection lowering
+cover its admitted arguments. Unsupported borrowed or mutable-copy-back shapes
+are compile-time errors, never production invocation errors.
 ```
