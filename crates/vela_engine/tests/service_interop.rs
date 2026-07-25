@@ -33,6 +33,10 @@ pub struct RequestContext {
     rust_combine_calls: usize,
     #[script(skip)]
     observed_labels: Vec<String>,
+    #[script(skip)]
+    borrowed_values: Vec<i64>,
+    #[script(skip)]
+    borrowed_return_calls: usize,
 }
 
 #[vela_macros::script_methods]
@@ -71,6 +75,10 @@ pub trait InventoryService: Send + Sync {
     ) -> i64;
 
     fn conflict(&self, context: &mut RequestContext, values: &mut Vec<i64>) -> i64;
+
+    fn values<'borrow>(&self, context: &'borrow mut RequestContext) -> &'borrow mut Vec<i64>;
+
+    fn borrowed_chain(&self, context: &mut RequestContext) -> i64;
 }
 
 pub struct RustInventoryService;
@@ -95,6 +103,15 @@ impl InventoryService for RustInventoryService {
     fn conflict(&self, _context: &mut RequestContext, _values: &mut Vec<i64>) -> i64 {
         unreachable!("the Vela conflict patch replaces this method")
     }
+
+    fn values<'borrow>(&self, context: &'borrow mut RequestContext) -> &'borrow mut Vec<i64> {
+        context.borrowed_return_calls += 1;
+        &mut context.borrowed_values
+    }
+
+    fn borrowed_chain(&self, _context: &mut RequestContext) -> i64 {
+        unreachable!("the Vela borrowed-return patch replaces this method")
+    }
 }
 
 #[service(path = "interop::audit")]
@@ -112,6 +129,8 @@ pub trait AuditService: Send + Sync {
         left: &mut Vec<i64>,
         right: &mut Vec<i64>,
     ) -> i64;
+
+    fn bump(&self, values: &mut Vec<i64>) -> i64;
 }
 
 pub struct RustAuditService;
@@ -141,6 +160,11 @@ impl AuditService for RustAuditService {
     ) -> i64 {
         context.rust_combine_calls += 1;
         99
+    }
+
+    fn bump(&self, values: &mut Vec<i64>) -> i64 {
+        values.push(6);
+        values.iter().sum()
     }
 }
 
@@ -185,6 +209,17 @@ impl InventoryPatch {
     fn conflict(context, values) {
         return services.audit.combine(context, values, values);
     }
+
+    fn borrowed_chain(context) {
+        let values = services.inventory.values(context);
+        values.push(4);
+        let sum = services.audit.bump(values);
+        return sum + values.len();
+    }
+
+    fn values(context) {
+        return base.values(context);
+    }
 }
 "#;
     let snapshot = stage_snapshot(&engine, &services, &initial, source, SourceId::new(41));
@@ -213,6 +248,10 @@ impl InventoryPatch {
         context.observed_labels,
         ["inventory-base".to_owned(), "audit-rust".to_owned()]
     );
+    assert_eq!(inventory_patch.inventory().borrowed_chain(&mut context), 15);
+    assert_eq!(context.borrowed_values, [2, 4, 6]);
+    assert_eq!(context.borrowed_return_calls, 1);
+    context.borrowed_values.push(8);
 
     let delta_source = r#"
 #[service_impl(interop::audit)]
@@ -243,7 +282,7 @@ impl AuditPatch {
             .iter()
             .filter(|(_, selection)| matches!(selection, ServiceMethodSelection::Vela(_)))
             .count(),
-        3
+        5
     );
 
     values.clear();
@@ -312,6 +351,8 @@ fn context(engine: &Engine, values: &mut Vec<i64>) -> RequestContext {
         rust_audit_calls: 0,
         rust_combine_calls: 0,
         observed_labels: Vec::new(),
+        borrowed_values: vec![2],
+        borrowed_return_calls: 0,
     }
 }
 

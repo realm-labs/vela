@@ -2,8 +2,13 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Result, parse_quote};
 
-use crate::export::emission::{exclusive_host_value_tokens, shared_host_value_tokens};
-use crate::export::signature::{ClassifiedSignature, ParameterMode, ReturnMode, TypeShape};
+use crate::export::emission::{
+    exclusive_host_value_tokens, host_type_id_tokens, shared_host_value_tokens,
+};
+use crate::export::signature::{
+    BorrowOrigin, ClassifiedSignature, HostAccess, ParameterMode, ReturnMode,
+    ScopedReturnContainer, TypeShape,
+};
 
 pub(super) fn emit_rust_dispatch_arm(
     service_path: &str,
@@ -29,16 +34,7 @@ pub(super) fn emit_rust_dispatch_arm(
         }
     };
     if matches!(signature.returns.mode, ReturnMode::ScopedHost { .. }) {
-        return Ok(quote! {
-            #method_id => {
-                #arity
-                Err(::vela_vm::error::VmError::new(
-                    ::vela_vm::error::VmErrorKind::TypeMismatch {
-                        operation: "borrowed service return dispatch is not executable yet",
-                    },
-                ))
-            }
-        });
+        return emit_scoped_rust_dispatch_arm(method, signature, method_id, arity);
     }
 
     let mut lease_index = 0_usize;
@@ -171,6 +167,237 @@ pub(super) fn emit_rust_dispatch_arm(
         #method_id => {
             #arity
             #body
+        }
+    })
+}
+
+fn emit_scoped_rust_dispatch_arm(
+    method: &syn::TraitItemFn,
+    signature: &ClassifiedSignature,
+    method_id: u128,
+    arity: TokenStream,
+) -> Result<TokenStream> {
+    if signature.scoped_return_container() != Some(ScopedReturnContainer::Direct) {
+        return Err(syn::Error::new_spanned(
+            &method.sig.output,
+            "service borrowed return dispatch currently supports a direct reference only",
+        ));
+    }
+    let ReturnMode::ScopedHost { origin, child, .. } = signature.returns.mode else {
+        unreachable!("scoped dispatcher requires a scoped return");
+    };
+    let BorrowOrigin::Parameter(origin_index) = origin else {
+        return Err(syn::Error::new_spanned(
+            &method.sig.output,
+            "service borrowed returns must originate from a service parameter",
+        ));
+    };
+    let child_type_id = host_type_id_tokens(&signature.returns.ty).ok_or_else(|| {
+        syn::Error::new_spanned(
+            &method.sig.output,
+            "service borrowed return has no registered host identity",
+        )
+    })?;
+    let child_kind = match child {
+        HostAccess::Shared => quote! { ::vela_host::lease::HostLeaseKind::Shared },
+        HostAccess::Exclusive => quote! { ::vela_host::lease::HostLeaseKind::Exclusive },
+    };
+    let wrap_child = match child {
+        HostAccess::Shared => quote! {
+            ::vela_host::lease::shared_scoped_host_with_type_id(
+                __vela_child,
+                #child_type_id,
+            )
+        },
+        HostAccess::Exclusive => quote! {
+            ::vela_host::lease::exclusive_scoped_host_with_type_id(
+                __vela_child,
+                #child_type_id,
+            )
+        },
+    };
+
+    let mut lease_index = 0_usize;
+    let mut origin_lease_index = None;
+    let mut lease_requests = Vec::new();
+    let mut value_preparation = Vec::new();
+    let mut argument_bindings = Vec::new();
+    let mut argument_names = Vec::new();
+    for (argument_index, parameter) in signature.parameters.iter().skip(1).enumerate() {
+        let name = format_ident!("__vela_arg_{}", parameter.name);
+        argument_names.push(name.clone());
+        match parameter.mode {
+            ParameterMode::SharedHost | ParameterMode::ExclusiveHost => {
+                let current_lease = lease_index;
+                if argument_index == usize::from(origin_index) {
+                    origin_lease_index = Some(current_lease);
+                }
+                lease_index += 1;
+                let kind = match parameter.mode {
+                    ParameterMode::SharedHost => {
+                        quote! { ::vela_host::lease::HostLeaseKind::Shared }
+                    }
+                    ParameterMode::ExclusiveHost => {
+                        quote! { ::vela_host::lease::HostLeaseKind::Exclusive }
+                    }
+                    _ => unreachable!(),
+                };
+                lease_requests.push(quote! {
+                    let __vela_root = match &__vela_args[#argument_index] {
+                        ::vela_vm::owned_value::OwnedValue::HostRef(__vela_root) => *__vela_root,
+                        _ => {
+                            return Err(::vela_vm::error::VmError::new(
+                                ::vela_vm::error::VmErrorKind::TypeMismatch {
+                                    operation: "service borrowed-return host argument",
+                                },
+                            ));
+                        }
+                    };
+                    __vela_lease_requests.push((__vela_root, #kind));
+                });
+                let (shared_object, exclusive_object) =
+                    if argument_index == usize::from(origin_index) {
+                        (
+                            quote! { __vela_parent_lease.object() },
+                            quote! {
+                                __vela_parent_lease
+                                    .object_mut()
+                                    .expect("exclusive service parent lease")
+                            },
+                        )
+                    } else {
+                        (
+                            quote! { __vela_leases[#current_lease].object() },
+                            quote! {
+                                __vela_leases[#current_lease]
+                                    .object_mut()
+                                    .expect("exclusive service argument lease")
+                            },
+                        )
+                    };
+                let binding = match parameter.mode {
+                    ParameterMode::SharedHost => {
+                        let value = shared_host_value_tokens(&parameter.ty, shared_object);
+                        quote! {
+                            let #name = #value.ok_or_else(|| {
+                                ::vela_host::lease::host_lease_unsupported(
+                                    __vela_lease_requests[#current_lease].0,
+                                )
+                            })?;
+                        }
+                    }
+                    ParameterMode::ExclusiveHost => {
+                        let value = exclusive_host_value_tokens(&parameter.ty, exclusive_object);
+                        quote! {
+                            let #name = #value.ok_or_else(|| {
+                                ::vela_host::lease::host_lease_unsupported(
+                                    __vela_lease_requests[#current_lease].0,
+                                )
+                            })?;
+                        }
+                    }
+                    _ => unreachable!(),
+                };
+                argument_bindings.push(binding);
+            }
+            ParameterMode::Value => {
+                let ty = parameter
+                    .rust_ty
+                    .as_ref()
+                    .expect("service value parameter retains its Rust type");
+                let prepared = format_ident!("__vela_prepared_{}", parameter.name);
+                value_preparation.push(quote! {
+                    let mut #prepared = Some(
+                        <#ty as ::vela_engine::args::FromScriptArg>::from_script_arg(
+                            &__vela_args[#argument_index],
+                        )?
+                    );
+                });
+                argument_bindings.push(quote! {
+                    let #name = #prepared
+                        .take()
+                        .expect("scoped service callback runs once");
+                });
+            }
+            ParameterMode::ReadOnlyValueBorrow => {
+                let prepared = format_ident!("__vela_prepared_{}", parameter.name);
+                match parameter.ty {
+                    TypeShape::String => {
+                        value_preparation.push(quote! {
+                            let #prepared =
+                                <::std::string::String as
+                                    ::vela_engine::args::FromScriptArg>::from_script_arg(
+                                        &__vela_args[#argument_index],
+                                    )?;
+                        });
+                        argument_bindings.push(quote! {
+                            let #name = #prepared.as_str();
+                        });
+                    }
+                    _ => {
+                        return Err(syn::Error::new_spanned(
+                            parameter.rust_ty.as_ref().unwrap_or(&parse_quote!(())),
+                            "unsupported read-only borrowed-return service argument",
+                        ));
+                    }
+                }
+            }
+            ParameterMode::HiddenContext => unreachable!("service rejects hidden context"),
+        }
+    }
+    let origin_lease_index = origin_lease_index.ok_or_else(|| {
+        syn::Error::new_spanned(
+            &method.sig.output,
+            "service borrowed return origin must be a host-backed parameter",
+        )
+    })?;
+    let method_ident = &method.sig.ident;
+
+    Ok(quote! {
+        #method_id => {
+            #arity
+            #(#value_preparation)*
+            let mut __vela_lease_requests =
+                ::vela_host::lease::HostLeaseRequestSet::with_capacity(#lease_index);
+            #(#lease_requests)*
+            let __vela_roots = __vela_context.with_scoped_host_return(
+                &__vela_lease_requests,
+                |__vela_leases| {
+                    let __vela_parent = __vela_leases[#origin_lease_index].take();
+                    let __vela_object = ::vela_host::lease::try_scoped_host_cell(
+                        __vela_parent,
+                        |__vela_parent_lease| {
+                            #(#argument_bindings)*
+                            let __vela_child =
+                                __vela_default.#method_ident(#(#argument_names),*);
+                            Ok(#wrap_child)
+                        },
+                    )?;
+                    Ok(Some(::vela_host::adapter::ScopedHostReturns::Single(
+                        ::vela_host::adapter::ScopedHostReturn {
+                            object: __vela_object,
+                            access: #child_kind,
+                        },
+                    )))
+                },
+            )?;
+            let mut __vela_roots = __vela_roots.ok_or_else(|| {
+                ::vela_vm::error::VmError::new(
+                    ::vela_vm::error::VmErrorKind::TypeMismatch {
+                        operation: "service borrowed return produced no host child",
+                    },
+                )
+            })?;
+            if __vela_roots.len() != 1 {
+                return Err(::vela_vm::error::VmError::new(
+                    ::vela_vm::error::VmErrorKind::TypeMismatch {
+                        operation: "service borrowed return produced the wrong child count",
+                    },
+                ));
+            }
+            Ok(::vela_vm::owned_value::OwnedValue::HostRef(
+                __vela_roots.remove(0),
+            ))
         }
     })
 }

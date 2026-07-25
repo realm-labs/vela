@@ -52,7 +52,7 @@ pub(super) fn binding_use_tokens(contract: TokenStream, shape: &TypeShape) -> To
     }
 }
 
-pub(super) fn host_type_id_tokens(shape: &TypeShape) -> Option<TokenStream> {
+pub(crate) fn host_type_id_tokens(shape: &TypeShape) -> Option<TokenStream> {
     match shape {
         TypeShape::Host(ty, _) => {
             Some(quote! { <#ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_id() })

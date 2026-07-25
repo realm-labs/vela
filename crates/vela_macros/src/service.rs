@@ -14,7 +14,8 @@ use crate::export::emission::{
 };
 use crate::export::signature::{
     BorrowedCollectionKind, BorrowedCollectionShape, ClassifiedParameter, ClassifiedSignature,
-    EffectName, ErrorMode, HostAccess, ParameterMode, ReturnMode, TypeShape, classify_method,
+    EffectName, ErrorMode, HostAccess, ParameterMode, ReturnMode, TypeShape,
+    classify_service_method,
 };
 use crate::signature::{
     docs_from_attrs, reject_extern_signature, reject_generic_signature, reject_unsafe_signature,
@@ -47,7 +48,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             ));
         };
         validate_method(method)?;
-        let mut signature = classify_method(&method.sig, &BTreeSet::new())?;
+        let mut signature = classify_service_method(&method.sig, &BTreeSet::new())?;
         normalize_service_effects(&mut signature);
         if signature
             .parameters
@@ -263,7 +264,19 @@ fn validate_trait(item: &ItemTrait) -> Result<()> {
 }
 
 fn validate_method(method: &syn::TraitItemFn) -> Result<()> {
-    reject_generic_signature(&method.sig.generics, "#[vela::service]")?;
+    if method.sig.generics.where_clause.is_some()
+        || method
+            .sig
+            .generics
+            .params
+            .iter()
+            .any(|parameter| !matches!(parameter, syn::GenericParam::Lifetime(_)))
+    {
+        return Err(syn::Error::new_spanned(
+            &method.sig.generics,
+            "#[vela::service] does not support generic parameters or where clauses",
+        ));
+    }
     reject_unsafe_signature(&method.sig, "#[vela::service]")?;
     reject_extern_signature(&method.sig, "#[vela::service]")?;
     if method.sig.constness.is_some() || method.sig.variadic.is_some() {
@@ -1079,12 +1092,7 @@ fn service_return_mode_tokens(mode: ReturnMode, shape: &TypeShape) -> Result<Tok
     else {
         return Ok(tokens);
     };
-    let adjusted = index.checked_sub(1).ok_or_else(|| {
-        syn::Error::new(
-            proc_macro2::Span::call_site(),
-            "service borrowed return cannot use its service receiver as a parameter origin",
-        )
-    })?;
+    let adjusted = index;
     let child = match child {
         HostAccess::Shared => quote! { ::vela_engine::interop::ScopedHostAccess::Shared },
         HostAccess::Exclusive => quote! { ::vela_engine::interop::ScopedHostAccess::Exclusive },
@@ -1144,6 +1152,28 @@ mod tests {
         .expect_err("mutable service receiver must fail");
 
         assert!(error.to_string().contains("&self receiver"));
+    }
+
+    #[test]
+    fn service_borrowed_return_uses_parameter_origin_and_scoped_dispatch() {
+        let output = expand_result(
+            quote! { path = "game::inventory" },
+            quote! {
+                pub trait InventoryService: Send + Sync {
+                    fn values<'borrow>(
+                        &self,
+                        context: &'borrow mut RequestContext,
+                    ) -> &'borrow mut Vec<i64>;
+                }
+            },
+        )
+        .expect("lifetime-only borrowed service return should expand")
+        .to_string();
+
+        assert!(output.contains("with_scoped_host_return"));
+        assert!(output.contains("HostLeaseRequestSet"));
+        assert!(output.contains("BorrowedReturnOrigin :: Parameter (0"));
+        assert!(!output.contains("borrowed service return dispatch is not executable"));
     }
 
     #[test]

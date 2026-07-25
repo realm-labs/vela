@@ -277,6 +277,23 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         })?
     }
 
+    /// Executes a generated Rust callable and retains its owner-frozen child
+    /// in the active root call tree.
+    #[doc(hidden)]
+    pub fn with_scoped_host_return(
+        &mut self,
+        requests: &[(HostRef, HostLeaseKind)],
+        mut invoke: impl for<'lease> FnMut(
+            &mut [ErasedHostLease<'lease>],
+        ) -> vela_host::error::HostResult<
+            Option<vela_host::adapter::ScopedHostReturns<'lease>>,
+        >,
+    ) -> VmResult<Option<Vec<HostRef>>> {
+        Ok(self
+            .adapter()
+            .with_scoped_host_return(requests, &mut invoke)?)
+    }
+
     pub fn access(&mut self) -> &mut HostAccess {
         match self.host.as_deref_mut() {
             Some(host) => host.access,

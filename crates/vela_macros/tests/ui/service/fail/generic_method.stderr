@@ -2,4 +2,4 @@ error: #[vela::service] does not support generic parameters or where clauses
  --> tests/ui/service/fail/generic_method.rs:5:13
   |
 5 |     fn apply<T>(&self, value: T);
-  |             ^
+  |             ^^^

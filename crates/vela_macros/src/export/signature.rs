@@ -171,27 +171,37 @@ pub(crate) fn classify_function(
     signature: &Signature,
     additional_effects: &BTreeSet<EffectName>,
 ) -> Result<ClassifiedSignature> {
-    classify_signature(signature, additional_effects, false)
+    classify_signature(signature, additional_effects, false, false, false)
 }
 
 pub(crate) fn classify_method(
     signature: &Signature,
     additional_effects: &BTreeSet<EffectName>,
 ) -> Result<ClassifiedSignature> {
-    classify_signature(signature, additional_effects, true)
+    classify_signature(signature, additional_effects, true, true, false)
+}
+
+pub(crate) fn classify_service_method(
+    signature: &Signature,
+    additional_effects: &BTreeSet<EffectName>,
+) -> Result<ClassifiedSignature> {
+    classify_signature(signature, additional_effects, true, false, true)
 }
 
 fn classify_signature(
     signature: &Signature,
     additional_effects: &BTreeSet<EffectName>,
     allow_receiver: bool,
+    receiver_is_borrow_origin: bool,
+    allow_named_lifetimes: bool,
 ) -> Result<ClassifiedSignature> {
     let mut parameters: Vec<ClassifiedParameter> = Vec::new();
     let mut host_origins = Vec::new();
     let mut receiver_access = None;
     for input in &signature.inputs {
+        let is_receiver = matches!(input, FnArg::Receiver(_));
         let classified = match input {
-            FnArg::Typed(parameter) => classify_parameter(parameter)?,
+            FnArg::Typed(parameter) => classify_parameter(parameter, allow_named_lifetimes)?,
             FnArg::Receiver(receiver) if allow_receiver => {
                 if !parameters.is_empty() {
                     return Err(syn::Error::new_spanned(
@@ -210,7 +220,9 @@ fn classify_signature(
                 } else {
                     HostAccess::Shared
                 };
-                receiver_access = Some(access);
+                if receiver_is_borrow_origin {
+                    receiver_access = Some(access);
+                }
                 ClassifiedParameter {
                     name: "self".to_owned(),
                     ty: TypeShape::ReceiverHost,
@@ -242,8 +254,12 @@ fn classify_signature(
         if matches!(
             classified.mode,
             ParameterMode::SharedHost | ParameterMode::ExclusiveHost
-        ) {
-            let index = u16::try_from(parameters.len()).map_err(|_| {
+        ) && (!is_receiver || receiver_is_borrow_origin)
+        {
+            let visible_index = parameters
+                .len()
+                .saturating_sub(usize::from(allow_receiver && !receiver_is_borrow_origin));
+            let index = u16::try_from(visible_index).map_err(|_| {
                 syn::Error::new_spanned(input, "exported callable has too many parameters")
             })?;
             host_origins.push((index, classified.mode));
@@ -251,7 +267,8 @@ fn classify_signature(
         parameters.push(classified);
     }
 
-    let (return_shape, error_mode) = classify_return_type(&signature.output)?;
+    let (return_shape, error_mode) =
+        classify_return_type(&signature.output, allow_named_lifetimes)?;
     let host_return = host_return_access(&return_shape)?;
     let mode = if let Some(child) = host_return {
         let (origin, parent) = if let Some(parent) = receiver_access {
@@ -310,7 +327,10 @@ fn classify_signature(
     })
 }
 
-fn classify_parameter(parameter: &PatType) -> Result<ClassifiedParameter> {
+fn classify_parameter(
+    parameter: &PatType,
+    allow_named_lifetimes: bool,
+) -> Result<ClassifiedParameter> {
     let name = param_name(parameter);
     if type_ident(&parameter.ty).is_some_and(|ident| ident == "NativeCallContext") {
         let Type::Reference(reference) = parameter.ty.as_ref() else {
@@ -333,7 +353,9 @@ fn classify_parameter(parameter: &PatType) -> Result<ClassifiedParameter> {
         });
     }
     if let Type::Reference(reference) = parameter.ty.as_ref() {
-        reject_explicit_lifetime(reference)?;
+        if !allow_named_lifetimes {
+            reject_explicit_lifetime(reference)?;
+        }
         if is_str(&reference.elem) {
             if reference.mutability.is_some() {
                 return Err(syn::Error::new_spanned(
@@ -385,19 +407,30 @@ fn classify_parameter(parameter: &PatType) -> Result<ClassifiedParameter> {
     })
 }
 
-fn classify_return_type(output: &ReturnType) -> Result<(TypeShape, ErrorMode)> {
+fn classify_return_type(
+    output: &ReturnType,
+    allow_named_lifetimes: bool,
+) -> Result<(TypeShape, ErrorMode)> {
     let ReturnType::Type(_, ty) = output else {
         return Ok((TypeShape::Unit, ErrorMode::Value));
     };
     if let Some(inner) = wrapper_inner_type(ty, &["VmResult"]) {
-        return Ok((classify_return_shape(inner)?, ErrorMode::RuntimeResult));
+        return Ok((
+            classify_return_shape(inner, allow_named_lifetimes)?,
+            ErrorMode::RuntimeResult,
+        ));
     }
-    Ok((classify_return_shape(ty)?, ErrorMode::Value))
+    Ok((
+        classify_return_shape(ty, allow_named_lifetimes)?,
+        ErrorMode::Value,
+    ))
 }
 
-fn classify_return_shape(ty: &Type) -> Result<TypeShape> {
+fn classify_return_shape(ty: &Type, allow_named_lifetimes: bool) -> Result<TypeShape> {
     if let Type::Reference(reference) = ty {
-        reject_explicit_lifetime(reference)?;
+        if !allow_named_lifetimes {
+            reject_explicit_lifetime(reference)?;
+        }
         if is_str(&reference.elem) {
             return Err(syn::Error::new_spanned(
                 ty,
@@ -416,7 +449,10 @@ fn classify_return_shape(ty: &Type) -> Result<TypeShape> {
         return Ok(TypeShape::Host(host_ty, access));
     }
     if let Some(inner) = wrapper_inner_type(ty, &["Option"]) {
-        return Ok(TypeShape::Option(Box::new(classify_return_shape(inner)?)));
+        return Ok(TypeShape::Option(Box::new(classify_return_shape(
+            inner,
+            allow_named_lifetimes,
+        )?)));
     }
     if let Type::Tuple(tuple) = ty {
         if tuple.elems.is_empty() {
@@ -425,7 +461,7 @@ fn classify_return_shape(ty: &Type) -> Result<TypeShape> {
         return tuple
             .elems
             .iter()
-            .map(classify_return_shape)
+            .map(|element| classify_return_shape(element, allow_named_lifetimes))
             .collect::<Result<Vec<_>>>()
             .map(TypeShape::Tuple);
     }
@@ -438,7 +474,7 @@ fn classify_return_shape(ty: &Type) -> Result<TypeShape> {
             ));
         };
         return Ok(TypeShape::Result(
-            Box::new(classify_return_shape(ok)?),
+            Box::new(classify_return_shape(ok, allow_named_lifetimes)?),
             Box::new(classify_owned_type(err)?),
         ));
     }
