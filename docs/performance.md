@@ -110,6 +110,35 @@ bytes/call. The adjacent generated Rust-default row remained 3 ns/call with
 zero allocations. This is the S6 structural active-generation baseline, not
 an accepted optimization target or a stable multi-sample latency result.
 
+The 2026-07-25 S7 frozen-shape run used 100,000 calls and 100 warmups on the
+same Windows release build. It retained every S0 row and added the complete
+generated Rust/Vela comparison:
+
+| Boundary row | ns/call | allocations/call | bytes/call |
+|---|---:|---:|---:|
+| direct Rust concrete | 1 | 0 | 0 |
+| direct Rust trait | 2 | 0 | 0 |
+| generated Rust default | 3 | 0 | 0 |
+| generated active Vela plus Rust `base` | 14,532 | 109 | 40,723 |
+| HostRef alias copy | 1 | 0 | 0 |
+| static field read/write | 44,443 | 285 | 49,145 |
+| registered method call | 48,903 | 286 | 49,439 |
+| shared/exclusive preflight | 26 / 25 | 0 / 0 | 0 / 0 |
+| prepared shared/exclusive preflight | 29 / 28 | 0 / 0 | 0 / 0 |
+| nested same-session reborrow | 54,255 | 397 | 79,120 |
+| borrowed return/release | 39,024 | 304 | 52,040 |
+| host-backed bulk collection | 37,272 | 285 | 49,105 |
+
+Every row retained a stable checksum. The slower HostRef rows measure complete
+VM call, value/result materialization, host adapter, and operation work; they
+are not alias-copy or common-arity lease setup costs, because the isolated
+HostRef and preflight rows remain allocation-free. The static path and method
+rows use linked target plans and typed thunks, while the nested and collection
+rows retain same-session provenance and prepared bulk paths. Their remaining
+allocation totals are interpreter-boundary optimization work, not permission
+to reintroduce names, reflection walks, HostPath materialization, per-alias
+ownership, or HostRef conversion on the Rust-default branch.
+
 The Batch E pre-optimization quick checkpoint on 2026-07-17 used parent commit
 `87e871439`, Rust/Cargo 1.97.0, macOS 26.5.2 arm64, the optimized bench profile,
 one sample, 1,000 measured iterations, and 100 warmups. It recorded 0.4 ns/call
