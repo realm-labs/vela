@@ -348,6 +348,7 @@ dependencies = [
 name = "vela_bytecode"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "vela_analysis",
  "vela_common",
  "vela_def",
@@ -378,6 +379,7 @@ name = "vela_engine"
 version = "0.1.0"
 dependencies = [
  "arc-swap",
+ "blake3",
  "parking_lot",
  "serde",
  "smallvec",

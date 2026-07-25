@@ -1,14 +1,12 @@
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::future::Future;
-use std::pin::Pin;
 use std::task::{Context, Poll, Waker};
 
 use vela_engine::engine::Engine;
 use vela_macros::{ScriptHost, Value, service, service_set};
 
 pub type ServiceResult<T> = Result<T, ServiceError>;
-type ServiceFuture<'call, T> = Pin<Box<dyn Future<Output = T> + Send + 'call>>;
 
 #[derive(Debug, Value)]
 #[script(path = "fixture::ServiceError")]
@@ -48,14 +46,16 @@ pub struct DisplayItem {
     label: String,
 }
 
-#[derive(Debug)]
-struct GrantRequest {
+#[derive(Clone, Debug, Value)]
+#[script(path = "fixture::GrantRequest")]
+pub struct GrantRequest {
     items: Vec<ItemGrant>,
     multipliers: BTreeMap<i32, i32>,
 }
 
-#[derive(Debug)]
-struct GrantResponse {
+#[derive(Clone, Debug, Value)]
+#[script(path = "fixture::GrantResponse")]
+pub struct GrantResponse {
     granted: Vec<DisplayItem>,
 }
 
@@ -105,12 +105,23 @@ pub trait InventoryService: Send + Sync {
     fn current_count(&self, turn: &HostTurn, template_id: i32) -> i32;
 }
 
-trait GrantHandlerService: Send + Sync {
-    fn handle<'call>(
-        &'call self,
-        turn: &'call mut HostTurn,
+#[service(path = "fixture::grant_rule")]
+pub trait GrantRuleService: Send + Sync {
+    fn normalize_count(&self, count: i32, multiplier: i32) -> ServiceResult<i32>;
+}
+
+#[service(path = "fixture::grant_event")]
+pub trait GrantEventService: Send + Sync {
+    fn record(&self, actor: &mut HostActor, granted_count: i64) -> ServiceResult<()>;
+}
+
+#[service(path = "fixture::grant_handler")]
+pub trait GrantHandlerService: Send + Sync {
+    async fn handle(
+        &self,
+        turn: &mut HostTurn,
         request: GrantRequest,
-    ) -> ServiceFuture<'call, ServiceResult<GrantResponse>>;
+    ) -> ServiceResult<GrantResponse>;
 }
 
 struct RustRewardService;
@@ -152,9 +163,11 @@ impl InventoryService for RustInventoryService {
     ) -> ServiceResult<Vec<DisplayItem>> {
         let mut grouped = BTreeMap::<i32, i32>::new();
         let mut labels = BTreeMap::<i32, String>::new();
+        let services = turn.services.clone();
         for item in items {
             let multiplier = multipliers.get(&item.template_id).copied().unwrap_or(1);
-            *grouped.entry(item.template_id).or_default() += item.count * multiplier;
+            let count = services.rule().normalize_count(item.count, multiplier)?;
+            *grouped.entry(item.template_id).or_default() += count;
             if let Some(label) = item.tags.get("label") {
                 labels
                     .entry(item.template_id)
@@ -162,11 +175,9 @@ impl InventoryService for RustInventoryService {
             }
         }
 
-        let granted = turn
-            .services
+        let granted = services
             .reward()
             .apply(&mut turn.actor, &grouped, &labels)?;
-        turn.actor.last_reward_count = granted.len();
         Ok(granted)
     }
 
@@ -179,22 +190,47 @@ impl InventoryService for RustInventoryService {
     }
 }
 
+struct RustGrantRuleService;
+
+impl GrantRuleService for RustGrantRuleService {
+    fn normalize_count(&self, count: i32, multiplier: i32) -> ServiceResult<i32> {
+        let normalized = count.saturating_mul(multiplier);
+        if normalized <= 0 {
+            return Err(ServiceError::new("grant count must be positive"));
+        }
+        Ok(normalized)
+    }
+}
+
+struct RustGrantEventService;
+
+impl GrantEventService for RustGrantEventService {
+    fn record(&self, actor: &mut HostActor, granted_count: i64) -> ServiceResult<()> {
+        actor.last_reward_count = usize::try_from(granted_count)
+            .map_err(|_| ServiceError::new("granted count does not fit usize"))?;
+        Ok(())
+    }
+}
+
 struct RustGrantHandlerService;
 
 impl GrantHandlerService for RustGrantHandlerService {
-    fn handle<'call>(
-        &'call self,
-        turn: &'call mut HostTurn,
+    async fn handle(
+        &self,
+        turn: &mut HostTurn,
         request: GrantRequest,
-    ) -> ServiceFuture<'call, ServiceResult<GrantResponse>> {
-        Box::pin(async move {
-            std::future::ready(()).await;
-            let services = turn.services.clone();
-            let granted = services
-                .inventory()
-                .grant(turn, &request.items, &request.multipliers)?;
-            Ok(GrantResponse { granted })
-        })
+    ) -> ServiceResult<GrantResponse> {
+        std::future::ready(()).await;
+        let services = turn.services.clone();
+        let granted = services
+            .inventory()
+            .grant(turn, &request.items, &request.multipliers)?;
+        services.events().record(
+            &mut turn.actor,
+            i64::try_from(granted.len())
+                .map_err(|_| ServiceError::new("granted count does not fit i64"))?,
+        )?;
+        Ok(GrantResponse { granted })
     }
 }
 
@@ -204,6 +240,12 @@ pub struct GameServices {
     pub inventory: dyn InventoryService,
     #[vela::default(RustRewardService)]
     pub reward: dyn RewardService,
+    #[vela::default(RustGrantRuleService)]
+    pub rule: dyn GrantRuleService,
+    #[vela::default(RustGrantEventService)]
+    pub events: dyn GrantEventService,
+    #[vela::default(RustGrantHandlerService)]
+    pub handler: dyn GrantHandlerService,
 }
 
 fn block_on<T>(future: impl Future<Output = T>) -> T {
@@ -254,7 +296,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         multipliers: BTreeMap::from([(7, 2)]),
     };
 
-    let response = block_on(RustGrantHandlerService.handle(&mut turn, request))?;
+    let root = turn.services.clone();
+    let response = block_on(root.handler().handle(&mut turn, request))?;
     let count = turn.services.inventory().current_count(&turn, 7);
     let checksum = response.granted.iter().fold(0_i64, |checksum, item| {
         checksum
