@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use vela_common::{
     CallableAsyncness, Capability, CollectionViewKind, CollectionViewMutation, HostObjectId,
     HostTypeId, InteropBindingContract, InteropRepresentation, InteropTypeId, TypeAbiFingerprint,
@@ -34,6 +36,7 @@ fn contract(effects: EffectSet) -> CallableContract {
         effects,
         access: CallableAccess::default(),
         docs: Some("not ABI".to_owned()),
+        attrs: BTreeMap::new(),
         origin: CallableOrigin {
             language: CallableLanguage::Rust,
             source_span: None,

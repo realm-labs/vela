@@ -4,7 +4,7 @@ use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
 use syn::{ImplItem, ItemImpl, LitBool, LitStr, Result, Visibility, parse::Parser, parse2};
 
-use crate::attrs::parse_qualified_name;
+use crate::attrs::{parse_key_value_attr, parse_qualified_name, reject_duplicate_attr_keys};
 use crate::export::emission;
 use crate::export::signature::{
     EffectName, classify_method, classify_method_with_host_collection_returns,
@@ -53,8 +53,11 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             &item.self_ty,
             &owner_path,
             &public_name,
-            docs.as_deref(),
-            method_attrs.reflect_callable,
+            emission::MethodContractMetadata {
+                docs: docs.as_deref(),
+                reflect_callable: method_attrs.reflect_callable,
+                attrs: &method_attrs.attrs,
+            },
             &signature,
         ));
         generated.push(
@@ -139,6 +142,7 @@ struct MethodAttrs {
     reflect_callable: bool,
     host_collection: bool,
     effects: BTreeSet<EffectName>,
+    attrs: Vec<(String, String)>,
 }
 
 fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAttrs> {
@@ -173,6 +177,13 @@ fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAttrs> {
                 parsed.host_collection = true;
                 return Ok(());
             }
+            if meta.path.is_ident("attr") {
+                parsed.attrs.push(parse_key_value_attr(
+                    meta.value()?.parse::<LitStr>()?,
+                    "script_method",
+                )?);
+                return Ok(());
+            }
             if meta.path.is_ident("effects") {
                 return meta.parse_nested_meta(|effect| {
                     let Some(ident) = effect.path.get_ident() else {
@@ -191,10 +202,11 @@ fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAttrs> {
                 });
             }
             Err(meta.error(
-                "#[methods] supports only name, reflect, host_collection, and effects(...) on #[script_method]",
+                "#[methods] supports only name, reflect, host_collection, attr, and effects(...) on #[script_method]",
             ))
         })?;
     }
+    reject_duplicate_attr_keys(&parsed.attrs, "script_method")?;
     method.attrs = retained;
     Ok(parsed)
 }

@@ -89,8 +89,11 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
             &self_ty,
             &protocol_path,
             &public_name,
-            None,
-            false,
+            emission::MethodContractMetadata {
+                docs: None,
+                reflect_callable: false,
+                attrs: &[],
+            },
             &signature,
         ));
         generated.push(

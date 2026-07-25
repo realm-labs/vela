@@ -575,6 +575,7 @@ fn emit_method(
                 effects: #effects,
                 access: ::vela_engine::interop::CallableAccess::default(),
                 docs: #method_docs,
+                attrs: ::std::collections::BTreeMap::new(),
                 origin: ::vela_engine::interop::CallableOrigin {
                     language: ::vela_engine::interop::CallableLanguage::Rust,
                     source_span: None,

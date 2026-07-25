@@ -12,13 +12,18 @@ use crate::export::signature::{
     TypeShape,
 };
 
+pub(crate) struct MethodContractMetadata<'a> {
+    pub(crate) docs: Option<&'a str>,
+    pub(crate) reflect_callable: bool,
+    pub(crate) attrs: &'a [(String, String)],
+}
+
 pub(crate) fn method_contract(
     method: &ImplItemFn,
     self_ty: &syn::Type,
     owner_path: &str,
     public_name: &str,
-    docs: Option<&str>,
-    reflect_callable: bool,
+    metadata: MethodContractMetadata<'_>,
     signature: &ClassifiedSignature,
 ) -> TokenStream {
     let method_ident = &method.sig.ident;
@@ -65,7 +70,13 @@ pub(crate) fn method_contract(
     } else {
         quote! { ::vela_common::CallableAsyncness::Sync }
     };
-    let docs = docs.map_or_else(|| quote! { None }, |docs| quote! { Some(#docs.to_owned()) });
+    let docs = metadata
+        .docs
+        .map_or_else(|| quote! { None }, |docs| quote! { Some(#docs.to_owned()) });
+    let reflect_callable = metadata.reflect_callable;
+    let attrs = metadata.attrs.iter().map(|(name, value)| {
+        quote! { (#name.to_owned(), #value.to_owned()) }
+    });
 
     quote! {
         #[doc(hidden)]
@@ -86,6 +97,7 @@ pub(crate) fn method_contract(
                     ..::vela_engine::interop::CallableAccess::default()
                 },
                 docs: #docs,
+                attrs: ::std::collections::BTreeMap::from([#(#attrs),*]),
                 origin: ::vela_engine::interop::CallableOrigin {
                     language: ::vela_engine::interop::CallableLanguage::Rust,
                     source_span: None,

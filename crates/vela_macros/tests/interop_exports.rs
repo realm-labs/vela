@@ -250,6 +250,7 @@ pub fn roll(_ctx: &mut NativeCallContext<'_, '_>, player: &Player) -> i64 {
 
 #[methods(path = "game::Player")]
 impl Player {
+    #[script_method(attr = "context_operations=inspect")]
     pub fn current_level(&self) -> i64 {
         self.level
     }
@@ -360,6 +361,17 @@ fn method_groups_share_receiver_classification() {
 
     assert_eq!(shared.effects, EffectSet::host_read());
     assert_eq!(shared.parameters[0].mode, BoundaryMode::SharedHost);
+    assert_eq!(
+        shared.attrs.get("context_operations").map(String::as_str),
+        Some("inspect")
+    );
+    assert_eq!(
+        shared
+            .native_method_desc(Player::vela_host_type_desc().key)
+            .attrs
+            .get("context_operations"),
+        Some("inspect")
+    );
     assert_eq!(exclusive.effects, EffectSet::host_write());
     assert_eq!(exclusive.parameters[0].mode, BoundaryMode::ExclusiveHost);
 

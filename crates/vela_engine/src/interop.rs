@@ -606,6 +606,8 @@ pub struct CallableContract {
     pub effects: EffectSet,
     pub access: CallableAccess,
     pub docs: Option<String>,
+    /// Non-ABI metadata used by reflection, inventory, and integration code.
+    pub attrs: BTreeMap<String, String>,
     pub origin: CallableOrigin,
 }
 
@@ -642,6 +644,9 @@ impl CallableContract {
         }
         if let Some(docs) = &self.docs {
             desc = desc.docs(docs.clone());
+        }
+        for (name, value) in &self.attrs {
+            desc = desc.attr(name.clone(), value.clone());
         }
         desc.callable_contract(self.clone())
     }
@@ -684,6 +689,9 @@ impl CallableContract {
         }
         if let Some(docs) = &self.docs {
             desc = desc.docs(docs.clone());
+        }
+        for (name, value) in &self.attrs {
+            desc = desc.attr(name.clone(), value.clone());
         }
         if let Some(source_span) = self.origin.source_span {
             desc = desc.source_span(source_span);

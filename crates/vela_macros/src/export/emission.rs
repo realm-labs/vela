@@ -80,6 +80,7 @@ pub(crate) fn function_contract(
                 effects: #effects,
                 access: ::vela_engine::interop::CallableAccess::default(),
                 docs: #docs,
+                attrs: ::std::collections::BTreeMap::new(),
                 origin: ::vela_engine::interop::CallableOrigin {
                     language: ::vela_engine::interop::CallableLanguage::Rust,
                     source_span: None,
@@ -881,7 +882,7 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
 
 mod method;
 
-pub(crate) use method::{method_adapter, method_contract};
+pub(crate) use method::{MethodContractMetadata, method_adapter, method_contract};
 
 pub(crate) fn protocol_contract(
     trait_ident: &syn::Ident,
@@ -949,6 +950,7 @@ pub(crate) fn protocol_contract(
                 effects: #effects,
                 access: ::vela_engine::interop::CallableAccess::default(),
                 docs: #method_docs,
+                attrs: ::std::collections::BTreeMap::new(),
                 origin: ::vela_engine::interop::CallableOrigin {
                     language: ::vela_engine::interop::CallableLanguage::Rust,
                     source_span: None,

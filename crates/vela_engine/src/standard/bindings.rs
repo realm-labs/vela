@@ -830,6 +830,7 @@ fn reverse_and_increment(value: (i64, String)) -> (String, i64) {
             effects: EffectSet::host_write(),
             access: CallableAccess::default(),
             docs: None,
+            attrs: std::collections::BTreeMap::new(),
             origin: CallableOrigin {
                 language: CallableLanguage::Rust,
                 source_span: None,

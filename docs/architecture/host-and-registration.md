@@ -789,6 +789,12 @@ The unified export path does not reuse the older shape-specific macro fallback
 that interprets every omitted effect as `pure`; omission means use the inferred
 signature base.
 
+An inherent `#[vela::methods]` item may attach audited, non-ABI metadata with
+`#[script_method(attr = "key=value")]`. The generated `CallableContract` and
+sealed `NativeMethodDesc` retain the same entry; duplicate keys are rejected.
+These attributes support inventory and integration discovery only and never
+grant effects, capabilities, or reflection access.
+
 ### Rust Signature Mapping
 
 Native functions should use narrow conversion rules:

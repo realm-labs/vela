@@ -1009,6 +1009,7 @@ mod tests {
                 effects: EffectSet::pure(),
                 access: CallableAccess::default(),
                 docs: None,
+                attrs: std::collections::BTreeMap::new(),
                 origin: CallableOrigin {
                     language: CallableLanguage::Rust,
                     source_span: None,
