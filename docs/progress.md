@@ -202,9 +202,11 @@ Transformed Value arrays lower to owned `Vec<T>` or temporary `&[T]`; mutable
 script-owned arrays still fail before the authored Rust body, while Host
 collection views retain zero-copy write-through.
 
-Remaining closure work is explicit Injected/Constructible/ProducedBorrow
-tooling, dispatch/lifetime parity auditing, the consolidated runnable coverage
-demo, and the full validation matrix.
+CLI/LSP schema metadata now reports each Host service parameter's reachable
+`Injected`, `Constructible`, and `ProducedBorrow` origins from the same sealed
+service and TypeBinding facts. Remaining closure work is dispatch/lifetime
+parity auditing, the consolidated runnable coverage demo, and the full
+validation matrix.
 
 The active
 [completion plan](rust-vela-service-patchability-completion-plan.md) owns the
@@ -262,8 +264,8 @@ changes.
 
 ## Next Up
 
-1. Finish service origin tooling and dispatch/lifetime parity, then add the
-   runnable coverage demo from the service patchability completion plan.
+1. Finish service dispatch/lifetime parity, then add the runnable coverage
+   demo from the service patchability completion plan.
 2. Resume M20.5 only for a named editor-visible language-service gap.
 3. Audit the parameterized container and value-keyed Map/Set plans against
    their explicit acceptance matrices.

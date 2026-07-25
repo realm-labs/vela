@@ -6,8 +6,8 @@
 > The generation/deployment model, direct/optional/fallible borrowed service
 > returns to ordinary Rust callers, explicit call-scoped Host construction,
 > and storage-directed shared Value/Host parameter lowering are implemented.
-> Origin reporting, the consolidated coverage demo, and the final validation
-> gates remain tracked by
+> Host-origin reporting is exported through the sealed CLI/LSP schema. The
+> consolidated coverage demo and final validation gates remain tracked by
 > [the completion plan](rust-vela-service-patchability-completion-plan.md).
 
 ## 1. User-Facing Guarantee

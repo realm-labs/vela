@@ -190,6 +190,8 @@ pub struct SchemaServiceParameterFact {
     name: String,
     type_hint: String,
     mode: String,
+    #[serde(default)]
+    host_origins: Vec<String>,
 }
 
 impl SchemaServiceParameterFact {
@@ -203,7 +205,17 @@ impl SchemaServiceParameterFact {
             name: name.into(),
             type_hint: type_hint.into(),
             mode: mode.into(),
+            host_origins: Vec::new(),
         }
+    }
+
+    #[must_use]
+    pub fn with_host_origins(
+        mut self,
+        origins: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        self.host_origins = origins.into_iter().map(Into::into).collect();
+        self
     }
 
     #[must_use]
@@ -219,6 +231,11 @@ impl SchemaServiceParameterFact {
     #[must_use]
     pub fn mode(&self) -> &str {
         &self.mode
+    }
+
+    #[must_use]
+    pub fn host_origins(&self) -> &[String] {
+        &self.host_origins
     }
 }
 
@@ -264,6 +281,18 @@ pub(super) fn validate_service_set(
                 require_nonempty("service parameter name", &parameter.name)?;
                 require_nonempty("service parameter type", &parameter.type_hint)?;
                 require_nonempty("service parameter mode", &parameter.mode)?;
+                let mut origins = BTreeSet::new();
+                for origin in &parameter.host_origins {
+                    if !matches!(
+                        origin.as_str(),
+                        "injected" | "constructible" | "produced_borrow"
+                    ) || !origins.insert(origin)
+                    {
+                        return Err(SchemaArtifactError::new(
+                            "service parameter contains an unknown or duplicate Host origin",
+                        ));
+                    }
+                }
             }
         }
     }
