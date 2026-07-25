@@ -185,16 +185,26 @@ Host-backed and mutable collections retain HostRef identity and leases.
 
 ### Service Patchability Totality
 
-The service macro currently admits a direct borrowed return while the
-Vela-selected outer Rust adapter retains a non-executable panic branch.
-`Option<&T>` and `Result<&T, E>` are complete for ordinary synchronous exports
-and methods but not for generated services. Nested borrowed containers fail
-only incidentally and lack the explicit service compile-fail matrix required
-to guarantee that a sealed service is fully patchable. Parameter patchability
-also lacks one uniform Value/Host construction rule: generic Value-to-`&T`
-temporary lowering, call-scoped Host scratch construction, argument-origin
-reporting, and target-directed conversion of transformed Value collections
-remain open.
+The admitted borrowed-return matrix is now total for direct `&T`, direct
+`&mut T`, `Option<&T>`, and `Result<&T, E>` when the return is the exact direct
+Host parameter. Vela-selected outer Rust calls restore the authored borrow
+without fabricating references; nested borrowed containers and projected
+children fail during macro expansion.
+
+Shared custom service parameters now use one storage-directed boundary:
+sealed Value storage decodes one invocation-local temporary, while sealed Host
+storage acquires a shared lease. The same generated Rust caller serializes a
+borrowed Value or injects a Host without a patch-specific branch. This works
+for synchronous and async service defaults. Host constructors declare
+`CallScoped` or `RuntimeOwned`; call-scoped objects are reclaimed at root
+teardown and their lifetime enters Type ABI and exported schema facts.
+Transformed Value arrays lower to owned `Vec<T>` or temporary `&[T]`; mutable
+script-owned arrays still fail before the authored Rust body, while Host
+collection views retain zero-copy write-through.
+
+Remaining closure work is explicit Injected/Constructible/ProducedBorrow
+tooling, dispatch/lifetime parity auditing, the consolidated runnable coverage
+demo, and the full validation matrix.
 
 The active
 [completion plan](rust-vela-service-patchability-completion-plan.md) owns the
@@ -252,8 +262,8 @@ changes.
 
 ## Next Up
 
-1. Execute the service patchability completion plan from its compile-time
-   signature matrix through the runnable coverage demo.
+1. Finish service origin tooling and dispatch/lifetime parity, then add the
+   runnable coverage demo from the service patchability completion plan.
 2. Resume M20.5 only for a named editor-visible language-service gap.
 3. Audit the parameterized container and value-keyed Map/Set plans against
    their explicit acceptance matrices.

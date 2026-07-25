@@ -829,13 +829,21 @@ fn service_lease_requests(
 ) -> VmResult<vela_host::lease::HostLeaseRequestSet> {
     let mut requests =
         vela_host::lease::HostLeaseRequestSet::with_capacity(entry.parameter_leases.len());
-    for (index, kind) in &entry.parameter_leases {
-        let Some(OwnedValue::HostRef(root)) = args.get(*index) else {
+    for lease in &entry.parameter_leases {
+        let Some(argument) = args.get(lease.index) else {
             return Err(VmError::new(VmErrorKind::TypeMismatch {
                 operation: "async service host lease parameter",
             }));
         };
-        requests.push((*root, *kind));
+        let OwnedValue::HostRef(root) = argument else {
+            if lease.host_only {
+                continue;
+            }
+            return Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "async service host lease parameter",
+            }));
+        };
+        requests.push((*root, lease.kind));
     }
     Ok(requests)
 }

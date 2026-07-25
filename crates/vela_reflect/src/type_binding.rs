@@ -57,6 +57,13 @@ impl TypeBindingDesc {
     pub fn supports_representation(&self, representation: InteropRepresentation) -> bool {
         match representation {
             InteropRepresentation::Owned => self.capabilities.contains(ReceiverCapability::Owned),
+            InteropRepresentation::StorageDirectedShared => match self.storage {
+                StoragePolicy::Value => self.capabilities.contains(ReceiverCapability::Owned),
+                StoragePolicy::Host => {
+                    self.collection_views.is_none()
+                        && self.capabilities.contains(ReceiverCapability::Shared)
+                }
+            },
             InteropRepresentation::SharedHost => {
                 self.collection_views.is_none()
                     && self.capabilities.contains(ReceiverCapability::Shared)

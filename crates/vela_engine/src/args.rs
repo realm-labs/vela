@@ -14,6 +14,13 @@ pub trait IntoScriptArg {
     fn into_script_arg(self) -> OwnedValue;
 }
 
+/// Encodes an owned-Value boundary object without consuming the authored Rust
+/// value. Generated `Value` implementations recurse through this trait when a
+/// service parameter is `&T` and the sealed `T` binding uses Value storage.
+pub trait ToScriptValueRef {
+    fn to_script_value_ref(&self) -> OwnedValue;
+}
+
 pub trait IntoHostArg {
     fn into_host_ref(self) -> HostRef;
 }
@@ -28,6 +35,171 @@ pub trait HostArgType {
     const TYPE_NAME: &'static str;
     const HOST_TYPE_ID: Option<HostTypeId>;
 }
+
+macro_rules! copy_value_ref {
+    ($($ty:ty),* $(,)?) => {
+        $(
+            impl ToScriptValueRef for $ty {
+                fn to_script_value_ref(&self) -> OwnedValue {
+                    (*self).into_script_arg()
+                }
+            }
+        )*
+    };
+}
+
+copy_value_ref!(
+    (),
+    bool,
+    char,
+    i8,
+    i16,
+    i32,
+    i64,
+    u8,
+    u16,
+    u32,
+    u64,
+    f32,
+    f64
+);
+
+impl ToScriptValueRef for String {
+    fn to_script_value_ref(&self) -> OwnedValue {
+        self.clone().into_script_arg()
+    }
+}
+
+impl<T> ToScriptValueRef for Vec<T>
+where
+    T: ToScriptValueRef,
+{
+    fn to_script_value_ref(&self) -> OwnedValue {
+        OwnedValue::Array(
+            self.iter()
+                .map(ToScriptValueRef::to_script_value_ref)
+                .collect(),
+        )
+    }
+}
+
+impl<T> ToScriptValueRef for Option<T>
+where
+    T: ToScriptValueRef,
+{
+    fn to_script_value_ref(&self) -> OwnedValue {
+        match self {
+            Some(value) => enum_payload("Option", "Some", value.to_script_value_ref()),
+            None => enum_empty("Option", "None"),
+        }
+    }
+}
+
+impl<T, E> ToScriptValueRef for Result<T, E>
+where
+    T: ToScriptValueRef,
+    E: ToScriptValueRef,
+{
+    fn to_script_value_ref(&self) -> OwnedValue {
+        match self {
+            Ok(value) => enum_payload("Result", "Ok", value.to_script_value_ref()),
+            Err(error) => enum_payload("Result", "Err", error.to_script_value_ref()),
+        }
+    }
+}
+
+impl<K, V> ToScriptValueRef for BTreeMap<K, V>
+where
+    K: ToScriptValueRef + Ord,
+    V: ToScriptValueRef,
+{
+    fn to_script_value_ref(&self) -> OwnedValue {
+        OwnedValue::Map(
+            self.iter()
+                .map(|(key, value)| {
+                    OwnedMapEntry::new(key.to_script_value_ref(), value.to_script_value_ref())
+                })
+                .collect(),
+        )
+    }
+}
+
+impl<K, V> ToScriptValueRef for HashMap<K, V>
+where
+    K: ToScriptValueRef + Eq + Hash,
+    V: ToScriptValueRef,
+{
+    fn to_script_value_ref(&self) -> OwnedValue {
+        OwnedValue::Map(
+            self.iter()
+                .map(|(key, value)| {
+                    OwnedMapEntry::new(key.to_script_value_ref(), value.to_script_value_ref())
+                })
+                .collect(),
+        )
+    }
+}
+
+impl<T, const N: usize> ToScriptValueRef for [T; N]
+where
+    T: ToScriptValueRef,
+{
+    fn to_script_value_ref(&self) -> OwnedValue {
+        OwnedValue::Array(
+            self.iter()
+                .map(ToScriptValueRef::to_script_value_ref)
+                .collect(),
+        )
+    }
+}
+
+impl<T> ToScriptValueRef for BTreeSet<T>
+where
+    T: ToScriptValueRef,
+{
+    fn to_script_value_ref(&self) -> OwnedValue {
+        OwnedValue::Set(
+            self.iter()
+                .map(ToScriptValueRef::to_script_value_ref)
+                .collect(),
+        )
+    }
+}
+
+impl<T> ToScriptValueRef for HashSet<T>
+where
+    T: ToScriptValueRef + Eq + Hash + Ord,
+{
+    fn to_script_value_ref(&self) -> OwnedValue {
+        let mut values = self.iter().collect::<Vec<_>>();
+        values.sort();
+        OwnedValue::Set(
+            values
+                .into_iter()
+                .map(ToScriptValueRef::to_script_value_ref)
+                .collect(),
+        )
+    }
+}
+
+macro_rules! tuple_value_ref {
+    ($(($($type:ident:$index:tt),+)),* $(,)?) => {
+        $(
+            impl<$($type),+> ToScriptValueRef for ($($type,)+)
+            where
+                $($type: ToScriptValueRef),+
+            {
+                fn to_script_value_ref(&self) -> OwnedValue {
+                    OwnedValue::Tuple(vec![
+                        $(self.$index.to_script_value_ref()),+
+                    ])
+                }
+            }
+        )*
+    };
+}
+
+tuple_value_ref!((A:0, B:1), (A:0, B:1, C:2), (A:0, B:1, C:2, D:3));
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct TypedHostRef<T: HostArgType> {

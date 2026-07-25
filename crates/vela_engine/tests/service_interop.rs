@@ -42,6 +42,16 @@ pub struct RequestContext {
 #[vela_macros::script_methods]
 impl RequestContext {}
 
+#[derive(ScriptHost)]
+#[script(path = "interop::ObservedState")]
+pub struct ObservedState {
+    #[script(get)]
+    value: i64,
+}
+
+#[vela_macros::script_methods]
+impl ObservedState {}
+
 impl ServiceRuntimeAuthority for RequestContext {
     fn take_service_runtime(
         &mut self,
@@ -161,6 +171,8 @@ pub trait AuditService: Send + Sync {
     ) -> i64;
 
     fn bump(&self, values: &mut Vec<i64>) -> i64;
+
+    fn inspect(&self, context: &mut RequestContext, observed: &ObservedState) -> i64;
 }
 
 pub struct RustAuditService;
@@ -196,6 +208,11 @@ impl AuditService for RustAuditService {
         values.push(6);
         values.iter().sum()
     }
+
+    fn inspect(&self, context: &mut RequestContext, observed: &ObservedState) -> i64 {
+        context.rust_audit_calls += 1;
+        observed.value
+    }
 }
 
 #[service_set(context = RequestContext)]
@@ -211,7 +228,8 @@ fn mixed_service_chain_preserves_custom_values_collection_identity_and_alias_pre
     let engine = InteropServices::register_types(
         Engine::builder()
             .capabilities(CapabilitySet::new().with(Capability::HostWrite))
-            .register_rust_type::<RequestContext>(RequestContext::vela_type_binding()),
+            .register_rust_type::<RequestContext>(RequestContext::vela_type_binding())
+            .register_rust_type::<ObservedState>(ObservedState::vela_type_binding()),
     )
     .build()
     .expect("interop service engine");
@@ -321,6 +339,10 @@ impl AuditPatch {
         let rust_len = base.record(context, values, command);
         return rust_len + values.len();
     }
+
+    fn inspect(context, observed) {
+        return base.inspect(context, observed) + 3;
+    }
 }
 "#;
     let delta = stage_delta(
@@ -342,8 +364,11 @@ impl AuditPatch {
             .iter()
             .filter(|(_, selection)| matches!(selection, ServiceMethodSelection::Vela(_)))
             .count(),
-        7
+        8
     );
+
+    let observed = ObservedState { value: 12 };
+    assert_eq!(complete_patch.audit().inspect(&mut context, &observed), 15);
 
     values.clear();
     values.push(1);

@@ -1,14 +1,14 @@
 # Rust/Vela Service Patchability — Final Usage Shape
 
-> Status: target authoring contract.
+> Status: implemented boundary contract; final demo and repository-wide
+> acceptance remain in progress.
 >
-> The generation/deployment model is implemented. Borrowed service results
-> returned to ordinary Rust callers, exact service `Option<&T>` and
-> `Result<&T, E>`, call-scoped Host construction, and uniform target-directed
-> parameter lowering remain tracked by
+> The generation/deployment model, direct/optional/fallible borrowed service
+> returns to ordinary Rust callers, explicit call-scoped Host construction,
+> and storage-directed shared Value/Host parameter lowering are implemented.
+> Origin reporting, the consolidated coverage demo, and the final validation
+> gates remain tracked by
 > [the completion plan](rust-vela-service-patchability-completion-plan.md).
-> Code marked `ignore` describes the intended final public shape and must not
-> be treated as current compile-pass evidence until that plan closes.
 
 ## 1. User-Facing Guarantee
 

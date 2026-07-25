@@ -41,6 +41,7 @@ pub(super) fn emit_rust_dispatch_arm(
     let mut argument_names = Vec::new();
     for (argument_index, parameter) in signature.parameters.iter().skip(1).enumerate() {
         let name = format_ident!("__vela_arg_{}", parameter.name);
+        let request_index_name = format_ident!("__vela_request_{}", parameter.name);
         argument_names.push(name.clone());
         if let (TypeShape::BorrowedCollection(collection), ParameterMode::SharedHost) =
             (&parameter.ty, parameter.mode)
@@ -76,7 +77,6 @@ pub(super) fn emit_rust_dispatch_arm(
         }
         match parameter.mode {
             ParameterMode::SharedHost | ParameterMode::ExclusiveHost => {
-                let current_lease = lease_index;
                 lease_index += 1;
                 let kind = match parameter.mode {
                     ParameterMode::SharedHost => {
@@ -98,6 +98,7 @@ pub(super) fn emit_rust_dispatch_arm(
                             ));
                         }
                     };
+                    let #request_index_name = __vela_lease_requests.len();
                     __vela_lease_requests.push((__vela_root, #kind));
                 });
                 let binding = match parameter.mode {
@@ -111,7 +112,7 @@ pub(super) fn emit_rust_dispatch_arm(
                                 .next()
                                 .and_then(|__vela_lease| #value)
                                 .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
-                                    __vela_lease_requests[#current_lease].0,
+                                    __vela_lease_requests[#request_index_name].0,
                                 ))?;
                         }
                     }
@@ -124,13 +125,59 @@ pub(super) fn emit_rust_dispatch_arm(
                                 .and_then(|__vela_lease| __vela_lease.object_mut())
                                 .and_then(|__vela_object| #value)
                                 .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
-                                    __vela_lease_requests[#current_lease].0,
+                                    __vela_lease_requests[#request_index_name].0,
                                 ))?;
                         }
                     }
                     _ => unreachable!(),
                 };
                 argument_bindings.push(binding);
+            }
+            ParameterMode::StorageDirectedShared => {
+                lease_index += 1;
+                let TypeShape::StorageDirectedShared(ty) = &parameter.ty else {
+                    unreachable!("storage-directed mode retains its Rust type")
+                };
+                let prepared_name = format_ident!("__vela_prepared_{}", parameter.name);
+                lease_requests.push(quote! {
+                    let mut #prepared_name = None;
+                    let #request_index_name = match &__vela_args[#argument_index] {
+                        ::vela_vm::owned_value::OwnedValue::HostRef(__vela_root) => {
+                            let __vela_index = __vela_lease_requests.len();
+                            __vela_lease_requests.push((
+                                *__vela_root,
+                                ::vela_host::lease::HostLeaseKind::Shared,
+                            ));
+                            Some(__vela_index)
+                        }
+                        __vela_value => {
+                            #prepared_name = Some(
+                                <#ty as ::vela_engine::interop::VelaSharedBoundary>::
+                                    decode_shared_temporary(__vela_value)?
+                            );
+                            None
+                        }
+                    };
+                });
+                argument_bindings.push(quote! {
+                    let #name: &#ty = if let Some(__vela_index) = #request_index_name {
+                        __vela_leases
+                            .next()
+                            .and_then(|__vela_lease| __vela_lease.object().lease_any())
+                            .and_then(|__vela_object| __vela_object.downcast_ref::<#ty>())
+                            .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
+                                __vela_lease_requests[__vela_index].0,
+                            ))?
+                    } else {
+                        #prepared_name
+                            .as_ref()
+                            .ok_or_else(|| ::vela_vm::error::VmError::new(
+                                ::vela_vm::error::VmErrorKind::TypeMismatch {
+                                    operation: "storage-directed Value preparation",
+                                },
+                            ))?
+                    };
+                });
             }
             ParameterMode::Value => {
                 let ty = parameter
@@ -215,7 +262,6 @@ pub(super) fn emit_async_rust_dispatch_arm(
     }
     let method_ident = &method.sig.ident;
     let expected = signature.parameters.len().saturating_sub(1);
-    let mut lease_index = 0_usize;
     let mut argument_bindings = Vec::new();
     let mut argument_names = Vec::new();
     for (argument_index, parameter) in signature.parameters.iter().skip(1).enumerate() {
@@ -255,7 +301,6 @@ pub(super) fn emit_async_rust_dispatch_arm(
         }
         match parameter.mode {
             ParameterMode::SharedHost | ParameterMode::ExclusiveHost => {
-                lease_index += 1;
                 let binding = match parameter.mode {
                     ParameterMode::SharedHost => {
                         let value = shared_host_value_tokens(
@@ -291,6 +336,43 @@ pub(super) fn emit_async_rust_dispatch_arm(
                     _ => unreachable!(),
                 };
                 argument_bindings.push(binding);
+            }
+            ParameterMode::StorageDirectedShared => {
+                let TypeShape::StorageDirectedShared(ty) = &parameter.ty else {
+                    unreachable!("storage-directed mode retains its Rust type")
+                };
+                let prepared_name = format_ident!("__vela_prepared_{}", parameter.name);
+                argument_bindings.push(quote! {
+                    let #prepared_name = match &__vela_args[#argument_index] {
+                        ::vela_vm::owned_value::OwnedValue::HostRef(_) => None,
+                        __vela_value => Some(
+                            <#ty as ::vela_engine::interop::VelaSharedBoundary>::
+                                decode_shared_temporary(__vela_value)?
+                        ),
+                    };
+                    let #name: &#ty = if matches!(
+                        &__vela_args[#argument_index],
+                        ::vela_vm::owned_value::OwnedValue::HostRef(_)
+                    ) {
+                        __vela_leases
+                            .next()
+                            .and_then(|__vela_lease| __vela_lease.object().lease_any())
+                            .and_then(|__vela_object| __vela_object.downcast_ref::<#ty>())
+                            .ok_or_else(|| ::vela_vm::error::VmError::new(
+                                ::vela_vm::error::VmErrorKind::TypeMismatch {
+                                    operation: "async storage-directed shared Host argument",
+                                },
+                            ))?
+                    } else {
+                        #prepared_name
+                            .as_ref()
+                            .ok_or_else(|| ::vela_vm::error::VmError::new(
+                                ::vela_vm::error::VmErrorKind::TypeMismatch {
+                                    operation: "async storage-directed Value preparation",
+                                },
+                            ))?
+                    };
+                });
             }
             ParameterMode::Value => {
                 let ty = parameter
@@ -343,15 +425,15 @@ pub(super) fn emit_async_rust_dispatch_arm(
                         },
                     ));
                 }
-                if __vela_leases.len() != #lease_index {
+                let mut __vela_leases = __vela_leases.iter_mut();
+                #(#argument_bindings)*
+                if __vela_leases.next().is_some() {
                     return Err(::vela_vm::error::VmError::new(
                         ::vela_vm::error::VmErrorKind::TypeMismatch {
                             operation: "async service host lease count",
                         },
                     ));
                 }
-                let mut __vela_leases = __vela_leases.iter_mut();
-                #(#argument_bindings)*
                 ::vela_engine::typed::IntoNativeReturn::into_native_return(
                     __vela_default.#method_ident(#(#argument_names),*).await
                 )
@@ -391,6 +473,44 @@ fn emit_scoped_rust_dispatch_arm(
         let name = format_ident!("__vela_arg_{}", parameter.name);
         argument_names.push(name.clone());
         match parameter.mode {
+            ParameterMode::StorageDirectedShared => {
+                if argument_index != usize::from(origin_index) {
+                    return Err(syn::Error::new_spanned(
+                        parameter.rust_ty.as_ref().unwrap_or(&parse_quote!(())),
+                        "a borrowed-return service currently requires additional shared custom parameters to be passed by value",
+                    ));
+                }
+                let current_lease = lease_index;
+                origin_lease_index = Some(current_lease);
+                lease_index += 1;
+                lease_requests.push(quote! {
+                    let __vela_root = match &__vela_args[#argument_index] {
+                        ::vela_vm::owned_value::OwnedValue::HostRef(__vela_root) => *__vela_root,
+                        _ => {
+                            return Err(::vela_vm::error::VmError::new(
+                                ::vela_vm::error::VmErrorKind::TypeMismatch {
+                                    operation: "service borrowed-return storage-directed origin",
+                                },
+                            ));
+                        }
+                    };
+                    __vela_lease_requests.push((
+                        __vela_root,
+                        ::vela_host::lease::HostLeaseKind::Shared,
+                    ));
+                });
+                let value = shared_host_value_tokens(
+                    &parameter.ty,
+                    quote! { __vela_parent_lease.object() },
+                );
+                argument_bindings.push(quote! {
+                    let #name = #value.ok_or_else(|| {
+                        ::vela_host::lease::host_lease_unsupported(
+                            __vela_lease_requests[#current_lease].0,
+                        )
+                    })?;
+                });
+            }
             ParameterMode::SharedHost | ParameterMode::ExclusiveHost => {
                 let current_lease = lease_index;
                 if argument_index == usize::from(origin_index) {
@@ -525,7 +645,9 @@ fn emit_scoped_rust_dispatch_arm(
                 return quote! { #argument };
             }
             match signature.parameters[index + 1].mode {
-                ParameterMode::SharedHost => quote! { &*#argument },
+                ParameterMode::StorageDirectedShared | ParameterMode::SharedHost => {
+                    quote! { &*#argument }
+                }
                 ParameterMode::ExclusiveHost => quote! { &mut *#argument },
                 _ => unreachable!("borrowed return origin is host-backed"),
             }

@@ -11,18 +11,24 @@ use vela_engine::service::{
     ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot, ServiceSourceManifest,
 };
 use vela_hir::source_ingestion::build_single_source;
-use vela_macros::{ScriptHost, service, service_set};
+use vela_macros::{ScriptHost, Value, service, service_set};
 
 const ASYNC_PATCH_SOURCE: &str = r#"
 #[service_impl(async_test::calculator)]
 impl CalculatorPatch {
-    async fn apply(context: RequestContext, value: i64) -> i64 {
+    async fn apply(context: RequestContext, input: Input) -> i64 {
         context.counter += 10;
-        let adjusted = base.apply(context, value).await;
+        let adjusted = base.apply(context, input).await;
         return adjusted + 20;
     }
 }
 "#;
+
+#[derive(Debug, Value)]
+#[script(path = "async_test::Input")]
+pub struct Input {
+    pub value: i64,
+}
 
 #[derive(ScriptHost)]
 #[script(path = "async_test::RequestContext")]
@@ -55,20 +61,20 @@ impl ServiceRuntimeAuthority for RequestContext {
 
 #[service(path = "async_test::calculator")]
 pub trait AsyncCalculatorService: Send + Sync {
-    async fn apply(&self, context: &mut RequestContext, value: i64) -> i64;
+    async fn apply(&self, context: &mut RequestContext, input: &Input) -> i64;
 }
 
 pub struct RustAsyncCalculatorService;
 
 impl AsyncCalculatorService for RustAsyncCalculatorService {
-    async fn apply(&self, context: &mut RequestContext, value: i64) -> i64 {
+    async fn apply(&self, context: &mut RequestContext, input: &Input) -> i64 {
         context.counter += 1;
         YieldOnce::new().await;
-        if value == -1 {
+        if input.value == -1 {
             panic!("async service fixture panic");
         }
         context.counter += 1;
-        value + 1
+        input.value + 1
     }
 }
 
@@ -119,7 +125,8 @@ fn async_service_root_selects_rust_or_vela_through_one_send_adapter() {
         runtime: ServiceRuntimeSlot::new(engine.clone()),
     };
 
-    let rust_future = rust_root.calculator().apply(&mut context, 5);
+    let rust_input = Input { value: 5 };
+    let rust_future = rust_root.calculator().apply(&mut context, &rust_input);
     assert_send(&rust_future);
     assert_eq!(poll_after_one_pending(rust_future), 6);
     assert_eq!(context.counter, 2);
@@ -150,7 +157,8 @@ fn async_service_root_selects_rust_or_vela_through_one_send_adapter() {
         .expect("activate async snapshot");
     let vela_root = services.pin();
 
-    let vela_future = vela_root.calculator().apply(&mut context, 5);
+    let vela_input = Input { value: 5 };
+    let vela_future = vela_root.calculator().apply(&mut context, &vela_input);
     assert_send(&vela_future);
     assert_eq!(poll_after_one_pending(vela_future), 26);
     assert_eq!(context.counter, 14);
@@ -188,8 +196,10 @@ fn pending_actors_are_isolated_and_drop_or_unwind_restores_runtime_and_leases() 
         counter: 0,
         runtime: ServiceRuntimeSlot::new(engine),
     };
-    let mut first_future = root.calculator().apply(&mut first, 5);
-    let mut finishing_future = root.calculator().apply(&mut finishing, 4);
+    let first_input = Input { value: 5 };
+    let finishing_input = Input { value: 4 };
+    let mut first_future = root.calculator().apply(&mut first, &first_input);
+    let mut finishing_future = root.calculator().apply(&mut finishing, &finishing_input);
     assert_send(&first_future);
     let mut task = Context::from_waker(Waker::noop());
 
@@ -210,12 +220,12 @@ fn pending_actors_are_isolated_and_drop_or_unwind_restores_runtime_and_leases() 
     let new_root = services.pin();
 
     assert_eq!(
-        poll_after_one_pending(root.calculator().apply(&mut second, 6)),
+        poll_after_one_pending(root.calculator().apply(&mut second, &Input { value: 6 }),),
         27
     );
     assert_eq!(second.counter, 12);
     assert_eq!(
-        poll_after_one_pending(new_root.calculator().apply(&mut third, 6)),
+        poll_after_one_pending(new_root.calculator().apply(&mut third, &Input { value: 6 }),),
         7
     );
     assert_eq!(third.counter, 2);
@@ -237,14 +247,15 @@ fn pending_actors_are_isolated_and_drop_or_unwind_restores_runtime_and_leases() 
         "dropping a pending service future restores its actor Runtime"
     );
     assert_eq!(
-        poll_after_one_pending(root.calculator().apply(&mut first, 7)),
+        poll_after_one_pending(root.calculator().apply(&mut first, &Input { value: 7 }),),
         28,
         "a cancelled call releases the exclusive context lease"
     );
     assert_eq!(first.counter, 23);
 
     let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let mut future = root.calculator().apply(&mut first, -1);
+        let input = Input { value: -1 };
+        let mut future = root.calculator().apply(&mut first, &input);
         let mut task = Context::from_waker(Waker::noop());
         assert!(matches!(future.as_mut().poll(&mut task), Poll::Pending));
         let _ = future.as_mut().poll(&mut task);
@@ -256,7 +267,7 @@ fn pending_actors_are_isolated_and_drop_or_unwind_restores_runtime_and_leases() 
         "panic unwind restores the actor Runtime"
     );
     assert_eq!(
-        poll_after_one_pending(root.calculator().apply(&mut first, 8)),
+        poll_after_one_pending(root.calculator().apply(&mut first, &Input { value: 8 }),),
         29
     );
     assert_eq!(first.counter, 46);

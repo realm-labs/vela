@@ -102,6 +102,18 @@ fn expand_struct(
             (#script_name, ::vela_engine::args::IntoScriptArg::into_script_arg(self.#rust_ident))
         }
     });
+    let encode_ref_fields = fields.iter().map(|field| {
+        let rust_ident = &field.rust_ident;
+        let script_name = &field.script_name;
+        quote! {
+            (
+                #script_name,
+                ::vela_engine::args::ToScriptValueRef::to_script_value_ref(
+                    &self.#rust_ident
+                ),
+            )
+        }
+    });
     let decode_fields = fields.iter().map(|field| {
         let rust_ident = &field.rust_ident;
         let script_name = &field.script_name;
@@ -178,6 +190,47 @@ fn expand_struct(
                 ::vela_engine::native::TypeHint::Record(
                     Self::vela_value_type_desc().key,
                 )
+            }
+        }
+
+        impl ::vela_engine::args::ToScriptValueRef for #ident {
+            fn to_script_value_ref(&self) -> ::vela_vm::owned_value::OwnedValue {
+                ::vela_vm::owned_value::OwnedValue::record(
+                    #qualified_type_name,
+                    [#(#encode_ref_fields),*],
+                )
+            }
+        }
+
+        impl ::vela_engine::interop::VelaSharedBoundary for #ident {
+            const STORAGE: ::vela_common::StoragePolicy =
+                ::vela_common::StoragePolicy::Value;
+
+            fn vela_shared_type_hint() -> ::vela_engine::native::TypeHint {
+                <Self as ::vela_engine::interop::VelaValueBoundary>::vela_type_hint()
+            }
+
+            fn register_shared_type_closure(
+                builder: ::vela_engine::builder::EngineBuilder,
+            ) -> ::vela_engine::builder::EngineBuilder {
+                <Self as ::vela_engine::type_registration::RustValueType>::
+                    register_value_type_closure(builder)
+            }
+
+            fn push_shared_service_arg<'a>(
+                &'a self,
+                args: &mut ::vela_engine::runtime::CallArgs<'a>,
+            ) {
+                args.push(
+                    <Self as ::vela_engine::args::ToScriptValueRef>::
+                        to_script_value_ref(self),
+                );
+            }
+
+            fn decode_shared_temporary(
+                value: &::vela_vm::owned_value::OwnedValue,
+            ) -> ::vela_vm::error::VmResult<Self> {
+                <Self as ::vela_engine::args::FromScriptArg>::from_script_arg(value)
             }
         }
 
@@ -263,6 +316,42 @@ fn expand_enum(
                 let script_field = &field.script_name;
                 quote! {
                     (#script_field, ::vela_engine::args::IntoScriptArg::into_script_arg(#rust_field))
+                }
+            });
+            quote! {
+                Self::#rust_variant { #(#rust_fields),* } => {
+                    ::vela_vm::owned_value::OwnedValue::enum_variant(
+                        #qualified_type_name,
+                        #script_variant,
+                        [#(#encoded_fields),*],
+                    )
+                }
+            }
+        }
+    });
+    let encode_ref_arms = variants.iter().map(|variant| {
+        let rust_variant = &variant.rust_ident;
+        let script_variant = &variant.script_name;
+        if variant.fields.is_empty() {
+            quote! {
+                Self::#rust_variant => ::vela_vm::owned_value::OwnedValue::enum_variant(
+                    #qualified_type_name,
+                    #script_variant,
+                    ::std::vec::Vec::<(&str, ::vela_vm::owned_value::OwnedValue)>::new(),
+                )
+            }
+        } else {
+            let rust_fields = variant.fields.iter().map(|field| &field.rust_ident);
+            let encoded_fields = variant.fields.iter().map(|field| {
+                let rust_field = &field.rust_ident;
+                let script_field = &field.script_name;
+                quote! {
+                    (
+                        #script_field,
+                        ::vela_engine::args::ToScriptValueRef::to_script_value_ref(
+                            #rust_field
+                        ),
+                    )
                 }
             });
             quote! {
@@ -370,6 +459,46 @@ fn expand_enum(
                 ::vela_engine::native::TypeHint::Enum(
                     Self::vela_value_type_desc().key,
                 )
+            }
+        }
+
+        impl ::vela_engine::args::ToScriptValueRef for #ident {
+            fn to_script_value_ref(&self) -> ::vela_vm::owned_value::OwnedValue {
+                match self {
+                    #(#encode_ref_arms),*
+                }
+            }
+        }
+
+        impl ::vela_engine::interop::VelaSharedBoundary for #ident {
+            const STORAGE: ::vela_common::StoragePolicy =
+                ::vela_common::StoragePolicy::Value;
+
+            fn vela_shared_type_hint() -> ::vela_engine::native::TypeHint {
+                <Self as ::vela_engine::interop::VelaValueBoundary>::vela_type_hint()
+            }
+
+            fn register_shared_type_closure(
+                builder: ::vela_engine::builder::EngineBuilder,
+            ) -> ::vela_engine::builder::EngineBuilder {
+                <Self as ::vela_engine::type_registration::RustValueType>::
+                    register_value_type_closure(builder)
+            }
+
+            fn push_shared_service_arg<'a>(
+                &'a self,
+                args: &mut ::vela_engine::runtime::CallArgs<'a>,
+            ) {
+                args.push(
+                    <Self as ::vela_engine::args::ToScriptValueRef>::
+                        to_script_value_ref(self),
+                );
+            }
+
+            fn decode_shared_temporary(
+                value: &::vela_vm::owned_value::OwnedValue,
+            ) -> ::vela_vm::error::VmResult<Self> {
+                <Self as ::vela_engine::args::FromScriptArg>::from_script_arg(value)
             }
         }
 

@@ -981,6 +981,9 @@ pub(crate) fn parameter_mode_tokens(mode: ParameterMode) -> TokenStream {
         ParameterMode::ReadOnlyValueBorrow => {
             quote! { ::vela_engine::interop::BoundaryMode::ReadOnlyValueBorrow }
         }
+        ParameterMode::StorageDirectedShared => {
+            quote! { ::vela_engine::interop::BoundaryMode::StorageDirectedShared }
+        }
         ParameterMode::SharedHost => quote! { ::vela_engine::interop::BoundaryMode::SharedHost },
         ParameterMode::ExclusiveHost => {
             quote! { ::vela_engine::interop::BoundaryMode::ExclusiveHost }

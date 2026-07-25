@@ -855,6 +855,7 @@ fn parameter_mode_matches_representation(
                 BoundaryMode::Value | BoundaryMode::ReadOnlyValueBorrow
             )
         }
+        InteropRepresentation::StorageDirectedShared => mode == BoundaryMode::StorageDirectedShared,
         InteropRepresentation::SharedHost | InteropRepresentation::CollectionView(_) => {
             mode == BoundaryMode::SharedHost
         }
@@ -872,6 +873,7 @@ fn return_mode_matches_representation(
         InteropRepresentation::Owned => {
             matches!(mode, ReturnMode::OwnedValue | ReturnMode::StructuredValue)
         }
+        InteropRepresentation::StorageDirectedShared => false,
         InteropRepresentation::SharedHost
         | InteropRepresentation::ExclusiveHost
         | InteropRepresentation::CollectionView(_)

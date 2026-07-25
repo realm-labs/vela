@@ -1,6 +1,5 @@
 use syn::{ReturnType, Type};
 
-use crate::export::emission::host_type_id_tokens;
 use crate::export::signature::{
     BorrowOrigin, ClassifiedSignature, ReturnMode, ScopedReturnContainer, TypeShape,
 };
@@ -67,8 +66,12 @@ pub(super) fn validate_outer_scoped_return(
         },
         None => return Err(envelope_mismatch(output)),
     };
-    let origin_key = host_type_id_tokens(&origin.ty).map(|tokens| tokens.to_string());
-    let child_key = host_type_id_tokens(child).map(|tokens| tokens.to_string());
+    let origin_key = direct_rust_type(&origin.ty)
+        .map(quote::ToTokens::to_token_stream)
+        .map(|tokens| tokens.to_string());
+    let child_key = direct_rust_type(child)
+        .map(quote::ToTokens::to_token_stream)
+        .map(|tokens| tokens.to_string());
     if origin_key.is_some() && origin_key == child_key {
         return Ok(());
     }
@@ -76,6 +79,14 @@ pub(super) fn validate_outer_scoped_return(
         output,
         "service borrowed return must be the exact direct host parameter; projected child references cannot be restored to an unchanged Rust return type without fabricating a reference",
     ))
+}
+
+fn direct_rust_type(shape: &TypeShape) -> Option<&Type> {
+    match shape {
+        TypeShape::StorageDirectedShared(ty) | TypeShape::Host(ty, _) => Some(ty),
+        TypeShape::BorrowedCollection(collection) => Some(&collection.rust_ty),
+        _ => None,
+    }
 }
 
 fn envelope_mismatch(output: &ReturnType) -> syn::Error {

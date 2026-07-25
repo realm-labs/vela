@@ -238,6 +238,12 @@ fn unified_type_binding_is_sealed_into_engine_and_reflection_registry() {
         .get_for::<ExternalValue>()
         .expect("Rust value type binding");
     assert_eq!(value.storage, StoragePolicy::Value);
+    assert!(
+        value.supports_representation(vela_common::InteropRepresentation::StorageDirectedShared,)
+    );
+    assert!(
+        host.supports_representation(vela_common::InteropRepresentation::StorageDirectedShared,)
+    );
     assert_eq!(reflected_registry.type_bindings().count(), 2);
 
     let compiler_facts = RegistryFacts::from_compile_view(engine.compiler_registry())

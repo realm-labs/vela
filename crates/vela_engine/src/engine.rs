@@ -70,7 +70,14 @@ pub(crate) struct ServiceDispatchNative {
     pub(crate) name: String,
     pub(crate) effects: EffectSet,
     pub(crate) asyncness: vela_common::CallableAsyncness,
-    pub(crate) parameter_leases: Vec<(usize, HostLeaseKind)>,
+    pub(crate) parameter_leases: Vec<ServiceDispatchLease>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct ServiceDispatchLease {
+    pub(crate) index: usize,
+    pub(crate) kind: HostLeaseKind,
+    pub(crate) host_only: bool,
 }
 
 pub(crate) struct EngineParts {
@@ -1179,12 +1186,21 @@ fn service_dispatch_natives(
                                 .iter()
                                 .enumerate()
                                 .filter_map(|(index, parameter)| {
-                                    let kind = match parameter.mode {
-                                        BoundaryMode::SharedHost => HostLeaseKind::Shared,
-                                        BoundaryMode::ExclusiveHost => HostLeaseKind::Exclusive,
+                                    let (kind, host_only) = match parameter.mode {
+                                        BoundaryMode::StorageDirectedShared => {
+                                            (HostLeaseKind::Shared, true)
+                                        }
+                                        BoundaryMode::SharedHost => (HostLeaseKind::Shared, false),
+                                        BoundaryMode::ExclusiveHost => {
+                                            (HostLeaseKind::Exclusive, false)
+                                        }
                                         _ => return None,
                                     };
-                                    Some((index, kind))
+                                    Some(ServiceDispatchLease {
+                                        index,
+                                        kind,
+                                        host_only,
+                                    })
                                 })
                                 .collect(),
                         },

@@ -10,7 +10,8 @@ use std::hash::Hash;
 use std::sync::Arc;
 
 use vela_common::{
-    CallableAsyncness, CapabilitySet, HostTypeId, InteropBindingContract, Span, stable_id,
+    CallableAsyncness, CapabilitySet, HostTypeId, InteropBindingContract, Span, StoragePolicy,
+    stable_id,
 };
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 
@@ -120,6 +121,53 @@ pub trait VelaHostBoundary: ScriptHostSchema {
 }
 
 impl<T: ScriptHostSchema> VelaHostBoundary for T {}
+
+/// One nominal Rust type that may satisfy a shared service parameter from
+/// either sealed Value storage or sealed Host storage.
+///
+/// Implementations own all representation-specific operations so generated
+/// service code never guesses whether `&T` means a decoded invocation-local
+/// Value or a leased Host object.
+pub trait VelaSharedBoundary: Sized + 'static {
+    const STORAGE: StoragePolicy;
+
+    fn vela_shared_type_hint() -> TypeHint;
+
+    fn register_shared_type_closure(
+        builder: crate::builder::EngineBuilder,
+    ) -> crate::builder::EngineBuilder;
+
+    fn push_shared_service_arg<'a>(&'a self, args: &mut crate::runtime::CallArgs<'a>);
+
+    fn decode_shared_temporary(value: &vela_vm::owned_value::OwnedValue) -> VmResult<Self>;
+}
+
+impl<T> VelaSharedBoundary for T
+where
+    T: ScriptHostSchema + vela_host::object::ScriptHostObject + Sync + 'static,
+{
+    const STORAGE: StoragePolicy = StoragePolicy::Host;
+
+    fn vela_shared_type_hint() -> TypeHint {
+        TypeHint::Host(Self::script_host_type_desc().key)
+    }
+
+    fn register_shared_type_closure(
+        builder: crate::builder::EngineBuilder,
+    ) -> crate::builder::EngineBuilder {
+        builder
+    }
+
+    fn push_shared_service_arg<'a>(&'a self, args: &mut crate::runtime::CallArgs<'a>) {
+        args.push_positional_host_ref(self);
+    }
+
+    fn decode_shared_temporary(_value: &vela_vm::owned_value::OwnedValue) -> VmResult<Self> {
+        Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "storage-directed shared Host argument",
+        }))
+    }
+}
 
 /// Applies the engine's generated-export panic policy without exposing the
 /// panic payload across the language boundary.
@@ -338,6 +386,7 @@ impl CallableIdentity {
 pub enum BoundaryMode {
     Value,
     ReadOnlyValueBorrow,
+    StorageDirectedShared,
     SharedHost,
     ExclusiveHost,
     HiddenContext,
@@ -348,6 +397,7 @@ impl BoundaryMode {
         match self {
             Self::Value => "value",
             Self::ReadOnlyValueBorrow => "readonly_value_borrow",
+            Self::StorageDirectedShared => "storage_directed_shared",
             Self::SharedHost => "shared_host",
             Self::ExclusiveHost => "exclusive_host",
             Self::HiddenContext => "hidden_context",
@@ -600,9 +650,11 @@ impl CallableContract {
     pub fn native_method_desc(&self, owner: vela_reflect::registry::TypeKey) -> NativeMethodDesc {
         let receiver = match self.parameters.first().map(|parameter| parameter.mode) {
             Some(BoundaryMode::Value) => vela_common::ReceiverCapability::Owned,
-            Some(BoundaryMode::ReadOnlyValueBorrow | BoundaryMode::SharedHost) => {
-                vela_common::ReceiverCapability::Shared
-            }
+            Some(
+                BoundaryMode::ReadOnlyValueBorrow
+                | BoundaryMode::StorageDirectedShared
+                | BoundaryMode::SharedHost,
+            ) => vela_common::ReceiverCapability::Shared,
             Some(BoundaryMode::ExclusiveHost) => vela_common::ReceiverCapability::Exclusive,
             Some(BoundaryMode::HiddenContext) | None => vela_common::ReceiverCapability::Shared,
         };

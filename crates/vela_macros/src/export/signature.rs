@@ -58,6 +58,7 @@ impl EffectName {
 pub(crate) enum ParameterMode {
     Value,
     ReadOnlyValueBorrow,
+    StorageDirectedShared,
     SharedHost,
     ExclusiveHost,
     HiddenContext,
@@ -94,6 +95,7 @@ pub(crate) enum TypeShape {
     Option(Box<TypeShape>),
     Result(Box<TypeShape>, Box<TypeShape>),
     Value(Type),
+    StorageDirectedShared(Type),
     Host(Type, HostAccess),
     BorrowedCollection(BorrowedCollectionShape),
     ReceiverHost,
@@ -253,7 +255,9 @@ fn classify_signature(
         }
         if matches!(
             classified.mode,
-            ParameterMode::SharedHost | ParameterMode::ExclusiveHost
+            ParameterMode::StorageDirectedShared
+                | ParameterMode::SharedHost
+                | ParameterMode::ExclusiveHost
         ) && (!is_receiver || receiver_is_borrow_origin)
         {
             let visible_index = parameters
@@ -296,7 +300,9 @@ fn classify_signature(
                 ));
             };
             let parent = match parent_mode {
-                ParameterMode::SharedHost => HostAccess::Shared,
+                ParameterMode::StorageDirectedShared | ParameterMode::SharedHost => {
+                    HostAccess::Shared
+                }
                 ParameterMode::ExclusiveHost => HostAccess::Exclusive,
                 _ => unreachable!("host origins contain only host modes"),
             };
@@ -421,6 +427,14 @@ fn classify_parameter(
             });
         }
         let host_ty = direct_host_type(&reference.elem)?;
+        if access == HostAccess::Shared && allow_named_lifetimes {
+            return Ok(ClassifiedParameter {
+                name,
+                ty: TypeShape::StorageDirectedShared(host_ty),
+                mode: ParameterMode::StorageDirectedShared,
+                rust_ty: Some(parameter.ty.as_ref().clone()),
+            });
+        }
         return Ok(ClassifiedParameter {
             name,
             ty: TypeShape::Host(host_ty, access),
@@ -823,6 +837,7 @@ fn host_return_access(shape: &TypeShape) -> Result<Option<HostAccess>> {
         | TypeShape::Map(_, _)
         | TypeShape::Set(_)
         | TypeShape::Value(_)
+        | TypeShape::StorageDirectedShared(_)
         | TypeShape::ReceiverHost => Ok(None),
     }
 }

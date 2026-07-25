@@ -425,7 +425,9 @@ fn normalize_service_effects(signature: &mut ClassifiedSignature) {
     let has_explicit_host_parameter = signature.parameters.iter().skip(1).any(|parameter| {
         matches!(
             parameter.mode,
-            ParameterMode::SharedHost | ParameterMode::ExclusiveHost
+            ParameterMode::StorageDirectedShared
+                | ParameterMode::SharedHost
+                | ParameterMode::ExclusiveHost
         )
     });
     if !has_explicit_host_parameter && signature.effects == BTreeSet::from([EffectName::HostRead]) {
@@ -962,6 +964,12 @@ fn service_call_argument_tokens(parameter: &ClassifiedParameter) -> Result<Token
         (TypeShape::Host(_, HostAccess::Exclusive), ParameterMode::ExclusiveHost) => Ok(quote! {
             __vela_args.push_positional_host_mut(#ident);
         }),
+        (TypeShape::StorageDirectedShared(ty), ParameterMode::StorageDirectedShared) => {
+            Ok(quote! {
+                <#ty as ::vela_engine::interop::VelaSharedBoundary>::
+                    push_shared_service_arg(#ident, &mut __vela_args);
+            })
+        }
         (TypeShape::BorrowedCollection(collection), ParameterMode::SharedHost) => {
             if collection.slice_element.is_some() {
                 if matches!(

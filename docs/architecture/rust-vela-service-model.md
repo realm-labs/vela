@@ -500,7 +500,8 @@ Every binding selects an explicit storage policy:
 |---|---|---|---|
 | `Value` | scalar, String, enum, DTO, owned collection | scalar, record, enum, Array/Map/Set | script-owned after direct typed lowering |
 | `Host` | identity-bearing or opaque Rust object | typed `OwnedHost<T>` / HostRef handle | external host arena owns Rust state |
-| borrowed view | `&T`, `&mut T` under either policy | typed View/MutView backed by HostRef | Rust-owned, invocation-scoped capability |
+| shared Value borrow | `&T` with Value storage | ordinary typed Value decoded once at the Rust target | invocation-local temporary |
+| borrowed Host view | `&T`, `&mut T` with Host storage | typed View/MutView backed by HostRef | Rust-owned, invocation-scoped capability |
 
 Value lowering is generated field/element conversion, not JSON, bincode, or
 runtime serde reflection. A host-owned value moved into Vela remains an exact
@@ -536,19 +537,28 @@ invent object identity.
 ### 4.4 Host objects and Rust references
 
 An authored service signature may use ordinary call-scoped `&T` and `&mut T`.
-Generated adapters represent them in Vela with typed HostRefs and acquire the
-complete lease set atomically before creating any Rust reference:
+The shared `&T` contract is recorded as `StorageDirectedShared`; service-set
+sealing resolves it against the one TypeBinding for `T`. Value storage encodes
+the Rust borrow as an ordinary Vela Value and decodes one invocation-local
+temporary at the Rust target. Host storage injects a typed HostRef and acquires
+the complete lease set atomically before creating any Rust reference:
 
 ```text
-&T      -> shared HostRef capability
+&T + Value storage -> encoded Value -> temporary T -> &T
+&T + Host storage  -> shared HostRef capability
 &mut T  -> exclusive HostRef capability
 ```
 
-Vela never stores a real Rust reference. A nested service call derives a scoped
-child reborrow from the active parent lease. It preserves canonical identity,
-host type, path provenance, and shared/exclusive mode. A shared-to-exclusive
-upgrade, overlapping exclusive alias, expired parent, or mismatched type fails
-before the nested body executes.
+The generated `VelaSharedBoundary` implementation owns the representation
+specific encode/inject/decode/downcast operations, so business callers do not
+choose a language direction or storage branch. Changing Value versus Host
+storage changes the sealed TypeBinding ABI.
+
+Vela never stores a real Rust reference. For Host storage, a nested service
+call derives a scoped child reborrow from the active parent lease. It preserves
+canonical identity, host type, path provenance, and shared/exclusive mode. A
+shared-to-exclusive upgrade, overlapping exclusive alias, expired parent, or
+mismatched type fails before the nested body executes.
 
 Returned Rust borrows use the existing call-tree-scoped child HostRef and
 parent-freeze rules. They may flow through Vela locals, temporary collections,

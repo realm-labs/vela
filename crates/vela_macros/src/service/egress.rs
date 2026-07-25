@@ -118,6 +118,10 @@ pub(super) fn emit_scoped_adapter_method(
 fn tracked_argument(parameter: &ClassifiedParameter) -> Result<TokenStream> {
     let ident = format_ident!("{}", parameter.name);
     match (&parameter.ty, parameter.mode) {
+        (TypeShape::StorageDirectedShared(_), ParameterMode::StorageDirectedShared) => Ok(quote! {
+            let __vela_return_origin_identity =
+                __vela_args.push_tracked_positional_host_ref(#ident);
+        }),
         (TypeShape::Host(_, HostAccess::Shared), ParameterMode::SharedHost) => Ok(quote! {
             let __vela_return_origin_identity =
                 __vela_args.push_tracked_positional_host_ref(#ident);

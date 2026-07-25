@@ -31,6 +31,21 @@ pub(super) fn add_parameter_requirements(
             push_value_registration(registrations, registration_keys, ty);
             Ok(top)
         }
+        (TypeShape::StorageDirectedShared(ty), ParameterMode::StorageDirectedShared) => {
+            let top = push_requirement(
+                requirements,
+                requirement_keys,
+                RequirementSpec::new(
+                    ty.clone(),
+                    quote! {
+                        ::vela_common::InteropRepresentation::StorageDirectedShared
+                    },
+                    location,
+                ),
+            );
+            push_shared_registration(registrations, registration_keys, ty.clone());
+            Ok(top)
+        }
         (TypeShape::Host(ty, access), _) => Ok(push_requirement(
             requirements,
             requirement_keys,
@@ -404,6 +419,7 @@ impl RequirementSpec {
 
 pub(super) enum RegistrationSpec {
     Value(Type),
+    Shared(Type),
     Slice(Type),
 }
 
@@ -411,6 +427,7 @@ impl RegistrationSpec {
     fn key(&self) -> String {
         match self {
             Self::Value(ty) => format!("value:{}", ty.to_token_stream()),
+            Self::Shared(ty) => format!("shared:{}", ty.to_token_stream()),
             Self::Slice(ty) => format!("slice:{}", ty.to_token_stream()),
         }
     }
@@ -420,10 +437,26 @@ impl RegistrationSpec {
             Self::Value(ty) => quote! {
                 let builder = builder.register_rust_value_closure::<#ty>();
             },
+            Self::Shared(ty) => quote! {
+                let builder =
+                    <#ty as ::vela_engine::interop::VelaSharedBoundary>::
+                        register_shared_type_closure(builder);
+            },
             Self::Slice(element) => quote! {
                 let builder = builder.register_rust_slice::<#element>();
             },
         }
+    }
+}
+
+fn push_shared_registration(
+    registrations: &mut Vec<RegistrationSpec>,
+    registration_keys: &mut HashSet<String>,
+    ty: Type,
+) {
+    let registration = RegistrationSpec::Shared(ty);
+    if registration_keys.insert(registration.key()) {
+        registrations.push(registration);
     }
 }
 

@@ -150,6 +150,7 @@ pub struct CollectionViewCapabilities {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum InteropRepresentation {
     Owned,
+    StorageDirectedShared,
     SharedHost,
     ExclusiveHost,
     CollectionView(CollectionViewKind),
@@ -164,6 +165,7 @@ impl InteropRepresentation {
     pub const fn abi_name(self) -> &'static str {
         match self {
             Self::Owned => "owned",
+            Self::StorageDirectedShared => "storage_directed_shared",
             Self::SharedHost => "shared_host",
             Self::ExclusiveHost => "exclusive_host",
             Self::CollectionView(CollectionViewKind::Array) => "array_view",

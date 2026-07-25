@@ -135,6 +135,13 @@ impl<T: 'static> TypeBinding<T> {
     ) -> Option<InteropBindingContract> {
         let supported = match representation {
             InteropRepresentation::Owned => self.capabilities.contains(ReceiverCapability::Owned),
+            InteropRepresentation::StorageDirectedShared => match self.storage {
+                StoragePolicy::Value => self.capabilities.contains(ReceiverCapability::Owned),
+                StoragePolicy::Host => {
+                    self.collection_views.is_none()
+                        && self.capabilities.contains(ReceiverCapability::Shared)
+                }
+            },
             InteropRepresentation::SharedHost => {
                 self.collection_views.is_none()
                     && self.capabilities.contains(ReceiverCapability::Shared)

@@ -48,6 +48,9 @@ impl ServiceRuntimeAuthority for RequestContext {
 #[service(path = "slice_service::totals")]
 pub trait TotalService: Send + Sync {
     fn sum(&self, context: &mut RequestContext, values: &[Entry]) -> i64;
+    fn one(&self, context: &mut RequestContext, value: &Entry) -> i64;
+    fn owned(&self, context: &mut RequestContext, values: Vec<Entry>) -> i64;
+    fn mutate(&self, context: &mut RequestContext, values: &mut Vec<i64>) -> i64;
 }
 
 struct RustTotalService;
@@ -56,6 +59,22 @@ impl TotalService for RustTotalService {
     fn sum(&self, context: &mut RequestContext, values: &[Entry]) -> i64 {
         context.rust_calls += 1;
         values.iter().map(|value| value.amount).sum()
+    }
+
+    fn one(&self, context: &mut RequestContext, value: &Entry) -> i64 {
+        context.rust_calls += 1;
+        value.amount
+    }
+
+    fn owned(&self, context: &mut RequestContext, values: Vec<Entry>) -> i64 {
+        context.rust_calls += 1;
+        values.into_iter().map(|value| value.amount).sum()
+    }
+
+    fn mutate(&self, context: &mut RequestContext, values: &mut Vec<i64>) -> i64 {
+        context.rust_calls += 1;
+        values.push(13);
+        values.iter().sum()
     }
 }
 
@@ -80,7 +99,21 @@ fn same_generation_base_decodes_read_only_value_slice_for_rust_default() {
 #[service_impl(slice_service::totals)]
 impl TotalPatch {
     fn sum(context, values) {
-        return base.sum(context, values) + values.len();
+        let transformed = values.map(|value| value);
+        return base.sum(context, transformed) + transformed.len();
+    }
+
+    fn one(context, value) {
+        return base.one(context, value) + 2;
+    }
+
+    fn owned(context, values) {
+        let transformed = values.map(|value| value);
+        return base.owned(context, transformed) + transformed.len();
+    }
+
+    fn mutate(context, values) {
+        return base.mutate(context, values);
     }
 }
 "#;
@@ -107,7 +140,7 @@ impl TotalPatch {
 
     let root = services.pin();
     let mut context = RequestContext {
-        runtime: ServiceRuntimeSlot::new(engine),
+        runtime: ServiceRuntimeSlot::new(engine.clone()),
         rust_calls: 0,
     };
     let values = [
@@ -117,5 +150,79 @@ impl TotalPatch {
     ];
 
     assert_eq!(root.totals().sum(&mut context, &values), 24);
-    assert_eq!(context.rust_calls, 1);
+    assert_eq!(root.totals().one(&mut context, &values[1]), 9);
+    assert_eq!(
+        root.totals().owned(
+            &mut context,
+            vec![Entry { amount: 3 }, Entry { amount: 8 },],
+        ),
+        13
+    );
+    let mut mutable = Vec::with_capacity(4);
+    mutable.extend([2_i64, 5_i64]);
+    let address = mutable.as_ptr();
+    assert_eq!(root.totals().mutate(&mut context, &mut mutable), 20);
+    assert_eq!(mutable.as_ptr(), address);
+    assert_eq!(mutable.last().copied(), Some(13));
+    assert_eq!(context.rust_calls, 4);
+
+    let invalid_copy_back = r#"
+#[service_impl(slice_service::totals)]
+impl InvalidCopyBack {
+    fn sum(context, values) {
+        return base.sum(context, values);
+    }
+
+    fn one(context, value) {
+        return base.one(context, value);
+    }
+
+    fn owned(context, values) {
+        return base.owned(context, values);
+    }
+
+    fn mutate(context, values) {
+        let transformed = values.map(|value| value);
+        return base.mutate(context, transformed);
+    }
+}
+"#;
+    let invalid_sources =
+        build_single_source(SourceId::new(2), invalid_copy_back).expect("valid negative source");
+    let invalid_manifest = ServiceSourceManifest::link(invalid_sources.graph(), services.schema())
+        .expect("negative source manifest");
+    let invalid_artifact = engine
+        .link_compiled_program(
+            engine
+                .compile_source(invalid_copy_back)
+                .expect("negative source compiles before representation validation"),
+        )
+        .expect("negative source links");
+    let invalid_update = invalid_manifest
+        .bind_artifact(invalid_artifact)
+        .expect("negative artifact-bound update");
+    let invalid_candidate = services
+        .stage_snapshot(
+            &root,
+            invalid_update,
+            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            CallOptions::unbounded(),
+        )
+        .expect("negative Snapshot stages");
+    services
+        .activate_if_current(invalid_candidate)
+        .expect("negative Snapshot activates");
+    let invalid_root = services.pin();
+    let calls_before = context.rust_calls;
+    let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        invalid_root.totals().mutate(&mut context, &mut mutable)
+    }));
+    assert!(
+        failure.is_err(),
+        "a script-owned transformed Array must not satisfy &mut Vec<i64>",
+    );
+    assert_eq!(
+        context.rust_calls, calls_before,
+        "mutable copy-back must fail before the authored Rust body executes",
+    );
 }
