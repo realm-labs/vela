@@ -1,7 +1,6 @@
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use vela_bytecode::ProgramImage;
 use vela_common::SourceId;
 use vela_host::access::HostAccess;
 #[cfg(test)]
@@ -10,15 +9,12 @@ use vela_hot_reload::error::HotReloadResult;
 use vela_hot_reload::report::HotReloadReport;
 use vela_hot_reload::runtime::HotReloadRuntime;
 pub use vela_hot_reload::runtime::HotReloadStagingHandle;
-use vela_hot_reload::symbol::ProgramVersionId;
 use vela_hot_reload::version::{HotUpdate, ProgramVersion};
 use vela_vm::HostExecution;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
-use vela_vm::heap::{HeapValue, ScriptHeap};
 use vela_vm::heap_execution::HeapExecution;
 use vela_vm::owned_value::OwnedValue;
-use vela_vm::value::Value;
 use vela_vm::{LinkedDriveOutcome, LinkedExecutionStart, persistent_value_to_owned_with_slots};
 #[cfg(test)]
 use vela_vm::{
@@ -45,6 +41,7 @@ mod host_arena;
 mod image;
 mod initialization;
 mod inline_cache;
+mod metadata;
 mod options;
 #[cfg(test)]
 mod ownership_proof;
@@ -55,6 +52,7 @@ mod state;
 mod state_api;
 #[cfg(test)]
 mod tests;
+mod value_support;
 mod vm_states;
 
 pub use options::CallOptions;
@@ -80,6 +78,7 @@ use handles::{
 use host_arena::RuntimeHostArena;
 use reentry::{ActiveNativeReentry, invoke_prepared_async, invoke_prepared_context};
 use state::RuntimeState;
+use value_support::{runtime_vm, unknown_function, unknown_method, value_type_id};
 use vm_states::RuntimeValueRoots;
 
 pub type Runtime = RuntimeImpl<OwnedImage>;
@@ -1163,90 +1162,4 @@ where
             }
         }
     }
-
-    fn check_vela_value_runtime(&self, value: &VelaValue) -> VmResult<()> {
-        if value.runtime_id == self.state.id {
-            return Ok(());
-        }
-        Err(call_args_type_error("VelaValue belongs to another Runtime"))
-    }
-
-    fn current_program_version_id(&self) -> Option<ProgramVersionId> {
-        self.image.current_program_version_id()
-    }
-
-    pub(crate) fn active_binding_schema(&self) -> &vela_bytecode::RustBindingSchema {
-        self.image.linked_artifact().binding_schema()
-    }
-
-    fn value_type_id(&self, value: &VelaValue) -> Option<vela_def::TypeId> {
-        value_type_id(
-            &value.value,
-            &self.state.vm_states.heap,
-            self.image.engine().registry().as_ref(),
-            |handle| self.state.host_slots.resolve(handle),
-        )
-    }
-
-    fn current_hot_reload_version(&self) -> EngineResult<std::sync::Arc<ProgramVersion>> {
-        self.hot_reload_version()
-            .ok_or_else(|| EngineError::new(EngineErrorKind::RuntimeNotHotReloadEnabled))
-    }
-
-    fn rebind_image_from_reload_report(&mut self, report: Option<&HotReloadReport>) {
-        let Some(version) = report.and_then(HotReloadReport::version) else {
-            return;
-        };
-        self.image = I::from_runtime_image(RuntimeImage::from_program_version(
-            self.image.engine().clone(),
-            &version,
-        ));
-        self.state.rebind_to_image(&self.image);
-    }
-}
-
-fn runtime_vm(
-    engine: &Engine,
-    image: &ProgramImage,
-    hot_reload: Option<&HotReloadRuntime>,
-) -> vela_vm::Vm {
-    if let Some(hot_reload) = hot_reload {
-        let current = hot_reload.current();
-        engine.into_vm_for_program_image_with_abi(image, current.abi())
-    } else {
-        engine.into_vm_for_program_image(image)
-    }
-}
-
-fn value_type_id(
-    value: &Value,
-    heap: &ScriptHeap,
-    registry: &vela_reflect::registry::TypeRegistry,
-    resolve_host: impl FnOnce(vela_host::path::HostSlotRef) -> Option<vela_host::path::HostRef>,
-) -> Option<vela_def::TypeId> {
-    match value {
-        Value::HeapRef(reference) => match heap.get(*reference)? {
-            HeapValue::Record {
-                identity: Some(identity),
-                ..
-            } => Some(identity.type_id),
-            HeapValue::Enum {
-                identity: Some(identity),
-                ..
-            } => Some(identity.type_id),
-            _ => None,
-        },
-        Value::HostRef(reference) => resolve_host(*reference)
-            .and_then(|reference| registry.type_of_host(reference))
-            .map(|desc| desc.key.id),
-        _ => None,
-    }
-}
-
-fn unknown_function(name: String) -> VmError {
-    VmError::new(VmErrorKind::UnknownFunction { name })
-}
-
-fn unknown_method(method: String) -> VmError {
-    VmError::new(VmErrorKind::UnknownMethod { method })
 }

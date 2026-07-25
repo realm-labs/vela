@@ -3,10 +3,8 @@ use std::sync::{Arc, Mutex};
 
 use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::{LinkError, LinkedArtifact, Linker, ProgramImage, UnlinkedProgram};
-use vela_common::{HostMethodId, ReceiverCapability, ServiceCallMode, service_dispatch_stable_id};
+use vela_common::{HostMethodId, ServiceCallMode, service_dispatch_stable_id};
 use vela_def::FunctionId;
-use vela_host::error::HostErrorKind;
-use vela_host::lease::HostLeaseKind;
 use vela_host::path::HostPath;
 use vela_hot_reload::abi::HotReloadAbi;
 use vela_hot_reload::policy::HotReloadPolicy;
@@ -30,6 +28,11 @@ use crate::native::{
 };
 use crate::permission::CapabilitySet;
 use crate::type_binding::TypeBindingRegistry;
+
+mod support;
+
+pub(crate) use support::check_capabilities;
+use support::{ScopedHostEnvelope, check_method_receiver};
 
 #[derive(Clone)]
 pub struct Engine {
@@ -1167,101 +1170,4 @@ fn service_dispatch_natives(
             })
         })
         .collect()
-}
-
-#[derive(Clone, Copy)]
-enum ScopedHostEnvelope {
-    Direct,
-    OptionSome,
-    ResultOk,
-    Tuple,
-    OptionSomeTuple,
-    ResultOkTuple,
-}
-
-impl ScopedHostEnvelope {
-    fn wrap(self, roots: Vec<vela_host::path::HostRef>) -> OwnedValue {
-        match self {
-            Self::Direct => OwnedValue::HostRef(single_scoped_root(&roots)),
-            Self::OptionSome => {
-                let root = single_scoped_root(&roots);
-                OwnedValue::enum_variant("Option", "Some", [("0", OwnedValue::HostRef(root))])
-            }
-            Self::ResultOk => {
-                let root = single_scoped_root(&roots);
-                OwnedValue::enum_variant("Result", "Ok", [("0", OwnedValue::HostRef(root))])
-            }
-            Self::Tuple => OwnedValue::tuple(roots.into_iter().map(OwnedValue::HostRef)),
-            Self::OptionSomeTuple => OwnedValue::enum_variant(
-                "Option",
-                "Some",
-                [(
-                    "0",
-                    OwnedValue::tuple(roots.into_iter().map(OwnedValue::HostRef)),
-                )],
-            ),
-            Self::ResultOkTuple => OwnedValue::enum_variant(
-                "Result",
-                "Ok",
-                [(
-                    "0",
-                    OwnedValue::tuple(roots.into_iter().map(OwnedValue::HostRef)),
-                )],
-            ),
-        }
-    }
-}
-
-fn single_scoped_root(roots: &[vela_host::path::HostRef]) -> vela_host::path::HostRef {
-    let [root] = roots else {
-        panic!("single scoped host return must retain exactly one root");
-    };
-    *root
-}
-
-pub(crate) fn check_capabilities(
-    native: &str,
-    effects: &crate::native::EffectSet,
-    capabilities: CapabilitySet,
-) -> VmResult<()> {
-    let required = effects.required_capability_set();
-    if capabilities.contains_all(required) {
-        return Ok(());
-    }
-
-    if let Some(capability) = required.difference(capabilities).iter().next() {
-        return Err(VmError::new(VmErrorKind::PermissionDenied {
-            native: native.to_owned(),
-            capability: capability.as_str().to_owned(),
-        }));
-    }
-    Ok(())
-}
-
-fn check_method_receiver(
-    required: ReceiverCapability,
-    receiver: &HostPath,
-    host: &HostExecution<'_>,
-) -> VmResult<()> {
-    let available = host.adapter.host_receiver_access(receiver.root);
-    let allowed = match required {
-        ReceiverCapability::Shared => true,
-        ReceiverCapability::Exclusive => available == HostLeaseKind::Exclusive,
-        ReceiverCapability::Owned | ReceiverCapability::Construct => false,
-    };
-    if allowed {
-        return Ok(());
-    }
-    let action = match required {
-        ReceiverCapability::Owned => "call owned receiver method",
-        ReceiverCapability::Shared => "call shared receiver method",
-        ReceiverCapability::Exclusive => "call exclusive receiver method",
-        ReceiverCapability::Construct => "call constructor as instance method",
-    };
-    Err(VmError::new(VmErrorKind::Host(
-        HostErrorKind::PermissionDenied {
-            path: receiver.clone(),
-            action,
-        },
-    )))
 }
