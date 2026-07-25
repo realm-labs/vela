@@ -2154,15 +2154,16 @@ facts, liveness, compiler-only temp aliases, and exact CFG edges. It never
 classifies an ordinary HostRef, and observable local aliases, container/state/
 closure escapes, root returns, or explicit release suppress the automatic path.
 
-### Optional Borrowed Host Returns Reuse The Scoped-Return Model
+### Enveloped Borrowed Host Returns Reuse The Scoped-Return Model
 
-A synchronous generated function or inherent method may return `Option<&T>`
-when `T` is host-backed. The callable ABI records `Option<Host<T>>` together
-with `ScopedHost` return mode. `Some` retains the same child cell, root owner,
-generation, access capability, and `BorrowLeaseId` used by a direct `&T`
-return; `None` returns the standard Vela `Option::None` without allocating a
-HostRef or changing lease counts. The payload never uses the owned codec,
-Serde, JSON, or a script record.
+A synchronous generated function or inherent method may return `Option<&T>` or
+`Result<&T, E>` when `T` is host-backed and `E` has an owned Value conversion.
+The callable ABI records the corresponding `Option<Host<T>>` or
+`Result<Host<T>, E>` together with `ScopedHost` return mode. `Some`/`Ok`
+retains the same child cell, root owner, generation, access capability, and
+`BorrowLeaseId` used by a direct `&T` return; `None`/`Err` allocates no HostRef
+and changes no borrow lease count. Only `Err(E)` uses its owned Value codec;
+the borrowed payload never uses Serde, JSON, or a script record.
 
 The macro accepts only one statically provable origin: Rust's method lifetime
 elision selects an inherent receiver, while a free function requires exactly
@@ -3062,13 +3063,15 @@ behavior to a runtime panic or placeholder.
 
 Owned boundary containers cannot contain call-scoped Rust borrows. The initial
 complete scoped-return whitelist is direct `&T`, direct `&mut T`, direct
-borrowed collection views, and exact `Option<&T>`, all synchronous and with one
-explicit host-parameter origin. Other borrowed envelopes and arbitrary nested
-borrowed containers fail during macro expansion. Vela still receives only
-shared/exclusive scoped HostRefs, never real Rust references. A generated
-service-return sink may restore a validated borrow to the Rust caller declared
-by that service signature; ordinary Vela root results, state, closures, async
-suspension, and cross-root storage remain forbidden escape paths.
+borrowed collection views, exact `Option<&T>`, and exact `Result<&T, E>`, all
+synchronous and with one explicit host-parameter origin. `E` must use an
+admitted bidirectional owned Value codec. Other borrowed envelopes and
+arbitrary nested borrowed containers fail during macro expansion. Vela still
+receives only shared/exclusive scoped HostRefs, never real Rust references. A
+generated service-return sink may restore a validated borrow to the Rust
+caller declared by that service signature; ordinary Vela root results, state,
+closures, async suspension, and cross-root storage remain forbidden escape
+paths.
 
 Service parameter lowering is selected by the target parameter and sealed
 TypeBinding storage policy. Owned `T` consumes only Value storage. Shared `&T`

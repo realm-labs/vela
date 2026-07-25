@@ -98,6 +98,12 @@ exclusive aliases fail before the body. Borrowed host returns remain scoped to
 the root call tree; compiler-proven last use closes them early, and dynamic
 code can use `host::release(value)`.
 
+Synchronous generated exports and the target service ABI admit direct borrows,
+`Option<&T>`, and `Result<&T, E>`. `Some`/`Ok` retain the same child HostRef;
+`None`/`Err` retain none, and service error type `E` requires bidirectional
+owned Value lowering. Borrowed Result/Option payloads remain forbidden across
+async suspension or inside owned containers.
+
 Interop failures identify the callable and relevant parameter where possible.
 Debug ABI failures by comparing the generated binding's recorded source origin
 with the current Vela declaration. Alias, expired provenance, capability,

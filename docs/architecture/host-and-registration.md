@@ -792,6 +792,7 @@ Rust bool/char/i8..i64/u8..u64/f32/f64/String/Vec<u8>
                                      <-> Vela bool/char/scalars/string/bytes
 Option<T> in Rust API             <-> Vela Option::Some(value) or Option::None
 Option<&T> in generated exports   <-> optional read-only call-scoped child HostRef
+Result<&T, E> in generated exports <-> fallible read-only child or owned E
 Vec<T> / HashMap<K, V> copies      <-> script array/map values
 HostRef<T>                         <-> host object reference
 &T / &mut T in generated exports  <-> invocation-scoped shared/exclusive host lease
@@ -816,24 +817,26 @@ exact type and canonical identity through the host boundary, atomically
 acquires an invocation-scoped lease, and calls trusted Rust. The reference is
 never visible to Vela, reflection, GC state, or persistent script storage.
 
-A synchronous generated function or method may return `Option<&T>` when `T`
-has a registered host-backed binding. `Some` follows the existing direct
+A synchronous generated function or method may return `Option<&T>` or
+`Result<&T, E>` when `T` has a registered host-backed binding and `E` has an
+owned Value conversion. `Some`/`Ok` follows the existing direct
 borrowed-return path: it creates one read-only child HostRef, retains the exact
 owner/root lease, and preserves generation and borrow provenance without
-copying or serializing `T`. `None` creates no HostRef and retains no lease.
+copying or serializing `T`. `None`/`Err` create no HostRef or borrow lease;
+`Err(E)` lowers only the owned error value.
 Provenance must be statically unique: an inherent method may use its receiver,
 and a free function may use exactly one borrowed host parameter. Missing or
 ambiguous sources and shared-to-exclusive upgrades are macro errors.
 
-These optional children are valid only inside the current synchronous root call
-tree. The VM recursively rejects them in persistent state, closure captures
-that escape through state or the root result, root returns, and live frame
-values at an async suspension. Root cleanup, explicit `host::release`, stale
-generation checks, and automatic proven-last-use release are the same machinery
-used by direct borrowed returns. Async exported Rust functions and methods
-cannot declare call-scoped borrowed returns. Dynamic and reflected dispatch
-invoke the same generated thunk and the same boundary validators as static
-dispatch.
+These enveloped children are valid only inside the current synchronous root
+call tree. The VM recursively rejects them in persistent state, closure
+captures that escape through state or the root result, root returns, and live
+frame values at an async suspension. Root cleanup, explicit `host::release`,
+stale generation checks, and automatic proven-last-use release are the same
+machinery used by direct borrowed returns. Async exported Rust functions and
+methods cannot declare call-scoped borrowed returns. Dynamic and reflected
+dispatch invoke the same generated thunk and the same boundary validators as
+static dispatch.
 
 If a native function needs to mutate host state, it should either:
 

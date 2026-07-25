@@ -3,9 +3,9 @@
 > Status: target authoring contract.
 >
 > The generation/deployment model is implemented. Borrowed service results
-> returned to ordinary Rust callers, exact service `Option<&T>`, call-scoped
-> Host construction, and uniform target-directed parameter lowering remain
-> tracked by
+> returned to ordinary Rust callers, exact service `Option<&T>` and
+> `Result<&T, E>`, call-scoped Host construction, and uniform target-directed
+> parameter lowering remain tracked by
 > [the completion plan](rust-vela-service-patchability-completion-plan.md).
 > Code marked `ignore` describes the intended final public shape and must not
 > be treated as current compile-pass evidence until that plan closes.
@@ -27,7 +27,8 @@ The same Rust caller works before and after a Vela patch. Vela may:
 - receive injected `&T` and `&mut T` parameters;
 - pass shared/exclusive HostRefs to later Rust or Vela services;
 - consume direct `&T`, direct `&mut T`, borrowed collection views, and
-  `Option<&T>` returns inside the current synchronous root call tree;
+  `Option<&T>`/`Result<&T, E>` returns inside the current synchronous root
+  call tree;
 - return an admitted borrow through the generated service adapter to the
   ordinary Rust caller;
 - transform typed Value collections and pass them to owned or shared Rust
@@ -186,6 +187,12 @@ impl Table {
     pub fn rows(&self) -> &[Row] {
         &self.rows
     }
+
+    pub fn checked(&self, key: i64) -> Result<&Row, ServiceError> {
+        self.get(key).ok_or_else(|| ServiceError {
+            message: format!("missing row {key}"),
+        })
+    }
 }
 ```
 
@@ -199,6 +206,9 @@ fn missing_origin() -> &'static Row; // reject
 fn ambiguous<'a>(left: &'a Table, right: &'a Table) -> &'a Row; // reject
 fn nested<'a>(table: &'a Table) -> Vec<&'a Row>; // reject
 async fn suspended<'a>(table: &'a Table) -> Option<&'a Row>; // reject
+async fn fallible_async<'a>(
+    table: &'a Table,
+) -> Result<&'a Row, ServiceError>; // reject
 ```
 
 Ordinary exports are callable from Vela but are not independently replaceable
@@ -216,6 +226,12 @@ pub trait LookupService: Send + Sync {
         key: i64,
     ) -> Option<&'a Row>;
 
+    fn checked<'a>(
+        &self,
+        table: &'a Table,
+        key: i64,
+    ) -> Result<&'a Row, ServiceError>;
+
     fn required<'a>(
         &self,
         table: &'a Table,
@@ -229,9 +245,10 @@ pub trait LookupService: Send + Sync {
 }
 ```
 
-The result origin is the explicit `table` parameter. `Some(&Row)` retains that
-root, owner, generation, shared access, and borrow provenance. `None` creates
-no HostRef or lease.
+The result origin is the explicit `table` parameter. `Some(&Row)` and
+`Ok(&Row)` retain that root, owner, generation, shared access, and borrow
+provenance. `None` and `Err(ServiceError)` create no HostRef or lease. The
+error type uses its sealed owned Value codec in both directions.
 
 ### 3.3 Value, shared Host, and exclusive Host parameters
 
@@ -335,6 +352,16 @@ impl LookupService for RustLookupService {
         table.rows.iter().find(|row| row.key == key)
     }
 
+    fn checked<'a>(
+        &self,
+        table: &'a Table,
+        key: i64,
+    ) -> Result<&'a Row, ServiceError> {
+        self.get(table, key).ok_or_else(|| ServiceError {
+            message: format!("missing row {key}"),
+        })
+    }
+
     fn required<'a>(&self, table: &'a Table, key: i64) -> &'a Row {
         self.get(table, key).expect("fixture key exists")
     }
@@ -412,6 +439,8 @@ let root = services.pin();
 
 let some: Option<&Row> = root.lookup().get(&table, 7);
 let none: Option<&Row> = root.lookup().get(&table, 999);
+let ok: Result<&Row, ServiceError> = root.lookup().checked(&table, 7);
+let err: Result<&Row, ServiceError> = root.lookup().checked(&table, 999);
 let required: &Row = root.lookup().required(&table, 7);
 let rows: &[Row] = root.lookup().all(&table);
 ```
@@ -458,12 +487,23 @@ impl LookupPatch {
 
         return base.get(table, key);
     }
+
+    fn checked(table, key) {
+        if key < 0 {
+            return Result::Err(example::ServiceError {
+                message: "negative key",
+            });
+        }
+
+        return base.checked(table, key);
+    }
 }
 ```
 
-`base.get` returns `Option<&Row>` as an optional scoped HostRef. Returning it
-from this service implementation targets the sealed generated Rust-return
-sink; it is not permission to return a HostRef from an ordinary Vela root.
+`base.get` and `base.checked` return their successful borrows as scoped
+HostRefs. Returning them from this service implementation targets the sealed
+generated Rust-return sink; it is not permission to return a HostRef from an
+ordinary Vela root. `None` and `Err(ServiceError)` carry no HostRef.
 
 ### 6.2 Full orchestration
 
@@ -523,6 +563,7 @@ The example exercises:
 - automatic `Array<ValueRow> -> Vec<ValueRow>`;
 - automatic `Array<ValueRow> -> temporary &[ValueRow]`;
 - `Option<&Row>` Some/None;
+- `Result<&Row, ServiceError>` Ok/Err through the lookup patch;
 - shared child field reads;
 - passing one child to multiple later services;
 - `&mut RequestState` immediate write-through;
@@ -595,6 +636,10 @@ The following always fail:
 - cross-Runtime/cross-root use; and
 - nested borrowed owned containers such as `Vec<&T>`.
 
+For a top-level `Result<&T, E>`, `Ok` follows the same child rules and `Err`
+uses the registered owned Value codec for `E`. A scoped Result does not make
+borrowed Results inside Array, Map, tuple, Option, or another Result legal.
+
 Compiler-proven last use may release a child early. Dynamic and reflected paths
 repeat the same lifetime and permission checks.
 
@@ -663,6 +708,8 @@ Accepted Deltas may later be folded into an equivalent Snapshot.
 ## 10. Errors, Effects, Reflection, And Tooling
 
 - A missing Vela method is resolved to Rust during staging.
+- `Result::Err(E)` is an authored business value, distinct from a VM,
+  capability, cancellation, or conversion failure.
 - An error from a selected Vela method propagates; there is no automatic Rust
   fallback retry.
 - Host writes already performed before error, cancellation, or panic are not
@@ -702,7 +749,8 @@ effects.
 | Mutable `&mut T` | exclusive HostRef only |
 | Direct borrowed return | `&T`, `&mut T`, direct collection view |
 | Optional borrowed return | exact synchronous `Option<&T>` |
-| None | no HostRef and no lease |
+| Fallible borrowed return | exact synchronous `Result<&T, E>` |
+| None/Err | no HostRef and no lease; `E` uses its owned Value codec |
 | Owned collection | target-directed checked materialization |
 | Shared Value collection | invocation-scoped temporary borrow |
 | Host collection view | zero-copy shared/exclusive reborrow |
@@ -725,7 +773,7 @@ The final shape intentionally does not include:
 
 - automatic patching of direct concrete Rust calls;
 - arbitrary nested borrowed containers such as `Vec<&T>`;
-- `Option<&mut T>` or `Result<&T, E>` until separately admitted;
+- `Option<&mut T>` or `Result<&mut T, E>`;
 - multi-origin borrowed returns;
 - durable typed Host handles;
 - borrowed children across root calls or async suspension;
@@ -759,8 +807,8 @@ answer yes to all of these:
 5. Can transformed Value collections pass to owned and shared Rust collection
    parameters without handwritten adapters?
 6. Do mutable Rust parameters always refer to exact Host-backed state?
-7. Can direct and optional borrowed results flow through Vela and back to the
-   ordinary Rust caller without copying or escaping?
+7. Can direct, optional, and fallible borrowed results flow through Vela and
+   back to the ordinary Rust caller without copying or escaping?
 8. Are all unsupported signatures rejected before Engine construction or
    candidate activation?
 9. Do old roots, nested calls, async suspension, Delta inheritance, and

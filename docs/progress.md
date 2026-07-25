@@ -135,13 +135,13 @@ Host-backed and mutable collections retain HostRef identity and leases.
   `PathProxy`, `HostTargetPlan`, and call-scoped `HostAccess`.
 - Host reads, writes, compound mutations, methods, permissions, generations,
   lease conflicts, retained borrows, and same-session re-entry are covered.
-- Generated synchronous functions and methods support direct `&T` and
-  `Option<&T>` scoped returns for registered host-backed types. Optional
-  returns preserve receiver or unique-parameter provenance, owner leases,
-  generation, and read-only access; `None` creates no HostRef. Persistent
-  state, root-result, closure, async-suspend, dynamic, and reflection paths
-  enforce the same non-escape boundary, and async borrowed-return signatures
-  are rejected during macro expansion.
+- Generated synchronous functions and methods support direct `&T`,
+  `Option<&T>`, and `Result<&T, E>` scoped returns for registered host-backed
+  types. Successful envelopes preserve receiver or unique-parameter
+  provenance, owner leases, generation, and read-only access; `None`/`Err`
+  create no HostRef. Persistent state, root-result, closure, async-suspend,
+  dynamic, and reflection paths enforce the same non-escape boundary, and
+  async borrowed-return signatures are rejected during macro expansion.
 - One sealed `TypeBinding` model supplies stable identity, ABI, codecs,
   constructors, methods, fields, protocols, and owned/shared/exclusive
   representation facts to runtime, reflection, compiler analysis, and LSP.
@@ -175,13 +175,14 @@ Host-backed and mutable collections retain HostRef identity and leases.
 
 The service macro currently admits a direct borrowed return while the
 Vela-selected outer Rust adapter retains a non-executable panic branch.
-`Option<&T>` is complete for ordinary synchronous exports and methods but not
-for generated services. Nested borrowed containers fail only incidentally and
-lack the explicit service compile-fail matrix required to guarantee that a
-sealed service is fully patchable. Parameter patchability also lacks one
-uniform Value/Host construction rule: generic Value-to-`&T` temporary lowering,
-call-scoped Host scratch construction, argument-origin reporting, and
-target-directed conversion of transformed Value collections remain open.
+`Option<&T>` and `Result<&T, E>` are complete for ordinary synchronous exports
+and methods but not for generated services. Nested borrowed containers fail
+only incidentally and lack the explicit service compile-fail matrix required
+to guarantee that a sealed service is fully patchable. Parameter patchability
+also lacks one uniform Value/Host construction rule: generic Value-to-`&T`
+temporary lowering, call-scoped Host scratch construction, argument-origin
+reporting, and target-directed conversion of transformed Value collections
+remain open.
 
 The active
 [completion plan](rust-vela-service-patchability-completion-plan.md) owns the

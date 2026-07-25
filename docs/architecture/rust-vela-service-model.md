@@ -557,6 +557,14 @@ state, globals, native caches, unscoped tasks, or the root result. Early
 compiler-proven release and `host::release` remain valid; GC timing is never a
 correctness dependency.
 
+The initial service return whitelist admits synchronous direct borrows,
+direct borrowed collection views, `Option<&T>`, and `Result<&T, E>` with one
+explicit Host-parameter origin. `Some` and `Ok` retain the same scoped child;
+`None` and `Err` retain none, and `E` uses its sealed bidirectional owned Value
+codec. Exclusive Option/Result envelopes, borrowed children nested inside
+owned containers, and async borrowed returns remain rejected during macro
+expansion or service sealing.
+
 The S0-S7 hard switch deliberately keeps this accepted borrowed-return model
 conservative. It requires an unambiguous retained origin, uses owner-level
 freeze when a finer safe domain is not registered, and treats every returned
@@ -895,4 +903,3 @@ where they remain valid:
 Retained code must be renamed and relocated when its current owner or name is
 slot-specific. Copying the old dispatch module under a new name without
 changing its service-generation semantics does not satisfy the switch.
-

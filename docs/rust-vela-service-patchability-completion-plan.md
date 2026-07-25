@@ -72,6 +72,12 @@ pub trait LookupService: Send + Sync {
         table: &'a Table,
         key: i64,
     ) -> Option<&'a Row>;
+
+    fn checked<'a>(
+        &self,
+        table: &'a Table,
+        key: i64,
+    ) -> Result<&'a Row, ServiceError>;
 }
 
 #[vela::service(path = "coverage::apply")]
@@ -84,11 +90,11 @@ pub trait ApplyService: Send + Sync {
 }
 ```
 
-A Vela implementation must be able to call `lookup.get`, branch on `Some` or
-`None`, read the returned `Row`, pass it to `apply` together with
-`&mut RequestState`, call Rust `base`, call another patched service through
-`services`, and return either an owned result or the borrowed result declared
-by the service method.
+A Vela implementation must be able to call `lookup.get` or `lookup.checked`,
+branch on `Some`/`None` or `Ok`/`Err`, read the returned `Row`, pass it to
+`apply` together with `&mut RequestState`, call Rust `base`, call another
+patched service through `services`, and return either an owned result or the
+borrowed result declared by the service method.
 
 ### 1.2 Explicit non-goals
 
@@ -201,12 +207,14 @@ The initial complete whitelist is deliberately small:
 &mut T
 shared/exclusive direct borrowed collection view
 Option<&T>
+Result<&T, E>
 ```
 
 `&mut T` is represented in Vela only as an exclusive call-scoped HostRef. Vela
-never receives a real Rust mutable reference. `Option<&mut T>`,
-`Result<&T, E>`, grouped borrowed tuples, and other envelopes remain rejected
-until a later workload justifies adding one and supplies the complete
+never receives a real Rust mutable reference. `E` must use an admitted owned
+Value representation with bidirectional lowering. `Option<&mut T>`,
+`Result<&mut T, E>`, grouped borrowed tuples, and other envelopes remain
+rejected until a later workload justifies adding one and supplies the complete
 acceptance rows required by this plan.
 
 For service methods, a borrowed return must have one explicit parameter
@@ -225,6 +233,7 @@ fn rows(&self, table: &Table) -> Option<Result<Vec<&Row>, Error>>;
 fn row(&self, left: &Table, right: &Table) -> &Row;
 async fn row(&self, table: &Table) -> &Row;
 fn row(&self, table: &Table) -> Option<&mut Row>;
+fn checked(&self, table: &mut Table) -> Result<&mut Row, Error>;
 ```
 
 Diagnostics must name the full normalized return path where possible:
@@ -348,17 +357,19 @@ Required outcome:
 - generate a complete adapter or reject the signature; and
 - add a production-source audit for non-executable service placeholders.
 
-### G1 — Service borrowed envelopes are direct-only
+### G1 — Service Option/Result borrowed envelopes are missing
 
 `crates/vela_macros/src/service/dispatch.rs` accepts only
-`ScopedReturnContainer::Direct`. `Option<&T>` works for ordinary synchronous
-exports and inherent methods but is not complete in the service path.
+`ScopedReturnContainer::Direct`. `Option<&T>` and `Result<&T, E>` work for
+ordinary synchronous exports and inherent methods but are not complete in the
+service path.
 
 Required outcome:
 
-- reuse the existing `ScopedHost` return mode and optional envelope;
-- preserve `Some` provenance and lease behavior;
-- make `None` create no child HostRef and no lease; and
+- reuse the existing `ScopedHost` return mode and Option/Result envelopes;
+- preserve `Some`/`Ok` provenance and lease behavior;
+- make `None`/`Err` create no child HostRef and no lease;
+- lower and restore `E` through its sealed owned Value codec; and
 - support both nested Vela consumption and Rust caller restoration.
 
 ### G2 — Nested borrowed-container diagnostics are incidental
@@ -444,7 +455,8 @@ from ordinary Rust after Vela selection, so the generated panic is unobserved.
 
 Required outcome:
 
-- add direct Rust caller tests for direct and optional borrowed returns;
+- add direct Rust caller tests for direct, optional, and fallible borrowed
+  returns;
 - retain the nested-chain fixture;
 - assert pointer identity and mutation visibility; and
 - assert default and selected calls use the same authored Rust signature.
@@ -454,7 +466,7 @@ Required outcome:
 `service_hard_switch_fixture` proves the generation/deployment model, custom
 Values, collections, async handling, `base`, `services`, Snapshot, successive
 Delta, old roots, folded Snapshot, and rollback. It does not demonstrate
-`Option<&T>` or a borrowed service result restored to Rust.
+`Option<&T>`, `Result<&T, E>`, or a borrowed service result restored to Rust.
 
 Required outcome:
 
@@ -554,31 +566,35 @@ Gate:
 ```text
 all nested borrowed-container examples fail during cargo check
 accepted direct borrowed methods still compile
-Option<&T> is the only admitted optional borrowed form
+Option<&T> and Result<&T, E> are the admitted top-level borrowed envelopes
 schema construction cannot contain an adapter-incomplete method
 ```
 
-### P2 — Complete service `Option<&T>` metadata and Vela conversion
+### P2 — Complete service Option/Result borrowed envelopes
 
 Deliverables:
 
 - admit exact synchronous `Option<&T>` with one host-parameter origin;
-- emit `Option<Host<T>>` plus `ScopedHost` return metadata;
-- reuse `ScopedHostNativeOutcome::OptionSome` and the existing child-retention
-  model;
+- admit exact synchronous `Result<&T, E>` with one host-parameter origin and
+  an admitted bidirectional owned Value codec for `E`;
+- emit `Option<Host<T>>` or `Result<Host<T>, E>` plus `ScopedHost` metadata;
+- reuse `ScopedHostNativeOutcome::OptionSome`/`ResultOk` and the existing
+  child-retention model;
 - return ordinary Vela `None` without creating a HostRef;
+- return ordinary Vela `Err(E)` without creating a HostRef;
 - preserve type, root, owner, generation, access, provenance, and lease for
-  `Some`; and
+  `Some`/`Ok`; and
 - update compiler, reflection, analysis, CLI schema, generated bindings, and
   LSP displays from the same descriptor.
 
 Gate:
 
 ```text
-Some is readable and passable to another service without copying T
-None changes no HostRef or lease count
-dynamic and reflected calls observe the same Option<Host<T>> contract
-schema and checksum tests distinguish owned Option<T> from scoped Option<&T>
+Some/Ok is readable and passable to another service without copying T
+None/Err changes no HostRef or lease count
+Err(E) round-trips through the sealed owned Value codec
+dynamic/reflected calls observe the same Option/Result scoped contracts
+schema checks distinguish owned envelopes from scoped borrowed envelopes
 ```
 
 ### P3 — Complete Vela-selected borrowed returns to Rust callers
@@ -587,7 +603,7 @@ Deliverables:
 
 - replace the generated panic with a typed scoped-return handoff;
 - implement direct `&T`, direct `&mut T`, direct borrowed collection views,
-  and `Option<&T>` according to the whitelist;
+  `Option<&T>`, and `Result<&T, E>` according to the whitelist;
 - verify provenance against the original Rust parameter lease;
 - permit only the generated service-return sink;
 - release all script aliases before returning to Rust;
@@ -600,6 +616,7 @@ Gate:
 ```text
 unchanged Rust caller receives the declared reference from a Vela selection
 Some and None return through the same authored Rust method
+Ok and Err return through the same authored Rust method
 returned references point into the original Rust owner
 unrelated, stale, wrong-type, and wrong-generation HostRefs fail closed
 no generated selected branch contains panic/todo/unimplemented
@@ -717,7 +734,8 @@ not remove or collapse these behaviors into one broad assertion.
 | MP-07 | direct `&mut T` return from one exclusive parameter | exclusive origin metadata |
 | MP-08 | direct borrowed collection return | collection identity and origin |
 | MP-09 | `Option<&T>` return | optional scoped envelope |
-| MP-10 | sync service mixing owned, shared, and exclusive inputs | one complete descriptor |
+| MP-10 | `Result<&T, E>` return | fallible scoped envelope plus owned error |
+| MP-11 | sync service mixing owned, shared, and exclusive inputs | one complete descriptor |
 
 ### 6.2 Rust macro compile-fail matrix
 
@@ -728,7 +746,7 @@ not remove or collapse these behaviors into one broad assertion.
 | MF-03 | `Map<K, Vec<Option<&T>>>` | complete return path |
 | MF-04 | `Option<Result<Vec<&T>, E>>` | complete wrapper path |
 | MF-05 | `Option<&mut T>` | unsupported optional exclusive envelope |
-| MF-06 | `Result<&T, E>` | unsupported scoped Result envelope |
+| MF-06 | `Result<&mut T, E>` | unsupported fallible exclusive envelope |
 | MF-07 | mixed borrowed/owned tuple | unsupported grouped envelope |
 | MF-08 | no host origin | missing provenance |
 | MF-09 | two possible host origins | ambiguous provenance |
@@ -738,6 +756,7 @@ not remove or collapse these behaviors into one broad assertion.
 | MF-13 | generic host reference | exact concrete type required |
 | MF-14 | erased Iterator/Fn/trait object | unsupported boundary |
 | MF-15 | accepted shape with missing generated adapter | schema totality failure |
+| MF-16 | `Result<&T, E>` without bidirectional Value `E` | missing error codec |
 
 UI fixtures must assert stable diagnostics. Unit tests may additionally inspect
 normalized shapes, but token-string tests alone are insufficient.
@@ -751,17 +770,18 @@ normalized shapes, but token-string tests alone are insufficient.
 | TS-03 | shared-only binding cannot satisfy exclusive parameter/return |
 | TS-04 | transitive owned container type closure is complete |
 | TS-05 | `Option<&T>` has `Option<Host<T>>` plus scoped return mode |
-| TS-06 | owned `Option<T>` and scoped `Option<&T>` have different ABI facts |
-| TS-07 | origin/access/envelope changes alter ABI fingerprint |
-| TS-08 | equivalent schemas produce stable checksum |
-| TS-09 | reflection exposes the exact normalized return |
-| TS-10 | CLI schema, analysis, hover, completion, and signature help agree |
-| TS-11 | generated Rust binding rejects unsupported iterator/borrowed shape |
-| TS-12 | no public re-export facade is introduced |
-| TS-13 | Value `T` exposes owned and temporary-shared lowering |
-| TS-14 | Host `T` exposes shared/exclusive but not implicit owned move |
-| TS-15 | Host constructor ABI records CallScoped or RuntimeOwned |
-| TS-16 | tooling reports Injected, Constructible, and ProducedBorrow origins |
+| TS-06 | `Result<&T, E>` has `Result<Host<T>, E>` plus scoped return mode |
+| TS-07 | owned and scoped Option/Result envelopes have different ABI facts |
+| TS-08 | origin/access/envelope/error changes alter ABI fingerprint |
+| TS-09 | equivalent schemas produce stable checksum |
+| TS-10 | reflection exposes the exact normalized return |
+| TS-11 | CLI schema, analysis, hover, completion, and signature help agree |
+| TS-12 | generated Rust binding rejects unsupported iterator/borrowed shape |
+| TS-13 | no public re-export facade is introduced |
+| TS-14 | Value `T` exposes owned and temporary-shared lowering |
+| TS-15 | Host `T` exposes shared/exclusive but not implicit owned move |
+| TS-16 | Host constructor ABI records CallScoped or RuntimeOwned |
+| TS-17 | tooling reports Injected, Constructible, and ProducedBorrow origins |
 
 ### 6.4 HostRef and conversion matrix
 
@@ -769,8 +789,8 @@ normalized shapes, but token-string tests alone are insufficient.
 |---|---|
 | HR-01 | direct shared child preserves root, owner, generation, and provenance |
 | HR-02 | direct exclusive child preserves capability without exposing `&mut` |
-| HR-03 | optional `Some` uses the same child path as direct `&T` |
-| HR-04 | optional `None` creates no HostRef and acquires no lease |
+| HR-03 | `Some`/`Ok` uses the same child path as direct `&T` |
+| HR-04 | `None`/`Err` creates no HostRef and acquires no lease |
 | HR-05 | child retains owner while live |
 | HR-06 | explicit release invalidates all aliases in the borrow group |
 | HR-07 | sibling children retain the parent freeze independently |
@@ -793,13 +813,15 @@ normalized shapes, but token-string tests alone are insufficient.
 | SD-04 | Rust caller -> Vela selected | direct `&mut T` return |
 | SD-05 | Rust caller -> Vela selected | `Option<&T>::Some` |
 | SD-06 | Rust caller -> Vela selected | `Option<&T>::None` |
-| SD-07 | Vela -> Rust default via `base` | borrow returned to Vela |
-| SD-08 | Vela -> Rust service via `services` | borrow returned to Vela |
-| SD-09 | Vela borrow -> later Rust service | exact reborrow |
-| SD-10 | Vela borrow -> later Vela service | same generation and provenance |
-| SD-11 | patched Vela -> patched Vela -> Rust | one session and budget |
-| SD-12 | Vela failure | no Rust fallback retry |
-| SD-13 | conversion failure | authored Rust body does not execute |
+| SD-07 | Rust caller -> Vela selected | `Result<&T, E>::Ok` |
+| SD-08 | Rust caller -> Vela selected | `Result<&T, E>::Err` |
+| SD-09 | Vela -> Rust default via `base` | borrow returned to Vela |
+| SD-10 | Vela -> Rust service via `services` | borrow returned to Vela |
+| SD-11 | Vela borrow -> later Rust service | exact reborrow |
+| SD-12 | Vela borrow -> later Vela service | same generation and provenance |
+| SD-13 | patched Vela -> patched Vela -> Rust | one session and budget |
+| SD-14 | Vela failure | no Rust fallback retry |
+| SD-15 | conversion failure | authored Rust body does not execute |
 
 ### 6.6 Escape and async matrix
 
@@ -857,11 +879,11 @@ normalized shapes, but token-string tests alone are insufficient.
 | PR-01 | Rust-default selected service call performs no VM entry |
 | PR-02 | Rust-default path creates no HostRef |
 | PR-03 | HostRef alias copy creates no lease or refcount operation |
-| PR-04 | `Some(&T)` performs no clone, Serde, JSON, or script-record allocation |
-| PR-05 | `None` performs no HostRef/lease allocation |
-| PR-06 | direct and optional borrowed-return hot path is independent of collection size |
+| PR-04 | `Some(&T)`/`Ok(&T)` performs no clone, Serde, JSON, or record allocation |
+| PR-05 | `None`/`Err(E)` performs no HostRef/lease allocation |
+| PR-06 | direct and enveloped borrowed-return cost is independent of collection size |
 | PR-07 | ordinary export direct `&T` behavior does not regress |
-| PR-08 | ordinary export `Option<&T>` behavior does not regress |
+| PR-08 | ordinary export `Option<&T>`/`Result<&T, E>` behavior does not regress |
 | PR-09 | existing service nested borrowed chain does not regress |
 | PR-10 | existing `service_hard_switch_fixture` output does not change |
 
@@ -931,6 +953,11 @@ exclusive to Rust, and reclaimed when the root ends. `ValueRow` is produced by
 #[service(path = "coverage::lookup")]
 trait LookupService: Send + Sync {
     fn get<'a>(&self, table: &'a Table, key: i64) -> Option<&'a Row>;
+    fn checked<'a>(
+        &self,
+        table: &'a Table,
+        key: i64,
+    ) -> Result<&'a Row, ServiceError>;
     fn required<'a>(&self, table: &'a Table, key: i64) -> &'a Row;
     fn all<'a>(&self, table: &'a Table) -> &'a [Row];
 }
@@ -988,25 +1015,28 @@ returned child may cross `await`.
 The binary executes one unchanged Rust caller through:
 
 1. Rust-default generation.
-2. A sparse Snapshot patching `lookup.get` and `policy.score`.
+2. A sparse Snapshot patching `lookup.get`, `lookup.checked`, and
+   `policy.score`.
 3. `Some(&Row)` returned from Vela selection to ordinary Rust.
 4. `None` returned from the same selected method.
-5. A Vela handler chain that consumes `Some(&Row)`, reads fields, passes the
-   child to `policy` and `apply`, and mutates `&mut RequestState`.
-6. `base` from one patched method.
-7. `services` calls spanning Rust and Vela selections in one generation.
-8. A first exact-base Delta changing policy while inheriting lookup.
-9. A second exact-base Delta adding apply/audit behavior while inheriting both.
-10. An old pinned root after both activations.
-11. A stale Delta and an incompatible candidate rejected without publication.
-12. A folded Snapshot equivalent to the two Deltas.
-13. Conditional rollback to the previous complete generation.
-14. Verification that rollback did not undo already committed Host effects.
-15. Construction of a call-scoped `PatchBuffer`, followed by shared and
+5. `Ok(&Row)` and `Err(ServiceError)` returned from one selected method.
+6. A Vela handler chain that consumes `Some(&Row)` and `Ok(&Row)`, reads
+   fields, passes the child to `policy` and `apply`, and mutates
+   `&mut RequestState`.
+7. `base` from one patched method.
+8. `services` calls spanning Rust and Vela selections in one generation.
+9. A first exact-base Delta changing policy while inheriting lookup.
+10. A second exact-base Delta adding apply/audit behavior while inheriting both.
+11. An old pinned root after both activations.
+12. A stale Delta and an incompatible candidate rejected without publication.
+13. A folded Snapshot equivalent to the two Deltas.
+14. Conditional rollback to the previous complete generation.
+15. Verification that rollback did not undo already committed Host effects.
+16. Construction of a call-scoped `PatchBuffer`, followed by shared and
     exclusive Rust service calls and root-end reclamation.
-16. A Vela `filter`/`map`/`collect` chain whose `Array<ValueRow>` automatically
+17. A Vela `filter`/`map`/`collect` chain whose `Array<ValueRow>` automatically
     supplies Rust `Vec<ValueRow>` and temporary `&[ValueRow]`.
-17. A negative assertion that the same script-owned Array cannot supply
+18. A negative assertion that the same script-owned Array cannot supply
     `&mut Vec<ValueRow>`.
 
 The demo also asserts:
@@ -1119,8 +1149,8 @@ At implementation completion:
   generated Rust-return egress, representation-directed parameters, Host
   origin/construction lifetime, target-directed collection lowering, async
   restrictions, and escape rules.
-- `docs/rust-vela-interop.md` shows one admitted `Option<&T>` service and
-  rejected nested borrowed-container examples.
+- `docs/rust-vela-interop.md` shows admitted `Option<&T>` and `Result<&T, E>`
+  services plus rejected nested borrowed-container examples.
 - `docs/progress.md` marks this plan complete only after the demo and full gate.
 - `docs/decisions.md` records the durable whitelist and total-admission rule.
 - `examples/README.md` documents the runnable coverage demo.
@@ -1134,8 +1164,8 @@ This plan is complete only when:
 
 - every admitted service signature has Rust-default, Vela-selected, nested
   Rust/Vela, dynamic/reflection, and Rust caller coverage where applicable;
-- direct and optional borrowed returns preserve identity and provenance in
-  both directions;
+- direct, optional, and fallible borrowed returns preserve identity and
+  provenance in both directions;
 - Value and Host parameters follow one storage-directed construction and
   borrowing model;
 - every Host argument has an explicit Injected, Constructible, or
