@@ -1,8 +1,9 @@
 //! Immutable Rust/Vela type-binding facts exposed to compilation and tooling.
 
 use vela_common::{
-    CollectionViewCapabilities, InteropRepresentation, InteropTypeId, ReceiverCapabilities,
-    ReceiverCapability, StoragePolicy, TypeAbiFingerprint, TypeBindingRegistryChecksum,
+    CollectionViewCapabilities, HostConstructorBinding, InteropRepresentation, InteropTypeId,
+    ReceiverCapabilities, ReceiverCapability, StoragePolicy, TypeAbiFingerprint,
+    TypeBindingRegistryChecksum,
 };
 use vela_def::FunctionId;
 
@@ -16,6 +17,7 @@ pub struct TypeBindingDesc {
     pub capabilities: ReceiverCapabilities,
     pub collection_views: Option<CollectionViewCapabilities>,
     pub constructor_ids: Vec<FunctionId>,
+    pub host_constructors: Vec<HostConstructorBinding>,
     pub abi_fingerprint: TypeAbiFingerprint,
 }
 
@@ -37,8 +39,18 @@ impl TypeBindingDesc {
             capabilities,
             collection_views,
             constructor_ids,
+            host_constructors: Vec::new(),
             abi_fingerprint,
         }
+    }
+
+    #[must_use]
+    pub fn with_host_constructors(
+        mut self,
+        constructors: impl IntoIterator<Item = HostConstructorBinding>,
+    ) -> Self {
+        self.host_constructors = constructors.into_iter().collect();
+        self
     }
 
     #[must_use]

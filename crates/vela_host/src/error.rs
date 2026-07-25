@@ -110,6 +110,7 @@ pub enum HostErrorKind {
     },
     HostSlotStorageUnsupported,
     OwnedHostStorageUnsupported,
+    CallScopedHostStorageUnsupported,
     NotScopedBorrow {
         path: HostPath,
     },

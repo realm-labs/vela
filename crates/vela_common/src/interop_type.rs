@@ -61,6 +61,35 @@ pub enum StoragePolicy {
     Host,
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum HostConstructionLifetime {
+    CallScoped,
+    RuntimeOwned,
+}
+
+impl HostConstructionLifetime {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::CallScoped => "call_scoped",
+            Self::RuntimeOwned => "runtime_owned",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct HostConstructorBinding {
+    pub id: vela_def::FunctionId,
+    pub lifetime: HostConstructionLifetime,
+}
+
+impl HostConstructorBinding {
+    #[must_use]
+    pub const fn new(id: vela_def::FunctionId, lifetime: HostConstructionLifetime) -> Self {
+        Self { id, lifetime }
+    }
+}
+
 /// The script-visible collection protocol carried by a borrowed Rust view.
 ///
 /// These variants correspond to Vela's restricted `ArrayView`, `MapView`, and

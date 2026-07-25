@@ -94,6 +94,10 @@ fn sample_facts() -> RegistryFacts {
                 CollectionViewMutation::Growable,
             )),
             constructor_ids: vec![vela_def::FunctionId::new(0x456)],
+            host_constructors: vec![vela_common::HostConstructorBinding::new(
+                vela_def::FunctionId::new(0x456),
+                vela_common::HostConstructionLifetime::CallScoped,
+            )],
             abi_fingerprint: vela_common::TypeAbiFingerprint::new(0x789),
         },
     );

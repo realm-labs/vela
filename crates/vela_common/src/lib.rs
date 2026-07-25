@@ -9,7 +9,8 @@ pub mod primitive;
 
 pub use capability::{Capability, CapabilitySet};
 pub use interop_type::{
-    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, InteropBindingContract,
+    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation,
+    HostConstructionLifetime, HostConstructorBinding, InteropBindingContract,
     InteropRepresentation, InteropTypeId, ReceiverCapabilities, ReceiverCapability, StoragePolicy,
     TypeAbiFingerprint, TypeBindingRegistryChecksum,
 };

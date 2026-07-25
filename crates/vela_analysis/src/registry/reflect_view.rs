@@ -36,6 +36,7 @@ impl RegistryFacts {
                         capabilities: binding.capabilities,
                         collection_views: binding.collection_views,
                         constructor_ids: binding.constructor_ids.clone(),
+                        host_constructors: binding.host_constructors.clone(),
                         abi_fingerprint: binding.abi_fingerprint,
                     },
                 );

@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{
-    CollectionViewCapabilities, CollectionViewMutation, HostTypeId, InteropTypeId, PrimitiveTag,
-    ReceiverCapabilities, ReceiverCapability, Span, StoragePolicy, TypeAbiFingerprint,
-    TypeBindingRegistryChecksum,
+    CollectionViewCapabilities, CollectionViewMutation, HostConstructorBinding, HostTypeId,
+    InteropTypeId, PrimitiveTag, ReceiverCapabilities, ReceiverCapability, Span, StoragePolicy,
+    TypeAbiFingerprint, TypeBindingRegistryChecksum,
 };
 use vela_def::{FieldId, FunctionId, TypeId};
 use vela_reflect::access::{FunctionAccess, MethodAccess};
@@ -62,6 +62,7 @@ pub struct RegistryTypeBindingFact {
     pub capabilities: ReceiverCapabilities,
     pub collection_views: Option<CollectionViewCapabilities>,
     pub constructor_ids: Vec<FunctionId>,
+    pub host_constructors: Vec<HostConstructorBinding>,
     pub abi_fingerprint: TypeAbiFingerprint,
 }
 

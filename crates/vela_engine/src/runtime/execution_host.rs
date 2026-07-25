@@ -52,6 +52,7 @@ pub(super) struct ExecutionHost<'state, 'host> {
     host_arena: &'state mut RuntimeHostArena,
     fallback: FallbackAdapter<'host>,
     next_direct_object_id: u64,
+    call_scoped_hosts: Vec<HostRef>,
     scoped_hosts: HostSlotTable<ScopedHostBinding<'host>>,
     expired_scoped_hosts: BTreeMap<HostRef, BorrowLeaseId>,
     expired_scoped_slots: BTreeMap<HostSlotRef, HostRef>,
@@ -124,6 +125,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             host_arena,
             fallback,
             next_direct_object_id: EXECUTION_HOST_OBJECT_ID_BASE,
+            call_scoped_hosts: Vec::new(),
             scoped_hosts: HostSlotTable::new(),
             expired_scoped_hosts: BTreeMap::new(),
             expired_scoped_slots: BTreeMap::new(),
@@ -243,6 +245,10 @@ impl Drop for ExecutionHost<'_, '_> {
             .collect::<Vec<_>>();
         for root in roots {
             self.release_interned_host_ref(root);
+        }
+        for root in std::mem::take(&mut self.call_scoped_hosts) {
+            self.release_interned_host_ref(root);
+            debug_assert!(self.host_arena.release(root));
         }
     }
 }
@@ -489,6 +495,13 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         object: Box<dyn ScriptHostObject + Send + Sync>,
     ) -> HostResult<HostRef> {
         self.parent.retain_owned_host(object)
+    }
+
+    fn retain_call_scoped_host(
+        &mut self,
+        object: Box<dyn ScriptHostObject + Send + Sync>,
+    ) -> HostResult<HostRef> {
+        self.parent.retain_call_scoped_host(object)
     }
 
     fn with_host_leases(
@@ -754,6 +767,15 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         Ok(self.host_arena.retain(object))
     }
 
+    fn retain_call_scoped_host(
+        &mut self,
+        object: Box<dyn ScriptHostObject + Send + Sync>,
+    ) -> HostResult<HostRef> {
+        let root = self.host_arena.retain(object);
+        self.call_scoped_hosts.push(root);
+        Ok(root)
+    }
+
     fn with_host_leases(
         &mut self,
         requests: &[(HostRef, HostLeaseKind)],
@@ -839,12 +861,13 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         root: HostRef,
         boundary: HostRefLifetimeBoundary,
     ) -> HostResult<()> {
+        let call_scoped = self.call_scoped_hosts.contains(&root);
         let live = self.scoped_handle(root).is_some();
         let expired = self.expired_scoped_hosts.contains_key(&root);
         let invalid = match boundary {
-            HostRefLifetimeBoundary::AsyncSuspend => live,
+            HostRefLifetimeBoundary::AsyncSuspend => call_scoped || live,
             HostRefLifetimeBoundary::PersistentState | HostRefLifetimeBoundary::RootReturn => {
-                live || expired
+                call_scoped || live || expired
             }
         };
         if invalid {

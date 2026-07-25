@@ -101,6 +101,19 @@ pub trait ScriptStateAdapter {
         Err(HostError::new(HostErrorKind::OwnedHostStorageUnsupported))
     }
 
+    /// Transfers a newly constructed host object into the current root call.
+    ///
+    /// The adapter must reclaim the object deterministically when the root
+    /// ends. Generic adapters fail closed.
+    fn retain_call_scoped_host(
+        &mut self,
+        _object: Box<dyn ScriptHostObject + Send + Sync>,
+    ) -> HostResult<HostRef> {
+        Err(HostError::new(
+            HostErrorKind::CallScopedHostStorageUnsupported,
+        ))
+    }
+
     fn resolve_host_access(&self, _spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
         Ok(ResolvedHostAccess::generic_target(self.host_schema_epoch()))
     }

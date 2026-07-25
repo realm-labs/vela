@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 use vela_analysis::registry::RegistryFacts;
 use vela_common::{
     CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, HostMethodId,
@@ -22,6 +24,17 @@ use crate::type_binding::{TypeBinding, ValueCodec};
 
 struct ExternalHost {
     amount: i64,
+    track_drop: bool,
+}
+
+static CALL_SCOPED_HOST_DROPS: AtomicUsize = AtomicUsize::new(0);
+
+impl Drop for ExternalHost {
+    fn drop(&mut self) {
+        if self.track_drop {
+            CALL_SCOPED_HOST_DROPS.fetch_add(1, Ordering::SeqCst);
+        }
+    }
 }
 
 impl ScriptHostObject for ExternalHost {
@@ -125,6 +138,22 @@ fn construct_external_host(
     };
     Ok(ExternalHost {
         amount: i64::from_script_arg(amount)?,
+        track_drop: false,
+    })
+}
+
+fn construct_call_scoped_external_host(
+    args: &[OwnedValue],
+    _host: &mut vela_vm::HostExecution<'_>,
+) -> VmResult<ExternalHost> {
+    let [amount] = args else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "host::ExternalHost::new arguments",
+        }));
+    };
+    Ok(ExternalHost {
+        amount: i64::from_script_arg(amount)?,
+        track_drop: true,
     })
 }
 
@@ -686,8 +715,11 @@ fn type_binding_rejects_constructor_with_wrong_owner_or_return_type() {
 fn host_constructor_retains_rust_object_outside_gc_across_runtime_calls() {
     let engine = Engine::builder()
         .register_rust_type::<ExternalHost>(
-            TypeBinding::host(host_desc(101, 201))
-                .host_constructor_fn(external_host_constructor(), construct_external_host),
+            TypeBinding::host(host_desc(101, 201)).host_constructor_fn(
+                vela_common::HostConstructionLifetime::RuntimeOwned,
+                external_host_constructor(),
+                construct_external_host,
+            ),
         )
         .build()
         .expect("host factory binding should seal");
@@ -697,6 +729,13 @@ fn host_constructor_retains_rust_object_outside_gc_across_runtime_calls() {
         .expect("host binding");
     assert!(binding.capabilities.contains(ReceiverCapability::Construct));
     assert_eq!(binding.constructor_ids, [FunctionId::new(411)]);
+    assert_eq!(
+        binding.host_constructors,
+        [vela_common::HostConstructorBinding::new(
+            FunctionId::new(411),
+            vela_common::HostConstructionLifetime::RuntimeOwned,
+        )]
+    );
 
     let program = engine
         .compile_source_with_id(
@@ -746,6 +785,79 @@ fn add_five(value: host::ExternalHost) {
 }
 
 #[test]
+fn call_scoped_host_constructor_reclaims_at_root_and_rejects_escape() {
+    CALL_SCOPED_HOST_DROPS.store(0, Ordering::SeqCst);
+    let engine = Engine::builder()
+        .register_rust_type::<ExternalHost>(
+            TypeBinding::host(host_desc(101, 201)).host_constructor_fn(
+                vela_common::HostConstructionLifetime::CallScoped,
+                external_host_constructor(),
+                construct_call_scoped_external_host,
+            ),
+        )
+        .build()
+        .expect("call-scoped host factory binding should seal");
+    let type_bindings = engine.type_bindings();
+    let binding = type_bindings
+        .get_for::<ExternalHost>()
+        .expect("host binding");
+    assert_eq!(
+        binding.host_constructors,
+        [vela_common::HostConstructorBinding::new(
+            FunctionId::new(411),
+            vela_common::HostConstructionLifetime::CallScoped,
+        )]
+    );
+
+    let program = engine
+        .compile_source_with_id(
+            SourceId::new(5),
+            r#"
+fn consume(amount: i64) {
+    let value = host::ExternalHost::new(amount);
+    value.value += 5;
+    return value.value;
+}
+
+fn leak(amount: i64) {
+    return host::ExternalHost::new(amount);
+}
+"#,
+        )
+        .expect("call-scoped host constructor should compile");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+
+    let result = runtime
+        .call(
+            "consume",
+            CallArgs::from_positional([OwnedValue::from(7_i64)]),
+            CallOptions::unbounded(),
+        )
+        .expect("call-scoped host should remain live inside its root call");
+    assert_eq!(
+        runtime.value_to_owned(&result),
+        Ok(OwnedValue::from(12_i64))
+    );
+    assert_eq!(CALL_SCOPED_HOST_DROPS.load(Ordering::SeqCst), 1);
+
+    let error = runtime
+        .call(
+            "leak",
+            CallArgs::from_positional([OwnedValue::from(9_i64)]),
+            CallOptions::unbounded(),
+        )
+        .expect_err("a call-scoped HostRef must not escape through the root return");
+    assert!(matches!(
+        error.kind_ref(),
+        VmErrorKind::Host(vela_host::error::HostErrorKind::BorrowedHostRefEscape {
+            boundary: vela_host::error::HostRefLifetimeBoundary::RootReturn,
+            ..
+        })
+    ));
+    assert_eq!(CALL_SCOPED_HOST_DROPS.load(Ordering::SeqCst), 2);
+}
+
+#[test]
 fn exclusive_method_rejects_shared_view_and_accepts_mut_view() {
     let owner = host_desc(101, 201).key;
     let engine = Engine::builder()
@@ -770,7 +882,10 @@ fn touch(value: host::ExternalHost) {
         )
         .expect("exclusive method should compile for dynamic call-bound receiver access");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
-    let mut host = ExternalHost { amount: 0 };
+    let mut host = ExternalHost {
+        amount: 0,
+        track_drop: false,
+    };
 
     let shared_error = runtime
         .call(

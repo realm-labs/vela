@@ -117,6 +117,7 @@ fn type_def(desc: &TypeDesc, type_bindings: &TypeBindingRegistry) -> TypeDef {
             binding.capabilities,
             binding.collection_views,
             binding.constructor_ids.clone(),
+            binding.host_constructors.clone(),
             binding.abi_fingerprint,
         ));
     }

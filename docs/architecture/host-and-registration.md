@@ -701,10 +701,16 @@ participate in `TypeAbiFingerprint`; documentation, source spans, and Rust
 closure code do not. Host-object construction additionally requires a
 host-owned factory/arena and must never place the Rust object under script GC.
 `TypeBinding::host_constructor_fn` transfers the exact Rust result into the
-calling Runtime's owned-host arena and returns only a `HostRef`. The arena is
-actor-local Runtime state, supports the same shared/exclusive lease boundary as
-other host roots, and currently retains constructed objects until Runtime drop;
-script values may keep or pass handles but never own the Rust allocation.
+calling Runtime's host arena and returns only a `HostRef`. Every Host
+constructor declares `HostConstructionLifetime::CallScoped` or
+`HostConstructionLifetime::RuntimeOwned`; the choice participates in the type
+ABI and is exported through reflection, compile-view, analysis, and schema
+facts. The former is reclaimed deterministically when the root call ends and
+cannot cross root return, persistent-state, or async-suspension boundaries.
+The latter remains available across Runtime calls until Runtime drop. The
+arena is actor-local Runtime state and supports the same shared/exclusive lease
+boundary as other host roots; script values may keep or pass permitted handles
+but never own the Rust allocation.
 
 For structural DTOs, `#[derive(Value)]` generates the exact `ScriptStruct` or
 `ScriptEnum` descriptor, stable field and variant IDs, direct

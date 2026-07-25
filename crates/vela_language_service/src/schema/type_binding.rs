@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use vela_analysis::registry::RegistryTypeBindingFact;
 use vela_common::{
-    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, InteropTypeId,
-    ReceiverCapabilities, ReceiverCapability, StoragePolicy, TypeAbiFingerprint,
-    TypeBindingRegistryChecksum,
+    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation,
+    HostConstructionLifetime, HostConstructorBinding, InteropTypeId, ReceiverCapabilities,
+    ReceiverCapability, StoragePolicy, TypeAbiFingerprint, TypeBindingRegistryChecksum,
 };
 use vela_def::FunctionId;
 
@@ -20,6 +20,8 @@ pub struct SchemaTypeBindingFact {
     collection_view: Option<SchemaCollectionViewFact>,
     #[serde(default)]
     constructor_ids: Vec<String>,
+    #[serde(default)]
+    host_constructors: Vec<SchemaHostConstructorFact>,
     abi_fingerprint: String,
 }
 
@@ -55,8 +57,32 @@ impl SchemaTypeBindingFact {
     }
 
     #[must_use]
+    pub fn host_constructors(&self) -> &[SchemaHostConstructorFact] {
+        &self.host_constructors
+    }
+
+    #[must_use]
     pub fn abi_fingerprint(&self) -> &str {
         &self.abi_fingerprint
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaHostConstructorFact {
+    id: String,
+    lifetime: String,
+}
+
+impl SchemaHostConstructorFact {
+    #[must_use]
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    #[must_use]
+    pub fn lifetime(&self) -> &str {
+        &self.lifetime
     }
 }
 
@@ -102,6 +128,14 @@ pub(super) fn type_binding_to_schema(
             .iter()
             .map(|id| hex_u128(id.get()))
             .collect(),
+        host_constructors: binding
+            .host_constructors
+            .iter()
+            .map(|constructor| SchemaHostConstructorFact {
+                id: hex_u128(constructor.id.get()),
+                lifetime: constructor.lifetime.as_str().to_owned(),
+            })
+            .collect(),
         abi_fingerprint: hex_u64(binding.abi_fingerprint.get()),
     }
 }
@@ -133,6 +167,20 @@ pub(super) fn type_binding_from_schema(
                 .constructor_ids
                 .iter()
                 .map(|id| parse_u128(id).map(FunctionId::new))
+                .collect::<Option<Vec<_>>>()?,
+            host_constructors: binding
+                .host_constructors
+                .iter()
+                .map(|constructor| {
+                    Some(HostConstructorBinding::new(
+                        FunctionId::new(parse_u128(&constructor.id)?),
+                        match constructor.lifetime.as_str() {
+                            "call_scoped" => HostConstructionLifetime::CallScoped,
+                            "runtime_owned" => HostConstructionLifetime::RuntimeOwned,
+                            _ => return None,
+                        },
+                    ))
+                })
                 .collect::<Option<Vec<_>>>()?,
             abi_fingerprint: TypeAbiFingerprint::new(parse_u64(&binding.abi_fingerprint)?),
         },
@@ -175,11 +223,32 @@ pub(super) fn validate_type_binding(
             "TypeBinding name must be non-empty",
         ));
     }
-    if type_binding_from_schema(binding).is_none() {
+    let Some((_, fact)) = type_binding_from_schema(binding) else {
         return Err(SchemaArtifactError::new(format!(
             "TypeBinding `{}` has invalid identity, storage, capability, view, constructor, or ABI metadata",
             binding.name
         )));
+    };
+    if fact.storage != StoragePolicy::Host && !fact.host_constructors.is_empty() {
+        return Err(SchemaArtifactError::new(format!(
+            "Value TypeBinding `{}` cannot declare Host constructor lifetimes",
+            binding.name
+        )));
+    }
+    let mut host_constructor_ids = std::collections::BTreeSet::new();
+    for constructor in &fact.host_constructors {
+        if !fact.constructor_ids.contains(&constructor.id) {
+            return Err(SchemaArtifactError::new(format!(
+                "TypeBinding `{}` Host constructor is absent from constructorIds",
+                binding.name
+            )));
+        }
+        if !host_constructor_ids.insert(constructor.id) {
+            return Err(SchemaArtifactError::new(format!(
+                "TypeBinding `{}` declares a duplicate Host constructor lifetime",
+                binding.name
+            )));
+        }
     }
     Ok(())
 }

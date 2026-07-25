@@ -16,11 +16,12 @@ use vela_host::value::HostValue;
 
 const OWNED_HOST_OBJECT_ID_BASE: u64 = 1 << 61;
 
-/// Runtime-owned Rust objects created by registered host factories.
+/// Rust objects created by registered host factories.
 ///
 /// The script heap stores only compact `HostRef` handles. Objects live here
-/// until their owning Runtime is dropped; the script GC neither owns nor
-/// traces Rust state.
+/// either until their root call ends or until their owning Runtime is dropped,
+/// according to the constructor's sealed lifetime. The script GC neither owns
+/// nor traces Rust state.
 pub(super) struct RuntimeHostArena {
     objects: HostSlotTable<RuntimeHostObject>,
 }
@@ -48,6 +49,13 @@ impl RuntimeHostArena {
 
     pub(super) fn contains(&self, root: HostRef) -> bool {
         self.entry(root).is_some()
+    }
+
+    pub(super) fn release(&mut self, root: HostRef) -> bool {
+        let Some(handle) = self.handle(root) else {
+            return false;
+        };
+        self.objects.remove(handle).is_some()
     }
 
     pub(super) fn take_lease<'host>(
@@ -221,13 +229,20 @@ impl RuntimeHostArena {
     }
 
     fn entry(&self, root: HostRef) -> Option<&RuntimeHostObject> {
+        let handle = self.handle(root)?;
+        let entry = self.objects.get(handle)?;
+        (entry.type_id == root.type_id).then_some(entry)
+    }
+
+    fn handle(&self, root: HostRef) -> Option<HostSlotRef> {
         let slot = root
             .object_id
             .get()
             .checked_sub(OWNED_HOST_OBJECT_ID_BASE)
             .and_then(|slot| u32::try_from(slot).ok())?;
-        let entry = self.objects.get(HostSlotRef::new(slot, root.generation))?;
-        (entry.type_id == root.type_id).then_some(entry)
+        let handle = HostSlotRef::new(slot, root.generation);
+        let entry = self.objects.get(handle)?;
+        (entry.type_id == root.type_id).then_some(handle)
     }
 
     fn root_for(handle: HostSlotRef, type_id: HostTypeId) -> HostRef {

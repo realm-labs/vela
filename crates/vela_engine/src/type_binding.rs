@@ -6,9 +6,10 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use vela_common::{
-    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, InteropBindingContract,
-    InteropRepresentation, InteropTypeId, ReceiverCapabilities, ReceiverCapability, StoragePolicy,
-    TypeAbiFingerprint, TypeBindingRegistryChecksum, stable_id,
+    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation,
+    HostConstructionLifetime, InteropBindingContract, InteropRepresentation, InteropTypeId,
+    ReceiverCapabilities, ReceiverCapability, StoragePolicy, TypeAbiFingerprint,
+    TypeBindingRegistryChecksum, stable_id,
 };
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeKind};
 use vela_reflect::type_binding::TypeBindingDesc;
@@ -42,6 +43,7 @@ enum ConstructorStorage {
 #[derive(Clone)]
 struct TypeConstructorEntry {
     storage: ConstructorStorage,
+    host_lifetime: Option<HostConstructionLifetime>,
     native: HostNativeFunctionEntry,
 }
 
@@ -107,6 +109,7 @@ impl<T: 'static> TypeBinding<T> {
             .iter()
             .map(|entry| TypeConstructorRegistration {
                 storage: entry.storage,
+                host_lifetime: entry.host_lifetime,
                 desc: entry.native.desc.clone(),
             })
             .collect::<Vec<_>>();
@@ -200,16 +203,18 @@ impl<T: 'static> TypeBinding<T> {
         self.capabilities = self.capabilities.with(ReceiverCapability::Construct);
         self.constructors.push(TypeConstructorEntry {
             storage: ConstructorStorage::Value,
+            host_lifetime: None,
             native: HostNativeFunctionEntry::new(desc, function),
         });
         self
     }
 
-    /// Registers a factory that transfers its Rust result into Runtime-owned
-    /// host storage and returns only a `HostRef` to Vela.
+    /// Registers a factory that transfers its Rust result into host storage
+    /// with an explicit lifetime and returns only a `HostRef` to Vela.
     #[must_use]
     pub fn host_constructor_fn(
         mut self,
+        lifetime: HostConstructionLifetime,
         desc: NativeFunctionDesc,
         factory: impl for<'host> Fn(&[OwnedValue], &mut vela_vm::HostExecution<'host>) -> VmResult<T>
         + Send
@@ -223,6 +228,7 @@ impl<T: 'static> TypeBinding<T> {
         self.capabilities = self.capabilities.with(ReceiverCapability::Construct);
         self.constructors.push(TypeConstructorEntry {
             storage: ConstructorStorage::Host,
+            host_lifetime: Some(lifetime),
             native: HostNativeFunctionEntry::new(desc, move |args, host| {
                 let object = factory(args, host)?;
                 let actual = object.host_type_id();
@@ -235,7 +241,14 @@ impl<T: 'static> TypeBinding<T> {
                     }
                     .into());
                 }
-                let root = host.adapter.retain_owned_host(Box::new(object))?;
+                let root = match lifetime {
+                    HostConstructionLifetime::CallScoped => {
+                        host.adapter.retain_call_scoped_host(Box::new(object))?
+                    }
+                    HostConstructionLifetime::RuntimeOwned => {
+                        host.adapter.retain_owned_host(Box::new(object))?
+                    }
+                };
                 Ok(OwnedValue::HostRef(root))
             }),
         });
@@ -365,6 +378,7 @@ impl<T: 'static> TypeBinding<T> {
                 .iter()
                 .map(|entry| TypeConstructorRegistration {
                     storage: entry.storage,
+                    host_lifetime: entry.host_lifetime,
                     desc: entry.native.desc.clone(),
                 })
                 .collect(),
@@ -451,6 +465,7 @@ pub(crate) struct TypeBindingRegistration {
 #[derive(Clone)]
 struct TypeConstructorRegistration {
     storage: ConstructorStorage,
+    host_lifetime: Option<HostConstructionLifetime>,
     desc: NativeFunctionDesc,
 }
 
@@ -501,6 +516,16 @@ impl TypeBindingRegistry {
                 .map(|constructor| constructor.desc.id)
                 .collect::<Vec<_>>();
             constructor_ids.sort_unstable();
+            let mut host_constructors = registration
+                .constructors
+                .iter()
+                .filter_map(|constructor| {
+                    constructor.host_lifetime.map(|lifetime| {
+                        vela_common::HostConstructorBinding::new(constructor.desc.id, lifetime)
+                    })
+                })
+                .collect::<Vec<_>>();
+            host_constructors.sort_unstable();
             let binding = TypeBindingDesc::new(
                 id,
                 registration.key.clone(),
@@ -509,7 +534,8 @@ impl TypeBindingRegistry {
                 registration.collection_views,
                 constructor_ids,
                 fingerprint,
-            );
+            )
+            .with_host_constructors(host_constructors);
             if by_id.insert(id, binding).is_some() {
                 return Err(EngineError::new(EngineErrorKind::DuplicateInteropTypeId {
                     id: id.get(),
@@ -696,6 +722,9 @@ fn type_abi_fingerprint(
     constructors.sort_by_key(|constructor| constructor.desc.id);
     for constructor in constructors {
         parts.push(constructor_abi(&constructor.desc));
+        if let Some(lifetime) = constructor.host_lifetime {
+            parts.push(format!("constructor-host-lifetime={}", lifetime.as_str()));
+        }
         parts.extend(
             constructor
                 .desc
@@ -917,6 +946,16 @@ fn validate_constructors(
                 unreachable!("Host storage validation requires a host type representation")
             }
         };
+        match (constructor.storage, constructor.host_lifetime) {
+            (ConstructorStorage::Value, None) | (ConstructorStorage::Host, Some(_)) => {}
+            (ConstructorStorage::Value, Some(_)) | (ConstructorStorage::Host, None) => {
+                return Err(invalid_constructor(
+                    desc,
+                    constructor_desc,
+                    "host constructors require an explicit lifetime",
+                ));
+            }
+        }
         if constructor_desc.returns != expected {
             return Err(invalid_constructor(
                 desc,
