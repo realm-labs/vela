@@ -8,6 +8,19 @@ use vela_analysis::registry::{
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{CollectionViewMutation, PrimitiveTag, ReceiverCapability, SourceId, Span};
 
+mod service;
+mod type_binding;
+
+use service::validate_service_set;
+pub use service::{
+    SchemaServiceFact, SchemaServiceMethodFact, SchemaServiceParameterFact, SchemaServiceSetFact,
+};
+pub use type_binding::{SchemaCollectionViewFact, SchemaTypeBindingFact};
+use type_binding::{
+    type_binding_checksum_from_schema, type_binding_checksum_to_schema, type_binding_from_schema,
+    type_binding_to_schema, validate_type_binding_facts,
+};
+
 pub const SCHEMA_ARTIFACT_FORMAT_VERSION: u32 = 1;
 const SCHEMA_HASH_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const SCHEMA_HASH_PRIME: u64 = 0x0000_0100_0000_01b3;
@@ -40,6 +53,8 @@ pub struct SchemaArtifact {
     schema_hash: Option<String>,
     #[serde(default)]
     facts: SchemaArtifactFacts,
+    #[serde(default)]
+    service_set: Option<SchemaServiceSetFact>,
 }
 
 impl SchemaArtifact {
@@ -50,7 +65,19 @@ impl SchemaArtifact {
             schema_version: None,
             schema_hash: None,
             facts,
+            service_set: None,
         }
+    }
+
+    #[must_use]
+    pub fn with_service_set(mut self, service_set: SchemaServiceSetFact) -> Self {
+        self.service_set = Some(service_set);
+        self
+    }
+
+    #[must_use]
+    pub const fn service_set(&self) -> Option<&SchemaServiceSetFact> {
+        self.service_set.as_ref()
     }
 
     #[must_use]
@@ -73,7 +100,11 @@ impl SchemaArtifact {
     }
 
     pub fn to_registry_facts(&self) -> RegistryFacts {
-        self.facts.to_registry_facts()
+        let mut facts = self.facts.to_registry_facts();
+        if let Some(service_set) = &self.service_set {
+            service::project_service_set(service_set, &mut facts);
+        }
+        facts
     }
 
     #[must_use]
@@ -87,7 +118,17 @@ impl SchemaArtifact {
     }
 
     pub fn computed_schema_hash(&self) -> Result<u64, SchemaArtifactError> {
-        self.facts.compatibility_hash()
+        let facts_hash = self.facts.compatibility_hash()?;
+        let Some(service_set) = &self.service_set else {
+            return Ok(facts_hash);
+        };
+        let mut payload = facts_hash.to_le_bytes().to_vec();
+        payload.extend(serde_json::to_vec(service_set).map_err(|error| {
+            SchemaArtifactError::new(format!(
+                "failed to encode canonical service metadata: {error}"
+            ))
+        })?);
+        Ok(fnv1a64(&payload))
     }
 
     #[must_use]
@@ -120,6 +161,10 @@ impl SchemaArtifact {
                     schema_hash.trim()
                 )));
             }
+        }
+        validate_type_binding_facts(&self.facts)?;
+        if let Some(service_set) = &self.service_set {
+            validate_service_set(service_set)?;
         }
         Ok(())
     }
@@ -257,6 +302,10 @@ pub struct SchemaArtifactFacts {
     function_effects: Vec<SchemaFunctionEffectFact>,
     #[serde(default)]
     index_capabilities: Vec<SchemaIndexCapabilityFact>,
+    #[serde(default)]
+    type_binding_checksum: Option<String>,
+    #[serde(default)]
+    type_bindings: Vec<SchemaTypeBindingFact>,
 }
 
 impl SchemaArtifactFacts {
@@ -334,6 +383,10 @@ impl SchemaArtifactFacts {
                 .index_capabilities()
                 .map(SchemaIndexCapabilityFact::from)
                 .collect(),
+            type_binding_checksum: facts
+                .type_binding_checksum()
+                .map(type_binding_checksum_to_schema),
+            type_bindings: facts.type_bindings().map(type_binding_to_schema).collect(),
         }
     }
 
@@ -434,6 +487,18 @@ impl SchemaArtifactFacts {
         }
         for capability in &self.index_capabilities {
             facts.insert_index_capability(capability.to_registry_fact());
+        }
+        if let Some(checksum) = self
+            .type_binding_checksum
+            .as_deref()
+            .and_then(type_binding_checksum_from_schema)
+        {
+            facts.set_type_binding_checksum(checksum);
+        }
+        for binding in &self.type_bindings {
+            let (name, binding) =
+                type_binding_from_schema(binding).expect("validated TypeBinding schema fact");
+            facts.insert_type_binding(name, binding);
         }
         facts
     }

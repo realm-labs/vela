@@ -81,13 +81,55 @@ fn sample_facts() -> RegistryFacts {
         key: TypeFact::STRING,
         value: TypeFact::I64,
     });
+    facts.set_type_binding_checksum(vela_common::TypeBindingRegistryChecksum::new(0xabc));
+    facts.insert_type_binding(
+        "Player",
+        vela_analysis::registry::RegistryTypeBindingFact {
+            id: vela_common::InteropTypeId::new(0x123),
+            storage: vela_common::StoragePolicy::Host,
+            capabilities: vela_common::ReceiverCapabilities::HOST_OBJECT
+                .with(vela_common::ReceiverCapability::Construct),
+            collection_views: Some(vela_common::CollectionViewCapabilities::mutable(
+                vela_common::CollectionViewKind::Map,
+                CollectionViewMutation::Growable,
+            )),
+            constructor_ids: vec![vela_def::FunctionId::new(0x456)],
+            abi_fingerprint: vela_common::TypeAbiFingerprint::new(0x789),
+        },
+    );
     facts
 }
 
 #[test]
 fn schema_export_round_trips_registry_facts() {
     let facts = sample_facts();
-    let artifact = SchemaArtifact::from_registry_facts(&facts);
+    let service_set = SchemaServiceSetFact::new(
+        "0x100",
+        "fixture::Services",
+        "0x200",
+        "0xabc",
+        [SchemaServiceFact::new(
+            "0x300",
+            "handler",
+            "fixture::handler",
+            "0x400",
+            [SchemaServiceMethodFact::new(
+                "0x500",
+                "handle",
+                "fixture::handler::handle",
+                true,
+                ["host_write".to_owned()],
+                [SchemaServiceParameterFact::new(
+                    "context",
+                    "fixture::Context",
+                    "exclusive_host",
+                )],
+                "Result<fixture::Response, fixture::Error>",
+            )],
+        )],
+    );
+    let artifact =
+        SchemaArtifact::from_registry_facts(&facts).with_service_set(service_set.clone());
     let json = artifact
         .to_json()
         .expect("schema artifact should encode as JSON");
@@ -95,10 +137,38 @@ fn schema_export_round_trips_registry_facts() {
         json.contains(r#""kind": "tuple""#),
         "schema artifact should expose tuple facts structurally: {json}"
     );
+    assert!(
+        json.contains(r#""protocols": ["#)
+            && json.contains(r#""MapLike""#)
+            && json.contains(r#""constructorIds": ["#),
+        "schema artifact should expose TypeBinding constructors, views, and protocols: {json}"
+    );
     let parsed = SchemaArtifact::from_json(&json).expect("schema artifact should decode from JSON");
+    assert_eq!(parsed.service_set(), Some(&service_set));
     let round_tripped = parsed.to_registry_facts();
+    let mut databases = LanguageServiceDatabases::new();
+    databases.load_schema_artifact_json("/workspace/schema.json", &json);
+    assert_eq!(databases.schema_db().service_set(), Some(&service_set));
 
-    assert_eq!(round_tripped, facts);
+    assert_eq!(
+        round_tripped.trait_fact("fixture::handler"),
+        Some(&TypeFact::trait_type("fixture::handler"))
+    );
+    assert_eq!(
+        round_tripped.trait_method_fact("fixture::handler", "handle"),
+        Some(&TypeFact::function(
+            vec![TypeFact::Unknown],
+            TypeFact::Unknown
+        ))
+    );
+    assert_eq!(
+        round_tripped.type_binding_fact("Player"),
+        facts.type_binding_fact("Player")
+    );
+    assert_eq!(
+        round_tripped.type_binding_checksum(),
+        facts.type_binding_checksum()
+    );
     assert_eq!(
         round_tripped.module_fact("game::reward"),
         Some(&TypeFact::module("game::reward"))

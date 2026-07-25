@@ -1164,6 +1164,9 @@ dependencies = [
  "vela_bytecode",
  "vela_common",
  "vela_engine",
+ "vela_host",
+ "vela_language_service",
+ "vela_macros",
  "vela_vm",
 ]
 
@@ -1253,6 +1256,7 @@ dependencies = [
  "serde_json",
  "vela_analysis",
  "vela_common",
+ "vela_def",
  "vela_hir",
  "vela_package",
  "vela_syntax",

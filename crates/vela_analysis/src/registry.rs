@@ -449,6 +449,12 @@ impl RegistryFacts {
         self.type_bindings.get(name)
     }
 
+    pub fn type_bindings(&self) -> impl Iterator<Item = (&str, &RegistryTypeBindingFact)> {
+        self.type_bindings
+            .iter()
+            .map(|(name, binding)| (name.as_str(), binding))
+    }
+
     #[must_use]
     pub const fn type_binding_checksum(&self) -> Option<TypeBindingRegistryChecksum> {
         self.type_binding_checksum

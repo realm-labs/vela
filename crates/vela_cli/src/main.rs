@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 mod diagnostics;
 mod executor;
+mod metadata;
 
 use clap::Parser;
 use vela_engine::prelude::*;
@@ -20,6 +21,10 @@ struct Cli {
     #[arg(long = "async")]
     async_entry: bool,
 
+    /// Print the sealed host/service schema as JSON without executing `main`.
+    #[arg(long)]
+    print_schema: bool,
+
     /// Vela script file to execute.
     script: PathBuf,
 }
@@ -33,10 +38,14 @@ fn main() {
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
-    run_script(&cli.script, cli.async_entry)
+    run_script(&cli.script, cli.async_entry, cli.print_schema)
 }
 
-fn run_script(path: &Path, async_entry: bool) -> Result<(), Box<dyn std::error::Error>> {
+fn run_script(
+    path: &Path,
+    async_entry: bool,
+    print_schema: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
     let fs_root = path.parent().unwrap_or_else(|| Path::new("."));
     let engine = Engine::builder()
         .with_standard_natives()
@@ -50,6 +59,10 @@ fn run_script(path: &Path, async_entry: bool) -> Result<(), Box<dyn std::error::
         .with_fs_io(fs_root)
         .build()
         .map_err(|error| error.to_string())?;
+    if print_schema {
+        println!("{}", metadata::schema_json(&engine)?);
+        return Ok(());
+    }
     let program = engine
         .compile_file(path)
         .map_err(|error| diagnostics::render_engine_source_error(path, &error))?;

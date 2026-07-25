@@ -9,7 +9,12 @@ clap = { workspace = true }
 vela_bytecode = { workspace = true }
 vela_common = { workspace = true }
 vela_engine = { workspace = true }
+vela_language_service = { workspace = true }
 vela_vm = { workspace = true }
+
+[dev-dependencies]
+vela_host = { workspace = true }
+vela_macros = { workspace = true }
 
 [lints]
 workspace = true
