@@ -6,8 +6,8 @@ use crate::export::emission::{
     exclusive_host_value_tokens, host_type_id_tokens, shared_host_value_tokens,
 };
 use crate::export::signature::{
-    BorrowOrigin, ClassifiedSignature, HostAccess, ParameterMode, ReturnMode,
-    ScopedReturnContainer, TypeShape,
+    BorrowOrigin, BorrowedCollectionKind, ClassifiedSignature, HostAccess, ParameterMode,
+    ReturnMode, ScopedReturnContainer, TypeShape,
 };
 
 pub(super) fn emit_rust_dispatch_arm(
@@ -44,6 +44,38 @@ pub(super) fn emit_rust_dispatch_arm(
     for (argument_index, parameter) in signature.parameters.iter().skip(1).enumerate() {
         let name = format_ident!("__vela_arg_{}", parameter.name);
         argument_names.push(name.clone());
+        if let (TypeShape::BorrowedCollection(collection), ParameterMode::SharedHost) =
+            (&parameter.ty, parameter.mode)
+            && let (Some(element), BorrowedCollectionKind::Array(element_shape)) =
+                (&collection.slice_element, &collection.kind)
+            && matches!(element_shape.as_ref(), TypeShape::Value(_))
+        {
+            let owned_name = format_ident!("__vela_owned_{}", parameter.name);
+            argument_bindings.push(quote! {
+                let #owned_name = match &__vela_args[#argument_index] {
+                    ::vela_vm::owned_value::OwnedValue::Array(__vela_values) => {
+                        __vela_values
+                            .iter()
+                            .map(
+                                <#element as
+                                    ::vela_engine::args::FromScriptArg>::from_script_arg
+                            )
+                            .collect::<::vela_vm::error::VmResult<
+                                ::std::vec::Vec<#element>
+                            >>()?
+                    }
+                    _ => {
+                        return Err(::vela_vm::error::VmError::new(
+                            ::vela_vm::error::VmErrorKind::TypeMismatch {
+                                operation: "service value slice argument",
+                            },
+                        ));
+                    }
+                };
+                let #name = #owned_name.as_slice();
+            });
+            continue;
+        }
         match parameter.mode {
             ParameterMode::SharedHost | ParameterMode::ExclusiveHost => {
                 let current_lease = lease_index;
@@ -191,6 +223,38 @@ pub(super) fn emit_async_rust_dispatch_arm(
     for (argument_index, parameter) in signature.parameters.iter().skip(1).enumerate() {
         let name = format_ident!("__vela_arg_{}", parameter.name);
         argument_names.push(name.clone());
+        if let (TypeShape::BorrowedCollection(collection), ParameterMode::SharedHost) =
+            (&parameter.ty, parameter.mode)
+            && let (Some(element), BorrowedCollectionKind::Array(element_shape)) =
+                (&collection.slice_element, &collection.kind)
+            && matches!(element_shape.as_ref(), TypeShape::Value(_))
+        {
+            let owned_name = format_ident!("__vela_owned_{}", parameter.name);
+            argument_bindings.push(quote! {
+                let #owned_name = match &__vela_args[#argument_index] {
+                    ::vela_vm::owned_value::OwnedValue::Array(__vela_values) => {
+                        __vela_values
+                            .iter()
+                            .map(
+                                <#element as
+                                    ::vela_engine::args::FromScriptArg>::from_script_arg
+                            )
+                            .collect::<::vela_vm::error::VmResult<
+                                ::std::vec::Vec<#element>
+                            >>()?
+                    }
+                    _ => {
+                        return Err(::vela_vm::error::VmError::new(
+                            ::vela_vm::error::VmErrorKind::TypeMismatch {
+                                operation: "async service value slice argument",
+                            },
+                        ));
+                    }
+                };
+                let #name = #owned_name.as_slice();
+            });
+            continue;
+        }
         match parameter.mode {
             ParameterMode::SharedHost | ParameterMode::ExclusiveHost => {
                 lease_index += 1;
