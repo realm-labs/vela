@@ -3103,6 +3103,16 @@ JSON, Serde reflection, or mutable copy-back.
 Implementation and acceptance are tracked in
 [rust-vela-service-patchability-completion-plan.md](rust-vela-service-patchability-completion-plan.md).
 
+### Grouped Host Methods May Add Explicit Effects
+
+`#[vela::methods]` infers host-read or host-write from the receiver and
+parameters, then unions any explicit `#[script_method(effects(...))]` facts.
+Explicit effects are additive: they cannot erase inferred host access or claim
+that an observable method is pure. This keeps the unified Value/Host adapter
+path usable for methods such as bounded diagnostics, whose shared receiver is a
+host read while the operation also emits an event. Permission checks therefore
+remain fail-closed before the Rust adapter runs.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

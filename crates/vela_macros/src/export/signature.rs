@@ -33,7 +33,7 @@ pub(crate) enum EffectName {
 }
 
 impl EffectName {
-    pub(super) fn parse(ident: &syn::Ident) -> Result<Self> {
+    pub(crate) fn parse(ident: &syn::Ident) -> Result<Self> {
         match ident.to_string().as_str() {
             "host_read" => Ok(Self::HostRead),
             "host_write" => Ok(Self::HostWrite),

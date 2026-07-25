@@ -66,6 +66,10 @@ Phase status:
   transformed owned collections lower recursively; script-owned mutable
   copy-back rejects before authored Rust runs; and Host collection views retain
   zero-copy identity and write-through.
+- Cross-cutting host-method checkpoint accepted: grouped `#[vela::methods]`
+  exports accept explicit additive `effects(...)`, so read-only receivers may
+  truthfully declare event, time, random, I/O, or reflection effects without
+  falling back to the older, less complete method adapter path.
 
 S3 provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared

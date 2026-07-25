@@ -6,7 +6,9 @@ use syn::{ImplItem, ItemImpl, LitBool, LitStr, Result, Visibility, parse::Parser
 
 use crate::attrs::parse_qualified_name;
 use crate::export::emission;
-use crate::export::signature::{classify_method, classify_method_with_host_collection_returns};
+use crate::export::signature::{
+    EffectName, classify_method, classify_method_with_host_collection_returns,
+};
 use crate::signature::{
     docs_from_attrs, reject_extern_signature, reject_generic_signature, reject_unsafe_signature,
 };
@@ -37,11 +39,10 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         reject_unsafe_signature(&method.sig, "#[vela::methods]")?;
         reject_extern_signature(&method.sig, "#[vela::methods]")?;
         let method_attrs = take_method_attrs(method)?;
-        let additional_effects = BTreeSet::new();
         let signature = if method_attrs.host_collection {
-            classify_method_with_host_collection_returns(&method.sig, &additional_effects)?
+            classify_method_with_host_collection_returns(&method.sig, &method_attrs.effects)?
         } else {
-            classify_method(&method.sig, &additional_effects)?
+            classify_method(&method.sig, &method_attrs.effects)?
         };
         let docs = docs_from_attrs(&method.attrs);
         let public_name = method_attrs
@@ -137,6 +138,7 @@ struct MethodAttrs {
     name: Option<String>,
     reflect_callable: bool,
     host_collection: bool,
+    effects: BTreeSet<EffectName>,
 }
 
 fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAttrs> {
@@ -171,8 +173,25 @@ fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAttrs> {
                 parsed.host_collection = true;
                 return Ok(());
             }
+            if meta.path.is_ident("effects") {
+                return meta.parse_nested_meta(|effect| {
+                    let Some(ident) = effect.path.get_ident() else {
+                        return Err(effect.error("effect must be an identifier"));
+                    };
+                    let effect_name = EffectName::parse(ident)?;
+                    if effect_name == EffectName::Pure {
+                        return Err(effect.error(
+                            "effects(...) only adds effects; `pure` cannot remove an inferred host effect",
+                        ));
+                    }
+                    if !parsed.effects.insert(effect_name) {
+                        return Err(effect.error("duplicate additional effect"));
+                    }
+                    Ok(())
+                });
+            }
             Err(meta.error(
-                "#[methods] supports only name, reflect, and host_collection on #[script_method]",
+                "#[methods] supports only name, reflect, host_collection, and effects(...) on #[script_method]",
             ))
         })?;
     }
@@ -272,6 +291,27 @@ mod tests {
 
         assert!(output.contains("register_rust_host_slice"));
         assert!(output.contains("VelaHostBoundary"));
+    }
+
+    #[test]
+    fn methods_add_explicit_non_host_effects_to_receiver_effects() {
+        let expanded = expand_result(
+            quote! { path = "ops::Context" },
+            quote! {
+                impl Context {
+                    #[script_method(effects(event_emit, time))]
+                    pub fn diagnostic(&self, message: String) -> bool {
+                        !message.is_empty()
+                    }
+                }
+            },
+        )
+        .expect("explicit method effects classify");
+        let output = expanded.to_string();
+
+        assert!(output.contains("host_read"));
+        assert!(output.contains("event_emit"));
+        assert!(output.contains("time"));
     }
 
     #[test]
