@@ -83,10 +83,12 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
         let impl_method: ImplItemFn = syn::parse_quote! {
             pub #rust_signature { ::core::unreachable!() }
         };
+        let public_name = method.sig.ident.to_string();
         generated.push(emission::method_contract(
             &impl_method,
             &self_ty,
             &protocol_path,
+            &public_name,
             None,
             false,
             &signature,

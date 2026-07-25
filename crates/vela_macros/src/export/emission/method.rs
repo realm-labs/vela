@@ -16,17 +16,18 @@ pub(crate) fn method_contract(
     method: &ImplItemFn,
     self_ty: &syn::Type,
     owner_path: &str,
+    public_name: &str,
     docs: Option<&str>,
     reflect_callable: bool,
     signature: &ClassifiedSignature,
 ) -> TokenStream {
     let method_ident = &method.sig.ident;
     let contract_ident = format_ident!("vela_callable_contract_{method_ident}");
-    let public_path = format!("{owner_path}::{method_ident}");
+    let public_path = format!("{owner_path}::{public_name}");
     let callable_id = u128::from(vela_common::stable_id(
         "rust_method_export",
         owner_path,
-        &method_ident.to_string(),
+        public_name,
     ));
     let parameters = signature.parameters.iter().map(|parameter| {
         let name = &parameter.name;

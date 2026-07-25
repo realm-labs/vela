@@ -36,16 +36,20 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         reject_generic_signature(&method.sig.generics, "#[vela::methods]")?;
         reject_unsafe_signature(&method.sig, "#[vela::methods]")?;
         reject_extern_signature(&method.sig, "#[vela::methods]")?;
-        let reflect_callable = take_reflect_callable(method)?;
+        let method_attrs = take_method_attrs(method)?;
         let additional_effects = BTreeSet::new();
         let signature = classify_method(&method.sig, &additional_effects)?;
         let docs = docs_from_attrs(&method.attrs);
+        let public_name = method_attrs
+            .name
+            .unwrap_or_else(|| method.sig.ident.to_string());
         generated.push(emission::method_contract(
             method,
             &item.self_ty,
             &owner_path,
+            &public_name,
             docs.as_deref(),
-            reflect_callable,
+            method_attrs.reflect_callable,
             &signature,
         ));
         generated.push(
@@ -124,8 +128,14 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     })
 }
 
-fn take_reflect_callable(method: &mut syn::ImplItemFn) -> Result<bool> {
-    let mut reflect_callable = false;
+#[derive(Default)]
+struct MethodAttrs {
+    name: Option<String>,
+    reflect_callable: bool,
+}
+
+fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAttrs> {
+    let mut parsed = MethodAttrs::default();
     let mut retained = Vec::with_capacity(method.attrs.len());
     for attr in std::mem::take(&mut method.attrs) {
         if !attr.path().is_ident("script_method") {
@@ -134,14 +144,29 @@ fn take_reflect_callable(method: &mut syn::ImplItemFn) -> Result<bool> {
         }
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("reflect") || meta.path.is_ident("reflect_callable") {
-                reflect_callable = meta.value()?.parse::<LitBool>()?.value;
+                parsed.reflect_callable = meta.value()?.parse::<LitBool>()?.value;
                 return Ok(());
             }
-            Err(meta.error("#[methods] supports only reflect on #[script_method]"))
+            if meta.path.is_ident("name") {
+                if parsed.name.is_some() {
+                    return Err(meta.error("duplicate method name"));
+                }
+                let value = meta.value()?.parse::<LitStr>()?.value();
+                if value.is_empty()
+                    || !value.chars().enumerate().all(|(index, ch)| {
+                        ch == '_' || ch.is_alphanumeric() && (index > 0 || ch.is_alphabetic())
+                    })
+                {
+                    return Err(meta.error("method name must be a Vela identifier"));
+                }
+                parsed.name = Some(value);
+                return Ok(());
+            }
+            Err(meta.error("#[methods] supports only name and reflect on #[script_method]"))
         })?;
     }
     method.attrs = retained;
-    Ok(reflect_callable)
+    Ok(parsed)
 }
 
 fn parse_owner_path(attr: TokenStream, item: &ItemImpl) -> Result<String> {
@@ -195,5 +220,26 @@ mod tests {
         assert!(!output.contains("vela_callable_contract_helper"));
         assert!(output.contains("host_read"));
         assert!(output.contains("host_write"));
+    }
+
+    #[test]
+    fn methods_can_keep_a_rust_adapter_name_private_to_rust() {
+        let expanded = expand_result(
+            quote! { path = "config::EquipmentTable" },
+            quote! {
+                impl EquipmentTable {
+                    #[script_method(name = "get")]
+                    pub fn vela_get(&self, key: i32) -> Option<&Equipment> {
+                        self.get(&key)
+                    }
+                }
+            },
+        )
+        .expect("method alias classifies");
+        let output = expanded.to_string();
+
+        assert!(output.contains("\"config::EquipmentTable::get\""));
+        assert!(!output.contains("\"config::EquipmentTable::vela_get\""));
+        assert!(output.contains("vela_get"));
     }
 }
