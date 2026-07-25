@@ -5,6 +5,7 @@ use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::{LinkError, LinkedArtifact, Linker, ProgramImage, UnlinkedProgram};
 use vela_common::{HostMethodId, ServiceCallMode, service_dispatch_stable_id};
 use vela_def::FunctionId;
+use vela_host::lease::HostLeaseKind;
 use vela_host::path::HostPath;
 use vela_hot_reload::abi::HotReloadAbi;
 use vela_hot_reload::policy::HotReloadPolicy;
@@ -17,6 +18,7 @@ use vela_vm::{ConditionalAsyncNativeFunction, ConditionalHostNativeOutcome, Host
 
 use crate::builder::EngineBuilder;
 use crate::compiler_options::{add_native_signature_hints, compiler_options_from_registry};
+use crate::interop::BoundaryMode;
 use crate::method::{
     AsyncNativeMethodEntry, AsyncNativeMethodImplementation, NativeMethodDesc, NativeMethodEntry,
 };
@@ -67,6 +69,7 @@ pub(crate) struct ServiceDispatchNative {
     pub(crate) name: String,
     pub(crate) effects: EffectSet,
     pub(crate) asyncness: vela_common::CallableAsyncness,
+    pub(crate) parameter_leases: Vec<(usize, HostLeaseKind)>,
 }
 
 pub(crate) struct EngineParts {
@@ -860,6 +863,16 @@ impl Engine {
         for (id, entry) in &self.service_dispatch_natives {
             let id = *id;
             let entry = entry.clone();
+            if entry.asyncness.is_async() {
+                vm.register_async_native_with_id(id, move |_args| {
+                    Box::pin(async {
+                        Err(VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "async service requires Runtime dispatch",
+                        }))
+                    })
+                });
+                continue;
+            }
             let engine = self.clone();
             vm.register_context_host_native_with_id(id, move |args, host, budget| {
                 check_capabilities(&entry.name, &entry.effects, engine.capabilities)?;
@@ -1164,6 +1177,20 @@ fn service_dispatch_natives(
                             name,
                             effects: method.callable.effects,
                             asyncness: method.callable.asyncness,
+                            parameter_leases: method
+                                .callable
+                                .parameters
+                                .iter()
+                                .enumerate()
+                                .filter_map(|(index, parameter)| {
+                                    let kind = match parameter.mode {
+                                        BoundaryMode::SharedHost => HostLeaseKind::Shared,
+                                        BoundaryMode::ExclusiveHost => HostLeaseKind::Exclusive,
+                                        _ => return None,
+                                    };
+                                    Some((index, kind))
+                                })
+                                .collect(),
                         },
                     )
                 })

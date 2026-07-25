@@ -1,0 +1,299 @@
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::task::{Context, Poll, Waker};
+
+use vela_common::SourceId;
+use vela_engine::engine::Engine;
+use vela_engine::permission::{Capability, CapabilitySet};
+use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
+use vela_engine::service::{
+    ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot, ServiceSourceManifest,
+};
+use vela_hir::source_ingestion::build_single_source;
+use vela_macros::{ScriptHost, service, service_set};
+
+const ASYNC_PATCH_SOURCE: &str = r#"
+#[service_impl(async_test::calculator)]
+impl CalculatorPatch {
+    async fn apply(context: RequestContext, value: i64) -> i64 {
+        context.counter += 10;
+        let adjusted = base.apply(context, value).await;
+        return adjusted + 20;
+    }
+}
+"#;
+
+#[derive(ScriptHost)]
+#[script(path = "async_test::RequestContext")]
+pub struct RequestContext {
+    #[script(get, set)]
+    pub counter: i64,
+    #[script(skip)]
+    runtime: ServiceRuntimeSlot,
+}
+
+#[vela_macros::script_methods]
+impl RequestContext {}
+
+impl ServiceRuntimeAuthority for RequestContext {
+    fn take_service_runtime(
+        &mut self,
+        artifact: &Arc<vela_bytecode::LinkedArtifact>,
+    ) -> Result<Runtime, RuntimeBuildError> {
+        self.runtime.take(artifact)
+    }
+
+    fn restore_service_runtime(
+        &mut self,
+        artifact: &Arc<vela_bytecode::LinkedArtifact>,
+        runtime: Runtime,
+    ) {
+        self.runtime.restore(artifact, runtime);
+    }
+}
+
+#[service(path = "async_test::calculator")]
+pub trait AsyncCalculatorService: Send + Sync {
+    async fn apply(&self, context: &mut RequestContext, value: i64) -> i64;
+}
+
+pub struct RustAsyncCalculatorService;
+
+impl AsyncCalculatorService for RustAsyncCalculatorService {
+    async fn apply(&self, context: &mut RequestContext, value: i64) -> i64 {
+        context.counter += 1;
+        YieldOnce::new().await;
+        if value == -1 {
+            panic!("async service fixture panic");
+        }
+        context.counter += 1;
+        value + 1
+    }
+}
+
+struct YieldOnce {
+    yielded: bool,
+}
+
+impl YieldOnce {
+    const fn new() -> Self {
+        Self { yielded: false }
+    }
+}
+
+impl Future for YieldOnce {
+    type Output = ();
+
+    fn poll(mut self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {
+        if self.yielded {
+            Poll::Ready(())
+        } else {
+            self.yielded = true;
+            context.waker().wake_by_ref();
+            Poll::Pending
+        }
+    }
+}
+
+#[service_set(context = RequestContext)]
+pub struct AsyncServices {
+    #[vela::default(RustAsyncCalculatorService)]
+    pub calculator: dyn AsyncCalculatorService,
+}
+
+#[test]
+fn async_service_root_selects_rust_or_vela_through_one_send_adapter() {
+    assert_sync::<ServiceRuntimeSlot>();
+    let engine = AsyncServices::register_types(
+        Engine::builder()
+            .capabilities(CapabilitySet::new().with(Capability::HostWrite))
+            .register_rust_type::<RequestContext>(RequestContext::vela_type_binding()),
+    )
+    .build()
+    .expect("async service engine");
+    let services = AsyncServices::new(&engine.type_bindings()).expect("async service set");
+    let rust_root = services.pin();
+    let mut context = RequestContext {
+        counter: 0,
+        runtime: ServiceRuntimeSlot::new(engine.clone()),
+    };
+
+    let rust_future = rust_root.calculator().apply(&mut context, 5);
+    assert_send(&rust_future);
+    assert_eq!(poll_after_one_pending(rust_future), 6);
+    assert_eq!(context.counter, 2);
+
+    let sources =
+        build_single_source(SourceId::new(61), ASYNC_PATCH_SOURCE).expect("valid async source");
+    let manifest =
+        ServiceSourceManifest::link(sources.graph(), services.schema()).expect("async schema");
+    let compiled = engine
+        .compile_source(ASYNC_PATCH_SOURCE)
+        .expect("compiled async service source");
+    let artifact = engine
+        .link_compiled_program(compiled)
+        .expect("linked async service artifact");
+    let update = manifest
+        .bind_artifact(artifact)
+        .expect("artifact-bound async update");
+    let candidate = services
+        .stage_snapshot(
+            &rust_root,
+            update,
+            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            CallOptions::new(100_000, 1024 * 1024, 64),
+        )
+        .expect("async snapshot");
+    services
+        .activate_if_current(candidate)
+        .expect("activate async snapshot");
+    let vela_root = services.pin();
+
+    let vela_future = vela_root.calculator().apply(&mut context, 5);
+    assert_send(&vela_future);
+    assert_eq!(poll_after_one_pending(vela_future), 26);
+    assert_eq!(context.counter, 14);
+    assert_eq!(
+        context.runtime.cached_generation(),
+        vela_root.selections().and_then(|selections| {
+            selections
+                .iter()
+                .find_map(|(_, selection)| match selection {
+                    vela_engine::service::ServiceMethodSelection::Vela(method) => {
+                        Some(method.artifact().generation())
+                    }
+                    vela_engine::service::ServiceMethodSelection::RustDefault => None,
+                })
+        })
+    );
+}
+
+#[test]
+fn pending_actors_are_isolated_and_drop_or_unwind_restores_runtime_and_leases() {
+    let (engine, services, root) = active_fixture();
+    let mut first = RequestContext {
+        counter: 0,
+        runtime: ServiceRuntimeSlot::new(engine.clone()),
+    };
+    let mut second = RequestContext {
+        counter: 0,
+        runtime: ServiceRuntimeSlot::new(engine.clone()),
+    };
+    let mut third = RequestContext {
+        counter: 0,
+        runtime: ServiceRuntimeSlot::new(engine),
+    };
+    let mut first_future = root.calculator().apply(&mut first, 5);
+    assert_send(&first_future);
+    let mut task = Context::from_waker(Waker::noop());
+
+    assert!(matches!(
+        first_future.as_mut().poll(&mut task),
+        Poll::Pending
+    ));
+    let replacement = services
+        .stage_rust(&root, AsyncServicesGeneration::defaults())
+        .expect("stage Rust replacement while old actor is pending");
+    services
+        .activate_if_current(replacement)
+        .expect("activate Rust replacement");
+    let new_root = services.pin();
+
+    assert_eq!(
+        poll_after_one_pending(root.calculator().apply(&mut second, 6)),
+        27
+    );
+    assert_eq!(second.counter, 12);
+    assert_eq!(
+        poll_after_one_pending(new_root.calculator().apply(&mut third, 6)),
+        7
+    );
+    assert_eq!(third.counter, 2);
+    assert_ne!(root.generation_id(), new_root.generation_id());
+
+    drop(first_future);
+    assert_eq!(first.counter, 11, "completed effects are not rolled back");
+    assert!(
+        first.runtime.cached_generation().is_some(),
+        "dropping a pending service future restores its actor Runtime"
+    );
+    assert_eq!(
+        poll_after_one_pending(root.calculator().apply(&mut first, 7)),
+        28,
+        "a cancelled call releases the exclusive context lease"
+    );
+    assert_eq!(first.counter, 23);
+
+    let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let mut future = root.calculator().apply(&mut first, -1);
+        let mut task = Context::from_waker(Waker::noop());
+        assert!(matches!(future.as_mut().poll(&mut task), Poll::Pending));
+        let _ = future.as_mut().poll(&mut task);
+    }));
+    assert!(panic.is_err());
+    assert_eq!(first.counter, 34);
+    assert!(
+        first.runtime.cached_generation().is_some(),
+        "panic unwind restores the actor Runtime"
+    );
+    assert_eq!(
+        poll_after_one_pending(root.calculator().apply(&mut first, 8)),
+        29
+    );
+    assert_eq!(first.counter, 46);
+}
+
+fn active_fixture() -> (Engine, AsyncServices, AsyncServicesRoot) {
+    let engine = AsyncServices::register_types(
+        Engine::builder()
+            .capabilities(CapabilitySet::new().with(Capability::HostWrite))
+            .register_rust_type::<RequestContext>(RequestContext::vela_type_binding()),
+    )
+    .build()
+    .expect("async service engine");
+    let services = AsyncServices::new(&engine.type_bindings()).expect("async service set");
+    let base = services.pin();
+    let sources =
+        build_single_source(SourceId::new(62), ASYNC_PATCH_SOURCE).expect("valid async source");
+    let manifest =
+        ServiceSourceManifest::link(sources.graph(), services.schema()).expect("async schema");
+    let compiled = engine
+        .compile_source(ASYNC_PATCH_SOURCE)
+        .expect("compiled async service source");
+    let artifact = engine
+        .link_compiled_program(compiled)
+        .expect("linked async service artifact");
+    let update = manifest
+        .bind_artifact(artifact)
+        .expect("artifact-bound async update");
+    let candidate = services
+        .stage_snapshot(
+            &base,
+            update,
+            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            CallOptions::new(100_000, 1024 * 1024, 64),
+        )
+        .expect("async snapshot");
+    services
+        .activate_if_current(candidate)
+        .expect("activate async snapshot");
+    let root = services.pin();
+    (engine, services, root)
+}
+
+fn poll_after_one_pending<T>(mut future: impl Future<Output = T> + Unpin) -> T {
+    let mut context = Context::from_waker(Waker::noop());
+    assert!(matches!(
+        Pin::new(&mut future).poll(&mut context),
+        Poll::Pending
+    ));
+    match Pin::new(&mut future).poll(&mut context) {
+        Poll::Ready(output) => output,
+        Poll::Pending => panic!("fixture future should complete on its second poll"),
+    }
+}
+
+fn assert_send<T: Send>(_: &T) {}
+
+fn assert_sync<T: Sync>() {}

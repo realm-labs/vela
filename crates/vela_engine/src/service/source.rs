@@ -12,6 +12,7 @@ use vela_hir::module_graph::ModuleGraph;
 use vela_hir::service_impl::{ServiceImplCatalog, ServiceImplCatalogError};
 use vela_hir::type_hint::FunctionSignature;
 use vela_vm::error::VmResult;
+use vela_vm::owned_value::OwnedValue;
 
 use super::{
     ServiceCallDispatcher, ServiceMethodKey, ServiceMethodSelection, ServiceMethodUpdate,
@@ -113,6 +114,26 @@ impl VelaServiceMethod {
         )
     }
 
+    #[doc(hidden)]
+    pub fn call_async_with_dispatcher<'call, 'args>(
+        &self,
+        runtime: &'call mut Runtime,
+        args: CallArgs<'args>,
+        options: CallOptions,
+        dispatcher: Arc<dyn ServiceCallDispatcher>,
+    ) -> crate::runtime::RuntimeCallFuture<'call>
+    where
+        'args: 'call,
+    {
+        runtime.call_service_stable_function_async(
+            self.function,
+            self.symbol.clone(),
+            args,
+            options,
+            dispatcher,
+        )
+    }
+
     pub(crate) fn call_in_context(
         &self,
         context: &mut NativeCallContext<'_, '_>,
@@ -125,6 +146,25 @@ impl VelaServiceMethod {
             },
             args,
         )
+    }
+
+    pub(crate) fn call_in_context_async<'call, 'host>(
+        &'call self,
+        context: &'call mut NativeCallContext<'_, 'host>,
+        args: CallArgs<'call>,
+    ) -> crate::service::ServiceFuture<'call, VmResult<OwnedValue>> {
+        Box::pin(async move {
+            let value = context
+                .call_async(
+                    crate::runtime::handles::StableVelaFunction {
+                        function: self.function,
+                        diagnostic_name: self.symbol.clone(),
+                    },
+                    args,
+                )
+                .await?;
+            context.value_to_owned(&value)
+        })
     }
 }
 
@@ -167,6 +207,16 @@ impl LinkedVelaServiceMethod {
         let args = CallArgs::from_positional(args.iter().cloned());
         let value = self.method.call_in_context(context, args)?;
         context.value_to_owned(&value)
+    }
+
+    #[doc(hidden)]
+    pub fn call_in_context_async<'call, 'host>(
+        &'call self,
+        context: &'call mut NativeCallContext<'_, 'host>,
+        args: &'call [OwnedValue],
+    ) -> crate::service::ServiceFuture<'call, VmResult<OwnedValue>> {
+        self.method
+            .call_in_context_async(context, CallArgs::from_positional(args.iter().cloned()))
     }
 
     fn rebind(&self, artifact: Arc<LinkedArtifact>) -> Result<Self, ServiceSourceError> {

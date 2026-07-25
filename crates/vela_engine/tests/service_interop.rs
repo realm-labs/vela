@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use vela_common::SourceId;
 use vela_engine::engine::Engine;
@@ -22,7 +22,7 @@ pub struct PatchCommand {
 #[script(path = "interop::RequestContext")]
 pub struct RequestContext {
     #[script(skip)]
-    runtime: Mutex<ServiceRuntimeSlot>,
+    runtime: ServiceRuntimeSlot,
     #[script(skip)]
     expected_values_address: usize,
     #[script(skip)]
@@ -47,10 +47,7 @@ impl ServiceRuntimeAuthority for RequestContext {
         &mut self,
         artifact: &Arc<vela_bytecode::LinkedArtifact>,
     ) -> Result<Runtime, RuntimeBuildError> {
-        self.runtime
-            .get_mut()
-            .expect("exclusive context cannot poison its Runtime slot")
-            .take(artifact)
+        self.runtime.take(artifact)
     }
 
     fn restore_service_runtime(
@@ -58,10 +55,7 @@ impl ServiceRuntimeAuthority for RequestContext {
         artifact: &Arc<vela_bytecode::LinkedArtifact>,
         runtime: Runtime,
     ) {
-        self.runtime
-            .get_mut()
-            .expect("exclusive context cannot poison its Runtime slot")
-            .restore(artifact, runtime);
+        self.runtime.restore(artifact, runtime);
     }
 }
 
@@ -345,7 +339,7 @@ impl AuditPatch {
 
 fn context(engine: &Engine, values: &mut Vec<i64>) -> RequestContext {
     RequestContext {
-        runtime: Mutex::new(ServiceRuntimeSlot::new(engine.clone())),
+        runtime: ServiceRuntimeSlot::new(engine.clone()),
         expected_values_address: values as *mut Vec<i64> as usize,
         rust_inventory_calls: 0,
         rust_audit_calls: 0,

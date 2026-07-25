@@ -1,28 +1,30 @@
 use std::collections::{BTreeSet, HashSet};
 
 use proc_macro2::TokenStream;
-use quote::{ToTokens, format_ident, quote};
+use quote::{format_ident, quote};
 use syn::visit::{self, Visit};
 use syn::{
-    FnArg, ItemTrait, LitStr, Result, ReturnType, TraitItem, Type, TypeParamBound, Visibility,
-    parse::Parser, parse_quote, parse2,
+    FnArg, ItemTrait, LitStr, Result, ReturnType, Signature, TraitItem, Type, TypeParamBound,
+    Visibility, parse::Parser, parse_quote, parse2,
 };
 
 use crate::attrs::parse_qualified_name;
-use crate::export::emission::{
-    effect_tokens, hint_tokens, parameter_mode_tokens, return_mode_tokens,
-};
+use crate::export::emission::{effect_tokens, hint_tokens, parameter_mode_tokens};
 use crate::export::signature::{
-    BorrowedCollectionKind, BorrowedCollectionShape, ClassifiedParameter, ClassifiedSignature,
-    EffectName, ErrorMode, HostAccess, ParameterMode, ReturnMode, TypeShape,
-    classify_service_method,
+    BorrowedCollectionKind, ClassifiedParameter, ClassifiedSignature, EffectName, ErrorMode,
+    HostAccess, ParameterMode, ReturnMode, TypeShape, classify_service_method,
 };
 use crate::signature::{
     docs_from_attrs, reject_extern_signature, reject_generic_signature, reject_unsafe_signature,
-    type_generic_args,
 };
 
 mod dispatch;
+mod requirements;
+
+use requirements::{
+    RegistrationSpec, add_parameter_requirements, add_return_requirements, requirement_ident,
+    service_return_mode_tokens,
+};
 
 pub(crate) fn expand(attr: TokenStream, input: TokenStream) -> TokenStream {
     match expand_result(attr, input) {
@@ -32,7 +34,7 @@ pub(crate) fn expand(attr: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
-    let item = parse2::<ItemTrait>(input)?;
+    let mut item = parse2::<ItemTrait>(input)?;
     validate_trait(&item)?;
     let service_path = parse_path(attr)?;
     let service_id = u128::from(vela_common::stable_id("vela_service", "", &service_path));
@@ -68,6 +70,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         }
         let emitted = emit_method(
             &service_path,
+            &item.ident,
             method,
             &signature,
             &mut registrations,
@@ -81,25 +84,52 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             "#[vela::service] requires at least one method",
         ));
     }
+    rewrite_async_trait_methods(&mut item);
 
     let trait_ident = &item.ident;
+    let dispatch_module_ident = dispatch_module_ident(trait_ident);
     let schema_ident = schema_function_ident(trait_ident);
     let service_id_ident = service_id_function_ident(trait_ident);
     let register_ident = registration_function_ident(trait_ident);
     let compose_ident = composition_function_ident(trait_ident);
     let dispatch_ident = rust_dispatch_function_ident(trait_ident);
+    let async_dispatch_ident = rust_async_dispatch_function_ident(trait_ident);
     let adapter_ident = format_ident!("__VelaServiceAdapter{trait_ident}");
     let registration_tokens = registrations.iter().map(RegistrationSpec::tokens);
     let method_tokens = methods.iter().map(|method| &method.tokens);
     let adapter_fields = methods.iter().map(|method| &method.adapter_field);
     let adapter_initializers = methods.iter().map(|method| &method.adapter_initializer);
     let adapter_methods = methods.iter().map(|method| &method.adapter_method);
-    let rust_dispatch_arms = methods.iter().map(|method| &method.rust_dispatch_arm);
+    let dispatch_trait_methods = methods.iter().map(|method| &method.dispatch_trait_method);
+    let default_dispatch_methods = methods.iter().map(|method| &method.default_dispatch_method);
+    let rust_dispatch_arms = methods
+        .iter()
+        .filter_map(|method| method.rust_dispatch_arm.as_ref());
+    let async_rust_dispatch_arms = methods
+        .iter()
+        .filter_map(|method| method.async_rust_dispatch_arm.as_ref());
     let docs = docs_from_attrs(&item.attrs)
         .map_or_else(|| quote! { None }, |docs| quote! { Some(#docs.to_owned()) });
 
     Ok(quote! {
         #item
+
+        #[doc(hidden)]
+        pub mod #dispatch_module_ident {
+            use super::*;
+
+            pub trait Dispatch: ::std::marker::Send + ::std::marker::Sync {
+                #(#dispatch_trait_methods)*
+            }
+
+            impl<__VelaServiceImpl> Dispatch for __VelaServiceImpl
+            where
+                __VelaServiceImpl:
+                    #trait_ident + ::std::marker::Send + ::std::marker::Sync,
+            {
+                #(#default_dispatch_methods)*
+            }
+        }
 
         #[doc(hidden)]
         #[allow(non_snake_case)]
@@ -137,7 +167,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
 
         #[doc(hidden)]
         pub fn #compose_ident(
-            __vela_default: ::std::sync::Arc<dyn #trait_ident>,
+            __vela_default: ::std::sync::Arc<dyn #dispatch_module_ident::Dispatch>,
             __vela_runtime: ::vela_engine::service::ServiceRuntimeBinding,
             __vela_options: ::vela_engine::runtime::CallOptions,
             __vela_dispatcher: ::std::sync::Arc<
@@ -146,7 +176,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             __vela_selections: &::vela_engine::service::ServiceSelectionTable<
                 ::vela_engine::service::LinkedVelaServiceMethod
             >,
-        ) -> ::std::sync::Arc<dyn #trait_ident> {
+        ) -> ::std::sync::Arc<dyn #dispatch_module_ident::Dispatch> {
             ::std::sync::Arc::new(#adapter_ident {
                 __vela_default,
                 __vela_runtime,
@@ -158,7 +188,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
 
         #[doc(hidden)]
         pub fn #dispatch_ident(
-            __vela_default: &(dyn #trait_ident + 'static),
+            __vela_default: &(dyn #dispatch_module_ident::Dispatch + 'static),
             __vela_method: ::vela_common::ServiceMethodId,
             __vela_args: &[::vela_vm::owned_value::OwnedValue],
             __vela_context: &mut ::vela_engine::context::NativeCallContext<'_, '_>,
@@ -178,8 +208,41 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         }
 
         #[doc(hidden)]
+        pub fn #async_dispatch_ident<'__vela_call, '__vela_lease>(
+            __vela_default:
+                &'__vela_call (dyn #dispatch_module_ident::Dispatch + 'static),
+            __vela_method: ::vela_common::ServiceMethodId,
+            __vela_args:
+                &'__vela_call [::vela_vm::owned_value::OwnedValue],
+            __vela_leases: &'__vela_call mut [
+                ::vela_host::lease::ErasedHostLease<'__vela_lease>
+            ],
+        ) -> ::vela_engine::service::ServiceFuture<
+            '__vela_call,
+            ::vela_vm::error::VmResult<::vela_vm::owned_value::OwnedValue>,
+        >
+        where
+            '__vela_lease: '__vela_call,
+        {
+            match __vela_method.get() {
+                #(#async_rust_dispatch_arms,)*
+                _ => ::std::boxed::Box::pin(async move {
+                    Err(::vela_vm::error::VmError::new(
+                        ::vela_vm::error::VmErrorKind::UnknownMethod {
+                            method: ::std::format!(
+                                "{}::{}",
+                                #service_path,
+                                __vela_method.get(),
+                            ),
+                        },
+                    ))
+                }),
+            }
+        }
+
+        #[doc(hidden)]
         struct #adapter_ident {
-            __vela_default: ::std::sync::Arc<dyn #trait_ident>,
+            __vela_default: ::std::sync::Arc<dyn #dispatch_module_ident::Dispatch>,
             __vela_runtime: ::vela_engine::service::ServiceRuntimeBinding,
             __vela_options: ::vela_engine::runtime::CallOptions,
             __vela_dispatcher: ::std::sync::Arc<
@@ -188,7 +251,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             #(#adapter_fields,)*
         }
 
-        impl #trait_ident for #adapter_ident {
+        impl #dispatch_module_ident::Dispatch for #adapter_ident {
             #(#adapter_methods)*
         }
     })
@@ -212,6 +275,14 @@ pub(crate) fn composition_function_ident(trait_ident: &syn::Ident) -> syn::Ident
 
 pub(crate) fn rust_dispatch_function_ident(trait_ident: &syn::Ident) -> syn::Ident {
     format_ident!("__vela_dispatch_rust_service_{trait_ident}")
+}
+
+pub(crate) fn rust_async_dispatch_function_ident(trait_ident: &syn::Ident) -> syn::Ident {
+    format_ident!("__vela_dispatch_async_rust_service_{trait_ident}")
+}
+
+pub(crate) fn dispatch_module_ident(trait_ident: &syn::Ident) -> syn::Ident {
+    format_ident!("__vela_service_dispatch_{trait_ident}")
 }
 
 fn validate_trait(item: &ItemTrait) -> Result<()> {
@@ -285,10 +356,10 @@ fn validate_method(method: &syn::TraitItemFn) -> Result<()> {
             "#[vela::service] does not support const or variadic methods",
         ));
     }
-    if method.sig.asyncness.is_some() {
+    if method.sig.asyncness.is_some() && !method.sig.generics.params.is_empty() {
         return Err(syn::Error::new_spanned(
-            method.sig.asyncness,
-            "authored async service methods require the S6 object-safe adapter; S4 service methods are synchronous",
+            &method.sig.generics,
+            "async service methods do not support explicit lifetime parameters",
         ));
     }
     let Some(FnArg::Receiver(receiver)) = method.sig.inputs.first() else {
@@ -386,12 +457,16 @@ struct EmittedMethod {
     tokens: TokenStream,
     adapter_field: TokenStream,
     adapter_initializer: TokenStream,
+    dispatch_trait_method: TokenStream,
+    default_dispatch_method: TokenStream,
     adapter_method: TokenStream,
-    rust_dispatch_arm: TokenStream,
+    rust_dispatch_arm: Option<TokenStream>,
+    async_rust_dispatch_arm: Option<TokenStream>,
 }
 
 fn emit_method(
     service_path: &str,
+    trait_ident: &syn::Ident,
     method: &syn::TraitItemFn,
     signature: &ClassifiedSignature,
     registrations: &mut Vec<RegistrationSpec>,
@@ -522,15 +597,42 @@ fn emit_method(
             }
         }
     };
+    let dispatch_signature = dispatch_signature(method);
+    let dispatch_trait_method = quote! {
+        #dispatch_signature;
+    };
+    let default_dispatch_method =
+        emit_default_dispatch_method(trait_ident, method, &dispatch_signature);
     let adapter_method = emit_adapter_method(service_path, method, signature, &target_ident)?;
-    let rust_dispatch_arm =
-        dispatch::emit_rust_dispatch_arm(service_path, method, signature, method_id)?;
+    let rust_dispatch_arm = if signature.is_async {
+        None
+    } else {
+        Some(dispatch::emit_rust_dispatch_arm(
+            service_path,
+            method,
+            signature,
+            method_id,
+        )?)
+    };
+    let async_rust_dispatch_arm = if signature.is_async {
+        Some(dispatch::emit_async_rust_dispatch_arm(
+            service_path,
+            method,
+            signature,
+            method_id,
+        )?)
+    } else {
+        None
+    };
     Ok(EmittedMethod {
         tokens,
         adapter_field,
         adapter_initializer,
+        dispatch_trait_method,
+        default_dispatch_method,
         adapter_method,
         rust_dispatch_arm,
+        async_rust_dispatch_arm,
     })
 }
 
@@ -540,7 +642,7 @@ fn emit_adapter_method(
     signature: &ClassifiedSignature,
     target_ident: &syn::Ident,
 ) -> Result<TokenStream> {
-    let method_signature = &method.sig;
+    let method_signature = dispatch_signature(method);
     let method_ident = &method.sig.ident;
     let argument_idents = signature
         .parameters
@@ -551,6 +653,16 @@ fn emit_adapter_method(
     let default_call = quote! {
         self.__vela_default.#method_ident(#(#argument_idents),*)
     };
+    if signature.is_async {
+        return emit_async_adapter_method(
+            service_path,
+            method,
+            signature,
+            target_ident,
+            method_signature,
+            default_call,
+        );
+    }
     if matches!(signature.returns.mode, ReturnMode::ScopedHost { .. }) {
         return Ok(quote! {
             #method_signature {
@@ -645,6 +757,202 @@ fn emit_adapter_method(
     })
 }
 
+fn emit_async_adapter_method(
+    service_path: &str,
+    method: &syn::TraitItemFn,
+    signature: &ClassifiedSignature,
+    target_ident: &syn::Ident,
+    method_signature: Signature,
+    default_call: TokenStream,
+) -> Result<TokenStream> {
+    let method_ident = &method.sig.ident;
+    let context_candidates = signature
+        .parameters
+        .iter()
+        .skip(1)
+        .filter_map(|parameter| match (&parameter.ty, parameter.mode) {
+            (TypeShape::Host(ty, HostAccess::Exclusive), ParameterMode::ExclusiveHost) => {
+                Some((format_ident!("{}", parameter.name), ty))
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    let call_arguments = signature
+        .parameters
+        .iter()
+        .skip(1)
+        .map(service_call_argument_tokens)
+        .collect::<Result<Vec<_>>>()?;
+    let context_branches = context_candidates
+        .iter()
+        .map(|(context_ident, context_ty)| {
+            quote! {
+                if self.__vela_runtime.matches::<#context_ty>() {
+                    match self.__vela_runtime.lease(
+                        #context_ident,
+                        __vela_target.artifact(),
+                    ) {
+                        Ok(mut __vela_runtime_lease) => {
+                            let (__vela_runtime, #context_ident) =
+                                __vela_runtime_lease.parts();
+                            let mut __vela_args =
+                                ::vela_engine::runtime::CallArgs::new();
+                            #(#call_arguments)*
+                            match __vela_target.method().call_async_with_dispatcher(
+                                __vela_runtime,
+                                __vela_args,
+                                self.__vela_options.clone(),
+                                ::std::sync::Arc::clone(&self.__vela_dispatcher),
+                            ).await {
+                                Ok(__vela_value) => __vela_runtime
+                                    .value_to_owned(&__vela_value)
+                                    .map_err(
+                                        ::vela_engine::service::ServiceInvocationError::Vm
+                                    ),
+                                Err(__vela_error) => Err(
+                                    ::vela_engine::service::ServiceInvocationError::Vm(
+                                        __vela_error
+                                    )
+                                ),
+                            }
+                        }
+                        Err(__vela_error) => Err(__vela_error),
+                    }
+                } else
+            }
+        });
+    let return_ty: Type = match &method.sig.output {
+        ReturnType::Default => parse_quote!(()),
+        ReturnType::Type(_, ty) => ty.as_ref().clone(),
+    };
+
+    Ok(quote! {
+        #method_signature {
+            let Some(__vela_target) = self.#target_ident.as_ref() else {
+                return #default_call;
+            };
+            ::std::boxed::Box::pin(async move {
+                let __vela_result = #(#context_branches)* {
+                    Err(
+                        ::vela_engine::service::ServiceInvocationError::
+                            MissingRuntimeContext {
+                                service: #service_path.to_owned(),
+                                method: ::core::stringify!(#method_ident).to_owned(),
+                                expected: self.__vela_runtime.context_name(),
+                            }
+                    )
+                };
+                match __vela_result {
+                    Ok(__vela_value) => {
+                        <#return_ty as
+                            ::vela_engine::args::FromScriptArg>::from_script_arg(
+                                &__vela_value,
+                            )
+                        .unwrap_or_else(|__vela_error| {
+                            panic!(
+                                "Vela async service return conversion failed for `{}`: {}",
+                                ::core::concat!(
+                                    #service_path,
+                                    "::",
+                                    ::core::stringify!(#method_ident),
+                                ),
+                                __vela_error,
+                            )
+                        })
+                    }
+                    Err(__vela_error) => panic!("{}", __vela_error),
+                }
+            })
+        }
+    })
+}
+
+fn rewrite_async_trait_methods(item: &mut ItemTrait) {
+    for trait_item in &mut item.items {
+        let TraitItem::Fn(method) = trait_item else {
+            continue;
+        };
+        if method.sig.asyncness.take().is_none() {
+            continue;
+        }
+        let output: Type = match &method.sig.output {
+            ReturnType::Default => parse_quote!(()),
+            ReturnType::Type(_, ty) => ty.as_ref().clone(),
+        };
+        method.sig.output = parse_quote!(
+            -> impl ::std::future::Future<Output = #output> + ::std::marker::Send
+        );
+    }
+}
+
+fn dispatch_signature(method: &syn::TraitItemFn) -> Signature {
+    let mut signature = method.sig.clone();
+    if signature.asyncness.take().is_none() {
+        return signature;
+    }
+    let output: Type = match &signature.output {
+        ReturnType::Default => parse_quote!(()),
+        ReturnType::Type(_, ty) => ty.as_ref().clone(),
+    };
+    signature.generics.params.push(parse_quote!('__vela_call));
+    for input in &mut signature.inputs {
+        match input {
+            FnArg::Receiver(receiver) => {
+                if let Some((_, lifetime)) = &mut receiver.reference {
+                    *lifetime = Some(parse_quote!('__vela_call));
+                }
+            }
+            FnArg::Typed(parameter) => {
+                if let Type::Reference(reference) = parameter.ty.as_mut() {
+                    reference.lifetime = Some(parse_quote!('__vela_call));
+                }
+            }
+        }
+    }
+    signature.output = parse_quote!(
+        -> ::vela_engine::service::ServiceFuture<'__vela_call, #output>
+    );
+    signature
+}
+
+fn emit_default_dispatch_method(
+    trait_ident: &syn::Ident,
+    method: &syn::TraitItemFn,
+    dispatch_signature: &Signature,
+) -> TokenStream {
+    let method_ident = &method.sig.ident;
+    let arguments = method.sig.inputs.iter().skip(1).filter_map(|input| {
+        let FnArg::Typed(parameter) = input else {
+            return None;
+        };
+        let syn::Pat::Ident(ident) = parameter.pat.as_ref() else {
+            return None;
+        };
+        Some(&ident.ident)
+    });
+    if method.sig.asyncness.is_some() {
+        quote! {
+            #dispatch_signature {
+                ::std::boxed::Box::pin(async move {
+                    <__VelaServiceImpl as #trait_ident>::#method_ident(
+                        self,
+                        #(#arguments),*
+                    ).await
+                })
+            }
+        }
+    } else {
+        quote! {
+            #dispatch_signature {
+                <__VelaServiceImpl as #trait_ident>::#method_ident(
+                    self,
+                    #(#arguments),*
+                )
+            }
+        }
+    }
+}
+
 fn service_call_argument_tokens(parameter: &ClassifiedParameter) -> Result<TokenStream> {
     let ident = format_ident!("{}", parameter.name);
     match (&parameter.ty, parameter.mode) {
@@ -702,412 +1010,6 @@ fn service_call_argument_tokens(parameter: &ClassifiedParameter) -> Result<Token
             format!("unsupported Vela service call parameter mode {mode:?}"),
         )),
     }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn add_parameter_requirements(
-    parameter: &ClassifiedParameter,
-    requirements: &mut Vec<RequirementSpec>,
-    requirement_keys: &mut HashSet<String>,
-    registrations: &mut Vec<RegistrationSpec>,
-    registration_keys: &mut HashSet<String>,
-) -> Result<usize> {
-    let location = format!("parameter {}", parameter.name);
-    match (&parameter.ty, parameter.mode) {
-        (TypeShape::String, ParameterMode::ReadOnlyValueBorrow) => {
-            let ty: Type = parse_quote!(::std::string::String);
-            let top = push_requirement(
-                requirements,
-                requirement_keys,
-                RequirementSpec::owned(ty.clone(), location),
-            );
-            push_value_registration(registrations, registration_keys, ty);
-            Ok(top)
-        }
-        (TypeShape::Host(ty, access), _) => Ok(push_requirement(
-            requirements,
-            requirement_keys,
-            RequirementSpec::new(ty.clone(), host_representation(*access), location),
-        )),
-        (TypeShape::BorrowedCollection(collection), _) => {
-            let top = push_borrowed_collection_requirement(
-                collection,
-                location.clone(),
-                requirements,
-                requirement_keys,
-                registrations,
-                registration_keys,
-            );
-            collect_collection_children(
-                collection,
-                &location,
-                requirements,
-                requirement_keys,
-                registrations,
-                registration_keys,
-            );
-            Ok(top)
-        }
-        (_, ParameterMode::Value) => {
-            let ty = parameter
-                .rust_ty
-                .clone()
-                .expect("classified value parameter retains its Rust type");
-            Ok(collect_owned_type(
-                &ty,
-                &location,
-                requirements,
-                requirement_keys,
-                registrations,
-                registration_keys,
-            ))
-        }
-        (_, mode) => Err(syn::Error::new_spanned(
-            parameter.rust_ty.as_ref().unwrap_or(&parse_quote!(())),
-            format!("unsupported service parameter mode {mode:?}"),
-        )),
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn add_return_requirements(
-    output: &ReturnType,
-    shape: &TypeShape,
-    mode: ReturnMode,
-    requirements: &mut Vec<RequirementSpec>,
-    requirement_keys: &mut HashSet<String>,
-    registrations: &mut Vec<RegistrationSpec>,
-    registration_keys: &mut HashSet<String>,
-) -> Result<usize> {
-    let location = "return";
-    match mode {
-        ReturnMode::Owned | ReturnMode::Structured | ReturnMode::Boundary => {
-            let ty = match output {
-                ReturnType::Default => parse_quote!(()),
-                ReturnType::Type(_, ty) => ty.as_ref().clone(),
-            };
-            Ok(collect_owned_type(
-                &ty,
-                location,
-                requirements,
-                requirement_keys,
-                registrations,
-                registration_keys,
-            ))
-        }
-        ReturnMode::ScopedHost { .. } => match shape {
-            TypeShape::Host(ty, access) => Ok(push_requirement(
-                requirements,
-                requirement_keys,
-                RequirementSpec::new(ty.clone(), host_representation(*access), location),
-            )),
-            TypeShape::BorrowedCollection(collection) => Ok(push_borrowed_collection_requirement(
-                collection,
-                location.to_owned(),
-                requirements,
-                requirement_keys,
-                registrations,
-                registration_keys,
-            )),
-            _ => Err(syn::Error::new_spanned(
-                output,
-                "service borrowed returns currently require one direct reference or collection view",
-            )),
-        },
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn collect_owned_type(
-    ty: &Type,
-    location: &str,
-    requirements: &mut Vec<RequirementSpec>,
-    requirement_keys: &mut HashSet<String>,
-    registrations: &mut Vec<RegistrationSpec>,
-    registration_keys: &mut HashSet<String>,
-) -> usize {
-    let top = push_requirement(
-        requirements,
-        requirement_keys,
-        RequirementSpec::owned(ty.clone(), location),
-    );
-    push_value_registration(registrations, registration_keys, ty.clone());
-    match ty {
-        Type::Array(array) => {
-            collect_owned_type(
-                &array.elem,
-                location,
-                requirements,
-                requirement_keys,
-                registrations,
-                registration_keys,
-            );
-        }
-        Type::Tuple(tuple) => {
-            for element in &tuple.elems {
-                collect_owned_type(
-                    element,
-                    location,
-                    requirements,
-                    requirement_keys,
-                    registrations,
-                    registration_keys,
-                );
-            }
-        }
-        Type::Path(_) => {
-            for argument in type_generic_args(ty) {
-                collect_owned_type(
-                    argument,
-                    location,
-                    requirements,
-                    requirement_keys,
-                    registrations,
-                    registration_keys,
-                );
-            }
-        }
-        _ => {}
-    }
-    top
-}
-
-#[allow(clippy::too_many_arguments)]
-fn push_borrowed_collection_requirement(
-    collection: &BorrowedCollectionShape,
-    location: String,
-    requirements: &mut Vec<RequirementSpec>,
-    requirement_keys: &mut HashSet<String>,
-    registrations: &mut Vec<RegistrationSpec>,
-    registration_keys: &mut HashSet<String>,
-) -> usize {
-    let representation = collection_representation(collection);
-    if let Some(element) = &collection.slice_element {
-        let ty: Type = parse_quote!(::vela_engine::standard::SliceBinding<#element>);
-        let top = push_requirement(
-            requirements,
-            requirement_keys,
-            RequirementSpec::new(ty, representation, location),
-        );
-        push_registration(
-            registrations,
-            registration_keys,
-            RegistrationSpec::Slice(element.as_ref().clone()),
-        );
-        top
-    } else {
-        let ty = collection.rust_ty.clone();
-        let top = push_requirement(
-            requirements,
-            requirement_keys,
-            RequirementSpec::new(ty.clone(), representation, location),
-        );
-        push_value_registration(registrations, registration_keys, ty);
-        top
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn collect_collection_children(
-    collection: &BorrowedCollectionShape,
-    location: &str,
-    requirements: &mut Vec<RequirementSpec>,
-    requirement_keys: &mut HashSet<String>,
-    registrations: &mut Vec<RegistrationSpec>,
-    registration_keys: &mut HashSet<String>,
-) {
-    if let Some(element) = &collection.slice_element {
-        collect_owned_type(
-            element,
-            location,
-            requirements,
-            requirement_keys,
-            registrations,
-            registration_keys,
-        );
-        return;
-    }
-    match &collection.rust_ty {
-        Type::Array(array) => {
-            collect_owned_type(
-                &array.elem,
-                location,
-                requirements,
-                requirement_keys,
-                registrations,
-                registration_keys,
-            );
-        }
-        ty => {
-            for argument in type_generic_args(ty) {
-                collect_owned_type(
-                    argument,
-                    location,
-                    requirements,
-                    requirement_keys,
-                    registrations,
-                    registration_keys,
-                );
-            }
-        }
-    }
-}
-
-fn push_requirement(
-    requirements: &mut Vec<RequirementSpec>,
-    keys: &mut HashSet<String>,
-    requirement: RequirementSpec,
-) -> usize {
-    let key = requirement.key();
-    if let Some(index) = requirements
-        .iter()
-        .position(|existing| existing.key() == key)
-    {
-        return index;
-    }
-    keys.insert(key);
-    let index = requirements.len();
-    requirements.push(requirement);
-    index
-}
-
-fn push_value_registration(
-    registrations: &mut Vec<RegistrationSpec>,
-    keys: &mut HashSet<String>,
-    ty: Type,
-) {
-    push_registration(registrations, keys, RegistrationSpec::Value(ty));
-}
-
-fn push_registration(
-    registrations: &mut Vec<RegistrationSpec>,
-    keys: &mut HashSet<String>,
-    registration: RegistrationSpec,
-) {
-    if keys.insert(registration.key()) {
-        registrations.push(registration);
-    }
-}
-
-struct RequirementSpec {
-    ty: Type,
-    representation: TokenStream,
-    location: String,
-}
-
-impl RequirementSpec {
-    fn new(ty: Type, representation: TokenStream, location: impl Into<String>) -> Self {
-        Self {
-            ty,
-            representation,
-            location: location.into(),
-        }
-    }
-
-    fn owned(ty: Type, location: impl Into<String>) -> Self {
-        Self::new(
-            ty,
-            quote! { ::vela_common::InteropRepresentation::Owned },
-            location,
-        )
-    }
-
-    fn key(&self) -> String {
-        format!("{}:{}", self.ty.to_token_stream(), self.representation)
-    }
-}
-
-enum RegistrationSpec {
-    Value(Type),
-    Slice(Type),
-}
-
-impl RegistrationSpec {
-    fn key(&self) -> String {
-        match self {
-            Self::Value(ty) => format!("value:{}", ty.to_token_stream()),
-            Self::Slice(ty) => format!("slice:{}", ty.to_token_stream()),
-        }
-    }
-
-    fn tokens(&self) -> TokenStream {
-        match self {
-            Self::Value(ty) => quote! {
-                let builder = builder.register_rust_value_closure::<#ty>();
-            },
-            Self::Slice(element) => quote! {
-                let builder = builder.register_rust_slice::<#element>();
-            },
-        }
-    }
-}
-
-fn requirement_ident(index: usize) -> syn::Ident {
-    format_ident!("__vela_requirement_{index}")
-}
-
-fn host_representation(access: HostAccess) -> TokenStream {
-    match access {
-        HostAccess::Shared => quote! { ::vela_common::InteropRepresentation::SharedHost },
-        HostAccess::Exclusive => quote! { ::vela_common::InteropRepresentation::ExclusiveHost },
-    }
-}
-
-fn collection_representation(collection: &BorrowedCollectionShape) -> TokenStream {
-    let kind = match &collection.kind {
-        BorrowedCollectionKind::Array(_) => quote! { ::vela_common::CollectionViewKind::Array },
-        BorrowedCollectionKind::Map(_, _) => quote! { ::vela_common::CollectionViewKind::Map },
-        BorrowedCollectionKind::Set(_) => quote! { ::vela_common::CollectionViewKind::Set },
-    };
-    match collection.access {
-        HostAccess::Shared => {
-            quote! { ::vela_common::InteropRepresentation::CollectionView(#kind) }
-        }
-        HostAccess::Exclusive => {
-            let mutation = match collection.mutation {
-                vela_common::CollectionViewMutation::Fixed => {
-                    quote! { ::vela_common::CollectionViewMutation::Fixed }
-                }
-                vela_common::CollectionViewMutation::Growable => {
-                    quote! { ::vela_common::CollectionViewMutation::Growable }
-                }
-            };
-            quote! {
-                ::vela_common::InteropRepresentation::CollectionMut {
-                    kind: #kind,
-                    mutation: #mutation,
-                }
-            }
-        }
-    }
-}
-
-fn service_return_mode_tokens(mode: ReturnMode, shape: &TypeShape) -> Result<TokenStream> {
-    let tokens = return_mode_tokens(mode, shape);
-    let ReturnMode::ScopedHost {
-        origin: crate::export::signature::BorrowOrigin::Parameter(index),
-        child,
-        parent,
-    } = mode
-    else {
-        return Ok(tokens);
-    };
-    let adjusted = index;
-    let child = match child {
-        HostAccess::Shared => quote! { ::vela_engine::interop::ScopedHostAccess::Shared },
-        HostAccess::Exclusive => quote! { ::vela_engine::interop::ScopedHostAccess::Exclusive },
-    };
-    let parent = match parent {
-        HostAccess::Shared => quote! { ::vela_engine::interop::ScopedHostAccess::Shared },
-        HostAccess::Exclusive => quote! { ::vela_engine::interop::ScopedHostAccess::Exclusive },
-    };
-    Ok(quote! {
-        ::vela_engine::interop::ReturnMode::ScopedHost {
-            origin: ::vela_engine::interop::BorrowedReturnOrigin::Parameter(#adjusted),
-            child_access: #child,
-            parent_freeze: #parent,
-        }
-    })
 }
 
 #[cfg(test)]

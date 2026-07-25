@@ -139,6 +139,28 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         dispatcher.dispatch(target, args, self)
     }
 
+    pub(crate) fn dispatch_service_async<'call, 'lease>(
+        &'call mut self,
+        target: crate::service::ServiceCallTarget,
+        args: &'call [OwnedValue],
+        leases: &'call mut [ErasedHostLease<'lease>],
+    ) -> crate::service::ServiceFuture<'call, VmResult<OwnedValue>>
+    where
+        'host: 'call,
+        'lease: 'call,
+    {
+        let Some(dispatcher) = self.service_dispatcher else {
+            return Box::pin(async {
+                Err(vela_vm::error::VmError::new(
+                    vela_vm::error::VmErrorKind::TypeMismatch {
+                        operation: "service call outside a pinned service generation",
+                    },
+                ))
+            });
+        };
+        dispatcher.dispatch_async(target, args, leases, self)
+    }
+
     pub fn call<'args, T>(&mut self, target: T, args: CallArgs<'args>) -> VmResult<VelaValue>
     where
         T: RuntimeCallTarget,

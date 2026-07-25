@@ -6,8 +6,8 @@ mod selection;
 mod source;
 
 pub use runtime::{
-    ServiceCallDispatcher, ServiceCallTarget, ServiceInvocationError, ServiceRuntimeAuthority,
-    ServiceRuntimeBinding, ServiceRuntimeSlot,
+    ServiceCallDispatcher, ServiceCallTarget, ServiceFuture, ServiceInvocationError,
+    ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeLease, ServiceRuntimeSlot,
 };
 pub use schema::{
     ServiceMethodDescriptor, ServiceSchema, ServiceSchemaError, ServiceSetSchema,

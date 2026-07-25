@@ -60,7 +60,7 @@ impl RuntimeExternStateBindings {
         value: T,
     ) -> HostResult<HostRef>
     where
-        T: ScriptHostObject + Send + 'static,
+        T: ScriptHostObject + Send + Sync + 'static,
     {
         let actual_type = value.host_type_id();
         if expected != actual_type {
@@ -86,7 +86,7 @@ impl RuntimeExternStateBindings {
 
     pub fn stage_host<T>(&mut self, name: impl Into<String>, value: T) -> HostResult<HostRef>
     where
-        T: ScriptHostObject + Send + 'static,
+        T: ScriptHostObject + Send + Sync + 'static,
     {
         let name = name.into();
         let actual_type = value.host_type_id();
@@ -268,7 +268,7 @@ impl RuntimeExternStateBindings {
 pub(super) struct ExternStateObject {
     type_id: HostTypeId,
     state: Option<StateId>,
-    pub(super) object: Box<dyn ScriptHostObject + Send>,
+    pub(super) object: Box<dyn ScriptHostObject + Send + Sync>,
 }
 
 #[cfg(test)]

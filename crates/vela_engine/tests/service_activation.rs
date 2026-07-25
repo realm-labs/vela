@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use vela_common::SourceId;
 use vela_engine::engine::Engine;
@@ -16,7 +16,7 @@ use vela_macros::{ScriptHost, service, service_set};
 pub struct RequestContext {
     pub counter: i64,
     #[script(skip)]
-    runtime: Mutex<ServiceRuntimeSlot>,
+    runtime: ServiceRuntimeSlot,
 }
 
 #[vela_macros::script_methods]
@@ -27,10 +27,7 @@ impl ServiceRuntimeAuthority for RequestContext {
         &mut self,
         artifact: &Arc<vela_bytecode::LinkedArtifact>,
     ) -> Result<Runtime, RuntimeBuildError> {
-        self.runtime
-            .get_mut()
-            .expect("exclusive request context cannot poison its Runtime slot")
-            .take(artifact)
+        self.runtime.take(artifact)
     }
 
     fn restore_service_runtime(
@@ -38,10 +35,7 @@ impl ServiceRuntimeAuthority for RequestContext {
         artifact: &Arc<vela_bytecode::LinkedArtifact>,
         runtime: Runtime,
     ) {
-        self.runtime
-            .get_mut()
-            .expect("exclusive request context cannot poison its Runtime slot")
-            .restore(artifact, runtime);
+        self.runtime.restore(artifact, runtime);
     }
 }
 
@@ -119,7 +113,7 @@ fn snapshot_activates_one_vela_method_keeps_adjacent_rust_and_rolls_back() {
     let old = services.pin();
     let mut context = RequestContext {
         counter: 0,
-        runtime: Mutex::new(ServiceRuntimeSlot::new(engine.clone())),
+        runtime: ServiceRuntimeSlot::new(engine.clone()),
     };
 
     assert_eq!(old.calculator().adjust(&mut context, 5), 6);
@@ -375,7 +369,7 @@ fn lexical_base_and_pinned_cross_service_calls_keep_one_generation() {
     let base = services.pin();
     let mut context = RequestContext {
         counter: 0,
-        runtime: Mutex::new(ServiceRuntimeSlot::new(engine.clone())),
+        runtime: ServiceRuntimeSlot::new(engine.clone()),
     };
     let snapshot_source = r#"
 #[service_impl(test::calculator)]

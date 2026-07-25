@@ -582,6 +582,26 @@ struct RuntimeDirectContextInvoker<'execution, 'heap> {
     service_dispatcher: Option<&'execution dyn crate::service::ServiceCallDispatcher>,
 }
 
+struct ServiceDirectContextInvoker<'execution, 'heap> {
+    runtime_id: u64,
+    engine: &'execution Engine,
+    registry_image: &'execution ProgramImage,
+    artifact: &'execution std::sync::Arc<vela_bytecode::LinkedArtifact>,
+    vm: &'execution vela_vm::Vm,
+    session: &'execution mut LinkedExecutionSession,
+    access: &'execution mut HostAccess,
+    heap: &'execution mut HeapExecution<'heap>,
+    budget: &'execution mut ExecutionBudget,
+    vm_state_values: &'execution mut VmStateValues,
+    retained_values: std::sync::Arc<std::sync::Mutex<RuntimeValueRoots>>,
+    generations: &'execution mut state::RuntimeGenerations,
+    target: crate::service::ServiceCallTarget,
+    args: Vec<OwnedValue>,
+    requests: vela_host::lease::HostLeaseRequestSet,
+    effect_ceiling: vela_common::CapabilitySet,
+    service_dispatcher: Option<&'execution dyn crate::service::ServiceCallDispatcher>,
+}
+
 impl DirectContextInvoker for RuntimeDirectContextInvoker<'_, '_> {
     fn invoke<'invoke, 'lease>(
         self: Box<Self>,
@@ -621,10 +641,88 @@ impl DirectContextInvoker for RuntimeDirectContextInvoker<'_, '_> {
     }
 }
 
+impl DirectContextInvoker for ServiceDirectContextInvoker<'_, '_> {
+    fn invoke<'invoke, 'lease>(
+        self: Box<Self>,
+        leases: &'invoke mut [vela_host::lease::ErasedHostLease<'lease>],
+        host: &'invoke mut dyn ExecutionHostBoundary,
+    ) -> vela_vm::NativeCallFuture<'invoke>
+    where
+        Self: 'invoke,
+    {
+        Box::pin(async move {
+            let mut nested = ActiveNativeReentry {
+                runtime_id: self.runtime_id,
+                engine: self.engine,
+                registry_image: self.registry_image,
+                artifact: self.artifact,
+                vm: self.vm,
+                session: self.session,
+                host,
+                access: self.access,
+                heap: self.heap,
+                budget: self.budget,
+                vm_state_values: &mut *self.vm_state_values,
+                retained_values: self.retained_values,
+                generations: self.generations,
+                service_dispatcher: self.service_dispatcher,
+            };
+            let engine = self.engine.clone();
+            let service_dispatcher = nested.service_dispatcher;
+            let mut context = NativeCallContext::new_reentry(
+                &engine,
+                &mut nested,
+                self.effect_ceiling,
+                service_dispatcher,
+            );
+            context.set_host_provenance(&self.requests, leases);
+            context
+                .dispatch_service_async(self.target, &self.args, leases)
+                .await
+        })
+    }
+}
+
 pub(super) async fn invoke_prepared_async(
     prepared: &PreparedAsyncCall,
     active: &mut ActiveNativeReentry<'_, '_>,
 ) -> VmResult<OwnedValue> {
+    if let Some(entry) = prepared
+        .native_id()
+        .and_then(|id| active.engine.service_dispatch_native(id))
+        .filter(|entry| entry.asyncness.is_async())
+        .cloned()
+    {
+        crate::engine::check_capabilities(
+            &entry.name,
+            &entry.effects,
+            active.engine.capabilities(),
+        )?;
+        let requests = service_lease_requests(&entry, prepared.args())?;
+        let invoke = ServiceDirectContextInvoker {
+            runtime_id: active.runtime_id,
+            engine: active.engine,
+            registry_image: active.registry_image,
+            artifact: active.artifact,
+            vm: active.vm,
+            session: &mut *active.session,
+            access: &mut *active.access,
+            heap: &mut *active.heap,
+            budget: &mut *active.budget,
+            vm_state_values: &mut *active.vm_state_values,
+            retained_values: std::sync::Arc::clone(&active.retained_values),
+            generations: &mut *active.generations,
+            target: entry.target,
+            args: prepared.args().to_vec(),
+            requests: requests.clone(),
+            effect_ceiling: entry.effects.required_capability_set(),
+            service_dispatcher: active.service_dispatcher,
+        };
+        return active
+            .host
+            .invoke_direct_context(requests, Box::new(invoke))
+            .await;
+    }
     if let Some(entry) = prepared
         .native_id()
         .and_then(|id| active.engine.async_context_host_native_function(id))
@@ -723,6 +821,23 @@ pub(super) async fn invoke_prepared_async(
             .await;
     }
     prepared.invoke().await
+}
+
+fn service_lease_requests(
+    entry: &crate::engine::ServiceDispatchNative,
+    args: &[OwnedValue],
+) -> VmResult<vela_host::lease::HostLeaseRequestSet> {
+    let mut requests =
+        vela_host::lease::HostLeaseRequestSet::with_capacity(entry.parameter_leases.len());
+    for (index, kind) in &entry.parameter_leases {
+        let Some(OwnedValue::HostRef(root)) = args.get(*index) else {
+            return Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "async service host lease parameter",
+            }));
+        };
+        requests.push((*root, *kind));
+    }
+    Ok(requests)
 }
 
 pub(super) fn invoke_prepared_context(

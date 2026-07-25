@@ -171,6 +171,133 @@ pub(super) fn emit_rust_dispatch_arm(
     })
 }
 
+pub(super) fn emit_async_rust_dispatch_arm(
+    service_path: &str,
+    method: &syn::TraitItemFn,
+    signature: &ClassifiedSignature,
+    method_id: u128,
+) -> Result<TokenStream> {
+    if matches!(signature.returns.mode, ReturnMode::ScopedHost { .. }) {
+        return Err(syn::Error::new_spanned(
+            &method.sig.output,
+            "async service methods cannot return call-scoped host borrows",
+        ));
+    }
+    let method_ident = &method.sig.ident;
+    let expected = signature.parameters.len().saturating_sub(1);
+    let mut lease_index = 0_usize;
+    let mut argument_bindings = Vec::new();
+    let mut argument_names = Vec::new();
+    for (argument_index, parameter) in signature.parameters.iter().skip(1).enumerate() {
+        let name = format_ident!("__vela_arg_{}", parameter.name);
+        argument_names.push(name.clone());
+        match parameter.mode {
+            ParameterMode::SharedHost | ParameterMode::ExclusiveHost => {
+                lease_index += 1;
+                let binding = match parameter.mode {
+                    ParameterMode::SharedHost => {
+                        let value = shared_host_value_tokens(
+                            &parameter.ty,
+                            quote! { __vela_lease.object() },
+                        );
+                        quote! {
+                            let #name = __vela_leases
+                                .next()
+                                .and_then(|__vela_lease| #value)
+                                .ok_or_else(|| ::vela_vm::error::VmError::new(
+                                    ::vela_vm::error::VmErrorKind::TypeMismatch {
+                                        operation: "async service shared host argument",
+                                    },
+                                ))?;
+                        }
+                    }
+                    ParameterMode::ExclusiveHost => {
+                        let value =
+                            exclusive_host_value_tokens(&parameter.ty, quote! { __vela_object });
+                        quote! {
+                            let #name = __vela_leases
+                                .next()
+                                .and_then(|__vela_lease| __vela_lease.object_mut())
+                                .and_then(|__vela_object| #value)
+                                .ok_or_else(|| ::vela_vm::error::VmError::new(
+                                    ::vela_vm::error::VmErrorKind::TypeMismatch {
+                                        operation: "async service exclusive host argument",
+                                    },
+                                ))?;
+                        }
+                    }
+                    _ => unreachable!(),
+                };
+                argument_bindings.push(binding);
+            }
+            ParameterMode::Value => {
+                let ty = parameter
+                    .rust_ty
+                    .as_ref()
+                    .expect("service value parameter retains its Rust type");
+                argument_bindings.push(quote! {
+                    let #name =
+                        <#ty as ::vela_engine::args::FromScriptArg>::from_script_arg(
+                            &__vela_args[#argument_index],
+                        )?;
+                });
+            }
+            ParameterMode::ReadOnlyValueBorrow => match parameter.ty {
+                TypeShape::String => {
+                    let owned_name = format_ident!("__vela_owned_{}", parameter.name);
+                    argument_bindings.push(quote! {
+                        let #owned_name =
+                            <::std::string::String as
+                                ::vela_engine::args::FromScriptArg>::from_script_arg(
+                                    &__vela_args[#argument_index],
+                                )?;
+                        let #name = #owned_name.as_str();
+                    });
+                }
+                _ => {
+                    return Err(syn::Error::new_spanned(
+                        parameter.rust_ty.as_ref().unwrap_or(&parse_quote!(())),
+                        "unsupported read-only async service argument in Rust dispatch",
+                    ));
+                }
+            },
+            ParameterMode::HiddenContext => unreachable!("service rejects hidden context"),
+        }
+    }
+
+    Ok(quote! {
+        #method_id => {
+            ::std::boxed::Box::pin(async move {
+                if __vela_args.len() != #expected {
+                    return Err(::vela_vm::error::VmError::new(
+                        ::vela_vm::error::VmErrorKind::ArityMismatch {
+                            name: ::std::concat!(
+                                #service_path,
+                                "::",
+                                ::std::stringify!(#method_ident),
+                            ).to_owned(),
+                            expected: #expected,
+                            actual: __vela_args.len(),
+                        },
+                    ));
+                }
+                if __vela_leases.len() != #lease_index {
+                    return Err(::vela_vm::error::VmError::new(
+                        ::vela_vm::error::VmErrorKind::TypeMismatch {
+                            operation: "async service host lease count",
+                        },
+                    ));
+                }
+                let mut __vela_leases = __vela_leases.iter_mut();
+                #(#argument_bindings)*
+                ::vela_engine::typed::IntoNativeReturn::into_native_return(
+                    __vela_default.#method_ident(#(#argument_names),*).await
+                )
+            })
+        }
+    })
+}
+
 fn emit_scoped_rust_dispatch_arm(
     method: &syn::TraitItemFn,
     signature: &ClassifiedSignature,

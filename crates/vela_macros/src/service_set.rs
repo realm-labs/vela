@@ -2,12 +2,13 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
     Attribute, Fields, ItemStruct, Path, Result, Type, TypeParamBound, Visibility, parse::Parser,
-    parse2,
+    parse_quote, parse2,
 };
 
 use crate::service::{
-    composition_function_ident, registration_function_ident, rust_dispatch_function_ident,
-    schema_function_ident, service_id_function_ident,
+    composition_function_ident, dispatch_module_ident, registration_function_ident,
+    rust_async_dispatch_function_ident, rust_dispatch_function_ident, schema_function_ident,
+    service_id_function_ident,
 };
 use crate::signature::reject_generic_signature;
 
@@ -64,14 +65,14 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         .collect::<Vec<_>>();
     let generation_fields = services.iter().map(|service| {
         let field = &service.field;
-        let trait_path = &service.trait_path;
+        let trait_path = service.dispatch_trait_path();
         quote! {
             #field: ::std::sync::Arc<dyn #trait_path>
         }
     });
     let composed_defaults = services.iter().map(|service| {
         let field = &service.field;
-        let trait_path = &service.trait_path;
+        let trait_path = service.dispatch_trait_path();
         let default = &service.default;
         let default_ident = format_ident!("__vela_default_{field}");
         quote! {
@@ -81,7 +82,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     });
     let dispatcher_fields = services.iter().map(|service| {
         let field = &service.field;
-        let trait_path = &service.trait_path;
+        let trait_path = service.dispatch_trait_path();
         quote! {
             #field: ::std::sync::Arc<dyn #trait_path>
         }
@@ -108,9 +109,24 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             }
         }
     });
+    let dispatcher_async_rust_branches = services.iter().map(|service| {
+        let field = &service.field;
+        let service_id = service.service_id_path();
+        let dispatch = service.rust_async_dispatch_path();
+        quote! {
+            if __vela_target.service == #service_id() {
+                return #dispatch(
+                    self.#field.as_ref(),
+                    __vela_target.method,
+                    __vela_args,
+                    __vela_leases,
+                );
+            }
+        }
+    });
     let composed_services = services.iter().map(|service| {
         let field = &service.field;
-        let trait_path = &service.trait_path;
+        let trait_path = service.dispatch_trait_path();
         let composition = service.composition_path();
         let default_ident = format_ident!("__vela_default_{field}");
         quote! {
@@ -125,7 +141,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     });
     let generation_arguments = services.iter().map(|service| {
         let field = &service.field;
-        let trait_path = &service.trait_path;
+        let trait_path = service.dispatch_trait_path();
         quote! {
             #field: ::std::sync::Arc<dyn #trait_path>
         }
@@ -143,7 +159,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     });
     let generation_accessors = services.iter().map(|service| {
         let field = &service.field;
-        let trait_path = &service.trait_path;
+        let trait_path = service.dispatch_trait_path();
         quote! {
             #[must_use]
             pub fn #field(&self) -> &(dyn #trait_path + 'static) {
@@ -153,7 +169,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     });
     let root_accessors = services.iter().map(|service| {
         let field = &service.field;
-        let trait_path = &service.trait_path;
+        let trait_path = service.dispatch_trait_path();
         quote! {
             #[must_use]
             pub fn #field(&self) -> &(dyn #trait_path + 'static) {
@@ -282,6 +298,37 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     },
                 ))
             }
+
+            fn __vela_dispatch_rust_async<'__vela_call, '__vela_lease>(
+                &'__vela_call self,
+                __vela_target: ::vela_engine::service::ServiceCallTarget,
+                __vela_args:
+                    &'__vela_call [::vela_vm::owned_value::OwnedValue],
+                __vela_leases: &'__vela_call mut [
+                    ::vela_host::lease::ErasedHostLease<'__vela_lease>
+                ],
+            ) -> ::vela_engine::service::ServiceFuture<
+                '__vela_call,
+                ::vela_vm::error::VmResult<
+                    ::vela_vm::owned_value::OwnedValue
+                >,
+            >
+            where
+                '__vela_lease: '__vela_call,
+            {
+                #(#dispatcher_async_rust_branches)*
+                ::std::boxed::Box::pin(async move {
+                    Err(::vela_vm::error::VmError::new(
+                        ::vela_vm::error::VmErrorKind::UnknownMethod {
+                            method: ::std::format!(
+                                "service {} method {}",
+                                __vela_target.service.get(),
+                                __vela_target.method.get(),
+                            ),
+                        },
+                    ))
+                })
+            }
         }
 
         impl ::vela_engine::service::ServiceCallDispatcher for #dispatcher_ident {
@@ -329,6 +376,72 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                                     ),
                                 },
                             )),
+                        }
+                    }
+                }
+            }
+
+            fn dispatch_async<'__vela_call, '__vela_host, '__vela_lease>(
+                &'__vela_call self,
+                __vela_target: ::vela_engine::service::ServiceCallTarget,
+                __vela_args:
+                    &'__vela_call [::vela_vm::owned_value::OwnedValue],
+                __vela_leases: &'__vela_call mut [
+                    ::vela_host::lease::ErasedHostLease<'__vela_lease>
+                ],
+                __vela_context: &'__vela_call mut
+                    ::vela_engine::context::NativeCallContext<
+                        '_,
+                        '__vela_host
+                    >,
+            ) -> ::vela_engine::service::ServiceFuture<
+                '__vela_call,
+                ::vela_vm::error::VmResult<
+                    ::vela_vm::owned_value::OwnedValue
+                >,
+            >
+            where
+                '__vela_lease: '__vela_call,
+            {
+                match __vela_target.mode {
+                    ::vela_common::ServiceCallMode::Base => {
+                        self.__vela_dispatch_rust_async(
+                            __vela_target,
+                            __vela_args,
+                            __vela_leases,
+                        )
+                    }
+                    ::vela_common::ServiceCallMode::Pinned => {
+                        match self.selections.get(
+                            __vela_target.service,
+                            __vela_target.method,
+                        ) {
+                            Some(
+                                ::vela_engine::service::ServiceMethodSelection::RustDefault
+                            ) => self.__vela_dispatch_rust_async(
+                                __vela_target,
+                                __vela_args,
+                                __vela_leases,
+                            ),
+                            Some(
+                                ::vela_engine::service::ServiceMethodSelection::Vela(
+                                    __vela_method,
+                                )
+                            ) => __vela_method.call_in_context_async(
+                                __vela_context,
+                                __vela_args,
+                            ),
+                            None => ::std::boxed::Box::pin(async move {
+                                Err(::vela_vm::error::VmError::new(
+                                    ::vela_vm::error::VmErrorKind::UnknownMethod {
+                                        method: ::std::format!(
+                                            "service {} method {}",
+                                            __vela_target.service.get(),
+                                            __vela_target.method.get(),
+                                        ),
+                                    },
+                                ))
+                            }),
                         }
                     }
                 }
@@ -617,6 +730,22 @@ struct ServiceField {
 }
 
 impl ServiceField {
+    fn dispatch_trait_path(&self) -> Path {
+        let mut path = replace_trait_ident(
+            &self.trait_path,
+            dispatch_module_ident(
+                &self
+                    .trait_path
+                    .segments
+                    .last()
+                    .expect("service trait path is non-empty")
+                    .ident,
+            ),
+        );
+        path.segments.push(parse_quote!(Dispatch));
+        path
+    }
+
     fn registration_path(&self) -> Path {
         replace_trait_ident(
             &self.trait_path,
@@ -677,6 +806,20 @@ impl ServiceField {
         replace_trait_ident(
             &self.trait_path,
             rust_dispatch_function_ident(
+                &self
+                    .trait_path
+                    .segments
+                    .last()
+                    .expect("service trait path is non-empty")
+                    .ident,
+            ),
+        )
+    }
+
+    fn rust_async_dispatch_path(&self) -> Path {
+        replace_trait_ident(
+            &self.trait_path,
+            rust_async_dispatch_function_ident(
                 &self
                     .trait_path
                     .segments

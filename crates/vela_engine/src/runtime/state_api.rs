@@ -16,7 +16,7 @@ where
         value: T,
     ) -> HostResult<HostRef>
     where
-        T: ScriptHostObject + Send + 'static,
+        T: ScriptHostObject + Send + Sync + 'static,
     {
         let name = name.into();
         let (state, expected) =
@@ -33,7 +33,7 @@ where
         value: T,
     ) -> HostResult<HostRef>
     where
-        T: ScriptHostObject + Send + 'static,
+        T: ScriptHostObject + Send + Sync + 'static,
     {
         self.state.extern_states.stage_host(name, value)
     }

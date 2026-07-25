@@ -603,7 +603,9 @@ where
         T: RuntimeCallTarget + Send + 'call,
         'args: 'call,
     {
-        RuntimeCallFuture::new(async move { self.call_impl_async(entry, args, options).await })
+        RuntimeCallFuture::new(
+            async move { self.call_impl_async(entry, args, options, None).await },
+        )
     }
 
     async fn call_impl_async<'call, 'args, T>(
@@ -611,6 +613,7 @@ where
         entry: T,
         args: CallArgs<'args>,
         options: CallOptions,
+        service_dispatcher: Option<std::sync::Arc<dyn crate::service::ServiceCallDispatcher>>,
     ) -> VmResult<VelaValue>
     where
         T: RuntimeCallTarget + Send + 'call,
@@ -634,9 +637,35 @@ where
             target,
             args,
             budget: &mut budget,
-            service_dispatcher: None,
+            service_dispatcher,
         })
         .await
+    }
+
+    pub(crate) fn call_service_stable_function_async<'call, 'args>(
+        &'call mut self,
+        function: vela_def::FunctionId,
+        diagnostic_name: impl Into<String>,
+        args: CallArgs<'args>,
+        options: CallOptions,
+        dispatcher: std::sync::Arc<dyn crate::service::ServiceCallDispatcher>,
+    ) -> RuntimeCallFuture<'call>
+    where
+        'args: 'call,
+    {
+        let diagnostic_name = diagnostic_name.into();
+        RuntimeCallFuture::new(async move {
+            self.call_impl_async(
+                handles::StableVelaFunction {
+                    function,
+                    diagnostic_name,
+                },
+                args,
+                options,
+                Some(dispatcher),
+            )
+            .await
+        })
     }
 
     pub fn bind_method<T>(&self, receiver: &VelaValue, method: T) -> VmResult<VelaMethodTarget>

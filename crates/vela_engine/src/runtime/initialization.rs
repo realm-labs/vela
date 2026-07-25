@@ -113,7 +113,7 @@ where
 
     pub fn bind_extern_state<T>(&mut self, name: impl Into<String>, value: T) -> HostResult<HostRef>
     where
-        T: ScriptHostObject + Send + 'static,
+        T: ScriptHostObject + Send + Sync + 'static,
     {
         let name = name.into();
         let (state, expected) =

@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::task::{Context, Poll, Waker};
 
 use vela_macros::{service, service_set};
 
@@ -36,6 +37,25 @@ pub struct GameServices {
     pub reward: dyn RewardService,
     #[vela::default(RustInventoryService)]
     pub inventory: dyn InventoryService,
+}
+
+#[service(path = "game::async_reward")]
+pub trait AsyncRewardService: Send + Sync {
+    async fn apply(&self, amount: i64) -> i64;
+}
+
+pub struct RustAsyncRewardService;
+
+impl AsyncRewardService for RustAsyncRewardService {
+    async fn apply(&self, amount: i64) -> i64 {
+        amount + 2
+    }
+}
+
+#[service_set(context = RequestContext)]
+pub struct AsyncGameServices {
+    #[vela::default(RustAsyncRewardService)]
+    pub reward: dyn AsyncRewardService,
 }
 
 struct PatchedRewardService;
@@ -133,3 +153,25 @@ fn generated_set_rejects_stale_activation_and_rollback() {
     ));
     assert_eq!(services.pin().reward().apply(1), 2);
 }
+
+#[test]
+fn generated_async_default_uses_object_safe_send_dispatch() {
+    let engine = AsyncGameServices::register_types(vela_engine::engine::Engine::builder())
+        .build()
+        .expect("async service registration bundle");
+    let services = AsyncGameServices::new(&engine.type_bindings()).expect("async service schema");
+    let root = services.pin();
+    let mut future = root.reward().apply(40);
+    assert_send(&future);
+    let mut context = Context::from_waker(Waker::noop());
+
+    assert_eq!(future.as_mut().poll(&mut context), Poll::Ready(42));
+    assert!(
+        services.schema().services()[0].methods()[0]
+            .callable
+            .asyncness
+            .is_async()
+    );
+}
+
+fn assert_send<T: Send>(_: &T) {}

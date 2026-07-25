@@ -1,5 +1,0 @@
-error: authored async service methods require the S6 object-safe adapter; S4 service methods are synchronous
- --> tests/ui/service/fail/async_method.rs:5:5
-  |
-5 |     async fn apply(&self, amount: i64) -> i64;
-  |     ^^^^^

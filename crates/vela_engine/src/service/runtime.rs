@@ -2,6 +2,8 @@
 
 use std::any::{Any, TypeId};
 use std::fmt;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 
 use vela_bytecode::{ExecutableGenerationId, LinkedArtifact};
@@ -12,6 +14,10 @@ use vela_vm::owned_value::OwnedValue;
 use crate::context::NativeCallContext;
 use crate::engine::Engine;
 use crate::runtime::{Runtime, RuntimeBuildError};
+
+/// Object-safe future returned by generated async service dispatch methods.
+#[doc(hidden)]
+pub type ServiceFuture<'call, T> = Pin<Box<dyn Future<Output = T> + Send + 'call>>;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ServiceCallTarget {
@@ -41,6 +47,16 @@ pub trait ServiceCallDispatcher: Send + Sync {
         args: &[OwnedValue],
         context: &mut NativeCallContext<'_, '_>,
     ) -> VmResult<OwnedValue>;
+
+    fn dispatch_async<'call, 'host, 'lease>(
+        &'call self,
+        target: ServiceCallTarget,
+        args: &'call [OwnedValue],
+        leases: &'call mut [vela_host::lease::ErasedHostLease<'lease>],
+        context: &'call mut NativeCallContext<'_, 'host>,
+    ) -> ServiceFuture<'call, VmResult<OwnedValue>>
+    where
+        'lease: 'call;
 }
 
 /// A service-set context that can lend one mutable Runtime to a selected Vela
@@ -86,6 +102,9 @@ type ErasedRuntimeDispatch = for<'call> fn(
     &Arc<LinkedArtifact>,
     ErasedServiceInvocation<'call>,
 ) -> Result<OwnedValue, ServiceInvocationError>;
+type ErasedRuntimeTake =
+    fn(&mut dyn Any, &Arc<LinkedArtifact>) -> Result<Runtime, RuntimeBuildError>;
+type ErasedRuntimeRestore = fn(&mut dyn Any, &Arc<LinkedArtifact>, Runtime);
 
 /// Type-checked bridge from a generated service adapter to the concrete
 /// service-set context that owns Runtime authority.
@@ -94,6 +113,8 @@ pub struct ServiceRuntimeBinding {
     context_type: TypeId,
     context_name: &'static str,
     dispatch: ErasedRuntimeDispatch,
+    take: ErasedRuntimeTake,
+    restore: ErasedRuntimeRestore,
 }
 
 impl ServiceRuntimeBinding {
@@ -106,6 +127,8 @@ impl ServiceRuntimeBinding {
             context_type: TypeId::of::<C>(),
             context_name: std::any::type_name::<C>(),
             dispatch: dispatch_with_context::<C>,
+            take: take_with_context::<C>,
+            restore: restore_with_context::<C>,
         }
     }
 
@@ -145,6 +168,90 @@ impl ServiceRuntimeBinding {
             }),
         )
     }
+
+    pub fn lease<'call, T>(
+        self,
+        context: &'call mut T,
+        artifact: &Arc<LinkedArtifact>,
+    ) -> Result<ServiceRuntimeLease<'call, T>, ServiceInvocationError>
+    where
+        T: 'static,
+    {
+        if !self.matches::<T>() {
+            return Err(ServiceInvocationError::ContextTypeMismatch {
+                expected: self.context_name,
+                actual: std::any::type_name::<T>(),
+            });
+        }
+        ServiceRuntimeLease::new(context, artifact, self.take, self.restore)
+    }
+}
+
+/// Cancellation-safe owner for a Runtime temporarily removed from one
+/// request-local service context.
+#[doc(hidden)]
+pub struct ServiceRuntimeLease<'call, C: 'static> {
+    context: &'call mut C,
+    artifact: Arc<LinkedArtifact>,
+    runtime: Option<Runtime>,
+    restore: ErasedRuntimeRestore,
+}
+
+impl<'call, C: 'static> ServiceRuntimeLease<'call, C> {
+    fn new(
+        context: &'call mut C,
+        artifact: &Arc<LinkedArtifact>,
+        take: ErasedRuntimeTake,
+        restore: ErasedRuntimeRestore,
+    ) -> Result<Self, ServiceInvocationError> {
+        let runtime = take(context, artifact).map_err(ServiceInvocationError::RuntimeBuild)?;
+        Ok(Self {
+            context,
+            artifact: Arc::clone(artifact),
+            runtime: Some(runtime),
+            restore,
+        })
+    }
+
+    pub fn parts(&mut self) -> (&mut Runtime, &mut C) {
+        (
+            self.runtime
+                .as_mut()
+                .expect("service Runtime lease is active"),
+            self.context,
+        )
+    }
+}
+
+impl<C: 'static> Drop for ServiceRuntimeLease<'_, C> {
+    fn drop(&mut self) {
+        if let Some(runtime) = self.runtime.take() {
+            (self.restore)(self.context, &self.artifact, runtime);
+        }
+    }
+}
+
+fn take_with_context<C>(
+    erased: &mut dyn Any,
+    artifact: &Arc<LinkedArtifact>,
+) -> Result<Runtime, RuntimeBuildError>
+where
+    C: ServiceRuntimeAuthority + 'static,
+{
+    erased
+        .downcast_mut::<C>()
+        .expect("validated service context type must downcast")
+        .take_service_runtime(artifact)
+}
+
+fn restore_with_context<C>(erased: &mut dyn Any, artifact: &Arc<LinkedArtifact>, runtime: Runtime)
+where
+    C: ServiceRuntimeAuthority + 'static,
+{
+    erased
+        .downcast_mut::<C>()
+        .expect("validated service context type must downcast")
+        .restore_service_runtime(artifact, runtime);
 }
 
 fn dispatch_with_context<C>(
