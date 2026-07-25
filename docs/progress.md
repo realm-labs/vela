@@ -20,8 +20,7 @@ results returned to ordinary Rust callers. Unsupported nested borrowed
 containers must fail during macro expansion rather than survive as a
 runtime-only limitation.
 
-P0-P4 are accepted. The next active checkpoint is P5 lifetime, permission,
-and dispatch parity.
+P0-P5 are accepted. The next active checkpoint is P6 runnable coverage demo.
 
 Phase status:
 
@@ -66,6 +65,12 @@ Phase status:
   transformed owned collections lower recursively; script-owned mutable
   copy-back rejects before authored Rust runs; and Host collection views retain
   zero-copy identity and write-through.
+- P5 accepted for lifetime, permission, and dispatch parity: direct and nested
+  service calls retain atomic alias preflight and async leases; old roots keep
+  their pinned generation; scoped children cannot escape through state, root
+  returns, closures, async suspension, dynamic calls, or reflection; and
+  `base`/`services` are compiler-owned lexical capabilities that cannot become
+  dynamic or reflected callable values.
 - Cross-cutting host-method checkpoint accepted: grouped `#[vela::methods]`
   exports accept explicit additive `effects(...)`, so read-only receivers may
   truthfully declare event, time, random, I/O, or reflection effects without

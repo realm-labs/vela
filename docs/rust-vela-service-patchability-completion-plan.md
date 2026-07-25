@@ -653,6 +653,11 @@ Host ArrayView/ArrayMut preserve zero-copy identity and write-through
 
 ### P5 — Close lifetime, permission, and dispatch parity
 
+**Status:** Accepted. The compiler rejects `base`/`services` when used as
+values, including attempted dynamic capture and reflection. Existing service,
+async, and optional-borrow fixtures prove the remaining alias, lease, escape,
+old-generation, and cleanup rows.
+
 Deliverables:
 
 - preserve shared-to-exclusive rejection through nested service calls;

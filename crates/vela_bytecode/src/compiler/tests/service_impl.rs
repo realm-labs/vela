@@ -203,3 +203,33 @@ impl InventoryHotfix {
         )
     );
 }
+
+#[test]
+fn compiler_keeps_service_dispatch_capabilities_lexical_and_non_first_class() {
+    for source in [
+        r#"
+#[service_impl(game::inventory::InventoryService)]
+impl InventoryHotfix {
+    fn grant(value: i64) -> i64 {
+        let target = services.audit.record;
+        return target(value);
+    }
+}
+"#,
+        r#"
+#[service_impl(game::inventory::InventoryService)]
+impl InventoryHotfix {
+    fn grant(value: i64) -> i64 {
+        return reflect::call(services.audit, "record", value);
+    }
+}
+"#,
+    ] {
+        let error = vela_hir::source_ingestion::build_single_source(SourceId::new(13), source)
+            .expect_err("service capabilities must not become dynamic or reflection values");
+        assert!(error.diagnostics().iter().any(|diagnostic| {
+            diagnostic.code.as_deref() == Some("hir::invalid_service_capability_use")
+                && diagnostic.message.contains("scoped service capability")
+        }));
+    }
+}
