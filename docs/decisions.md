@@ -2980,14 +2980,25 @@ Unchanged immutable CodeObjects may be shared from the base. Normal releases
 should periodically fold accepted Deltas into a Snapshot so deployment history
 does not become a permanent source dependency.
 
-### Authored Async Service Adapters Land With S6
+### Authored Async Services Use A Hidden Object-Safe Dispatcher
 
-S4 closes the synchronous Rust-default service generation, publication, and
-zero-boundary-cost path. Authored `async fn` service methods require the hidden
-object-safe adapter, pinned Runtime/artifact/lease ownership across suspension,
-and cancellation/drop/unwind proof, so they land together in S6. Until then the
-service macro rejects authored async methods explicitly; it does not emit a
-schema that `service_set` cannot dispatch.
+Rust authors keep ordinary `async fn` service traits and implementations. The
+service macro rewrites that public authoring surface to a `Send` future contract
+and emits a hidden object-safe dispatcher whose async methods return
+`ServiceFuture`; immutable service generations store only that dispatcher.
+Async scoped-borrow returns and explicit async lifetime parameters remain
+rejected because their lifetime cannot escape the generated call future.
+
+A Vela-selected async root removes one Runtime from its actor-owned
+`ServiceRuntimeSlot` and holds it in a cancellation-safe lease together with
+the pinned artifact and generation dispatcher. Internal async `base` and
+`services` calls re-enter the same session after preflighting the complete host
+lease set. Completion, cancellation, drop, and unwind all restore the Runtime
+and release leases; already performed host effects are not rolled back.
+`ServiceRuntimeSlot` needs no mutex: all Runtime take/restore operations require
+exclusive access to the host context. Runtime-owned extern-state objects must
+therefore be `Send + Sync`, matching the ordinary host-call boundary and making
+the slot naturally `Sync` without unsafe code.
 
 ## Validation Rules
 

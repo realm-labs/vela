@@ -320,9 +320,14 @@ cancellation/drop/unwind releases Runtime borrows and host leases
 there is no handler/rule/event-specific replacement API
 ```
 
-Status: **Active.** S5 supplies the synchronous generation-coherent service
-slice. Authored async service adapters, suspension/cancellation proof,
-deployment metadata, handler migration, and CLI/LSP service tooling remain.
+Status: **Active.** Authored Rust `async fn` methods now keep their ordinary
+trait authoring surface while the macro emits one hidden object-safe
+`ServiceFuture` dispatcher. Vela-selected calls retain one actor-owned Runtime,
+the pinned artifact/dispatcher, and the complete host lease set across
+suspension; direct host write-through, `base.await`, old/new-root isolation,
+cancel/drop/unwind restoration, `Send` futures, and a mutex-free
+`ServiceRuntimeSlot` are covered. Deployment metadata, handler migration,
+CLI/LSP service tooling, and the phase-wide gate remain.
 
 ### S7 — Host-framework integration and final acceptance
 

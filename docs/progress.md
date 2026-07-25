@@ -34,8 +34,9 @@ Phase status:
   lexical `base`, pinned cross-service calls, custom Values, host-backed
   collections, scoped borrowed returns, and atomic nested reborrow are
   validated in one mixed Rust/Vela generation.
-- S6 active: authored async service adapters, suspension/cancellation proof,
-  deployment metadata, handler migration, and CLI/LSP service tooling remain.
+- S6 active: authored async adapters and lifecycle/lease proof are complete;
+  deployment metadata, handler migration, CLI/LSP service tooling, examples,
+  benchmarks, and the phase-wide gate remain.
 
 S3 provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared
@@ -67,6 +68,15 @@ write-through and old-root isolation, routes a Vela-selected scoped borrowed
 return into another Rust service, and rejects duplicate exclusive aliases
 before business Rust executes.
 
+S6 now preserves ordinary authored Rust async traits while generating a hidden
+object-safe dispatcher returning `Send` service futures. One actor-owned,
+mutex-free Runtime slot is removed from its host context for the duration of a
+Vela-selected call and restored on completion, cancellation, drop, or unwind.
+The pinned dispatcher/artifact and complete host lease set survive suspension;
+the fixture proves direct host write-through, awaited Rust `base`, isolated
+actors, old/new-root generation behavior, and non-rollback of effects already
+performed before cancellation or panic.
+
 ## Milestone Snapshot
 
 | Milestone | Status | Current note |
@@ -77,7 +87,7 @@ before business Rust executes.
 | M19.5 | Complete enough | Cache-ready IDs, linked bytecode, profile ownership, and prepared host paths are validated. |
 | M20 | Complete enough | Actor Runtime/cache ownership, lifetime, reload, and concurrency gates are accepted. |
 | M20.5 | Queued | Resume editor-visible work after the service hard switch. |
-| Rust/Vela service interop | S5 accepted; S6 active | Add authored async adapters, lifecycle proof, deployment metadata, handler migration, and tooling. |
+| Rust/Vela service interop | S5 accepted; S6 active | Async adapters and lifecycle proof are complete; add deployment metadata, handler migration, tooling, examples, and benchmarks. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, and debugger contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation, and performance targets. |
@@ -144,16 +154,14 @@ The phase gates are authoritative:
 | S2 | Accepted | None |
 | S3 | Accepted | Complete collection protocols, prepared traversal/method paths, and the phase-wide gate are green. |
 | S4 | Accepted | Sealed schemas, complete signature closure, generated service sets, whole-generation publication, fixture migration, and the zero-VM/zero-HostRef/zero-allocation Rust branch are green. |
-| S5 | Active | Snapshot/Delta composition and execution are green; implement lexical `base`, pinned `services`, and the realistic custom-type/collection/reborrow chain. |
-| S6 | Pending | Requires the synchronous partial-service vertical slice. |
-| S7 | Pending | Requires async/deployment/tooling integration. |
+| S5 | Accepted | Snapshot/Delta, lexical `base`/`services`, mixed custom values and collections, and scoped reborrow are green. |
+| S6 | Active | Async adapters and lifecycle proof are green; deployment, handler migration, tooling, examples, benchmarks, and the phase-wide gate remain. |
+| S7 | Pending | Requires S6 deployment/tooling integration. |
 
-S5 must now preserve the pinned service-generation identity and active
-root-local lease provenance through lexical `base` and cross-service calls.
-The remaining fixture proof must exercise registered constructors and methods,
-custom types, collection views, immediate writes, and nested reborrow rather
-than only scalar dispatch. Compile-time View/MutView enforcement remains
-dependent on receiver-capable expression facts. A shorter Runtime-owned host
+S6 must now expose immutable bundle and dry-run deployment metadata, migrate
+handler/rule/event examples entirely onto service contracts, feed service and
+TypeBinding metadata into CLI/LSP surfaces, and replace the remaining examples
+and benchmark rows before its full gate. A shorter Runtime-owned host
 reclamation policy remains a post-S2 follow-up and is not a service
 hard-switch blocker.
 
@@ -202,14 +210,13 @@ changes.
 
 ## Next Up
 
-1. Import sealed Rust service schemas and reject invalid or duplicate sparse
-   Vela method claims.
-2. Compose Snapshot and exact-base Delta selections into one flattened
-   generation candidate, including explicit `RustDefault`.
-3. Execute one selected Vela method with `base` and same-root cross-service
-   calls while adjacent methods remain direct Rust defaults.
-4. Resume M20.5 only after the service hard switch or a newly prioritized
-   editor-visible blocker.
+1. Add immutable Snapshot/Delta bundle metadata, exact checksums, load/build,
+   dry-run staging reports, and deployment diagnostics.
+2. Model representative handlers/rules/events only as generated service
+   contracts and remove any remaining domain-specific replacement surface.
+3. Expose service schemas and complete TypeBinding metadata through CLI/LSP,
+   then replace service examples and benchmark rows.
+4. Run the full S6 gate before starting S7 host-framework acceptance.
 
 ## Update Rules
 
