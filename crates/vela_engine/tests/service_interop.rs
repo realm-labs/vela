@@ -1,7 +1,13 @@
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
 
-use vela_common::SourceId;
+use vela_common::{HostConstructionLifetime, SourceId};
+use vela_def::FunctionId;
+use vela_engine::args::FromScriptArg;
 use vela_engine::engine::Engine;
+use vela_engine::native::{EffectSet, NativeFunctionDesc, TypeHint};
 use vela_engine::permission::{Capability, CapabilitySet};
 use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
 use vela_engine::service::{
@@ -10,6 +16,8 @@ use vela_engine::service::{
 };
 use vela_hir::source_ingestion::build_single_source;
 use vela_macros::{ScriptHost, Value, service, service_set};
+use vela_vm::error::{VmError, VmErrorKind, VmResult};
+use vela_vm::owned_value::OwnedValue;
 
 #[derive(Clone, Debug, Eq, PartialEq, Value)]
 #[script(path = "interop::PatchCommand")]
@@ -51,6 +59,45 @@ pub struct ObservedState {
 
 #[vela_macros::script_methods]
 impl ObservedState {}
+
+static SCRATCH_STATE_DROPS: AtomicUsize = AtomicUsize::new(0);
+
+#[derive(ScriptHost)]
+#[script(path = "interop::ScratchState")]
+pub struct ScratchState {
+    #[script(get, set)]
+    value: i64,
+}
+
+impl Drop for ScratchState {
+    fn drop(&mut self) {
+        SCRATCH_STATE_DROPS.fetch_add(1, Ordering::SeqCst);
+    }
+}
+
+#[vela_macros::script_methods]
+impl ScratchState {}
+
+fn scratch_state_constructor() -> NativeFunctionDesc {
+    NativeFunctionDesc::new("ScratchState::new", FunctionId::new(0x51_4352_4154_4348))
+        .param("value", TypeHint::i64())
+        .returns(TypeHint::Host(ScratchState::vela_host_type_desc().key))
+        .effects(EffectSet::pure())
+}
+
+fn construct_scratch_state(
+    args: &[OwnedValue],
+    _host: &mut vela_vm::HostExecution<'_>,
+) -> VmResult<ScratchState> {
+    let [value] = args else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "ScratchState::new arguments",
+        }));
+    };
+    Ok(ScratchState {
+        value: i64::from_script_arg(value)?,
+    })
+}
 
 impl ServiceRuntimeAuthority for RequestContext {
     fn take_service_runtime(
@@ -173,6 +220,12 @@ pub trait AuditService: Send + Sync {
     fn bump(&self, values: &mut Vec<i64>) -> i64;
 
     fn inspect(&self, context: &mut RequestContext, observed: &ObservedState) -> i64;
+
+    fn read_scratch(&self, scratch: &ScratchState) -> i64;
+
+    fn write_scratch(&self, scratch: &mut ScratchState) -> i64;
+
+    fn constructed(&self, context: &mut RequestContext) -> i64;
 }
 
 pub struct RustAuditService;
@@ -213,6 +266,19 @@ impl AuditService for RustAuditService {
         context.rust_audit_calls += 1;
         observed.value
     }
+
+    fn read_scratch(&self, scratch: &ScratchState) -> i64 {
+        scratch.value
+    }
+
+    fn write_scratch(&self, scratch: &mut ScratchState) -> i64 {
+        scratch.value += 5;
+        scratch.value
+    }
+
+    fn constructed(&self, _context: &mut RequestContext) -> i64 {
+        -1
+    }
 }
 
 #[service_set(context = RequestContext)]
@@ -225,11 +291,23 @@ pub struct InteropServices {
 
 #[test]
 fn mixed_service_chain_preserves_custom_values_collection_identity_and_alias_preflight() {
+    SCRATCH_STATE_DROPS.store(0, Ordering::SeqCst);
     let engine = InteropServices::register_types(
         Engine::builder()
-            .capabilities(CapabilitySet::new().with(Capability::HostWrite))
+            .capabilities(
+                CapabilitySet::new()
+                    .with(Capability::HostRead)
+                    .with(Capability::HostWrite),
+            )
             .register_rust_type::<RequestContext>(RequestContext::vela_type_binding())
-            .register_rust_type::<ObservedState>(ObservedState::vela_type_binding()),
+            .register_rust_type::<ObservedState>(ObservedState::vela_type_binding())
+            .register_rust_type::<ScratchState>(
+                ScratchState::vela_type_binding().host_constructor_fn(
+                    HostConstructionLifetime::CallScoped,
+                    scratch_state_constructor(),
+                    construct_scratch_state,
+                ),
+            ),
     )
     .build()
     .expect("interop service engine");
@@ -343,6 +421,13 @@ impl AuditPatch {
     fn inspect(context, observed) {
         return base.inspect(context, observed) + 3;
     }
+
+    fn constructed(context) {
+        let scratch = ScratchState::new(11);
+        let before = base.read_scratch(scratch);
+        let after = base.write_scratch(scratch);
+        return before * 100 + after;
+    }
 }
 "#;
     let delta = stage_delta(
@@ -364,11 +449,17 @@ impl AuditPatch {
             .iter()
             .filter(|(_, selection)| matches!(selection, ServiceMethodSelection::Vela(_)))
             .count(),
-        8
+        9
     );
 
     let observed = ObservedState { value: 12 };
     assert_eq!(complete_patch.audit().inspect(&mut context, &observed), 15);
+    assert_eq!(complete_patch.audit().constructed(&mut context), 1_116);
+    assert_eq!(
+        SCRATCH_STATE_DROPS.load(Ordering::SeqCst),
+        1,
+        "the constructed Host must be reclaimed when its service root ends",
+    );
 
     values.clear();
     values.push(1);

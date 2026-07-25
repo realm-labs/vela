@@ -20,8 +20,8 @@ results returned to ordinary Rust callers. Unsupported nested borrowed
 containers must fail during macro expansion rather than survive as a
 runtime-only limitation.
 
-P0-P3 are accepted. The next active checkpoint is P4 target-directed
-parameter construction and lowering.
+P0-P4 are accepted. The next active checkpoint is P5 lifetime, permission,
+and dispatch parity.
 
 Phase status:
 
@@ -59,6 +59,13 @@ Phase status:
   authored Rust borrow without unsafe reference fabrication. Projected Host
   children remain an ordinary Host-method capability and are not Service
   return types.
+- P4 accepted for target-directed construction and lowering: sealed storage
+  chooses Value temporaries or Host leases; registered call-scoped Host
+  constructors feed shared and exclusive Rust service parameters and reclaim
+  their objects at root teardown; Runtime-owned constructors remain explicit;
+  transformed owned collections lower recursively; script-owned mutable
+  copy-back rejects before authored Rust runs; and Host collection views retain
+  zero-copy identity and write-through.
 
 S3 provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared
