@@ -16,7 +16,7 @@
 > Follow-up: the generation hard switch remains accepted. The stronger
 > guarantee that every admitted borrowed-return signature is executable through
 > a Vela selection is tracked by
-> [the service patchability completion plan](rust-vela-service-patchability-completion-plan.md).
+> [the archived service patchability completion plan](archive/rust-vela-service-patchability-completion-plan.md).
 
 ## 0. Objective
 

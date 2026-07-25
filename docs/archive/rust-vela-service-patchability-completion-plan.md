@@ -1,6 +1,6 @@
 # Rust/Vela Service Patchability Completion Plan
 
-> Status: P0-P6 accepted; P7 final acceptance active
+> Status: P0-P7 accepted and archived on 2026-07-25
 >
 > Scope: make every admitted generated service method completely executable
 > through Rust defaults and Vela-selected implementations
@@ -10,12 +10,12 @@
 >
 > Relationship to the hard switch: the generation, publication, and unified
 > service model in
-> [rust-vela-service-hard-switch-plan.md](rust-vela-service-hard-switch-plan.md)
+> [rust-vela-service-hard-switch-plan.md](../rust-vela-service-hard-switch-plan.md)
 > remains authoritative. This plan closes the signature-totality and
 > borrowed-return gaps found after that switch.
 >
 > Target authoring surface:
-> [rust-vela-service-patchability-usage.md](rust-vela-service-patchability-usage.md).
+> [rust-vela-service-patchability-usage.md](../rust-vela-service-patchability-usage.md).
 
 ## 0. Objective
 
@@ -1136,7 +1136,7 @@ cargo clippy --manifest-path examples/Cargo.toml --all-targets --all-features --
 
 ### 8.3 Full repository gate
 
-Use [validation.md](validation.md) as the source of truth:
+Use [validation.md](../validation.md) as the source of truth:
 
 ```bash
 cargo fmt --all -- --check
@@ -1154,15 +1154,18 @@ npm --prefix site run build
 ### 8.4 Structural audits
 
 ```bash
-rg -n 'Vela-selected borrowed service return.*not executable|panic!|todo!|unimplemented!' \
+rg -n 'Vela-selected borrowed service return.*not executable|panic!\("Vela-selected borrowed service return|todo!|unimplemented!' \
   crates/vela_macros/src/service.rs crates/vela_macros/src/service
 
 rg -n 'Vec\\s*<\\s*&|Vec\\s*<\\s*Option\\s*<\\s*&|Option\\s*<\\s*Result\\s*<.*Vec\\s*<\\s*&' \
   crates/vela_macros/tests/ui/service
 ```
 
-The first audit must have no non-test generated-path placeholder. The second
-must find the intentional compile-fail fixtures.
+The first audit targets only generated borrowed-return placeholders and must
+have no matches. It deliberately does not treat every generated `panic!` as a
+placeholder: service traits have no VM-error return channel, so their adapters
+must translate impossible envelopes and selected-script execution failures.
+The second audit must find the intentional compile-fail fixtures.
 
 ## 9. Documentation Updates
 

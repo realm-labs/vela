@@ -1,14 +1,16 @@
 # Rust/Vela Service Patchability — Final Usage Shape
 
-> Status: implemented boundary contract and runnable demo; repository-wide
-> acceptance remains in progress.
+> Status: accepted
 >
 > The generation/deployment model, direct/optional/fallible borrowed service
 > returns to ordinary Rust callers, explicit call-scoped Host construction,
 > and storage-directed shared Value/Host parameter lowering are implemented.
 > Host-origin reporting is exported through the sealed CLI/LSP schema. The
-> consolidated coverage demo is accepted; final validation gates remain tracked by
-> [the completion plan](rust-vela-service-patchability-completion-plan.md).
+> consolidated coverage demo and repository-wide validation gates are accepted.
+> The completed work is recorded in the
+> [archived plan](archive/rust-vela-service-patchability-completion-plan.md)
+> and
+> [acceptance report](archive/rust-vela-service-patchability-acceptance-2026-07-25.md).
 
 ## 1. User-Facing Guarantee
 

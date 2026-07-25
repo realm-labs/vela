@@ -10,18 +10,16 @@ Completed execution plans and acceptance reports live under
 
 ## Current Focus
 
-The generation and publication work in the
-[Rust/Vela unified service hard switch](rust-vela-service-hard-switch-plan.md)
-is complete. The active follow-up is the
-[service patchability completion plan](rust-vela-service-patchability-completion-plan.md).
-It closes the stronger contract that every admitted service method is
-executable through Rust defaults and Vela selections, including borrowed
-results returned to ordinary Rust callers. Unsupported nested borrowed
-containers must fail during macro expansion rather than survive as a
-runtime-only limitation.
+The Rust/Vela unified service hard switch and its
+[service patchability completion plan](archive/rust-vela-service-patchability-completion-plan.md)
+are complete. Every admitted service method is executable through Rust
+defaults and Vela selections, including borrowed results returned to ordinary
+Rust callers; unsupported nested borrowed containers fail during macro
+expansion. The final P7 repository gate is recorded in the
+[acceptance report](archive/rust-vela-service-patchability-acceptance-2026-07-25.md).
 
-P0-P6 are accepted. The next active checkpoint is P7 final acceptance and
-documentation.
+P0-P7 are accepted. Service patchability is no longer the active
+implementation checkpoint.
 
 Phase status:
 
@@ -80,6 +78,10 @@ Phase status:
   same-generation nesting, zero-copy Row arguments, call-scoped Host
   reclamation, owned/shared collection lowering, and mutable copy-back
   rejection.
+- P7 accepted for final validation: formatting, workspace and example Clippy,
+  all-feature workspace and example tests, documentation, benchmark builds,
+  fuzz binaries, VS Code packaging, website checks/build, architecture size
+  policy, and generated-path structural audits all pass.
 - Cross-cutting host-method checkpoint accepted: grouped `#[vela::methods]`
   exports accept explicit additive `effects(...)`, so read-only receivers may
   truthfully declare event, time, random, I/O, or reflection effects without
@@ -145,7 +147,7 @@ Host-backed and mutable collections retain HostRef identity and leases.
 | M19.5 | Complete enough | Cache-ready IDs, linked bytecode, profile ownership, and prepared host paths are validated. |
 | M20 | Complete enough | Actor Runtime/cache ownership, lifetime, reload, and concurrency gates are accepted. |
 | M20.5 | Queued | Resume editor-visible work after the service hard switch. |
-| Rust/Vela service interop | Reopened | The generation hard switch is accepted; borrowed-return adapter totality, compile-time signature rejection, and the complete coverage demo remain. |
+| Rust/Vela service interop | Complete | The generation hard switch, total admitted boundary, complete coverage demo, and P7 repository gate are accepted. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, and debugger contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation, and performance targets. |
@@ -227,14 +229,15 @@ Transformed Value arrays lower to owned `Vec<T>` or temporary `&[T]`; mutable
 script-owned arrays still fail before the authored Rust body, while Host
 collection views retain zero-copy write-through.
 
-CLI/LSP schema metadata now reports each Host service parameter's reachable
+CLI/LSP schema metadata reports each Host service parameter's reachable
 `Injected`, `Constructible`, and `ProducedBorrow` origins from the same sealed
 service and TypeBinding facts. Dispatch/lifetime parity and the consolidated
-runnable coverage demo are accepted; the remaining closure work is the P7
-repository-wide validation and final documentation audit.
+runnable coverage demo are accepted. The P7 repository-wide validation and
+final documentation audit are complete.
 
-The active
-[completion plan](rust-vela-service-patchability-completion-plan.md) owns the
+The archived
+[completion plan](archive/rust-vela-service-patchability-completion-plan.md)
+owns the
 signature whitelist, total-admission invariant, representation-directed
 parameter construction, target-directed collection lowering, focused test
 matrix, and domain-neutral `service_hotfix_coverage` demo. Durable handles,
@@ -289,12 +292,10 @@ changes.
 
 ## Next Up
 
-1. Run and record the P7 final service patchability validation matrix, then
-   close and archive the completion plan.
-2. Resume M20.5 only for a named editor-visible language-service gap.
-3. Audit the parameterized container and value-keyed Map/Set plans against
+1. Resume M20.5 only for a named editor-visible language-service gap.
+2. Audit the parameterized container and value-keyed Map/Set plans against
    their explicit acceptance matrices.
-4. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
+3. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
    post-S2 optimization follow-up.
 
 ## Update Rules

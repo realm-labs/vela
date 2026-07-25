@@ -3101,7 +3101,7 @@ borrow. Nominal type facts and recursive guards remain mandatory; no path uses
 JSON, Serde reflection, or mutable copy-back.
 
 Implementation and acceptance are tracked in
-[rust-vela-service-patchability-completion-plan.md](rust-vela-service-patchability-completion-plan.md).
+[archived service patchability completion plan](archive/rust-vela-service-patchability-completion-plan.md).
 
 ### Grouped Host Methods May Add Explicit Effects
 
