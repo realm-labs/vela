@@ -8,7 +8,7 @@ license.workspace = true
 clap = { workspace = true }
 vela_bytecode = { workspace = true }
 vela_common = { workspace = true }
-vela_engine = { workspace = true }
+vela_engine = { workspace = true, features = ["schema-artifact"] }
 vela_language_service = { workspace = true }
 vela_vm = { workspace = true }
 
