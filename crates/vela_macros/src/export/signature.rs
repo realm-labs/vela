@@ -949,6 +949,7 @@ impl ClassifiedSignature {
                 matches!(
                     parameter.mode,
                     ParameterMode::Value
+                        | ParameterMode::ReadOnlyValueBorrow
                         | ParameterMode::SharedHost
                         | ParameterMode::ExclusiveHost
                         | ParameterMode::HiddenContext
@@ -1041,11 +1042,12 @@ impl ClassifiedSignature {
                 .parameters
                 .first()
                 .is_some_and(|parameter| matches!(parameter.ty, TypeShape::ReceiverHost))
-            && self
-                .parameters
-                .iter()
-                .skip(1)
-                .all(|parameter| parameter.mode == ParameterMode::Value)
+            && self.parameters.iter().skip(1).all(|parameter| {
+                matches!(
+                    parameter.mode,
+                    ParameterMode::Value | ParameterMode::ReadOnlyValueBorrow
+                )
+            })
     }
 
     pub(crate) fn supports_sync_method_adapter(&self) -> bool {

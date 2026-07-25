@@ -273,4 +273,32 @@ mod tests {
         assert!(output.contains("register_rust_host_slice"));
         assert!(output.contains("VelaHostBoundary"));
     }
+
+    #[test]
+    fn methods_keep_str_backing_alive_for_sync_and_scoped_calls() {
+        let expanded = expand_result(
+            quote! { path = "config::StringTable" },
+            quote! {
+                impl StringTable {
+                    pub fn contains(&self, key: &str) -> bool {
+                        self.get(key).is_some()
+                    }
+
+                    pub fn get(&self, key: &str) -> Option<&Row> {
+                        self.rows.get(key)
+                    }
+                }
+            },
+        )
+        .expect("borrowed string parameters classify");
+        let output = expanded.to_string();
+
+        assert_eq!(
+            output
+                .matches("String as :: vela_engine :: args :: FromScriptArg")
+                .count(),
+            2
+        );
+        assert_eq!(output.matches("as_str").count(), 2);
+    }
 }

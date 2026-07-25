@@ -211,6 +211,13 @@ pub(crate) fn method_adapter(
                     }
                 }
                 None => {
+                    if parameter.mode == ParameterMode::ReadOnlyValueBorrow {
+                        return quote! {
+                            let #name =
+                                <::std::string::String as ::vela_engine::args::FromScriptArg>::
+                                    from_script_arg(&args[#argument_index])?;
+                        };
+                    }
                     let ty = parameter
                         .rust_ty
                         .as_ref()
@@ -228,7 +235,14 @@ pub(crate) fn method_adapter(
         .parameters
         .iter()
         .skip(1)
-        .map(|parameter| format_ident!("__vela_arg_{}", parameter.name))
+        .map(|parameter| {
+            let name = format_ident!("__vela_arg_{}", parameter.name);
+            if parameter.mode == ParameterMode::ReadOnlyValueBorrow {
+                quote! { #name.as_str() }
+            } else {
+                quote! { #name }
+            }
+        })
         .collect::<Vec<_>>();
     let call_target = trait_path.map_or_else(
         || quote! { <#self_ty>::#method_ident },
@@ -428,6 +442,13 @@ fn method_sync_scoped_host_adapter(
         .enumerate()
         .map(|(index, parameter)| {
             let name = format_ident!("__vela_arg_{}", parameter.name);
+            if parameter.mode == ParameterMode::ReadOnlyValueBorrow {
+                return quote! {
+                    let #name =
+                        <::std::string::String as ::vela_engine::args::FromScriptArg>::
+                            from_script_arg(&args[#index])?;
+                };
+            }
             let ty = parameter.rust_ty.as_ref().expect("value parameter type");
             quote! {
                 let #name = <#ty as ::vela_engine::args::FromScriptArg>::from_script_arg(
@@ -440,7 +461,14 @@ fn method_sync_scoped_host_adapter(
         .parameters
         .iter()
         .skip(1)
-        .map(|parameter| format_ident!("__vela_arg_{}", parameter.name))
+        .map(|parameter| {
+            let name = format_ident!("__vela_arg_{}", parameter.name);
+            if parameter.mode == ParameterMode::ReadOnlyValueBorrow {
+                quote! { #name.as_str() }
+            } else {
+                quote! { #name }
+            }
+        })
         .collect::<Vec<_>>();
     let call_target = trait_path.map_or_else(
         || quote! { <#self_ty>::#method_ident },
