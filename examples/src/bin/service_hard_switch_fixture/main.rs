@@ -1,10 +1,68 @@
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::future::Future;
+use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
 
+use vela_common::SourceId;
+use vela_def::FunctionId;
+use vela_engine::args::{FromScriptArg, IntoScriptArg};
 use vela_engine::engine::Engine;
-use vela_macros::{ScriptHost, Value, service, service_set};
+use vela_engine::native::{EffectSet, NativeFunctionDesc, TypeHint};
+use vela_engine::permission::Capability;
+use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
+use vela_engine::service::{
+    LinkedServiceSourceManifest, ServiceRuntimeAuthority, ServiceRuntimeBinding,
+    ServiceRuntimeSlot, ServiceSourceManifest, ServiceUpdateBundle,
+};
+use vela_engine::type_binding::TypeBinding;
+use vela_hir::source_ingestion::build_single_source;
+use vela_macros::{ScriptHost, Value, methods, service, service_set};
+use vela_vm::error::{VmError, VmErrorKind, VmResult};
+use vela_vm::owned_value::OwnedValue;
+
+const RULE_SOURCE: &str = r#"
+#[service_impl(fixture::grant_rule)]
+impl GrantRulePatch {
+    fn normalize_count(turn, count, multiplier) {
+        let normalized = base.normalize_count(turn, count, multiplier)?;
+        return Result::Ok(normalized + 1i32);
+    }
+}
+"#;
+
+const REWARD_SOURCE: &str = r#"
+#[service_impl(fixture::reward)]
+impl RewardPatch {
+    fn apply(turn, grouped, labels) {
+        let result = base.apply(turn, grouped, labels);
+        let adjustment = fixture::PatchAdjustment::new(2i32, "reward-delta");
+        let classes = grouped.group_by(|key, value|
+            if value >= 5i32 { "large" } else { "small" });
+        let actor = turn.actor_mut();
+        actor.record_patch(adjustment.bonus, classes.len());
+        let counts = actor.item_counts_mut();
+        counts.insert(-1i32, adjustment.bonus);
+        return result;
+    }
+}
+"#;
+
+const INVENTORY_SOURCE: &str = r#"
+#[service_impl(fixture::inventory)]
+impl InventoryPatch {
+    fn grant(turn, items, multipliers) {
+        let groups = items.group_by(|item| item.template_id);
+        let first = items[0];
+        let multiplier = multipliers.get(first.template_id).unwrap_or(1i32);
+        let preview = services.rule.normalize_count(turn, first.count, multiplier)?;
+        let granted = base.grant(turn, items, multipliers)?;
+        turn.record_preview(preview, groups.len());
+        services.events.record(turn, groups.len())?;
+        return Result::Ok(granted);
+    }
+}
+"#;
 
 pub type ServiceResult<T> = Result<T, ServiceError>;
 
@@ -59,6 +117,48 @@ pub struct GrantResponse {
     granted: Vec<DisplayItem>,
 }
 
+#[derive(Debug, Value)]
+#[script(path = "fixture::PatchAdjustment")]
+struct PatchAdjustment {
+    bonus: i32,
+    label: String,
+}
+
+fn patch_adjustment_binding() -> TypeBinding<PatchAdjustment> {
+    let binding = PatchAdjustment::vela_type_binding();
+    let key = binding.type_desc().key.clone();
+    binding.constructor_fn(
+        NativeFunctionDesc::new(
+            "fixture::PatchAdjustment::new",
+            FunctionId::new(
+                vela_common::stable_id("fixture_constructor", "fixture::PatchAdjustment", "new")
+                    .into(),
+            ),
+        )
+        .param("bonus", TypeHint::i32())
+        .param("label", TypeHint::string())
+        .returns(TypeHint::Record(key))
+        .effects(EffectSet::pure()),
+        construct_patch_adjustment,
+    )
+}
+
+fn construct_patch_adjustment(
+    args: &[OwnedValue],
+    _host: &mut vela_vm::HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let [bonus, label] = args else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "fixture::PatchAdjustment::new arguments",
+        }));
+    };
+    Ok(PatchAdjustment {
+        bonus: i32::from_script_arg(bonus)?,
+        label: String::from_script_arg(label)?,
+    }
+    .into_script_arg())
+}
+
 #[derive(Debug, ScriptHost)]
 #[script(path = "fixture::HostActor")]
 pub struct HostActor {
@@ -66,10 +166,22 @@ pub struct HostActor {
     item_counts: BTreeMap<i32, i32>,
     #[script(skip)]
     last_reward_count: usize,
+    #[script(skip)]
+    event_calls: usize,
+    #[script(skip)]
+    patch_score: i64,
 }
 
-#[vela_macros::script_methods]
-impl HostActor {}
+#[methods(path = "fixture::HostActor")]
+impl HostActor {
+    pub fn item_counts_mut(&mut self) -> &mut BTreeMap<i32, i32> {
+        &mut self.item_counts
+    }
+
+    pub fn record_patch(&mut self, bonus: i32, group_count: i64) {
+        self.patch_score += i64::from(bonus) + group_count;
+    }
+}
 
 #[derive(ScriptHost)]
 #[script(path = "fixture::HostTurn")]
@@ -78,16 +190,48 @@ pub struct HostTurn {
     actor: HostActor,
     #[script(skip)]
     services: GameServicesRoot,
+    #[script(skip)]
+    runtime: ServiceRuntimeSlot,
+    #[script(skip)]
+    preview_count: i32,
+    #[script(skip)]
+    observed_groups: usize,
 }
 
-#[vela_macros::script_methods]
-impl HostTurn {}
+#[methods(path = "fixture::HostTurn")]
+impl HostTurn {
+    pub fn actor_mut(&mut self) -> &mut HostActor {
+        &mut self.actor
+    }
+
+    pub fn record_preview(&mut self, preview: i32, groups: i64) {
+        self.preview_count = preview;
+        self.observed_groups = usize::try_from(groups).unwrap_or_default();
+    }
+}
+
+impl ServiceRuntimeAuthority for HostTurn {
+    fn take_service_runtime(
+        &mut self,
+        artifact: &Arc<vela_bytecode::LinkedArtifact>,
+    ) -> Result<Runtime, RuntimeBuildError> {
+        self.runtime.take(artifact)
+    }
+
+    fn restore_service_runtime(
+        &mut self,
+        artifact: &Arc<vela_bytecode::LinkedArtifact>,
+        runtime: Runtime,
+    ) {
+        self.runtime.restore(artifact, runtime);
+    }
+}
 
 #[service(path = "fixture::reward")]
 pub trait RewardService: Send + Sync {
     fn apply(
         &self,
-        actor: &mut HostActor,
+        turn: &mut HostTurn,
         grouped: &BTreeMap<i32, i32>,
         labels: &BTreeMap<i32, String>,
     ) -> ServiceResult<Vec<DisplayItem>>;
@@ -107,12 +251,17 @@ pub trait InventoryService: Send + Sync {
 
 #[service(path = "fixture::grant_rule")]
 pub trait GrantRuleService: Send + Sync {
-    fn normalize_count(&self, count: i32, multiplier: i32) -> ServiceResult<i32>;
+    fn normalize_count(
+        &self,
+        turn: &mut HostTurn,
+        count: i32,
+        multiplier: i32,
+    ) -> ServiceResult<i32>;
 }
 
 #[service(path = "fixture::grant_event")]
 pub trait GrantEventService: Send + Sync {
-    fn record(&self, actor: &mut HostActor, granted_count: i64) -> ServiceResult<()>;
+    fn record(&self, turn: &mut HostTurn, granted_count: i64) -> ServiceResult<()>;
 }
 
 #[service(path = "fixture::grant_handler")]
@@ -129,7 +278,7 @@ struct RustRewardService;
 impl RewardService for RustRewardService {
     fn apply(
         &self,
-        actor: &mut HostActor,
+        turn: &mut HostTurn,
         grouped: &BTreeMap<i32, i32>,
         labels: &BTreeMap<i32, String>,
     ) -> ServiceResult<Vec<DisplayItem>> {
@@ -138,7 +287,7 @@ impl RewardService for RustRewardService {
             if count <= 0 {
                 return Err(ServiceError::new("reward count must be positive"));
             }
-            *actor.item_counts.entry(template_id).or_default() += count;
+            *turn.actor.item_counts.entry(template_id).or_default() += count;
             granted.push(DisplayItem {
                 template_id,
                 count,
@@ -166,7 +315,9 @@ impl InventoryService for RustInventoryService {
         let services = turn.services.clone();
         for item in items {
             let multiplier = multipliers.get(&item.template_id).copied().unwrap_or(1);
-            let count = services.rule().normalize_count(item.count, multiplier)?;
+            let count = services
+                .rule()
+                .normalize_count(turn, item.count, multiplier)?;
             *grouped.entry(item.template_id).or_default() += count;
             if let Some(label) = item.tags.get("label") {
                 labels
@@ -175,10 +326,7 @@ impl InventoryService for RustInventoryService {
             }
         }
 
-        let granted = services
-            .reward()
-            .apply(&mut turn.actor, &grouped, &labels)?;
-        Ok(granted)
+        services.reward().apply(turn, &grouped, &labels)
     }
 
     fn current_count(&self, turn: &HostTurn, template_id: i32) -> i32 {
@@ -193,7 +341,12 @@ impl InventoryService for RustInventoryService {
 struct RustGrantRuleService;
 
 impl GrantRuleService for RustGrantRuleService {
-    fn normalize_count(&self, count: i32, multiplier: i32) -> ServiceResult<i32> {
+    fn normalize_count(
+        &self,
+        _turn: &mut HostTurn,
+        count: i32,
+        multiplier: i32,
+    ) -> ServiceResult<i32> {
         let normalized = count.saturating_mul(multiplier);
         if normalized <= 0 {
             return Err(ServiceError::new("grant count must be positive"));
@@ -205,9 +358,10 @@ impl GrantRuleService for RustGrantRuleService {
 struct RustGrantEventService;
 
 impl GrantEventService for RustGrantEventService {
-    fn record(&self, actor: &mut HostActor, granted_count: i64) -> ServiceResult<()> {
-        actor.last_reward_count = usize::try_from(granted_count)
+    fn record(&self, turn: &mut HostTurn, granted_count: i64) -> ServiceResult<()> {
+        turn.actor.last_reward_count = usize::try_from(granted_count)
             .map_err(|_| ServiceError::new("granted count does not fit usize"))?;
+        turn.actor.event_calls += 1;
         Ok(())
     }
 }
@@ -226,7 +380,7 @@ impl GrantHandlerService for RustGrantHandlerService {
             .inventory()
             .grant(turn, &request.items, &request.multipliers)?;
         services.events().record(
-            &mut turn.actor,
+            turn,
             i64::try_from(granted.len())
                 .map_err(|_| ServiceError::new("granted count does not fit i64"))?,
         )?;
@@ -248,34 +402,20 @@ pub struct GameServices {
     pub handler: dyn GrantHandlerService,
 }
 
-fn block_on<T>(future: impl Future<Output = T>) -> T {
-    let mut future = std::pin::pin!(future);
-    let waker = Waker::noop();
-    let mut context = Context::from_waker(waker);
-    loop {
-        match future.as_mut().poll(&mut context) {
-            Poll::Ready(output) => return output,
-            Poll::Pending => std::thread::yield_now(),
-        }
-    }
+#[derive(Debug, Eq, PartialEq)]
+struct RequestSummary {
+    checksum: i64,
+    item7: i32,
+    marker: i32,
+    last_reward_count: usize,
+    event_calls: usize,
+    patch_score: i64,
+    preview_count: i32,
+    observed_groups: usize,
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let engine = GameServices::register_types(
-        Engine::builder()
-            .register_rust_type::<HostActor>(HostActor::vela_type_binding())
-            .register_rust_type::<HostTurn>(HostTurn::vela_type_binding()),
-    )
-    .build()?;
-    let services = GameServices::new(&engine.type_bindings())?;
-    let mut turn = HostTurn {
-        actor: HostActor {
-            item_counts: BTreeMap::new(),
-            last_reward_count: 0,
-        },
-        services: services.pin(),
-    };
-    let request = GrantRequest {
+fn request() -> GrantRequest {
+    GrantRequest {
         items: vec![
             ItemGrant {
                 template_id: 7,
@@ -294,22 +434,270 @@ fn main() -> Result<(), Box<dyn Error>> {
             },
         ],
         multipliers: BTreeMap::from([(7, 2)]),
-    };
+    }
+}
 
-    let root = turn.services.clone();
-    let response = block_on(root.handler().handle(&mut turn, request))?;
-    let count = turn.services.inventory().current_count(&turn, 7);
+fn run_pinned(
+    root: &GameServicesRoot,
+    engine: &Engine,
+) -> Result<(RequestSummary, HostTurn), ServiceError> {
+    let mut turn = HostTurn {
+        actor: HostActor {
+            item_counts: BTreeMap::new(),
+            last_reward_count: 0,
+            event_calls: 0,
+            patch_score: 0,
+        },
+        services: root.clone(),
+        runtime: ServiceRuntimeSlot::new(engine.clone()),
+        preview_count: 0,
+        observed_groups: 0,
+    };
+    let response = block_on(root.handler().handle(&mut turn, request()))?;
     let checksum = response.granted.iter().fold(0_i64, |checksum, item| {
         checksum
             + i64::from(item.template_id) * 100
             + i64::from(item.count) * 10
             + i64::try_from(item.label.len()).unwrap_or_default()
     });
+    let summary = RequestSummary {
+        checksum,
+        item7: root.inventory().current_count(&turn, 7),
+        marker: root.inventory().current_count(&turn, -1),
+        last_reward_count: turn.actor.last_reward_count,
+        event_calls: turn.actor.event_calls,
+        patch_score: turn.actor.patch_score,
+        preview_count: turn.preview_count,
+        observed_groups: turn.observed_groups,
+    };
+    Ok((summary, turn))
+}
+
+fn run_active(
+    services: &GameServices,
+    engine: &Engine,
+) -> Result<(RequestSummary, HostTurn), ServiceError> {
+    let root = services.pin();
+    run_pinned(&root, engine)
+}
+
+fn linked_update(
+    engine: &Engine,
+    services: &GameServices,
+    source_id: u32,
+    manifest_source: &str,
+    artifact_source: &str,
+) -> Result<
+    (
+        Arc<vela_bytecode::LinkedArtifact>,
+        LinkedServiceSourceManifest,
+    ),
+    Box<dyn Error>,
+> {
+    let sources = build_single_source(SourceId::new(source_id), manifest_source)
+        .map_err(|error| format!("{error:?}"))?;
+    let manifest = ServiceSourceManifest::link(sources.graph(), services.schema())?;
+    let artifact = engine.link_compiled_program(engine.compile_source(artifact_source)?)?;
+    let update = manifest.bind_artifact(Arc::clone(&artifact))?;
+    Ok((artifact, update))
+}
+
+fn call_options() -> CallOptions {
+    CallOptions::new(250_000, 4 * 1024 * 1024, 128)
+}
+
+fn block_on<T>(future: impl Future<Output = T>) -> T {
+    let mut future = std::pin::pin!(future);
+    let waker = Waker::noop();
+    let mut context = Context::from_waker(waker);
+    loop {
+        match future.as_mut().poll(&mut context) {
+            Poll::Ready(output) => return output,
+            Poll::Pending => std::thread::yield_now(),
+        }
+    }
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let builder = GameServices::register_types(
+        Engine::builder()
+            .capability(Capability::HostWrite)
+            .register_rust_type::<HostActor>(HostActor::vela_type_binding())
+            .register_rust_type::<HostTurn>(HostTurn::vela_type_binding())
+            .register_exports(HostActor::vela_inherent_exports())
+            .register_exports(HostTurn::vela_inherent_exports()),
+    );
+    let engine = builder
+        .register_rust_type::<PatchAdjustment>(patch_adjustment_binding())
+        .build()?;
+    let services = GameServices::new(&engine.type_bindings())?;
+    assert_eq!(
+        engine
+            .type_bindings()
+            .get_for::<PatchAdjustment>()
+            .expect("PatchAdjustment binding")
+            .constructor_ids
+            .len(),
+        1
+    );
+
+    let rust_root = services.pin();
+    let (rust, _) = run_active(&services, &engine)?;
+    assert_eq!(
+        rust,
+        RequestSummary {
+            checksum: 1711,
+            item7: 6,
+            marker: 0,
+            last_reward_count: 2,
+            event_calls: 1,
+            patch_score: 0,
+            preview_count: 0,
+            observed_groups: 0,
+        }
+    );
+
+    let (rule_artifact, rule_update) =
+        linked_update(&engine, &services, 101, RULE_SOURCE, RULE_SOURCE)?;
+    let rule_bundle = ServiceUpdateBundle::snapshot(services.schema(), rule_artifact, rule_update)?;
+    assert!(services.dry_run_bundle(&rust_root, &rule_bundle).accepted());
+    let rule_candidate = services.stage_bundle(
+        &rust_root,
+        rule_bundle,
+        ServiceRuntimeBinding::for_context::<HostTurn>(),
+        call_options(),
+    )?;
+    services.activate_if_current(rule_candidate)?;
+    let rule_root = services.pin();
+    let (rule, _) = run_active(&services, &engine)?;
+    assert_eq!(rule.checksum, 1741);
+    assert_eq!(rule.item7, 8);
+
+    let rule_reward_source = format!("{RULE_SOURCE}\n{REWARD_SOURCE}");
+    let (reward_artifact, reward_update) =
+        linked_update(&engine, &services, 102, REWARD_SOURCE, &rule_reward_source)?;
+    let reward_bundle = ServiceUpdateBundle::delta(
+        services.schema(),
+        rule_root.generation_id(),
+        rule_root
+            .artifact_checksum()
+            .expect("Vela rule generation has an artifact"),
+        reward_artifact,
+        reward_update,
+    )?;
+    assert!(
+        services
+            .dry_run_bundle(&rule_root, &reward_bundle)
+            .accepted()
+    );
+    let reward_candidate = services.stage_bundle(
+        &rule_root,
+        reward_bundle,
+        ServiceRuntimeBinding::for_context::<HostTurn>(),
+        call_options(),
+    )?;
+    services.activate_if_current(reward_candidate)?;
+    let reward_root = services.pin();
+    let (reward, _) = run_active(&services, &engine)?;
+    assert_eq!(reward.checksum, 1741);
+    assert_eq!(reward.marker, 2);
+    assert_eq!(reward.patch_score, 3);
+
+    let complete_source = format!("{RULE_SOURCE}\n{REWARD_SOURCE}\n{INVENTORY_SOURCE}");
+    let (inventory_artifact, inventory_update) =
+        linked_update(&engine, &services, 103, INVENTORY_SOURCE, &complete_source)?;
+    let inventory_bundle = ServiceUpdateBundle::delta(
+        services.schema(),
+        reward_root.generation_id(),
+        reward_root
+            .artifact_checksum()
+            .expect("Vela reward generation has an artifact"),
+        inventory_artifact,
+        inventory_update,
+    )?;
+    assert!(
+        services
+            .dry_run_bundle(&reward_root, &inventory_bundle)
+            .accepted()
+    );
+    let inventory_candidate = services.stage_bundle(
+        &reward_root,
+        inventory_bundle,
+        ServiceRuntimeBinding::for_context::<HostTurn>(),
+        call_options(),
+    )?;
+    services.activate_if_current(inventory_candidate)?;
+    let complete_root = services.pin();
+    let (complete, _) = run_active(&services, &engine)?;
+    assert_eq!(
+        complete,
+        RequestSummary {
+            checksum: 1741,
+            item7: 8,
+            marker: 2,
+            last_reward_count: 2,
+            event_calls: 2,
+            patch_score: 3,
+            preview_count: 5,
+            observed_groups: 2,
+        }
+    );
+    assert_eq!(
+        complete_root
+            .selections()
+            .expect("complete Vela generation")
+            .iter()
+            .filter(|(_, selection)| matches!(
+                selection,
+                vela_engine::service::ServiceMethodSelection::Vela(_)
+            ))
+            .count(),
+        3
+    );
+
+    let (old_rust, _) = run_pinned(&rust_root, &engine)?;
+    assert_eq!(old_rust.checksum, 1711);
+    let (old_rule, _) = run_pinned(&rule_root, &engine)?;
+    assert_eq!(old_rule.checksum, 1741);
+    assert_eq!(old_rule.marker, 0);
+
+    let (snapshot_artifact, snapshot_update) =
+        linked_update(&engine, &services, 104, &complete_source, &complete_source)?;
+    let snapshot_bundle =
+        ServiceUpdateBundle::snapshot(services.schema(), snapshot_artifact, snapshot_update)?;
+    assert!(
+        services
+            .dry_run_bundle(&complete_root, &snapshot_bundle)
+            .accepted()
+    );
+    let snapshot_candidate = services.stage_bundle(
+        &complete_root,
+        snapshot_bundle,
+        ServiceRuntimeBinding::for_context::<HostTurn>(),
+        call_options(),
+    )?;
+    let rollback = services.activate_if_current(snapshot_candidate)?;
+    let folded_root = services.pin();
+    let (folded, folded_turn) = run_active(&services, &engine)?;
+    assert_eq!(folded, complete);
+    let effects_before_rollback = folded_turn.actor.event_calls;
+    let restored = services.rollback_if_current(rollback)?;
+    assert_eq!(restored.generation_id(), complete_root.generation_id());
+    assert_eq!(
+        folded_turn.actor.event_calls, effects_before_rollback,
+        "publication-only rollback must not retry or reverse host effects"
+    );
+
     println!(
-        "service_hard_switch_fixture granted={} item7={} last_reward_count={} checksum={checksum}",
-        response.granted.len(),
-        count,
-        turn.actor.last_reward_count,
+        "service_hard_switch_fixture rust={} rule={} delta1={} delta2={} snapshot={} \
+         vela_methods=3 rollback={}->{}",
+        rust.checksum,
+        rule.checksum,
+        reward.checksum,
+        complete.checksum,
+        folded.checksum,
+        folded_root.generation_id().get(),
+        restored.generation_id().get(),
     );
     Ok(())
 }

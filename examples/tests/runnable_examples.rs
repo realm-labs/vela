@@ -125,9 +125,10 @@ success_example!(
 );
 
 success_example!(
-    service_hard_switch_fixture_runs_through_rust_defaults,
+    service_hard_switch_fixture_runs_through_complete_deployment_chain,
     env!("CARGO_BIN_EXE_service_hard_switch_fixture"),
-    "service_hard_switch_fixture granted=2 item7=6 last_reward_count=2 checksum=1711\n",
+    "service_hard_switch_fixture rust=1711 rule=1741 delta1=1741 delta2=1741 \
+     snapshot=1741 vela_methods=3 rollback=5->4\n",
 );
 
 success_example!(
