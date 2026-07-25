@@ -2,7 +2,7 @@ use vela_common::HostMethodId;
 use vela_def::StateId;
 
 use crate::{
-    error::{HostError, HostErrorKind, HostResult},
+    error::{HostError, HostErrorKind, HostRefLifetimeBoundary, HostResult},
     lease::{
         ErasedHostLease, HostLeaseKind, ScopedBorrowedHostCell, ScopedBorrowedHostGroupCell,
         host_lease_unsupported,
@@ -141,6 +141,16 @@ pub trait ScriptStateAdapter {
 
     fn release_scoped_host(&mut self, root: HostRef) -> HostResult<()> {
         Err(host_lease_unsupported(root))
+    }
+
+    /// Validates a host handle before it crosses a boundary that can outlive
+    /// its synchronous root call tree.
+    fn validate_host_ref_lifetime(
+        &self,
+        _root: HostRef,
+        _boundary: HostRefLifetimeBoundary,
+    ) -> HostResult<()> {
+        Ok(())
     }
 
     fn read_host(

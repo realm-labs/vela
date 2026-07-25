@@ -5,6 +5,7 @@ use vela_bytecode::{
 use vela_common::{HostMethodId, Span, StateSlot};
 use vela_host::adapter::ExternStateBinding;
 use vela_host::error::HostErrorKind;
+use vela_host::error::HostRefLifetimeBoundary;
 use vela_host::path::HostPath;
 use vela_host::protocol::HostCollectionQuery;
 use vela_host::resolved::{HostAccessOp, HostAccessSpec, HostMutationOp, ResolvedHostAccess};
@@ -98,7 +99,7 @@ pub(crate) fn load_linked_state(
 }
 
 pub(crate) fn store_linked_state(
-    runtime: HostAccessRuntime<'_, '_, '_>,
+    mut runtime: HostAccessRuntime<'_, '_, '_>,
     program: &LinkedProgram,
     slot: StateSlot,
     value: Value,
@@ -108,14 +109,22 @@ pub(crate) fn store_linked_state(
             operation: "VM state slot",
         })
     })?;
-    let states = runtime
-        .host
-        .and_then(|host| host.state_values.as_deref_mut())
-        .ok_or_else(|| {
-            VmError::new(VmErrorKind::TypeMismatch {
-                operation: "VM state context",
-            })
-        })?;
+    let host = runtime.host.as_deref_mut().ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "VM state context",
+        })
+    })?;
+    crate::heap_values::validate_value_host_refs(
+        &value,
+        runtime.heap.as_deref().map(|heap| &*heap.heap),
+        host.adapter,
+        HostRefLifetimeBoundary::PersistentState,
+    )?;
+    let states = host.state_values.as_deref_mut().ok_or_else(|| {
+        VmError::new(VmErrorKind::TypeMismatch {
+            operation: "VM state context",
+        })
+    })?;
     states.insert(state.id, value);
     Ok(())
 }

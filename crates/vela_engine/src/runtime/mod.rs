@@ -41,6 +41,7 @@ mod host_arena;
 mod image;
 mod initialization;
 mod inline_cache;
+mod lifetime;
 mod metadata;
 mod options;
 #[cfg(test)]
@@ -949,6 +950,7 @@ where
             match outcome {
                 LinkedDriveOutcome::Complete(value) => {
                     let value = vm.finish_linked_execution(value, &mut heap, &roots, budget);
+                    lifetime::validate_root_return(&value, heap.heap, &execution_host)?;
                     drop(heap);
                     return Ok(RuntimeValueRoots::retain(
                         &retained_values,
@@ -1078,6 +1080,7 @@ where
             match outcome {
                 LinkedDriveOutcome::Complete(value) => {
                     let value = vm.finish_linked_execution(value, &mut heap, &roots, budget);
+                    lifetime::validate_root_return(&value, heap.heap, &execution_host)?;
                     drop(heap);
                     return Ok(RuntimeValueRoots::retain(
                         &retained_values,
@@ -1091,6 +1094,7 @@ where
                     }));
                 }
                 LinkedDriveOutcome::AsyncBoundary(prepared) => {
+                    lifetime::validate_async_suspend(&session, heap.heap, &execution_host)?;
                     let result = {
                         let mut active = ActiveNativeReentry {
                             runtime_id: call.runtime_id,

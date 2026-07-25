@@ -267,10 +267,25 @@ fn classify_signature(
         parameters.push(classified);
     }
 
+    if receiver_access.is_none()
+        && host_origins.is_empty()
+        && return_type_contains_reference(&signature.output)
+    {
+        return Err(syn::Error::new_spanned(
+            &signature.output,
+            "borrowed host return has no receiver or host-parameter provenance",
+        ));
+    }
     let (return_shape, error_mode) =
         classify_return_type(&signature.output, allow_named_lifetimes)?;
     let host_return = host_return_access(&return_shape)?;
     let mode = if let Some(child) = host_return {
+        if signature.asyncness.is_some() {
+            return Err(syn::Error::new_spanned(
+                &signature.output,
+                "async exported Rust callables cannot return call-scoped host borrows",
+            ));
+        }
         let (origin, parent) = if let Some(parent) = receiver_access {
             (BorrowOrigin::Receiver, parent)
         } else {
@@ -325,6 +340,24 @@ fn classify_signature(
         effects,
         is_async: signature.asyncness.is_some(),
     })
+}
+
+fn return_type_contains_reference(output: &ReturnType) -> bool {
+    let ReturnType::Type(_, ty) = output else {
+        return false;
+    };
+    type_contains_reference(ty)
+}
+
+fn type_contains_reference(ty: &Type) -> bool {
+    match ty {
+        Type::Reference(reference) => !is_str(&reference.elem),
+        Type::Tuple(tuple) => tuple.elems.iter().any(type_contains_reference),
+        Type::Path(_) => type_generic_args(ty)
+            .into_iter()
+            .any(type_contains_reference),
+        _ => false,
+    }
 }
 
 fn classify_parameter(

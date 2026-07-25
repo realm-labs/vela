@@ -100,7 +100,7 @@ fn borrowed_return_releases_before_await_when_dead() {
 }
 
 #[test]
-fn borrowed_return_releases_on_resume_after_await_last_use() {
+fn borrowed_return_cannot_cross_async_suspend() {
     let mut runtime = host_export_runtime(
         "async fn main(service: PlayerService, other: Player) { let player = service.player_mut(); game::transfer_async(player, other, 2).await; return game::touch_service(service); }",
     );
@@ -120,20 +120,26 @@ fn borrowed_return_releases_on_resume_after_await_last_use() {
     );
     let waker = std::task::Waker::noop();
     let mut context = std::task::Context::from_waker(waker);
-    let value = loop {
+    let error = loop {
         match std::future::Future::poll(future.as_mut(), &mut context) {
             std::task::Poll::Ready(value) => {
-                break value.expect("the resume edge should release the child");
+                break value.expect_err("a live scoped child cannot cross suspension");
             }
             std::task::Poll::Pending => continue,
         }
     };
     drop(future);
 
-    assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(1)));
-    assert_eq!(service.player.level, 3);
-    assert_eq!(other.level, 5);
-    assert_eq!(service.touches, 1);
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::Host(vela_host::error::HostErrorKind::BorrowedHostRefEscape {
+            boundary: vela_host::error::HostRefLifetimeBoundary::AsyncSuspend,
+            ..
+        })
+    ));
+    assert_eq!(service.player.level, 5);
+    assert_eq!(other.level, 3);
+    assert_eq!(service.touches, 0);
 }
 
 #[test]

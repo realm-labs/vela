@@ -275,6 +275,15 @@ adapter for the invocation lifetime; it does not require Runtime ownership or
 Rust future does, and resumes only when its caller polls again. Core runtime
 crates contain no executor or Tokio dependency.
 
+Before yielding an async boundary, the session recursively checks every live
+frame value and reachable aggregate for call-scoped HostRefs. A live borrowed
+child cannot cross suspension; it must reach a proven last use or an explicit
+`host::release` first. The same recursive check rejects call-scoped children
+inside state values, closures, aggregates, PathProxy roots, and the final root
+result. Dynamic and reflection calls do not form alternate lifetime domains:
+they return through the same frame, heap, host adapter, and root-boundary
+checks.
+
 Restricted JIT input marks declared async and await-containing MIR functions
 with `MirJitIneligibility::Async`. The future backend boundary remains the same
 verified MIR plus linked artifact, including the await operation, safepoint,

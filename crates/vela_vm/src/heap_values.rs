@@ -1,7 +1,9 @@
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use vela_bytecode::Constant;
 use vela_host::adapter::ScriptStateAdapter;
+use vela_host::error::HostRefLifetimeBoundary;
 use vela_host::slot::HostRefSlots;
 use vela_host::value::HostValue;
 
@@ -197,6 +199,117 @@ pub fn persistent_value_to_owned_with_slots(
         Some(&heap_execution),
         Some(HostSlotResolver::Slots(slots)),
     )
+}
+
+pub fn validate_persistent_value_host_refs(
+    value: &Value,
+    heap: &ScriptHeap,
+    host: &(dyn ScriptStateAdapter + Send),
+    boundary: HostRefLifetimeBoundary,
+) -> VmResult<()> {
+    validate_value_host_refs(value, Some(heap), host, boundary)
+}
+
+pub(crate) fn validate_value_host_refs(
+    value: &Value,
+    heap: Option<&ScriptHeap>,
+    host: &(dyn ScriptStateAdapter + Send),
+    boundary: HostRefLifetimeBoundary,
+) -> VmResult<()> {
+    let mut pending = vec![*value];
+    let mut visited = BTreeSet::new();
+    while let Some(value) = pending.pop() {
+        match value {
+            Value::HostRef(handle) => {
+                let root = host.resolve_host_ref(handle)?;
+                host.validate_host_ref_lifetime(root, boundary)?;
+            }
+            Value::HeapRef(reference) if visited.insert(reference) => {
+                let Some(value) = heap.and_then(|heap| heap.get(reference)) else {
+                    return Err(type_error("host-ref lifetime validation"));
+                };
+                match value {
+                    HeapValue::String(_) | HeapValue::Bytes(_) => {}
+                    HeapValue::Tuple(values) | HeapValue::Array(values) => {
+                        pending.extend(values.iter().copied());
+                    }
+                    HeapValue::Map(values) => {
+                        for entry in values.entries() {
+                            pending.push(entry.key);
+                            pending.push(entry.value);
+                        }
+                    }
+                    HeapValue::Set(values) => pending.extend(values.values().copied()),
+                    HeapValue::Record { fields, .. } | HeapValue::Enum { fields, .. } => {
+                        pending.extend(fields.values().copied());
+                    }
+                    HeapValue::Closure(closure) => {
+                        pending.extend(closure.captures.as_slice().iter().copied());
+                    }
+                    HeapValue::Iterator(iterator) => {
+                        pending.extend(iterator.protected_values());
+                    }
+                    HeapValue::PathProxy(proxy) => {
+                        host.validate_host_ref_lifetime(proxy.root(), boundary)?;
+                    }
+                }
+            }
+            Value::Missing
+            | Value::Unit
+            | Value::Bool(_)
+            | Value::Char(_)
+            | Value::I8(_)
+            | Value::I16(_)
+            | Value::I32(_)
+            | Value::I64(_)
+            | Value::U8(_)
+            | Value::U16(_)
+            | Value::U32(_)
+            | Value::U64(_)
+            | Value::F32(_)
+            | Value::F64(_)
+            | Value::Range(_)
+            | Value::HeapRef(_) => {}
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn optional_borrowed_host_ref(
+    value: Value,
+    heap: Option<&ScriptHeap>,
+) -> VmResult<Option<vela_host::path::HostSlotRef>> {
+    match value {
+        Value::HostRef(reference) => Ok(Some(reference)),
+        Value::HeapRef(reference) => {
+            let Some(HeapValue::Enum {
+                identity: Some(identity),
+                fields,
+                ..
+            }) = heap.and_then(|heap| heap.get(reference))
+            else {
+                return Err(type_error("release borrowed host lease"));
+            };
+            let Some((kind, variant)) = crate::option_result::std_enum_tag(*identity) else {
+                return Err(type_error("release borrowed host lease"));
+            };
+            match (kind, variant) {
+                (
+                    crate::option_result::StdEnumKind::Option,
+                    crate::option_result::StdEnumVariant::None,
+                ) => Ok(None),
+                (
+                    crate::option_result::StdEnumKind::Option,
+                    crate::option_result::StdEnumVariant::Some,
+                ) => match fields.get_slot(0, "0").map(crate::stored_runtime_value) {
+                    Some(Value::HostRef(reference)) => Ok(Some(reference)),
+                    _ => Err(type_error("release borrowed host lease")),
+                },
+                _ => Err(type_error("release borrowed host lease")),
+            }
+        }
+        _ => Err(type_error("release borrowed host lease")),
+    }
 }
 
 pub(crate) fn value_from_constant(

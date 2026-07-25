@@ -1,0 +1,5 @@
+error: async exported Rust callables cannot return call-scoped host borrows
+ --> tests/ui/interop/fail/async_optional_borrowed_return.rs:7:37
+  |
+7 | pub async fn lookup(_table: &Table) -> Option<&Row> {
+  |                                     ^^^^^^^^^^^^^^^

@@ -1,0 +1,5 @@
+error: borrowed host return requires exactly one unambiguous borrowed host parameter
+ --> tests/ui/interop/fail/ambiguous_optional_borrowed_return.rs:7:46
+  |
+7 | pub fn lookup(_left: &Table, _right: &Table) -> Option<&Row> {
+  |                                              ^^^^^^^^^^^^^^^

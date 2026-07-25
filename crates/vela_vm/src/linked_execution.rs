@@ -2357,11 +2357,14 @@ impl Vm {
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::ReleaseBorrowLease { dst, src } => {
-                    let Value::HostRef(root) = frame.read(*src)? else {
-                        return Err(VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "release borrowed host lease",
-                        })
-                        .with_source_span(instruction.span));
+                    let root = crate::heap_values::optional_borrowed_host_ref(
+                        frame.read(*src)?,
+                        heap.as_deref().map(|heap| &*heap.heap),
+                    )
+                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let Some(root) = root else {
+                        frame.write(*dst, Value::Unit)?;
+                        continue;
                     };
                     let host = host.as_deref_mut().ok_or_else(|| {
                         VmError::new(VmErrorKind::TypeMismatch {

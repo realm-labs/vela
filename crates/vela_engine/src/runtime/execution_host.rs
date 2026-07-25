@@ -6,7 +6,7 @@ use vela_host::adapter::{
     ExternStateBinding, HostLeaseInvoker, ScopedHostReturnInvoker, ScopedHostReturns,
     ScriptStateAdapter,
 };
-use vela_host::error::{HostError, HostErrorKind, HostResult};
+use vela_host::error::{HostError, HostErrorKind, HostRefLifetimeBoundary, HostResult};
 use vela_host::lease::{
     BorrowLeaseId, ErasedHostLease, ErasedHostLeaseSet, HostLeaseKind, ScopedBorrowedHostGroupCell,
     ScopedHostLeaseSlot, host_lease_unsupported, host_object_busy,
@@ -528,6 +528,14 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         self.parent.release_scoped_host(root)
     }
 
+    fn validate_host_ref_lifetime(
+        &self,
+        root: HostRef,
+        boundary: HostRefLifetimeBoundary,
+    ) -> HostResult<()> {
+        self.parent.validate_host_ref_lifetime(root, boundary)
+    }
+
     fn resolve_host_access(&self, spec: HostAccessSpec<'_>) -> HostResult<ResolvedHostAccess> {
         match self.args.direct_binding_by_type(spec.plan.root_type) {
             Some((root, binding)) => {
@@ -822,6 +830,31 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         if let Some(handle) = self.host_slots.handle_for(root) {
             let _ = self.host_slots.release(handle);
             self.expired_scoped_slots.insert(handle, root);
+        }
+        Ok(())
+    }
+
+    fn validate_host_ref_lifetime(
+        &self,
+        root: HostRef,
+        boundary: HostRefLifetimeBoundary,
+    ) -> HostResult<()> {
+        let live = self.scoped_handle(root).is_some();
+        let expired = self.expired_scoped_hosts.contains_key(&root);
+        let invalid = match boundary {
+            HostRefLifetimeBoundary::AsyncSuspend => live,
+            HostRefLifetimeBoundary::PersistentState | HostRefLifetimeBoundary::RootReturn => {
+                live || expired
+            }
+        };
+        if invalid {
+            return Err(HostError {
+                kind: HostErrorKind::BorrowedHostRefEscape {
+                    path: vela_host::path::HostPath::new(root),
+                    boundary,
+                },
+                source_span: None,
+            });
         }
         Ok(())
     }

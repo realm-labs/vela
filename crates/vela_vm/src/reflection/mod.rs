@@ -56,6 +56,7 @@ impl Vm {
             self.host_native_ids.clone(),
             self.async_native_ids.clone(),
             self.async_host_native_ids.clone(),
+            self.host_method_ids.clone(),
             self.async_host_method_ids.clone(),
             self.async_direct_host_method_ids.clone(),
         );

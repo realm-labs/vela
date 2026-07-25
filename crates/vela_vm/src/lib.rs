@@ -108,6 +108,7 @@ pub use heap_values::{
     owned_to_persistent_value, owned_to_persistent_value_with_host,
     owned_to_persistent_value_with_slots, persistent_value_to_owned,
     persistent_value_to_owned_with_host, persistent_value_to_owned_with_slots,
+    validate_persistent_value_host_refs,
 };
 pub use owned_contract::{canonicalize_owned_value_contract, validate_owned_value_contract};
 use owned_value::OwnedValue;

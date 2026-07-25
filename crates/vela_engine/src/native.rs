@@ -386,6 +386,14 @@ pub enum TypeHint {
 }
 
 impl TypeHint {
+    pub(crate) fn is_single_scoped_host(&self) -> bool {
+        match self {
+            Self::Host(_) => true,
+            Self::OptionOf(item) => matches!(item.as_ref(), Self::Host(_)),
+            _ => false,
+        }
+    }
+
     #[must_use]
     pub const fn primitive(tag: PrimitiveTag) -> Self {
         Self::Primitive(tag)

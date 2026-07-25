@@ -9,8 +9,8 @@ use crate::owned_value::OwnedValue;
 use crate::{
     AsyncHostMethodFunction, AsyncHostNativeFunction, AsyncNativeFunction,
     ConditionalAsyncNativeFunction, ConditionalHostNativeOutcome, ExecutionBudget, HostExecution,
-    HostNativeFunction, NativeFunction, Vm, VmError, VmErrorKind, VmResult, expect_arity,
-    expect_string, value_from_reflect, value_to_reflect,
+    HostMethodFunction, HostNativeFunction, NativeFunction, Vm, VmError, VmErrorKind, VmResult,
+    expect_arity, expect_string, value_from_reflect, value_to_reflect,
 };
 
 use super::common::check_reflect_policy;
@@ -21,6 +21,7 @@ pub(super) struct ReflectedFunctionCalls {
     host_natives: HashMap<FunctionId, HostNativeFunction>,
     async_natives: HashMap<FunctionId, AsyncNativeFunction>,
     async_host_natives: HashMap<FunctionId, AsyncHostNativeFunction>,
+    host_methods: HashMap<vela_common::HostMethodId, HostMethodFunction>,
     async_host_methods: HashMap<vela_common::HostMethodId, AsyncHostMethodFunction>,
     async_direct_host_methods: HashMap<
         vela_common::HostMethodId,
@@ -37,6 +38,7 @@ impl ReflectedFunctionCalls {
         host_natives: HashMap<FunctionId, HostNativeFunction>,
         async_natives: HashMap<FunctionId, AsyncNativeFunction>,
         async_host_natives: HashMap<FunctionId, AsyncHostNativeFunction>,
+        host_methods: HashMap<vela_common::HostMethodId, HostMethodFunction>,
         async_host_methods: HashMap<vela_common::HostMethodId, AsyncHostMethodFunction>,
         async_direct_host_methods: HashMap<
             vela_common::HostMethodId,
@@ -51,6 +53,7 @@ impl ReflectedFunctionCalls {
             host_natives,
             async_natives,
             async_host_natives,
+            host_methods,
             async_host_methods,
             async_direct_host_methods,
         }
@@ -203,6 +206,11 @@ pub(super) fn register(
                 method,
                 &call_policy,
             )?;
+            if let Some(function) = function_calls.host_methods.get(&method_desc.id) {
+                let receiver = vela_host::path::HostPath::new(*host_ref);
+                return function(&receiver, &args[2..], host)
+                    .map(ConditionalHostNativeOutcome::Complete);
+            }
             if let Some(function) = function_calls.async_host_methods.get(&method_desc.id) {
                 return Ok(ConditionalHostNativeOutcome::Async {
                     function: ConditionalAsyncNativeFunction::HostMethod {

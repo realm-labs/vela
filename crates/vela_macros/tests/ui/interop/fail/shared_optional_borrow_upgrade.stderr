@@ -1,0 +1,5 @@
+error: a shared host origin cannot return a mutable host borrow
+ --> tests/ui/interop/fail/shared_optional_borrow_upgrade.rs:7:31
+  |
+7 | pub fn lookup(_table: &Table) -> Option<&mut Row> {
+  |                               ^^^^^^^^^^^^^^^^^^^

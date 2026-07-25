@@ -1,0 +1,5 @@
+error: async exported Rust callables cannot return call-scoped host borrows
+ --> tests/ui/interop/fail/async_optional_method_borrow.rs:8:29
+  |
+8 |     pub async fn get(&self) -> Option<&Row> {
+  |                             ^^^^^^^^^^^^^^^

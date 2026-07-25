@@ -73,6 +73,10 @@ impl CallFrame {
         self.linked_owner.as_ref()
     }
 
+    pub(crate) fn values(&self) -> &[Value] {
+        &self.registers
+    }
+
     #[inline(always)]
     pub(crate) fn read(&self, register: Register) -> VmResult<Value> {
         self.registers

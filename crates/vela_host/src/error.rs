@@ -119,6 +119,17 @@ pub enum HostErrorKind {
     BorrowStillInUse {
         path: HostPath,
     },
+    BorrowedHostRefEscape {
+        path: HostPath,
+        boundary: HostRefLifetimeBoundary,
+    },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum HostRefLifetimeBoundary {
+    PersistentState,
+    RootReturn,
+    AsyncSuspend,
 }
 
 pub type HostResult<T> = Result<T, HostError>;

@@ -88,6 +88,7 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
             &self_ty,
             &protocol_path,
             None,
+            false,
             &signature,
         ));
         generated.push(

@@ -431,7 +431,7 @@ impl Engine {
                 matches!(
                     contract.returns.mode,
                     crate::interop::ReturnMode::ScopedHost { .. }
-                ) && matches!(contract.returns.ty, crate::native::TypeHint::Host(_))
+                ) && contract.returns.ty.is_single_scoped_host()
             }) {
                 options = options.with_scoped_borrow_function(desc.id);
             }
@@ -445,7 +445,7 @@ impl Engine {
                     matches!(
                         contract.returns.mode,
                         crate::interop::ReturnMode::ScopedHost { .. }
-                    ) && matches!(contract.returns.ty, crate::native::TypeHint::Host(_))
+                    ) && contract.returns.ty.is_single_scoped_host()
                 })
             {
                 options = options.with_scoped_borrow_method(entry.desc.id);

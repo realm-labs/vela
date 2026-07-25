@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
-use syn::{ImplItem, ItemImpl, LitStr, Result, Visibility, parse::Parser, parse2};
+use syn::{ImplItem, ItemImpl, LitBool, LitStr, Result, Visibility, parse::Parser, parse2};
 
 use crate::attrs::parse_qualified_name;
 use crate::export::emission;
@@ -36,6 +36,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         reject_generic_signature(&method.sig.generics, "#[vela::methods]")?;
         reject_unsafe_signature(&method.sig, "#[vela::methods]")?;
         reject_extern_signature(&method.sig, "#[vela::methods]")?;
+        let reflect_callable = take_reflect_callable(method)?;
         let additional_effects = BTreeSet::new();
         let signature = classify_method(&method.sig, &additional_effects)?;
         let docs = docs_from_attrs(&method.attrs);
@@ -44,6 +45,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             &item.self_ty,
             &owner_path,
             docs.as_deref(),
+            reflect_callable,
             &signature,
         ));
         generated.push(
@@ -120,6 +122,26 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         }
         #host_object_impl
     })
+}
+
+fn take_reflect_callable(method: &mut syn::ImplItemFn) -> Result<bool> {
+    let mut reflect_callable = false;
+    let mut retained = Vec::with_capacity(method.attrs.len());
+    for attr in std::mem::take(&mut method.attrs) {
+        if !attr.path().is_ident("script_method") {
+            retained.push(attr);
+            continue;
+        }
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("reflect") || meta.path.is_ident("reflect_callable") {
+                reflect_callable = meta.value()?.parse::<LitBool>()?.value;
+                return Ok(());
+            }
+            Err(meta.error("#[methods] supports only reflect on #[script_method]"))
+        })?;
+    }
+    method.attrs = retained;
+    Ok(reflect_callable)
 }
 
 fn parse_owner_path(attr: TokenStream, item: &ItemImpl) -> Result<String> {

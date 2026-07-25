@@ -2135,8 +2135,8 @@ lease and provenance. It does not require a business ID, resolver, or
 generation-based relookup. Shared-origin children permit later shared calls on
 the owner but reject exclusive calls; an exclusive-origin child rejects every
 later owner call. Conflicts fail immediately rather than block. These children
-may propagate through local Vela values and nested Rust/Vela calls in the same
-root, including scoped await suspension, but cannot escape through state,
+may propagate through local Vela values and nested synchronous Rust/Vela calls
+in the same root, but cannot cross async suspension or escape through state,
 globals, the root result, native caches, or unscoped tasks. Each distinct child
 has one `BorrowLeaseId` shared by all its aliases. Conservative MIR last-use and
 non-escaping lexical-scope analysis release proven-dead children automatically;
@@ -2153,6 +2153,26 @@ release is a sealed post-verification MIR analysis over direct scoped-return
 facts, liveness, compiler-only temp aliases, and exact CFG edges. It never
 classifies an ordinary HostRef, and observable local aliases, container/state/
 closure escapes, root returns, or explicit release suppress the automatic path.
+
+### Optional Borrowed Host Returns Reuse The Scoped-Return Model
+
+A synchronous generated function or inherent method may return `Option<&T>`
+when `T` is host-backed. The callable ABI records `Option<Host<T>>` together
+with `ScopedHost` return mode. `Some` retains the same child cell, root owner,
+generation, access capability, and `BorrowLeaseId` used by a direct `&T`
+return; `None` returns the standard Vela `Option::None` without allocating a
+HostRef or changing lease counts. The payload never uses the owned codec,
+Serde, JSON, or a script record.
+
+The macro accepts only one statically provable origin: Rust's method lifetime
+elision selects an inherent receiver, while a free function requires exactly
+one borrowed host parameter. Multiple free-function host parameters, no host
+parameter, a shared-to-exclusive upgrade, and every async borrowed-return
+signature are rejected during expansion.
+Runtime state stores, root returns, escaping closure captures, async
+suspension, dynamic dispatch, and reflected dispatch all use the same recursive
+HostRef lifetime validation. This is an extension of direct scoped returns,
+not a durable handle or a second reference model.
 
 ### Trusted Native Mutation Uses A Coarse Call Boundary
 

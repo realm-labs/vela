@@ -17,6 +17,7 @@ pub(crate) fn method_contract(
     self_ty: &syn::Type,
     owner_path: &str,
     docs: Option<&str>,
+    reflect_callable: bool,
     signature: &ClassifiedSignature,
 ) -> TokenStream {
     let method_ident = &method.sig.ident;
@@ -79,7 +80,10 @@ pub(crate) fn method_contract(
                 returns: #return_contract,
                 asyncness: #asyncness,
                 effects: #effects,
-                access: ::vela_engine::interop::CallableAccess::default(),
+                access: ::vela_engine::interop::CallableAccess {
+                    reflect_callable: #reflect_callable,
+                    ..::vela_engine::interop::CallableAccess::default()
+                },
                 docs: #docs,
                 origin: ::vela_engine::interop::CallableOrigin {
                     language: ::vela_engine::interop::CallableLanguage::Rust,
