@@ -10,13 +10,15 @@ Completed execution plans and acceptance reports live under
 
 ## Current Focus
 
-The
+The generation and publication work in the
 [Rust/Vela unified service hard switch](rust-vela-service-hard-switch-plan.md)
-is complete. Rust hotfixing has one target model: generated Rust service
-contracts and defaults, sparse Vela service implementations, and atomic
-publication of one complete immutable service generation. The next queued
-tracks are the M20.5 editor-visible follow-up and the explicit parameterized
-container acceptance audits.
+is complete. The active follow-up is the
+[service patchability completion plan](rust-vela-service-patchability-completion-plan.md).
+It closes the stronger contract that every admitted service method is
+executable through Rust defaults and Vela selections, including borrowed
+results returned to ordinary Rust callers. Unsupported nested borrowed
+containers must fail during macro expansion rather than survive as a
+runtime-only limitation.
 
 Phase status:
 
@@ -106,7 +108,7 @@ Host-backed and mutable collections retain HostRef identity and leases.
 | M19.5 | Complete enough | Cache-ready IDs, linked bytecode, profile ownership, and prepared host paths are validated. |
 | M20 | Complete enough | Actor Runtime/cache ownership, lifetime, reload, and concurrency gates are accepted. |
 | M20.5 | Queued | Resume editor-visible work after the service hard switch. |
-| Rust/Vela service interop | Complete | S0-S7, the full acceptance matrix, host-framework integration, stable benchmark, and final repository gates are accepted. |
+| Rust/Vela service interop | Reopened | The generation hard switch is accepted; borrowed-return adapter totality, compile-time signature rejection, and the complete coverage demo remain. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, and debugger contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation, and performance targets. |
@@ -169,6 +171,22 @@ Host-backed and mutable collections retain HostRef identity and leases.
 
 ## Active Gaps
 
+### Service Patchability Totality
+
+The service macro currently admits a direct borrowed return while the
+Vela-selected outer Rust adapter retains a non-executable panic branch.
+`Option<&T>` is complete for ordinary synchronous exports and methods but not
+for generated services. Nested borrowed containers fail only incidentally and
+lack the explicit service compile-fail matrix required to guarantee that a
+sealed service is fully patchable.
+
+The active
+[completion plan](rust-vela-service-patchability-completion-plan.md) owns the
+signature whitelist, total-admission invariant, focused test matrix, and
+domain-neutral `service_hotfix_coverage` demo. Durable handles, cross-root
+borrows, borrowed children across async suspension, and arbitrary nested
+borrowed containers remain outside that plan.
+
 ### Parameterized Container Contracts
 
 The runtime supports nested Array/Map/Set/Iterator facts, recursive guards,
@@ -214,10 +232,12 @@ changes.
 
 ## Next Up
 
-1. Resume M20.5 only for a named editor-visible language-service gap.
-2. Audit the parameterized container and value-keyed Map/Set plans against
+1. Execute the service patchability completion plan from its compile-time
+   signature matrix through the runnable coverage demo.
+2. Resume M20.5 only for a named editor-visible language-service gap.
+3. Audit the parameterized container and value-keyed Map/Set plans against
    their explicit acceptance matrices.
-3. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
+4. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
    post-S2 optimization follow-up.
 
 ## Update Rules

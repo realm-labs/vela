@@ -12,6 +12,11 @@
 >
 > Supersedes: the optional `#[replaceable]` / `#[override]` slot model in
 > [the archived interop plan](archive/rust-vela-interop-model-plan-superseded-2026-07-23.md)
+>
+> Follow-up: the generation hard switch remains accepted. The stronger
+> guarantee that every admitted borrowed-return signature is executable through
+> a Vela selection is tracked by
+> [the service patchability completion plan](rust-vela-service-patchability-completion-plan.md).
 
 ## 0. Objective
 

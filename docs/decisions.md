@@ -3051,6 +3051,28 @@ host-backed collections. Those retain exact HostRef identity, lease
 preflight, scoped reborrow, and immediate write-through rather than
 materializing or copying back.
 
+### Service Signature Admission Is Total And Fail-Closed
+
+A generated service method is admissible only when every required direction
+has a complete adapter: direct Rust default, Vela-selected invocation,
+same-generation nested Rust/Vela calls, and restoration to the authored Rust
+return where applicable. Macro expansion or service-set sealing rejects an
+incomplete method; an accepted generated branch may not defer unsupported
+behavior to a runtime panic or placeholder.
+
+Owned boundary containers cannot contain call-scoped Rust borrows. The initial
+complete scoped-return whitelist is direct `&T`, direct `&mut T`, direct
+borrowed collection views, and exact `Option<&T>`, all synchronous and with one
+explicit host-parameter origin. Other borrowed envelopes and arbitrary nested
+borrowed containers fail during macro expansion. Vela still receives only
+shared/exclusive scoped HostRefs, never real Rust references. A generated
+service-return sink may restore a validated borrow to the Rust caller declared
+by that service signature; ordinary Vela root results, state, closures, async
+suspension, and cross-root storage remain forbidden escape paths.
+
+Implementation and acceptance are tracked in
+[rust-vela-service-patchability-completion-plan.md](rust-vela-service-patchability-completion-plan.md).
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:
