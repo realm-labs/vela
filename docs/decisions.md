@@ -3000,6 +3000,23 @@ exclusive access to the host context. Runtime-owned extern-state objects must
 therefore be `Send + Sync`, matching the ordinary host-call boundary and making
 the slot naturally `Sync` without unsafe code.
 
+### Service Deployment And Tooling Share Sealed Generation Facts
+
+Deployment bundles are immutable descriptions paired with one already-linked
+artifact. Their BLAKE3 artifact checksum covers executable content rather than
+the process-local generation ID, so equivalent relinks remain comparable.
+Snapshot bundles describe complete desired Vela selections; Delta bundles name
+the exact base generation and artifact checksum. Loading, dry-run staging,
+activation, and rollback validate package, schema, artifact, and base identity
+before publication and never mutate state during validation.
+
+CLI schema export and native language tooling consume the same sealed registry
+facts used by compilation. The exported model retains service-set paths,
+stable method IDs, parameters, async/effect facts, and TypeBinding constructors,
+storage policy, receiver capabilities, View/MutView representations, and
+protocols. Tooling must not reconstruct these facts from Rust names or maintain
+a second service/type registry.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

@@ -5,7 +5,7 @@
 > publication, host-reference and collection interop, and deletion of
 > callable-level replacement
 >
-> Status: S0-S5 accepted; S6 implementation is active
+> Status: S0-S6 accepted; S7 implementation is active
 >
 > Switch policy: pre-release hard switch; no public compatibility layer and no
 > second Rust hot-replacement model
@@ -320,14 +320,19 @@ cancellation/drop/unwind releases Runtime borrows and host leases
 there is no handler/rule/event-specific replacement API
 ```
 
-Status: **Active.** Authored Rust `async fn` methods now keep their ordinary
+Status: **Accepted.** Authored Rust `async fn` methods keep their ordinary
 trait authoring surface while the macro emits one hidden object-safe
 `ServiceFuture` dispatcher. Vela-selected calls retain one actor-owned Runtime,
 the pinned artifact/dispatcher, and the complete host lease set across
 suspension; direct host write-through, `base.await`, old/new-root isolation,
 cancel/drop/unwind restoration, `Send` futures, and a mutex-free
-`ServiceRuntimeSlot` are covered. Deployment metadata, handler migration,
-CLI/LSP service tooling, and the phase-wide gate remain.
+`ServiceRuntimeSlot` are covered. Immutable Snapshot/Delta bundles carry
+content-stable artifact checksums, exact-base metadata, load/build validation,
+and non-mutating dry-run reports. Handlers, rules, and events use only generated
+service contracts; CLI/LSP metadata includes complete service and TypeBinding
+facts; and the active-Vela benchmark row measures a staged generation. The
+workspace, example, benchmark-build, fuzz-build, and deletion-audit gates are
+green.
 
 ### S7 — Host-framework integration and final acceptance
 

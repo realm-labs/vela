@@ -34,9 +34,13 @@ Phase status:
   lexical `base`, pinned cross-service calls, custom Values, host-backed
   collections, scoped borrowed returns, and atomic nested reborrow are
   validated in one mixed Rust/Vela generation.
-- S6 active: authored async adapters and lifecycle/lease proof are complete;
-  deployment metadata, handler migration, CLI/LSP service tooling, examples,
-  benchmarks, and the phase-wide gate remain.
+- S6 accepted: async lifecycle/lease proof, immutable deployment bundles and
+  dry-run diagnostics, service-only handler/rule/event roles, CLI/LSP service
+  and TypeBinding metadata, replacement examples, active-Vela benchmarks, and
+  the phase-wide gate are complete.
+- S7 active: integrate two successive Deltas and a folded Snapshot into the
+  representative host-framework call chain, complete the acceptance matrix,
+  and run the final repository gate.
 
 S3 provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared
@@ -87,7 +91,7 @@ performed before cancellation or panic.
 | M19.5 | Complete enough | Cache-ready IDs, linked bytecode, profile ownership, and prepared host paths are validated. |
 | M20 | Complete enough | Actor Runtime/cache ownership, lifetime, reload, and concurrency gates are accepted. |
 | M20.5 | Queued | Resume editor-visible work after the service hard switch. |
-| Rust/Vela service interop | S5 accepted; S6 active | Async adapters and lifecycle proof are complete; add deployment metadata, handler migration, tooling, examples, and benchmarks. |
+| Rust/Vela service interop | S6 accepted; S7 active | Deployment/tooling and async gates are green; complete the host-framework integration and final acceptance matrix. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, and debugger contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation, and performance targets. |
@@ -155,15 +159,15 @@ The phase gates are authoritative:
 | S3 | Accepted | Complete collection protocols, prepared traversal/method paths, and the phase-wide gate are green. |
 | S4 | Accepted | Sealed schemas, complete signature closure, generated service sets, whole-generation publication, fixture migration, and the zero-VM/zero-HostRef/zero-allocation Rust branch are green. |
 | S5 | Accepted | Snapshot/Delta, lexical `base`/`services`, mixed custom values and collections, and scoped reborrow are green. |
-| S6 | Active | Async adapters and lifecycle proof are green; deployment, handler migration, tooling, examples, benchmarks, and the phase-wide gate remain. |
-| S7 | Pending | Requires S6 deployment/tooling integration. |
+| S6 | Accepted | Async lifecycle, immutable deployment bundles, service-only handler roles, CLI/LSP metadata, replacement examples and benchmarks, and the phase-wide gate are green. |
+| S7 | Active | Build the two-Delta/folded-Snapshot host-framework fixture and complete final acceptance. |
 
-S6 must now expose immutable bundle and dry-run deployment metadata, migrate
-handler/rule/event examples entirely onto service contracts, feed service and
-TypeBinding metadata into CLI/LSP surfaces, and replace the remaining examples
-and benchmark rows before its full gate. A shorter Runtime-owned host
-reclamation policy remains a post-S2 follow-up and is not a service
-hard-switch blocker.
+S7 must now prove one unchanged host caller across Rust-default and active-Vela
+generations, two exact-base Deltas with inherited selections, a folded
+Snapshot, old/new in-flight isolation, publication-only rollback, and the
+representative DTO/collection/constructor/method/view/Result/async surface. A
+shorter Runtime-owned host reclamation policy remains a post-S2 follow-up and
+is not a service hard-switch blocker.
 
 ### Parameterized Container Contracts
 
@@ -210,13 +214,15 @@ changes.
 
 ## Next Up
 
-1. Add immutable Snapshot/Delta bundle metadata, exact checksums, load/build,
-   dry-run staging reports, and deployment diagnostics.
-2. Model representative handlers/rules/events only as generated service
-   contracts and remove any remaining domain-specific replacement surface.
-3. Expose service schemas and complete TypeBinding metadata through CLI/LSP,
-   then replace service examples and benchmark rows.
-4. Run the full S6 gate before starting S7 host-framework acceptance.
+1. Extend the representative host-framework fixture with one complete
+   multi-service Vela generation and an unchanged root caller.
+2. Publish two exact-base Deltas, prove inherited selections, and fold the
+   desired state into an equivalent Snapshot.
+3. Cover registered constructors/methods, DTOs, nested collections,
+   View/MutView grouping, business Result, async suspension, old-root
+   isolation, and publication-only rollback.
+4. Run the S7 acceptance matrix, structural audit, examples, fuzz/build,
+   benchmark, formatting, Clippy, and workspace tests.
 
 ## Update Rules
 
