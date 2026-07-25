@@ -1,0 +1,6 @@
+error: service return contains a call-scoped host borrow inside an owned container
+       return path: Map::value -> Array::element -> Option::Some -> shared borrow
+  --> tests/ui/service/fail/nested_map_borrow.rs:11:10
+   |
+11 |     ) -> std::collections::BTreeMap<i64, Vec<Option<&'a Row>>>;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

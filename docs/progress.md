@@ -20,6 +20,9 @@ results returned to ordinary Rust callers. Unsupported nested borrowed
 containers must fail during macro expansion rather than survive as a
 runtime-only limitation.
 
+P0-P3 are accepted. The next active checkpoint is P4 target-directed
+parameter construction and lowering.
+
 Phase status:
 
 - S0 accepted: the migration inventory, executable fixture, and boundary
@@ -47,6 +50,15 @@ Phase status:
   async caller; registered constructors/methods, nested views and grouping,
   business Result, old/new in-flight roots, publication-only rollback, stable
   boundary measurements, and the final repository gate are complete.
+- P0-P3 accepted for service return totality: recursive macro diagnostics now
+  reject nested, exclusive-envelope, projected-child, and otherwise
+  non-executable borrowed returns. Exact direct parameters, direct borrowed
+  collection parameters, `Option<&T>`, and `Result<&T, E>` execute through
+  Rust defaults, nested Vela calls, and unchanged Rust callers. The controlled
+  terminal sink validates the exact call-scoped HostRef and reuses the
+  authored Rust borrow without unsafe reference fabrication. Projected Host
+  children remain an ordinary Host-method capability and are not Service
+  return types.
 
 S3 provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared

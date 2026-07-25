@@ -2523,12 +2523,12 @@ registration and capability checks remain shared rather than duplicated.
 
 ### Service Borrowed-Return Refinements Follow The Hard Switch
 
-The unified service hard switch reuses the accepted owner-frozen,
-root-call-tree-scoped borrowed-return model. A returned `&T` or `&mut T`
-becomes a capability-bearing child HostRef with one unambiguous retained
-origin and may be reborrowed through nested Rust/Vela service calls in the same
-root. S0-S7 does not wait for multi-origin return sets, projection-granular
-lease domains, finer owner-conflict checks, or durable cross-root host handles.
+The unified service hard switch reuses the accepted root-call-tree-scoped
+borrowed-return model. An admitted Service return is the exact direct Host
+parameter and reuses that capability-bearing HostRef through nested Rust/Vela
+service calls in the same root. S0-S7 does not wait for multi-origin return
+sets, projected-child Rust restoration, projection-granular lease domains,
+finer owner-conflict checks, or durable cross-root host handles.
 
 Those are later refinements and must be driven by concrete workloads. Durable
 identity, when added, is a separate `HostHandle<T>` contract; it must not
@@ -2539,14 +2539,15 @@ generations.
 
 For service methods, the trait-object `&self` receiver is dispatch machinery,
 not a script-visible borrow origin. Lifetime-only method parameters may state
-the Rust relationship between one borrowed host parameter and its returned
-child; type and const generics remain rejected and no script generic is
-created. Generated Rust-default dispatch moves the exact parent lease into the
-existing scoped-return cell, retains the child in the active root adapter, and
-returns only its `HostRef` to Vela. A Vela-selected service method may forward
-that child through `base` and pinned `services` calls in the same session; the
-child remains owner-frozen, generation-pinned, and non-escaping, and normal
-early/root-end release unfreezes the owner.
+the Rust relationship between one borrowed Host parameter and the same
+returned parameter; type and const generics remain rejected and no script
+generic is created. Generated Rust-default dispatch validates typed pointer
+identity and returns the original HostRef to Vela. The generated terminal sink
+validates exact type, object id, generation, access, and envelope before Rust
+reuses the already-live authored borrow. Projected children remain available
+through ordinary Host methods inside Vela but are rejected as Service return
+types; an erased HostRef is never converted into a fabricated Rust field
+reference.
 
 ### HostRef Hot-Path Work Ships With The Service Hard Switch
 
@@ -3062,11 +3063,13 @@ incomplete method; an accepted generated branch may not defer unsupported
 behavior to a runtime panic or placeholder.
 
 Owned boundary containers cannot contain call-scoped Rust borrows. The initial
-complete scoped-return whitelist is direct `&T`, direct `&mut T`, direct
-borrowed collection views, exact `Option<&T>`, and exact `Result<&T, E>`, all
-synchronous and with one explicit host-parameter origin. `E` must use an
-admitted bidirectional owned Value codec. Other borrowed envelopes and
-arbitrary nested borrowed containers fail during macro expansion. Vela still
+complete scoped-return whitelist is exact direct-parameter `&T`, exact
+direct-parameter `&mut T`, exact borrowed collection parameters,
+`Option<&T>`, and `Result<&T, E>`, all synchronous and with one explicit
+host-parameter origin. A successful return must be that same HostRef. `E` must
+use an admitted bidirectional owned Value codec. Other borrowed envelopes and
+arbitrary nested or projected borrowed returns fail during macro expansion.
+Vela still
 receives only shared/exclusive scoped HostRefs, never real Rust references. A
 generated service-return sink may restore a validated borrow to the Rust
 caller declared by that service signature; ordinary Vela root results, state,

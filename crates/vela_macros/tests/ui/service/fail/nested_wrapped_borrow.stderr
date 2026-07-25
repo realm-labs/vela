@@ -1,0 +1,6 @@
+error: service return contains a call-scoped host borrow inside an owned container
+       return path: Option::Some -> Result::Ok -> Array::element -> shared borrow
+  --> tests/ui/service/fail/nested_wrapped_borrow.rs:12:10
+   |
+12 |     ) -> Option<Result<Vec<&'a Row>, ServiceError>>;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

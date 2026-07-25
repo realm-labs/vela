@@ -64,14 +64,48 @@ impl<'program, 'heap, 'budget> CallArgRuntime<'program, 'heap, 'budget> {
 /// Generated adapters use this token to prove that a returned HostRef is the
 /// exact direct Rust origin before returning that already-live Rust borrow.
 #[doc(hidden)]
+#[derive(Default)]
+struct DirectHostIdentityState {
+    host_ref: Option<HostRef>,
+    scoped_return: Option<ServiceScopedReturn>,
+}
+
 #[derive(Clone, Default)]
-pub struct DirectHostIdentity(Arc<parking_lot::Mutex<Option<HostRef>>>);
+pub struct DirectHostIdentity(Arc<parking_lot::Mutex<DirectHostIdentityState>>);
 
 impl DirectHostIdentity {
     #[must_use]
     pub fn host_ref(&self) -> Option<HostRef> {
-        *self.0.lock()
+        self.0.lock().host_ref
     }
+
+    pub(super) fn prepare_scoped_return(&self) {
+        self.0.lock().scoped_return = None;
+    }
+
+    pub(super) fn complete_scoped_return(&self, returned: ServiceScopedReturn) {
+        self.0.lock().scoped_return = Some(returned);
+    }
+
+    pub(super) fn take_scoped_return(&self) -> Option<ServiceScopedReturn> {
+        self.0.lock().scoped_return.take()
+    }
+}
+
+#[doc(hidden)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ServiceScopedReturnEnvelope {
+    Direct,
+    Option,
+    Result,
+}
+
+#[doc(hidden)]
+#[derive(Debug)]
+pub enum ServiceScopedReturn {
+    Borrowed,
+    Empty,
+    Error(OwnedValue),
 }
 
 impl<'a> CallArgs<'a> {
@@ -292,17 +326,49 @@ impl<'a> CallArgs<'a> {
     where
         T: ScriptHostObject + Sync + 'a,
     {
-        let identity = DirectHostIdentity::default();
-        self.entries.push(CallArg::PositionalHost {
-            host_ref: None,
-            identity: Some(identity.clone()),
-            type_id: value.host_type_id(),
-            binding: HostArgBinding::Shared {
+        self.push_tracked_positional_binding(
+            value.host_type_id(),
+            HostArgBinding::Shared {
                 object: value,
                 leases: Arc::new(AtomicUsize::new(0)),
             },
-        });
-        identity
+        )
+    }
+
+    #[doc(hidden)]
+    pub fn push_tracked_positional_collection_ref<T>(&mut self, value: &'a T) -> DirectHostIdentity
+    where
+        T: ScriptHostObject + crate::standard::StandardTypeBinding + Sync + 'a,
+    {
+        self.push_tracked_positional_binding(
+            crate::standard::standard_collection_host_type_id::<T>(),
+            HostArgBinding::Shared {
+                object: value,
+                leases: Arc::new(AtomicUsize::new(0)),
+            },
+        )
+    }
+
+    #[doc(hidden)]
+    pub fn push_tracked_positional_slice_ref<T>(&mut self, value: &'a [T]) -> DirectHostIdentity
+    where
+        T: ScriptHostFieldAccess
+            + ScriptHostObject
+            + crate::type_registration::RustValueType
+            + Send
+            + Sync
+            + 'static,
+    {
+        let type_id = crate::standard::standard_slice_host_type_id::<T>();
+        self.push_tracked_positional_binding(
+            type_id,
+            HostArgBinding::Scoped {
+                object: Arc::new(parking_lot::RwLock::new(Box::new(
+                    SharedScopedHost::with_type_id(value, type_id),
+                ))),
+                mutable: false,
+            },
+        )
     }
 
     /// Adds writable call-scoped host state.
@@ -434,14 +500,63 @@ impl<'a> CallArgs<'a> {
     where
         T: ScriptHostObject + Send + Sync + 'a,
     {
+        self.push_tracked_positional_binding(
+            value.host_type_id(),
+            HostArgBinding::Mutable {
+                object: Arc::new(parking_lot::RwLock::new(value)),
+            },
+        )
+    }
+
+    #[doc(hidden)]
+    pub fn push_tracked_positional_collection_mut<T>(
+        &mut self,
+        value: &'a mut T,
+    ) -> DirectHostIdentity
+    where
+        T: ScriptHostObject + crate::standard::StandardTypeBinding + Send + Sync + 'a,
+    {
+        self.push_tracked_positional_binding(
+            crate::standard::standard_collection_host_type_id::<T>(),
+            HostArgBinding::Mutable {
+                object: Arc::new(parking_lot::RwLock::new(value)),
+            },
+        )
+    }
+
+    #[doc(hidden)]
+    pub fn push_tracked_positional_slice_mut<T>(&mut self, value: &'a mut [T]) -> DirectHostIdentity
+    where
+        T: ScriptHostFieldAccess
+            + ScriptHostObject
+            + crate::type_registration::RustValueType
+            + Send
+            + Sync
+            + 'static,
+    {
+        let type_id = crate::standard::standard_slice_host_type_id::<T>();
+        self.push_tracked_positional_binding(
+            type_id,
+            HostArgBinding::Scoped {
+                object: Arc::new(parking_lot::RwLock::new(Box::new(
+                    ExclusiveScopedHost::with_type_id(value, type_id),
+                ))),
+                mutable: true,
+            },
+        )
+    }
+
+    fn push_tracked_positional_binding(
+        &mut self,
+        type_id: vela_common::HostTypeId,
+        binding: HostArgBinding<'a>,
+    ) -> DirectHostIdentity {
         let identity = DirectHostIdentity::default();
         self.entries.push(CallArg::PositionalHost {
             host_ref: None,
             identity: Some(identity.clone()),
-            type_id: value.host_type_id(),
-            binding: HostArgBinding::Mutable {
-                object: Arc::new(parking_lot::RwLock::new(value)),
-            },
+            type_id,
+            binding,
         });
         identity
     }
@@ -701,7 +816,7 @@ impl<'a> CallArgs<'a> {
                         );
                         *host_ref = Some(root);
                         if let Some(identity) = identity {
-                            *identity.0.lock() = Some(root);
+                            identity.0.lock().host_ref = Some(root);
                         }
                         *next_object_id = next_object_id.saturating_add(1);
                         (root, true)

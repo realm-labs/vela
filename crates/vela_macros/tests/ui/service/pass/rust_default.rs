@@ -13,7 +13,7 @@ impl Request {}
 pub trait RewardService: Send + Sync {
     fn apply(&self, amount: i64) -> Result<Vec<String>, String>;
 
-    fn values<'borrow>(&self, request: &'borrow mut Request) -> &'borrow mut Vec<i64>;
+    fn request<'borrow>(&self, request: &'borrow mut Request) -> &'borrow mut Request;
 }
 
 fn main() {

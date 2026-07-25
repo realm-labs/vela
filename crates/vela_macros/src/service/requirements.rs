@@ -116,12 +116,90 @@ pub(super) fn add_return_requirements(
                 registrations,
                 registration_keys,
             )),
+            TypeShape::Option(inner) => push_scoped_envelope_requirement(
+                output,
+                inner,
+                None,
+                requirements,
+                requirement_keys,
+                registrations,
+                registration_keys,
+            ),
+            TypeShape::Result(ok, _) => {
+                let error = return_result_error_type(output)?;
+                push_scoped_envelope_requirement(
+                    output,
+                    ok,
+                    Some(error),
+                    requirements,
+                    requirement_keys,
+                    registrations,
+                    registration_keys,
+                )
+            }
             _ => Err(syn::Error::new_spanned(
                 output,
-                "service borrowed returns currently require one direct reference or collection view",
+                "service borrowed return has no supported scoped payload",
             )),
         },
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_scoped_envelope_requirement(
+    output: &ReturnType,
+    payload: &TypeShape,
+    error: Option<Type>,
+    requirements: &mut Vec<RequirementSpec>,
+    requirement_keys: &mut HashSet<String>,
+    registrations: &mut Vec<RegistrationSpec>,
+    registration_keys: &mut HashSet<String>,
+) -> Result<usize> {
+    let top = match payload {
+        TypeShape::Host(ty, HostAccess::Shared) => push_requirement(
+            requirements,
+            requirement_keys,
+            RequirementSpec::new(
+                ty.clone(),
+                host_representation(HostAccess::Shared),
+                "return",
+            ),
+        ),
+        _ => {
+            return Err(syn::Error::new_spanned(
+                output,
+                "service scoped Option/Result requires one shared direct host payload",
+            ));
+        }
+    };
+    if let Some(error) = error {
+        collect_owned_type(
+            &error,
+            "return error",
+            requirements,
+            requirement_keys,
+            registrations,
+            registration_keys,
+        );
+    }
+    Ok(top)
+}
+
+fn return_result_error_type(output: &ReturnType) -> Result<Type> {
+    let ReturnType::Type(_, ty) = output else {
+        return Err(syn::Error::new_spanned(
+            output,
+            "service Result return must name its error type",
+        ));
+    };
+    let args = type_generic_args(ty);
+    let [_, error] = args.as_slice() else {
+        return Err(syn::Error::new_spanned(
+            output,
+            "service Result return must name exactly one error type",
+        ));
+    };
+    Ok((*error).clone())
 }
 
 #[allow(clippy::too_many_arguments)]

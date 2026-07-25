@@ -49,6 +49,7 @@ mod ownership_proof;
 mod profile_api;
 mod provider;
 mod reentry;
+mod service_egress;
 mod state;
 mod state_api;
 #[cfg(test)]
@@ -59,7 +60,9 @@ mod vm_states;
 pub use options::CallOptions;
 
 pub use bytecode_profile::{BytecodeProfileSnapshot, FunctionBytecodeProfile};
-pub use call_args::{CallArgs, DirectHostIdentity};
+pub use call_args::{
+    CallArgs, DirectHostIdentity, ServiceScopedReturn, ServiceScopedReturnEnvelope,
+};
 pub use call_future::RuntimeCallFuture;
 pub use extern_state_bindings::RuntimeExternStateBindings;
 pub use handles::{
@@ -68,6 +71,7 @@ pub use handles::{
 pub use image::{OwnedImage, RuntimeImage, RuntimeImageStorage, SharedImage};
 pub use initialization::{RuntimeBuildError, RuntimeBuilder, RuntimeInitializationLimits};
 pub use provider::{ProviderHandle, ProviderMethodTarget};
+pub use service_egress::ServiceScopedReturnEgress;
 pub use vm_states::{IntoStateValue, RuntimeVmStateStore, VelaValue};
 
 use call_args::call_args_type_error;
@@ -523,26 +527,6 @@ where
         )
     }
 
-    pub(crate) fn call_service_stable_function<'host>(
-        &mut self,
-        function: vela_def::FunctionId,
-        diagnostic_name: impl Into<String>,
-        args: CallArgs<'host>,
-        options: CallOptions,
-        dispatcher: std::sync::Arc<dyn crate::service::ServiceCallDispatcher>,
-    ) -> VmResult<VelaValue> {
-        self.call_impl_with_service_dispatcher(
-            handles::StableVelaFunction {
-                function,
-                diagnostic_name: diagnostic_name.into(),
-            },
-            args,
-            options,
-            false,
-            Some(dispatcher),
-        )
-    }
-
     fn call_impl<'host, T>(
         &mut self,
         entry: T,
@@ -563,6 +547,28 @@ where
         options: CallOptions,
         allow_async_entry: bool,
         service_dispatcher: Option<std::sync::Arc<dyn crate::service::ServiceCallDispatcher>>,
+    ) -> VmResult<VelaValue>
+    where
+        T: RuntimeCallTarget,
+    {
+        self.call_impl_with_service_egress(
+            entry,
+            args,
+            options,
+            allow_async_entry,
+            service_dispatcher,
+            None,
+        )
+    }
+
+    fn call_impl_with_service_egress<'host, T>(
+        &mut self,
+        entry: T,
+        args: CallArgs<'host>,
+        options: CallOptions,
+        allow_async_entry: bool,
+        service_dispatcher: Option<std::sync::Arc<dyn crate::service::ServiceCallDispatcher>>,
+        service_scoped_return: Option<ServiceScopedReturnEgress>,
     ) -> VmResult<VelaValue>
     where
         T: RuntimeCallTarget,
@@ -591,6 +597,7 @@ where
             args,
             budget: &mut budget,
             service_dispatcher,
+            service_scoped_return,
         })
     }
 
@@ -639,34 +646,9 @@ where
             args,
             budget: &mut budget,
             service_dispatcher,
+            service_scoped_return: None,
         })
         .await
-    }
-
-    pub(crate) fn call_service_stable_function_async<'call, 'args>(
-        &'call mut self,
-        function: vela_def::FunctionId,
-        diagnostic_name: impl Into<String>,
-        args: CallArgs<'args>,
-        options: CallOptions,
-        dispatcher: std::sync::Arc<dyn crate::service::ServiceCallDispatcher>,
-    ) -> RuntimeCallFuture<'call>
-    where
-        'args: 'call,
-    {
-        let diagnostic_name = diagnostic_name.into();
-        RuntimeCallFuture::new(async move {
-            self.call_impl_async(
-                handles::StableVelaFunction {
-                    function,
-                    diagnostic_name,
-                },
-                args,
-                options,
-                Some(dispatcher),
-            )
-            .await
-        })
     }
 
     pub fn bind_method<T>(&self, receiver: &VelaValue, method: T) -> VmResult<VelaMethodTarget>
@@ -950,7 +932,21 @@ where
             match outcome {
                 LinkedDriveOutcome::Complete(value) => {
                     let value = vm.finish_linked_execution(value, &mut heap, &roots, budget);
-                    lifetime::validate_root_return(&value, heap.heap, &execution_host)?;
+                    if let Some(egress) = &call.service_scoped_return {
+                        let owned = vela_vm::persistent_value_to_owned_with_host(
+                            &value,
+                            heap.heap,
+                            &execution_host,
+                        )?;
+                        let returned = lifetime::validate_service_scoped_return(
+                            owned,
+                            &egress.identity,
+                            egress.envelope,
+                        )?;
+                        egress.identity.complete_scoped_return(returned);
+                    } else {
+                        lifetime::validate_root_return(&value, heap.heap, &execution_host)?;
+                    }
                     drop(heap);
                     return Ok(RuntimeValueRoots::retain(
                         &retained_values,

@@ -70,7 +70,22 @@ pub trait InventoryService: Send + Sync {
 
     fn conflict(&self, context: &mut RequestContext, values: &mut Vec<i64>) -> i64;
 
-    fn values<'borrow>(&self, context: &'borrow mut RequestContext) -> &'borrow mut Vec<i64>;
+    fn identity<'borrow>(
+        &self,
+        context: &'borrow mut RequestContext,
+    ) -> &'borrow mut RequestContext;
+
+    fn optional<'borrow>(
+        &self,
+        context: &'borrow mut RequestContext,
+        present: bool,
+    ) -> Option<&'borrow RequestContext>;
+
+    fn checked<'borrow>(
+        &self,
+        context: &'borrow mut RequestContext,
+        allowed: bool,
+    ) -> Result<&'borrow RequestContext, String>;
 
     fn borrowed_chain(&self, context: &mut RequestContext) -> i64;
 }
@@ -98,9 +113,30 @@ impl InventoryService for RustInventoryService {
         unreachable!("the Vela conflict patch replaces this method")
     }
 
-    fn values<'borrow>(&self, context: &'borrow mut RequestContext) -> &'borrow mut Vec<i64> {
+    fn identity<'borrow>(
+        &self,
+        context: &'borrow mut RequestContext,
+    ) -> &'borrow mut RequestContext {
         context.borrowed_return_calls += 1;
-        &mut context.borrowed_values
+        context
+    }
+
+    fn optional<'borrow>(
+        &self,
+        context: &'borrow mut RequestContext,
+        present: bool,
+    ) -> Option<&'borrow RequestContext> {
+        present.then_some(&*context)
+    }
+
+    fn checked<'borrow>(
+        &self,
+        context: &'borrow mut RequestContext,
+        allowed: bool,
+    ) -> Result<&'borrow RequestContext, String> {
+        allowed
+            .then_some(&*context)
+            .ok_or_else(|| "blocked".to_owned())
     }
 
     fn borrowed_chain(&self, _context: &mut RequestContext) -> i64 {
@@ -205,14 +241,20 @@ impl InventoryPatch {
     }
 
     fn borrowed_chain(context) {
-        let values = services.inventory.values(context);
-        values.push(4);
-        let sum = services.audit.bump(values);
-        return sum + values.len();
+        services.inventory.identity(context);
+        return 15;
     }
 
-    fn values(context) {
-        return base.values(context);
+    fn identity(context) {
+        return base.identity(context);
+    }
+
+    fn optional(context, present) {
+        return base.optional(context, present);
+    }
+
+    fn checked(context, allowed) {
+        return base.checked(context, allowed);
     }
 }
 "#;
@@ -242,9 +284,33 @@ impl InventoryPatch {
         context.observed_labels,
         ["inventory-base".to_owned(), "audit-rust".to_owned()]
     );
+    let context_address = &mut context as *mut RequestContext as usize;
+    let returned = inventory_patch.inventory().identity(&mut context);
+    assert_eq!(returned as *mut RequestContext as usize, context_address);
+    returned.borrowed_values.push(4);
+    let optional = inventory_patch
+        .inventory()
+        .optional(&mut context, true)
+        .expect("Vela-selected optional direct borrow");
+    assert_eq!(optional as *const RequestContext as usize, context_address);
+    assert!(
+        inventory_patch
+            .inventory()
+            .optional(&mut context, false)
+            .is_none()
+    );
+    let checked = inventory_patch
+        .inventory()
+        .checked(&mut context, true)
+        .expect("Vela-selected fallible direct borrow");
+    assert_eq!(checked as *const RequestContext as usize, context_address);
+    match inventory_patch.inventory().checked(&mut context, false) {
+        Ok(_) => panic!("Vela-selected fallible direct borrow should return Err"),
+        Err(error) => assert_eq!(error, "blocked"),
+    }
     assert_eq!(inventory_patch.inventory().borrowed_chain(&mut context), 15);
-    assert_eq!(context.borrowed_values, [2, 4, 6]);
-    assert_eq!(context.borrowed_return_calls, 1);
+    assert_eq!(context.borrowed_values, [2, 4]);
+    assert_eq!(context.borrowed_return_calls, 2);
     context.borrowed_values.push(8);
 
     let delta_source = r#"
@@ -276,7 +342,7 @@ impl AuditPatch {
             .iter()
             .filter(|(_, selection)| matches!(selection, ServiceMethodSelection::Vela(_)))
             .count(),
-        5
+        7
     );
 
     values.clear();

@@ -557,13 +557,16 @@ state, globals, native caches, unscoped tasks, or the root result. Early
 compiler-proven release and `host::release` remain valid; GC timing is never a
 correctness dependency.
 
-The initial service return whitelist admits synchronous direct borrows,
-direct borrowed collection views, `Option<&T>`, and `Result<&T, E>` with one
-explicit Host-parameter origin. `Some` and `Ok` retain the same scoped child;
-`None` and `Err` retain none, and `E` uses its sealed bidirectional owned Value
-codec. Exclusive Option/Result envelopes, borrowed children nested inside
-owned containers, and async borrowed returns remain rejected during macro
-expansion or service sealing.
+The initial service return whitelist admits synchronous exact-parameter
+borrows, exact borrowed collection parameters, `Option<&T>`, and
+`Result<&T, E>` with one explicit Host-parameter origin. A successful return
+must be the same direct HostRef as that parameter; the generated terminal sink
+validates its type, object identity, generation, and envelope, then Rust
+reuses the already-live authored borrow. `None` and `Err` retain no HostRef,
+and `E` uses its sealed bidirectional owned Value codec. A service signature
+that projects `Table -> &Row`, exclusive Option/Result envelopes, borrowed
+children nested inside owned containers, and async borrowed returns is
+rejected during macro expansion.
 
 The S0-S7 hard switch deliberately keeps this accepted borrowed-return model
 conservative. It requires an unambiguous retained origin, uses owner-level
@@ -574,8 +577,9 @@ need:
 
 - origin sets for signatures whose result may borrow from one of several
   declared parameters, with runtime provenance selecting the actual origin;
-- registered projection metadata and optional lease domains for proving safe
-  disjoint subobject borrows without guessing from pointer addresses or paths;
+- registered projection metadata plus a safe Rust return representation for
+  proving and restoring disjoint subobject borrows without fabricating a
+  reference from an erased HostRef;
 - finer owner-conflict checks where a `TypeBinding` can prove that operations
   touch independent lease domains; and
 - a separate durable `HostHandle<T>` contract for identity that must survive a
@@ -585,9 +589,11 @@ These refinements must preserve the existing rules: scripts never receive real
 Rust references, shared capability never upgrades to exclusive, conflicting
 aliases fail before Rust references exist, nested service calls keep the same
 pinned generation, and scoped borrows never become durable through GC or
-implicit promotion. They are not prerequisites for returning one
-unambiguous-origin `&T` or `&mut T` and passing it through nested Rust/Vela
-services in the same root.
+implicit promotion. They are not prerequisites for returning the exact direct
+`&T` or `&mut T` parameter and passing it through nested Rust/Vela services in
+the same root. Projected Host children remain usable within Vela through
+ordinary registered Host methods; they are not admitted as authored Service
+return types.
 
 #### Required HostRef hot-path contract
 

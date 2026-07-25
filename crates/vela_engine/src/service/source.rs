@@ -115,6 +115,25 @@ impl VelaServiceMethod {
     }
 
     #[doc(hidden)]
+    pub fn call_scoped_with_dispatcher<'host>(
+        &self,
+        runtime: &mut Runtime,
+        args: CallArgs<'host>,
+        options: CallOptions,
+        dispatcher: Arc<dyn ServiceCallDispatcher>,
+        egress: crate::runtime::ServiceScopedReturnEgress,
+    ) -> VmResult<crate::runtime::ServiceScopedReturn> {
+        runtime.call_service_stable_scoped_function(
+            self.function,
+            self.symbol.clone(),
+            args,
+            options,
+            dispatcher,
+            egress,
+        )
+    }
+
+    #[doc(hidden)]
     pub fn call_async_with_dispatcher<'call, 'args>(
         &self,
         runtime: &'call mut Runtime,

@@ -1,0 +1,6 @@
+error: service return uses an unsupported optional exclusive call-scoped host envelope
+       return path: Option::Some -> mutable borrow
+ --> tests/ui/service/fail/optional_mut_borrow.rs:8:48
+  |
+8 |     fn row<'a>(&self, table: &'a mut Table) -> Option<&'a mut Row>;
+  |                                                ^^^^^^^^^^^^^^^^^^^

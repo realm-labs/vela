@@ -1,0 +1,5 @@
+error: service borrowed return must be the exact direct host parameter; projected child references cannot be restored to an unchanged Rust return type without fabricating a reference
+ --> tests/ui/service/fail/projected_borrow.rs:8:41
+  |
+8 |     fn row<'a>(&self, table: &'a Table) -> &'a Row;
+  |                                         ^^^^^^^^^^

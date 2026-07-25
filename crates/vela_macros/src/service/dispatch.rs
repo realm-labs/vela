@@ -2,12 +2,10 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Result, parse_quote};
 
-use crate::export::emission::{
-    exclusive_host_value_tokens, host_type_id_tokens, shared_host_value_tokens,
-};
+use crate::export::emission::{exclusive_host_value_tokens, shared_host_value_tokens};
 use crate::export::signature::{
-    BorrowOrigin, BorrowedCollectionKind, ClassifiedSignature, HostAccess, ParameterMode,
-    ReturnMode, ScopedReturnContainer, TypeShape,
+    BorrowOrigin, BorrowedCollectionKind, ClassifiedSignature, ParameterMode, ReturnMode,
+    ScopedReturnContainer, TypeShape,
 };
 
 pub(super) fn emit_rust_dispatch_arm(
@@ -368,13 +366,13 @@ fn emit_scoped_rust_dispatch_arm(
     method_id: u128,
     arity: TokenStream,
 ) -> Result<TokenStream> {
-    if signature.scoped_return_container() != Some(ScopedReturnContainer::Direct) {
-        return Err(syn::Error::new_spanned(
+    let container = signature.scoped_return_container().ok_or_else(|| {
+        syn::Error::new_spanned(
             &method.sig.output,
-            "service borrowed return dispatch currently supports a direct reference only",
-        ));
-    }
-    let ReturnMode::ScopedHost { origin, child, .. } = signature.returns.mode else {
+            "service borrowed return has no executable scoped envelope",
+        )
+    })?;
+    let ReturnMode::ScopedHost { origin, .. } = signature.returns.mode else {
         unreachable!("scoped dispatcher requires a scoped return");
     };
     let BorrowOrigin::Parameter(origin_index) = origin else {
@@ -383,31 +381,6 @@ fn emit_scoped_rust_dispatch_arm(
             "service borrowed returns must originate from a service parameter",
         ));
     };
-    let child_type_id = host_type_id_tokens(&signature.returns.ty).ok_or_else(|| {
-        syn::Error::new_spanned(
-            &method.sig.output,
-            "service borrowed return has no registered host identity",
-        )
-    })?;
-    let child_kind = match child {
-        HostAccess::Shared => quote! { ::vela_host::lease::HostLeaseKind::Shared },
-        HostAccess::Exclusive => quote! { ::vela_host::lease::HostLeaseKind::Exclusive },
-    };
-    let wrap_child = match child {
-        HostAccess::Shared => quote! {
-            ::vela_host::lease::shared_scoped_host_with_type_id(
-                __vela_child,
-                #child_type_id,
-            )
-        },
-        HostAccess::Exclusive => quote! {
-            ::vela_host::lease::exclusive_scoped_host_with_type_id(
-                __vela_child,
-                #child_type_id,
-            )
-        },
-    };
-
     let mut lease_index = 0_usize;
     let mut origin_lease_index = None;
     let mut lease_requests = Vec::new();
@@ -543,6 +516,121 @@ fn emit_scoped_rust_dispatch_arm(
         )
     })?;
     let method_ident = &method.sig.ident;
+    let origin_argument = &argument_names[usize::from(origin_index)];
+    let call_arguments = argument_names
+        .iter()
+        .enumerate()
+        .map(|(index, argument)| {
+            if index != usize::from(origin_index) {
+                return quote! { #argument };
+            }
+            match signature.parameters[index + 1].mode {
+                ParameterMode::SharedHost => quote! { &*#argument },
+                ParameterMode::ExclusiveHost => quote! { &mut *#argument },
+                _ => unreachable!("borrowed return origin is host-backed"),
+            }
+        })
+        .collect::<Vec<_>>();
+    let direct_root = quote! {
+        ::vela_vm::owned_value::OwnedValue::HostRef(
+            __vela_lease_requests[#origin_lease_index].0,
+        )
+    };
+    let scoped_invocation = match container {
+        ScopedReturnContainer::Direct => quote! {
+            #(#argument_bindings)*
+            let __vela_origin_pointer = ::std::ptr::from_ref(&*#origin_argument);
+            let __vela_child =
+                __vela_default.#method_ident(#(#call_arguments),*);
+            if !::std::ptr::eq(
+                __vela_origin_pointer,
+                ::std::ptr::from_ref(&*__vela_child),
+            ) {
+                return Err(::vela_host::error::HostError {
+                    kind: ::vela_host::error::HostErrorKind::InvalidArgument {
+                        expected: "service direct borrowed return provenance",
+                    },
+                    source_span: None,
+                });
+            }
+            __vela_direct_return = Some(#direct_root);
+            Ok(None)
+        },
+        ScopedReturnContainer::Option => quote! {
+            #(#argument_bindings)*
+            let __vela_origin_pointer = ::std::ptr::from_ref(&*#origin_argument);
+            __vela_direct_return = Some(match __vela_default
+                .#method_ident(#(#call_arguments),*)
+            {
+                Some(__vela_child) => {
+                    if !::std::ptr::eq(
+                        __vela_origin_pointer,
+                        ::std::ptr::from_ref(&*__vela_child),
+                    ) {
+                        return Err(::vela_host::error::HostError {
+                            kind: ::vela_host::error::HostErrorKind::InvalidArgument {
+                                expected: "service optional borrowed return provenance",
+                            },
+                            source_span: None,
+                        });
+                    }
+                    ::vela_vm::owned_value::OwnedValue::enum_variant(
+                        "Option",
+                        "Some",
+                        [("0", #direct_root)],
+                    )
+                }
+                None => ::vela_vm::owned_value::OwnedValue::enum_variant(
+                    "Option",
+                    "None",
+                    ::std::iter::empty::<(
+                        &'static str,
+                        ::vela_vm::owned_value::OwnedValue,
+                    )>(),
+                ),
+            });
+            Ok(None)
+        },
+        ScopedReturnContainer::Result => quote! {
+            #(#argument_bindings)*
+            let __vela_origin_pointer = ::std::ptr::from_ref(&*#origin_argument);
+            __vela_direct_return = Some(match __vela_default
+                .#method_ident(#(#call_arguments),*)
+            {
+                Ok(__vela_child) => {
+                    if !::std::ptr::eq(
+                        __vela_origin_pointer,
+                        ::std::ptr::from_ref(&*__vela_child),
+                    ) {
+                        return Err(::vela_host::error::HostError {
+                            kind: ::vela_host::error::HostErrorKind::InvalidArgument {
+                                expected: "service fallible borrowed return provenance",
+                            },
+                            source_span: None,
+                        });
+                    }
+                    ::vela_vm::owned_value::OwnedValue::enum_variant(
+                        "Result",
+                        "Ok",
+                        [("0", #direct_root)],
+                    )
+                }
+                Err(__vela_error) => {
+                    ::vela_vm::owned_value::OwnedValue::enum_variant(
+                        "Result",
+                        "Err",
+                        [(
+                            "0",
+                            ::vela_engine::args::IntoScriptArg::into_script_arg(
+                                __vela_error,
+                            ),
+                        )],
+                    )
+                }
+            });
+            Ok(None)
+        },
+    };
 
     Ok(quote! {
         #method_id => {
@@ -551,44 +639,22 @@ fn emit_scoped_rust_dispatch_arm(
             let mut __vela_lease_requests =
                 ::vela_host::lease::HostLeaseRequestSet::with_capacity(#lease_index);
             #(#lease_requests)*
-            let __vela_roots = __vela_context.with_scoped_host_return(
+            let mut __vela_direct_return = None;
+            __vela_context.with_scoped_host_return(
                 &__vela_lease_requests,
                 |__vela_leases| {
-                    let __vela_parent = __vela_leases[#origin_lease_index].take();
-                    let __vela_object = ::vela_host::lease::try_scoped_host_cell(
-                        __vela_parent,
-                        |__vela_parent_lease| {
-                            #(#argument_bindings)*
-                            let __vela_child =
-                                __vela_default.#method_ident(#(#argument_names),*);
-                            Ok(#wrap_child)
-                        },
-                    )?;
-                    Ok(Some(::vela_host::adapter::ScopedHostReturns::Single(
-                        ::vela_host::adapter::ScopedHostReturn {
-                            object: __vela_object,
-                            access: #child_kind,
-                        },
-                    )))
+                    let __vela_parent_lease =
+                        &mut __vela_leases[#origin_lease_index];
+                    #scoped_invocation
                 },
             )?;
-            let mut __vela_roots = __vela_roots.ok_or_else(|| {
+            __vela_direct_return.ok_or_else(|| {
                 ::vela_vm::error::VmError::new(
                     ::vela_vm::error::VmErrorKind::TypeMismatch {
-                        operation: "service borrowed return produced no host child",
+                        operation: "service borrowed return produced no direct value",
                     },
                 )
-            })?;
-            if __vela_roots.len() != 1 {
-                return Err(::vela_vm::error::VmError::new(
-                    ::vela_vm::error::VmErrorKind::TypeMismatch {
-                        operation: "service borrowed return produced the wrong child count",
-                    },
-                ));
-            }
-            Ok(::vela_vm::owned_value::OwnedValue::HostRef(
-                __vela_roots.remove(0),
-            ))
+            })
         }
     })
 }

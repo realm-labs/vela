@@ -217,9 +217,12 @@ Value representation with bidirectional lowering. `Option<&mut T>`,
 rejected until a later workload justifies adding one and supplies the complete
 acceptance rows required by this plan.
 
-For service methods, a borrowed return must have one explicit parameter
-origin. The service `&self` receiver is dispatch infrastructure, not a
-host-backed business owner, and cannot be the provenance source.
+For service methods, a borrowed return must be the exact direct Host parameter
+with one explicit origin. The service `&self` receiver is dispatch
+infrastructure, not a host-backed business owner, and cannot be the provenance
+source. A projected child such as `fn row(&self, table: &Table) -> &Row` is
+rejected until a safe typed Rust restoration model exists; an erased HostRef
+is never used to fabricate that Rust reference.
 
 ### 2.4 Required compile-time rejection
 
@@ -393,11 +396,11 @@ borrow to its Rust caller.
 
 Required outcome:
 
-- validate the returned compact HostRef against the declared origin, child
-  type, access mode, root, generation, owner, and borrow group;
-- prove the child descends from the original Rust parameter;
+- validate the returned compact HostRef against the declared direct parameter
+  type, access mode, root, and generation;
+- prove the returned HostRef is exactly the original Rust parameter;
 - close every Vela alias and root-local lease before leaving the session;
-- restore a Rust reference whose lifetime is tied to the original parameter;
+- return the already-live authored Rust parameter borrow;
 - rely on Rust's borrow checker after the generated call returns; and
 - ensure no Runtime-owned or unrelated HostRef can be converted this way.
 
@@ -574,12 +577,11 @@ schema construction cannot contain an adapter-incomplete method
 
 Deliverables:
 
-- admit exact synchronous `Option<&T>` with one host-parameter origin;
-- admit exact synchronous `Result<&T, E>` with one host-parameter origin and
+- admit exact synchronous `Option<&T>` of the same Host parameter;
+- admit exact synchronous `Result<&T, E>` of the same Host parameter and
   an admitted bidirectional owned Value codec for `E`;
 - emit `Option<Host<T>>` or `Result<Host<T>, E>` plus `ScopedHost` metadata;
-- reuse `ScopedHostNativeOutcome::OptionSome`/`ResultOk` and the existing
-  child-retention model;
+- reuse the original direct HostRef after typed pointer/provenance validation;
 - return ordinary Vela `None` without creating a HostRef;
 - return ordinary Vela `Err(E)` without creating a HostRef;
 - preserve type, root, owner, generation, access, provenance, and lease for
@@ -604,7 +606,7 @@ Deliverables:
 - replace the generated panic with a typed scoped-return handoff;
 - implement direct `&T`, direct `&mut T`, direct borrowed collection views,
   `Option<&T>`, and `Result<&T, E>` according to the whitelist;
-- verify provenance against the original Rust parameter lease;
+- verify exact direct identity against the original Rust parameter lease;
 - permit only the generated service-return sink;
 - release all script aliases before returning to Rust;
 - preserve pointer identity without clone, Serde, JSON, or script-record
@@ -617,7 +619,7 @@ Gate:
 unchanged Rust caller receives the declared reference from a Vela selection
 Some and None return through the same authored Rust method
 Ok and Err return through the same authored Rust method
-returned references point into the original Rust owner
+returned references are the exact original Rust parameter
 unrelated, stale, wrong-type, and wrong-generation HostRefs fail closed
 no generated selected branch contains panic/todo/unimplemented
 ```

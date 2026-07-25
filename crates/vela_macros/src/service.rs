@@ -18,7 +18,9 @@ use crate::signature::{
     docs_from_attrs, reject_extern_signature, reject_generic_signature, reject_unsafe_signature,
 };
 
+mod boundary;
 mod dispatch;
+mod egress;
 mod requirements;
 
 use requirements::{
@@ -50,8 +52,10 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             ));
         };
         validate_method(method)?;
+        boundary::validate_return(&method.sig.output)?;
         let mut signature = classify_service_method(&method.sig, &BTreeSet::new())?;
         normalize_service_effects(&mut signature);
+        boundary::validate_outer_scoped_return(&method.sig.output, &signature)?;
         if signature
             .parameters
             .iter()
@@ -664,17 +668,13 @@ fn emit_adapter_method(
         );
     }
     if matches!(signature.returns.mode, ReturnMode::ScopedHost { .. }) {
-        return Ok(quote! {
-            #method_signature {
-                if self.#target_ident.is_some() {
-                    panic!(
-                        "Vela-selected borrowed service return `{}` is not executable yet",
-                        ::core::concat!(#service_path, "::", ::core::stringify!(#method_ident)),
-                    );
-                }
-                #default_call
-            }
-        });
+        return egress::emit_scoped_adapter_method(
+            service_path,
+            method,
+            signature,
+            target_ident,
+            default_call,
+        );
     }
 
     let context_candidates = signature
@@ -1065,7 +1065,7 @@ mod tests {
                     fn values<'borrow>(
                         &self,
                         context: &'borrow mut RequestContext,
-                    ) -> &'borrow mut Vec<i64>;
+                    ) -> &'borrow mut RequestContext;
                 }
             },
         )
@@ -1073,6 +1073,7 @@ mod tests {
         .to_string();
 
         assert!(output.contains("with_scoped_host_return"));
+        assert!(output.contains("call_scoped_with_dispatcher"));
         assert!(output.contains("HostLeaseRequestSet"));
         assert!(output.contains("BorrowedReturnOrigin :: Parameter (0"));
         assert!(!output.contains("borrowed service return dispatch is not executable"));

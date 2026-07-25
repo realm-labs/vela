@@ -1,0 +1,6 @@
+error: service return contains a call-scoped host borrow inside an owned container
+       return path: Array::element -> shared borrow
+ --> tests/ui/service/fail/nested_vec_borrow.rs:8:45
+  |
+8 |     fn rows<'a>(&self, table: &'a Table) -> Vec<&'a Row>;
+  |                                             ^^^^^^^^^^^^

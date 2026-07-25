@@ -1,0 +1,6 @@
+error: service return uses an unsupported fallible exclusive call-scoped host envelope
+       return path: Result::Ok -> mutable borrow
+  --> tests/ui/service/fail/result_mut_borrow.rs:12:10
+   |
+12 |     ) -> Result<&'a mut Row, ServiceError>;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

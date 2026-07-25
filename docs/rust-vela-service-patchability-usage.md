@@ -215,40 +215,37 @@ Ordinary exports are callable from Vela but are not independently replaceable
 Rust call sites. A Rust business call that must be patch-selectable crosses a
 generated service-set method.
 
-### 3.2 Lookup and borrowed returns
+### 3.2 Service borrowed returns
 
 ```rust,ignore
-#[vela_macros::service(path = "example::lookup")]
-pub trait LookupService: Send + Sync {
-    fn get<'a>(
+#[vela_macros::service(path = "example::state")]
+pub trait StateService: Send + Sync {
+    fn identity<'a>(
         &self,
-        table: &'a Table,
-        key: i64,
-    ) -> Option<&'a Row>;
+        state: &'a mut RequestState,
+    ) -> &'a mut RequestState;
+
+    fn optional<'a>(
+        &self,
+        state: &'a mut RequestState,
+        present: bool,
+    ) -> Option<&'a RequestState>;
 
     fn checked<'a>(
         &self,
-        table: &'a Table,
-        key: i64,
-    ) -> Result<&'a Row, ServiceError>;
-
-    fn required<'a>(
-        &self,
-        table: &'a Table,
-        key: i64,
-    ) -> &'a Row;
-
-    fn all<'a>(
-        &self,
-        table: &'a Table,
-    ) -> &'a [Row];
+        state: &'a mut RequestState,
+        allowed: bool,
+    ) -> Result<&'a RequestState, ServiceError>;
 }
 ```
 
-The result origin is the explicit `table` parameter. `Some(&Row)` and
-`Ok(&Row)` retain that root, owner, generation, shared access, and borrow
-provenance. `None` and `Err(ServiceError)` create no HostRef or lease. The
-error type uses its sealed owned Value codec in both directions.
+The successful result is the exact direct `state` parameter. The terminal
+adapter validates the same Host type, object id, generation, access, and
+envelope before reusing the authored Rust borrow. `None` and
+`Err(ServiceError)` carry no HostRef. A projected signature such as
+`fn get(&self, table: &Table) -> Option<&Row>` is rejected as a Service
+method; expose it as the ordinary registered `Table::get` Host method shown
+above and call it from the patch.
 
 ### 3.3 Value, shared Host, and exclusive Host parameters
 
@@ -335,39 +332,39 @@ pub trait AuditService: Send + Sync {
 ```
 
 Root Host arguments and their complete lease set survive supported async
-suspension. A child returned by `lookup.get` may not remain live across
-`.await`; the handler awaits before creating that child, copies required Value
-facts before awaiting, or delegates the whole operation to a Rust async
-service.
+suspension. A child returned by the ordinary `table.get` Host method may not
+remain live across `.await`; the handler awaits before creating that child,
+copies required Value facts before awaiting, or delegates the whole operation
+to a Rust async service.
 
 ## 4. Rust Defaults And Service Set
 
 Rust defaults are ordinary trait implementations:
 
 ```rust,ignore
-pub struct RustLookupService;
+pub struct RustStateService;
 
-impl LookupService for RustLookupService {
-    fn get<'a>(&self, table: &'a Table, key: i64) -> Option<&'a Row> {
-        table.rows.iter().find(|row| row.key == key)
+impl StateService for RustStateService {
+    fn identity<'a>(&self, state: &'a mut RequestState) -> &'a mut RequestState {
+        state
+    }
+
+    fn optional<'a>(
+        &self,
+        state: &'a mut RequestState,
+        present: bool,
+    ) -> Option<&'a RequestState> {
+        present.then_some(&*state)
     }
 
     fn checked<'a>(
         &self,
-        table: &'a Table,
-        key: i64,
-    ) -> Result<&'a Row, ServiceError> {
-        self.get(table, key).ok_or_else(|| ServiceError {
-            message: format!("missing row {key}"),
+        state: &'a mut RequestState,
+        allowed: bool,
+    ) -> Result<&'a RequestState, ServiceError> {
+        allowed.then_some(&*state).ok_or_else(|| ServiceError {
+            message: "blocked".to_owned(),
         })
-    }
-
-    fn required<'a>(&self, table: &'a Table, key: i64) -> &'a Row {
-        self.get(table, key).expect("fixture key exists")
-    }
-
-    fn all<'a>(&self, table: &'a Table) -> &'a [Row] {
-        &table.rows
     }
 }
 ```
@@ -377,8 +374,8 @@ The service set declares one Rust default per service:
 ```rust,ignore
 #[vela_macros::service_set(context = RequestState)]
 pub struct ExampleServices {
-    #[vela::default(RustLookupService)]
-    pub lookup: dyn LookupService,
+    #[vela::default(RustStateService)]
+    pub state: dyn StateService,
     #[vela::default(RustPolicyService)]
     pub policy: dyn PolicyService,
     #[vela::default(RustApplyService)]
@@ -437,16 +434,17 @@ authored signature:
 ```rust,ignore
 let root = services.pin();
 
-let some: Option<&Row> = root.lookup().get(&table, 7);
-let none: Option<&Row> = root.lookup().get(&table, 999);
-let ok: Result<&Row, ServiceError> = root.lookup().checked(&table, 7);
-let err: Result<&Row, ServiceError> = root.lookup().checked(&table, 999);
-let required: &Row = root.lookup().required(&table, 7);
-let rows: &[Row] = root.lookup().all(&table);
+let same: &mut RequestState = root.state().identity(&mut state);
+let some: Option<&RequestState> = root.state().optional(&mut state, true);
+let none: Option<&RequestState> = root.state().optional(&mut state, false);
+let ok: Result<&RequestState, ServiceError> =
+    root.state().checked(&mut state, true);
+let err: Result<&RequestState, ServiceError> =
+    root.state().checked(&mut state, false);
 ```
 
 This code is identical for Rust-default and Vela-selected generations. Calls
-made directly on `RustLookupService` intentionally bypass Vela.
+made directly on `RustStateService` intentionally bypass Vela.
 
 ### 5.2 Generated Rust-to-Vela caller
 
@@ -478,32 +476,36 @@ The Vela patch implements only methods that need correction.
 ### 6.1 Borrowed return through `base`
 
 ```vela
-#[service_impl(example::lookup)]
-impl LookupPatch {
-    fn get(table, key) {
-        if key < 0 {
+#[service_impl(example::state)]
+impl StatePatch {
+    fn identity(state) {
+        return base.identity(state);
+    }
+
+    fn optional(state, present) {
+        if !present {
             return Option::None {};
         }
 
-        return base.get(table, key);
+        return base.optional(state, present);
     }
 
-    fn checked(table, key) {
-        if key < 0 {
+    fn checked(state, allowed) {
+        if !allowed {
             return Result::Err(example::ServiceError {
-                message: "negative key",
+                message: "blocked",
             });
         }
 
-        return base.checked(table, key);
+        return base.checked(state, allowed);
     }
 }
 ```
 
-`base.get` and `base.checked` return their successful borrows as scoped
-HostRefs. Returning them from this service implementation targets the sealed
-generated Rust-return sink; it is not permission to return a HostRef from an
-ordinary Vela root. `None` and `Err(ServiceError)` carry no HostRef.
+The successful branches return the same direct `state` HostRef. Returning it
+targets the sealed generated Rust-return sink; it is not permission to return
+a HostRef from an ordinary Vela root. `None` and `Err(ServiceError)` carry no
+HostRef.
 
 ### 6.2 Full orchestration
 
@@ -518,8 +520,8 @@ impl HandlerPatch {
         services.transform.update_buffer(buffer, 2);
         let inspected_buffer = services.transform.inspect_buffer(buffer);
 
-        let projected = services.lookup
-            .all(table)
+        let projected = table
+            .rows()
             .filter(|row| row.base_score > 0)
             .map(|row| example::ValueRow {
                 key: row.key,
@@ -530,7 +532,7 @@ impl HandlerPatch {
         let owned_total = services.transform.consume(projected);
         let shared_total = services.transform.inspect(projected);
 
-        match services.lookup.get(table, request.key) {
+        match table.get(request.key) {
             Option::Some(row) => {
                 let score = services.policy.score(state, row, request)?;
                 services.apply.apply(state, row, score)?;
@@ -562,8 +564,9 @@ The example exercises:
 - `filter`/`map`/`collect` producing a script-owned typed Array;
 - automatic `Array<ValueRow> -> Vec<ValueRow>`;
 - automatic `Array<ValueRow> -> temporary &[ValueRow]`;
-- `Option<&Row>` Some/None;
-- `Result<&Row, ServiceError>` Ok/Err through the lookup patch;
+- projected `Option<&Row>` through an ordinary registered Host method;
+- exact-parameter `Option<&RequestState>` and
+  `Result<&RequestState, ServiceError>` through the state patch;
 - shared child field reads;
 - passing one child to multiple later services;
 - `&mut RequestState` immediate write-through;

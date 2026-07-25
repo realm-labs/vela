@@ -1,0 +1,6 @@
+error: service return contains a call-scoped host borrow inside an owned container
+       return path: Tuple::0 -> shared borrow
+ --> tests/ui/service/fail/mixed_borrowed_tuple.rs:8:44
+  |
+8 |     fn row<'a>(&self, table: &'a Table) -> (&'a Row, i64);
+  |                                            ^^^^^^^^^^^^^^
