@@ -500,7 +500,7 @@ fn method_sync_scoped_host_adapter(
                 &__vela_contract.public_path,
                 || #cell_constructor(
                     __vela_parent,
-                    move |__vela_parent_lease| {
+                    |__vela_parent_lease| {
                         #receiver_binding
                         let __vela_success = #call_target(
                             __vela_receiver,
@@ -522,7 +522,7 @@ fn method_sync_scoped_host_adapter(
                 &__vela_contract.public_path,
                 || Ok(#cell_constructor(
                     __vela_parent,
-                    move |__vela_parent_lease| {
+                    |__vela_parent_lease| {
                         #receiver_binding
                         match #call_target(__vela_receiver, #(#argument_names),*) {
                             Ok(__vela_success) => { #success_conversion },
@@ -543,7 +543,7 @@ fn method_sync_scoped_host_adapter(
                 &__vela_contract.public_path,
                 || Ok(#cell_constructor(
                     __vela_parent,
-                    move |__vela_parent_lease| {
+                    |__vela_parent_lease| {
                         #receiver_binding
                         match #call_target(__vela_receiver, #(#argument_names),*) {
                             Some(__vela_success) => { #success_conversion },
@@ -577,7 +577,7 @@ fn method_sync_scoped_host_adapter(
                 &__vela_contract.public_path,
                 || Ok(#cell_constructor(
                     __vela_parent,
-                    move |__vela_parent_lease| {
+                    |__vela_parent_lease| {
                         #receiver_binding
                         match #call_target(__vela_receiver, #(#argument_names),*) {
                             Ok(__vela_success) => { #success_conversion },
