@@ -128,7 +128,24 @@ success_example!(
     service_hard_switch_fixture_runs_through_complete_deployment_chain,
     env!("CARGO_BIN_EXE_service_hard_switch_fixture"),
     "service_hard_switch_fixture rust=1711 rule=1741 delta1=1741 delta2=1741 \
-     snapshot=1741 vela_methods=3 rollback=5->4\n",
+    snapshot=1741 vela_methods=3 rollback=5->4\n",
+);
+
+success_example!(
+    service_hotfix_coverage_runs_the_total_patchability_matrix,
+    env!("CARGO_BIN_EXE_service_hotfix_coverage"),
+    "service_hotfix_coverage rust-default score=7 applied=7 audits=1\n\
+service_hotfix_coverage snapshot some=1 none=true checked_err=blocked score=18\n\
+service_hotfix_coverage nested shared=2 exclusive-write=17\n\
+service_hotfix_coverage delta-1 score=28\n\
+service_hotfix_coverage delta-2 score=28 applied=27 audits=2\n\
+service_hotfix_coverage old-root score=18\n\
+service_hotfix_coverage rejected stale=true abi=true\n\
+service_hotfix_coverage folded score=28\n\
+service_hotfix_coverage rollback score=28 effects=preserved\n\
+service_hotfix_coverage zero-copy clones=0 codecs=0\n\
+service_hotfix_coverage construct shared=7 exclusive=12 reclaimed=true\n\
+service_hotfix_coverage collections owned=8 shared=8 mutable-copyback=false\n",
 );
 
 success_example!(

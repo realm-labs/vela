@@ -1,6 +1,6 @@
 # Rust/Vela Service Patchability Completion Plan
 
-> Status: Active plan
+> Status: P0-P6 accepted; P7 final acceptance active
 >
 > Scope: make every admitted generated service method completely executable
 > through Rust defaults and Vela-selected implementations
@@ -69,15 +69,15 @@ policy while keeping authoritative objects and side effects in Rust:
 pub trait LookupService: Send + Sync {
     fn get<'a>(
         &self,
-        table: &'a Table,
-        key: i64,
-    ) -> Option<&'a Row>;
+        state: &'a mut RequestState,
+        present: bool,
+    ) -> Option<&'a RequestState>;
 
     fn checked<'a>(
         &self,
-        table: &'a Table,
-        key: i64,
-    ) -> Result<&'a Row, ServiceError>;
+        state: &'a mut RequestState,
+        allowed: bool,
+    ) -> Result<&'a RequestState, ServiceError>;
 }
 
 #[vela::service(path = "coverage::apply")]
@@ -91,10 +91,12 @@ pub trait ApplyService: Send + Sync {
 ```
 
 A Vela implementation must be able to call `lookup.get` or `lookup.checked`,
-branch on `Some`/`None` or `Ok`/`Err`, read the returned `Row`, pass it to
-`apply` together with `&mut RequestState`, call Rust `base`, call another
-patched service through `services`, and return either an owned result or the
-borrowed result declared by the service method.
+branch on `Some`/`None` or `Ok`/`Err`, call Rust `base`, call another patched
+service through `services`, and return either an owned result or the exact
+borrowed Host argument declared by the service method. Projected children such
+as `&Table -> &Row` remain ordinary Host-method returns: admitting them as
+outer Service returns would require fabricating an unchanged Rust reference
+after the service Runtime is torn down.
 
 ### 1.2 Explicit non-goals
 
@@ -681,6 +683,10 @@ every failure path leaves owner and lease counts unchanged
 
 ### P6 — Add the runnable coverage demo
 
+**Status:** Accepted. `service_hotfix_coverage` and its three colocated Vela
+sources produce the fixed transcript in section 7.5; the runnable-examples
+test asserts the complete output.
+
 Deliverables:
 
 - add the files in section 7;
@@ -946,9 +952,12 @@ ValueRow         owned Value used after Vela collection transforms
 PatchBuffer      call-scoped constructible Host scratch object
 ```
 
-`Row` deliberately implements neither `Clone` nor `Serialize`. Adjacent
-instrumentation tracks owned-codec entry so the demo can additionally assert
-that lookup never serializes or materializes a script record.
+`Row` deliberately implements neither `Clone` nor `Serialize`. It is passed as
+a shared Host argument to policy/apply services. Adjacent instrumentation
+tracks owned-codec entry so the demo can additionally assert that the service
+chain never serializes or materializes a script record. Direct, optional, and
+fallible borrowed Service returns use the exact `RequestState` Host argument;
+projected `Table -> Row` lookup belongs to the ordinary Host-method ABI.
 `PatchBuffer` is constructed inside Vela, passed first as shared and then
 exclusive to Rust, and reclaimed when the root ends. `ValueRow` is produced by
 `filter`/`map`/`collect` and passed to Rust as both `Vec<ValueRow>` and
@@ -959,14 +968,20 @@ exclusive to Rust, and reclaimed when the root ends. `ValueRow` is produced by
 ```rust,ignore
 #[service(path = "coverage::lookup")]
 trait LookupService: Send + Sync {
-    fn get<'a>(&self, table: &'a Table, key: i64) -> Option<&'a Row>;
+    fn get<'a>(
+        &self,
+        state: &'a mut RequestState,
+        present: bool,
+    ) -> Option<&'a RequestState>;
     fn checked<'a>(
         &self,
-        table: &'a Table,
-        key: i64,
-    ) -> Result<&'a Row, ServiceError>;
-    fn required<'a>(&self, table: &'a Table, key: i64) -> &'a Row;
-    fn all<'a>(&self, table: &'a Table) -> &'a [Row];
+        state: &'a mut RequestState,
+        allowed: bool,
+    ) -> Result<&'a RequestState, ServiceError>;
+    fn required<'a>(
+        &self,
+        state: &'a mut RequestState,
+    ) -> &'a RequestState;
 }
 
 #[service(path = "coverage::policy")]
@@ -1024,12 +1039,13 @@ The binary executes one unchanged Rust caller through:
 1. Rust-default generation.
 2. A sparse Snapshot patching `lookup.get`, `lookup.checked`, and
    `policy.score`.
-3. `Some(&Row)` returned from Vela selection to ordinary Rust.
+3. `Some(&RequestState)` returned from Vela selection to ordinary Rust.
 4. `None` returned from the same selected method.
-5. `Ok(&Row)` and `Err(ServiceError)` returned from one selected method.
-6. A Vela handler chain that consumes `Some(&Row)` and `Ok(&Row)`, reads
-   fields, passes the child to `policy` and `apply`, and mutates
-   `&mut RequestState`.
+5. `Ok(&RequestState)` and `Err(ServiceError)` returned from one selected
+   method.
+6. A Vela handler chain that consumes a direct scoped Host return before its
+   async suspension, then passes a Rust-selected `Row` Host argument to
+   `policy` and `apply` and mutates `&mut RequestState`.
 7. `base` from one patched method.
 8. `services` calls spanning Rust and Vela selections in one generation.
 9. A first exact-base Delta changing policy while inheriting lookup.
@@ -1048,7 +1064,8 @@ The binary executes one unchanged Rust caller through:
 
 The demo also asserts:
 
-- returned `Row` pointer identity equals the original table element;
+- returned `RequestState` pointer identity equals the original direct Host
+  argument;
 - shared children cannot invoke exclusive operations;
 - `None` changes no lease count;
 - no Row clone/owned codec/Serde path runs;

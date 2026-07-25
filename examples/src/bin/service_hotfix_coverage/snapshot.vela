@@ -1,0 +1,38 @@
+#[service_impl(coverage::lookup)]
+impl LookupSnapshot {
+    fn get(context, present) {
+        return base.get(context, present);
+    }
+
+    fn checked(context, allowed) {
+        return base.checked(context, allowed);
+    }
+
+    fn required(context) {
+        return base.required(context);
+    }
+}
+
+// BEGIN_INITIAL_POLICY
+#[service_impl(coverage::policy)]
+impl PolicySnapshot {
+    fn score(context, row, adjustment) {
+        let score = base.score(context, row, adjustment)?;
+        return Result::Ok(score + 10);
+    }
+}
+// END_INITIAL_POLICY
+
+#[service_impl(coverage::handler)]
+impl HandlerSnapshot {
+    async fn handle(context, table, request) {
+        services.lookup.required(context);
+        let response = base.handle(context, table, request).await?;
+        return Result::Ok(coverage::Response {
+            key: response.key,
+            score: response.score + 1,
+            applied: response.applied,
+            audits: response.audits,
+        });
+    }
+}

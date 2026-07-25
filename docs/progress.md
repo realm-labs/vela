@@ -20,7 +20,8 @@ results returned to ordinary Rust callers. Unsupported nested borrowed
 containers must fail during macro expansion rather than survive as a
 runtime-only limitation.
 
-P0-P5 are accepted. The next active checkpoint is P6 runnable coverage demo.
+P0-P6 are accepted. The next active checkpoint is P7 final acceptance and
+documentation.
 
 Phase status:
 
@@ -71,6 +72,14 @@ Phase status:
   returns, closures, async suspension, dynamic calls, or reflection; and
   `base`/`services` are compiler-owned lexical capabilities that cannot become
   dynamic or reflected callable values.
+- P6 accepted for runnable coverage: `service_hotfix_coverage` drives one
+  unchanged async Rust caller through RustDefault, a sparse Snapshot, two
+  exact-base Deltas, old-root isolation, rejected stale/ABI-incompatible
+  candidates, a folded Snapshot, and conditional rollback. The same fixed
+  transcript covers direct/optional/fallible Host returns to Rust,
+  same-generation nesting, zero-copy Row arguments, call-scoped Host
+  reclamation, owned/shared collection lowering, and mutable copy-back
+  rejection.
 - Cross-cutting host-method checkpoint accepted: grouped `#[vela::methods]`
   exports accept explicit additive `effects(...)`, so read-only receivers may
   truthfully declare event, time, random, I/O, or reflection effects without
@@ -220,9 +229,9 @@ collection views retain zero-copy write-through.
 
 CLI/LSP schema metadata now reports each Host service parameter's reachable
 `Injected`, `Constructible`, and `ProducedBorrow` origins from the same sealed
-service and TypeBinding facts. Remaining closure work is dispatch/lifetime
-parity auditing, the consolidated runnable coverage demo, and the full
-validation matrix.
+service and TypeBinding facts. Dispatch/lifetime parity and the consolidated
+runnable coverage demo are accepted; the remaining closure work is the P7
+repository-wide validation and final documentation audit.
 
 The active
 [completion plan](rust-vela-service-patchability-completion-plan.md) owns the
@@ -280,8 +289,8 @@ changes.
 
 ## Next Up
 
-1. Finish service dispatch/lifetime parity, then add the runnable coverage
-   demo from the service patchability completion plan.
+1. Run and record the P7 final service patchability validation matrix, then
+   close and archive the completion plan.
 2. Resume M20.5 only for a named editor-visible language-service gap.
 3. Audit the parameterized container and value-keyed Map/Set plans against
    their explicit acceptance matrices.

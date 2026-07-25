@@ -1,0 +1,7 @@
+#[service_impl(coverage::policy)]
+impl PolicyDelta {
+    fn score(context, row, adjustment) {
+        let score = base.score(context, row, adjustment)?;
+        return Result::Ok(score + 20);
+    }
+}

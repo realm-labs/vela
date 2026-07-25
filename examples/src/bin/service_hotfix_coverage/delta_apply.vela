@@ -1,0 +1,35 @@
+#[service_impl(coverage::apply)]
+impl ApplyDelta {
+    fn apply(context, row, score) {
+        base.apply(context, row, score)?;
+        services.audit.record(context, score + 100);
+        return Result::Ok(());
+    }
+}
+
+#[service_impl(coverage::transform)]
+impl TransformDelta {
+    fn collections(context, values) {
+        let transformed = values
+            .filter(|value| value.amount >= 2)
+            .map(|value| coverage::ValueRow {
+                amount: value.amount + 1,
+            });
+        let shared = base.inspect(context, transformed);
+        let owned = base.consume(context, transformed);
+        return owned * 100 + shared;
+    }
+
+    fn buffer(context) {
+        let buffer = PatchBuffer::new(7);
+        let shared = base.inspect_buffer(context, buffer);
+        base.update_buffer(context, buffer, 5);
+        let updated = base.inspect_buffer(context, buffer);
+        return shared * 100 + updated;
+    }
+
+    fn copyback(context, values) {
+        let transformed = values.map(|value| value);
+        return base.copyback(context, transformed);
+    }
+}

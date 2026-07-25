@@ -15,6 +15,7 @@ cargo run --manifest-path examples/Cargo.toml --bin container_type_hints
 cargo run --manifest-path examples/Cargo.toml --bin io_stdlib
 cargo run --manifest-path examples/Cargo.toml --bin interop_round_trip
 cargo run --manifest-path examples/Cargo.toml --bin service_hard_switch_fixture
+cargo run --manifest-path examples/Cargo.toml --bin service_hotfix_coverage
 ```
 
 Each example directory keeps the Rust entrypoint and script source together:
@@ -49,6 +50,14 @@ Other useful embedding examples:
   cross-service calls without patch-aware business branches or Vela entry on
   the Rust-default path. Handler/rule/event roles have no separate replacement
   API.
+- `service_hotfix_coverage`: the complete generated-service patchability
+  walkthrough. One unchanged async Rust caller runs through RustDefault, a
+  sparse Snapshot, two exact-base Deltas, an old pinned root, rejected stale
+  and ABI-incompatible candidates, a folded Snapshot, and conditional
+  rollback. The same run proves direct, optional, and fallible call-scoped
+  Host returns to Rust, same-generation nested calls, zero-copy Host
+  arguments, call-scoped Host construction/reclamation, owned and shared
+  collection lowering, and rejection of mutable script-owned copy-back.
 - `interop_round_trip`: the primary ordinary interop workflow. Vela calls an
   exported Rust function and methods using normal syntax, while Rust calls the
   Vela entry through build-time generated typed bindings. Authored calls do not
