@@ -100,13 +100,13 @@ mod tests {
         );
         assert_ne!(
             slice.type_desc().key,
-            super::super::standard_type_binding::<Vec<i64>>()
+            crate::standard::standard_type_binding::<Vec<i64>>()
                 .type_desc()
                 .key
         );
         assert_ne!(
             slice.type_desc().key,
-            super::super::standard_type_binding::<[i64; 3]>()
+            crate::standard::standard_type_binding::<[i64; 3]>()
                 .type_desc()
                 .key
         );
