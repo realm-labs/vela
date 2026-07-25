@@ -18,15 +18,30 @@ impl Equipment {
 }
 
 #[derive(Debug, ScriptHost)]
+#[script(path = "config::server::EquipmentEntry")]
+enum EquipmentEntry {
+    Equipment(Box<Equipment>),
+}
+
+#[methods(path = "config::server::EquipmentEntry")]
+impl EquipmentEntry {
+    pub fn as_equipment(&self) -> Option<&Equipment> {
+        match self {
+            Self::Equipment(value) => Some(value),
+        }
+    }
+}
+
+#[derive(Debug, ScriptHost)]
 #[script(path = "config::server::EquipmentTable")]
 struct EquipmentTable {
-    rows: Box<[Equipment]>,
+    rows: Box<[EquipmentEntry]>,
 }
 
 #[methods(path = "config::server::EquipmentTable")]
 impl EquipmentTable {
     #[script_method(host_collection)]
-    pub fn values(&self) -> &[Equipment] {
+    pub fn values(&self) -> &[EquipmentEntry] {
         &self.rows
     }
 }
@@ -37,6 +52,8 @@ fn borrowed_host_object_slice_seals_and_compiles_as_a_collection_view() {
         .capability(Capability::HostRead)
         .register_rust_type::<Equipment>(Equipment::vela_type_binding())
         .register_exports(Equipment::vela_inherent_exports())
+        .register_rust_type::<EquipmentEntry>(EquipmentEntry::vela_type_binding())
+        .register_exports(EquipmentEntry::vela_inherent_exports())
         .register_rust_type::<EquipmentTable>(EquipmentTable::vela_type_binding())
         .register_exports(EquipmentTable::vela_inherent_exports())
         .build()
@@ -50,7 +67,8 @@ pub fn count(table: EquipmentTable) -> i64 {
     if rows.len() == 0 {
         return 0;
     }
-    let row = rows[0];
+    let entry = rows[0];
+    let row = entry.as_equipment()?;
     return row.id() + rows.len();
 }
 "#,
@@ -59,7 +77,7 @@ pub fn count(table: EquipmentTable) -> i64 {
 
     let mut runtime = Runtime::new(engine, program).expect("host slice runtime");
     let table = EquipmentTable {
-        rows: vec![Equipment { id: 41 }].into_boxed_slice(),
+        rows: vec![EquipmentEntry::Equipment(Box::new(Equipment { id: 41 }))].into_boxed_slice(),
     };
     let result = runtime
         .call(

@@ -228,10 +228,74 @@ fn expand_enum_result(expansion: EnumExpansion) -> Result<TokenStream> {
         trait_names,
     } = expansion;
     if matches!(generated_method, GeneratedMethod::Host) {
-        return Err(spanned_error(
+        let schema_hash = schema::opaque_enum_schema_hash(
             &input,
-            "ScriptHost enum schemas are not supported; use ScriptReflect for enum metadata",
-        ));
+            &type_name,
+            Some(&module_name),
+            &type_attrs,
+            &trait_names,
+        );
+        let ident = input.ident;
+        let method = generated_method.ident();
+        let trait_impl = generated_method.trait_impl_tokens(&ident, &method);
+        let module_tokens = quote! { .attr("module", #module_name) };
+        let docs_tokens = docs.map(|docs| quote! { .docs(#docs) });
+        let type_attr_tokens = type_attrs.iter().map(|(name, value)| {
+            quote! {
+                desc = desc.attr(#name, #value);
+            }
+        });
+        let trait_tokens = trait_names.iter().map(|trait_name| {
+            quote! {
+                desc = desc.trait_impl(::vela_reflect::registry::TraitDesc::new(#trait_name));
+            }
+        });
+        let field_access_impl = emission::field_access_impl_tokens(&ident, &[]);
+        return Ok(quote! {
+            impl #ident {
+                #[must_use]
+                pub const fn vela_type_id() -> ::vela_def::TypeId {
+                    ::vela_def::TypeId::new(#type_id)
+                }
+
+                #[must_use]
+                pub const fn vela_host_type_id() -> ::vela_common::HostTypeId {
+                    ::vela_common::HostTypeId::new(#host_id)
+                }
+
+                #[must_use]
+                pub const fn vela_stable_type_path() -> &'static str {
+                    #stable_path
+                }
+
+                #[must_use]
+                pub fn vela_type_binding() -> ::vela_engine::type_binding::TypeBinding<Self> {
+                    <Self as ::vela_engine::schema::ScriptHostSchema>::script_host_binding()
+                }
+
+                #[must_use]
+                pub fn #method() -> ::vela_reflect::registry::TypeDesc {
+                    let mut desc = ::vela_reflect::registry::TypeDesc::new(
+                        ::vela_reflect::registry::TypeKey::new(
+                            ::vela_def::TypeId::new(#type_id),
+                            #type_name,
+                        ),
+                    )
+                    .kind(::vela_reflect::registry::TypeKind::Host)
+                    .schema_hash(::vela_reflect::registry::SchemaHash::new(#schema_hash))
+                    .host_type(::vela_common::HostTypeId::new(#host_id))
+                    #module_tokens
+                    #docs_tokens
+                    .attr("host_shape", "opaque_enum");
+                    #(#type_attr_tokens)*
+                    #(#trait_tokens)*
+                    desc
+                }
+            }
+
+            #trait_impl
+            #field_access_impl
+        });
     }
     let variants = schema::collect_variants(&input, &type_name, &stable_path)?;
     let schema_hash = schema::enum_schema_hash(

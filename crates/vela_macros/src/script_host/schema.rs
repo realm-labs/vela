@@ -307,3 +307,30 @@ pub(super) fn enum_schema_hash(
     }
     hasher.finish()
 }
+
+pub(super) fn opaque_enum_schema_hash(
+    input: &DeriveInput,
+    type_name: &str,
+    module_name: Option<&str>,
+    attrs: &[(String, String)],
+    traits: &[String],
+) -> u64 {
+    let mut hasher = StableHasher::new();
+    hasher.write_str(type_name);
+    if let Some(module_name) = module_name {
+        hasher.write_str(module_name);
+    }
+    for (name, value) in attrs {
+        hasher.write_str(name);
+        hasher.write_str(value);
+    }
+    for trait_name in traits {
+        hasher.write_str(trait_name);
+    }
+    if let Data::Enum(data) = &input.data {
+        for variant in &data.variants {
+            hasher.write_str(&variant.to_token_stream().to_string());
+        }
+    }
+    hasher.finish()
+}
