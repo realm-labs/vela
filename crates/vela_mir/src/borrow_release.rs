@@ -266,6 +266,11 @@ fn is_manual_release_or_escape(
                 {
                     true
                 }
+                kind if is_direct_scoped_return(kind)
+                    && operands_in_statement(kind).contains(&candidate) =>
+                {
+                    true
+                }
                 MirStatementKind::Assign(MirRvalue::Use(source))
                     if operand_value(source) == Some(candidate)
                         && matches!(statement.destination, Some(MirPlace::Local(_))) =>

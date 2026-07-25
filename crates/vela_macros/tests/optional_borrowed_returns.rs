@@ -29,6 +29,12 @@ pub struct Table {
     last_returned_address: AtomicUsize,
 }
 
+#[derive(Debug, ScriptHost)]
+#[script(path = "host::Config")]
+pub struct Config {
+    table: Table,
+}
+
 #[methods(path = "host::Row")]
 impl Row {
     pub fn read_value(&self) -> i64 {
@@ -43,6 +49,13 @@ impl Table {
             touches: 0,
             last_returned_address: AtomicUsize::new(0),
         }
+    }
+}
+
+#[methods(path = "host::Config")]
+impl Config {
+    pub fn table(&self) -> &Table {
+        &self.table
     }
 }
 
@@ -85,13 +98,43 @@ fn engine() -> Engine {
         .reflection_policy(vela_reflect::permissions::ReflectPolicy::all())
         .register_host_type::<Row>()
         .register_host_type::<Table>()
+        .register_host_type::<Config>()
         .register_exports(vela_export_bundle_lookup())
         .register_exports(vela_export_bundle_first_row())
         .register_exports(vela_export_bundle_ready())
         .register_exports(Row::vela_inherent_exports())
         .register_exports(Table::vela_inherent_exports())
+        .register_exports(Config::vela_inherent_exports())
         .build()
         .expect("optional borrowed-return fixture should register")
+}
+
+#[test]
+fn nested_scoped_method_returns_release_child_before_parent() {
+    let engine = engine();
+    let program = engine
+        .compile_source(
+            "fn main(config: Config) { \
+                 let table = config.table(); \
+                 let row = table.get(1)?; \
+                 return row.value; \
+             }",
+        )
+        .expect("nested borrowed returns should compile");
+    let mut runtime =
+        Runtime::new(engine, program).expect("nested borrowed runtime should initialize");
+    let config = Config {
+        table: Table::fixture(),
+    };
+    let result = runtime
+        .call(
+            "main",
+            CallArgs::new().with_host_ref("config", &config),
+            CallOptions::unbounded(),
+        )
+        .expect("nested borrowed returns should release in dependency order");
+
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(11)));
 }
 
 fn runtime(source: &str) -> Runtime {
