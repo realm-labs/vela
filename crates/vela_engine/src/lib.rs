@@ -6,6 +6,8 @@
 
 extern crate self as vela_engine;
 
+#[cfg(feature = "artifact-codec")]
+pub mod admin;
 pub mod args;
 pub mod binding;
 pub mod builder;
