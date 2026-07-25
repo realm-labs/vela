@@ -223,6 +223,12 @@ pub(crate) fn inferred_type_hint(ty: &Type) -> Option<String> {
         "String" => "String".to_owned(),
         "Vec" => {
             let args = type_generic_args(ty);
+            if matches!(
+                args.as_slice(),
+                [element] if inferred_type_hint(element).as_deref() == Some("u8")
+            ) {
+                return Some("Bytes".to_owned());
+            }
             return args
                 .first()
                 .and_then(|arg| inferred_type_hint(arg))

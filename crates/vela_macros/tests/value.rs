@@ -43,6 +43,13 @@ struct GrantBundle {
 #[script(path = "host::EmptyValue")]
 struct EmptyValue {}
 
+#[derive(Debug, Eq, PartialEq, Value)]
+#[script(path = "host::ByteRecord")]
+struct ByteRecord {
+    bytes: Vec<u8>,
+    chunks: Vec<Vec<u8>>,
+}
+
 #[script_function(name = "host::current_decision", effect = "pure")]
 fn current_decision() -> GrantDecision {
     GrantDecision::Granted {
@@ -100,6 +107,49 @@ fn empty_value_struct_has_an_unambiguous_record_codec() {
     assert_eq!(
         EmptyValue::from_script_arg(&encoded).expect("empty structural decode"),
         EmptyValue {}
+    );
+}
+
+#[test]
+fn byte_vector_fields_use_the_runtime_bytes_contract() {
+    let desc = ByteRecord::vela_value_type_desc();
+    assert_eq!(desc.fields[0].type_hint.as_deref(), Some("Bytes"));
+    assert_eq!(desc.fields[1].type_hint.as_deref(), Some("Array<Bytes>"));
+
+    let engine = Engine::builder()
+        .register_rust_value_closure::<ByteRecord>()
+        .build()
+        .expect("byte record binding should seal");
+    let program = engine
+        .compile_source(
+            r#"
+fn make_bytes() {
+    return host::ByteRecord {
+        bytes: b"",
+        chunks: [b""],
+    };
+}
+"#,
+        )
+        .expect("derived byte fields should accept Vela Bytes literals");
+    let codec = engine
+        .type_bindings()
+        .value_codec::<ByteRecord>()
+        .expect("derived byte record codec");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+    let result = runtime
+        .call("make_bytes", CallArgs::new(), CallOptions::unbounded())
+        .expect("script should construct the byte record");
+    let result = runtime
+        .value_to_owned(&result)
+        .expect("byte record should materialize");
+
+    assert_eq!(
+        codec.decode(&result).expect("byte fields should decode"),
+        ByteRecord {
+            bytes: Vec::new(),
+            chunks: vec![Vec::new()],
+        }
     );
 }
 

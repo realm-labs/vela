@@ -806,6 +806,11 @@ HostRef<T>                         <-> host object reference
 HostResult<T>                      -> Vela call success or diagnostic error
 ```
 
+`Vec<u8>` is the concrete byte-buffer exception to the general `Vec<T>` array
+mapping. Generated `Value` and `ScriptHost` schemas therefore advertise it as
+`Bytes`, including nested shapes such as `Vec<Vec<u8>>` as `Array<Bytes>`, so
+compiler type checking and runtime encoding use the same representation.
+
 Do not represent these Rust implementation types as Vela values:
 
 ```text

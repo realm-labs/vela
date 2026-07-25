@@ -112,6 +112,8 @@ struct ContainerHints {
     #[script(get)]
     rewards: Vec<i64>,
     #[script(get)]
+    bytes: Vec<u8>,
+    #[script(get)]
     tags: BTreeSet<String>,
     #[script(get)]
     scores: BTreeMap<String, i64>,
@@ -469,18 +471,20 @@ fn script_host_sample_game_schemas_register_with_engine_builder() {
 fn script_host_derive_infers_parameterized_container_hints() {
     let desc = ContainerHints::vela_host_type_desc();
 
-    assert_eq!(desc.fields.len(), 4);
+    assert_eq!(desc.fields.len(), 5);
     assert_eq!(desc.fields[0].name, "rewards");
     assert_eq!(desc.fields[0].type_hint.as_deref(), Some("Array<i64>"));
-    assert_eq!(desc.fields[1].name, "tags");
-    assert_eq!(desc.fields[1].type_hint.as_deref(), Some("Set<String>"));
-    assert_eq!(desc.fields[2].name, "scores");
+    assert_eq!(desc.fields[1].name, "bytes");
+    assert_eq!(desc.fields[1].type_hint.as_deref(), Some("Bytes"));
+    assert_eq!(desc.fields[2].name, "tags");
+    assert_eq!(desc.fields[2].type_hint.as_deref(), Some("Set<String>"));
+    assert_eq!(desc.fields[3].name, "scores");
     assert_eq!(
-        desc.fields[2].type_hint.as_deref(),
+        desc.fields[3].type_hint.as_deref(),
         Some("Map<String, i64>")
     );
-    assert_eq!(desc.fields[3].name, "explicit_rewards");
-    assert_eq!(desc.fields[3].type_hint.as_deref(), Some("Array<i64>"));
+    assert_eq!(desc.fields[4].name, "explicit_rewards");
+    assert_eq!(desc.fields[4].type_hint.as_deref(), Some("Array<i64>"));
 }
 
 #[test]
