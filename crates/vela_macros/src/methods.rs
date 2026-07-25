@@ -79,10 +79,10 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             method.sig.ident
         ));
     }
-    if generated.is_empty() {
+    if trait_path.is_some() && generated.is_empty() {
         return Err(syn::Error::new_spanned(
             &item,
-            "#[vela::methods] requires at least one supported public method",
+            "#[vela::methods] requires at least one supported trait method",
         ));
     }
     let bundle = if let Some(trait_path) = trait_path {
@@ -352,5 +352,20 @@ mod tests {
             2
         );
         assert_eq!(output.matches("as_str").count(), 2);
+    }
+
+    #[test]
+    fn empty_inherent_method_group_still_emits_host_object_and_export_bundle() {
+        let expanded = expand_result(
+            quote! { path = "config::Tables" },
+            quote! {
+                impl Tables {}
+            },
+        )
+        .expect("field-only host type should support an empty method group");
+        let output = expanded.to_string();
+
+        assert!(output.contains("vela_inherent_exports"));
+        assert!(output.contains("ScriptHostObject"));
     }
 }

@@ -37,6 +37,26 @@ pub struct Team {
     marker: i64,
 }
 
+#[derive(Debug, ScriptHost)]
+#[script(path = "game::FieldOnly")]
+pub struct FieldOnly {
+    #[script(get, hint = "FieldChild")]
+    child: FieldChild,
+}
+
+#[methods(path = "game::FieldOnly")]
+impl FieldOnly {}
+
+#[derive(Debug, ScriptHost)]
+#[script(path = "game::FieldChild")]
+pub struct FieldChild {
+    #[script(get)]
+    value: i64,
+}
+
+#[methods(path = "game::FieldChild")]
+impl FieldChild {}
+
 #[methods(path = "game::Team")]
 impl Team {
     pub fn total(&self) -> i64 {
@@ -511,6 +531,34 @@ fn host_exports_allow_two_shared_aliases() {
         .expect("shared aliases should coexist");
 
     assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(12)));
+}
+
+#[test]
+fn empty_inherent_method_group_supports_field_only_host_objects() {
+    let engine = Engine::builder()
+        .capability(Capability::HostRead)
+        .register_rust_type::<FieldOnly>(FieldOnly::vela_type_binding())
+        .register_exports(FieldOnly::vela_inherent_exports())
+        .register_rust_type::<FieldChild>(FieldChild::vela_type_binding())
+        .register_exports(FieldChild::vela_inherent_exports())
+        .build()
+        .expect("field-only host type should register");
+    let program = engine
+        .compile_source("fn main(value: FieldOnly) { return value.child.value; }")
+        .expect("field getter should compile");
+    let mut runtime = Runtime::new(engine, program).expect("field-only runtime should initialize");
+    let value = FieldOnly {
+        child: FieldChild { value: 42 },
+    };
+    let result = runtime
+        .call(
+            "main",
+            CallArgs::new().with_host_ref("value", &value),
+            CallOptions::unbounded(),
+        )
+        .expect("field-only host object should cross the root boundary");
+
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(42)));
 }
 
 #[test]
