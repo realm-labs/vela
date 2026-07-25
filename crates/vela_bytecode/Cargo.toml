@@ -5,10 +5,22 @@ edition.workspace = true
 license.workspace = true
 
 [features]
+artifact-codec = [
+  "dep:bincode",
+  "dep:serde",
+  "vela_common/serde",
+  "vela_def/serde",
+  "vela_hir/serde",
+  "vela_host/serde",
+  "vela_mir/serde",
+  "vela_package/serde",
+]
 test-support = ["vela_mir/test-support"]
 
 [dependencies]
+bincode = { workspace = true, optional = true }
 blake3 = { workspace = true }
+serde = { workspace = true, optional = true }
 vela_analysis = { workspace = true }
 vela_common = { workspace = true }
 vela_def = { workspace = true }

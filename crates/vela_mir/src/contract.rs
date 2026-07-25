@@ -1,6 +1,7 @@
 use vela_common::{HostTypeId, PrimitiveTag, ShapeId};
 use vela_def::{TypeId, VariantId};
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct HostTypeTarget {
     pub semantic: TypeId,
@@ -13,6 +14,7 @@ pub struct HostTypeTarget {
 /// and guard behavior. Positional arity is modeled separately so an erased
 /// callable contract (`None`) cannot be confused with a proven zero-argument
 /// callable (`Some(0)`).
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum MirCallableKind {
     Function,
@@ -22,6 +24,7 @@ pub enum MirCallableKind {
 /// Runtime callable representations accepted by one source contract.
 /// A `Function` contract accepts both direct functions and closures; a
 /// `Closure` contract accepts closures only.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct MirCallableKindSet {
     direct_function: bool,
@@ -57,6 +60,7 @@ impl MirCallableKindSet {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MirTypeContract {
     Any,

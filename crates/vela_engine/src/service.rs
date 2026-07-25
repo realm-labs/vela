@@ -1,6 +1,8 @@
 //! Whole-generation publication for generated Rust/Vela service sets.
 
 mod deployment;
+#[cfg(feature = "artifact-codec")]
+mod portable;
 mod runtime;
 mod schema;
 mod selection;
@@ -9,6 +11,11 @@ mod source;
 pub use deployment::{
     ServiceBundleChecksum, ServiceBundleError, ServiceDryRunReport, ServicePackageIdentity,
     ServiceSelectionSummary, ServiceUpdateBundle, ServiceUpdateMetadata, ServiceUpdateMode,
+};
+#[cfg(feature = "artifact-codec")]
+pub use portable::{
+    PortableDiagnosticSource, PortableServiceBundleChecksum, PortableServiceBundleError,
+    PortableServiceUpdateBundle,
 };
 pub use runtime::{
     ServiceCallDispatcher, ServiceCallTarget, ServiceFuture, ServiceInvocationError,

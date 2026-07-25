@@ -21,6 +21,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::num::NonZeroU32;
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum CallableAsyncness {
     #[default]
@@ -67,6 +68,7 @@ pub fn service_dispatch_stable_id(
 
 macro_rules! stable_id {
     ($name:ident, $inner:ty) => {
+        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
         #[repr(transparent)]
         pub struct $name(pub $inner);
@@ -195,6 +197,7 @@ impl SymbolInterner {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Span {
     pub source: SourceId,

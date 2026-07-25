@@ -19,6 +19,10 @@ use vela_package::{ModulePath, PackageId};
 
 pub const RUST_BINDING_SCHEMA_VERSION: u32 = 5;
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RustBindingSchema {
     version: u32,
@@ -26,12 +30,20 @@ pub struct RustBindingSchema {
     packages: Box<[RustBindingPackage]>,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RustBindingPackage {
     pub id: PackageId,
     pub modules: Box<[RustBindingModule]>,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RustBindingModule {
     pub path: ModulePath,
@@ -39,12 +51,20 @@ pub struct RustBindingModule {
     pub callables: Box<[RustBindingCallable]>,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RustBindingTypeDefinition {
     Record(RustBindingRecord),
     Enum(RustBindingEnum),
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RustBindingRecord {
     pub type_id: TypeId,
@@ -56,6 +76,10 @@ pub struct RustBindingRecord {
     pub source: Span,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RustBindingEnum {
     pub type_id: TypeId,
@@ -67,6 +91,10 @@ pub struct RustBindingEnum {
     pub source: Span,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RustBindingField {
     pub name: String,
@@ -74,6 +102,10 @@ pub struct RustBindingField {
     pub source: Span,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RustBindingVariant {
     pub name: String,
@@ -81,6 +113,10 @@ pub struct RustBindingVariant {
     pub source: Span,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RustBindingVariantFields {
     Unit,
@@ -88,6 +124,10 @@ pub enum RustBindingVariantFields {
     Record(Box<[RustBindingField]>),
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RustBindingCallableIdentity {
     Function(FunctionId),
@@ -112,6 +152,10 @@ impl RustBindingCallableIdentity {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RustBindingCallable {
     pub identity: RustBindingCallableIdentity,
@@ -143,12 +187,20 @@ impl RustBindingCallable {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RustBindingMethodOwner {
     pub type_id: TypeId,
     pub public_path: String,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RustBindingBoundaryMode {
     Value,
@@ -156,6 +208,10 @@ pub enum RustBindingBoundaryMode {
     ExclusiveHost,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RustBindingParameter {
     pub identity: u64,
@@ -166,12 +222,20 @@ pub struct RustBindingParameter {
     pub source: Span,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RustBindingParameterDefault {
     Required,
     VelaExpression { source: Span },
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RustBindingType {
     Any,
@@ -256,6 +320,10 @@ impl RustBindingType {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RustBindingReturnMode {
     OwnedValue,
@@ -267,24 +335,40 @@ pub enum RustBindingReturnMode {
     },
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RustBindingErrorMode {
     Value,
     RuntimeResult,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RustBindingBorrowedReturnOrigin {
     Receiver,
     Parameter(u16),
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RustBindingScopedHostAccess {
     Shared,
     Exclusive,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RustBindingReturn {
     pub ty: RustBindingType,
@@ -292,6 +376,10 @@ pub struct RustBindingReturn {
     pub error_mode: RustBindingErrorMode,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct RustBindingEffectSet {
     pub may_trap: bool,
@@ -1012,7 +1100,9 @@ fn method_owners(
     Ok(owners)
 }
 
-fn effective_effects(bundle: &vela_mir::OwnedVerifiedMirBundle) -> BTreeMap<FunctionId, MirEffect> {
+pub(crate) fn effective_effects(
+    bundle: &vela_mir::OwnedVerifiedMirBundle,
+) -> BTreeMap<FunctionId, MirEffect> {
     let mut effects = BTreeMap::new();
     let mut callees = BTreeMap::<FunctionId, BTreeSet<FunctionId>>::new();
     for (root_id, root) in bundle.roots() {

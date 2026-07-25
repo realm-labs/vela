@@ -541,6 +541,21 @@ impl Engine {
         linker.link_compiled_program(program)
     }
 
+    #[cfg(feature = "artifact-codec")]
+    pub fn link_portable_program(
+        &self,
+        program: vela_bytecode::PortableCompiledProgram,
+    ) -> Result<Arc<LinkedArtifact>, LinkError> {
+        let mut linker = Linker::with_registry(&self.definition_registry);
+        for id in self.native_implementation_ids() {
+            linker.add_native_implementation(id);
+        }
+        for (id, entry) in &self.service_dispatch_natives {
+            linker.add_internal_native_implementation(*id, entry.asyncness);
+        }
+        linker.link_portable_program(program)
+    }
+
     pub fn install(&self, vm: &mut Vm) {
         self.install_with_registry(vm, Arc::clone(&self.registry));
     }

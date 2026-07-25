@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 macro_rules! validated_identity {
     ($name:ident, $kind:literal, $validator:ident) => {
+        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
         pub struct $name(Arc<str>);
 
@@ -69,6 +70,7 @@ impl fmt::Display for IdentityError {
 
 impl std::error::Error for IdentityError {}
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ModulePath(Vec<String>);
 

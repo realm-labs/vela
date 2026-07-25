@@ -297,7 +297,16 @@ fn compile_program_inner(
     );
     validate_state_initializers(&verified_mir, program.states())?;
     let mir_executables = compiled_mir_executables(&verified_mir);
-    attach_compiled_mir_identities(&mut code, &mir_executables);
+    let verified_capabilities = crate::binding_schema::effective_effects(&verified_mir)
+        .into_iter()
+        .map(|(function, effect)| {
+            (
+                function,
+                crate::RustBindingEffectSet::from(effect).required_capabilities(),
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    attach_compiled_mir_identities(&mut code, &mir_executables, &verified_capabilities);
     for code in code {
         program.insert_function(code);
     }
@@ -700,25 +709,33 @@ fn compiled_bytecode_layouts(program: &UnlinkedProgram) -> Box<[CompiledMirExecu
 fn attach_compiled_mir_identities(
     roots: &mut [UnlinkedCodeObject],
     layouts: &[CompiledMirExecutable],
+    verified_capabilities: &BTreeMap<vela_def::FunctionId, CapabilitySet>,
 ) {
     fn attach_nested(
         code: &mut UnlinkedCodeObject,
         layouts: &[CompiledMirExecutable],
+        verified_capabilities: &BTreeMap<vela_def::FunctionId, CapabilitySet>,
         next: &mut usize,
     ) {
         for nested in &mut code.nested_functions {
             nested.compiled_mir = layouts.get(*next).copied();
+            nested.stable_function = nested.compiled_mir.map(|identity| identity.root);
+            nested.verified_capabilities = nested
+                .stable_function
+                .and_then(|function| verified_capabilities.get(&function).copied());
             *next += 1;
-            attach_nested(nested, layouts, next);
+            attach_nested(nested, layouts, verified_capabilities, next);
         }
     }
 
     for (code, layout) in roots.iter_mut().zip(layouts) {
         code.compiled_mir = Some(*layout);
+        code.stable_function = Some(layout.root);
+        code.verified_capabilities = verified_capabilities.get(&layout.root).copied();
     }
     let mut next = roots.len();
     for root in roots {
-        attach_nested(root, layouts, &mut next);
+        attach_nested(root, layouts, verified_capabilities, &mut next);
     }
 }
 

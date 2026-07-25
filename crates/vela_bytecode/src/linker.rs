@@ -127,6 +127,21 @@ impl<'registry> Linker<'registry> {
             )
             .map(Arc::new)
     }
+
+    /// Binds a decoded, source-independent bytecode artifact against this
+    /// process's exact native/type registry.
+    ///
+    /// Format version 1 portable artifacts are interpreter-only and therefore
+    /// carry no process-local MIR/JIT layouts.
+    #[cfg(feature = "artifact-codec")]
+    pub fn link_portable_program(
+        &self,
+        program: crate::PortableCompiledProgram,
+    ) -> Result<Arc<crate::LinkedArtifact>, LinkError> {
+        let (linked, package_metadata) = self.link_unowned(&program.bytecode, None)?;
+        debug_assert!(package_metadata.is_none());
+        Ok(Arc::new(linked.bind_portable(program.binding_schema)))
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

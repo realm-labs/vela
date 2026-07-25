@@ -6,6 +6,7 @@ version.workspace = true
 
 [dependencies]
 arc-swap = { workspace = true }
+bincode = { workspace = true, optional = true }
 blake3 = { workspace = true }
 parking_lot = { workspace = true }
 serde = { workspace = true, optional = true }
@@ -27,6 +28,7 @@ vela_stdlib = { workspace = true }
 vela_vm = { workspace = true }
 
 [features]
+artifact-codec = ["dep:bincode", "dep:serde", "vela_bytecode/artifact-codec"]
 schema-artifact = ["dep:vela_language_service"]
 serde = ["dep:serde", "vela_vm/serde"]
 

@@ -6,6 +6,7 @@ use crate::{
     protocol::{HostCollectionKey, HostCollectionKeyRef},
 };
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct HostTargetPlan {
     pub root_type: HostTypeId,
@@ -78,6 +79,7 @@ impl HostTargetPlan {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum HostPathPart {
     Field(FieldId),
@@ -179,6 +181,31 @@ impl Ord for HostPathParts {
 impl PartialOrd for HostPathParts {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for HostPathParts {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serde::Serialize::serialize(self.as_slice(), serializer)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for HostPathParts {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let parts = <Vec<HostPathPart> as serde::Deserialize>::deserialize(deserializer)?;
+        let mut result = Self::with_capacity(parts.len());
+        for part in parts {
+            result.push(part);
+        }
+        Ok(result)
     }
 }
 

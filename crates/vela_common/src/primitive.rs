@@ -1,5 +1,6 @@
 use std::fmt;
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum PrimitiveTag {
     Unit,
@@ -91,6 +92,7 @@ impl fmt::Display for PrimitiveTag {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum NumericTag {
     I8,
@@ -160,6 +162,7 @@ impl fmt::Display for NumericTag {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ScalarValue {
     I8(i8),

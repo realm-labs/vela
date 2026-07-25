@@ -12,6 +12,8 @@ pub mod linked;
 pub mod linker;
 mod nominal;
 mod package_metadata;
+#[cfg(feature = "artifact-codec")]
+mod portable;
 pub mod program_image;
 mod script_metadata;
 pub mod script_methods;
@@ -38,7 +40,8 @@ pub(crate) use cache_policy::{CacheSiteInstruction, CacheSiteStorage};
 use std::collections::BTreeMap;
 
 use vela_common::{
-    CallableAsyncness, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span, StateSlot,
+    CallableAsyncness, CapabilitySet, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span,
+    StateSlot,
 };
 use vela_def::{FunctionId, MethodId, StateId, TypeId};
 use vela_hir::ids::HirLocalId;
@@ -63,6 +66,11 @@ pub use package_metadata::{
     PackageCompilationInput, PackageCompilationMetadata, PackageCompileRequestFingerprint,
     ProviderCompilationInput, ProviderMethodCompilationInput, ProviderReceiverPlan,
     ProviderSelectionFingerprint,
+};
+#[cfg(feature = "artifact-codec")]
+pub use portable::{
+    PortableArtifactChecksum, PortableArtifactError, PortableCompiledProgram,
+    PortableProgramArtifact,
 };
 pub use program_image::ProgramImage;
 pub use script_metadata::{derived_linked_record_trait_fields, derived_record_trait_fields};
@@ -91,7 +99,7 @@ impl UnlinkedProgram {
     }
 
     pub fn insert_function(&mut self, function: UnlinkedCodeObject) {
-        let identity = function.compiled_mir.map(|identity| identity.root);
+        let identity = function.stable_function;
         let existing = identity
             .and_then(|id| self.function_by_id.get(&id).copied())
             .or_else(|| {
@@ -113,12 +121,7 @@ impl UnlinkedProgram {
                     .name
                     .as_str()
                     .cmp(function.name.as_str())
-                    .then_with(|| {
-                        existing
-                            .compiled_mir
-                            .map(|identity| identity.root)
-                            .cmp(&identity)
-                    })
+                    .then_with(|| existing.stable_function.cmp(&identity))
             })
             .unwrap_or_else(|index| index);
         self.functions.insert(insertion, function);
@@ -302,10 +305,23 @@ impl UnlinkedProgram {
                     .enumerate()
                     .filter_map(|(index, function)| {
                         function
-                            .compiled_mir
-                            .map(|identity| (identity.root, FunctionIndex(index)))
+                            .stable_function
+                            .map(|identity| (identity, FunctionIndex(index)))
                     }),
             );
+    }
+
+    #[cfg(feature = "artifact-codec")]
+    fn rebuild_state_index(&mut self) {
+        self.state_slots_by_name.clear();
+        self.state_slots_by_id.clear();
+        for (index, state) in self.states.iter().enumerate() {
+            let slot = StateSlot::new(index);
+            self.state_slots_by_name
+                .entry(state.qualified_name.clone())
+                .or_insert(slot);
+            self.state_slots_by_id.entry(state.id).or_insert(slot);
+        }
     }
 }
 
@@ -365,6 +381,10 @@ impl UnlinkedProgramCode for UnlinkedProgram {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnlinkedCodeObject {
     pub name: String,
@@ -380,6 +400,13 @@ pub struct UnlinkedCodeObject {
     pub param_guards: Vec<UnlinkedParameterTypeGuard>,
     pub return_guard: Option<UnlinkedTypeGuard>,
     pub nested_functions: Vec<UnlinkedCodeObject>,
+    pub(crate) stable_function: Option<FunctionId>,
+    /// Capabilities observed by the verified compiler for this stable root,
+    /// including transitive script calls. Portable artifacts retain this
+    /// proof summary when process-local MIR is omitted.
+    #[cfg_attr(feature = "artifact-codec", serde(default))]
+    pub(crate) verified_capabilities: Option<CapabilitySet>,
+    #[cfg_attr(feature = "artifact-codec", serde(skip))]
     pub(crate) compiled_mir: Option<compiler::CompiledMirExecutableIdentity>,
     pub instructions: Vec<UnlinkedInstruction>,
 }
@@ -401,6 +428,8 @@ impl UnlinkedCodeObject {
             param_guards: Vec::new(),
             return_guard: None,
             nested_functions: Vec::new(),
+            stable_function: None,
+            verified_capabilities: None,
             compiled_mir: None,
             instructions: Vec::new(),
         }
@@ -417,6 +446,13 @@ impl UnlinkedCodeObject {
     pub const fn with_asyncness(mut self, asyncness: CallableAsyncness) -> Self {
         self.asyncness = asyncness;
         self
+    }
+
+    /// Returns the compiler-verified transitive capability summary when one
+    /// was retained for this executable.
+    #[must_use]
+    pub const fn verified_capabilities(&self) -> Option<CapabilitySet> {
+        self.verified_capabilities
     }
 
     #[must_use]
@@ -493,6 +529,10 @@ impl UnlinkedCodeObject {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct FrameDebugInfo {
     pub slots: Vec<FrameSlotInfo>,
@@ -524,11 +564,16 @@ impl FrameDebugInfo {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FrameSlotInfo {
     pub name: String,
     pub register: Register,
     pub kind: FrameSlotKind,
+    #[cfg_attr(feature = "artifact-codec", serde(skip))]
     pub local: Option<HirLocalId>,
     pub span: Option<Span>,
 }
@@ -562,6 +607,10 @@ impl FrameSlotInfo {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FrameSlotKind {
     Capture,
@@ -572,6 +621,10 @@ pub enum FrameSlotKind {
     PatternBinding,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Constant {
     Unit,
@@ -584,6 +637,10 @@ pub enum Constant {
     Map(Vec<(String, Constant)>),
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FormatStringPart {
     Text(ConstantId),
@@ -607,18 +664,38 @@ impl Constant {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Register(pub u16);
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ConstantId(pub usize);
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct InstructionOffset(pub usize);
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct FunctionIndex(pub usize);
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct HostTargetPlanId(u32);
@@ -640,12 +717,20 @@ impl HostTargetPlanId {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UnlinkedParameterTypeGuard {
     pub parameter: u16,
     pub guard: UnlinkedTypeGuard,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UnlinkedTypeGuard {
     pub plan: UnlinkedTypeGuardPlan,
@@ -659,6 +744,10 @@ impl UnlinkedTypeGuard {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum UnlinkedTypeGuardPlan {
     Primitive(PrimitiveTag),
@@ -713,6 +802,10 @@ pub enum UnlinkedTypeGuardPlan {
     },
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum StandardTypeGuard {
     Array,
@@ -726,6 +819,10 @@ pub enum StandardTypeGuard {
     Result,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UnlinkedGuardContext {
     pub kind: GuardKind,
@@ -744,6 +841,10 @@ impl UnlinkedGuardContext {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BinaryLiteralOp {
     Add,
@@ -757,12 +858,20 @@ pub enum BinaryLiteralOp {
     GreaterEqual,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BinaryLiteralSide {
     Left,
     Right,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum I64CompareOp {
     Equal,
@@ -773,12 +882,18 @@ pub enum I64CompareOp {
     GreaterEqual,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnlinkedInstruction {
     pub kind: UnlinkedInstructionKind,
     pub span: Option<Span>,
     pub execution_units: u32,
+    #[cfg_attr(feature = "artifact-codec", serde(skip))]
     pub(crate) mir_origin: Option<vela_mir::MirBudgetSite>,
+    #[cfg_attr(feature = "artifact-codec", serde(skip))]
     pub(crate) mir_budget_charges: Box<[MirBudgetCharge]>,
 }
 
@@ -801,6 +916,10 @@ impl UnlinkedInstruction {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum UnlinkedInstructionKind {
     ChargeExecutionUnits {
@@ -1221,24 +1340,40 @@ pub enum UnlinkedInstructionKind {
     },
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TryPropagateFamily {
     Option,
     Result,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ScriptCallMode {
     Checked,
     Unchecked,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CallArgument {
     Register(Register),
     Missing,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DynamicCallArgument {
     pub name: Option<String>,

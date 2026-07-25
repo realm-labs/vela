@@ -2,6 +2,10 @@ use std::collections::BTreeMap;
 
 use vela_def::{FunctionId, MethodId, TypeId};
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ScriptMethodTable {
     methods: BTreeMap<ScriptMethodKey, ScriptMethod>,
@@ -85,6 +89,10 @@ impl ScriptMethodTable {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ScriptMethod {
     pub id: MethodId,
@@ -93,12 +101,20 @@ pub struct ScriptMethod {
     pub function: String,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 struct ScriptMethodKey {
     owner: TypeId,
     method: String,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 struct ScriptMethodIdKey {
     owner: TypeId,

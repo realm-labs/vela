@@ -436,6 +436,10 @@ impl LinkedVariant {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GuardKind {
     Contract,
@@ -530,6 +534,10 @@ impl GuardContext {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GuardLocation {
     Parameter { index: u16 },

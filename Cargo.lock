@@ -100,6 +100,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
+name = "bincode"
+version = "1.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1135,7 +1144,9 @@ dependencies = [
 name = "vela_bytecode"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "blake3",
+ "serde",
  "vela_analysis",
  "vela_common",
  "vela_def",
@@ -1176,6 +1187,7 @@ dependencies = [
 name = "vela_common"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "vela_def",
 ]
 
@@ -1184,6 +1196,7 @@ name = "vela_def"
 version = "0.1.0"
 dependencies = [
  "blake3",
+ "serde",
 ]
 
 [[package]]
@@ -1191,6 +1204,7 @@ name = "vela_engine"
 version = "0.1.0"
 dependencies = [
  "arc-swap",
+ "bincode",
  "blake3",
  "parking_lot",
  "serde",
@@ -1217,6 +1231,7 @@ dependencies = [
 name = "vela_hir"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "vela_common",
  "vela_def",
  "vela_package",
@@ -1229,6 +1244,7 @@ version = "0.1.0"
 dependencies = [
  "parking_lot",
  "self_cell",
+ "serde",
  "smallvec",
  "syn",
  "vela_common",
@@ -1299,6 +1315,7 @@ dependencies = [
 name = "vela_mir"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "vela_analysis",
  "vela_common",
  "vela_def",
@@ -1310,6 +1327,7 @@ dependencies = [
 name = "vela_package"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "toml_edit",
  "vela_common",
 ]

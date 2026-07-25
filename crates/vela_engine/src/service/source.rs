@@ -11,6 +11,8 @@ use vela_hir::ids::{HirBodyId, HirDeclId, HirNodeId, ModuleId};
 use vela_hir::module_graph::ModuleGraph;
 use vela_hir::service_impl::{ServiceImplCatalog, ServiceImplCatalogError};
 use vela_hir::type_hint::FunctionSignature;
+#[cfg(feature = "artifact-codec")]
+use vela_hir::type_hint::ParamHint;
 use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
@@ -33,6 +35,47 @@ pub struct VelaServiceMethod {
     signature: FunctionSignature,
     effect_ceiling: EffectSet,
     function: FunctionId,
+    symbol: String,
+    span: Span,
+}
+
+#[cfg(feature = "artifact-codec")]
+#[derive(Clone, Debug, serde::Deserialize, Eq, PartialEq, serde::Serialize)]
+pub(crate) struct PortableServiceSourceManifest {
+    updates: Vec<PortableServiceMethodUpdate>,
+}
+
+#[cfg(feature = "artifact-codec")]
+impl PortableServiceSourceManifest {
+    pub(crate) fn len(&self) -> usize {
+        self.updates.len()
+    }
+}
+
+#[cfg(feature = "artifact-codec")]
+#[derive(Clone, Debug, serde::Deserialize, Eq, PartialEq, serde::Serialize)]
+struct PortableServiceMethodUpdate {
+    service_id: u128,
+    method_id: u128,
+    expected_service_abi: u64,
+    selection: PortableServiceMethodSelection,
+}
+
+#[cfg(feature = "artifact-codec")]
+#[derive(Clone, Debug, serde::Deserialize, Eq, PartialEq, serde::Serialize)]
+enum PortableServiceMethodSelection {
+    RustDefault,
+    Vela(PortableVelaServiceMethod),
+}
+
+#[cfg(feature = "artifact-codec")]
+#[derive(Clone, Debug, serde::Deserialize, Eq, PartialEq, serde::Serialize)]
+struct PortableVelaServiceMethod {
+    implementation: String,
+    asyncness: vela_common::CallableAsyncness,
+    parameter_count: u32,
+    effect_capabilities: vela_common::CapabilitySet,
+    function: u128,
     symbol: String,
     span: Span,
 }
@@ -409,6 +452,117 @@ impl ServiceSourceManifest {
     pub fn into_updates(self) -> Vec<ServiceMethodUpdate<VelaServiceMethod>> {
         self.updates
     }
+
+    #[cfg(feature = "artifact-codec")]
+    pub(crate) fn to_portable(&self) -> PortableServiceSourceManifest {
+        PortableServiceSourceManifest {
+            updates: self
+                .updates
+                .iter()
+                .map(|update| PortableServiceMethodUpdate {
+                    service_id: update.key().service_id.get(),
+                    method_id: update.key().method_id.get(),
+                    expected_service_abi: update.expected_service_abi().get(),
+                    selection: match update.selection() {
+                        ServiceMethodSelection::RustDefault => {
+                            PortableServiceMethodSelection::RustDefault
+                        }
+                        ServiceMethodSelection::Vela(method) => {
+                            PortableServiceMethodSelection::Vela(PortableVelaServiceMethod {
+                                implementation: method.implementation.clone(),
+                                asyncness: method.signature.asyncness,
+                                parameter_count: u32::try_from(method.signature.params.len())
+                                    .expect("service parameter count exceeds u32::MAX"),
+                                effect_capabilities: method
+                                    .effect_ceiling
+                                    .required_capability_set(),
+                                function: method.function.get(),
+                                symbol: method.symbol.clone(),
+                                span: method.span,
+                            })
+                        }
+                    },
+                })
+                .collect(),
+        }
+    }
+
+    #[cfg(feature = "artifact-codec")]
+    pub(crate) fn from_portable(
+        manifest: PortableServiceSourceManifest,
+    ) -> Result<Self, ServiceSourceError> {
+        let mut updates = Vec::with_capacity(manifest.updates.len());
+        for update in manifest.updates {
+            let key = ServiceMethodKey::new(
+                vela_common::ServiceId::new(update.service_id),
+                vela_common::ServiceMethodId::new(update.method_id),
+            );
+            let selection = match update.selection {
+                PortableServiceMethodSelection::RustDefault => ServiceMethodSelection::RustDefault,
+                PortableServiceMethodSelection::Vela(method) => {
+                    let parameter_count =
+                        usize::try_from(method.parameter_count).map_err(|_| {
+                            ServiceSourceError::new(
+                                method.span,
+                                ServiceSourceErrorKind::InvalidDeclaration(
+                                    "portable service parameter count exceeds this platform"
+                                        .to_owned(),
+                                ),
+                            )
+                        })?;
+                    ServiceMethodSelection::Vela(VelaServiceMethod {
+                        implementation: method.implementation,
+                        declaration: HirDeclId::new(0),
+                        node: HirNodeId::new(0),
+                        body: HirBodyId::new(0),
+                        module: ModuleId::new(0),
+                        signature: FunctionSignature {
+                            asyncness: method.asyncness,
+                            params: (0..parameter_count)
+                                .map(|index| ParamHint {
+                                    name: format!("arg{index}"),
+                                    span: method.span,
+                                    type_hint: None,
+                                    default_value_span: None,
+                                    default_body: None,
+                                })
+                                .collect(),
+                            return_type: None,
+                        },
+                        effect_ceiling: effect_set_from_capabilities(method.effect_capabilities),
+                        function: FunctionId::new(method.function),
+                        symbol: method.symbol,
+                        span: method.span,
+                    })
+                }
+            };
+            updates.push(ServiceMethodUpdate::new(
+                key,
+                vela_common::ServiceAbiFingerprint::new(update.expected_service_abi),
+                selection,
+            ));
+        }
+        Ok(Self { updates })
+    }
+}
+
+fn effect_set_from_capabilities(capabilities: vela_common::CapabilitySet) -> EffectSet {
+    let mut effects = EffectSet::pure();
+    for capability in capabilities.iter() {
+        effects = effects.union(match capability {
+            vela_common::Capability::HostRead => EffectSet::host_read(),
+            vela_common::Capability::HostWrite => EffectSet::host_write(),
+            vela_common::Capability::EventEmit => EffectSet::event_emit(),
+            vela_common::Capability::Time => EffectSet::time(),
+            vela_common::Capability::Random => EffectSet::random(),
+            vela_common::Capability::IoRead => EffectSet::io_read(),
+            vela_common::Capability::IoWrite => EffectSet::io_write(),
+            vela_common::Capability::ReflectionRead => EffectSet::reflection_read(),
+            vela_common::Capability::ReflectionWrite => EffectSet::reflection_write(),
+            vela_common::Capability::ReflectionCall => EffectSet::reflection_call(),
+        });
+    }
+    effects
 }
 
 /// Sparse service updates whose Vela targets retain one validated linked
@@ -767,36 +921,60 @@ fn validate_compiled_target(
     let Some(_handle) = artifact.program().entry_point_by_id(target.function()) else {
         return Err(missing_compiled_target(target));
     };
-    let Some(verified) = artifact.verified_mir().root(target.function()) else {
-        return Err(missing_compiled_target(target));
-    };
-    let Some(function_id) = verified.program().function_by_id(target.function()) else {
-        return Err(missing_compiled_target(target));
-    };
-    let Some(function) = verified.program().function(function_id) else {
-        return Err(missing_compiled_target(target));
-    };
-    if function.asyncness() != target.signature().asyncness {
+    let (asyncness, parameter_count, observed) =
+        if let Some(verified) = artifact.verified_mir().root(target.function()) {
+            let Some(function_id) = verified.program().function_by_id(target.function()) else {
+                return Err(missing_compiled_target(target));
+            };
+            let Some(function) = verified.program().function(function_id) else {
+                return Err(missing_compiled_target(target));
+            };
+            (
+                function.asyncness(),
+                function.parameters().len(),
+                service_effects(function),
+            )
+        } else {
+            let Some(function) = artifact.image().function_by_id(target.function()) else {
+                return Err(missing_compiled_target(target));
+            };
+            let capabilities = function.verified_capabilities().or_else(|| {
+                artifact
+                    .binding_schema()
+                    .callable(vela_bytecode::RustBindingCallableIdentity::Function(
+                        target.function(),
+                    ))
+                    .map(|binding| binding.effects.required_capabilities())
+            });
+            let Some(capabilities) = capabilities else {
+                return Err(missing_compiled_target(target));
+            };
+            (
+                function.asyncness,
+                function.params.len(),
+                effect_set_from_capabilities(capabilities),
+            )
+        };
+    if asyncness != target.signature().asyncness {
         return Err(ServiceSourceError::new(
             target.span(),
             ServiceSourceErrorKind::CompiledAsyncnessMismatch {
                 symbol: target.symbol().to_owned(),
                 expected: target.signature().asyncness,
-                actual: function.asyncness(),
+                actual: asyncness,
             },
         ));
     }
-    if function.parameters().len() != target.signature().params.len() {
+    if parameter_count != target.signature().params.len() {
         return Err(ServiceSourceError::new(
             target.span(),
             ServiceSourceErrorKind::CompiledParameterCountMismatch {
                 symbol: target.symbol().to_owned(),
                 expected: target.signature().params.len(),
-                actual: function.parameters().len(),
+                actual: parameter_count,
             },
         ));
     }
-    let observed = service_effects(function);
     if !target.effect_ceiling().contains_all(observed) {
         return Err(ServiceSourceError::new(
             target.span(),

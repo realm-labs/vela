@@ -1,4 +1,5 @@
 #[repr(u8)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Capability {
     HostRead,
@@ -53,6 +54,7 @@ impl Capability {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct CapabilitySet {
     bits: u64,

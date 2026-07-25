@@ -5,8 +5,12 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+serde = { workspace = true, optional = true }
 toml_edit.workspace = true
 vela_common.workspace = true
+
+[features]
+serde = ["dep:serde", "vela_common/serde"]
 
 [lints]
 workspace = true

@@ -210,6 +210,7 @@ fn push_field(input: &mut Vec<u8>, prefix: &str, value: &str) {
     input.push(0);
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct DefId(u128);
@@ -236,6 +237,7 @@ impl DefId {
 
 macro_rules! typed_def_id {
     ($name:ident) => {
+        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
         #[repr(transparent)]
         pub struct $name(DefId);

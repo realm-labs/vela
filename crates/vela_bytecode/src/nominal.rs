@@ -2,12 +2,20 @@ use vela_common::ShapeId;
 use vela_def::{FieldId, TypeId, VariantId};
 use vela_mir::MirTypeContract;
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NominalTypeKind {
     Record,
     Enum,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NominalFieldDescriptor {
     pub id: FieldId,
@@ -15,6 +23,10 @@ pub struct NominalFieldDescriptor {
     pub contract: Option<MirTypeContract>,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NominalVariantDescriptor {
     pub id: VariantId,
@@ -22,6 +34,10 @@ pub struct NominalVariantDescriptor {
     pub fields: Vec<NominalFieldDescriptor>,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NominalTypeDescriptor {
     pub id: TypeId,

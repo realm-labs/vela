@@ -15,6 +15,7 @@ use vela_macros::{ScriptHost, service, service_set};
 #[derive(ScriptHost)]
 #[script(path = "test::RequestContext")]
 pub struct RequestContext {
+    #[script(get, set)]
     pub counter: i64,
     #[script(skip)]
     runtime: ServiceRuntimeSlot,
@@ -582,6 +583,209 @@ fn linked_update(
     manifest
         .bind_artifact(artifact)
         .expect("artifact-bound service update")
+}
+
+#[cfg(feature = "artifact-codec")]
+#[test]
+fn portable_service_bundle_round_trips_binds_and_executes_without_source_compilation() {
+    let engine = TestServices::register_types(
+        Engine::builder()
+            .capabilities(CapabilitySet::new().with(Capability::HostWrite))
+            .register_rust_type::<RequestContext>(RequestContext::vela_type_binding()),
+    )
+    .build()
+    .expect("service engine");
+    let services = TestServices::new(&engine.type_bindings()).expect("service set");
+    let base = services.pin();
+    let source = r#"
+#[service_impl(test::calculator)]
+impl CalculatorPortableHotfix {
+    fn adjust(context: RequestContext, value: i64) -> i64 {
+        context.counter += 5;
+        return value + 30;
+    }
+}
+"#;
+    let sources = build_single_source(SourceId::new(91), source).expect("valid source");
+    let manifest =
+        ServiceSourceManifest::link(sources.graph(), services.schema()).expect("service manifest");
+    let portable_program = vela_bytecode::PortableProgramArtifact::from_compiled(
+        engine.compile_source(source).expect("offline compile"),
+    )
+    .expect("portable bytecode");
+    let host_schema_hash = 0x1234_5678_9abc_def0;
+    let portable = vela_engine::service::PortableServiceUpdateBundle::snapshot(
+        services.schema(),
+        portable_program,
+        &manifest,
+        host_schema_hash,
+        [vela_engine::service::PortableDiagnosticSource::new(
+            "hotfix.vela",
+            source,
+        )],
+    )
+    .expect("portable service bundle");
+    let first = portable.encode().expect("first encoding");
+    let second = portable.encode().expect("second encoding");
+    assert_eq!(first, second);
+    let checksum = portable.checksum();
+    let mut corrupted = first.clone();
+    *corrupted.last_mut().expect("payload byte") ^= 0x40;
+    assert!(matches!(
+        vela_engine::service::PortableServiceUpdateBundle::decode(&corrupted),
+        Err(vela_engine::service::PortableServiceBundleError::ChecksumMismatch)
+    ));
+
+    let decoded = vela_engine::service::PortableServiceUpdateBundle::decode(&first)
+        .expect("decode service bundle");
+    assert_eq!(decoded.checksum(), checksum);
+    assert_eq!(decoded.diagnostics()[0].path(), "hotfix.vela");
+    assert!(matches!(
+        decoded
+            .clone()
+            .load(&engine, services.schema(), host_schema_hash ^ 1),
+        Err(vela_engine::service::PortableServiceBundleError::HostSchemaHashMismatch { .. })
+    ));
+    let loaded = decoded
+        .load(&engine, services.schema(), host_schema_hash)
+        .expect("bind portable service bundle");
+    let report = services.dry_run_bundle(&base, &loaded);
+    assert!(report.accepted());
+    let candidate = services
+        .stage_bundle(
+            &base,
+            loaded,
+            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            call_options(),
+        )
+        .expect("stage portable bundle");
+    services
+        .activate_if_current(candidate)
+        .expect("activate portable bundle");
+
+    let mut context = RequestContext {
+        counter: 0,
+        runtime: ServiceRuntimeSlot::new(engine.clone()),
+    };
+    assert_eq!(services.pin().calculator().adjust(&mut context, 2), 32);
+    assert_eq!(context.counter, 5);
+
+    let active = services.pin();
+    let delta_source = r#"
+#[service_impl(test::calculator)]
+impl CalculatorPortableDelta {
+    fn adjust(context: RequestContext, value: i64) -> i64 {
+        return value + 40;
+    }
+}
+"#;
+    let delta_sources =
+        build_single_source(SourceId::new(93), delta_source).expect("valid Delta source");
+    let delta_manifest = ServiceSourceManifest::link(delta_sources.graph(), services.schema())
+        .expect("Delta service manifest");
+    let delta_program = vela_bytecode::PortableProgramArtifact::from_compiled(
+        engine
+            .compile_source(delta_source)
+            .expect("offline Delta compile"),
+    )
+    .expect("portable Delta bytecode");
+    let stale = vela_engine::service::PortableServiceUpdateBundle::delta(
+        services.schema(),
+        active.generation_id(),
+        vela_bytecode::ArtifactChecksum::new([0x5a; 32]),
+        delta_program.clone(),
+        &delta_manifest,
+        host_schema_hash,
+        [],
+    )
+    .expect("structurally valid stale Delta");
+    let stale = vela_engine::service::PortableServiceUpdateBundle::decode(
+        &stale.encode().expect("encode stale Delta"),
+    )
+    .expect("decode stale Delta")
+    .load(&engine, services.schema(), host_schema_hash)
+    .expect("load stale Delta");
+    assert!(!services.dry_run_bundle(&active, &stale).accepted());
+
+    let delta = vela_engine::service::PortableServiceUpdateBundle::delta(
+        services.schema(),
+        active.generation_id(),
+        active
+            .artifact_checksum()
+            .expect("portable Snapshot has an artifact"),
+        delta_program,
+        &delta_manifest,
+        host_schema_hash,
+        [vela_engine::service::PortableDiagnosticSource::new(
+            "delta.vela",
+            delta_source,
+        )],
+    )
+    .expect("portable exact-base Delta");
+    let delta = vela_engine::service::PortableServiceUpdateBundle::decode(
+        &delta.encode().expect("encode exact-base Delta"),
+    )
+    .expect("decode exact-base Delta")
+    .load(&engine, services.schema(), host_schema_hash)
+    .expect("load exact-base Delta");
+    assert!(services.dry_run_bundle(&active, &delta).accepted());
+    let candidate = services
+        .stage_bundle(
+            &active,
+            delta,
+            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            call_options(),
+        )
+        .expect("stage exact-base Delta");
+    services
+        .activate_if_current(candidate)
+        .expect("activate exact-base Delta");
+    assert_eq!(services.pin().calculator().adjust(&mut context, 2), 42);
+}
+
+#[cfg(feature = "artifact-codec")]
+#[test]
+fn portable_service_bundle_rejects_untyped_host_parameters_before_deployment() {
+    let engine = TestServices::register_types(
+        Engine::builder()
+            .capabilities(CapabilitySet::new().with(Capability::HostWrite))
+            .register_rust_type::<RequestContext>(RequestContext::vela_type_binding()),
+    )
+    .build()
+    .expect("service engine");
+    let services = TestServices::new(&engine.type_bindings()).expect("service set");
+    let source = r#"
+#[service_impl(test::calculator)]
+impl UntypedPortableHotfix {
+    fn adjust(context, value) {
+        context.counter += 5;
+        return value + 30;
+    }
+}
+"#;
+    let sources = build_single_source(SourceId::new(92), source).expect("valid source");
+    let manifest =
+        ServiceSourceManifest::link(sources.graph(), services.schema()).expect("service manifest");
+    let portable_program = vela_bytecode::PortableProgramArtifact::from_compiled(
+        engine.compile_source(source).expect("offline compile"),
+    )
+    .expect("portable bytecode");
+
+    let error = vela_engine::service::PortableServiceUpdateBundle::snapshot(
+        services.schema(),
+        portable_program,
+        &manifest,
+        7,
+        [],
+    )
+    .expect_err("untyped Host parameters are not interpreter-safe");
+    assert!(matches!(
+        error,
+        vela_engine::service::PortableServiceBundleError::UntypedHostParameter {
+            ref parameter,
+            ..
+        } if parameter == "context"
+    ));
 }
 
 fn call_options() -> CallOptions {

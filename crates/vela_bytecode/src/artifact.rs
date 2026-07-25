@@ -215,6 +215,23 @@ fn hash_debug(hasher: &mut blake3::Hasher, value: &impl fmt::Debug) {
 }
 
 impl UnboundLinkedProgram {
+    #[cfg(feature = "artifact-codec")]
+    pub(crate) fn bind_portable(
+        self,
+        binding_schema: Arc<crate::RustBindingSchema>,
+    ) -> LinkedArtifact {
+        LinkedArtifact {
+            program: self.program,
+            image: self.image,
+            cache_layout: self.cache_layout,
+            profile_layout: self.profile_layout,
+            mir_executables: Box::new([]),
+            verified_mir: Arc::new(vela_mir::OwnedVerifiedMirBundle::default()),
+            binding_schema,
+            package_metadata: None,
+        }
+    }
+
     #[cfg(any(test, feature = "test-support"))]
     pub(crate) fn into_test_artifact(self) -> LinkedArtifact {
         let (verified_mir, mir_executables) = test_mir_binding(&self.program);

@@ -1,5 +1,9 @@
 use crate::InstructionOffset;
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct CacheSiteId(u32);
@@ -21,6 +25,10 @@ impl CacheSiteId {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CacheSiteKind {
     StateRead,
@@ -37,6 +45,10 @@ pub enum CacheSiteKind {
     NativeCall,
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CacheSiteDesc {
     pub id: CacheSiteId,
@@ -62,6 +74,10 @@ impl CacheSiteDesc {
     }
 }
 
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct CacheSiteLayout {
     sites: Vec<CacheSiteDesc>,

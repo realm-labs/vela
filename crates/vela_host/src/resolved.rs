@@ -28,6 +28,7 @@ pub enum HostAccessOp {
     Call(HostMethodId),
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum HostMutationOp {
     Add,

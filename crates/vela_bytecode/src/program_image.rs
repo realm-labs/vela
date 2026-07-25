@@ -53,8 +53,8 @@ impl ProgramImage {
         for function in functions {
             let name = function.name.clone();
             let index = FunctionIndex(indexed_functions.len());
-            if let Some(identity) = function.compiled_mir {
-                function_by_id.insert(identity.root, index);
+            if let Some(identity) = function.stable_function {
+                function_by_id.insert(identity, index);
             }
             function_by_name.insert(name, index);
             indexed_functions.push(function);
