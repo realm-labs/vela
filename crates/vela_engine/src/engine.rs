@@ -31,6 +31,7 @@ use crate::native::{
 use crate::permission::CapabilitySet;
 use crate::type_binding::TypeBindingRegistry;
 
+mod metadata;
 mod support;
 
 pub(crate) use support::check_capabilities;
@@ -262,20 +263,6 @@ impl Engine {
     #[must_use]
     pub fn type_bindings(&self) -> Arc<TypeBindingRegistry> {
         Arc::clone(&self.type_bindings)
-    }
-
-    #[must_use]
-    pub fn service_set_schema(&self) -> Option<&crate::service::ServiceSetSchema> {
-        self.service_set_schema.as_deref()
-    }
-
-    /// Copies the sealed compiler registry into the metadata model shared by
-    /// CLI schema export and native language tooling.
-    pub fn tooling_registry_facts(
-        &self,
-    ) -> Result<vela_analysis::registry::RegistryFacts, vela_registry::RegistryDeclarationSlotError>
-    {
-        vela_analysis::registry::RegistryFacts::from_compile_view(self.compiler_registry())
     }
 
     pub(crate) fn service_compilation_schema(
