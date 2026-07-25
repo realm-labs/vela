@@ -3017,6 +3017,20 @@ storage policy, receiver capabilities, View/MutView representations, and
 protocols. Tooling must not reconstruct these facts from Rust names or maintain
 a second service/type registry.
 
+### Read-Only Value Slices Materialize Only At The Vela Boundary
+
+A Rust service parameter `&[T]` where `T` is a registered Value is copied into
+an owned Vela Array for Vela execution; it is not represented by a forged
+HostRef because the elements already have structural Value semantics. If that
+Vela method calls same-generation Rust `base`, the generated dispatcher
+decodes the Array into one invocation-scoped `Vec<T>` and lends its slice only
+for the authored Rust call. The temporary cannot escape the dispatcher.
+
+This exception does not apply to Host elements, mutable slices, or other
+host-backed collections. Those retain exact HostRef identity, lease
+preflight, scoped reborrow, and immediate write-through rather than
+materializing or copying back.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

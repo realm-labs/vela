@@ -10,11 +10,13 @@ Completed execution plans and acceptance reports live under
 
 ## Current Focus
 
-The active architecture focus is the
-[Rust/Vela unified service hard switch](rust-vela-service-hard-switch-plan.md).
-Rust hotfixing has one target model: generated Rust service contracts and
-defaults, sparse Vela service implementations, and atomic publication of one
-complete immutable service generation.
+The
+[Rust/Vela unified service hard switch](rust-vela-service-hard-switch-plan.md)
+is complete. Rust hotfixing has one target model: generated Rust service
+contracts and defaults, sparse Vela service implementations, and atomic
+publication of one complete immutable service generation. The next queued
+tracks are the M20.5 editor-visible follow-up and the explicit parameterized
+container acceptance audits.
 
 Phase status:
 
@@ -38,9 +40,11 @@ Phase status:
   dry-run diagnostics, service-only handler/rule/event roles, CLI/LSP service
   and TypeBinding metadata, replacement examples, active-Vela benchmarks, and
   the phase-wide gate are complete.
-- S7 active: integrate two successive Deltas and a folded Snapshot into the
-  representative host-framework call chain, complete the acceptance matrix,
-  and run the final repository gate.
+- S7 accepted: the representative host-framework chain publishes two
+  exact-base Deltas and an equivalent folded Snapshot through one unchanged
+  async caller; registered constructors/methods, nested views and grouping,
+  business Result, old/new in-flight roots, publication-only rollback, stable
+  boundary measurements, and the final repository gate are complete.
 
 S3 provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared
@@ -81,6 +85,17 @@ the fixture proves direct host write-through, awaited Rust `base`, isolated
 actors, old/new-root generation behavior, and non-rollback of effects already
 performed before cancellation or panic.
 
+S7 integrates that model into one domain-neutral handler/rule/inventory/reward/
+event chain. The host pins once per request; business code holds no target
+strings, Runtime values, patch branches, or Vela adapters. A rule Snapshot and
+two successive Deltas form one complete generation, then fold into an
+equivalent Snapshot. The chain exercises a registered Value constructor,
+registered Host methods, mutable actor references, DTO slices, nested Array/
+Map values, View/MutView grouping and write-through, Result propagation, and
+async handling. Read-only Value slices materialize only at the Vela boundary
+and decode into invocation-scoped Rust slices for same-generation `base`;
+Host-backed and mutable collections retain HostRef identity and leases.
+
 ## Milestone Snapshot
 
 | Milestone | Status | Current note |
@@ -91,7 +106,7 @@ performed before cancellation or panic.
 | M19.5 | Complete enough | Cache-ready IDs, linked bytecode, profile ownership, and prepared host paths are validated. |
 | M20 | Complete enough | Actor Runtime/cache ownership, lifetime, reload, and concurrency gates are accepted. |
 | M20.5 | Queued | Resume editor-visible work after the service hard switch. |
-| Rust/Vela service interop | S6 accepted; S7 active | Deployment/tooling and async gates are green; complete the host-framework integration and final acceptance matrix. |
+| Rust/Vela service interop | Complete | S0-S7, the full acceptance matrix, host-framework integration, stable benchmark, and final repository gates are accepted. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, and debugger contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation, and performance targets. |
@@ -147,28 +162,6 @@ performed before cancellation or panic.
 
 ## Active Gaps
 
-### Rust/Vela Service Hard Switch
-
-The phase gates are authoritative:
-
-| Phase | State | Blocking result |
-|---|---|---|
-| S0 | Accepted | None |
-| S1 | Accepted | None |
-| S2 | Accepted | None |
-| S3 | Accepted | Complete collection protocols, prepared traversal/method paths, and the phase-wide gate are green. |
-| S4 | Accepted | Sealed schemas, complete signature closure, generated service sets, whole-generation publication, fixture migration, and the zero-VM/zero-HostRef/zero-allocation Rust branch are green. |
-| S5 | Accepted | Snapshot/Delta, lexical `base`/`services`, mixed custom values and collections, and scoped reborrow are green. |
-| S6 | Accepted | Async lifecycle, immutable deployment bundles, service-only handler roles, CLI/LSP metadata, replacement examples and benchmarks, and the phase-wide gate are green. |
-| S7 | Active | Build the two-Delta/folded-Snapshot host-framework fixture and complete final acceptance. |
-
-S7 must now prove one unchanged host caller across Rust-default and active-Vela
-generations, two exact-base Deltas with inherited selections, a folded
-Snapshot, old/new in-flight isolation, publication-only rollback, and the
-representative DTO/collection/constructor/method/view/Result/async surface. A
-shorter Runtime-owned host reclamation policy remains a post-S2 follow-up and
-is not a service hard-switch blocker.
-
 ### Parameterized Container Contracts
 
 The runtime supports nested Array/Map/Set/Iterator facts, recursive guards,
@@ -214,15 +207,11 @@ changes.
 
 ## Next Up
 
-1. Extend the representative host-framework fixture with one complete
-   multi-service Vela generation and an unchanged root caller.
-2. Publish two exact-base Deltas, prove inherited selections, and fold the
-   desired state into an equivalent Snapshot.
-3. Cover registered constructors/methods, DTOs, nested collections,
-   View/MutView grouping, business Result, async suspension, old-root
-   isolation, and publication-only rollback.
-4. Run the S7 acceptance matrix, structural audit, examples, fuzz/build,
-   benchmark, formatting, Clippy, and workspace tests.
+1. Resume M20.5 only for a named editor-visible language-service gap.
+2. Audit the parameterized container and value-keyed Map/Set plans against
+   their explicit acceptance matrices.
+3. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
+   post-S2 optimization follow-up.
 
 ## Update Rules
 

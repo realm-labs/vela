@@ -5,7 +5,7 @@
 > publication, host-reference and collection interop, and deletion of
 > callable-level replacement
 >
-> Status: S0-S6 accepted; S7 implementation is active
+> Status: Complete; S0-S7 and the full acceptance matrix are accepted
 >
 > Switch policy: pre-release hard switch; no public compatibility layer and no
 > second Rust hot-replacement model
@@ -362,6 +362,24 @@ old in-flight roots finish on old code and new roots enter new code
 rollback is publication only and never retries host effects
 all old replacement production identifiers remain absent
 ```
+
+Status: **Accepted.** The domain-neutral service fixture pins one generated
+root per request and uses the same async handler call before and after
+activation. A rule Snapshot calls Rust `base`; the first exact-base Delta adds
+a reward patch; the second adds an inventory patch that inherits both earlier
+selections, traverses and groups borrowed DTO/Map views, calls registered Rust
+methods and a registered Value constructor, calls Rust `base`, a Rust event
+service, and the patched rule/reward chain, and preserves business `Result`
+semantics. A complete Snapshot folds the same desired state, and conditional
+rollback republishes the prior generation without retrying host effects.
+Pinned old sync roots retain old selections, a suspended old async root
+finishes on its old generation after activation, and new roots enter new code.
+
+The 100,000-call frozen boundary run retains every S0 row and records the
+Rust-default and active-Vela paths, allocations, bytes, and checksums. Workspace
+formatting, Clippy, tests, examples, benchmark-build, fuzz-build, file-size,
+module-layering, and deleted-identifier audits are green. The callable-level
+replacement model has no production, API, test-fixture, example, or fuzz path.
 
 ## 3. Acceptance Matrix
 
