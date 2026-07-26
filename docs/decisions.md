@@ -1952,6 +1952,31 @@ whole-suite -2.4%, every checksum unchanged. `scalar_branch_loop` regressed
 instruction; that is dispatch-loop code layout, and the durable fix is shrinking
 the instruction stream rather than tuning around it.
 
+### Map And Set Iteration Moves To Insertion Order
+
+Accepted 2026-07-26, not yet implemented. Map/Set storage will move from
+`BTreeMap<ValueKey, _>` to an insertion-ordered hash structure so lookups stop
+paying O(log n) string comparisons and a per-operation key clone
+(`value_key.rs` cloning the heap string into `ValueKey` was 15% of the
+map-lookup profile as allocator traffic).
+
+This changes the script-visible iteration contract from "deterministic by
+internal key order" to "deterministic by first insertion". The value-keyed
+plan explicitly reserved this as a language-contract decision, and it is now
+decided: insertion order, matching JavaScript and Python semantics. Iteration
+stays fully deterministic.
+
+Implementation constraints for whoever lands it:
+- removal must stay O(1) amortized (tombstones with compaction, not
+  shift-remove), because the set mutation benchmarks are removal-heavy;
+- lookups must use borrowed keys against stored entries (raw-entry style) so
+  the per-lookup `ValueKey` clone disappears rather than moving;
+- `external_compare` checksums and any order-dependent tests are expected to
+  change once, in the same change, with the new baselines captured on a quiet
+  machine;
+- the language documentation gains the new iteration-order contract in the
+  same change.
+
 ### Partial Instruction Slimming Does Not Pay
 
 `Instruction` is 128 bytes and the dispatch loop walks the instruction array
