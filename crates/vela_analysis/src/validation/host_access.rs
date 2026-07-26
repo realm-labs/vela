@@ -442,6 +442,16 @@ fn host_path(
             path.segment_count += 1;
             Some(path)
         }
+        _ if matches!(facts.expression(expression), Some(TypeFact::Host { .. })) => {
+            let TypeFact::Host { name } = facts.expression(expression)? else {
+                return None;
+            };
+            schema.type_target_fact(name)?;
+            Some(HostPathUse {
+                indexes: Vec::new(),
+                segment_count: 0,
+            })
+        }
         _ => None,
     }
 }

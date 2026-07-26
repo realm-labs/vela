@@ -430,6 +430,9 @@ impl FunctionBuilder<'_> {
         let record = self.body.expression(expression).ok_or_else(|| {
             self.inconsistent(origin, "host path references a missing HIR expression")
         })?;
+        if target.root == expression && target.segments.is_empty() {
+            return Ok(());
+        }
         match &record.kind {
             HirExprKind::Paren {
                 expression: Some(inner),
@@ -448,16 +451,10 @@ impl FunctionBuilder<'_> {
             HirExprKind::Paren { expression: None } => {
                 Err(self.inconsistent(origin, "host path is an empty parenthesized expression"))
             }
-            HirExprKind::Path(_) => {
-                if target.root == expression && target.segments.is_empty() {
-                    Ok(())
-                } else {
-                    Err(self.inconsistent(
-                        origin,
-                        "host root placement disagrees with its HIR path expression",
-                    ))
-                }
-            }
+            HirExprKind::Path(_) => Err(self.inconsistent(
+                origin,
+                "host root placement disagrees with its HIR path expression",
+            )),
             HirExprKind::Field(field) => {
                 self.validate_host_path_prefix(field.receiver, target, origin)?;
                 let Some(CompileMemberTarget::HostField(member)) =

@@ -351,12 +351,64 @@ fn main(player: Player) {
 }
 
 #[test]
-fn root_host_index_without_capability_retains_its_stable_owner() {
+fn host_methods_returning_host_refs_form_new_chained_roots() {
     let source = SourceId::new(810);
+    let text = r#"
+fn main(player: Player) {
+    player.inventory().entry().save();
+}
+"#;
+    let (graph, main) = graph(source, text);
+    let mut schema = host_schema(None, true, true);
+    for (owner, name, returns) in [
+        ("Player", "inventory", TypeFact::host("Inventory")),
+        ("Inventory", "entry", TypeFact::host("Entry")),
+    ] {
+        schema.insert_method(owner, name, TypeFact::function(Vec::new(), returns.clone()));
+        schema.insert_method_signature(
+            owner,
+            name,
+            CallableSignatureFact::new(std::iter::empty::<CallableParameterFact>(), returns),
+        );
+        schema.insert_method_effect(owner, name, RegistryEffectFact::host_read());
+    }
+    let function = FunctionId::new(80_810);
+    let generation = generation(&graph, &schema, main, function);
+    let view = generation.view(function).expect("main analysis");
+
+    for (expression, occurrence) in [
+        ("player.inventory()", 0),
+        ("player.inventory().entry()", 0),
+        ("player.inventory().entry().save()", 0),
+    ] {
+        let call = expression_exact(&graph, source, text, expression, occurrence);
+        let fact = view
+            .host_access_use(call)
+            .unwrap_or_else(|| panic!("{expression} should be a HostAccess call"));
+        assert_eq!(fact.kind, HostAccessUseKind::Call);
+        let target = view
+            .host_path_target(fact.target)
+            .unwrap_or_else(|| panic!("{expression} receiver should have a host-path target"));
+        if expression == "player.inventory()" {
+            assert_eq!(target.root, fact.target);
+        } else {
+            let body = graph.function_body(main).expect("main body");
+            assert!(matches!(
+                body.expression(target.root).map(|value| &value.kind),
+                Some(vela_hir::body::HirExprKind::Call(_))
+            ));
+            assert!(target.segments.is_empty());
+        }
+    }
+}
+
+#[test]
+fn root_host_index_without_capability_retains_its_stable_owner() {
+    let source = SourceId::new(811);
     let text = "fn main(player: Player) { return player[\"gold\"]; }";
     let (graph, main) = graph(source, text);
     let schema = host_schema(None, false, true);
-    let function = FunctionId::new(80_810);
+    let function = FunctionId::new(80_811);
     let generation = generation(&graph, &schema, main, function);
     let view = generation.view(function).expect("main analysis");
     let expression = expression_exact(&graph, source, text, "player[\"gold\"]", 0);
@@ -378,7 +430,7 @@ fn root_host_index_without_capability_retains_its_stable_owner() {
 
 #[test]
 fn shared_host_body_access_facts_are_executable_qualified() {
-    let source = SourceId::new(811);
+    let source = SourceId::new(812);
     let text = r#"
 trait Touch {
     fn touch(self) { self.level += 1; }
@@ -410,8 +462,8 @@ trait Touch {
             writable,
         );
     }
-    let writable_function = FunctionId::new(80_811);
-    let read_only_function = FunctionId::new(80_812);
+    let writable_function = FunctionId::new(80_812);
+    let read_only_function = FunctionId::new(80_813);
     let generation = ExecutableAnalysisGeneration::from_module_graph_and_schema(
         &graph,
         &schema,

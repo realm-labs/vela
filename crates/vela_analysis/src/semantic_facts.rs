@@ -997,6 +997,16 @@ impl HirSemanticFacts {
                 });
                 Some(path)
             }
+            _ if matches!(self.fact(expression.id), TypeFact::Host { .. }) => {
+                let fact = self.fact(expression.id);
+                let owner = type_owner(&fact)?;
+                let root_type = schema?.type_target_fact(owner)?.clone();
+                Some(HostPathTargetFact {
+                    root: expression.id,
+                    root_type,
+                    segments: Vec::new(),
+                })
+            }
             _ => None,
         }
     }

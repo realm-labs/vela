@@ -115,9 +115,7 @@ fn nested_scoped_method_returns_release_child_before_parent() {
     let program = engine
         .compile_source(
             "fn main(config: Config) { \
-                 let table = config.table(); \
-                 let row = table.get(1)?; \
-                 return row.value; \
+                 return config.table().get(1)?.value; \
              }",
         )
         .expect("nested borrowed returns should compile");
