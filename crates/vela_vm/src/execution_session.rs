@@ -11,6 +11,7 @@ use crate::frame::CallFrame;
 use crate::heap_execution::HeapExecution;
 use crate::iteration;
 use crate::resumable_callbacks::ResumableCallbackMethod;
+use crate::small_storage::SmallStorage;
 use crate::value::Value;
 use crate::{HostExecution, Vm, VmBytecodeProfiler, VmInlineCaches};
 
@@ -124,7 +125,7 @@ pub(crate) struct PendingLinkedCall {
     pub(crate) owner: Arc<LinkedArtifact>,
     pub(crate) function: ScriptFunctionHandle,
     pub(crate) captures: Vec<Value>,
-    pub(crate) args: Vec<Value>,
+    pub(crate) args: SmallStorage<Value>,
     pub(crate) check_param_guards: bool,
     pub(crate) call_site: Option<Span>,
     pub(crate) call_site_offset: Option<InstructionOffset>,

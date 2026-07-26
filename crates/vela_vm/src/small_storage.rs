@@ -81,7 +81,10 @@ impl<T> SmallStorage<T> {
     }
 
     #[inline]
-    #[cfg(test)]
+    /// Builds storage from one leading value followed by mapped items.
+    ///
+    /// Used for receiver-plus-arguments calls so the receiver does not force an
+    /// intermediate vector.
     pub(crate) fn try_from_prefix_and_slice_map<U, E>(
         prefix: T,
         items: &[U],

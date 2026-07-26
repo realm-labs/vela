@@ -20,6 +20,7 @@ use crate::numeric_ops::{
 };
 use crate::resumable_callbacks::{ResumableCallbackMethod, ResumableCallbackStep};
 use crate::runtime_checks::is_truthy;
+use crate::small_storage::SmallStorage;
 use crate::value::Value;
 use crate::{
     HostExecution, Vm, VmBytecodeProfiler, VmInlineCaches, identity_equal, identity_not_equal,
@@ -349,7 +350,7 @@ impl Vm {
                         pending.owner,
                         pending.function,
                         &pending.captures,
-                        &pending.args,
+                        pending.args.as_slice(),
                         pending.check_param_guards,
                         pending.call_site,
                         pending.call_site_offset,
@@ -902,7 +903,7 @@ impl Vm {
                 owner,
                 function,
                 captures,
-                args,
+                args: SmallStorage::Many(args),
                 check_param_guards: true,
                 call_site: source_span,
                 call_site_offset: frame_state.ip.0.checked_sub(1).map(InstructionOffset),
@@ -1344,9 +1345,7 @@ impl Vm {
                         .with_source_span_if_absent(instruction.span));
                     }
                     let args =
-                        script_function_calls::script_call_args_from_call_arguments(frame, args)?
-                            .as_slice()
-                            .to_vec();
+                        script_function_calls::script_call_args_from_call_arguments(frame, args)?;
                     frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
                     return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
                         owner: Arc::clone(&current_owner),
@@ -1404,10 +1403,9 @@ impl Vm {
                         })
                         .with_source_span_if_absent(instruction.span));
                     }
-                    let values = args
-                        .iter()
-                        .map(|register| frame.read(*register))
-                        .collect::<VmResult<Vec<_>>>()?;
+                    let values = SmallStorage::try_from_slice_map(args, 4, |register| {
+                        frame.read(*register)
+                    })?;
                     frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
                     return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
                         owner,
@@ -1594,14 +1592,12 @@ impl Vm {
                             })
                             .with_source_span_if_absent(instruction.span));
                         }
-                        let mut values = Vec::with_capacity(args.len().saturating_add(1));
-                        values.push(frame.read(*receiver)?);
-                        values.extend_from_slice(
-                            script_function_calls::script_call_args_from_call_arguments(
-                                frame, args,
-                            )?
-                            .as_slice(),
-                        );
+                        let values = SmallStorage::try_from_prefix_and_slice_map(
+                            frame.read(*receiver)?,
+                            args,
+                            4,
+                            |arg| script_function_calls::script_call_argument_value(frame, arg),
+                        )?;
                         frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
                         return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
                             owner: Arc::clone(&current_owner),
@@ -1676,15 +1672,12 @@ impl Vm {
                             })
                             .with_source_span_if_absent(instruction.span));
                         }
-                        let mut values = Vec::with_capacity(target.args.len().saturating_add(1));
-                        values.push(frame.read(*receiver)?);
-                        values.extend_from_slice(
-                            script_function_calls::script_call_args_from_call_arguments(
-                                frame,
-                                &target.args,
-                            )?
-                            .as_slice(),
-                        );
+                        let values = SmallStorage::try_from_prefix_and_slice_map(
+                            frame.read(*receiver)?,
+                            &target.args,
+                            4,
+                            |arg| script_function_calls::script_call_argument_value(frame, arg),
+                        )?;
                         frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
                         return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
                             owner: Arc::clone(&current_owner),
