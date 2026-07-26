@@ -11,7 +11,7 @@ use crate::type_hint::{
 };
 
 use super::names::{candidate_distance, import_binding_name};
-use super::{DeclarationKind, ImportResolution, ModuleGraph};
+use super::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
 
 pub(super) fn validate_once(graph: &mut ModuleGraph) {
     if graph.schema_references_validated {
@@ -20,13 +20,79 @@ pub(super) fn validate_once(graph: &mut ModuleGraph) {
     graph.schema_references_validated = true;
 
     let mut diagnostics = Vec::new();
+    let owners = ModuleOwnedItems::index(graph);
     for module in &graph.modules {
-        diagnostics.extend(schema_reference_diagnostics_for_module(graph, module.id));
+        diagnostics.extend(schema_reference_diagnostics_for_module(
+            graph, module.id, &owners,
+        ));
     }
     diagnostics.extend(duplicate_script_method_diagnostics(graph));
     diagnostics.extend(builtin_operator_trait_prerequisite_diagnostics(graph));
     diagnostics.extend(derived_operator_trait_diagnostics(graph));
     graph.diagnostics.extend(diagnostics);
+}
+
+/// Groups the declarations and bindings each module owns.
+///
+/// Schema validation runs once per module and used to scan every declaration
+/// and every binding in the workspace each time, so validating a project cost
+/// the square of its size. Grouping once keeps the per-module iteration order
+/// the whole-graph scans produced, so diagnostic order is unchanged.
+#[derive(Default)]
+struct ModuleOwnedItems<'a> {
+    declarations: BTreeMap<ModuleId, Vec<&'a Declaration>>,
+    bindings: BTreeMap<ModuleId, Vec<&'a BindingMap>>,
+    trait_default_bindings: BTreeMap<ModuleId, Vec<&'a BindingMap>>,
+}
+
+impl<'a> ModuleOwnedItems<'a> {
+    fn index(graph: &'a ModuleGraph) -> Self {
+        let mut owners = Self::default();
+        for declaration in graph.declarations.values() {
+            owners
+                .declarations
+                .entry(declaration.module)
+                .or_default()
+                .push(declaration);
+        }
+        for bindings in graph
+            .bindings
+            .values()
+            .chain(graph.impl_method_bindings.values())
+        {
+            if let Some(declaration) = graph.declarations.get(&bindings.declaration) {
+                owners
+                    .bindings
+                    .entry(declaration.module)
+                    .or_default()
+                    .push(bindings);
+            }
+        }
+        for bindings in graph.trait_default_method_bindings.values() {
+            if let Some(declaration) = graph.declarations.get(&bindings.declaration) {
+                owners
+                    .trait_default_bindings
+                    .entry(declaration.module)
+                    .or_default()
+                    .push(bindings);
+            }
+        }
+        owners
+    }
+
+    fn declarations(&self, module: ModuleId) -> &[&'a Declaration] {
+        self.declarations.get(&module).map_or(&[], Vec::as_slice)
+    }
+
+    fn bindings(&self, module: ModuleId) -> &[&'a BindingMap] {
+        self.bindings.get(&module).map_or(&[], Vec::as_slice)
+    }
+
+    fn trait_default_bindings(&self, module: ModuleId) -> &[&'a BindingMap] {
+        self.trait_default_bindings
+            .get(&module)
+            .map_or(&[], Vec::as_slice)
+    }
 }
 
 fn duplicate_script_method_diagnostics(graph: &ModuleGraph) -> Vec<Diagnostic> {
@@ -417,14 +483,12 @@ fn declared_script_type_names(graph: &ModuleGraph) -> BTreeSet<String> {
 fn schema_reference_diagnostics_for_module(
     graph: &ModuleGraph,
     module: ModuleId,
+    owners: &ModuleOwnedItems<'_>,
 ) -> Vec<Diagnostic> {
     let candidates = visible_schema_candidates(graph, module);
     let mut diagnostics = Vec::new();
 
-    for declaration in graph.declarations.values() {
-        if declaration.module != module {
-            continue;
-        }
+    for declaration in owners.declarations(module) {
         if let Some(signature) = graph.function_signatures.get(&declaration.id) {
             diagnostics.extend(signature_schema_diagnostics(signature, &candidates));
         }
@@ -453,27 +517,12 @@ fn schema_reference_diagnostics_for_module(
         }
     }
 
-    for bindings in graph
-        .bindings
-        .values()
-        .chain(graph.impl_method_bindings.values())
+    for bindings in owners
+        .bindings(module)
+        .iter()
+        .chain(owners.trait_default_bindings(module))
     {
-        if graph
-            .declarations
-            .get(&bindings.declaration)
-            .is_some_and(|declaration| declaration.module == module)
-        {
-            diagnostics.extend(binding_schema_diagnostics(bindings, &candidates));
-        }
-    }
-    for bindings in graph.trait_default_method_bindings.values() {
-        if graph
-            .declarations
-            .get(&bindings.declaration)
-            .is_some_and(|declaration| declaration.module == module)
-        {
-            diagnostics.extend(binding_schema_diagnostics(bindings, &candidates));
-        }
+        diagnostics.extend(binding_schema_diagnostics(bindings, &candidates));
     }
 
     diagnostics
@@ -646,7 +695,11 @@ fn visible_schema_candidates(graph: &ModuleGraph, module: ModuleId) -> Vec<Schem
         }
     }
 
-    for (path, declaration) in graph.qualified_declarations_for(module) {
+    for (path, declaration) in graph.qualified_declarations_matching(module, &|declaration| {
+        graph
+            .declaration(declaration)
+            .is_some_and(|metadata| is_schema_declaration(metadata.kind))
+    }) {
         insert_schema_candidate(graph, &mut candidates, path.join("::"), declaration);
     }
 

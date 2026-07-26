@@ -347,7 +347,7 @@ impl ModuleGraph {
 
     fn qualified_declarations_with(&self, current: &HirModule) -> Vec<(Vec<String>, HirDeclId)> {
         let mut declarations = self.qualified_declarations_for(current.id);
-        declarations.extend(self.qualified_declarations_in(current, current.id));
+        declarations.extend(self.qualified_declarations_in(current, current.id, &|_| true));
         declarations.into_iter().collect()
     }
 
@@ -355,9 +355,25 @@ impl ModuleGraph {
         &self,
         requesting_module: ModuleId,
     ) -> BTreeMap<Vec<String>, HirDeclId> {
+        self.qualified_declarations_matching(requesting_module, &|_| true)
+    }
+
+    /// Qualified paths of the declarations visible from `requesting_module`
+    /// that `accept` keeps.
+    ///
+    /// Building a path allocates one `Vec<String>` per declaration, so callers
+    /// that only care about a subset — schema references, for instance — must
+    /// be able to reject a declaration before that happens. Otherwise
+    /// validating one module allocates a path for every declaration in the
+    /// workspace, once per module.
+    pub(super) fn qualified_declarations_matching(
+        &self,
+        requesting_module: ModuleId,
+        accept: &dyn Fn(HirDeclId) -> bool,
+    ) -> BTreeMap<Vec<String>, HirDeclId> {
         self.modules
             .iter()
-            .flat_map(|module| self.qualified_declarations_in(module, requesting_module))
+            .flat_map(|module| self.qualified_declarations_in(module, requesting_module, accept))
             .collect()
     }
 
@@ -365,13 +381,16 @@ impl ModuleGraph {
         &self,
         module: &HirModule,
         requesting_module: ModuleId,
+        accept: &dyn Fn(HirDeclId) -> bool,
     ) -> Vec<(Vec<String>, HirDeclId)> {
         module
             .declarations
             .names()
             .filter_map(|name| {
                 let declaration = module.declarations.get(name)?;
-                if !self.declaration_visible_from(declaration, requesting_module) {
+                if !self.declaration_visible_from(declaration, requesting_module)
+                    || !accept(declaration)
+                {
                     return None;
                 }
                 let mut path = module.key.path.segments().to_vec();
