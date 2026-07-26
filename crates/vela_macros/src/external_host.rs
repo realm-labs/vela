@@ -1,13 +1,18 @@
 use proc_macro2::{Ident, TokenStream};
-use quote::{format_ident, quote};
+use quote::{ToTokens, format_ident, quote};
+use std::collections::HashSet;
 use syn::{
-    ImplItem, ItemImpl, LitStr, Result, Type, Visibility, ext::IdentExt, parse::Parser, parse2,
+    Attribute, Expr, ImplItem, ImplItemFn, ItemImpl, LitStr, Result, Token, Type, Visibility,
+    ext::IdentExt,
+    parse::{Parse, ParseStream, Parser},
+    parse2,
 };
 
 use crate::attrs::parse_qualified_name;
 use crate::export::emission;
+use crate::export::emission::hint_tokens;
 use crate::export::signature::{classify_method, classify_method_with_host_collection_returns};
-use crate::methods::take_method_attrs;
+use crate::methods::{MethodAttrs, take_method_attrs};
 use crate::script_host::type_identity;
 use crate::signature::{
     docs_from_attrs, reject_extern_signature, reject_generic_signature, reject_unsafe_signature,
@@ -38,7 +43,6 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let stable_path = identity.stable_path;
     let type_id = identity.type_id;
     let host_id = identity.host_id;
-    let schema_hash = empty_host_schema_hash(&type_name, &module_name);
     let adapter_ident = format_ident!("__VelaExternalHostAdapter_{}_{}", rust_ident, host_id);
     let trait_ident = format_ident!("__VelaExternalHostMethods_{}_{}", rust_ident, host_id);
     let register_ident = attrs.register;
@@ -48,27 +52,92 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let mut generated = Vec::new();
     let mut contract_functions = Vec::new();
     let mut registration_functions = Vec::new();
+    let mut fields = Vec::new();
+    let mut methods = Vec::new();
+    let mut fields_block_seen = false;
 
-    for impl_item in &mut item.items {
-        let ImplItem::Fn(method) = impl_item else {
-            return Err(syn::Error::new_spanned(
-                impl_item,
-                "#[external_host] supports methods only",
-            ));
-        };
+    for impl_item in std::mem::take(&mut item.items) {
+        match impl_item {
+            ImplItem::Fn(mut method) => {
+                let method_attrs = take_method_attrs(&mut method)?;
+                let public_name = method_attrs
+                    .name
+                    .clone()
+                    .unwrap_or_else(|| method.sig.ident.unraw().to_string());
+                methods.push(ExternalMethod {
+                    method,
+                    attrs: method_attrs,
+                    public_name,
+                    field: None,
+                });
+            }
+            ImplItem::Macro(item) if item.mac.path.is_ident("vela_fields") => {
+                if fields_block_seen {
+                    return Err(syn::Error::new_spanned(
+                        item,
+                        "#[external_host] accepts only one vela_fields! block",
+                    ));
+                }
+                fields_block_seen = true;
+                for field in parse2::<ExternalFields>(item.mac.tokens)?.fields {
+                    let helper_ident = format_ident!("__vela_field_{}", field.rust_name.unraw());
+                    let return_type = &field.return_type;
+                    let expression = &field.expression;
+                    let method = syn::parse2::<ImplItemFn>(quote! {
+                        pub fn #helper_ident(&self) -> #return_type {
+                            #expression
+                        }
+                    })?;
+                    let method_attrs = MethodAttrs {
+                        host_collection: field.host_collection,
+                        ..MethodAttrs::default()
+                    };
+                    methods.push(ExternalMethod {
+                        method,
+                        attrs: method_attrs,
+                        public_name: field.public_name.clone(),
+                        field: Some(field),
+                    });
+                }
+            }
+            unsupported => {
+                return Err(syn::Error::new_spanned(
+                    unsupported,
+                    "#[external_host] supports methods and one vela_fields! block",
+                ));
+            }
+        }
+    }
+
+    let mut public_names = HashSet::new();
+    for mut exported in methods {
+        let method = &mut exported.method;
         reject_generic_signature(&method.sig.generics, "#[external_host]")?;
         reject_unsafe_signature(&method.sig, "#[external_host]")?;
         reject_extern_signature(&method.sig, "#[external_host]")?;
-        let method_attrs = take_method_attrs(method)?;
-        let signature = if method_attrs.host_collection {
-            classify_method_with_host_collection_returns(&method.sig, &method_attrs.effects)?
+        let signature = if exported.attrs.host_collection {
+            classify_method_with_host_collection_returns(&method.sig, &exported.attrs.effects)?
         } else {
-            classify_method(&method.sig, &method_attrs.effects)?
+            classify_method(&method.sig, &exported.attrs.effects)?
         };
         let docs = docs_from_attrs(&method.attrs);
-        let public_name = method_attrs
-            .name
-            .unwrap_or_else(|| method.sig.ident.to_string());
+        let public_name = exported.public_name;
+        if !public_names.insert(public_name.clone()) {
+            return Err(syn::Error::new_spanned(
+                &method.sig.ident,
+                format!("duplicate external Host member `{public_name}`"),
+            ));
+        }
+        if let Some(field) = exported.field {
+            let hint = hint_tokens(&signature.returns.ty);
+            fields.push(ExternalFieldSchema {
+                id: vela_common::stable_id("host_field", &stable_path, &field.public_name),
+                rust_name: field.rust_name.to_token_stream().to_string(),
+                public_name: field.public_name,
+                return_type: field.return_type.to_token_stream().to_string(),
+                hint,
+            });
+        }
         generated.push(emission::method_contract(
             method,
             &self_ty,
@@ -76,8 +145,8 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             &public_name,
             emission::MethodContractMetadata {
                 docs: docs.as_deref(),
-                reflect_callable: method_attrs.reflect_callable,
-                attrs: &method_attrs.attrs,
+                reflect_callable: exported.attrs.reflect_callable,
+                attrs: &exported.attrs.attrs,
             },
             &signature,
         ));
@@ -106,6 +175,8 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         trait_methods.push(method.clone());
     }
 
+    let schema_hash = external_host_schema_hash(&type_name, &module_name, &fields);
+    let field_tokens = fields.iter().map(ExternalFieldSchema::tokens);
     let host_object_impl = crate::script_methods::base_script_host_object_impl_tokens(&self_ty);
 
     Ok(quote! {
@@ -144,6 +215,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 .schema_hash(::vela_reflect::registry::SchemaHash::new(#schema_hash))
                 .host_type(::vela_common::HostTypeId::new(#host_id))
                 .attr("module", #module_name)
+                #(
+                    .field(#field_tokens)
+                )*
             }
         }
 
@@ -203,6 +277,93 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     })
 }
 
+struct ExternalMethod {
+    method: ImplItemFn,
+    attrs: MethodAttrs,
+    public_name: String,
+    field: Option<ExternalField>,
+}
+
+struct ExternalFields {
+    fields: Vec<ExternalField>,
+}
+
+impl Parse for ExternalFields {
+    fn parse(input: ParseStream<'_>) -> Result<Self> {
+        let mut fields = Vec::new();
+        while !input.is_empty() {
+            let attrs = Attribute::parse_outer(input)?;
+            let host_collection = attrs
+                .iter()
+                .any(|attr| attr.path().is_ident("host_collection"));
+            if let Some(attr) = attrs
+                .iter()
+                .find(|attr| !attr.path().is_ident("host_collection"))
+            {
+                return Err(syn::Error::new_spanned(
+                    attr,
+                    "vela_fields! supports only #[host_collection]",
+                ));
+            }
+            let rust_name = input.call(Ident::parse_any)?;
+            input.parse::<Token![:]>()?;
+            let return_type = input.parse::<Type>()?;
+            input.parse::<Token![=]>()?;
+            let expression = input.parse::<Expr>()?;
+            input.parse::<Token![;]>()?;
+            fields.push(ExternalField {
+                public_name: rust_name.unraw().to_string(),
+                rust_name,
+                return_type,
+                expression,
+                host_collection,
+            });
+        }
+        Ok(Self { fields })
+    }
+}
+
+struct ExternalField {
+    rust_name: Ident,
+    public_name: String,
+    return_type: Type,
+    expression: Expr,
+    host_collection: bool,
+}
+
+struct ExternalFieldSchema {
+    id: u64,
+    rust_name: String,
+    public_name: String,
+    return_type: String,
+    hint: TokenStream,
+}
+
+impl ExternalFieldSchema {
+    fn tokens(&self) -> TokenStream {
+        let id = u128::from(self.id);
+        let name = &self.public_name;
+        let rust_name = &self.rust_name;
+        let hint = &self.hint;
+        quote! {
+            ::vela_reflect::registry::FieldDesc::new(
+                ::vela_def::FieldId::new(#id),
+                #name,
+            )
+            .access(
+                ::vela_reflect::access::FieldAccess::new()
+                    .readable(true)
+                    .writable(false)
+                    .reflect_readable(false)
+                    .reflect_writable(false)
+            )
+            .type_hint((#hint).display_name())
+            .attr("rust_name", #rust_name)
+            .attr("vela_external_property", "true")
+        }
+    }
+}
+
 struct ExternalHostAttrs {
     path: String,
     register: Ident,
@@ -251,10 +412,23 @@ fn type_ident(ty: &Type) -> Result<Ident> {
         .ok_or_else(|| syn::Error::new_spanned(ty, "missing external Host type name"))
 }
 
-fn empty_host_schema_hash(type_name: &str, module_name: &str) -> u64 {
+fn external_host_schema_hash(
+    type_name: &str,
+    module_name: &str,
+    fields: &[ExternalFieldSchema],
+) -> u64 {
     let mut hasher = crate::hash::StableHasher::new();
     hasher.write_str(type_name);
     hasher.write_str(module_name);
+    let mut fields = fields.iter().collect::<Vec<_>>();
+    fields.sort_by_key(|field| field.public_name.as_str());
+    for field in fields {
+        hasher.write_u64(field.id);
+        hasher.write_str(&field.public_name);
+        hasher.write_str(&field.return_type);
+        hasher.write_bool(true);
+        hasher.write_bool(false);
+    }
     hasher.finish()
 }
 
@@ -273,6 +447,10 @@ mod tests {
             },
             quote! {
                 impl crate::ItemTable {
+                    vela_fields! {
+                        count: i32 = self.count;
+                    }
+
                     #[script_method(name = "get")]
                     pub fn get(&self, key: i32) -> Option<&crate::Item> {
                         crate::ItemTable::get(self, &key)
@@ -293,6 +471,9 @@ mod tests {
         assert!(!expanded.contains("impl crate :: ItemTable { pub fn get"));
         assert!(expanded.contains("pub fn register_item_table"));
         assert!(expanded.contains("ScriptHostSchema for crate :: ItemTable"));
+        assert!(expanded.contains("vela_external_property"));
+        assert!(expanded.contains("FieldDesc :: new"));
+        assert!(expanded.contains("__vela_field_count"));
         assert!(expanded.contains("vela_callable_contract_type"));
         assert!(!expanded.contains("vela_callable_contract_r#type"));
     }

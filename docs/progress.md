@@ -181,6 +181,11 @@ Host-backed and mutable collections retain HostRef identity and leases.
   create no HostRef. Persistent state, root-result, closure, async-suspend,
   dynamic, and reflection paths enforce the same non-escape boundary, and
   async borrowed-return signatures are rejected during macro expansion.
+- Centralized `external_host` companions can publish typed read-only fields
+  through one `vela_fields!` block. Vela uses property syntax for those fields,
+  and method/property HostRef results can be chained without temporary
+  bindings; dispatch remains statically registered and uses no runtime
+  field-name lookup.
 - One sealed `TypeBinding` model supplies stable identity, ABI, codecs,
   constructors, methods, fields, protocols, and owned/shared/exclusive
   representation facts to runtime, reflection, compiler analysis, and LSP.

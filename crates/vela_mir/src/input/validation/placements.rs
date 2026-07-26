@@ -361,6 +361,15 @@ fn validate_members(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildErr
             CompileMemberTarget::HostField(field) => {
                 host::validate_field(validator, field, origin, "host member placement")?;
             }
+            CompileMemberTarget::HostProperty(method) => {
+                host::validate_method(validator, method, origin, "host property placement")?;
+                if !method.signature.parameters.is_empty() {
+                    return Err(validator.error(
+                        origin,
+                        "host property placement requires a zero-argument method",
+                    ));
+                }
+            }
             CompileMemberTarget::ScriptMethod { target, .. } => {
                 validator.require_script_method(*target, origin, "script member placement")?;
             }

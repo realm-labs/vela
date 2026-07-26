@@ -386,6 +386,11 @@ pub enum TypeHint {
 }
 
 impl TypeHint {
+    #[must_use]
+    pub fn display_name(&self) -> String {
+        crate::metadata::type_hint_display(self)
+    }
+
     pub(crate) fn is_single_scoped_host(&self) -> bool {
         match self {
             Self::Host(_) => true,

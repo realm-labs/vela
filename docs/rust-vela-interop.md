@@ -67,6 +67,28 @@ the macro emits private extension dispatch rather than `vela_get`-style
 inherent methods. `&T`, `Option<&T>`, and borrowed collections use the same
 scoped-return adapters as `#[vela_macros::methods]`.
 
+Generated read-only fields can be grouped without changing the Rust model:
+
+```rust,ignore
+#[vela_macros::external_host(
+    path = "config::Item",
+    register = "register_item"
+)]
+impl Item {
+    vela_fields! {
+        id: i32 = self.id;
+        #[host_collection]
+        rewards: &[Reward] = self.rewards.as_slice();
+    }
+}
+```
+
+Vela observes the same member distinction as Rust: data is read as
+`item.id`, and behavior is called as `table.get(id)`. Borrowed Host returns
+may be chained directly, including
+`config.tables().item().get(id)?.id`; the compiler carries each scoped return
+as a new validated HostRef path root.
+
 Shared and exclusive Rust references infer `host_read` and `host_write`.
 `effects(...)` adds exceptional effects but cannot remove signature-inferred
 effects. A trusted Rust body receiving `&mut T` has ordinary field-level Rust

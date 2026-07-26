@@ -80,6 +80,10 @@ pub enum MemberTargetFact {
         name: String,
     },
     HostField(RegistryFieldTargetFact),
+    HostProperty {
+        owner: String,
+        name: String,
+    },
     LogicalRecordField(LogicalRecordFieldTargetFact),
     RegistryField {
         owner: String,

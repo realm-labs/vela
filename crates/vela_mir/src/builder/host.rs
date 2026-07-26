@@ -176,6 +176,44 @@ impl FunctionBuilder<'_> {
     /// Lower host methods and the adapter-defined `remove`/`push` intrinsics.
     /// Receiver root/path arguments are evaluated before source call arguments
     /// and all operands are captured before crossing the host boundary.
+    pub(super) fn lower_host_property(
+        &mut self,
+        expression: HirExprId,
+        receiver: HirExprId,
+        name: &str,
+        method: &HostMethodTarget,
+        origin: MirSourceOrigin,
+    ) -> Result<MirOperand, MirBuildError> {
+        if !method.signature.parameters.is_empty() {
+            return Err(self.inconsistent(
+                origin,
+                "host property getter requires a zero-argument host method",
+            ));
+        }
+        let path = self.host_call_path(receiver, None, origin)?;
+        self.validate_host_method(name, method, &path, origin)?;
+        let PreparedHostPath::Ready {
+            root,
+            path: mir_path,
+        } = self.prepare_host_path(&path)?
+        else {
+            return Ok(unit());
+        };
+        let result_type =
+            self.host_call_result_type(expression, method.signature.return_contract.as_ref());
+        self.append_host_value(
+            origin,
+            result_type,
+            MirHostOperation::Call {
+                root,
+                path: mir_path,
+                target: Box::new(method.clone()),
+                arguments: Vec::new(),
+            },
+            MirEffect::host_call().union(method.signature.effect),
+        )
+    }
+
     pub(super) fn lower_host_call(
         &mut self,
         expression: HirExprId,

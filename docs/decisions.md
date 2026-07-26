@@ -2072,12 +2072,22 @@ registration function. The method declarations compile to private extension
 dispatch and normal callable/type descriptors; they do not add business
 wrapper methods such as `vela_get` to the Rust type.
 
+Read-only Rust model fields are declared together in one `vela_fields!` block
+inside the generated `external_host` companion. Each declaration supplies the
+existing Rust field expression and its exact typed return shape; the macro
+emits both field schema and a private typed adapter. Vela reads these members
+with field syntax (`item.id`), while computed operations remain methods
+(`table.get(id)`). A field returning `&T`, `Option<&T>`, or a borrowed
+collection uses the same scoped HostRef ABI as an exported method. A HostRef
+returned from a method or property is a new path root, so expressions such as
+`config.tables().item().get(id)?.id` require no temporary variables.
+
 The companion remains compile-time code in the type-owning crate so Rust trait
 coherence, exact Rust `TypeId` binding, and static signature classification are
 preserved. It feeds the existing `TypeBinding`, callable ABI, Host lease, and
 scoped-return machinery. No linker inventory, process-global registry,
-runtime field reflection, offset-based access, or generator-specific VM bridge
-is introduced.
+runtime field-name lookup, runtime field reflection, offset-based access, or
+generator-specific VM bridge is introduced.
 
 ### Binding Generation And Error Surface
 

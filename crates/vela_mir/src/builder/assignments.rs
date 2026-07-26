@@ -160,6 +160,17 @@ impl FunctionBuilder<'_> {
         field: &HirField,
         origin: MirSourceOrigin,
     ) -> Result<MirOperand, MirBuildError> {
+        if let Some(CompileMemberTarget::HostProperty(method)) =
+            self.input.targets().member(expression).cloned()
+        {
+            return self.lower_host_property(
+                expression,
+                field.receiver,
+                &field.name,
+                &method,
+                origin,
+            );
+        }
         if let Some(path) = self.input.targets().host_path(expression).cloned() {
             return self.lower_host_read(expression, &path, origin);
         }
@@ -792,7 +803,9 @@ impl FunctionBuilder<'_> {
                 }))
             }
             CompileMemberTarget::HostField(_) => Err(self.host_read_route_error(origin)),
-            CompileMemberTarget::ScriptMethod { .. } | CompileMemberTarget::ValueMethod { .. } => {
+            CompileMemberTarget::HostProperty(_)
+            | CompileMemberTarget::ScriptMethod { .. }
+            | CompileMemberTarget::ValueMethod { .. } => {
                 let HirExprKind::Field(field) = self.expression_kind(expression, origin)? else {
                     return Err(self.inconsistent(
                         origin,

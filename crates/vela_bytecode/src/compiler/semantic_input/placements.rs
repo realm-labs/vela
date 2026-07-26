@@ -924,6 +924,28 @@ impl GenerationBuilder<'_, '_> {
             MemberTargetFact::HostField(field) => {
                 CompileMemberTarget::HostField(self.host_field_target(&field, origin)?)
             }
+            MemberTargetFact::HostProperty { owner, name } => {
+                let field = self
+                    .registry_facts
+                    .host_field_target_fact(&owner, &name)
+                    .cloned()
+                    .ok_or_else(registry_input_error)?;
+                self.ensure_external_field(field.semantic, origin)?;
+                let placement = vela_analysis::validation::CallArgumentPlacementFact {
+                    mode: CallPlacementModeFact::ExternalPositional,
+                    source_order: Vec::new(),
+                    parameter_slots: Some(Vec::new()),
+                };
+                let target =
+                    self.host_method_call(executable, &owner, &name, &placement, origin)?;
+                let CompileCalleeTarget::HostMethod(method) = target.callee else {
+                    return Err(input_error(MirBuildError::InconsistentInput {
+                        origin,
+                        message: "host property did not resolve to a host method".to_owned(),
+                    }));
+                };
+                CompileMemberTarget::HostProperty(method)
+            }
             MemberTargetFact::LogicalRecordField(field) => {
                 self.ensure_logical_record(field.kind, origin)?;
                 CompileMemberTarget::ScriptField(CompileFieldTarget::RecordSlot {

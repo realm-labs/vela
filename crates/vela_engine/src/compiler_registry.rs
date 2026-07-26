@@ -145,15 +145,18 @@ fn field_def(
     field: &FieldDesc,
     declaration_order: u32,
 ) -> FieldDef {
-    FieldDef::new(
+    let mut definition = FieldDef::new(
         source_field_path("host", &desc.key.name, &field.name),
         owner,
     )
-    .host_runtime_id(field.id.get())
     .declaration_order(declaration_order)
     .defaulted(field.has_default)
     .access(field_access(&field.access))
-    .type_hint(field.type_hint.as_deref().map(raw_type_hint_def))
+    .type_hint(field.type_hint.as_deref().map(raw_type_hint_def));
+    if field.attrs.get("vela_external_property").is_none() {
+        definition = definition.host_runtime_id(field.id.get());
+    }
+    definition
 }
 
 fn variant_def(

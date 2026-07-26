@@ -544,7 +544,23 @@ impl HirSemanticFacts {
                         })
                         .flatten();
                     if let Some(target) = host_field {
-                        MemberTargetFact::HostField(target.clone())
+                        if target.host_runtime.is_none()
+                            && schema.is_some_and(|schema| {
+                                registry_method_fact(schema, &receiver, &field.name).is_some()
+                            })
+                        {
+                            if let Some(effect) = schema.and_then(|schema| {
+                                registry_method_effect(schema, &receiver, &field.name)
+                            }) {
+                                self.effects.insert(id, effect.clone());
+                            }
+                            MemberTargetFact::HostProperty {
+                                owner,
+                                name: field.name.clone(),
+                            }
+                        } else {
+                            MemberTargetFact::HostField(target.clone())
+                        }
                     } else if !matches!(receiver, TypeFact::Host { .. })
                         && schema
                             .is_some_and(|schema| schema.field_fact(&owner, &field.name).is_some())
@@ -975,6 +991,18 @@ impl HirSemanticFacts {
                     })?;
                 let owner = registry_field_owner(&self.fact(field.receiver))?;
                 let target = schema?.host_field_target_fact(&owner, &field.name)?.clone();
+                if target.host_runtime.is_none() {
+                    let fact = self.fact(expression.id);
+                    if !matches!(fact, TypeFact::Host { .. }) {
+                        return None;
+                    }
+                    let owner = type_owner(&fact)?;
+                    return Some(HostPathTargetFact {
+                        root: expression.id,
+                        root_type: schema?.type_target_fact(owner)?.clone(),
+                        segments: Vec::new(),
+                    });
+                }
                 path.segments.push(HostPathSegmentFact::Field(target));
                 Some(path)
             }

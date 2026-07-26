@@ -83,9 +83,8 @@ impl ExternalConfig {
     register = "register_external_config"
 )]
 impl ExternalConfig {
-    #[script_method(name = "item")]
-    pub fn item(&self) -> &ExternalItem {
-        ExternalConfig::item(self)
+    vela_fields! {
+        item: &ExternalItem = ExternalConfig::item(self);
     }
 }
 
@@ -97,14 +96,9 @@ struct ExternalItem {
 
 #[external_host(path = "generated::ExternalItem", register = "register_external_item")]
 impl ExternalItem {
-    #[script_method(name = "count")]
-    pub fn count(&self) -> i32 {
-        self.count
-    }
-
-    #[script_method(name = "quality")]
-    pub fn quality(&self) -> ExternalQuality {
-        self.quality
+    vela_fields! {
+        count: i32 = self.count;
+        quality: ExternalQuality = self.quality;
     }
 }
 
@@ -624,10 +618,8 @@ fn centralized_external_host_binding_supports_borrowed_children() {
     .build()
     .expect("centralized external bindings should register");
     let program = engine
-        .compile_source(
-            "fn main(config: ExternalConfig) { let item = config.item(); return item.count(); }",
-        )
-        .expect("external Host methods should compile");
+        .compile_source("fn main(config: ExternalConfig) { return config.item.count; }")
+        .expect("external Host properties should compile");
     let mut runtime =
         Runtime::new(engine, program).expect("external Host runtime should initialize");
     let config = ExternalConfig {
@@ -647,6 +639,41 @@ fn centralized_external_host_binding_supports_borrowed_children() {
     assert_eq!(
         runtime.value_to_owned(&result),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I32(42)))
+    );
+}
+
+#[test]
+fn centralized_external_host_properties_preserve_owned_enum_values() {
+    let engine = register_external_item(register_external_config(
+        Engine::builder().capability(Capability::HostRead),
+    ))
+    .register_rust_value_closure::<ExternalQuality>()
+    .build()
+    .expect("centralized external properties should register");
+    let program = engine
+        .compile_source("fn main(item: ExternalItem) { return item.quality; }")
+        .expect("external enum property should compile");
+    let mut runtime =
+        Runtime::new(engine, program).expect("external property runtime should initialize");
+    let item = ExternalItem {
+        count: 42,
+        quality: ExternalQuality::Rare,
+    };
+    let result = runtime
+        .call(
+            "main",
+            CallArgs::new().with_host_ref("item", &item),
+            CallOptions::unbounded(),
+        )
+        .expect("external enum property should retain its Value representation");
+
+    assert_eq!(
+        runtime.value_to_owned(&result),
+        Ok(OwnedValue::enum_variant(
+            "generated::ExternalQuality",
+            "Rare",
+            std::iter::empty::<(&str, OwnedValue)>(),
+        ))
     );
 }
 

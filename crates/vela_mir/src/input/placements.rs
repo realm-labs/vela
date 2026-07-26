@@ -14,7 +14,7 @@ use crate::{
 use super::{
     CompileCallTarget, CompileFunctionIdentity, CompileFunctionTarget, CompileHostPathTarget,
     CompileTargetSnapshot, CompileTargetSnapshotBuilder, CompileTryTarget, HostFieldTarget,
-    MethodExecutableTarget, MirBuildError,
+    HostMethodTarget, MethodExecutableTarget, MirBuildError,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -38,6 +38,7 @@ pub enum CompileFieldTarget {
 pub enum CompileMemberTarget {
     ScriptField(CompileFieldTarget),
     HostField(HostFieldTarget),
+    HostProperty(HostMethodTarget),
     ScriptMethod {
         target: MethodExecutableTarget,
         debug_name: String,

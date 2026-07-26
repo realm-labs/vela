@@ -412,6 +412,19 @@ fn host_path(
             expression: Some(inner),
         } => host_path(body, facts, schema, *inner),
         HirExprKind::Field(field) => {
+            if matches!(
+                facts.member_target(expression),
+                Some(MemberTargetFact::HostProperty { .. })
+            ) {
+                let TypeFact::Host { name } = facts.expression(expression)? else {
+                    return None;
+                };
+                schema.type_target_fact(name)?;
+                return Some(HostPathUse {
+                    indexes: Vec::new(),
+                    segment_count: 0,
+                });
+            }
             let mut path = host_path(body, facts, schema, field.receiver)?;
             if !matches!(
                 facts.member_target(expression),
