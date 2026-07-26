@@ -17,6 +17,8 @@ use crate::{HostExecution, Vm, VmBytecodeProfiler, VmInlineCaches};
 
 pub struct LinkedExecutionSession {
     pub(crate) frames: Vec<ExecutionFrame>,
+    /// Recycled register buffers for the calls of this session.
+    pub(crate) frame_pool: crate::frame::FramePool,
     pub(crate) pending_native: Vec<PendingNativeResume>,
     pub(crate) root_call_depth_charged: bool,
     pub(crate) root_generation: vela_bytecode::ExecutableGenerationId,
@@ -209,9 +211,11 @@ impl Vm {
             host.map(|host| &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)),
             Some(heap),
             Some(budget),
+            None,
         );
         match entry {
             Ok(entry) => Ok(LinkedExecutionSession {
+                frame_pool: crate::frame::FramePool::default(),
                 root_generation: entry.owner.generation(),
                 context_native_boundaries: false,
                 frames: vec![entry],

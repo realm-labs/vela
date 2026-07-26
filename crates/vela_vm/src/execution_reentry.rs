@@ -91,6 +91,7 @@ impl Vm {
             host.map(|host| &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)),
             Some(heap),
             Some(budget),
+            Some(&mut session.frame_pool),
         );
         match entry {
             Ok(entry) => {

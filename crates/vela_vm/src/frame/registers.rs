@@ -33,11 +33,77 @@ pub(crate) struct RegisterFile {
     slots: Vec<Value>,
 }
 
+/// Recycles register buffers between the calls of one execution session.
+///
+/// Every script call used to allocate its register vector; the malloc/free
+/// pair dominated call-heavy profiles. Buffers released here keep their
+/// capacity, so a call/return loop reaches a steady state with no allocator
+/// traffic at all.
+///
+/// The pool needs no size cap: every buffer it holds came from a popped frame,
+/// so `pooled + live <= peak call depth` and the retained memory stays in the
+/// same order as the deepest call stack the session actually reached.
+///
+/// Pooled buffers may contain stale values, including dangling `GcRef`s. That
+/// is sound because the pool is never traced as GC roots and `acquire` clears
+/// a buffer before handing it out.
+#[derive(Debug, Default)]
+pub(crate) struct FramePool {
+    buffers: Vec<Vec<Value>>,
+}
+
+impl FramePool {
+    pub(crate) fn acquire(&mut self, register_count: u16) -> Vec<Value> {
+        match self.buffers.pop() {
+            Some(mut buffer) => {
+                buffer.clear();
+                buffer.resize(usize::from(register_count), Value::Unit);
+                buffer
+            }
+            None => vec![Value::Unit; usize::from(register_count)],
+        }
+    }
+
+    pub(crate) fn release(&mut self, buffer: Vec<Value>) {
+        self.buffers.push(buffer);
+    }
+}
+
 impl RegisterFile {
     pub(crate) fn new(register_count: u16) -> Self {
         Self {
             slots: vec![Value::Unit; usize::from(register_count)],
         }
+    }
+
+    pub(crate) fn from_buffer(buffer: Vec<Value>) -> Self {
+        Self { slots: buffer }
+    }
+
+    pub(crate) fn into_buffer(self) -> Vec<Value> {
+        self.slots
+    }
+
+    /// Copies `values` into the slots starting at `offset`.
+    #[inline]
+    pub(crate) fn write_window(&mut self, offset: usize, values: &[Value]) -> VmResult<()> {
+        let window = self
+            .slots
+            .get_mut(offset..offset.saturating_add(values.len()))
+            .ok_or_else(|| register_window_error(offset, values.len()))?;
+        window.copy_from_slice(values);
+        Ok(())
+    }
+
+    /// Fills `len` slots starting at `offset` with `value`.
+    #[inline]
+    pub(crate) fn fill_window(&mut self, offset: usize, len: usize, value: Value) -> VmResult<()> {
+        let window = self
+            .slots
+            .get_mut(offset..offset.saturating_add(len))
+            .ok_or_else(|| register_window_error(offset, len))?;
+        window.fill(value);
+        Ok(())
     }
 
     #[inline(always)]
@@ -58,6 +124,14 @@ impl RegisterFile {
     pub(crate) fn values(&self) -> &[Value] {
         &self.slots
     }
+}
+
+/// Reports the first out-of-range slot of a rejected window operation.
+fn register_window_error(offset: usize, len: usize) -> VmError {
+    let end = offset.saturating_add(len);
+    VmError::new(VmErrorKind::RegisterOutOfBounds {
+        register: Register(u16::try_from(end.saturating_sub(1)).unwrap_or(u16::MAX)),
+    })
 }
 
 #[cfg(test)]

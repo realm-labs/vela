@@ -213,8 +213,10 @@ impl Vm {
                 .map(|host| &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)),
             heap.as_deref_mut(),
             budget.as_deref_mut(),
+            None,
         )?;
         let mut session = LinkedExecutionSession {
+            frame_pool: crate::frame::FramePool::default(),
             root_generation: entry.owner.generation(),
             context_native_boundaries: false,
             frames: vec![entry],
@@ -362,6 +364,7 @@ impl Vm {
                         }),
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
+                        Some(&mut session.frame_pool),
                     );
                     let child = match child {
                         Ok(child) => child,
@@ -421,6 +424,7 @@ impl Vm {
                     let Some(return_to) = finished.return_to else {
                         return Ok(LinkedDriveOutcome::Complete(value));
                     };
+                    finished.registers.recycle_into(&mut session.frame_pool);
                     let value = store_value_in_heap_if_needed(
                         value,
                         heap.as_deref_mut(),
@@ -602,6 +606,7 @@ impl Vm {
         host: Option<&(dyn vela_host::adapter::ScriptStateAdapter + Send)>,
         heap: Option<&mut HeapExecution<'_>>,
         budget: Option<&mut ExecutionBudget>,
+        pool: Option<&mut crate::frame::FramePool>,
     ) -> VmResult<ExecutionFrame> {
         let program = owner.program();
         let code = program.function(function).ok_or_else(|| {
@@ -610,77 +615,54 @@ impl Vm {
             })
         })?;
         validate_inline_cache_layout(inline_caches, code.cache_sites.len())?;
-        let function_name = program.debug_name(code.debug_name);
         if captures.len() != usize::from(code.capture_count) {
             return Err(VmError::new(VmErrorKind::ArityMismatch {
-                name: function_name.to_owned(),
+                name: program.debug_name(code.debug_name).to_owned(),
                 expected: usize::from(code.capture_count),
                 actual: captures.len(),
             }));
         }
-        if args.len() > code.params.len() {
+        let params = code.params.len();
+        if args.len() > params {
             return Err(VmError::new(VmErrorKind::ArityMismatch {
-                name: function_name.to_owned(),
-                expected: code.params.len(),
+                name: program.debug_name(code.debug_name).to_owned(),
+                expected: params,
                 actual: args.len(),
             }));
         }
 
-        let mut frame = CallFrame::new_linked(code.register_count, &owner);
-        for (index, capture) in captures.iter().enumerate() {
-            frame.write(
-                Register(u16::try_from(index).map_err(|_| {
-                    VmError::new(VmErrorKind::RegisterOutOfBounds {
-                        register: Register(u16::MAX),
-                    })
-                })?),
-                *capture,
-            )?;
-        }
+        let mut frame = match pool {
+            Some(pool) => CallFrame::new_linked_pooled(code.register_count, &owner, pool),
+            None => CallFrame::new_linked(code.register_count, &owner),
+        };
+        frame.write_window(0, captures)?;
         let param_offset = usize::from(code.capture_count);
-        for (index, arg) in args.iter().enumerate() {
-            frame.write(
-                Register(
-                    u16::try_from(param_offset.saturating_add(index)).map_err(|_| {
-                        VmError::new(VmErrorKind::RegisterOutOfBounds {
-                            register: Register(u16::MAX),
-                        })
-                    })?,
-                ),
-                *arg,
-            )?;
-        }
-        for index in args.len()..code.params.len() {
-            frame.write(
-                Register(
-                    u16::try_from(param_offset.saturating_add(index)).map_err(|_| {
-                        VmError::new(VmErrorKind::RegisterOutOfBounds {
-                            register: Register(u16::MAX),
-                        })
-                    })?,
-                ),
+        frame.write_window(param_offset, args)?;
+        // Exact-arity calls with no explicit `Missing` holes are the common
+        // case and need neither the fill nor the per-parameter default scan.
+        let missing_in_args = args.iter().any(|arg| matches!(arg, Value::Missing));
+        if args.len() < params || missing_in_args {
+            frame.fill_window(
+                param_offset.saturating_add(args.len()),
+                params - args.len(),
                 Value::Missing,
             )?;
-        }
-        let actual = args
-            .iter()
-            .filter(|arg| !matches!(arg, Value::Missing))
-            .count();
-        for index in 0..code.params.len() {
-            let register = Register(u16::try_from(param_offset.saturating_add(index)).map_err(
-                |_| {
-                    VmError::new(VmErrorKind::RegisterOutOfBounds {
-                        register: Register(u16::MAX),
-                    })
-                },
-            )?);
-            let has_default = code.param_defaults.get(index).copied().unwrap_or(false);
-            if !has_default && matches!(frame.read(register)?, Value::Missing) {
-                return Err(VmError::new(VmErrorKind::ArityMismatch {
-                    name: function_name.to_owned(),
-                    expected: code.params.len(),
-                    actual,
-                }));
+            for index in 0..params {
+                let has_default = code.param_defaults.get(index).copied().unwrap_or(false);
+                let missing = args
+                    .get(index)
+                    .is_none_or(|arg| matches!(arg, Value::Missing));
+                if !has_default && missing {
+                    let actual = args
+                        .iter()
+                        .filter(|arg| !matches!(arg, Value::Missing))
+                        .count();
+                    return Err(VmError::new(VmErrorKind::ArityMismatch {
+                        name: program.debug_name(code.debug_name).to_owned(),
+                        expected: params,
+                        actual,
+                    }));
+                }
             }
         }
         if check_param_guards {

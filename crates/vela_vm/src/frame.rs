@@ -7,6 +7,7 @@ use crate::{Value, VmError, VmErrorKind, VmResult};
 
 mod registers;
 
+pub(crate) use registers::FramePool;
 use registers::RegisterFile;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -71,6 +72,35 @@ impl CallFrame {
             registers: RegisterFile::new(register_count),
             linked_owner: Some(Arc::clone(owner)),
         }
+    }
+
+    /// Builds a frame whose register buffer comes from the session pool.
+    pub(crate) fn new_linked_pooled(
+        register_count: u16,
+        owner: &Arc<LinkedArtifact>,
+        pool: &mut FramePool,
+    ) -> Self {
+        Self {
+            registers: RegisterFile::from_buffer(pool.acquire(register_count)),
+            linked_owner: Some(Arc::clone(owner)),
+        }
+    }
+
+    /// Returns this frame's register buffer to the session pool.
+    pub(crate) fn recycle_into(self, pool: &mut FramePool) {
+        pool.release(self.registers.into_buffer());
+    }
+
+    /// Copies `values` into the registers starting at `offset`.
+    #[inline]
+    pub(crate) fn write_window(&mut self, offset: usize, values: &[Value]) -> VmResult<()> {
+        self.registers.write_window(offset, values)
+    }
+
+    /// Fills `len` registers starting at `offset` with `value`.
+    #[inline]
+    pub(crate) fn fill_window(&mut self, offset: usize, len: usize, value: Value) -> VmResult<()> {
+        self.registers.fill_window(offset, len, value)
     }
 
     pub(crate) fn linked_owner(&self) -> Option<&Arc<LinkedArtifact>> {
