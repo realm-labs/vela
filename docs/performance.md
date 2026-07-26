@@ -31,7 +31,34 @@ cargo bench -p vela_engine --bench service_boundary_baseline
 cargo bench -p vela_engine --bench actor_memory -- memory
 cargo bench -p vela_engine --bench actor_memory -- allocations
 cargo bench -p vela_engine --bench actor_concurrency
+cargo bench -p vela_language_service --bench incremental_latency
 ```
+
+`incremental_latency` is the editor-responsiveness harness. It replays what an
+editor produces on each keystroke against a synthetic multi-module workspace -
+apply the buffer change, reassemble project sources, update the databases,
+publish document diagnostics, then answer completion and hover at the caret -
+and reports P50/P95 per step plus the cost of the database snapshot every
+background request takes. `VELA_LS_BENCH_MODULES`, `VELA_LS_BENCH_FUNCTIONS`,
+`VELA_LS_BENCH_ITERATIONS`, and `VELA_LS_BENCH_WARMUP` select the shape.
+
+The 2026-07-27 M20.5 incremental checkpoint used 128 modules (8,709 lines) and
+256 modules (17,413 lines) on the local macOS release build, 6 rounds after 2
+warmup. P50/P95 in ms at 128 modules:
+
+| Row | Before | After |
+|---|---|---|
+| did_change total | 5906 / 6146 | 346 / 354 |
+| did_change database update | 260 / 274 | 222 / 226 |
+| did_change publish diagnostics | 5644 / 5875 | 123 / 127 |
+| completion | 11237 / 11380 | 2.7 / 3.0 |
+| hover | 2797 / 2935 | 0.21 / 0.25 |
+| database snapshot | 2.29 / 2.55 | 0.000 / 0.001 |
+
+Diagnostics publication and both request paths now scale close to linearly with
+workspace size. The remaining superlinear term is the full HIR rebuild inside
+`database_update`, which still lowers every module when any module changes;
+871 ms P50 at 256 modules against 222 ms at 128.
 
 The Actor Runtime/cache Batch A harnesses freeze the before/after workload for
 M20. `actor_memory` measures 1, 100, and 10,000 Runtimes sharing small and

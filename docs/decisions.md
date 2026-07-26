@@ -3352,6 +3352,32 @@ path usable for methods such as bounded diagnostics, whose shared receiver is a
 host read while the operation also emits an event. Permission checks therefore
 remain fail-closed before the Rust adapter runs.
 
+### Editor Answers Read One Fact Build Per Workspace Generation
+
+`LanguageServiceDatabases` owns whole-workspace `AnalysisFacts` for the current
+generation: one schema-free build and one schema-backed build, dropped when the
+module graph or the host schema changes. Language-service code must read those
+through `graph_analysis_facts` / `schema_analysis_facts` and never call
+`AnalysisFacts::from_module_graph*` per request; analysis helpers that need
+facts take them as a parameter. The two variants stay separate because callers
+choose deliberately between script-only and schema-backed answers.
+
+Inference that walks bodies must be scoped to the body it is walking. Seeding a
+per-body walk from a workspace-wide map, or scanning every declaration in the
+graph to answer a per-module question, makes editor latency grow with the square
+of workspace size. Where a candidate must be rejected, reject it before
+allocating a qualified name or path for it.
+
+The LSP server owns the databases behind an `Arc` and gives snapshots a shared
+reference; writes use `Arc::make_mut`. Snapshot isolation is unchanged, so
+generation-based stale-result rejection and cancellation keep working, and a
+write copies only while a background request is still in flight.
+
+Reproducible evidence for these rules is
+`cargo bench -p vela_language_service --bench incremental_latency`, which
+replays a keystroke against a synthetic multi-module workspace and reports
+P50/P95 for the change cycle, completion, hover, and the snapshot.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

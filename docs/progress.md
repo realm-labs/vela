@@ -153,7 +153,7 @@ Host-backed and mutable collections retain HostRef identity and leases.
 | M19 | Complete enough | Remaining interpreter costs belong to later cache, layout, or backend work. |
 | M19.5 | Complete enough | Cache-ready IDs, linked bytecode, profile ownership, and prepared host paths are validated. |
 | M20 | Complete enough | Actor Runtime/cache ownership, lifetime, reload, and concurrency gates are accepted. |
-| M20.5 | Queued | Resume editor-visible work after the service hard switch. |
+| M20.5 | In progress | Per-keystroke latency is fixed for requests and diagnostics; the HIR rebuild is still whole-workspace. |
 | Rust/Vela service interop | Complete | The generation hard switch, total admitted boundary, complete coverage demo, and P7 repository gate are accepted. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, and debugger contracts stabilize. |
@@ -269,12 +269,26 @@ acceptance audit against
 [container-type-hints-plan.md](container-type-hints-plan.md) and
 [value-keyed-map-set-plan.md](value-keyed-map-set-plan.md).
 
-### M20.5 LSP Follow-Up
+### M20.5 Incremental Model
 
-The native LSP baseline is accepted. Further work must name an editor-visible
-failure or missing protocol proof. Known follow-ups are broader method/schema
-call-site classification and suppression of future hints across dynamic `Any`
-boundaries. This track remains queued behind the service hard switch.
+The named editor-visible failure was that every keystroke rebuilt the whole
+workspace's `AnalysisFacts` once per request and every background request deep
+copied the databases. On a 128-module fixture a keystroke cost 5.9 s and a
+completion 11.2 s. Facts are now memoized per workspace generation, flow
+narrowing and schema validation no longer scale with the square of workspace
+size, and snapshots share the databases behind an `Arc`. The same keystroke
+costs 346 ms, completion 2.7 ms, hover 0.2 ms. Evidence and the harness are in
+[performance.md](performance.md).
+
+The remaining named gap is the HIR layer: any invalidated module still forces a
+full `ModuleGraph` rebuild, so `database_update` stays superlinear (222 ms at
+128 modules, 871 ms at 256). Making it incremental requires stable HIR ids
+across re-lowering, which is the prerequisite for per-module fact reuse as
+well. `did_change` also still computes and publishes diagnostics on the message
+loop rather than a worker lane.
+
+Other known follow-ups are broader method/schema call-site classification and
+suppression of future hints across dynamic `Any` boundaries.
 
 ### Deferred Tracks
 
@@ -304,7 +318,8 @@ changes.
 
 ## Next Up
 
-1. Resume M20.5 only for a named editor-visible language-service gap.
+1. Continue M20.5 with incremental HIR re-lowering, which unblocks per-module
+   fact reuse and is the last superlinear term in a keystroke.
 2. Audit the parameterized container and value-keyed Map/Set plans against
    their explicit acceptance matrices.
 3. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
