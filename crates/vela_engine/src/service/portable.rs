@@ -12,7 +12,7 @@ use vela_common::{
 use super::source::PortableServiceSourceManifest;
 use super::{
     ServiceBundleError, ServiceMethodSelection, ServiceSetSchema, ServiceSourceError,
-    ServiceSourceManifest, ServiceUpdateBundle,
+    ServiceSourceManifest, ServiceUpdateBundle, ServiceUpdateMode,
 };
 use crate::engine::Engine;
 use crate::native::TypeHint;
@@ -259,6 +259,25 @@ impl PortableServiceUpdateBundle {
     #[must_use]
     pub const fn host_schema_hash(&self) -> u64 {
         self.payload.host_schema_hash
+    }
+
+    #[must_use]
+    pub const fn artifact_checksum(&self) -> ArtifactChecksum {
+        ArtifactChecksum::new(self.payload.artifact_checksum)
+    }
+
+    #[must_use]
+    pub const fn mode(&self) -> ServiceUpdateMode {
+        match self.payload.mode {
+            PortableServiceMode::Snapshot => ServiceUpdateMode::Snapshot,
+            PortableServiceMode::Delta {
+                base_generation_id,
+                base_artifact_checksum,
+            } => ServiceUpdateMode::Delta {
+                base_generation_id: ServiceGenerationId::new(base_generation_id),
+                base_artifact_checksum: ArtifactChecksum::new(base_artifact_checksum),
+            },
+        }
     }
 
     #[must_use]

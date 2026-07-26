@@ -143,6 +143,11 @@ impl<T> ServiceGenerationCandidate<T> {
     pub fn base_generation_id(&self) -> ServiceGenerationId {
         self.expected.generation_id()
     }
+
+    #[must_use]
+    pub fn generation(&self) -> &Arc<ServiceGeneration<T>> {
+        &self.generation
+    }
 }
 
 /// Conditional rollback authority for one successful activation.

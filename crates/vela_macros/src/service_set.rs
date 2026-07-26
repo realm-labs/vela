@@ -786,6 +786,13 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             pub fn base_generation_id(&self) -> ::vela_common::ServiceGenerationId {
                 self.candidate.base_generation_id()
             }
+
+            #[must_use]
+            pub fn artifact_checksum(
+                &self,
+            ) -> ::std::option::Option<::vela_engine::service::ArtifactChecksum> {
+                self.candidate.generation().services().artifact_checksum()
+            }
         }
 
         #vis struct #rollback_ident {

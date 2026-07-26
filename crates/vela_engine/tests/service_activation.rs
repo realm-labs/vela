@@ -613,6 +613,7 @@ impl CalculatorPortableHotfix {
         engine.compile_source(source).expect("offline compile"),
     )
     .expect("portable bytecode");
+    let artifact_checksum = portable_program.checksum();
     let host_schema_hash = 0x1234_5678_9abc_def0;
     let portable = vela_engine::service::PortableServiceUpdateBundle::snapshot(
         services.schema(),
@@ -639,6 +640,14 @@ impl CalculatorPortableHotfix {
     let decoded = vela_engine::service::PortableServiceUpdateBundle::decode(&first)
         .expect("decode service bundle");
     assert_eq!(decoded.checksum(), checksum);
+    assert_eq!(
+        decoded.artifact_checksum().as_bytes(),
+        artifact_checksum.as_bytes()
+    );
+    assert_eq!(
+        decoded.mode(),
+        vela_engine::service::ServiceUpdateMode::Snapshot
+    );
     assert_eq!(decoded.diagnostics()[0].path(), "hotfix.vela");
     assert!(matches!(
         decoded
@@ -659,9 +668,16 @@ impl CalculatorPortableHotfix {
             call_options(),
         )
         .expect("stage portable bundle");
+    let linked_artifact_checksum = candidate
+        .artifact_checksum()
+        .expect("portable candidate should expose its linked artifact checksum");
     services
         .activate_if_current(candidate)
         .expect("activate portable bundle");
+    assert_eq!(
+        services.pin().artifact_checksum(),
+        Some(linked_artifact_checksum)
+    );
 
     let mut context = RequestContext {
         counter: 0,
