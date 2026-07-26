@@ -22,6 +22,7 @@ impl HirSemanticFacts {
         schema: Option<&RegistryFacts>,
         base: &AnalysisFacts,
     ) {
+        let mut environment = body_local_environment(&self.locals, body, base);
         let mut flow = LocalFlow {
             graph,
             body,
@@ -30,7 +31,6 @@ impl HirSemanticFacts {
             expression_types: &self.types,
             uses: BTreeMap::new(),
         };
-        let mut environment = self.locals.clone();
         flow.visit_root(&mut environment);
         for expression in body.expressions.keys() {
             self.local_use_types.remove(expression);
@@ -457,6 +457,36 @@ fn set_local(environment: &mut LocalEnvironment, local: HirLocalId, fact: TypeFa
     } else {
         environment.insert(local, fact);
     }
+}
+
+/// Seeds flow narrowing with the locals a single body can observe.
+///
+/// The walk reads the environment only through [`LocalFlow::fact`], which looks
+/// up locals reached by this body's binding resolutions, so seeding every local
+/// in the workspace changed no answer while making each branch join copy a map
+/// sized by the whole project.
+fn body_local_environment(
+    locals: &BTreeMap<HirLocalId, TypeFact>,
+    body: &HirBody,
+    base: &AnalysisFacts,
+) -> LocalEnvironment {
+    let declared = body
+        .locals
+        .iter()
+        .copied()
+        .chain(body.params.iter().map(|param| param.local))
+        .chain(body.self_binding);
+    let resolved =
+        body.expressions
+            .keys()
+            .filter_map(|expression| match base.resolution(*expression) {
+                Some(BindingResolution::Local(local)) => Some(*local),
+                _ => None,
+            });
+    declared
+        .chain(resolved)
+        .filter_map(|local| locals.get(&local).map(|fact| (local, fact.clone())))
+        .collect()
 }
 
 fn join_environments<'a>(

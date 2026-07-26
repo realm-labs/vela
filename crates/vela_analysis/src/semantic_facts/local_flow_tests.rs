@@ -282,3 +282,63 @@ fn expression_exact(
     ));
     id
 }
+
+/// Flow narrowing is intra-body: what a neighbouring module does to its own
+/// locals must not reach this module's answers. The seeded environment is
+/// restricted to one body's locals for exactly this reason, so the invariant
+/// needs a regression test.
+#[test]
+fn narrowing_answers_do_not_depend_on_other_modules_in_the_graph() {
+    let source = SourceId::new(184);
+    let text = r#"
+fn rules() {
+    let value = 1;
+    value.trim();
+    value = "ready:gold";
+    value.contains(needle = ":");
+}
+"#;
+    let neighbour = SourceId::new(185);
+    let neighbour_text = r#"
+fn other() {
+    let value = "ready:gold";
+    value.contains(needle = ":");
+    value = 1;
+    value.trim();
+}
+"#;
+
+    let module_facts = |include_neighbour: bool| {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            source,
+            vela_package::PackageId::anonymous(),
+            ModulePath::from_qualified("rules"),
+            text,
+        ));
+        if include_neighbour {
+            graph.add_source(ModuleSource::new(
+                neighbour,
+                vela_package::PackageId::anonymous(),
+                ModulePath::from_qualified("other"),
+                neighbour_text,
+            ));
+        }
+        graph.resolve_imports();
+        assert_eq!(graph.diagnostics(), &[]);
+        let facts = AnalysisFacts::from_module_graph(&graph);
+        let before = expression_exact(&graph, source, text, "value.trim()");
+        let after = expression_exact(&graph, source, text, "value.contains(needle = \":\")");
+        (
+            receiver_fact(&graph, &facts, before).cloned(),
+            receiver_fact(&graph, &facts, after).cloned(),
+        )
+    };
+
+    let alone = module_facts(false);
+    let with_neighbour = module_facts(true);
+
+    assert_eq!(alone.0, Some(TypeFact::I64));
+    assert_eq!(alone.1, Some(TypeFact::STRING));
+    assert_eq!(alone, with_neighbour);
+}
