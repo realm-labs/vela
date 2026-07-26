@@ -94,7 +94,7 @@ fn send_task_result_returns_content_modified_for_stale_non_retryable_response() 
         .formatting_results()
         .recv_timeout(Duration::from_secs(1))
         .expect("formatting task should complete");
-    state.project.databases.invalidate_project_config();
+    state.project.databases_mut().invalidate_project_config();
 
     let task_summary = state
         .send_task_result(task)

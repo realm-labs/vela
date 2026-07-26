@@ -96,7 +96,7 @@ fn snapshots_are_immutable_across_authoritative_mutations() {
     );
     state
         .project
-        .databases
+        .databases_mut()
         .mark_schema_missing("/schema/one.json");
 
     let before = state.snapshot();
@@ -106,7 +106,7 @@ fn snapshots_are_immutable_across_authoritative_mutations() {
         "fn main() { 2 }",
         SourceVersion::new(2),
     );
-    state.project.databases.clear_schema();
+    state.project.databases_mut().clear_schema();
     let after = state.snapshot();
 
     assert_eq!(
@@ -622,3 +622,40 @@ fn lifecycle_flags_are_owned_by_global_state() {
     assert!(state.is_exited());
 }
 use super::*;
+
+#[test]
+fn concurrent_snapshots_share_one_database_allocation() {
+    let (sender, _receiver) = unbounded();
+    let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+    let document = DocumentId::from("file:///workspace/scripts/main.vela");
+    state.project.workspace.open_document(
+        document.clone(),
+        "fn main() { 1 }",
+        SourceVersion::new(1),
+    );
+    state.project.refresh_document_databases(&document);
+
+    let first = state.snapshot();
+    let second = state.snapshot();
+    assert!(
+        std::sync::Arc::ptr_eq(&first.databases, &second.databases),
+        "two background requests should read the same databases, not two copies"
+    );
+
+    let generation_before = first.databases().generation();
+    state.project.workspace.change_document(
+        document.clone(),
+        "fn main() { 2 }",
+        SourceVersion::new(2),
+    );
+    state.project.refresh_document_databases(&document);
+
+    assert_eq!(
+        first.databases().generation(),
+        generation_before,
+        "an outstanding snapshot must not observe the write"
+    );
+    let after = state.snapshot();
+    assert!(!std::sync::Arc::ptr_eq(&first.databases, &after.databases));
+    assert!(after.databases().generation() > generation_before);
+}

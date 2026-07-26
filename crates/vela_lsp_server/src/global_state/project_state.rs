@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, ProjectDiagnostic, ProjectSources, SourceFileSnapshot,
@@ -18,7 +19,7 @@ use crate::{
 #[derive(Debug, Default)]
 pub(super) struct ProjectState {
     pub(super) workspace: Workspace,
-    pub(super) databases: LanguageServiceDatabases,
+    pub(super) databases: Arc<LanguageServiceDatabases>,
     pub(super) config: Option<WorkspaceConfig>,
     package_graph: Option<PackageGraph>,
     root_manifest: Option<PathBuf>,
@@ -207,6 +208,15 @@ impl ProjectState {
             .and_then(|config| config.schema().path())
     }
 
+    /// Mutable access to the shared databases.
+    ///
+    /// Outstanding [`GlobalStateSnapshot`](super::GlobalStateSnapshot) copies
+    /// hold the same allocation, so a write while a background request is in
+    /// flight pays one copy here instead of every snapshot paying one.
+    pub(super) fn databases_mut(&mut self) -> &mut LanguageServiceDatabases {
+        Arc::make_mut(&mut self.databases)
+    }
+
     pub(super) fn refresh_databases(&mut self) {
         let config = self.config.clone().unwrap_or_else(|| {
             self.open_documents
@@ -233,31 +243,33 @@ impl ProjectState {
             || assemble_project_sources(config, &files, &snapshot),
             |graph| assemble_package_project_sources(graph, &files, &snapshot),
         );
-        if std::mem::take(&mut self.project_config_update_pending) {
-            self.databases
-                .update_after_project_config_change_with_open_documents(
-                    &project,
-                    &self.open_documents,
-                );
+        let Self {
+            databases,
+            open_documents,
+            project_config_update_pending,
+            ..
+        } = self;
+        if std::mem::take(project_config_update_pending) {
+            Arc::make_mut(databases)
+                .update_after_project_config_change_with_open_documents(&project, open_documents);
         } else {
-            self.databases
-                .update_with_open_documents(&project, &self.open_documents);
+            Arc::make_mut(databases).update_with_open_documents(&project, open_documents);
         }
         self.analysis_diagnostics = project_diagnostics(&project);
     }
 
     fn reload_schema_from_config(&mut self) {
         let Some(schema_path) = self.schema_path().map(str::to_owned) else {
-            self.databases.clear_schema();
+            self.databases_mut().clear_schema();
             return;
         };
         self.schema_documents
             .insert(DocumentId::from(document_path_uri(&schema_path)));
         match std::fs::read_to_string(&schema_path) {
             Ok(source) => self
-                .databases
+                .databases_mut()
                 .load_schema_artifact_json(&schema_path, &source),
-            Err(_) => self.databases.mark_schema_missing(schema_path),
+            Err(_) => self.databases_mut().mark_schema_missing(schema_path),
         }
     }
 
@@ -269,9 +281,9 @@ impl ProjectState {
             .insert(DocumentId::from(uri.to_owned()));
         match read_document_uri(uri) {
             Some(source) => self
-                .databases
+                .databases_mut()
                 .load_schema_artifact_json(&schema_path, &source),
-            None => self.databases.mark_schema_missing(schema_path),
+            None => self.databases_mut().mark_schema_missing(schema_path),
         }
     }
 
@@ -281,7 +293,7 @@ impl ProjectState {
         };
         self.schema_documents
             .insert(DocumentId::from(document_path_uri(&schema_path)));
-        self.databases.mark_schema_missing(schema_path);
+        self.databases_mut().mark_schema_missing(schema_path);
     }
 
     fn is_schema_uri(&self, uri: &str) -> bool {

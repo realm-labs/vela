@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::sync::Arc;
 
 mod diagnostics;
 mod documents;
@@ -76,7 +77,7 @@ pub(crate) struct GlobalState {
 pub(crate) struct GlobalStateSnapshot {
     launch_configuration: LaunchConfiguration,
     workspace: WorkspaceSnapshot,
-    databases: LanguageServiceDatabases,
+    databases: Arc<LanguageServiceDatabases>,
     workspace_roots: BTreeSet<String>,
     open_documents: BTreeSet<DocumentId>,
     editor_config: Option<EditorConfiguration>,
@@ -101,7 +102,7 @@ impl GlobalStateSnapshot {
         &self.workspace
     }
 
-    pub(crate) const fn databases(&self) -> &LanguageServiceDatabases {
+    pub(crate) fn databases(&self) -> &LanguageServiceDatabases {
         &self.databases
     }
 
@@ -841,7 +842,7 @@ impl GlobalState {
         GlobalStateSnapshot {
             launch_configuration: self.launch_configuration.clone(),
             workspace: self.project.workspace_snapshot(),
-            databases: self.project.databases.clone(),
+            databases: Arc::clone(&self.project.databases),
             workspace_roots: self.project.workspace_roots.clone(),
             open_documents: self.project.open_documents.clone(),
             editor_config: self.project.editor_config.clone(),

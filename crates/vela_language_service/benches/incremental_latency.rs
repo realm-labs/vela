@@ -19,6 +19,7 @@
 //! `VELA_LS_BENCH_ITERATIONS`, `VELA_LS_BENCH_WARMUP`.
 
 use std::collections::BTreeSet;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use vela_language_service::{
@@ -59,10 +60,12 @@ fn main() {
         SourceVersion::INITIAL,
     );
 
-    let mut databases = LanguageServiceDatabases::new();
+    // Modelled on the LSP server, which owns the databases behind an Arc and
+    // hands background requests a shared snapshot.
+    let mut databases = Arc::new(LanguageServiceDatabases::new());
     let started = Instant::now();
     let project = assemble_project_sources(&config, &files, &workspace.snapshot());
-    databases.update_with_open_documents(&project, &open_documents);
+    Arc::make_mut(&mut databases).update_with_open_documents(&project, &open_documents);
     let cold_index = started.elapsed();
 
     let mut assemble = Row::new("did_change/assemble_sources");
@@ -72,6 +75,7 @@ fn main() {
     let mut completion = Row::new("request/completion");
     let mut hover = Row::new("request/hover");
     let mut snapshot = Row::new("request/database_snapshot");
+    let mut deep_copy = Row::new("request/database_deep_copy");
 
     let caret = Position::new(CARET_LINE, CARET_COLUMN);
     let total_rounds = warmup.saturating_add(iterations);
@@ -92,7 +96,7 @@ fn main() {
         assemble.record(recorded, step.elapsed());
 
         let step = Instant::now();
-        databases.update_with_open_documents(&project, &open_documents);
+        Arc::make_mut(&mut databases).update_with_open_documents(&project, &open_documents);
         update.record(recorded, step.elapsed());
 
         let step = Instant::now();
@@ -112,8 +116,16 @@ fn main() {
         std::hint::black_box(hovered);
 
         let step = Instant::now();
-        let copy = databases.clone();
+        let shared = Arc::clone(&databases);
         snapshot.record(recorded, step.elapsed());
+        std::hint::black_box(&shared);
+        drop(shared);
+
+        // What one background request used to cost before snapshots shared the
+        // databases, kept so the saving stays visible.
+        let step = Instant::now();
+        let copy = (*databases).clone();
+        deep_copy.record(recorded, step.elapsed());
         std::hint::black_box(copy);
     }
 
@@ -150,6 +162,7 @@ fn main() {
         &mut completion,
         &mut hover,
         &mut snapshot,
+        &mut deep_copy,
     ] {
         row.report();
     }
