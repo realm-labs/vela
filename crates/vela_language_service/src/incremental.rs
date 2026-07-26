@@ -5,6 +5,7 @@ use std::sync::{
 };
 use std::time::Instant;
 
+use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::registry::RegistryFacts;
 use vela_common::{Diagnostic, SourceId};
 use vela_hir::module_graph::{ModuleGraph, ModuleSource, stable_source_hash};
@@ -13,6 +14,7 @@ use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::SyntaxSourceFile;
 use vela_syntax::parse::parse_source_with_id;
 
+use crate::analysis_cache::AnalysisFactsCache;
 use crate::{
     CompletionResolvePayload, DocumentId, ProjectSources, SchemaArtifact, SchemaSourceLocations,
     SourceVersion, SymbolRef, WorkspaceGeneration,
@@ -701,6 +703,7 @@ pub struct LanguageServiceDatabases {
     hir_db: HirDb,
     schema_db: SchemaDb,
     analysis_db: AnalysisDb,
+    analysis_cache: AnalysisFactsCache,
     generation: WorkspaceGeneration,
 }
 
@@ -745,8 +748,29 @@ impl LanguageServiceDatabases {
         &self.analysis_db
     }
 
+    /// Whole-workspace analysis facts resolved without the host schema,
+    /// memoized until the module graph changes.
+    pub(crate) fn graph_analysis_facts(&self) -> &AnalysisFacts {
+        self.analysis_cache.graph_only(self.hir_db.graph())
+    }
+
+    /// Whole-workspace analysis facts resolved against the host schema,
+    /// memoized until the module graph or the schema changes.
+    pub(crate) fn schema_analysis_facts(&self) -> &AnalysisFacts {
+        self.analysis_cache
+            .with_schema(self.hir_db.graph(), self.schema_db.facts())
+    }
+
+    /// Number of whole-workspace fact builds this database has paid for. Tests
+    /// assert on it to prove requests reuse one build per generation.
+    #[must_use]
+    pub fn analysis_facts_build_count(&self) -> usize {
+        self.analysis_cache.build_count()
+    }
+
     pub fn set_schema_facts(&mut self, facts: RegistryFacts) {
         self.schema_db.set_facts(facts);
+        self.analysis_cache.invalidate_schema();
     }
 
     pub fn load_schema_artifact_json(&mut self, schema_path: &str, source: &str) {
@@ -754,14 +778,17 @@ impl LanguageServiceDatabases {
             Ok(artifact) => self.schema_db.set_artifact(artifact),
             Err(error) => self.schema_db.set_invalid(schema_path, error.message()),
         }
+        self.analysis_cache.invalidate_schema();
     }
 
     pub fn clear_schema(&mut self) {
         self.schema_db.clear();
+        self.analysis_cache.invalidate_schema();
     }
 
     pub fn mark_schema_missing(&mut self, schema_path: impl Into<String>) {
         self.schema_db.set_missing(schema_path);
+        self.analysis_cache.invalidate_schema();
     }
 
     #[must_use]
@@ -824,6 +851,7 @@ impl LanguageServiceDatabases {
         self.project_db = ProjectDb::default();
         self.parse_db = ParseDb::default();
         self.hir_db = HirDb::default();
+        self.analysis_cache.invalidate_graph();
     }
 
     pub fn update(&mut self, project: &ProjectSources) -> InvalidationReport {
@@ -864,6 +892,7 @@ impl LanguageServiceDatabases {
         if !hir_invalidated_modules.is_empty() {
             self.hir_db
                 .rebuild(project.sources(), project.package_dependencies().clone());
+            self.analysis_cache.invalidate_graph();
         }
         let scheduled_modules = schedule_modules(&hir_invalidated_modules, project, open_documents);
         let metrics = indexing_metrics(

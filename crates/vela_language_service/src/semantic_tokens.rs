@@ -463,18 +463,16 @@ impl LanguageServiceDatabases {
         };
         let line_index = LineIndex::new(source.text());
         let lexed = lex(source.source_id(), source.text());
-        let receiver_facts = self
-            .parse_db()
-            .syntax_parse(document_id)
-            .map(|parsed| {
-                expression_facts::collect(
-                    self.hir_db().graph(),
-                    parsed,
-                    source.source_id(),
-                    self.schema_db().facts(),
-                )
-            })
-            .unwrap_or_default();
+        let receiver_facts =
+            self.parse_db()
+                .syntax_parse(document_id)
+                .map_or_else(ExpressionFacts::default, |_| {
+                    expression_facts::collect(
+                        self.hir_db().graph(),
+                        source.source_id(),
+                        self.schema_analysis_facts(),
+                    )
+                });
         let path_sites = path_sites::collect(self.hir_db().graph(), source.source_id());
         let inferred_local_facts =
             local_record_facts::collect(self.hir_db().graph(), source.source_id());
@@ -566,10 +564,10 @@ impl LanguageServiceDatabases {
     ) -> BTreeMap<(usize, usize), SemanticTokenClassification> {
         let mut classifications = BTreeMap::new();
         let graph = self.hir_db().graph();
-        let facts = AnalysisFacts::from_module_graph(graph);
+        let facts = self.graph_analysis_facts();
         let unresolved_identifiers = unresolved::ranges(graph, input.source_id);
         let context = SemanticClassificationContext {
-            facts: &facts,
+            facts,
             receiver_facts: input.receiver_facts,
             call_paths: input.call_paths,
             path_expressions: input.path_expressions,

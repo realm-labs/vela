@@ -3,20 +3,17 @@ use std::collections::BTreeMap;
 #[cfg(test)]
 mod tests;
 
-use vela_analysis::{facts::AnalysisFacts, registry::RegistryFacts, type_fact::TypeFact};
+use vela_analysis::{facts::AnalysisFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
 use vela_hir::{ids::HirExprId, module_graph::ModuleGraph};
-use vela_syntax::{Parse as SyntaxParse, ast::SyntaxSourceFile};
 
 use crate::{LanguageServiceDatabases, TextRange};
 
 pub(crate) fn collect(
     graph: &ModuleGraph,
-    _parsed: &SyntaxParse<SyntaxSourceFile>,
     source: SourceId,
-    schema: &RegistryFacts,
+    facts: &AnalysisFacts,
 ) -> ExpressionFacts {
-    let facts = AnalysisFacts::from_module_graph_and_schema(graph, schema);
     let mut collected = ExpressionFacts::default();
     for body in graph.bodies().filter(|body| body.origin.source == source) {
         for expression in body.expressions.keys().copied() {
@@ -34,7 +31,7 @@ pub(crate) fn fact_for_range(
     range: TextRange,
 ) -> Option<TypeFact> {
     let graph = databases.hir_db().graph();
-    let facts = AnalysisFacts::from_module_graph_and_schema(graph, databases.schema_db().facts());
+    let facts = databases.schema_analysis_facts();
     let expression = graph.expression_containing_span(span_for_range(source_id, range)?)?;
     facts
         .expression(expression)

@@ -1,7 +1,5 @@
-use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::type_fact::TypeFact;
 use vela_hir::binding::LocalBindingKind;
-use vela_hir::module_graph::ModuleGraph;
 
 use crate::{LanguageServiceDatabases, QueryContext, TextRange};
 
@@ -12,11 +10,10 @@ use super::{
 
 pub(super) fn local_completion_items(
     databases: &LanguageServiceDatabases,
-    graph: &ModuleGraph,
     query: &QueryContext<'_>,
     context: &CompletionContext,
 ) -> Vec<CompletionItem> {
-    let facts = AnalysisFacts::from_module_graph(graph);
+    let facts = databases.graph_analysis_facts();
     let items = query
         .local_bindings_before_cursor()
         .filter(|local| local.name.starts_with(context.prefix()))

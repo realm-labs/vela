@@ -192,6 +192,7 @@ impl LanguageServiceDatabases {
         };
         module_path_context_completion_items(
             self.hir_db().graph(),
+            self.graph_analysis_facts(),
             self.schema_db().facts(),
             current_module,
             context,
@@ -313,6 +314,7 @@ impl LanguageServiceDatabases {
         };
         type_hint_completion_items(
             self.hir_db().graph(),
+            self.graph_analysis_facts(),
             self.schema_db().facts(),
             current_module,
             context.replace_range(),

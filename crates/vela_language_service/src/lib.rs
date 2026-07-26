@@ -2,6 +2,7 @@
 
 //! Editor-neutral language-service workspace state.
 
+mod analysis_cache;
 mod call_hierarchy;
 mod callable_context;
 mod code_action;

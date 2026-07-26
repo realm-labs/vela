@@ -104,7 +104,7 @@ pub(crate) fn source_callable_facts(
     callee: &str,
 ) -> Vec<CallableFacts> {
     let graph = databases.hir_db().graph();
-    let facts = AnalysisFacts::from_module_graph(graph);
+    let facts = databases.graph_analysis_facts();
     let schema = databases.schema_db().facts();
     graph
         .declarations()
@@ -114,7 +114,7 @@ pub(crate) fn source_callable_facts(
                     || qualified_declaration_label(graph, declaration.id) == callee)
         })
         .filter_map(|declaration| {
-            source_callable_facts_for_declaration(graph, schema, &facts, declaration)
+            source_callable_facts_for_declaration(graph, schema, facts, declaration)
         })
         .collect()
 }
@@ -130,9 +130,9 @@ pub(crate) fn source_callable_facts_by_path(
     else {
         return Vec::new();
     };
-    let facts = AnalysisFacts::from_module_graph(graph);
+    let facts = databases.graph_analysis_facts();
     let schema = databases.schema_db().facts();
-    source_callable_facts_for_declaration(graph, schema, &facts, declaration)
+    source_callable_facts_for_declaration(graph, schema, facts, declaration)
         .into_iter()
         .collect()
 }

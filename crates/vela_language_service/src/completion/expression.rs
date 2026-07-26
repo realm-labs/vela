@@ -25,7 +25,8 @@ pub(super) fn expression_completion_items(
     query: &QueryContext<'_>,
     context: &CompletionContext,
 ) -> Vec<CompletionItem> {
-    let mut items = local_completion_items(databases, graph, query, context);
+    let facts = databases.graph_analysis_facts();
+    let mut items = local_completion_items(databases, query, context);
     items.extend(builtin_value_completion_items(context.prefix()));
     items.extend(schema_type_completion_items(
         schema,
@@ -43,18 +44,21 @@ pub(super) fn expression_completion_items(
     ));
     items.extend(source_const_completion_items(
         graph,
+        facts,
         query,
         context.replace_range(),
         context.prefix(),
     ));
     items.extend(source_function_completion_items(
         graph,
+        facts,
         query,
         context.replace_range(),
         context.prefix(),
     ));
     items.extend(source_type_completion_items(
         graph,
+        facts,
         query,
         context.replace_range(),
         context.prefix(),

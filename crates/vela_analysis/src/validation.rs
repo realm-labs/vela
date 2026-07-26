@@ -260,14 +260,17 @@ impl ExecutableValidationFacts {
     /// Builds validation facts for a selected set of HIR bodies without
     /// requiring compiler function IDs.
     #[must_use]
+    /// Validates the named bodies against already-resolved workspace facts.
+    /// Callers own the [`AnalysisFacts`] build so a language service can reuse
+    /// one per workspace generation instead of paying for it per request.
     pub fn for_bodies(
         graph: &ModuleGraph,
         schema: Option<&RegistryFacts>,
+        facts: &AnalysisFacts,
         bodies: impl IntoIterator<Item = HirBodyId>,
     ) -> Self {
-        let facts = AnalysisFacts::from_module_graph(graph);
         let bodies = bodies.into_iter().collect::<BTreeSet<_>>();
-        Self::from_analysis(graph, schema, &facts, &bodies)
+        Self::from_analysis(graph, schema, facts, &bodies)
     }
 
     pub(crate) fn from_analysis(

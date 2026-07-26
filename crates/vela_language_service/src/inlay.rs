@@ -1,8 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_analysis::{
-    facts::AnalysisFacts, stdlib::stdlib_method_fact_with_lambda_arity, type_fact::TypeFact,
-};
+use vela_analysis::{stdlib::stdlib_method_fact_with_lambda_arity, type_fact::TypeFact};
 use vela_common::SourceId;
 use vela_hir::{
     binding::LocalBindingKind,
@@ -137,7 +135,7 @@ impl LanguageServiceDatabases {
         hints: &mut Vec<InlayHint>,
     ) {
         let graph = self.hir_db().graph();
-        let facts = AnalysisFacts::from_module_graph_and_schema(graph, self.schema_db().facts());
+        let facts = self.schema_analysis_facts();
         for body in graph
             .bodies()
             .filter(|body| body.origin.source == context.source_id)
@@ -210,7 +208,7 @@ impl LanguageServiceDatabases {
         hints: &mut Vec<InlayHint>,
     ) {
         let graph = self.hir_db().graph();
-        let facts = AnalysisFacts::from_module_graph_and_schema(graph, self.schema_db().facts());
+        let facts = self.schema_analysis_facts();
         let mut contextual_locals = BTreeMap::new();
         for body in graph.bodies().filter(|body| body.origin.source == source) {
             for (_, call) in body.calls() {

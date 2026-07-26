@@ -10,7 +10,6 @@ use crate::{
     Position, SourceRecord, SourceVersion, TextRange, WorkspaceGeneration, WorkspaceSnapshot,
     cursor_context_at, expression_facts,
 };
-use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
@@ -506,7 +505,7 @@ pub(crate) fn type_fact_for_source_range(
     let end = u32::try_from(range.end).ok()?;
     let span = Span::new(source_id, start, end);
     let graph = databases.hir_db().graph();
-    let facts = AnalysisFacts::from_module_graph_and_schema(graph, databases.schema_db().facts());
+    let facts = databases.schema_analysis_facts();
     graph
         .expression_containing_span(span)
         .and_then(|expression| facts.expression(expression).cloned())

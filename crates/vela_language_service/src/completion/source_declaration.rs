@@ -18,33 +18,36 @@ use super::{
 
 pub(super) fn source_const_completion_items(
     graph: &ModuleGraph,
+    facts: &AnalysisFacts,
     query: &QueryContext<'_>,
     replace_range: TextRange,
     prefix: &str,
 ) -> Vec<CompletionItem> {
-    source_declaration_completion_items(graph, query, replace_range, prefix, |kind| {
+    source_declaration_completion_items(graph, facts, query, replace_range, prefix, |kind| {
         matches!(kind, AnalysisCompletionKind::Const)
     })
 }
 
 pub(super) fn source_function_completion_items(
     graph: &ModuleGraph,
+    facts: &AnalysisFacts,
     query: &QueryContext<'_>,
     replace_range: TextRange,
     prefix: &str,
 ) -> Vec<CompletionItem> {
-    source_declaration_completion_items(graph, query, replace_range, prefix, |kind| {
+    source_declaration_completion_items(graph, facts, query, replace_range, prefix, |kind| {
         matches!(kind, AnalysisCompletionKind::Function)
     })
 }
 
 pub(super) fn source_type_completion_items(
     graph: &ModuleGraph,
+    facts: &AnalysisFacts,
     query: &QueryContext<'_>,
     replace_range: TextRange,
     prefix: &str,
 ) -> Vec<CompletionItem> {
-    source_declaration_completion_items(graph, query, replace_range, prefix, |kind| {
+    source_declaration_completion_items(graph, facts, query, replace_range, prefix, |kind| {
         matches!(
             kind,
             AnalysisCompletionKind::Type | AnalysisCompletionKind::Trait
@@ -54,6 +57,7 @@ pub(super) fn source_type_completion_items(
 
 fn source_declaration_completion_items(
     graph: &ModuleGraph,
+    facts: &AnalysisFacts,
     query: &QueryContext<'_>,
     replace_range: TextRange,
     prefix: &str,
@@ -63,13 +67,12 @@ fn source_declaration_completion_items(
         .module_path()
         .map(|module| module.join())
         .unwrap_or_default();
-    let facts = AnalysisFacts::from_module_graph(graph);
     let mut accumulator = CompletionAccumulator::new(replace_range, prefix);
     let declarations = graph.declarations_by_name_prefix(prefix);
     for (item, symbol) in relative_current_module_items(
         declarations
             .into_iter()
-            .filter_map(|declaration| declaration_completion(graph, &facts, declaration)),
+            .filter_map(|declaration| declaration_completion(graph, facts, declaration)),
         &current_module,
     ) {
         if accepts_kind(item.kind) && label_segment_matches(&item.label, prefix) {

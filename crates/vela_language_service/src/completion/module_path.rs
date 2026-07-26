@@ -20,11 +20,11 @@ use crate::symbol_ref::{schema_variant_symbol, source_enum_variant_symbol};
 
 pub(super) fn module_path_completion_items(
     graph: &ModuleGraph,
+    facts: &AnalysisFacts,
     schema: &RegistryFacts,
     current_module: &ModuleKey,
     context: &CompletionContext,
 ) -> Vec<CompletionItem> {
-    let facts = AnalysisFacts::from_module_graph(graph);
     let Some(base) = context.module_base() else {
         return Vec::new();
     };
@@ -39,7 +39,7 @@ pub(super) fn module_path_completion_items(
             graph
                 .declarations_in_module(module)
                 .into_iter()
-                .filter_map(|declaration| declaration_completion(graph, &facts, declaration)),
+                .filter_map(|declaration| declaration_completion(graph, facts, declaration)),
         );
     }
     analysis_items.extend(

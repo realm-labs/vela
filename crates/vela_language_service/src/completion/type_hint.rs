@@ -19,18 +19,18 @@ use super::{
 
 pub(super) fn type_hint_completion_items(
     graph: &ModuleGraph,
+    facts: &AnalysisFacts,
     schema: &RegistryFacts,
     current_module: &ModuleKey,
     replace_range: TextRange,
     prefix: &str,
     module_base: Option<&str>,
 ) -> Vec<CompletionItem> {
-    let facts = AnalysisFacts::from_module_graph(graph);
     if let Some(module_base) = module_base {
         return qualified_type_hint_completion_items(
             graph,
             schema,
-            &facts,
+            facts,
             current_module,
             replace_range,
             prefix,
@@ -47,7 +47,7 @@ pub(super) fn type_hint_completion_items(
         graph
             .declarations_by_name_prefix(prefix)
             .into_iter()
-            .filter_map(|declaration| declaration_completion(graph, &facts, declaration))
+            .filter_map(|declaration| declaration_completion(graph, facts, declaration))
             .filter(|item| {
                 matches!(
                     item.kind,

@@ -437,6 +437,10 @@ impl LanguageServiceDatabases {
                 graph,
                 module,
                 self.schema_db().facts(),
+                syntax_analysis::SourceAnalysisFacts {
+                    graph_only: self.graph_analysis_facts(),
+                    schema_backed: self.schema_analysis_facts(),
+                },
             );
             diagnostics.extend(
                 source_diagnostics

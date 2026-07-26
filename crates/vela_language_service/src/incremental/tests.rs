@@ -1,6 +1,7 @@
 use super::*;
 use crate::{
-    SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+    Position, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
+    assemble_project_sources,
 };
 use std::collections::BTreeSet;
 
@@ -602,4 +603,106 @@ fn million_line_synthetic_workspace_checkpoint_refreshes_hir_for_body_edit() {
     assert_eq!(report.reparsed_documents().len(), 1);
     assert_eq!(report.hir_invalidated_modules().len(), 1);
     assert!(report.metrics().total_lines() >= 1_000_000);
+}
+
+fn memoization_project(main_body: &str) -> ProjectSources {
+    project(&[
+        file(
+            "/workspace/scripts/game/main.vela",
+            &format!("use game::reward::grant\npub fn main() {{ {main_body} }}"),
+        ),
+        file(
+            "/workspace/scripts/game/reward.vela",
+            "pub fn grant() { return 1 }",
+        ),
+    ])
+}
+
+#[test]
+fn requests_in_one_generation_share_a_single_analysis_facts_build() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut db = LanguageServiceDatabases::new();
+    db.update(&memoization_project(
+        "let total = grant()\n    return total",
+    ));
+
+    assert_eq!(db.analysis_facts_build_count(), 0);
+    let _ = db.diagnostics_for_document(&document);
+    assert!(db.analysis_facts_build_count() > 0);
+
+    let _ = db.hover(&document, Position::new(1, 30));
+    let _ = db.completion_items(&document, Position::new(1, 30));
+    let _ = db.semantic_tokens(&document);
+    let _ = db.diagnostics_for_document(&document);
+
+    // Only the schema-free and the schema-backed whole-workspace builds exist,
+    // however many requests the editor sends within the generation.
+    assert_eq!(db.analysis_facts_build_count(), 2);
+}
+
+#[test]
+fn editing_a_module_rebuilds_analysis_facts_and_reports_the_new_body() {
+    // `total` sits at line 1, column 21 of `pub fn main() { let total = ...`.
+    let caret = Position::new(1, 21);
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut db = LanguageServiceDatabases::new();
+    db.update(&memoization_project("let total = 1\n    return total"));
+    let before_hover = db
+        .hover(&document, caret)
+        .expect("hover on the numeric let");
+    let before = db.analysis_facts_build_count();
+
+    db.update(&memoization_project(
+        "let total = \"text\"\n    return total",
+    ));
+    let after_hover = db.hover(&document, caret).expect("hover on the string let");
+
+    assert!(db.analysis_facts_build_count() > before);
+    assert!(
+        before_hover.detail().contains("i64"),
+        "unexpected detail before the edit: {}",
+        before_hover.detail()
+    );
+    assert!(
+        after_hover.detail().contains("String"),
+        "the rebuilt facts should describe the edited body, got: {}",
+        after_hover.detail()
+    );
+}
+
+#[test]
+fn schema_reload_rebuilds_only_schema_backed_analysis_facts() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut db = LanguageServiceDatabases::new();
+    db.update(&memoization_project("return grant()"));
+
+    let _ = db.hover(&document, Position::new(1, 22));
+    let _ = db.diagnostics_for_document(&document);
+    assert_eq!(db.analysis_facts_build_count(), 2);
+
+    db.set_schema_facts(RegistryFacts::default());
+
+    let _ = db.hover(&document, Position::new(1, 22));
+    assert_eq!(
+        db.analysis_facts_build_count(),
+        2,
+        "schema-free facts do not read the schema and stay valid"
+    );
+
+    let _ = db.diagnostics_for_document(&document);
+    assert_eq!(db.analysis_facts_build_count(), 3);
+}
+
+#[test]
+fn a_database_snapshot_reuses_the_facts_its_source_already_built() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut db = LanguageServiceDatabases::new();
+    db.update(&memoization_project("return grant()"));
+    let _ = db.diagnostics_for_document(&document);
+    let built = db.analysis_facts_build_count();
+
+    let snapshot = db.clone();
+    let _ = snapshot.diagnostics_for_document(&document);
+
+    assert_eq!(snapshot.analysis_facts_build_count(), built);
 }

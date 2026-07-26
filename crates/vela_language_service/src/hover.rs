@@ -132,7 +132,7 @@ impl LanguageServiceDatabases {
         let target = SymbolTarget::from_query(self, &query)?;
         let offset = u32::try_from(target.range().start).ok()?;
         let range = diagnostic_range(query.text(), target.range());
-        let facts = AnalysisFacts::from_module_graph(graph);
+        let facts = self.graph_analysis_facts();
 
         if let Some(receiver_fact) = target.member_receiver_fact()
             && let Some(hover) = self.member_hover(receiver_fact, &target, range)
@@ -146,12 +146,12 @@ impl LanguageServiceDatabases {
             }
             if let Some(bindings) = graph.bindings(declaration.id) {
                 if let Some(hover) =
-                    hover_from_resolution_at_target(bindings, &facts, &target, range, self)
+                    hover_from_resolution_at_target(bindings, facts, &target, range, self)
                 {
                     return Some(hover);
                 }
                 if let Some(hover) =
-                    hover_from_local_declaration(self, bindings, &facts, &target, range)
+                    hover_from_local_declaration(self, bindings, facts, &target, range)
                 {
                     return Some(hover);
                 }
@@ -159,7 +159,7 @@ impl LanguageServiceDatabases {
         }
 
         if let Some(hover) =
-            self.import_hover(document_id, query.text(), source_id, &facts, &target, range)
+            self.import_hover(document_id, query.text(), source_id, facts, &target, range)
         {
             return Some(hover);
         }
@@ -187,12 +187,12 @@ impl LanguageServiceDatabases {
                     && declaration.name_span.contains(offset)
                     && declaration.name == target.text()
             })
-            .map(|declaration| hover_from_declaration(graph, &facts, declaration, range))
+            .map(|declaration| hover_from_declaration(graph, facts, declaration, range))
         {
             return Some(hover);
         }
 
-        source_type_hint_hover(graph, &facts, target.text(), range)
+        source_type_hint_hover(graph, facts, target.text(), range)
             .or_else(|| schema::symbol_hover(self.schema_db().facts(), target.text(), range))
             .or_else(|| stdlib_function_hover(target.text(), range))
             .or_else(|| type_hint_hover(self.schema_db().facts(), target.text(), range))
