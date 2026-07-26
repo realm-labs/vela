@@ -129,9 +129,8 @@ pub(crate) fn runtime_value_to_reflect(
                 .map(|value| runtime_value_to_reflect(value, heap, host, operation))
                 .collect::<VmResult<Vec<_>>>()
                 .map(reflect::value::ReflectValue::Set),
-            Some(HeapValue::Record {
-                type_name, fields, ..
-            }) => {
+            Some(HeapValue::Record { fields, .. }) => {
+                let type_name = fields.owner_name().to_owned();
                 let fields = fields
                     .iter()
                     .map(|(key, value)| {
@@ -141,10 +140,7 @@ pub(crate) fn runtime_value_to_reflect(
                         ))
                     })
                     .collect::<VmResult<BTreeMap<_, _>>>()?;
-                Ok(reflect::value::ReflectValue::ScriptRecord {
-                    type_name: type_name.clone(),
-                    fields,
-                })
+                Ok(reflect::value::ReflectValue::ScriptRecord { type_name, fields })
             }
             Some(HeapValue::Enum {
                 enum_name,

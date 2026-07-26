@@ -1043,10 +1043,9 @@ fn runtime_unidentified_script_type_name<'a>(
     };
     match heap.and_then(|heap| heap.heap.get(*reference)) {
         Some(HeapValue::Record {
-            type_name,
+            fields,
             identity: None,
-            ..
-        }) => Some(type_name),
+        }) => Some(fields.owner_name()),
         Some(HeapValue::Enum {
             enum_name,
             identity: None,
@@ -1338,13 +1337,12 @@ fn runtime_record_debug_shape<'a>(
     match value {
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
             Some(HeapValue::Record {
-                type_name,
+                fields,
                 identity: Some(identity),
-                ..
-            }) => Some((type_name, identity.shape_id)),
-            Some(HeapValue::Record {
-                type_name, fields, ..
-            }) => Some((type_name, fields.shape_id())),
+            }) => Some((fields.owner_name(), identity.shape_id)),
+            Some(HeapValue::Record { fields, .. }) => {
+                Some((fields.owner_name(), fields.shape_id()))
+            }
             _ => None,
         },
         _ => None,
@@ -1828,7 +1826,6 @@ mod tests {
         let fields = ScriptFields::single(type_name, field_name, field_value);
         let shape_id = fields.shape_id();
         heap.allocate(HeapValue::Record {
-            type_name: type_name.to_owned(),
             identity: Some(RecordIdentity::new(type_id, shape_id)),
             fields,
         })

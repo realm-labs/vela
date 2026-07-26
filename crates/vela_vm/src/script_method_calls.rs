@@ -949,12 +949,8 @@ fn script_receiver_guard(
         return None;
     };
     match heap.and_then(|heap| heap.heap.get(*reference)) {
-        Some(HeapValue::Record {
-            type_name,
-            identity,
-            fields,
-        }) => Some(DynamicReceiverGuard::ScriptType {
-            type_name: type_name.clone(),
+        Some(HeapValue::Record { identity, fields }) => Some(DynamicReceiverGuard::ScriptType {
+            type_name: fields.owner_name().to_owned(),
             shape_id: identity.map_or_else(
                 || Some(fields.shape_id()),
                 |identity| Some(identity.shape_id),

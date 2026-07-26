@@ -405,13 +405,11 @@ pub(super) fn map_entry_value(
     let Value::HeapRef(reference) = value else {
         return type_error(operation);
     };
-    let Some(HeapValue::Record {
-        type_name, fields, ..
-    }) = heap.and_then(|heap| heap.heap.get(*reference))
+    let Some(HeapValue::Record { fields, .. }) = heap.and_then(|heap| heap.heap.get(*reference))
     else {
         return type_error(operation);
     };
-    if type_name != "MapEntry" {
+    if fields.owner_name() != "MapEntry" {
         return type_error(operation);
     }
     let key = fields

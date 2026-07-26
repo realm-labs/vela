@@ -44,20 +44,17 @@ impl GcRef {
 #[derive(Clone, Debug, PartialEq)]
 pub enum HeapValue {
     String(String),
-    /// First-class range value.
-    ///
-    /// Specialized `for` loops step scalar cursor registers and never build
-    /// one of these; a heap range exists only when a script treats a range as
-    /// a value. Moving the payload here is what lets the register `Value`
-    /// stay at 16 bytes.
+    /// First-class range value; specialized loops never build one. Keeping
+    /// the payload here is what lets the register `Value` stay at 16 bytes.
     Range(crate::ranges::RangeValue),
     Bytes(Vec<u8>),
     Tuple(Vec<Value>),
     Array(Vec<Value>),
     Map(ScriptMap),
     Set(ScriptSet),
+    /// Script record instance; the type name lives in the shared shape
+    /// (`fields.owner_name()`).
     Record {
-        type_name: String,
         identity: Option<RecordIdentity>,
         fields: ScriptFields<Value>,
     },
@@ -147,13 +144,9 @@ impl HeapValue {
             }
             Self::Set(values) => values.shallow_size_bytes(),
             Self::Map(values) => values.shallow_size_bytes(),
-            Self::Record {
-                type_name, fields, ..
-            } => {
-                mem::size_of::<String>()
-                    + mem::size_of::<Option<RecordIdentity>>()
+            Self::Record { fields, .. } => {
+                mem::size_of::<Option<RecordIdentity>>()
                     + mem::size_of::<ScriptFields<Value>>()
-                    + type_name.len()
                     + fields
                         .iter()
                         .map(|(key, _)| key.len() + mem::size_of::<Value>())
@@ -311,6 +304,7 @@ pub struct ScriptHeap {
     gc_config: GcConfig,
     next_gc_at_bytes: usize,
     incremental_gc: Option<IncrementalGc>,
+    shapes: crate::script_object::ShapeInterner,
 }
 
 impl Default for ScriptHeap {
@@ -326,6 +320,7 @@ impl Default for ScriptHeap {
             gc_config,
             next_gc_at_bytes: 1,
             incremental_gc: None,
+            shapes: crate::script_object::ShapeInterner::default(),
         }
     }
 }
@@ -334,6 +329,11 @@ impl ScriptHeap {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// The heap's content-addressed shape interner.
+    pub(crate) fn shapes_mut(&mut self) -> &mut crate::script_object::ShapeInterner {
+        &mut self.shapes
     }
 
     pub fn allocate(&mut self, value: HeapValue) -> GcRef {

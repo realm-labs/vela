@@ -1,44 +1,138 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use vela_common::{ShapeId, script_shape_id};
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct FieldSlot<T> {
-    pub name: String,
-    pub value: T,
+/// Shared description of one record or enum-variant shape.
+///
+/// Instances of the same shape share one `ShapeInfo` through an `Arc`, so a
+/// record carries no per-instance field-name strings and no per-instance type
+/// name. The `Arc` also keeps a shape alive exactly as long as any value using
+/// it, which makes shapes safe across hot reload generations and persistent
+/// state without any external table.
+#[derive(Debug, PartialEq, Eq)]
+pub struct ShapeInfo {
+    shape_id: ShapeId,
+    owner: String,
+    field_names: Box<[String]>,
 }
 
-impl<T> FieldSlot<T> {
+impl ShapeInfo {
+    /// Builds a shape from an owner name and field names already in storage
+    /// order.
     #[must_use]
-    pub fn new(name: impl Into<String>, value: T) -> Self {
-        Self {
-            name: name.into(),
-            value,
-        }
+    pub fn new(owner: impl Into<String>, field_names: impl Into<Box<[String]>>) -> Arc<Self> {
+        let owner = owner.into();
+        let field_names = field_names.into();
+        let shape_id = script_shape_id(&owner, field_names.iter().map(String::as_str));
+        Arc::new(Self {
+            shape_id,
+            owner,
+            field_names,
+        })
+    }
+
+    #[must_use]
+    pub fn shape_id(&self) -> ShapeId {
+        self.shape_id
+    }
+
+    /// The type name the shape was derived from.
+    #[must_use]
+    pub fn owner(&self) -> &str {
+        &self.owner
+    }
+
+    #[must_use]
+    pub fn field_names(&self) -> &[String] {
+        &self.field_names
+    }
+
+    #[must_use]
+    pub fn slot_of(&self, field: &str) -> Option<usize> {
+        self.field_names.iter().position(|name| name == field)
     }
 }
 
+/// Content-addressed shape descriptors shared across a heap's instances.
+///
+/// Entries are never evicted; the table is bounded by the number of distinct
+/// record and enum shapes ever constructed, each a handful of name strings.
+/// The `Arc` keeps a shape valid for exactly as long as any value uses it, so
+/// shapes survive hot-reload generations and persistent state without any
+/// generation bookkeeping.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct ShapeInterner {
+    shapes: hashbrown::HashMap<ShapeId, Arc<ShapeInfo>>,
+}
+
+impl ShapeInterner {
+    /// Interns one shape by content; `field_names` must be in storage order.
+    ///
+    /// A 32-bit shape-hash collision falls back to a fresh unshared
+    /// descriptor instead of poisoning the table; correctness never depends
+    /// on sharing.
+    pub(crate) fn intern(&mut self, owner: &str, field_names: &[&str]) -> Arc<ShapeInfo> {
+        let shape_id = script_shape_id(owner, field_names.iter().copied());
+        if let Some(shape) = self.shapes.get(&shape_id) {
+            if shape.owner() == owner
+                && shape.field_names().len() == field_names.len()
+                && shape
+                    .field_names()
+                    .iter()
+                    .zip(field_names)
+                    .all(|(stored, requested)| stored == requested)
+            {
+                return Arc::clone(shape);
+            }
+            return fresh_shape(owner, field_names);
+        }
+        let shape = fresh_shape(owner, field_names);
+        self.shapes.insert(shape_id, Arc::clone(&shape));
+        shape
+    }
+}
+
+fn fresh_shape(owner: &str, field_names: &[&str]) -> Arc<ShapeInfo> {
+    ShapeInfo::new(
+        owner,
+        field_names
+            .iter()
+            .map(|name| (*name).to_owned())
+            .collect::<Vec<_>>(),
+    )
+}
+
+/// Field storage for records and enum payloads: one shared shape plus the
+/// values in shape order.
 #[derive(Clone, Debug)]
 pub struct ScriptFields<T> {
-    shape_id: ShapeId,
-    slots: Vec<FieldSlot<T>>,
+    shape: Arc<ShapeInfo>,
+    values: Vec<T>,
 }
 
 impl<T> ScriptFields<T> {
+    /// Builds storage over an interned or freshly built shape. The value count
+    /// must match the shape's field count.
+    #[must_use]
+    pub fn from_shape(shape: Arc<ShapeInfo>, values: Vec<T>) -> Self {
+        debug_assert_eq!(shape.field_names.len(), values.len());
+        Self { shape, values }
+    }
+
     #[must_use]
     pub fn empty(owner: &str) -> Self {
         Self {
-            shape_id: shape_id(owner, std::iter::empty()),
-            slots: Vec::new(),
+            shape: ShapeInfo::new(owner, Vec::new()),
+            values: Vec::new(),
         }
     }
 
     #[must_use]
     pub fn single(owner: &str, name: impl Into<String>, value: T) -> Self {
-        let name = name.into();
         Self {
-            shape_id: shape_id(owner, std::iter::once(name.as_str())),
-            slots: vec![FieldSlot::new(name, value)],
+            shape: ShapeInfo::new(owner, vec![name.into()]),
+            values: vec![value],
         }
     }
 
@@ -99,81 +193,85 @@ impl<T> ScriptFields<T> {
         if has_duplicate_field_names(&fields) {
             return Self::from_pairs(owner, fields);
         }
-        let mut slots = Vec::from(fields.map(|(name, value)| FieldSlot::new(name, value)));
-        slots.sort_by(|left, right| left.name.cmp(&right.name));
+        let mut fields = Vec::from(fields);
+        fields.sort_by(|left, right| left.0.cmp(&right.0));
+        let (names, values): (Vec<String>, Vec<T>) = fields.into_iter().unzip();
         Self {
-            shape_id: shape_id(owner, slots.iter().map(|slot| slot.name.as_str())),
-            slots,
+            shape: ShapeInfo::new(owner, names),
+            values,
         }
     }
 
     #[must_use]
     pub fn from_pairs(owner: &str, fields: impl IntoIterator<Item = (String, T)>) -> Self {
         let fields = fields.into_iter().collect::<BTreeMap<_, _>>();
-        let shape_id = shape_id(owner, fields.keys().map(String::as_str));
+        let (names, values): (Vec<String>, Vec<T>) = fields.into_iter().unzip();
         Self {
-            shape_id,
-            slots: fields
-                .into_iter()
-                .map(|(name, value)| FieldSlot::new(name, value))
-                .collect(),
+            shape: ShapeInfo::new(owner, names),
+            values,
         }
     }
 
     #[must_use]
+    pub fn shape(&self) -> &Arc<ShapeInfo> {
+        &self.shape
+    }
+
+    #[must_use]
     pub fn shape_id(&self) -> ShapeId {
-        self.shape_id
+        self.shape.shape_id
+    }
+
+    /// The type name the shape was derived from.
+    #[must_use]
+    pub fn owner_name(&self) -> &str {
+        &self.shape.owner
     }
 
     #[must_use]
     pub fn len(&self) -> usize {
-        self.slots.len()
+        self.values.len()
     }
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.slots.is_empty()
+        self.values.is_empty()
     }
 
     #[must_use]
     pub fn get(&self, field: &str) -> Option<&T> {
-        self.slots
-            .iter()
-            .find(|slot| slot.name == field)
-            .map(|slot| &slot.value)
+        self.values.get(self.shape.slot_of(field)?)
     }
 
     #[must_use]
     #[inline]
     pub fn get_slot(&self, slot: usize, expected_field: &str) -> Option<&T> {
-        let field = self.slots.get(slot)?;
-        (field.name == expected_field).then_some(&field.value)
+        let name = self.shape.field_names.get(slot)?;
+        (name == expected_field).then(|| &self.values[slot])
     }
 
     #[must_use]
     #[inline]
     pub fn get_slot_at(&self, slot: usize) -> Option<&T> {
-        self.slots.get(slot).map(|field| &field.value)
+        self.values.get(slot)
     }
 
     #[must_use]
     pub fn get_mut(&mut self, field: &str) -> Option<&mut T> {
-        self.slots
-            .iter_mut()
-            .find(|slot| slot.name == field)
-            .map(|slot| &mut slot.value)
+        let slot = self.shape.slot_of(field)?;
+        self.values.get_mut(slot)
     }
 
     #[must_use]
     #[inline]
     pub fn get_slot_mut(&mut self, slot: usize, expected_field: &str) -> Option<&mut T> {
-        let field = self.slots.get_mut(slot)?;
-        (field.name == expected_field).then_some(&mut field.value)
+        let name = self.shape.field_names.get(slot)?;
+        (name == expected_field).then(|| &mut self.values[slot])
     }
 
     #[must_use]
     pub fn contains_key(&self, field: &str) -> bool {
-        self.get(field).is_some()
+        self.shape.slot_of(field).is_some()
     }
 
     pub fn set_existing(&mut self, field: &str, value: T) -> Result<(), T> {
@@ -199,17 +297,22 @@ impl<T> ScriptFields<T> {
     }
 
     pub fn values(&self) -> impl Iterator<Item = &T> {
-        self.slots.iter().map(|slot| &slot.value)
+        self.values.iter()
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&str, &T)> {
-        self.slots
+        self.shape
+            .field_names
             .iter()
-            .map(|slot| (slot.name.as_str(), &slot.value))
+            .map(String::as_str)
+            .zip(self.values.iter())
     }
 
+    /// Yields owned pairs; names are cloned out of the shared shape.
     pub fn into_pairs(self) -> impl Iterator<Item = (String, T)> {
-        self.slots.into_iter().map(|slot| (slot.name, slot.value))
+        Vec::from(self.shape.field_names.clone())
+            .into_iter()
+            .zip(self.values)
     }
 }
 
@@ -225,14 +328,18 @@ impl<T, const N: usize> From<[(String, T); N]> for ScriptFields<T> {
     }
 }
 
+/// Field names and values decide equality, exactly as the former per-instance
+/// slot storage did; the shape owner and its hash deliberately do not
+/// participate. A shared shape allocation is a fast path, not a requirement.
 impl<T: PartialEq> PartialEq for ScriptFields<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.slots == other.slots
+        if !Arc::ptr_eq(&self.shape, &other.shape)
+            && self.shape.field_names != other.shape.field_names
+        {
+            return false;
+        }
+        self.values == other.values
     }
-}
-
-fn shape_id<'a>(owner: &str, field_names: impl Iterator<Item = &'a str>) -> ShapeId {
-    script_shape_id(owner, field_names)
 }
 
 #[inline]

@@ -393,7 +393,6 @@ pub fn allocate_zero_field_record(
         HeapValue::Record {
             fields: ScriptFields::from_pairs(&type_name, std::iter::empty()),
             identity: Some(crate::heap::RecordIdentity::new(type_id, shape_id)),
-            type_name,
         },
         heap,
         budget,
@@ -609,7 +608,6 @@ fn owned_to_value_inner(
                 HeapValue::Record {
                     fields: ScriptFields::from_pairs(&canonical_name, fields),
                     identity,
-                    type_name: canonical_name,
                 },
                 heap,
                 budget,
@@ -763,15 +761,13 @@ fn heap_value_to_owned(
             .map(|value| value_to_owned_inner(value, heap, host))
             .collect::<VmResult<Vec<_>>>()
             .map(OwnedValue::Set),
-        HeapValue::Record {
-            type_name, fields, ..
-        } => fields
+        HeapValue::Record { fields, .. } => fields
             .iter()
             .map(|(key, value)| Ok((key.to_owned(), value_to_owned_inner(value, heap, host)?)))
             .collect::<VmResult<Vec<_>>>()
-            .map(|fields| OwnedValue::Record {
-                type_name: type_name.clone(),
-                fields: ScriptFields::from_pairs(type_name, fields),
+            .map(|converted| OwnedValue::Record {
+                type_name: fields.owner_name().to_owned(),
+                fields: ScriptFields::from_pairs(fields.owner_name(), converted),
             }),
         HeapValue::Enum {
             enum_name,

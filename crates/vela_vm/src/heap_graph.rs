@@ -149,14 +149,9 @@ fn remap_heap_value(
                 "persistent heap graph copy",
             )?)
         }
-        HeapValue::Record {
-            type_name,
-            identity,
-            fields,
-        } => HeapValue::Record {
-            type_name: type_name.clone(),
+        HeapValue::Record { identity, fields } => HeapValue::Record {
             identity: *identity,
-            fields: remap_fields(type_name, fields, references)?,
+            fields: remap_fields(fields.owner_name(), fields, references)?,
         },
         HeapValue::Enum {
             enum_name,

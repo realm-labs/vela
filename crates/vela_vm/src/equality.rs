@@ -472,22 +472,18 @@ fn record_field_pairs(
         return Ok(None);
     };
     let Some(HeapValue::Record {
-        type_name: lhs_type,
-        fields: lhs_fields,
-        ..
+        fields: lhs_fields, ..
     }) = heap.heap.get(*lhs)
     else {
         return Ok(None);
     };
     let Some(HeapValue::Record {
-        type_name: rhs_type,
-        fields: rhs_fields,
-        ..
+        fields: rhs_fields, ..
     }) = heap.heap.get(*rhs)
     else {
         return Ok(None);
     };
-    if lhs_type != type_name || rhs_type != type_name {
+    if lhs_fields.owner_name() != type_name || rhs_fields.owner_name() != type_name {
         return Ok(None);
     }
     field_names
@@ -624,10 +620,9 @@ fn receiver_type_identity<'a>(
         }
         Value::HeapRef(reference) => match heap?.heap.get(*reference)? {
             HeapValue::Record {
-                type_name,
+                fields,
                 identity: Some(identity),
-                ..
-            } => Some((identity.type_id, type_name.as_str())),
+            } => Some((identity.type_id, fields.owner_name())),
             HeapValue::Enum {
                 enum_name,
                 identity: Some(identity),
@@ -1004,9 +999,11 @@ mod tests {
 
     fn record(type_name: &str) -> HeapValue {
         HeapValue::Record {
-            type_name: type_name.to_owned(),
             identity: Some(RecordIdentity::new(TypeId::new(1), ShapeId::new(1))),
-            fields: ScriptFields::from(BTreeMap::from([("id".to_owned(), Value::I64(1))])),
+            fields: ScriptFields::from_pairs(
+                type_name,
+                BTreeMap::from([("id".to_owned(), Value::I64(1))]),
+            ),
         }
     }
 }

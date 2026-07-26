@@ -505,9 +505,11 @@ mod tests {
 
     fn record(type_name: &str) -> HeapValue {
         HeapValue::Record {
-            type_name: type_name.to_owned(),
             identity: Some(RecordIdentity::new(TypeId::new(1), ShapeId::new(1))),
-            fields: ScriptFields::from(BTreeMap::from([("id".to_owned(), Value::I64(1))])),
+            fields: ScriptFields::from_pairs(
+                type_name,
+                BTreeMap::from([("id".to_owned(), Value::I64(1))]),
+            ),
         }
     }
 }

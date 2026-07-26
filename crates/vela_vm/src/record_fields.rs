@@ -14,12 +14,12 @@ pub(crate) fn set_record_field_value(
                 return type_error("record field assignment");
             };
             let type_name = match heap.heap.get(*reference) {
-                Some(HeapValue::Record {
-                    type_name, fields, ..
-                }) if fields.contains_key(field) => type_name.clone(),
-                Some(HeapValue::Record { type_name, .. }) => {
+                Some(HeapValue::Record { fields, .. }) if fields.contains_key(field) => {
+                    fields.owner_name().to_owned()
+                }
+                Some(HeapValue::Record { fields, .. }) => {
                     return Err(VmError::new(VmErrorKind::UnknownRecordField {
-                        type_name: type_name.clone(),
+                        type_name: fields.owner_name().to_owned(),
                         field: field.to_owned(),
                     }));
                 }
@@ -74,12 +74,14 @@ pub(crate) fn set_record_slot_value(
                 return type_error("record slot assignment");
             };
             let type_name = match heap.heap.get(*reference) {
-                Some(HeapValue::Record {
-                    type_name, fields, ..
-                }) if fields.get_slot(slot, field).is_some() => type_name.clone(),
-                Some(HeapValue::Record { type_name, .. }) => {
+                Some(HeapValue::Record { fields, .. })
+                    if fields.get_slot(slot, field).is_some() =>
+                {
+                    fields.owner_name().to_owned()
+                }
+                Some(HeapValue::Record { fields, .. }) => {
                     return Err(VmError::new(VmErrorKind::UnknownRecordField {
-                        type_name: type_name.clone(),
+                        type_name: fields.owner_name().to_owned(),
                         field: field.to_owned(),
                     }));
                 }

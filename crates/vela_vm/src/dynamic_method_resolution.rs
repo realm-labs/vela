@@ -96,8 +96,8 @@ pub(crate) fn classify_dynamic_receiver(
         DynamicReceiverKind::Result
     } else if let Value::HeapRef(reference) = receiver {
         match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::Record { type_name, .. }) => DynamicReceiverKind::ScriptRecord {
-                type_name: type_name.clone(),
+            Some(HeapValue::Record { fields, .. }) => DynamicReceiverKind::ScriptRecord {
+                type_name: fields.owner_name().to_owned(),
             },
             Some(HeapValue::Enum { enum_name, .. }) => DynamicReceiverKind::ScriptEnum {
                 type_name: enum_name.clone(),

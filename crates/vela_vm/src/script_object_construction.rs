@@ -51,7 +51,6 @@ pub(crate) fn make_record_with_identity(
     let identity = type_id.map(|type_id| RecordIdentity::new(type_id, slots.shape_id()));
     let value = allocate_heap_value(
         HeapValue::Record {
-            type_name: type_name.to_owned(),
             identity,
             fields: slots,
         },
@@ -169,131 +168,17 @@ fn runtime_fields_from_registers(
     heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<ScriptFields<Value>> {
-    match fields {
-        [] => Ok(ScriptFields::empty(owner)),
-        [(name, register)] => {
-            let value = store_runtime_value(&frame.read(*register)?, heap, budget.as_deref_mut())?;
-            Ok(ScriptFields::single(owner, name.clone(), value))
-        }
-        [(first_name, first_register), (second_name, second_register)] => {
-            let first_value =
-                store_runtime_value(&frame.read(*first_register)?, heap, budget.as_deref_mut())?;
-            let second_value =
-                store_runtime_value(&frame.read(*second_register)?, heap, budget.as_deref_mut())?;
-            Ok(ScriptFields::two(
-                owner,
-                first_name.clone(),
-                first_value,
-                second_name.clone(),
-                second_value,
-            ))
-        }
-        [
-            (first_name, first_register),
-            (second_name, second_register),
-            (third_name, third_register),
-        ] => {
-            let first_value =
-                store_runtime_value(&frame.read(*first_register)?, heap, budget.as_deref_mut())?;
-            let second_value =
-                store_runtime_value(&frame.read(*second_register)?, heap, budget.as_deref_mut())?;
-            let third_value =
-                store_runtime_value(&frame.read(*third_register)?, heap, budget.as_deref_mut())?;
-            Ok(ScriptFields::three(
-                owner,
-                first_name.clone(),
-                first_value,
-                second_name.clone(),
-                second_value,
-                third_name.clone(),
-                third_value,
-            ))
-        }
-        [
-            (first_name, first_register),
-            (second_name, second_register),
-            (third_name, third_register),
-            (fourth_name, fourth_register),
-        ] => {
-            let first_value =
-                store_runtime_value(&frame.read(*first_register)?, heap, budget.as_deref_mut())?;
-            let second_value =
-                store_runtime_value(&frame.read(*second_register)?, heap, budget.as_deref_mut())?;
-            let third_value =
-                store_runtime_value(&frame.read(*third_register)?, heap, budget.as_deref_mut())?;
-            let fourth_value =
-                store_runtime_value(&frame.read(*fourth_register)?, heap, budget.as_deref_mut())?;
-            Ok(ScriptFields::four(
-                owner,
-                [
-                    (first_name.clone(), first_value),
-                    (second_name.clone(), second_value),
-                    (third_name.clone(), third_value),
-                    (fourth_name.clone(), fourth_value),
-                ],
-            ))
-        }
-        [
-            (first_name, first_register),
-            (second_name, second_register),
-            (third_name, third_register),
-            (fourth_name, fourth_register),
-            (fifth_name, fifth_register),
-        ] => {
-            let first_value =
-                store_runtime_value(&frame.read(*first_register)?, heap, budget.as_deref_mut())?;
-            let second_value =
-                store_runtime_value(&frame.read(*second_register)?, heap, budget.as_deref_mut())?;
-            let third_value =
-                store_runtime_value(&frame.read(*third_register)?, heap, budget.as_deref_mut())?;
-            let fourth_value =
-                store_runtime_value(&frame.read(*fourth_register)?, heap, budget.as_deref_mut())?;
-            let fifth_value =
-                store_runtime_value(&frame.read(*fifth_register)?, heap, budget.as_deref_mut())?;
-            Ok(ScriptFields::five(
-                owner,
-                [
-                    (first_name.clone(), first_value),
-                    (second_name.clone(), second_value),
-                    (third_name.clone(), third_value),
-                    (fourth_name.clone(), fourth_value),
-                    (fifth_name.clone(), fifth_value),
-                ],
-            ))
-        }
-        [
-            (first_name, first_register),
-            (second_name, second_register),
-            (third_name, third_register),
-            (fourth_name, fourth_register),
-            (fifth_name, fifth_register),
-            (sixth_name, sixth_register),
-        ] => {
-            let first_value =
-                store_runtime_value(&frame.read(*first_register)?, heap, budget.as_deref_mut())?;
-            let second_value =
-                store_runtime_value(&frame.read(*second_register)?, heap, budget.as_deref_mut())?;
-            let third_value =
-                store_runtime_value(&frame.read(*third_register)?, heap, budget.as_deref_mut())?;
-            let fourth_value =
-                store_runtime_value(&frame.read(*fourth_register)?, heap, budget.as_deref_mut())?;
-            let fifth_value =
-                store_runtime_value(&frame.read(*fifth_register)?, heap, budget.as_deref_mut())?;
-            let sixth_value =
-                store_runtime_value(&frame.read(*sixth_register)?, heap, budget.as_deref_mut())?;
-            Ok(ScriptFields::six(
-                owner,
-                [
-                    (first_name.clone(), first_value),
-                    (second_name.clone(), second_value),
-                    (third_name.clone(), third_value),
-                    (fourth_name.clone(), fourth_value),
-                    (fifth_name.clone(), fifth_value),
-                    (sixth_name.clone(), sixth_value),
-                ],
-            ))
-        }
-        _ => fields
+    // Sort name/register pairs into storage order first, then read the values
+    // and intern the shape, so a repeat construction of a known shape clones
+    // no field names and allocates only its value vector.
+    let mut ordered: Vec<(&str, Register)> = fields
+        .iter()
+        .map(|(name, register)| (name.as_str(), *register))
+        .collect();
+    ordered.sort_by(|left, right| left.0.cmp(right.0));
+    let duplicate = ordered.windows(2).any(|pair| pair[0].0 == pair[1].0);
+    if duplicate {
+        let pairs = fields
             .iter()
             .map(|(name, register)| {
                 Ok((
@@ -301,11 +186,21 @@ fn runtime_fields_from_registers(
                     store_runtime_value(&frame.read(*register)?, heap, budget.as_deref_mut())?,
                 ))
             })
-            .collect::<VmResult<Vec<_>>>()
-            .map(|fields| ScriptFields::from_pairs(owner, fields)),
+            .collect::<VmResult<Vec<_>>>()?;
+        return Ok(ScriptFields::from_pairs(owner, pairs));
     }
+    let mut values = Vec::with_capacity(ordered.len());
+    for (_, register) in &ordered {
+        values.push(store_runtime_value(
+            &frame.read(*register)?,
+            heap,
+            budget.as_deref_mut(),
+        )?);
+    }
+    let names: Vec<&str> = ordered.iter().map(|(name, _)| *name).collect();
+    let shape = heap.heap.shapes_mut().intern(owner, &names);
+    Ok(ScriptFields::from_shape(shape, values))
 }
-
 fn linked_type<'program>(
     program: &'program LinkedProgram,
     ty: TypeHandle,

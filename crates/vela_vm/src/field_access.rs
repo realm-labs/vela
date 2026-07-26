@@ -183,14 +183,14 @@ pub(crate) fn get_record_field_value(
 ) -> VmResult<Value> {
     match value {
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::Record {
-                type_name, fields, ..
-            }) => fields.get(field).map(stored_runtime_value).ok_or_else(|| {
-                VmError::new(VmErrorKind::UnknownRecordField {
-                    type_name: type_name.clone(),
-                    field: field.to_owned(),
+            Some(HeapValue::Record { fields, .. }) => {
+                fields.get(field).map(stored_runtime_value).ok_or_else(|| {
+                    VmError::new(VmErrorKind::UnknownRecordField {
+                        type_name: fields.owner_name().to_owned(),
+                        field: field.to_owned(),
+                    })
                 })
-            }),
+            }
             Some(HeapValue::Enum {
                 enum_name,
                 variant,
@@ -217,9 +217,8 @@ pub(crate) fn get_record_slot_value(
 ) -> VmResult<Value> {
     match value {
         Value::HeapRef(reference) => {
-            let Some(HeapValue::Record {
-                type_name, fields, ..
-            }) = heap.and_then(|heap| heap.heap.get(*reference))
+            let Some(HeapValue::Record { fields, .. }) =
+                heap.and_then(|heap| heap.heap.get(*reference))
             else {
                 return type_error("record slot");
             };
@@ -228,7 +227,7 @@ pub(crate) fn get_record_slot_value(
                 .map(stored_runtime_value)
                 .ok_or_else(|| {
                     VmError::new(VmErrorKind::UnknownRecordField {
-                        type_name: type_name.clone(),
+                        type_name: fields.owner_name().to_owned(),
                         field: field.to_owned(),
                     })
                 })
@@ -282,11 +281,10 @@ fn set_linked_record_slot_value(
         .get(*reference)
         .map(|heap_value| match heap_value {
             HeapValue::Record {
-                type_name,
                 identity: Some(identity),
                 fields,
             } => (
-                type_name.clone(),
+                fields.owner_name().to_owned(),
                 identity.type_id == entry.type_id
                     && identity.shape_id == entry.shape_id
                     && fields.get_slot(entry.field.index(), field_name).is_some(),

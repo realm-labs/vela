@@ -966,14 +966,13 @@ fn linked_record_construction_stores_type_and_shape_identity() {
         panic!("expected record heap ref");
     };
     let Some(HeapValue::Record {
-        type_name,
         identity: Some(identity),
         fields,
     }) = heap.heap.get(record)
     else {
         panic!("expected typed record heap value");
     };
-    assert_eq!(type_name, "Reward");
+    assert_eq!(fields.owner_name(), "Reward");
     assert_eq!(identity.type_id, reward_type_id);
     assert_eq!(identity.shape_id, fields.shape_id());
     assert_eq!(fields.get_slot(0, "count"), Some(&RuntimeValue::i64(3)));

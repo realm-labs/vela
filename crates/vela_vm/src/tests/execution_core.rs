@@ -469,7 +469,6 @@ fn nested_values_expose_heap_roots_for_gc() {
     let mut fields = BTreeMap::new();
     fields.insert("item".into(), RuntimeValue::HeapRef(rooted));
     let record = heap.allocate(HeapValue::Record {
-        type_name: "Reward".into(),
         identity: None,
         fields: ScriptFields::from_pairs("Reward", fields),
     });
