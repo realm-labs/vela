@@ -1928,6 +1928,30 @@ change triggers reconstruction from that root rather than promoting the changed
 manifest to a new project. A failed reconstruction publishes diagnostics while
 retaining the last valid graph and does not commit a database generation.
 
+### Numeric Literal Operands Are Resolved At Link Time
+
+`BinaryIntLiteral` and `BinaryFloatLiteral` carried their source text into the
+linked program, so the interpreter re-parsed a compile-time constant on every
+execution — and the integer path allocated a `String` per operation to strip
+underscores. A profile of `function_calls` found that parse and its malloc
+among the dominant stacks.
+
+The linker now resolves the text once into `LinkedIntLiteral` and
+`LinkedFloatLiteral`. Only the target-type range check stays at runtime,
+because which integer width applies depends on the runtime value. Semantics are
+unchanged: a magnitude too large for `u64` cannot satisfy any target maximum, so
+it keeps producing the same type error the textual parse produced, and float
+literals retain both widths because a direct `f32` parse and a rounded `f64` can
+disagree. Unlinked bytecode keeps the source text; it is a compiler and fixture
+format that is never interpreted.
+
+Measured against the pre-change baseline: `function_calls` -20.4%,
+`recursive_countdown` -22.2%, `float_math_loop` -9.4%, `range_iteration` -8.0%,
+whole-suite -2.4%, every checksum unchanged. `scalar_branch_loop` regressed
++12.5% despite compiling to `I64*Imm` opcodes that never execute either changed
+instruction; that is dispatch-loop code layout, and the durable fix is shrinking
+the instruction stream rather than tuning around it.
+
 ### Register Access Stays Bounds-Checked
 
 Linked verification proves every register operand in range, so unchecked

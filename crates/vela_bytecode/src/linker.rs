@@ -755,7 +755,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 dst: *dst,
                 op: *op,
                 value: *value,
-                literal: literal.clone(),
+                magnitude: link_int_literal(literal),
                 side: *side,
             },
             UnlinkedInstructionKind::BinaryFloatLiteral {
@@ -768,7 +768,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 dst: *dst,
                 op: *op,
                 value: *value,
-                literal: literal.clone(),
+                literal: link_float_literal(literal),
                 side: *side,
             },
             UnlinkedInstructionKind::JumpIfFalse { condition, target } => {
@@ -1331,6 +1331,42 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             mir_origin: instruction.mir_origin,
             mir_budget_charges: instruction.mir_budget_charges.clone(),
         })
+    }
+}
+
+/// Resolves an integer literal's source text to its magnitude.
+///
+/// The interpreter used to run this per execution, allocating for the
+/// underscore strip each time. Radix detection and underscore handling match
+/// that earlier textual parse exactly so accepted programs keep their results
+/// and rejected literals keep their runtime type error.
+fn link_int_literal(literal: &str) -> crate::linked::LinkedIntLiteral {
+    let text = literal.replace('_', "");
+    let (digits, radix) = if let Some(digits) = text.strip_prefix("0x") {
+        (digits, 16)
+    } else if let Some(digits) = text.strip_prefix("0X") {
+        (digits, 16)
+    } else if let Some(digits) = text.strip_prefix("0b") {
+        (digits, 2)
+    } else if let Some(digits) = text.strip_prefix("0B") {
+        (digits, 2)
+    } else {
+        (text.as_str(), 10)
+    };
+    u64::from_str_radix(digits, radix).map_or(
+        crate::linked::LinkedIntLiteral::Unrepresentable,
+        crate::linked::LinkedIntLiteral::Magnitude,
+    )
+}
+
+/// Resolves a float literal's source text to its `f32` and `f64` values.
+///
+/// Unlike integer literals, the earlier textual parse did not strip
+/// underscores, so this does not either.
+fn link_float_literal(literal: &str) -> crate::linked::LinkedFloatLiteral {
+    match (literal.parse::<f32>(), literal.parse::<f64>()) {
+        (Ok(as_f32), Ok(as_f64)) => crate::linked::LinkedFloatLiteral::Value { as_f32, as_f64 },
+        _ => crate::linked::LinkedFloatLiteral::Unrepresentable,
     }
 }
 

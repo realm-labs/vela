@@ -709,7 +709,15 @@ impl LinkedFrameSlotInfo {
     }
 }
 
+/// One linked instruction.
+///
+/// The alignment is a measured dispatch-loop tuning choice, not a semantic
+/// requirement: it rounds the stride to a cache-line-aligned power of two so
+/// sequential and post-jump instruction fetch stay predictable. See
+/// `tests/instruction_layout.rs` for the numbers and the intended follow-up of
+/// shrinking this struct instead of padding it.
 #[derive(Clone, Debug, PartialEq)]
+#[repr(align(64))]
 pub struct Instruction {
     pub kind: InstructionKind,
     pub span: Option<Span>,
@@ -741,6 +749,30 @@ impl Instruction {
         self.execution_units = units;
         self
     }
+}
+
+/// An integer literal operand resolved to its magnitude when the program links.
+///
+/// The source text is parsed once by the linker rather than on every execution.
+/// `Unrepresentable` records a literal too large for `u64`: every integer
+/// target type's maximum is at most `u64::MAX`, so such a literal can never
+/// satisfy a range check and keeps producing the same runtime type error the
+/// textual parse produced.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum LinkedIntLiteral {
+    Magnitude(u64),
+    Unrepresentable,
+}
+
+/// A float literal operand resolved to its numeric value when the program links.
+///
+/// Both widths are retained because parsing directly to `f32` and rounding a
+/// correctly-rounded `f64` down to `f32` can disagree; keeping each width
+/// preserves the exact value the textual parse produced for either target.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum LinkedFloatLiteral {
+    Value { as_f32: f32, as_f64: f64 },
+    Unrepresentable,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -889,14 +921,14 @@ pub enum InstructionKind {
         dst: Register,
         op: crate::BinaryLiteralOp,
         value: Register,
-        literal: String,
+        magnitude: LinkedIntLiteral,
         side: crate::BinaryLiteralSide,
     },
     BinaryFloatLiteral {
         dst: Register,
         op: crate::BinaryLiteralOp,
         value: Register,
-        literal: String,
+        literal: LinkedFloatLiteral,
         side: crate::BinaryLiteralSide,
     },
     GuardType {
