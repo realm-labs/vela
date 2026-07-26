@@ -2062,6 +2062,23 @@ async path or second backend representation is introduced.
 
 ## Unified Rust/Vela Interop Decisions
 
+### External Schemas Use A Centralized Generated Companion
+
+External schema generators may expose local Rust types without modifying each
+generated model declaration. The selected surface is one generated companion
+module containing declaration-only `external_host` method groups and
+`external_value_enum` unit-enum declarations, plus one explicit project-facing
+registration function. The method declarations compile to private extension
+dispatch and normal callable/type descriptors; they do not add business
+wrapper methods such as `vela_get` to the Rust type.
+
+The companion remains compile-time code in the type-owning crate so Rust trait
+coherence, exact Rust `TypeId` binding, and static signature classification are
+preserved. It feeds the existing `TypeBinding`, callable ABI, Host lease, and
+scoped-return machinery. No linker inventory, process-global registry,
+runtime field reflection, offset-based access, or generator-specific VM bridge
+is introduced.
+
 ### Binding Generation And Error Surface
 
 The Engine/compiler emits one deterministic, language-neutral export schema;

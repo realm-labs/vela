@@ -137,15 +137,15 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
 }
 
 #[derive(Default)]
-struct MethodAttrs {
-    name: Option<String>,
-    reflect_callable: bool,
-    host_collection: bool,
-    effects: BTreeSet<EffectName>,
-    attrs: Vec<(String, String)>,
+pub(crate) struct MethodAttrs {
+    pub(crate) name: Option<String>,
+    pub(crate) reflect_callable: bool,
+    pub(crate) host_collection: bool,
+    pub(crate) effects: BTreeSet<EffectName>,
+    pub(crate) attrs: Vec<(String, String)>,
 }
 
-fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAttrs> {
+pub(crate) fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAttrs> {
     let mut parsed = MethodAttrs::default();
     let mut retained = Vec::with_capacity(method.attrs.len());
     for attr in std::mem::take(&mut method.attrs) {

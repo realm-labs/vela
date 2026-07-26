@@ -758,6 +758,21 @@ may emit `vela::Value`, `vela::Host`, stable-key, and service-registration
 facts. They must feed the same registry and ABI model rather than introduce a
 generator-specific runtime bridge.
 
+When the generator owns the complete schema, it should prefer one generated
+companion registration module over annotations scattered through generated
+model files. `#[vela_macros::external_host]` treats an impl-shaped declaration
+as metadata for an existing local Rust type: it generates the Host schema,
+call-scoped object adapter, callable descriptors, private extension dispatch,
+and one named registration function without adding the declared business
+methods to the type's inherent API. `external_value_enum!` provides the same
+centralized form for existing unit enums. Generated projects install the
+result through one explicit registration entry point.
+
+This is compile-time registration, not runtime reflection or inventory. Rust
+coherence still requires the companion module to be generated in the crate
+that owns the exposed types. Borrowed returns continue through the ordinary
+scoped Host ABI and retain its lease, escape, and async-suspension checks.
+
 ## 5. Standard Library Requirements
 
 The service hard switch is not useful until Vela can manipulate the business

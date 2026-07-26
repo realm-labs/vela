@@ -57,6 +57,16 @@ let amount = game::normalize(input);
 player.grant(amount);
 ```
 
+Schema generators that own local Rust types can keep their ordinary model
+files free of Vela derives and wrapper methods. They emit one companion module
+containing declaration-only `#[vela_macros::external_host]` groups (and
+`external_value_enum!` declarations for unit enums), then expose one function
+that installs every generated registration function. The declaration bodies
+may delegate to existing inherent methods or directly read generated fields;
+the macro emits private extension dispatch rather than `vela_get`-style
+inherent methods. `&T`, `Option<&T>`, and borrowed collections use the same
+scoped-return adapters as `#[vela_macros::methods]`.
+
 Shared and exclusive Rust references infer `host_read` and `host_write`.
 `effects(...)` adds exceptional effects but cannot remove signature-inferred
 effects. A trusted Rust body receiving `&mut T` has ordinary field-level Rust

@@ -6,6 +6,8 @@ mod attrs;
 mod export;
 mod export_external_trait_impl;
 mod export_module;
+mod external_host;
+mod external_value_enum;
 mod hash;
 mod methods;
 mod script_function;
@@ -36,6 +38,22 @@ pub fn export_module(attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn methods(attr: TokenStream, input: TokenStream) -> TokenStream {
     methods::expand(attr.into(), input.into()).into()
+}
+
+/// Generates a centralized Host binding for an existing local Rust type.
+///
+/// Unlike [`methods`], the supplied impl is registration metadata: its methods
+/// are emitted through a private extension trait and do not become inherent
+/// methods on the Rust type.
+#[proc_macro_attribute]
+pub fn external_host(attr: TokenStream, input: TokenStream) -> TokenStream {
+    external_host::expand(attr.into(), input.into()).into()
+}
+
+/// Generates a centralized structural Value binding for an existing unit enum.
+#[proc_macro]
+pub fn external_value_enum(input: TokenStream) -> TokenStream {
+    external_value_enum::expand(input.into()).into()
 }
 
 /// Exports a Rust trait as one explicitly named Vela protocol contract.
