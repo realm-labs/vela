@@ -1952,6 +1952,30 @@ whole-suite -2.4%, every checksum unchanged. `scalar_branch_loop` regressed
 instruction; that is dispatch-loop code layout, and the durable fix is shrinking
 the instruction stream rather than tuning around it.
 
+### Only The Oversized Suspension Payload Is Boxed
+
+`ExecutionFrame` is copied on every call push and pop, and it was 496 bytes
+because `PendingFrameOperation` was stored inline at 384 bytes. That size came
+almost entirely from one variant: `ResumableCallbackMethod` is 336 bytes, while
+the comparison, ordering, and iterator payloads are 72, 152, and 48.
+
+Boxing the whole enum takes the frame to 120 bytes and helps call-heavy rows,
+but it was rejected: `IteratorNext` and `Comparison` suspend once per element,
+so boxing them adds a malloc and free per iteration step. An interleaved
+measurement showed `array_scan` +21.2% against the rest of the suite moving the
+other way.
+
+Boxing only the callback payload takes the frame to 312 bytes, leaves the
+per-element suspensions allocation-free, and measured `range_iteration` -21.5%,
+`scalar_branch_loop` -16.7%, `closure_callbacks` -6.7%, `array_transform_sort`
+-5.4%, whole suite -0.6%, checksums unchanged.
+
+Treat the whole-suite figure as weak evidence. Several rows that execute no
+suspension at all swung by more than 10% between runs, so dispatch-loop code
+layout currently moves these benchmarks more than the change under test. The
+durable fix is to shrink `ResumableCallbackMethod` and the instruction stream
+rather than to keep trading frame bytes for allocations.
+
 ### Register Access Stays Bounds-Checked
 
 Linked verification proves every register operand in range, so unchecked

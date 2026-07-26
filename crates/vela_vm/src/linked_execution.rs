@@ -10,7 +10,7 @@ use crate::equality::{ResumableComparison, ResumableComparisonKind, ResumableCom
 use crate::error::{VmError, VmErrorKind, VmResult, VmStackFrame};
 use crate::execution_session::{
     ExecutionFrame, LinkedExecutionSession, PendingFrameOperation, PendingLinkedCall,
-    PendingNativeResume, PendingReturnTarget, ReturnContinuation,
+    PendingNativeResume, PendingReturnTarget, ReturnContinuation, suspended,
 };
 use crate::frame::CallFrame;
 use crate::heap_execution::{ActiveExecutionValue, HeapExecution};
@@ -898,7 +898,7 @@ impl Vm {
                 })
                 .with_source_span_if_absent(source_span));
             }
-            frame_state.pending_operation = Some(resumed_operation);
+            frame_state.pending_operation = suspended(resumed_operation);
             return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
                 owner,
                 function,
@@ -1029,7 +1029,7 @@ impl Vm {
                 }
                 InstructionKind::Equal { dst, lhs, rhs } => {
                     frame_state.ip = InstructionOffset(ip);
-                    frame_state.pending_operation = Some(PendingFrameOperation::Comparison {
+                    frame_state.pending_operation = suspended(PendingFrameOperation::Comparison {
                         comparison: ResumableComparison::new(
                             ResumableComparisonKind::Equal,
                             frame.read(*lhs)?,
@@ -1043,7 +1043,7 @@ impl Vm {
                 }
                 InstructionKind::NotEqual { dst, lhs, rhs } => {
                     frame_state.ip = InstructionOffset(ip);
-                    frame_state.pending_operation = Some(PendingFrameOperation::Comparison {
+                    frame_state.pending_operation = suspended(PendingFrameOperation::Comparison {
                         comparison: ResumableComparison::new(
                             ResumableComparisonKind::NotEqual,
                             frame.read(*lhs)?,
@@ -1071,7 +1071,7 @@ impl Vm {
                 }
                 InstructionKind::Less { dst, lhs, rhs } => {
                     frame_state.ip = InstructionOffset(ip);
-                    frame_state.pending_operation = Some(PendingFrameOperation::Comparison {
+                    frame_state.pending_operation = suspended(PendingFrameOperation::Comparison {
                         comparison: ResumableComparison::new(
                             ResumableComparisonKind::Less,
                             frame.read(*lhs)?,
@@ -1085,7 +1085,7 @@ impl Vm {
                 }
                 InstructionKind::LessEqual { dst, lhs, rhs } => {
                     frame_state.ip = InstructionOffset(ip);
-                    frame_state.pending_operation = Some(PendingFrameOperation::Comparison {
+                    frame_state.pending_operation = suspended(PendingFrameOperation::Comparison {
                         comparison: ResumableComparison::new(
                             ResumableComparisonKind::LessEqual,
                             frame.read(*lhs)?,
@@ -1099,7 +1099,7 @@ impl Vm {
                 }
                 InstructionKind::Greater { dst, lhs, rhs } => {
                     frame_state.ip = InstructionOffset(ip);
-                    frame_state.pending_operation = Some(PendingFrameOperation::Comparison {
+                    frame_state.pending_operation = suspended(PendingFrameOperation::Comparison {
                         comparison: ResumableComparison::new(
                             ResumableComparisonKind::Greater,
                             frame.read(*lhs)?,
@@ -1113,7 +1113,7 @@ impl Vm {
                 }
                 InstructionKind::GreaterEqual { dst, lhs, rhs } => {
                     frame_state.ip = InstructionOffset(ip);
-                    frame_state.pending_operation = Some(PendingFrameOperation::Comparison {
+                    frame_state.pending_operation = suspended(PendingFrameOperation::Comparison {
                         comparison: ResumableComparison::new(
                             ResumableComparisonKind::GreaterEqual,
                             frame.read(*lhs)?,
@@ -1499,8 +1499,8 @@ impl Vm {
                                 }
                                 frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
                                 frame_state.pending_operation =
-                                    Some(PendingFrameOperation::CallbackMethod {
-                                        callback,
+                                    suspended(PendingFrameOperation::CallbackMethod {
+                                        callback: Box::new(callback),
                                         destination: *dst,
                                         returned: None,
                                         source_span: instruction.span,
@@ -1565,7 +1565,7 @@ impl Vm {
                                 }
                                 frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
                                 frame_state.pending_operation =
-                                    Some(PendingFrameOperation::ArrayOrdering {
+                                    suspended(PendingFrameOperation::ArrayOrdering {
                                         ordering,
                                         destination: *dst,
                                         returned: None,
@@ -1728,8 +1728,8 @@ impl Vm {
                             ) {
                                 frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
                                 frame_state.pending_operation =
-                                    Some(PendingFrameOperation::CallbackMethod {
-                                        callback: callback?,
+                                    suspended(PendingFrameOperation::CallbackMethod {
+                                        callback: Box::new(callback?),
                                         destination: *dst,
                                         returned: None,
                                         source_span: instruction.span,
@@ -1760,7 +1760,7 @@ impl Vm {
                             if let Some(ordering) = ordering {
                                 frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
                                 frame_state.pending_operation =
-                                    Some(PendingFrameOperation::ArrayOrdering {
+                                    suspended(PendingFrameOperation::ArrayOrdering {
                                         ordering,
                                         destination: *dst,
                                         returned: None,
@@ -2201,17 +2201,18 @@ impl Vm {
                     jump_if_done,
                 } => {
                     frame_state.ip = InstructionOffset(ip);
-                    frame_state.pending_operation = Some(PendingFrameOperation::IteratorNext {
-                        next: iteration::ResumableIteratorNext::new(
-                            frame.read(*iterator)?,
-                            "iterator",
-                            false,
-                        ),
-                        destination: *dst,
-                        jump_if_done: *jump_if_done,
-                        returned: None,
-                        source_span: instruction.span,
-                    });
+                    frame_state.pending_operation =
+                        suspended(PendingFrameOperation::IteratorNext {
+                            next: iteration::ResumableIteratorNext::new(
+                                frame.read(*iterator)?,
+                                "iterator",
+                                false,
+                            ),
+                            destination: *dst,
+                            jump_if_done: *jump_if_done,
+                            returned: None,
+                            source_span: instruction.span,
+                        });
                     return Ok(FrameDriveOutcome::Continue);
                 }
                 InstructionKind::RangeNext {
