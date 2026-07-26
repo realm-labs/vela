@@ -244,15 +244,21 @@ fn imported_schema_declaration(
 }
 
 fn schema_path_matches(graph: &ModuleGraph, declaration: &Declaration, path: &[String]) -> bool {
-    declaration_schema_fact(graph, declaration).is_some()
-        && ((path.len() == 1 && path[0] == declaration.name)
-            || graph.module_path(declaration.module).is_some_and(|module| {
-                module
-                    .segments()
-                    .iter()
-                    .chain(std::iter::once(&declaration.name))
-                    .eq(path.iter())
-            }))
+    // Both accepting shapes below end in the declaration name, so this guard
+    // rejects the overwhelming majority of a workspace's declarations before
+    // `declaration_schema_fact` formats a qualified name for each of them.
+    if path.last() != Some(&declaration.name) {
+        return false;
+    }
+    (path.len() == 1
+        || graph.module_path(declaration.module).is_some_and(|module| {
+            module
+                .segments()
+                .iter()
+                .chain(std::iter::once(&declaration.name))
+                .eq(path.iter())
+        }))
+        && declaration_schema_fact(graph, declaration).is_some()
 }
 
 #[cfg(test)]
