@@ -229,7 +229,7 @@ pub(crate) fn validate_value_host_refs(
                     return Err(type_error("host-ref lifetime validation"));
                 };
                 match value {
-                    HeapValue::String(_) | HeapValue::Bytes(_) => {}
+                    HeapValue::String(_) | HeapValue::Bytes(_) | HeapValue::Range(_) => {}
                     HeapValue::Tuple(values) | HeapValue::Array(values) => {
                         pending.extend(values.iter().copied());
                     }
@@ -268,7 +268,6 @@ pub(crate) fn validate_value_host_refs(
             | Value::U64(_)
             | Value::F32(_)
             | Value::F64(_)
-            | Value::Range(_)
             | Value::HeapRef(_) => {}
         }
     }
@@ -524,7 +523,9 @@ fn owned_to_value_inner(
         OwnedValue::Bool(value) => Ok(Value::Bool(value)),
         OwnedValue::Char(value) => Ok(Value::Char(value)),
         OwnedValue::Scalar(value) => Ok(Value::from_scalar(value)),
-        OwnedValue::Range(value) => Ok(Value::Range(value)),
+        OwnedValue::Range(value) => {
+            allocate_heap_value(HeapValue::Range(value), heap, budget.as_deref_mut())
+        }
         OwnedValue::HostRef(value) => Ok(Value::HostRef(slots.intern(value)?)),
         OwnedValue::String(value) => {
             allocate_heap_value(HeapValue::String(value), heap, budget.as_deref_mut())
@@ -712,7 +713,6 @@ fn value_to_owned_inner(
         Value::Unit => Ok(OwnedValue::Unit),
         Value::Bool(value) => Ok(OwnedValue::Bool(*value)),
         Value::Char(value) => Ok(OwnedValue::Char(*value)),
-        Value::Range(value) => Ok(OwnedValue::Range(*value)),
         Value::HostRef(value) => {
             let host = host.ok_or_else(|| type_error("host ref requires active slot resolver"))?;
             Ok(OwnedValue::HostRef(host.resolve(*value)?))
@@ -736,6 +736,7 @@ fn heap_value_to_owned(
     match value {
         HeapValue::String(value) => Ok(OwnedValue::String(value.clone())),
         HeapValue::Bytes(value) => Ok(OwnedValue::Bytes(value.clone())),
+        HeapValue::Range(value) => Ok(OwnedValue::Range(*value)),
         HeapValue::Tuple(values) => values
             .iter()
             .map(|value| value_to_owned_inner(value, heap, host))
@@ -867,7 +868,7 @@ pub(crate) fn value_to_host(
             ) => Err(type_error(operation)),
             _ => Err(type_error(operation)),
         },
-        Value::Missing | Value::Range(_) => Err(type_error(operation)),
+        Value::Missing => Err(type_error(operation)),
         _ => unreachable!("scalar values return before host conversion match"),
     }
 }
@@ -907,7 +908,6 @@ fn store_value_in_heap(
         | Value::U64(_)
         | Value::F32(_)
         | Value::F64(_)
-        | Value::Range(_)
         | Value::HostRef(_)
         | Value::HeapRef(_) => Ok(value),
     }

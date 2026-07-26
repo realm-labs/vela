@@ -1128,8 +1128,8 @@ fn runtime_standard_type(
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<StandardTypeGuard> {
     match value {
-        Value::Range(_) => Some(StandardTypeGuard::Range),
         Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+            Some(HeapValue::Range(_)) => Some(StandardTypeGuard::Range),
             Some(HeapValue::Array(_)) => Some(StandardTypeGuard::Array),
             Some(HeapValue::Map(_)) => Some(StandardTypeGuard::Map),
             Some(HeapValue::Set(_)) => Some(StandardTypeGuard::Set),
@@ -1220,7 +1220,7 @@ macro_rules! define_runtime_type_helpers {
                     Some(HeapValue::Bytes(_)) => Some(PrimitiveTag::Bytes),
                     _ => None,
                 },
-                Value::Missing | Value::Range(_) | Value::HostRef(_) => None,
+                Value::Missing | Value::HostRef(_) => None,
             }
         }
 
@@ -1236,9 +1236,9 @@ macro_rules! define_runtime_type_helpers {
                 $(
                     Value::$value_variant(_) => primitive_type_name(PrimitiveTag::$primitive_tag),
                 )*
-                Value::Range(_) => "Range",
                 Value::HostRef(_) => "host",
                 Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+                    Some(HeapValue::Range(_)) => "Range",
                     Some(HeapValue::String(_)) => primitive_type_name(PrimitiveTag::String),
                     Some(HeapValue::Bytes(_)) => primitive_type_name(PrimitiveTag::Bytes),
                     Some(HeapValue::Tuple(_)) => "tuple",

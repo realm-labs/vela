@@ -44,6 +44,13 @@ impl GcRef {
 #[derive(Clone, Debug, PartialEq)]
 pub enum HeapValue {
     String(String),
+    /// First-class range value.
+    ///
+    /// Specialized `for` loops step scalar cursor registers and never build
+    /// one of these; a heap range exists only when a script treats a range as
+    /// a value. Moving the payload here is what lets the register `Value`
+    /// stay at 16 bytes.
+    Range(crate::ranges::RangeValue),
     Bytes(Vec<u8>),
     Tuple(Vec<Value>),
     Array(Vec<Value>),
@@ -103,7 +110,7 @@ impl EnumIdentity {
 impl HeapValue {
     pub(crate) fn trace_refs(&self, refs: &mut Vec<GcRef>) {
         match self {
-            Self::String(_) | Self::Bytes(_) | Self::PathProxy(_) => {}
+            Self::String(_) | Self::Bytes(_) | Self::Range(_) | Self::PathProxy(_) => {}
             Self::Tuple(values) | Self::Array(values) => {
                 values.iter().for_each(|value| value.trace_refs(refs));
             }
@@ -134,6 +141,7 @@ impl HeapValue {
         match self {
             Self::String(value) => mem::size_of::<String>() + value.len(),
             Self::Bytes(value) => mem::size_of::<Vec<u8>>() + value.len(),
+            Self::Range(_) => mem::size_of::<crate::ranges::RangeValue>(),
             Self::Tuple(values) | Self::Array(values) => {
                 mem::size_of::<Vec<Value>>() + values.len() * mem::size_of::<Value>()
             }

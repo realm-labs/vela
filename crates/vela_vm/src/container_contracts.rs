@@ -234,8 +234,8 @@ impl ShallowTypeKey {
             Value::U64(_) => Some(Self::Primitive(PrimitiveTag::U64)),
             Value::F32(_) => Some(Self::Primitive(PrimitiveTag::F32)),
             Value::F64(_) => Some(Self::Primitive(PrimitiveTag::F64)),
-            Value::Range(_) => Some(Self::Standard(StandardTypeGuard::Range)),
             Value::HeapRef(reference) => match heap.get(*reference)? {
+                HeapValue::Range(_) => Some(Self::Standard(StandardTypeGuard::Range)),
                 HeapValue::String(_) => Some(Self::Primitive(PrimitiveTag::String)),
                 HeapValue::Bytes(_) => Some(Self::Primitive(PrimitiveTag::Bytes)),
                 HeapValue::Array(_) => Some(Self::Standard(StandardTypeGuard::Array)),

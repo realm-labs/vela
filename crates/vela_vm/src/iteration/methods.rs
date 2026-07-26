@@ -30,9 +30,9 @@ pub(crate) fn iter_method(
 ) -> VmResult<Value> {
     runtime_checks::expect_arity("iter", args, 0)?;
     let iterator = match receiver {
-        Value::Range(range) => IteratorState::from_range_cursor(range.cursor()),
         Value::HeapRef(reference) => {
             match heap.as_deref().and_then(|heap| heap.heap.get(*reference)) {
+                Some(HeapValue::Range(range)) => IteratorState::from_range_cursor(range.cursor()),
                 Some(HeapValue::Array(values)) => {
                     IteratorState::from_array_source(*reference, values.len())
                 }

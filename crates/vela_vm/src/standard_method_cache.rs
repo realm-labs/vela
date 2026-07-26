@@ -35,8 +35,8 @@ fn classify_standard_receiver(
 ) -> Option<StandardMethodReceiver> {
     match receiver {
         Value::Char(_) => Some(StandardMethodReceiver::Char),
-        Value::Range(_) => Some(StandardMethodReceiver::Range),
         Value::HeapRef(reference) => match heap?.heap.get(*reference)? {
+            crate::heap::HeapValue::Range(_) => Some(StandardMethodReceiver::Range),
             crate::heap::HeapValue::String(_) => Some(StandardMethodReceiver::String),
             crate::heap::HeapValue::Bytes(_) => Some(StandardMethodReceiver::Bytes),
             crate::heap::HeapValue::Array(_) => Some(StandardMethodReceiver::Array),
@@ -1185,7 +1185,7 @@ fn receiver_matches_cache(
         StandardMethodReceiver::String => crate::string_methods::is_string(receiver, heap),
         StandardMethodReceiver::Bytes => bytes_methods::is_bytes(receiver, heap),
         StandardMethodReceiver::Char => crate::char_methods::is_char(receiver),
-        StandardMethodReceiver::Range => matches!(receiver, Value::Range(_)),
+        StandardMethodReceiver::Range => crate::ranges::is_range(receiver, heap),
         StandardMethodReceiver::Array => array_methods::is_array(receiver, heap),
         StandardMethodReceiver::Map => map_methods::is_map(receiver, heap),
         StandardMethodReceiver::Set => set_methods::is_set(receiver, heap),

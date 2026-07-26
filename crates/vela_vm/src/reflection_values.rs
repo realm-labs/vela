@@ -94,12 +94,12 @@ pub(crate) fn runtime_value_to_reflect(
         Value::Unit => Ok(reflect::value::ReflectValue::Host(HostValue::Unit)),
         Value::Bool(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Bool(*value))),
         Value::Char(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Char(*value))),
-        Value::Range(_) => Ok(reflect::value::ReflectValue::Range),
         Value::HostRef(host_ref) => Ok(reflect::value::ReflectValue::HostRef(
             host.ok_or_else(|| type_error(operation))?
                 .resolve_host_ref(*host_ref)?,
         )),
         Value::HeapRef(reference) => match heap.heap.get(*reference) {
+            Some(HeapValue::Range(_)) => Ok(reflect::value::ReflectValue::Range),
             Some(HeapValue::String(value)) => Ok(reflect::value::ReflectValue::Host(
                 HostValue::String(value.clone()),
             )),

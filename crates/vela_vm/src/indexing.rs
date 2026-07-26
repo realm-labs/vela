@@ -179,6 +179,7 @@ pub(crate) fn get_index(
                 HeapValue::String(_)
                 | HeapValue::Set(_)
                 | HeapValue::Tuple(_)
+                | HeapValue::Range(_)
                 | HeapValue::Record { .. }
                 | HeapValue::Enum { .. }
                 | HeapValue::Closure(_)
@@ -220,6 +221,7 @@ pub(crate) fn get_string_key_index(
         HeapValue::Array(_)
         | HeapValue::Bytes(_)
         | HeapValue::String(_)
+        | HeapValue::Range(_)
         | HeapValue::Set(_)
         | HeapValue::Tuple(_)
         | HeapValue::Record { .. }
@@ -254,6 +256,7 @@ pub(crate) fn set_index(
                 Some(
                     HeapValue::String(_)
                     | HeapValue::Bytes(_)
+                    | HeapValue::Range(_)
                     | HeapValue::Set(_)
                     | HeapValue::Tuple(_)
                     | HeapValue::Record { .. }
@@ -296,6 +299,7 @@ pub(crate) fn set_string_key_index(
         }
         Some(
             HeapValue::Array(_)
+            | HeapValue::Range(_)
             | HeapValue::String(_)
             | HeapValue::Bytes(_)
             | HeapValue::Set(_)

@@ -105,17 +105,26 @@ pub(crate) fn make_linked_map(
 
 pub(crate) fn make_range(
     frame: &mut CallFrame,
+    heap: Option<&mut HeapExecution<'_>>,
+    mut budget: Option<&mut ExecutionBudget>,
     dst: Register,
     start: Register,
     end: Register,
     inclusive: bool,
 ) -> VmResult<()> {
+    let Some(heap) = heap else {
+        return Err(VmError::new(VmErrorKind::TypeMismatch {
+            operation: "range heap",
+        }));
+    };
     let start = expect_int(&frame.read(start)?, "range")?;
     let end = expect_int(&frame.read(end)?, "range")?;
-    frame.write(
-        dst,
-        Value::Range(crate::ranges::RangeValue::new(start, end, inclusive)),
-    )
+    let value = allocate_heap_value(
+        HeapValue::Range(crate::ranges::RangeValue::new(start, end, inclusive)),
+        heap,
+        budget_ref(&mut budget),
+    )?;
+    frame.write(dst, value)
 }
 
 #[inline]

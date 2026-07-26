@@ -80,7 +80,7 @@ pub(crate) fn classify_dynamic_receiver(
         DynamicReceiverKind::Bytes
     } else if crate::char_methods::is_char(receiver) {
         DynamicReceiverKind::Char
-    } else if matches!(receiver, Value::Range(_)) {
+    } else if crate::ranges::is_range(receiver, heap) {
         DynamicReceiverKind::Range
     } else if array_methods::is_array(receiver, heap) {
         DynamicReceiverKind::Array

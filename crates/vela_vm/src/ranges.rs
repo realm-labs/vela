@@ -77,3 +77,14 @@ impl RangeCursor {
         Some(value)
     }
 }
+
+/// Reports whether a value is a first-class range.
+pub(crate) fn is_range(value: &crate::Value, heap: Option<&crate::HeapExecution<'_>>) -> bool {
+    match value {
+        crate::Value::HeapRef(reference) => matches!(
+            heap.and_then(|heap| heap.heap.get(*reference)),
+            Some(crate::heap::HeapValue::Range(_))
+        ),
+        _ => false,
+    }
+}

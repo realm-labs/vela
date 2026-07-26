@@ -25,7 +25,12 @@ pub(super) fn call_cached_len(
             value.len()
         }
         StandardMethodReceiver::Range => {
-            let Value::Range(range) = receiver else {
+            let Value::HeapRef(reference) = receiver else {
+                return None;
+            };
+            let Some(crate::heap::HeapValue::Range(range)) =
+                heap.and_then(|heap| heap.heap.get(*reference))
+            else {
                 return None;
             };
             if let Err(error) = script_builtin_methods::expect_no_args("len", args) {
@@ -88,7 +93,12 @@ pub(super) fn call_cached_is_empty(
             value.is_empty()
         }
         StandardMethodReceiver::Range => {
-            let Value::Range(range) = receiver else {
+            let Value::HeapRef(reference) = receiver else {
+                return None;
+            };
+            let Some(crate::heap::HeapValue::Range(range)) =
+                heap.and_then(|heap| heap.heap.get(*reference))
+            else {
                 return None;
             };
             if let Err(error) = script_builtin_methods::expect_no_args("is_empty", args) {

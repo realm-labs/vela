@@ -5,7 +5,6 @@ use vela_common::ScalarValue;
 use vela_host::path::HostSlotRef;
 
 use crate::heap::GcRef;
-use crate::ranges::RangeValue;
 use crate::small_storage::SmallStorage;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -24,7 +23,6 @@ pub enum Value {
     U64(u64),
     F32(f32),
     F64(f64),
-    Range(RangeValue),
     HeapRef(GcRef),
     HostRef(HostSlotRef),
 }
@@ -102,4 +100,22 @@ pub struct ClosureValue {
     pub(crate) owner: Arc<vela_bytecode::LinkedArtifact>,
     pub(crate) function: ScriptFunctionHandle,
     pub(crate) captures: SmallStorage<Value>,
+}
+
+#[cfg(test)]
+mod layout_tests {
+    /// The register slot is copied on every read, argument pass, array element
+    /// access, and frame operation, so its size is a whole-interpreter memory
+    /// traffic multiplier. Sixteen bytes matches Lua 5.4 and Luau; the move
+    /// from 24 came from taking `Range` out of the inline variants, so any
+    /// new variant payload must stay at or below eight bytes.
+    #[test]
+    fn value_slot_stays_at_sixteen_bytes() {
+        assert_eq!(
+            std::mem::size_of::<super::Value>(),
+            16,
+            "Value grew; a register slot must stay two words"
+        );
+        assert_eq!(std::mem::size_of::<Option<super::Value>>(), 16);
+    }
 }

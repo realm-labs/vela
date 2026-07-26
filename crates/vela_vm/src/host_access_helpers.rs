@@ -45,7 +45,7 @@ pub(crate) fn runtime_collection_key(
             Some(HeapValue::Bytes(key)) => HostCollectionKey::Bytes(key.clone()),
             _ => return Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         },
-        Value::Missing | Value::Unit | Value::F32(_) | Value::F64(_) | Value::Range(_) => {
+        Value::Missing | Value::Unit | Value::F32(_) | Value::F64(_) => {
             return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
         }
     };

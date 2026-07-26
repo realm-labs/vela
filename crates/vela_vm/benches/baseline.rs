@@ -1148,7 +1148,6 @@ fn runtime_value_checksum(value: &Value) -> u64 {
         Value::Unit => 0x02,
         Value::Bool(value) => u64::from(*value) ^ 0x03,
         Value::Char(value) => u64::from(*value as u32) ^ 0x04,
-        Value::Range(_) => 0x09,
         Value::HeapRef(_) | Value::HostRef(_) => 0x0a,
         _ => unreachable!("scalar values return before checksum match"),
     }

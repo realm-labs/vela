@@ -651,6 +651,7 @@ fn leaf_values_equal(
     match (heap_leaf(lhs, heap)?, heap_leaf(rhs, heap)?) {
         (Some(HeapLeaf::String(lhs)), Some(HeapLeaf::String(rhs))) => Ok(Some(lhs == rhs)),
         (Some(HeapLeaf::Bytes(lhs)), Some(HeapLeaf::Bytes(rhs))) => Ok(Some(lhs == rhs)),
+        (Some(HeapLeaf::Range(lhs)), Some(HeapLeaf::Range(rhs))) => Ok(Some(lhs == rhs)),
         (Some(_), Some(_)) => Ok(Some(false)),
         (Some(_), None) | (None, Some(_)) if is_immediate_comparable_leaf(lhs, rhs) => {
             Ok(Some(false))
@@ -710,7 +711,6 @@ fn immediate_leaf_values_equal(lhs: &Value, rhs: &Value) -> Option<bool> {
         (Value::Unit, Value::Unit) => Some(true),
         (Value::Bool(lhs), Value::Bool(rhs)) => Some(lhs == rhs),
         (Value::Char(lhs), Value::Char(rhs)) => Some(lhs == rhs),
-        (Value::Range(lhs), Value::Range(rhs)) => Some(lhs == rhs),
         (lhs, rhs) if lhs.is_scalar() && rhs.is_scalar() => {
             Some(lhs.as_scalar() == rhs.as_scalar())
         }
@@ -776,7 +776,6 @@ fn is_immediate_leaf(value: &Value) -> bool {
             | Value::U64(_)
             | Value::F32(_)
             | Value::F64(_)
-            | Value::Range(_)
     )
 }
 
@@ -793,6 +792,7 @@ fn heap_leaf<'a>(
     match heap_value {
         HeapValue::String(value) => Ok(Some(HeapLeaf::String(value))),
         HeapValue::Bytes(value) => Ok(Some(HeapLeaf::Bytes(value))),
+        HeapValue::Range(value) => Ok(Some(HeapLeaf::Range(*value))),
         HeapValue::PathProxy(_) => non_comparable("equal"),
         HeapValue::Tuple(_)
         | HeapValue::Array(_)
@@ -822,8 +822,7 @@ fn identity_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<Ide
         | Value::U32(_)
         | Value::U64(_)
         | Value::F32(_)
-        | Value::F64(_)
-        | Value::Range(_) => non_comparable("identity equal"),
+        | Value::F64(_) => non_comparable("identity equal"),
     }
 }
 
@@ -841,6 +840,7 @@ fn heap_identity_key(reference: GcRef, heap: Option<&HeapExecution<'_>>) -> VmRe
         | HeapValue::Iterator(_) => Ok(IdentityKey::Heap(reference)),
         HeapValue::String(_)
         | HeapValue::Bytes(_)
+        | HeapValue::Range(_)
         | HeapValue::Tuple(_)
         | HeapValue::PathProxy(_) => non_comparable("identity equal"),
     }
@@ -857,6 +857,7 @@ fn comparable_error(operation: &'static str) -> VmError {
 enum HeapLeaf<'a> {
     String(&'a str),
     Bytes(&'a [u8]),
+    Range(crate::ranges::RangeValue),
 }
 
 enum IdentityKey {
@@ -889,12 +890,27 @@ mod tests {
         assert_eq!(equal(Value::I64(1), Value::U64(1)), Ok(false));
         assert_eq!(equal(Value::F64(f64::NAN), Value::F64(f64::NAN)), Ok(false));
         assert_eq!(equal(Value::F64(-0.0), Value::F64(0.0)), Ok(true));
+        let mut heap = crate::heap::ScriptHeap::new();
+        let first = heap.allocate(HeapValue::Range(RangeValue::new(0, 10, false)));
+        let second = heap.allocate(HeapValue::Range(RangeValue::new(0, 10, false)));
+        let third = heap.allocate(HeapValue::Range(RangeValue::new(0, 11, false)));
+        let execution = HeapExecution::new(&mut heap);
         assert_eq!(
-            equal(
-                Value::Range(RangeValue::new(0, 10, false)),
-                Value::Range(RangeValue::new(0, 10, false))
+            values_equal(
+                &Value::HeapRef(first),
+                &Value::HeapRef(second),
+                Some(&execution)
             ),
-            Ok(true)
+            Ok(true),
+            "distinct heap ranges with equal bounds compare equal"
+        );
+        assert_eq!(
+            values_equal(
+                &Value::HeapRef(first),
+                &Value::HeapRef(third),
+                Some(&execution)
+            ),
+            Ok(false)
         );
     }
 

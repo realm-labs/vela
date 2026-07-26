@@ -59,9 +59,6 @@ fn classify_iterable(
     heap: Option<&HeapExecution<'_>>,
 ) -> VmResult<IterableSource> {
     match iterable {
-        Value::Range(range) => Ok(IterableSource::Sequence(SequenceSource::Range(
-            range.cursor(),
-        ))),
         Value::HeapRef(reference) => {
             let Some(heap_value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
                 return Err(not_iterable());
@@ -74,6 +71,9 @@ fn classify_iterable(
 
 fn heap_iterable_source(reference: GcRef, value: &HeapValue) -> VmResult<IterableSource> {
     match value {
+        HeapValue::Range(range) => Ok(IterableSource::Sequence(SequenceSource::Range(
+            range.cursor(),
+        ))),
         HeapValue::Array(values) => Ok(IterableSource::Sequence(SequenceSource::Array {
             source: reference,
             len: values.len(),

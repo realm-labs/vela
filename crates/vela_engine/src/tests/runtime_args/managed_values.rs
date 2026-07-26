@@ -882,7 +882,7 @@ fn make_scores() {
         runtime
             .value_to_owned(&scores)
             .expect("runtime value can materialize with string keys"),
-        OwnedValue::map([("gold", 10_i64), ("xp", 20_i64)])
+        OwnedValue::map([("xp", 20_i64), ("gold", 10_i64)])
     );
 }
 

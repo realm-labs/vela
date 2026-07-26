@@ -81,13 +81,12 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
                     visitor.visit_map(RuntimeMapAccess::from_fields(fields, self.heap))
                 }
                 HeapValue::Enum { .. } => self.deserialize_enum("", &[], visitor),
-                HeapValue::Closure(_) | HeapValue::Iterator(_) | HeapValue::PathProxy(_) => {
-                    Err(Error::custom("unsupported runtime serde value"))
-                }
+                HeapValue::Range(_)
+                | HeapValue::Closure(_)
+                | HeapValue::Iterator(_)
+                | HeapValue::PathProxy(_) => Err(Error::custom("unsupported runtime serde value")),
             },
-            Value::Range(_) | Value::HostRef(_) => {
-                Err(Error::custom("unsupported runtime serde value"))
-            }
+            Value::HostRef(_) => Err(Error::custom("unsupported runtime serde value")),
         }
     }
 

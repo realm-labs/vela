@@ -44,9 +44,7 @@ pub(crate) fn value_to_host(
             ) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
             _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         },
-        Value::Range(_) | Value::Missing => {
-            Err(VmError::new(VmErrorKind::TypeMismatch { operation }))
-        }
+        Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         _ => unreachable!("scalar values return before host conversion match"),
     }
 }

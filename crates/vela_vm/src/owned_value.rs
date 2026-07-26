@@ -470,9 +470,9 @@ pub fn owned_to_value_detached(value: OwnedValue) -> Value {
         OwnedValue::Bool(value) => Value::Bool(value),
         OwnedValue::Char(value) => Value::Char(value),
         OwnedValue::Scalar(value) => Value::from_scalar(value),
-        OwnedValue::Range(value) => Value::Range(value),
         OwnedValue::HostRef(_) => Value::Missing,
-        OwnedValue::String(_)
+        OwnedValue::Range(_)
+        | OwnedValue::String(_)
         | OwnedValue::Bytes(_)
         | OwnedValue::Tuple(_)
         | OwnedValue::Array(_)
@@ -502,7 +502,6 @@ pub fn value_to_owned_detached(value: &Value) -> VmResult<OwnedValue> {
         Value::U64(value) => Ok(OwnedValue::Scalar(ScalarValue::U64(*value))),
         Value::F32(value) => Ok(OwnedValue::Scalar(ScalarValue::F32(*value))),
         Value::F64(value) => Ok(OwnedValue::Scalar(ScalarValue::F64(*value))),
-        Value::Range(value) => Ok(OwnedValue::Range(*value)),
         Value::HostRef(_) => Err(boundary_type_error("detached host ref")),
         Value::HeapRef(_) => Err(boundary_type_error("detached heap value")),
     }
@@ -530,7 +529,6 @@ fn owned_value_eq_runtime(lhs: &OwnedValue, rhs: &Value) -> bool {
         (OwnedValue::Bool(lhs), Value::Bool(rhs)) => lhs == rhs,
         (OwnedValue::Char(lhs), Value::Char(rhs)) => lhs == rhs,
         (OwnedValue::Scalar(lhs), rhs) => rhs.as_scalar().as_ref() == Some(lhs),
-        (OwnedValue::Range(lhs), Value::Range(rhs)) => lhs == rhs,
         (OwnedValue::HostRef(_), Value::HostRef(_)) => false,
         _ => false,
     }

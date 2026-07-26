@@ -60,11 +60,11 @@ impl ValueKey {
             Value::U64(value) => Ok(Self::U64(*value)),
             Value::F32(value) => finite_f32_key(*value, operation).map(Self::F32),
             Value::F64(value) => finite_f64_key(*value, operation).map(Self::F64),
-            Value::Range(_) => type_error(operation),
             Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
                 Some(HeapValue::String(value)) => Ok(Self::String(value.clone())),
                 Some(HeapValue::Bytes(value)) => Ok(Self::Bytes(value.clone())),
-                Some(HeapValue::Tuple(_) | HeapValue::PathProxy(_)) | None => type_error(operation),
+                Some(HeapValue::Tuple(_) | HeapValue::Range(_) | HeapValue::PathProxy(_))
+                | None => type_error(operation),
                 Some(
                     HeapValue::Array(_)
                     | HeapValue::Map(_)
@@ -242,11 +242,11 @@ impl<'a> KeyProbe<'a> {
             Value::U64(value) => Ok(Self::U64(*value)),
             Value::F32(value) => finite_f32_key(*value, operation).map(Self::F32),
             Value::F64(value) => finite_f64_key(*value, operation).map(Self::F64),
-            Value::Range(_) => type_error(operation),
             Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
                 Some(HeapValue::String(value)) => Ok(Self::String(value)),
                 Some(HeapValue::Bytes(value)) => Ok(Self::Bytes(value)),
-                Some(HeapValue::Tuple(_) | HeapValue::PathProxy(_)) | None => type_error(operation),
+                Some(HeapValue::Tuple(_) | HeapValue::Range(_) | HeapValue::PathProxy(_))
+                | None => type_error(operation),
                 Some(
                     HeapValue::Array(_)
                     | HeapValue::Map(_)
@@ -465,13 +465,22 @@ mod tests {
     #[test]
     fn value_key_rejects_transient_values() {
         assert_type_mismatch(&Value::Missing);
-        assert_type_mismatch(&Value::Range(crate::ranges::RangeValue::new(0, 1, false)));
 
         let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 1);
         let plan = HostTargetPlan::new(host_ref.type_id);
         let mut heap = ScriptHeap::new();
         let path_proxy = heap.allocate(HeapValue::PathProxy(PathProxy::new(host_ref, plan)));
+        let range = heap.allocate(HeapValue::Range(crate::ranges::RangeValue::new(
+            0, 1, false,
+        )));
         let heap = HeapExecution::new(&mut heap);
+
+        let error = ValueKey::from_value(&Value::HeapRef(range), Some(&heap), "test")
+            .expect_err("heap ranges are not stable keys");
+        assert_eq!(
+            error.kind(),
+            VmErrorKind::TypeMismatch { operation: "test" }
+        );
 
         let error = ValueKey::from_value(&Value::HeapRef(path_proxy), Some(&heap), "test")
             .expect_err("path proxies are not stable keys");

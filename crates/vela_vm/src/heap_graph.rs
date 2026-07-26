@@ -117,6 +117,7 @@ fn remap_heap_value(
     Ok(match value {
         HeapValue::String(value) => HeapValue::String(value.clone()),
         HeapValue::Bytes(value) => HeapValue::Bytes(value.clone()),
+        HeapValue::Range(value) => HeapValue::Range(*value),
         HeapValue::Tuple(values) => HeapValue::Tuple(remap_values(values, references)?),
         HeapValue::Array(values) => HeapValue::Array(remap_values(values, references)?),
         HeapValue::Map(values) => {

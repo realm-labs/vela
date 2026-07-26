@@ -1950,7 +1950,13 @@ impl Vm {
                     inclusive,
                 } => {
                     script_aggregate_construction::make_range(
-                        frame, *dst, *start, *end, *inclusive,
+                        frame,
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                        *dst,
+                        *start,
+                        *end,
+                        *inclusive,
                     )?;
                 }
                 InstructionKind::MakeRecord { dst, ty, fields } => {
