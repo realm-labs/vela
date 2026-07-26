@@ -1,5 +1,11 @@
 use std::error::Error;
 
+/// Shared with the `baseline` bench: single-threaded inline-cache storage for
+/// cache-enabled measurement rows. `#[path]` is the repository's documented
+/// mechanism for justified cross-bench-target sharing.
+#[path = "baseline/cache_support.rs"]
+#[allow(dead_code)]
+mod cache_support;
 #[path = "external_compare/config.rs"]
 mod config;
 #[path = "external_compare/embedded.rs"]
@@ -41,6 +47,20 @@ fn main() -> Result<(), Box<dyn Error>> {
                 "internal_hot_loop",
                 workload.name,
                 vela_runtime.run(workload, config.params)?,
+                config.params,
+            );
+        }
+    }
+
+    if config.should_run_runtime("vela-cache") {
+        let vela_runtime = vela::VelaRuntime::new()?;
+        for workload in &workloads {
+            report::print_result(
+                "vela-cache",
+                env!("CARGO_PKG_VERSION"),
+                "internal_hot_loop",
+                workload.name,
+                vela_runtime.run_cache_enabled(workload, config.params)?,
                 config.params,
             );
         }

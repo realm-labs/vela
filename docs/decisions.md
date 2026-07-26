@@ -1977,6 +1977,30 @@ Implementation constraints for whoever lands it:
 - the language documentation gains the new iteration-order contract in the
   same change.
 
+### Inline Caches Do Not Move The Cross-Language Rows
+
+The `external_compare` harness gained a `vela-cache` row that runs every
+workload with warmed M20 inline caches through the shared bench cache storage,
+against the same checksum contract as the interpreter row. Every checksum
+matched, and the caches changed almost nothing: the median row moved about -1%,
+the best about -5%, and `object_field_methods` was +4% because its guard
+checks outweigh what its already-linked operands left to save.
+
+The explanation is that M19.5 already moved these workloads' dispatch to
+link-time operands — resolved method handles, record slots, typed containers —
+so the monomorphic language rows have nothing left for a cache to skip. Inline
+caches earn their keep on the surfaces the language rows never touch: host
+boundary paths, dynamic methods, and polymorphic sites. The production Engine
+runtime has always run with caches on; the harness row now exists so the
+cache-enabled tier is measured rather than assumed.
+
+Within the same run, cache-enabled Vela stands at roughly 3.5-7x Lua 5.4 on
+most rows and 19-24x on map lookups. Two durable consequences: the remaining
+interpreter gap lives in the dispatch loop and value plumbing itself, making
+the compact instruction encoding the primary lever, and cross-era benchmark
+citations are invalid — the June baselines used different workload scales, so
+only ratios within one run may be quoted.
+
 ### Unified Measurement Of The Value Slot And Shape Sharing Changes
 
 Fresh-from-scratch builds of both endpoints, interleaved on a quiet machine,
