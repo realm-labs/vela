@@ -1977,6 +1977,39 @@ Implementation constraints for whoever lands it:
 - the language documentation gains the new iteration-order contract in the
   same change.
 
+### A 64-Byte Instruction Stride Is A Net Regression
+
+The compact instruction encoding was implemented in full and rejected on
+measurement. It reached its structural target exactly — `Instruction` went from
+128 bytes to 64 — and it still lost.
+
+What it did: variable-length operands (`Vec<Register>`, `Vec<CallArgument>`,
+object fields, dynamic arguments, format parts, map entries) moved out of the
+instruction into six flat per-function arrays addressed by an `OperandRange`,
+which also removed one heap allocation per operand-carrying instruction at link
+time; `span` and the MIR budget provenance moved into a parallel `sidecars`
+array, with the 102 interpreter span reads becoming lazy side-table lookups
+inside existing error closures; the verifier gained `OperandRangeOutOfBounds`
+because the interpreter resolves ranges without re-checking them.
+
+Measured on fresh interleaved builds with 0.1-2% noise floors: two rows faster
+(`array_transform_sort` -2.4%, `range_iteration` -1.8%) against eleven slower,
+median +1.8%, worst `map_record_identity_lookup_update` +3.3% — which a focused
+five-round rerun reproduced. The likely cause is that operand access gained an
+indirection: what used to be a `Vec` pointer already sitting in the fetched
+instruction is now a bounds-checked slice of a separate array, so every call and
+constructor pays a second cache line to save stride. Halving the stride does not
+pay for that on these workloads.
+
+Consequences worth keeping. The stride hypothesis is now closed in both
+directions: 96 bytes lost, padding 96 back to 128 was neutral, and a genuine 64
+also lost, so instruction-stream layout is not the lever the earlier profiles
+suggested. The remaining interpreter gap against Lua lives in the work each
+opcode does, not in how densely opcodes are stored. The rejected work is
+preserved in a git stash for reference and is not committed; anyone reviving it
+must first explain why operand indirection would be cheaper than it measured
+here.
+
 ### The Map Gap Is Mostly Call Shape, Not Storage
 
 The 19-24x map rows compare Vela method calls (`scores.get_or("k", 0)`,

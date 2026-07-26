@@ -25,6 +25,11 @@ use vela_bytecode::linked::{Instruction, InstructionKind};
 /// `InstructionKind` is 72 bytes on its own, so it has to shrink below about
 /// 56 *and* `span` has to leave the struct. Either change alone is wasted
 /// work.
+///
+/// Both halves were then implemented together and measured, and the 64-byte
+/// stride was rejected: it is a net regression. Do not rebuild it from this
+/// comment alone — see `docs/decisions.md`, "A 64-Byte Instruction Stride Is A
+/// Net Regression", for the numbers and the reason.
 #[test]
 fn instruction_stride_stays_cache_line_aligned() {
     assert_eq!(
