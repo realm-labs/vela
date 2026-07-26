@@ -1952,6 +1952,26 @@ whole-suite -2.4%, every checksum unchanged. `scalar_branch_loop` regressed
 instruction; that is dispatch-loop code layout, and the durable fix is shrinking
 the instruction stream rather than tuning around it.
 
+### Partial Instruction Slimming Does Not Pay
+
+`Instruction` is 128 bytes and the dispatch loop walks the instruction array
+directly, so shrinking it looks like an obvious win. It is not, in halves.
+
+`mir_origin` and `mir_budget_charges` are 24 bytes of provenance that only
+`verify_budget_mapping` reads; the interpreter never touches them. Moving them
+to a side table on `LinkedCodeObject` takes the struct to 96 bytes. Measured
+against the previous commit: at `align(32)` the 96-byte stride was slower on
+nine rows (`range_iteration` +11.0%, `scalar_branch_loop` +7.7%) because 96 is
+not a power of two, so indexing stops being a shift and instructions straddle
+cache lines. Padding the smaller struct back to a 128-byte stride measured
+neutral — 0 faster, 2 marginally slower, 19 within noise — because the
+alignment absorbs the entire saving, leaving neither a time nor a memory win.
+
+The change was reverted. Reaching the next useful stride of 64 requires both
+halves together: `InstructionKind` is 72 bytes by itself, so it must shrink
+below roughly 56 *and* `span` must leave the struct. Land them as one change or
+not at all.
+
 ### Only The Oversized Suspension Payload Is Boxed
 
 `ExecutionFrame` is copied on every call push and pop, and it was 496 bytes
