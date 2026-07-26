@@ -127,6 +127,22 @@ impl ScriptMap {
         self.entries.insert(value_key, MapEntry { key, value })
     }
 
+    /// Resolves a probe to a mutation token valid until the next removal.
+    #[must_use]
+    pub(crate) fn slot_of_probe(&self, probe: &KeyProbe<'_>) -> Option<usize> {
+        self.entries.slot_of_probe(probe)
+    }
+
+    /// Replaces the value at a resolved slot, keeping the stored key.
+    pub(crate) fn replace_value_at(&mut self, slot: usize, value: Value) {
+        self.entries.payload_mut_at(slot).value = value;
+    }
+
+    /// Removes the entry at a resolved slot.
+    pub(crate) fn remove_value_at(&mut self, slot: usize) -> Value {
+        stored_runtime_value(&self.entries.remove_at(slot).value)
+    }
+
     pub(crate) fn remove_keyed(&mut self, key: &ValueKey) -> Option<Value> {
         self.entries
             .remove(key)

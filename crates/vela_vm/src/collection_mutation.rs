@@ -4,7 +4,7 @@ use std::mem;
 use crate::heap::{GcRef, HeapValue};
 use crate::script_map::ScriptMap;
 use crate::script_set::ScriptSet;
-use crate::value_key::ValueKey;
+use crate::value_key::{KeyProbe, ValueKey};
 use crate::{
     ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult, stored_runtime_value,
 };
@@ -199,31 +199,29 @@ pub(crate) fn insert_map_slot(
     mut budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<()> {
-    let value_key = ValueKey::from_value(&key, Some(&*heap), operation)?;
-    let values = map_slots(heap, reference, operation)?;
-    let is_new_key = !values.contains_key(&value_key);
+    let probe = KeyProbe::from_value(&key, Some(&*heap), operation)?;
+    let existing_slot = map_slots(heap, reference, operation)?.slot_of_probe(&probe);
     let inserted = slot;
-    if !is_new_key || !tracks_collection_growth(budget.as_deref()) {
+    if let Some(existing) = existing_slot {
+        map_slots_mut(heap, reference, operation)?.replace_value_at(existing, slot);
+        heap.heap.note_container_map_value_replaced(reference);
+        return Ok(());
+    }
+    let value_key = ValueKey::from_value(&key, Some(&*heap), operation)?;
+    if !tracks_collection_growth(budget.as_deref()) {
         map_slots_mut(heap, reference, operation)?.insert_keyed(value_key, key, slot);
-        if is_new_key {
-            heap.heap
-                .note_container_map_entry_inserted(reference, &key, &inserted);
-        } else {
-            heap.heap.note_container_map_value_replaced(reference);
-        }
+        heap.heap
+            .note_container_map_entry_inserted(reference, &key, &inserted);
         return Ok(());
     }
 
-    let precharged_growth = if is_new_key {
-        check_collection_len("map", values.len(), 1, budget.as_deref(), |budget| {
-            budget.collection_limits().max_map_entries
-        })?;
-        value_key
-            .payload_size_bytes()
-            .saturating_add(mem::size_of::<crate::script_map::MapEntry>())
-    } else {
-        0
-    };
+    let len = map_slots(heap, reference, operation)?.len();
+    check_collection_len("map", len, 1, budget.as_deref(), |budget| {
+        budget.collection_limits().max_map_entries
+    })?;
+    let precharged_growth = value_key
+        .payload_size_bytes()
+        .saturating_add(mem::size_of::<crate::script_map::MapEntry>());
     charge_growth(budget.as_deref_mut(), precharged_growth)?;
 
     map_slots_mut(heap, reference, operation)?.insert_keyed(value_key, key, slot);
@@ -314,8 +312,15 @@ pub(crate) fn remove_map_slot(
     budget: Option<&mut ExecutionBudget>,
     operation: &'static str,
 ) -> VmResult<Option<Value>> {
-    let key = ValueKey::from_value(key, Some(&*heap), operation)?;
-    let payload = map_slots_mut(heap, reference, operation)?.remove_keyed(&key);
+    let probe = KeyProbe::from_value(key, Some(&*heap), operation)?;
+    let existing_slot = map_slots(heap, reference, operation)?.slot_of_probe(&probe);
+    let payload = existing_slot
+        .map(|slot| {
+            Ok::<_, crate::VmError>(
+                map_slots_mut(heap, reference, operation)?.remove_value_at(slot),
+            )
+        })
+        .transpose()?;
     if payload.is_some() {
         heap.heap.note_container_map_entry_removed(reference);
     }

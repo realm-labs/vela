@@ -85,6 +85,40 @@ impl<T> OrderedKeyed<T> {
         Some(&mut slot_entry_mut(&mut self.slots, slot).1)
     }
 
+    /// Finds the slot index a probe refers to.
+    ///
+    /// Slot indexes stay valid until the next removal, because removal is the
+    /// only operation that tombstones or compacts. A caller may resolve a slot
+    /// while the heap is only readable, drop the probe, and then mutate the
+    /// entry by index, which is how map writes avoid cloning the key.
+    #[must_use]
+    pub(crate) fn slot_of_probe(&self, probe: &KeyProbe<'_>) -> Option<usize> {
+        let hash = self.hasher.hash_one(probe);
+        self.table
+            .find(hash, |&slot| probe.matches(slot_key(&self.slots, slot)))
+            .copied()
+    }
+
+    /// Mutable payload access by a slot index from [`Self::slot_of_probe`].
+    #[must_use]
+    pub(crate) fn payload_mut_at(&mut self, slot: usize) -> &mut T {
+        &mut slot_entry_mut(&mut self.slots, slot).1
+    }
+
+    /// Removes the entry at a slot index from [`Self::slot_of_probe`].
+    pub(crate) fn remove_at(&mut self, slot: usize) -> T {
+        let hash = self.hasher.hash_one(slot_key(&self.slots, slot));
+        if let Ok(entry) = self.table.find_entry(hash, |&other| other == slot) {
+            entry.remove();
+        }
+        let (_, value) = self.slots[slot]
+            .take()
+            .expect("a resolved slot always references a live entry");
+        self.live -= 1;
+        self.maybe_compact();
+        value
+    }
+
     #[must_use]
     pub(crate) fn get_probe(&self, probe: &KeyProbe<'_>) -> Option<&T> {
         let hash = self.hasher.hash_one(probe);
