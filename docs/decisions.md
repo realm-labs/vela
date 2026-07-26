@@ -1977,6 +1977,24 @@ Implementation constraints for whoever lands it:
 - the language documentation gains the new iteration-order contract in the
   same change.
 
+### The External-Compare Map Rows Are Not Bounded By Resolution Work
+
+Three consecutive targeted optimizations of `map_string_key_lookup_update`'s
+profiled stacks measured neutral at sub-percent noise floors: removing the
+write-path key clone, collapsing receiver classification to one heap access
+with family-local method matching, and a frame-level string-constant cache
+that skipped the per-load payload comparison entirely (implemented, measured
+neutral, reverted because it added a per-frame allocation without evidence).
+An `#[inline(never)]` attribution pass confirmed the resolution machinery does
+run per call — roughly 13% of samples — yet shaving it does not move the row.
+
+Conclusion: these rows are bounded by the dispatch loop itself and memory
+traffic, not by the resolution edges `sample` highlights. Further map-row work
+should first enable the M20 inline caches in the comparison harness (the
+engine's designed answer to per-call resolution) or attack the dispatch loop
+structurally (compact instructions), rather than optimizing profiler-attributed
+edges. The family-dispatch and probe changes stay as algorithmic cleanups.
+
 ### Partial Instruction Slimming Does Not Pay
 
 `Instruction` is 128 bytes and the dispatch loop walks the instruction array
