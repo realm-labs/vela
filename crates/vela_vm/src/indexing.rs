@@ -1,7 +1,5 @@
 use crate::collection_mutation;
 use crate::heap::HeapValue;
-use crate::heap_values::allocate_heap_value;
-use crate::value_key::ValueKey;
 use crate::{
     CallFrame, ExecutionBudget, HeapExecution, HostExecution, Value, VmError, VmErrorKind,
     VmInlineCaches, VmResult, host_access, store_runtime_value, stored_runtime_value,
@@ -211,13 +209,11 @@ pub(crate) fn get_string_key_index(
         }));
     };
     match heap_value {
-        HeapValue::Map(values) => values
-            .get_keyed(&ValueKey::String(key.to_owned()))
-            .ok_or_else(|| {
-                VmError::new(VmErrorKind::UnknownMapKey {
-                    key: key.to_owned(),
-                })
-            }),
+        HeapValue::Map(values) => values.get_str_key(key).ok_or_else(|| {
+            VmError::new(VmErrorKind::UnknownMapKey {
+                key: key.to_owned(),
+            })
+        }),
         HeapValue::Array(_)
         | HeapValue::Bytes(_)
         | HeapValue::String(_)
@@ -368,14 +364,8 @@ fn set_heap_map_string_key_index(
     heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<()> {
-    let key = allocate_heap_value(
-        HeapValue::String(key.to_owned()),
-        heap,
-        budget.as_deref_mut(),
-    )?;
     let slot = store_runtime_value(src, heap, budget.as_deref_mut())?;
-    collection_mutation::insert_map_slot(heap, reference, key, slot, budget, "index assignment")?;
-    Ok(())
+    collection_mutation::insert_map_str_slot(heap, reference, key, slot, budget, "index assignment")
 }
 
 fn array_index(index: &Value) -> VmResult<usize> {

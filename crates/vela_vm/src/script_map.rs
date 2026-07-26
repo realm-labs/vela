@@ -75,6 +75,19 @@ impl ScriptMap {
         self.entries.get(key).is_some()
     }
 
+    /// Looks up a constant string key without materializing an owned key.
+    pub(crate) fn get_str_key(&self, key: &str) -> Option<Value> {
+        self.entries
+            .get_probe(&KeyProbe::String(key))
+            .map(|entry| stored_runtime_value(&entry.value))
+    }
+
+    /// Resolves a constant string key to a mutation slot.
+    #[must_use]
+    pub(crate) fn slot_of_str_key(&self, key: &str) -> Option<usize> {
+        self.entries.slot_of_probe(&KeyProbe::String(key))
+    }
+
     pub(crate) fn get_keyed(&self, key: &ValueKey) -> Option<Value> {
         self.entries
             .get(key)

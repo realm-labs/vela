@@ -1977,6 +1977,24 @@ Implementation constraints for whoever lands it:
 - the language documentation gains the new iteration-order contract in the
   same change.
 
+### The Map Gap Is Mostly Call Shape, Not Storage
+
+The 19-24x map rows compare Vela method calls (`scores.get_or("k", 0)`,
+`scores.set("k", v)`) against Lua's single-instruction table access with
+interned, hash-cached string keys. A syntactically aligned workload,
+`map_string_index_lookup_update`, uses `scores["k"]` on both sides and
+measures about 14x — the call form alone accounts for nearly half the gap.
+The storage itself is not the problem: set rows share the same
+insertion-ordered table at about 5x.
+
+The constant-string index paths also stopped materializing keys: reads probe
+the borrowed literal directly, and writes resolve an existing entry by slot
+before allocating anything, so only a genuinely new key builds its heap
+string. The remaining index-form gap is per-operation probe hashing and
+dispatch, which belongs to the compact-instruction lever; a per-generation
+constant-key hash cache is a possible follow-up but needs the fixed-seed
+trade-off decided first.
+
 ### Inline Caches Do Not Move The Cross-Language Rows
 
 The `external_compare` harness gained a `vela-cache` row that runs every

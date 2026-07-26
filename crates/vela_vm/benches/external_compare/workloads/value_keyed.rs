@@ -2,6 +2,107 @@ use super::Workload;
 
 pub(crate) const VALUE_KEYED_WORKLOADS: &[Workload] = &[
     Workload {
+        name: "map_string_index_lookup_update",
+        vela: r#"
+fn run_once() {
+    let scores = {"quest": 3, "raid": 8, "daily": 2};
+    let total = 0;
+    for tick in 0..120 {
+        scores["quest"] = scores["quest"] + tick % 5;
+        scores["daily"] = scores["daily"] + 1;
+        total += scores["quest"] + scores["raid"];
+    }
+    return total + scores["daily"];
+}
+
+fn main(iterations: i64) {
+    let checksum = 0;
+    for iteration in 0..iterations {
+        checksum += run_once();
+    }
+    return checksum;
+}
+"#,
+        lua: r#"
+function run_once()
+    local scores = {quest = 3, raid = 8, daily = 2}
+    local total = 0
+    for tick = 0, 119 do
+        scores.quest = scores.quest + tick % 5
+        scores.daily = scores.daily + 1
+        total = total + scores.quest + scores.raid
+    end
+    return total + scores.daily
+end
+
+function run(iterations)
+    local checksum = 0
+    for _ = 1, iterations do
+        checksum = checksum + run_once()
+    end
+    return checksum
+end
+"#,
+        rhai: r#"
+fn run_once() {
+    let scores = #{
+        quest: 3,
+        raid: 8,
+        daily: 2,
+    };
+    let total = 0;
+    for tick in 0..120 {
+        scores["quest"] = scores["quest"] + tick % 5;
+        scores["daily"] = scores["daily"] + 1;
+        total += scores["quest"] + scores["raid"];
+    }
+    total + scores["daily"]
+}
+
+fn run(iterations) {
+    let checksum = 0;
+    for iteration in 0..iterations {
+        checksum += run_once();
+    }
+    checksum
+}
+"#,
+        node: r#"
+const iterations = Number(process.env.VELA_BENCH_ITERATIONS || "1");
+function runOnce() {
+    const scores = { quest: 3, raid: 8, daily: 2 };
+    let total = 0;
+    for (let tick = 0; tick < 120; tick += 1) {
+        scores.quest = scores.quest + (tick % 5);
+        scores.daily = scores.daily + 1;
+        total += scores.quest + scores.raid;
+    }
+    return total + scores.daily;
+}
+let checksum = 0;
+for (let i = 0; i < iterations; i += 1) {
+    checksum += runOnce();
+}
+console.log(checksum);
+"#,
+        python: r#"
+import os
+iterations = int(os.environ.get("VELA_BENCH_ITERATIONS", "1"))
+def run_once():
+    scores = {"quest": 3, "raid": 8, "daily": 2}
+    total = 0
+    for tick in range(120):
+        scores["quest"] = scores["quest"] + tick % 5
+        scores["daily"] = scores["daily"] + 1
+        total += scores["quest"] + scores["raid"]
+    return total + scores["daily"]
+checksum = 0
+for _ in range(iterations):
+    checksum += run_once()
+print(checksum)
+"#,
+    },
+    Workload {
         name: "map_string_key_lookup_update",
         vela: r#"
 fn run_once() {
