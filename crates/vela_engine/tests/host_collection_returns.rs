@@ -5,7 +5,7 @@ use vela_macros::{ScriptHost, methods};
 use vela_vm::owned_value::OwnedValue;
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "config::server::Equipment")]
+#[vela(path = "config::server::Equipment")]
 struct Equipment {
     id: i64,
 }
@@ -18,7 +18,7 @@ impl Equipment {
 }
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "config::server::EquipmentEntry")]
+#[vela(path = "config::server::EquipmentEntry")]
 enum EquipmentEntry {
     Equipment(Box<Equipment>),
 }
@@ -33,14 +33,14 @@ impl EquipmentEntry {
 }
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "config::server::EquipmentTable")]
+#[vela(path = "config::server::EquipmentTable")]
 struct EquipmentTable {
     rows: Box<[EquipmentEntry]>,
 }
 
 #[methods(path = "config::server::EquipmentTable")]
 impl EquipmentTable {
-    #[script_method(host_collection)]
+    #[vela(host_collection)]
     pub fn values(&self) -> &[EquipmentEntry] {
         &self.rows
     }
@@ -50,11 +50,11 @@ impl EquipmentTable {
 fn borrowed_host_object_slice_seals_and_compiles_as_a_collection_view() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
-        .register_rust_type::<Equipment>(Equipment::vela_type_binding())
+        .register_type::<Equipment>()
         .register_exports(Equipment::vela_inherent_exports())
-        .register_rust_type::<EquipmentEntry>(EquipmentEntry::vela_type_binding())
+        .register_type::<EquipmentEntry>()
         .register_exports(EquipmentEntry::vela_inherent_exports())
-        .register_rust_type::<EquipmentTable>(EquipmentTable::vela_type_binding())
+        .register_type::<EquipmentTable>()
         .register_exports(EquipmentTable::vela_inherent_exports())
         .build()
         .expect("host slice bindings seal");

@@ -25,22 +25,19 @@ impl CalculatorPatch {
 "#;
 
 #[derive(Debug, Value)]
-#[script(path = "async_test::Input")]
+#[vela(path = "async_test::Input")]
 pub struct Input {
     pub value: i64,
 }
 
 #[derive(ScriptHost)]
-#[script(path = "async_test::RequestContext")]
+#[vela(path = "async_test::RequestContext")]
 pub struct RequestContext {
-    #[script(get, set)]
+    #[vela(get, set)]
     pub counter: i64,
-    #[script(skip)]
+    #[vela(skip)]
     runtime: ServiceRuntimeSlot,
 }
-
-#[vela_macros::script_methods]
-impl RequestContext {}
 
 impl ServiceRuntimeAuthority for RequestContext {
     fn take_service_runtime(
@@ -104,17 +101,17 @@ impl Future for YieldOnce {
 
 #[service_set(context = RequestContext)]
 pub struct AsyncServices {
-    #[vela::default(RustAsyncCalculatorService)]
+    #[vela(default = RustAsyncCalculatorService)]
     pub calculator: dyn AsyncCalculatorService,
 }
 
 #[test]
 fn async_service_root_selects_rust_or_vela_through_one_send_adapter() {
     assert_sync::<ServiceRuntimeSlot>();
-    let engine = AsyncServices::register_types(
+    let engine = AsyncServices::register(
         Engine::builder()
             .capabilities(CapabilitySet::new().with(Capability::HostWrite))
-            .register_rust_type::<RequestContext>(RequestContext::vela_type_binding()),
+            .register_type::<RequestContext>(),
     )
     .build()
     .expect("async service engine");
@@ -274,10 +271,10 @@ fn pending_actors_are_isolated_and_drop_or_unwind_restores_runtime_and_leases() 
 }
 
 fn active_fixture() -> (Engine, AsyncServices, AsyncServicesRoot) {
-    let engine = AsyncServices::register_types(
+    let engine = AsyncServices::register(
         Engine::builder()
             .capabilities(CapabilitySet::new().with(Capability::HostWrite))
-            .register_rust_type::<RequestContext>(RequestContext::vela_type_binding()),
+            .register_type::<RequestContext>(),
     )
     .build()
     .expect("async service engine");

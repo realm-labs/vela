@@ -1,13 +1,10 @@
 use vela_macros::{ScriptHost, service};
 
 #[derive(ScriptHost)]
-#[script(path = "game::Request")]
+#[vela(path = "game::Request")]
 pub struct Request {
     value: i64,
 }
-
-#[vela_macros::script_methods]
-impl Request {}
 
 #[service(path = "game::reward")]
 pub trait RewardService: Send + Sync {

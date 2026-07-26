@@ -4,9 +4,9 @@ use vela_engine::engine::Engine;
 use vela_macros::{ScriptHost, ScriptReflect, export, methods};
 
 #[derive(Debug, ScriptHost, ScriptReflect)]
-#[script(path = "examples::interop::RoundTripPlayer")]
+#[vela(path = "examples::interop::RoundTripPlayer")]
 pub struct RoundTripPlayer {
-    #[script(get, set)]
+    #[vela(get, set)]
     pub level: i64,
 }
 
@@ -29,7 +29,7 @@ pub fn normalize(amount: i64) -> i64 {
 
 pub fn build_engine() -> Result<Engine, Box<dyn Error>> {
     Ok(Engine::builder()
-        .register_host_type::<RoundTripPlayer>()
+        .register_type::<RoundTripPlayer>()
         .register_exports(RoundTripPlayer::vela_inherent_exports())
         .register_exports(vela_export_bundle_normalize())
         .capability(vela_common::Capability::HostRead)

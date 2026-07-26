@@ -34,7 +34,7 @@ static PATCH_BUFFER_DROPS: AtomicUsize = AtomicUsize::new(0);
 type ServiceResult<T> = Result<T, ServiceError>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Value)]
-#[script(path = "coverage::ServiceError")]
+#[vela(path = "coverage::ServiceError")]
 pub struct ServiceError {
     message: String,
 }
@@ -56,36 +56,30 @@ impl std::fmt::Display for ServiceError {
 impl Error for ServiceError {}
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "coverage::Row")]
+#[vela(path = "coverage::Row")]
 pub struct Row {
-    #[script(get)]
+    #[vela(get)]
     key: i64,
-    #[script(get)]
+    #[vela(get)]
     score: i64,
 }
 
-#[vela_macros::script_methods]
-impl Row {}
-
 #[derive(ScriptHost)]
-#[script(path = "coverage::Table")]
+#[vela(path = "coverage::Table")]
 pub struct Table {
-    #[script(skip)]
+    #[vela(skip)]
     rows: Vec<Row>,
 }
 
-#[vela_macros::script_methods]
-impl Table {}
-
 #[derive(Clone, Debug, Value)]
-#[script(path = "coverage::Request")]
+#[vela(path = "coverage::Request")]
 pub struct Request {
     key: i64,
     adjustment: i64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Value)]
-#[script(path = "coverage::Response")]
+#[vela(path = "coverage::Response")]
 pub struct Response {
     key: i64,
     score: i64,
@@ -94,20 +88,17 @@ pub struct Response {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Value)]
-#[script(path = "coverage::ValueRow")]
+#[vela(path = "coverage::ValueRow")]
 pub struct ValueRow {
     amount: i64,
 }
 
 #[derive(ScriptHost)]
-#[script(path = "coverage::PatchBuffer")]
+#[vela(path = "coverage::PatchBuffer")]
 pub struct PatchBuffer {
-    #[script(get, set)]
+    #[vela(get, set)]
     value: i64,
 }
-
-#[vela_macros::script_methods]
-impl PatchBuffer {}
 
 impl Drop for PatchBuffer {
     fn drop(&mut self) {
@@ -149,24 +140,21 @@ fn construct_patch_buffer(
 }
 
 #[derive(ScriptHost)]
-#[script(path = "coverage::RequestState")]
+#[vela(path = "coverage::RequestState")]
 pub struct RequestState {
-    #[script(get)]
+    #[vela(get)]
     marker: i64,
-    #[script(skip)]
+    #[vela(skip)]
     services: CoverageServicesRoot,
-    #[script(skip)]
+    #[vela(skip)]
     runtime: ServiceRuntimeSlot,
-    #[script(skip)]
+    #[vela(skip)]
     applied: i64,
-    #[script(skip)]
+    #[vela(skip)]
     audits: Vec<i64>,
-    #[script(skip)]
+    #[vela(skip)]
     rust_copyback_calls: usize,
 }
-
-#[vela_macros::script_methods]
-impl RequestState {}
 
 impl ServiceRuntimeAuthority for RequestState {
     fn take_service_runtime(
@@ -392,17 +380,17 @@ impl HandlerService for RustHandlerService {
 
 #[service_set(context = RequestState)]
 pub struct CoverageServices {
-    #[vela::default(RustLookupService)]
+    #[vela(default = RustLookupService)]
     pub lookup: dyn LookupService,
-    #[vela::default(RustPolicyService)]
+    #[vela(default = RustPolicyService)]
     pub policy: dyn PolicyService,
-    #[vela::default(RustApplyService)]
+    #[vela(default = RustApplyService)]
     pub apply: dyn ApplyService,
-    #[vela::default(RustAuditService)]
+    #[vela(default = RustAuditService)]
     pub audit: dyn AuditService,
-    #[vela::default(RustTransformService)]
+    #[vela(default = RustTransformService)]
     pub transform: dyn TransformService,
-    #[vela::default(RustHandlerService)]
+    #[vela(default = RustHandlerService)]
     pub handler: dyn HandlerService,
 }
 
@@ -509,17 +497,17 @@ fn main() -> Result<(), Box<dyn Error>> {
     ROW_CODEC_ENTRIES.store(0, Ordering::SeqCst);
     PATCH_BUFFER_DROPS.store(0, Ordering::SeqCst);
 
-    let engine = CoverageServices::register_types(
+    let engine = CoverageServices::register(
         Engine::builder()
             .capabilities(
                 CapabilitySet::new()
                     .with(Capability::HostRead)
                     .with(Capability::HostWrite),
             )
-            .register_rust_type::<Row>(Row::vela_type_binding())
-            .register_rust_type::<Table>(Table::vela_type_binding())
-            .register_rust_type::<RequestState>(RequestState::vela_type_binding())
-            .register_rust_type::<PatchBuffer>(patch_buffer_binding()),
+            .register_type::<Row>()
+            .register_type::<Table>()
+            .register_type::<RequestState>()
+            .register_type_binding::<PatchBuffer>(patch_buffer_binding()),
     )
     .build()?;
     let services = CoverageServices::new(&engine.type_bindings())?;

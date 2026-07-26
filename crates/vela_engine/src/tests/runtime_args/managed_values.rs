@@ -16,7 +16,7 @@ fn script_record_field<'value>(
 #[test]
 fn runtime_extern_state_reads_and_writes_persistent_host_object() {
     let engine = Engine::builder()
-        .register_type(direct_player_type())
+        .register_type_desc(direct_player_type())
         .build()
         .expect("engine should build");
     let program = engine
@@ -64,7 +64,7 @@ fn main() {
 #[test]
 fn runtime_builder_rejects_mismatched_extern_state_type() {
     let engine = Engine::builder()
-        .register_type(direct_player_type())
+        .register_type_desc(direct_player_type())
         .build()
         .expect("engine should build");
     let program = engine
@@ -87,7 +87,7 @@ fn runtime_builder_rejects_mismatched_extern_state_type() {
 #[test]
 fn runtime_extern_state_uses_id_lookup_without_fallback_lookup() {
     let engine = Engine::builder()
-        .register_type(direct_player_type())
+        .register_type_desc(direct_player_type())
         .build()
         .expect("engine should build");
     let program = engine
@@ -131,7 +131,7 @@ fn main() {
 #[test]
 fn runtime_extern_state_requires_host_binding() {
     let engine = Engine::builder()
-        .register_type(direct_player_type())
+        .register_type_desc(direct_player_type())
         .build()
         .expect("engine should build");
     let program = engine
@@ -160,7 +160,7 @@ fn main() {
 #[test]
 fn reload_requires_and_transactionally_publishes_added_extern_state_binding() {
     let engine = Engine::builder()
-        .register_type(direct_player_type())
+        .register_type_desc(direct_player_type())
         .build()
         .expect("engine should build");
     let initial = engine
@@ -208,7 +208,7 @@ fn player_level() { return player.level; }
 #[test]
 fn reload_rejects_mismatched_staged_extern_state_binding() {
     let engine = Engine::builder()
-        .register_type(direct_player_type())
+        .register_type_desc(direct_player_type())
         .build()
         .expect("engine should build");
     let initial = engine

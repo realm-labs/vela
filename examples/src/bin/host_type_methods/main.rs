@@ -6,19 +6,22 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 
 use vela_engine::prelude::*;
-use vela_macros::{ScriptHost, script_methods};
+use vela_macros::{ScriptHost, methods};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_script_host::<Player>()
-        .register_host_type::<Inventory>()
-        .register_host_type::<ItemStack>()
-        .register_host_type_spec(string_item_map_type())
-        .register_script_host::<IntIntMap>()
-        .register_script_host::<TagSet>()
-        .register_script_host::<RewardSink>()
+        .register_type::<Player>()
+        .register_type::<Inventory>()
+        .register_type::<ItemStack>()
+        .register_type_spec(string_item_map_type())
+        .register_type::<IntIntMap>()
+        .register_type::<TagSet>()
+        .register_type::<RewardSink>()
+        .register_exports(IntIntMap::vela_inherent_exports())
+        .register_exports(TagSet::vela_inherent_exports())
+        .register_exports(RewardSink::vela_inherent_exports())
         .build()?;
     let program = engine.compile_source(include_str!("handle.vela"))?;
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
@@ -50,11 +53,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "examples::host_type_methods::Player")]
+#[vela(path = "examples::host_type_methods::Player")]
 struct Player {
-    #[script(get, hint = "Inventory")]
+    #[vela(get, hint = "Inventory")]
     inventory: Inventory,
-    #[script(get, hint = "RewardSink")]
+    #[vela(get, hint = "RewardSink")]
     reward_sink: RewardSink,
 }
 
@@ -83,18 +86,12 @@ impl Player {
     }
 }
 
-#[script_methods]
-impl Player {}
-
 #[derive(Debug, Default, ScriptHost)]
-#[script(path = "examples::host_type_methods::Inventory")]
+#[vela(path = "examples::host_type_methods::Inventory")]
 struct Inventory {
-    #[script(get, hint = "StringItemMap")]
+    #[vela(get, hint = "StringItemMap")]
     items: BTreeMap<String, ItemStack>,
 }
-
-#[script_methods]
-impl Inventory {}
 
 fn string_item_map_type() -> HostTypeSpec {
     HostTypeSpec::new(
@@ -109,19 +106,16 @@ fn string_item_map_type() -> HostTypeSpec {
 }
 
 #[derive(Debug, Default, ScriptHost)]
-#[script(path = "examples::host_type_methods::ItemStack")]
+#[vela(path = "examples::host_type_methods::ItemStack")]
 struct ItemStack {
-    #[script(get, set, hint = "i64")]
+    #[vela(get, set, hint = "i64")]
     count: i64,
 }
 
-#[script_methods]
-impl ItemStack {}
-
 #[derive(Debug, Default, ScriptHost)]
-#[script(path = "examples::host_type_methods::IntIntMap")]
+#[vela(path = "examples::host_type_methods::IntIntMap")]
 struct IntIntMap {
-    #[script(skip)]
+    #[vela(skip)]
     values: BTreeMap<i64, i64>,
 }
 
@@ -131,33 +125,29 @@ impl IntIntMap {
     }
 }
 
-#[script_methods]
+#[methods]
 impl IntIntMap {
-    #[script_method(effect = "read_host")]
-    fn get(&self, key: i64) -> i64 {
+    pub fn get(&self, key: i64) -> i64 {
         self.value(key)
     }
 
-    #[script_method(effect = "write_host")]
-    fn set(&mut self, key: i64, value: i64) {
+    pub fn set(&mut self, key: i64, value: i64) {
         self.values.insert(key, value);
     }
 
-    #[script_method(effect = "write_host")]
-    fn add_to(&mut self, key: i64, amount: i64) {
+    pub fn add_to(&mut self, key: i64, amount: i64) {
         *self.values.entry(key).or_default() += amount;
     }
 
-    #[script_method(effect = "read_host")]
-    fn contains(&self, key: i64) -> bool {
+    pub fn contains(&self, key: i64) -> bool {
         self.values.contains_key(&key)
     }
 }
 
 #[derive(Debug, Default, ScriptHost)]
-#[script(path = "examples::host_type_methods::TagSet")]
+#[vela(path = "examples::host_type_methods::TagSet")]
 struct TagSet {
-    #[script(skip)]
+    #[vela(skip)]
     values: BTreeSet<String>,
 }
 
@@ -169,18 +159,17 @@ impl<const N: usize> From<[&str; N]> for TagSet {
     }
 }
 
-#[script_methods]
+#[methods]
 impl TagSet {
-    #[script_method(effect = "read_host")]
-    fn contains(&self, value: String) -> bool {
+    pub fn contains(&self, value: String) -> bool {
         self.values.contains(&value)
     }
 }
 
 #[derive(Debug, Default, ScriptHost)]
-#[script(path = "examples::host_type_methods::RewardSink")]
+#[vela(path = "examples::host_type_methods::RewardSink")]
 struct RewardSink {
-    #[script(skip)]
+    #[vela(skip)]
     grants: Vec<(String, i64)>,
 }
 
@@ -190,10 +179,9 @@ impl RewardSink {
     }
 }
 
-#[script_methods]
+#[methods]
 impl RewardSink {
-    #[script_method(effect = "write_host")]
-    fn grant(&mut self, item_id: String, amount: i64) {
+    pub fn grant(&mut self, item_id: String, amount: i64) {
         self.grants.push((item_id, amount));
     }
 }

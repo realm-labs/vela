@@ -73,9 +73,9 @@ impl BoundaryPatch {
 "#;
 
 #[derive(Debug, ScriptHost, ScriptReflect)]
-#[script(path = "bench::BoundaryChild")]
+#[vela(path = "bench::BoundaryChild")]
 pub struct BoundaryChild {
-    #[script(get, set)]
+    #[vela(get, set)]
     value: i64,
 }
 
@@ -88,17 +88,17 @@ impl BoundaryChild {
 }
 
 #[derive(ScriptHost, ScriptReflect)]
-#[script(path = "bench::BoundaryHost")]
+#[vela(path = "bench::BoundaryHost")]
 pub struct BoundaryHost {
-    #[script(get, set)]
+    #[vela(get, set)]
     value: i64,
-    #[script(skip)]
+    #[vela(skip)]
     child: BoundaryChild,
-    #[script(skip)]
+    #[vela(skip)]
     values: BTreeMap<i64, i64>,
-    #[script(skip)]
+    #[vela(skip)]
     touches: i64,
-    #[script(skip)]
+    #[vela(skip)]
     service_runtime: ServiceRuntimeSlot,
 }
 
@@ -184,7 +184,7 @@ impl BoundaryDefaultService for RustBoundaryDefaultService {
 
 #[service_set(context = BoundaryHost)]
 pub struct BoundaryServices {
-    #[vela::default(RustBoundaryDefaultService)]
+    #[vela(default = RustBoundaryDefaultService)]
     pub boundary: dyn BoundaryDefaultService,
 }
 
@@ -197,10 +197,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("suite=service_boundary_baseline iterations={iterations} warmup={WARMUP_ITERATIONS}");
 
     let mut runtime = boundary_runtime()?;
-    let service_engine = BoundaryServices::register_types(
+    let service_engine = BoundaryServices::register(
         Engine::builder()
             .capability(Capability::HostWrite)
-            .register_rust_type::<BoundaryHost>(BoundaryHost::vela_type_binding()),
+            .register_type::<BoundaryHost>(),
     )
     .build()?;
     let services = BoundaryServices::new(&service_engine.type_bindings())?;
@@ -349,8 +349,8 @@ fn boundary_runtime() -> Result<Runtime, Box<dyn Error>> {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_host_type::<BoundaryChild>()
-        .register_host_type::<BoundaryHost>()
+        .register_type::<BoundaryChild>()
+        .register_type::<BoundaryHost>()
         .register_exports(BoundaryChild::vela_inherent_exports())
         .register_exports(BoundaryHost::vela_inherent_exports())
         .register_exports(vela_export_bundle_nested_reborrow())

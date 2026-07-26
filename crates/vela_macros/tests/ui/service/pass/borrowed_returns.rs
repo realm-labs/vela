@@ -1,26 +1,20 @@
 use vela_macros::{ScriptHost, Value, service};
 
 #[derive(ScriptHost)]
-#[script(path = "coverage::Row")]
+#[vela(path = "coverage::Row")]
 pub struct Row {
     value: i64,
 }
 
-#[vela_macros::script_methods]
-impl Row {}
-
 #[derive(ScriptHost)]
-#[script(path = "coverage::Table")]
+#[vela(path = "coverage::Table")]
 pub struct Table {
     row: Row,
     values: Vec<i64>,
 }
 
-#[vela_macros::script_methods]
-impl Table {}
-
 #[derive(Clone, Value)]
-#[script(path = "coverage::ServiceError")]
+#[vela(path = "coverage::ServiceError")]
 pub struct ServiceError {
     message: String,
 }
@@ -37,8 +31,8 @@ pub trait LookupService: Send + Sync {
 fn main() {
     let engine = __vela_register_service_LookupService(
         vela_engine::engine::Engine::builder()
-            .register_rust_type::<Row>(Row::vela_type_binding())
-            .register_rust_type::<Table>(Table::vela_type_binding()),
+            .register_type::<Row>()
+            .register_type::<Table>(),
     )
     .build()
     .unwrap();

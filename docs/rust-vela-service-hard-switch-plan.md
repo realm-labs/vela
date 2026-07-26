@@ -223,7 +223,7 @@ audit are green.
 
 Deliverables:
 
-- implement `#[vela::service]` and `#[vela::service_set]` schema generation on
+- implement `#[vela_macros::service]` and `#[vela_macros::service_set]` schema generation on
   the sealed TypeBinding registry;
 - reject service signatures whose transitive types lack complete bindings;
 - generate object-safe synchronous dispatch and Rust default composites;

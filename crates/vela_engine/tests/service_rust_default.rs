@@ -24,13 +24,13 @@ pub struct RequestContext;
 
 #[service_set(context = RequestContext)]
 pub struct TestServices {
-    #[vela::default(RustScalarService)]
+    #[vela(default = RustScalarService)]
     pub scalar: dyn ScalarService,
 }
 
 #[test]
 fn pinned_rust_default_dispatch_allocates_nothing_and_stays_in_rust() {
-    let engine = TestServices::register_types(vela_engine::engine::Engine::builder())
+    let engine = TestServices::register(vela_engine::engine::Engine::builder())
         .build()
         .expect("generated scalar registration bundle");
     let services = TestServices::new(&engine.type_bindings()).expect("generated service schema");

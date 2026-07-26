@@ -8,7 +8,7 @@ use super::*;
 #[test]
 fn removed_closure_state_does_not_pin_its_own_generation() {
     let engine = Engine::builder()
-        .register_type(direct_player_type())
+        .register_type_desc(direct_player_type())
         .build()
         .expect("engine should build");
     let initial = engine
@@ -67,7 +67,7 @@ fn current() { return 1; }
 #[test]
 fn reload_safe_point_reclaims_removed_state_after_final_old_owner_drops() {
     let engine = Engine::builder()
-        .register_type(direct_player_type())
+        .register_type_desc(direct_player_type())
         .build()
         .expect("engine should build");
     let initial = engine

@@ -42,7 +42,7 @@ Register the generated bundles and host schemas explicitly:
 
 ```rust,ignore
 let engine = Engine::builder()
-    .register_host_type::<Player>()
+    .register_type::<Player>()
     .register_exports(vela_export_bundle_normalize())
     .register_exports(Player::vela_inherent_exports())
     .capability(Capability::HostRead)

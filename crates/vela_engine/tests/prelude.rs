@@ -23,7 +23,7 @@ fn call_raw(
 fn prelude_imports_cover_runtime_embedding_flow() {
     let method = HostMethodId::new(23);
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .host_type(HostTypeId::new(1))
                 .method(MethodDesc::new(method, "grant_exp")),

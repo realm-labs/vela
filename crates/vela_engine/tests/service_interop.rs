@@ -20,52 +20,46 @@ use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
 #[derive(Clone, Debug, Eq, PartialEq, Value)]
-#[script(path = "interop::PatchCommand")]
+#[vela(path = "interop::PatchCommand")]
 pub struct PatchCommand {
     pub delta: i64,
     pub label: String,
 }
 
 #[derive(ScriptHost)]
-#[script(path = "interop::RequestContext")]
+#[vela(path = "interop::RequestContext")]
 pub struct RequestContext {
-    #[script(skip)]
+    #[vela(skip)]
     runtime: ServiceRuntimeSlot,
-    #[script(skip)]
+    #[vela(skip)]
     expected_values_address: usize,
-    #[script(skip)]
+    #[vela(skip)]
     rust_inventory_calls: usize,
-    #[script(skip)]
+    #[vela(skip)]
     rust_audit_calls: usize,
-    #[script(skip)]
+    #[vela(skip)]
     rust_combine_calls: usize,
-    #[script(skip)]
+    #[vela(skip)]
     observed_labels: Vec<String>,
-    #[script(skip)]
+    #[vela(skip)]
     borrowed_values: Vec<i64>,
-    #[script(skip)]
+    #[vela(skip)]
     borrowed_return_calls: usize,
 }
 
-#[vela_macros::script_methods]
-impl RequestContext {}
-
 #[derive(ScriptHost)]
-#[script(path = "interop::ObservedState")]
+#[vela(path = "interop::ObservedState")]
 pub struct ObservedState {
-    #[script(get)]
+    #[vela(get)]
     value: i64,
 }
-
-#[vela_macros::script_methods]
-impl ObservedState {}
 
 static SCRATCH_STATE_DROPS: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(ScriptHost)]
-#[script(path = "interop::ScratchState")]
+#[vela(path = "interop::ScratchState")]
 pub struct ScratchState {
-    #[script(get, set)]
+    #[vela(get, set)]
     value: i64,
 }
 
@@ -74,9 +68,6 @@ impl Drop for ScratchState {
         SCRATCH_STATE_DROPS.fetch_add(1, Ordering::SeqCst);
     }
 }
-
-#[vela_macros::script_methods]
-impl ScratchState {}
 
 fn scratch_state_constructor() -> NativeFunctionDesc {
     NativeFunctionDesc::new("ScratchState::new", FunctionId::new(0x51_4352_4154_4348))
@@ -283,25 +274,25 @@ impl AuditService for RustAuditService {
 
 #[service_set(context = RequestContext)]
 pub struct InteropServices {
-    #[vela::default(RustInventoryService)]
+    #[vela(default = RustInventoryService)]
     pub inventory: dyn InventoryService,
-    #[vela::default(RustAuditService)]
+    #[vela(default = RustAuditService)]
     pub audit: dyn AuditService,
 }
 
 #[test]
 fn mixed_service_chain_preserves_custom_values_collection_identity_and_alias_preflight() {
     SCRATCH_STATE_DROPS.store(0, Ordering::SeqCst);
-    let engine = InteropServices::register_types(
+    let engine = InteropServices::register(
         Engine::builder()
             .capabilities(
                 CapabilitySet::new()
                     .with(Capability::HostRead)
                     .with(Capability::HostWrite),
             )
-            .register_rust_type::<RequestContext>(RequestContext::vela_type_binding())
-            .register_rust_type::<ObservedState>(ObservedState::vela_type_binding())
-            .register_rust_type::<ScratchState>(
+            .register_type::<RequestContext>()
+            .register_type::<ObservedState>()
+            .register_type_binding::<ScratchState>(
                 ScratchState::vela_type_binding().host_constructor_fn(
                     HostConstructionLifetime::CallScoped,
                     scratch_state_constructor(),

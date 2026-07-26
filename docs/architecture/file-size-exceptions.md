@@ -18,6 +18,7 @@ clear; they are not permission for unrelated growth.
 | `vela_bytecode/src/linked.rs` | Declarative linked instruction and immutable layout definitions. |
 | `vela_bytecode/src/lib.rs` | Declarative unlinked bytecode instruction, operand, metadata, and compiled-program definitions reviewed as one public format contract. |
 | `vela_bytecode/src/linker.rs` | Single generation-sealing pass whose instruction, identity, provider, debug, and verification mappings must remain auditable together. |
+| `vela_bytecode/src/compiler/semantic_input/placements.rs` | Exhaustive semantic-to-MIR placement lowering for every assignable host, state, aggregate, index, and destructuring shape. |
 | `vela_bytecode/src/verification.rs` | Exhaustive unlinked instruction verifier and shared invariant helpers. |
 | `vela_bytecode/src/verification/linked.rs` | Exhaustive linked instruction verifier; every linked opcode must remain in the same match audit. |
 | `vela_mir/src/verifier/operations.rs` | Exhaustive MIR statement, terminator, place, and state-operation verifier kept together so every executable operation participates in one invariant audit. |
@@ -33,4 +34,5 @@ clear; they are not permission for unrelated growth.
 | `vela_language_service/src/semantic_tokens/tests.rs` | Dense semantic-token classification fixture matrix covering the complete editor-neutral taxonomy and contextual declaration cases. |
 | `vela_language_service/src/rename/tests.rs` | Dense rename prepare/apply/rejection fixture matrix across declaration and reference categories. |
 | `vela_engine/src/tests/source_reload/runtime_safe_points.rs` | Dense runtime safe-point, staged update, async ownership, and rollback fixture matrix. |
+| `vela_macros/tests/interop_exports.rs` | Dense end-to-end fixture matrix for free functions, methods, leases, borrowed returns, reflection, and centralized external Host bindings. |
 | `vela_mir/src/tests/model.rs` | Dense MIR model invariant fixtures. |

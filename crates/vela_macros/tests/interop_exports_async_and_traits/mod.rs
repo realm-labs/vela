@@ -24,7 +24,7 @@ fn declaration_only_external_trait_adapter_calls_existing_impl() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_host_type::<ExternalNpc>()
+        .register_type::<ExternalNpc>()
         .register_exports(ExternalNpc::vela_inherent_exports())
         .register_exports(VelaExternalExternalNpcExternalDamageExports::vela_exports())
         .build()

@@ -289,14 +289,13 @@ with `MirJitIneligibility::Async`. The future backend boundary remains the same
 verified MIR plus linked artifact, including the await operation, safepoint,
 and resume edge; there is no compiled async execution path in the MVP.
 
-Engine registration has one async family beside each supported native boundary:
-pure functions, HostAccess functions, NativeCallContext functions, and
-HostPath-based methods. Their factories are `Send + Sync + 'static`, while the
-returned `NativeCallFuture<'call>` may borrow invocation arguments and host
-execution state for `'call`. `#[script_function]`, `#[script_context_function]`,
-and `#[script_host_function]` emit the same contract for Rust `async fn`.
+Engine registration has one async family beside each supported native boundary.
+Their factories are `Send + Sync + 'static`, while the returned
+`NativeCallFuture<'call>` may borrow invocation arguments and host execution
+state for `'call`. `#[vela_macros::export]`, `export_module`, and `methods`
+emit the same contract for Rust `async fn`.
 
-`#[script_methods]` also supports async `&self`/`&mut self` methods. Runtime
+`#[vela_macros::methods]` also supports async `&self`/`&mut self` methods. Runtime
 atomically acquires Rust-only `HostLeaseRef`/`HostLeaseMut` scopes for the
 receiver and any typed `&T`/`&mut T` host parameters. Mutable-origin call
 bindings require `Send + Sync` and use an owned read/write guard state machine:

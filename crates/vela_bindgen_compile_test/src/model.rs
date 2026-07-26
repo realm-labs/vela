@@ -1,9 +1,9 @@
 use vela_macros::{ScriptHost, ScriptReflect, methods};
 
 #[derive(Debug, ScriptHost, ScriptReflect)]
-#[script(path = "game::Player")]
+#[vela(path = "game::Player")]
 pub struct Player {
-    #[script(get, set)]
+    #[vela(get, set)]
     pub level: i64,
 }
 

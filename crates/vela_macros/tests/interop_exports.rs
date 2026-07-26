@@ -15,33 +15,33 @@ use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "game::Player")]
+#[vela(path = "game::Player")]
 pub struct Player {
-    #[script(get, set)]
+    #[vela(get, set)]
     level: i64,
 }
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "game::PlayerService")]
+#[vela(path = "game::PlayerService")]
 pub struct PlayerService {
     player: Player,
-    #[script(get, set)]
+    #[vela(get, set)]
     touches: i64,
 }
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "game::Team")]
+#[vela(path = "game::Team")]
 pub struct Team {
     first: Player,
     second: Player,
-    #[script(get, set)]
+    #[vela(get, set)]
     marker: i64,
 }
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "game::FieldOnly")]
+#[vela(path = "game::FieldOnly")]
 pub struct FieldOnly {
-    #[script(get, hint = "FieldChild")]
+    #[vela(get, hint = "FieldChild")]
     child: FieldChild,
 }
 
@@ -49,9 +49,9 @@ pub struct FieldOnly {
 impl FieldOnly {}
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "game::FieldChild")]
+#[vela(path = "game::FieldChild")]
 pub struct FieldChild {
-    #[script(get)]
+    #[vela(get)]
     value: i64,
 }
 
@@ -162,7 +162,7 @@ mod rules_exports {
         amount.max(0)
     }
 
-    #[export(effects(random))]
+    #[vela(effects(random))]
     pub fn random_floor() -> i64 {
         1
     }
@@ -318,7 +318,7 @@ pub fn roll(_ctx: &mut NativeCallContext<'_, '_>, player: &Player) -> i64 {
 
 #[methods(path = "game::Player")]
 impl Player {
-    #[script_method(attr = "context_operations=inspect")]
+    #[vela(attr = "context_operations=inspect")]
     pub fn current_level(&self) -> i64 {
         self.level
     }
@@ -373,9 +373,9 @@ pub trait ExternalDamage {
 }
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "external::Npc")]
+#[vela(path = "external::Npc")]
 pub struct ExternalNpc {
-    #[script(get, set)]
+    #[vela(get, set)]
     hp: i64,
 }
 
@@ -506,9 +506,9 @@ fn host_export_runtime(source: &str) -> Runtime {
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
         .capability(Capability::Random)
-        .register_host_type::<Player>()
-        .register_host_type::<PlayerService>()
-        .register_host_type::<Team>()
+        .register_type::<Player>()
+        .register_type::<PlayerService>()
+        .register_type::<Team>()
         .register_exports(vela_export_bundle_grant_exp())
         .register_exports(vela_export_bundle_sum_levels())
         .register_exports(vela_export_bundle_transfer())
@@ -585,9 +585,9 @@ fn host_exports_allow_two_shared_aliases() {
 fn empty_inherent_method_group_supports_field_only_host_objects() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
-        .register_rust_type::<FieldOnly>(FieldOnly::vela_type_binding())
+        .register_type::<FieldOnly>()
         .register_exports(FieldOnly::vela_inherent_exports())
-        .register_rust_type::<FieldChild>(FieldChild::vela_type_binding())
+        .register_type::<FieldChild>()
         .register_exports(FieldChild::vela_inherent_exports())
         .build()
         .expect("field-only host type should register");
@@ -614,7 +614,7 @@ fn centralized_external_host_binding_supports_borrowed_children() {
     let engine = register_external_item(register_external_config(
         Engine::builder().capability(Capability::HostRead),
     ))
-    .register_rust_value_closure::<ExternalQuality>()
+    .register_type::<ExternalQuality>()
     .build()
     .expect("centralized external bindings should register");
     let program = engine
@@ -647,7 +647,7 @@ fn centralized_external_host_properties_preserve_owned_enum_values() {
     let engine = register_external_item(register_external_config(
         Engine::builder().capability(Capability::HostRead),
     ))
-    .register_rust_value_closure::<ExternalQuality>()
+    .register_type::<ExternalQuality>()
     .build()
     .expect("centralized external properties should register");
     let program = engine
@@ -870,8 +870,8 @@ fn explicit_and_automatic_release_compile_to_dedicated_instruction() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_host_type::<Player>()
-        .register_host_type::<PlayerService>()
+        .register_type::<Player>()
+        .register_type::<PlayerService>()
         .register_exports(Player::vela_inherent_exports())
         .register_exports(PlayerService::vela_inherent_exports())
         .build()

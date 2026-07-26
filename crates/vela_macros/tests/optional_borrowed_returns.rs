@@ -13,16 +13,16 @@ use vela_vm::error::{VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "host::Row")]
+#[vela(path = "host::Row")]
 pub struct Row {
-    #[script(get)]
+    #[vela(get)]
     key: i64,
-    #[script(get)]
+    #[vela(get)]
     value: i64,
 }
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "host::Table")]
+#[vela(path = "host::Table")]
 pub struct Table {
     rows: Vec<Row>,
     touches: i64,
@@ -30,7 +30,7 @@ pub struct Table {
 }
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "host::Config")]
+#[vela(path = "host::Config")]
 pub struct Config {
     table: Table,
 }
@@ -61,7 +61,7 @@ impl Config {
 
 #[methods(path = "host::Table")]
 impl Table {
-    #[script_method(reflect = true)]
+    #[vela(reflect = true)]
     pub fn get(&self, key: i64) -> Option<&Row> {
         let row = self.rows.iter().find(|row| row.key == key)?;
         self.last_returned_address
@@ -96,9 +96,9 @@ fn engine() -> Engine {
         .capability(Capability::HostWrite)
         .capability(Capability::ReflectionCall)
         .reflection_policy(vela_reflect::permissions::ReflectPolicy::all())
-        .register_host_type::<Row>()
-        .register_host_type::<Table>()
-        .register_host_type::<Config>()
+        .register_type::<Row>()
+        .register_type::<Table>()
+        .register_type::<Config>()
         .register_exports(vela_export_bundle_lookup())
         .register_exports(vela_export_bundle_first_row())
         .register_exports(vela_export_bundle_ready())

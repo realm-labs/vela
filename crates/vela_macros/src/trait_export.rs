@@ -23,10 +23,10 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     if !matches!(item.vis, Visibility::Public(_)) {
         return Err(syn::Error::new_spanned(
             &item.vis,
-            "#[vela::trait_export] requires a public Rust trait",
+            "#[vela_macros::trait_export] requires a public Rust trait",
         ));
     }
-    reject_generic_signature(&item.generics, "#[vela::trait_export]")?;
+    reject_generic_signature(&item.generics, "#[vela_macros::trait_export]")?;
     if !item.supertraits.is_empty() {
         return Err(syn::Error::new_spanned(
             &item.supertraits,
@@ -42,9 +42,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 "exported Vela protocols initially support methods only",
             ));
         };
-        reject_generic_signature(&method.sig.generics, "#[vela::trait_export]")?;
-        reject_unsafe_signature(&method.sig, "#[vela::trait_export]")?;
-        reject_extern_signature(&method.sig, "#[vela::trait_export]")?;
+        reject_generic_signature(&method.sig.generics, "#[vela_macros::trait_export]")?;
+        reject_unsafe_signature(&method.sig, "#[vela_macros::trait_export]")?;
+        reject_extern_signature(&method.sig, "#[vela_macros::trait_export]")?;
         classified.push((method, classify_method(&method.sig, &BTreeSet::new())?));
     }
     if classified.is_empty() {
@@ -78,7 +78,7 @@ fn parse_path(attr: TokenStream) -> Result<String> {
     path.ok_or_else(|| {
         syn::Error::new(
             proc_macro2::Span::call_site(),
-            "#[vela::trait_export] requires path = \"module::Protocol\"",
+            "#[vela_macros::trait_export] requires path = \"module::Protocol\"",
         )
     })
 }

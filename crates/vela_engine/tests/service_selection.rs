@@ -40,9 +40,9 @@ pub struct RequestContext;
 
 #[service_set(context = RequestContext)]
 pub struct TestServices {
-    #[vela::default(RustInventoryService)]
+    #[vela(default = RustInventoryService)]
     pub inventory: dyn InventoryService,
-    #[vela::default(RustRewardService)]
+    #[vela(default = RustRewardService)]
     pub reward: dyn RewardService,
 }
 
@@ -235,7 +235,7 @@ fn delta_rejects_a_non_exact_base_without_changing_the_base() {
 }
 
 fn schema() -> ServiceSetSchema {
-    let engine = TestServices::register_types(vela_engine::engine::Engine::builder())
+    let engine = TestServices::register(vela_engine::engine::Engine::builder())
         .build()
         .expect("generated registrations");
     TestServices::new(&engine.type_bindings())

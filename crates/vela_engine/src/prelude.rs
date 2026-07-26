@@ -24,9 +24,7 @@ pub use crate::runtime::{
     RuntimeInitializationLimits, RuntimeMethodSelector, VelaFunction, VelaMethod, VelaMethodTarget,
     VelaValue,
 };
-pub use crate::schema::{
-    ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema, ScriptValueSchema,
-};
+pub use crate::schema::{ScriptHostSchema, ScriptReflectSchema, ScriptValueSchema};
 pub use crate::service::{
     LinkedServiceSourceManifest, LinkedVelaServiceMethod, ServiceController, ServiceGeneration,
     ServiceGenerationCandidate, ServiceInvocationError, ServiceMethodDescriptor, ServiceMethodKey,
@@ -45,7 +43,7 @@ pub use crate::source::{
 pub use crate::source::{EngineSourceError, EngineSourceErrorKind};
 pub use crate::standard::{StandardTypeBinding, standard_type_binding};
 pub use crate::type_binding::{TypeBinding, TypeBindingRegistry, ValueCodec};
-pub use crate::type_registration::RustValueType;
+pub use crate::type_registration::VelaType;
 pub use crate::{args, host};
 pub use vela_bytecode::{
     UnlinkedCodeObject,

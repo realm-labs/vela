@@ -17,7 +17,7 @@ use crate::engine::Engine;
 use crate::method::NativeMethodDesc;
 use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint};
 use crate::permission::Capability;
-use crate::schema::{ScriptHostMethodMetadata, ScriptReflectSchema};
+use crate::schema::ScriptReflectSchema;
 
 use super::player_type;
 
@@ -32,21 +32,15 @@ impl ScriptReflectSchema for ReflectOnlyPlayer {
     }
 }
 
-struct MetadataOnlyPlayerMethods;
-
-impl ScriptHostMethodMetadata for MetadataOnlyPlayerMethods {
-    fn script_host_method_descs() -> Vec<NativeMethodDesc> {
-        vec![
-            NativeMethodDesc::new(
-                TypeKey::new(TypeId::new(1), "Player"),
-                HostMethodId::new(44),
-                "metadata_bonus",
-            )
-            .param("amount", TypeHint::i64())
-            .returns(TypeHint::i64())
-            .effects(EffectSet::host_read()),
-        ]
-    }
+fn metadata_only_player_method() -> NativeMethodDesc {
+    NativeMethodDesc::new(
+        TypeKey::new(TypeId::new(1), "Player"),
+        HostMethodId::new(44),
+        "metadata_bonus",
+    )
+    .param("amount", TypeHint::i64())
+    .returns(TypeHint::i64())
+    .effects(EffectSet::host_read())
 }
 
 mod metadata;

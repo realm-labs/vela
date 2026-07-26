@@ -640,7 +640,7 @@ fn reusable() -> i64 { return 9; }
 
         let engine = Engine::builder()
             .capability(Capability::HostWrite)
-            .register_type(
+            .register_type_desc(
                 TypeDesc::new(TypeKey::new(TypeId::new(0xA522), "Player"))
                     .host_type(HostTypeId::new(1))
                     .field(FieldDesc::new(FieldId::new(1), "level").writable(true)),

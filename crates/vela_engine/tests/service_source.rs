@@ -51,7 +51,7 @@ impl ServiceRuntimeAuthority for RuntimeContext {
 
 #[service_set(context = RequestContext)]
 pub struct TestServices {
-    #[vela::default(RustInventoryService)]
+    #[vela(default = RustInventoryService)]
     pub inventory: dyn InventoryService,
 }
 
@@ -183,7 +183,7 @@ impl InventoryHotfix {
 
 #[test]
 fn source_manifest_rejects_compiled_effects_above_the_rust_ceiling() {
-    let engine = TestServices::register_types(
+    let engine = TestServices::register(
         vela_engine::engine::Engine::builder().with_time_clock(1_700_000_000, 42),
     )
     .build()
@@ -330,8 +330,8 @@ fn schema() -> ServiceSetSchema {
 
 #[test]
 fn engine_rejects_multiple_service_set_registrations() {
-    let builder = TestServices::register_types(vela_engine::engine::Engine::builder());
-    let Err(error) = TestServices::register_types(builder).build() else {
+    let builder = TestServices::register(vela_engine::engine::Engine::builder());
+    let Err(error) = TestServices::register(builder).build() else {
         panic!("one Engine must not own two service sets");
     };
     assert!(matches!(
@@ -341,7 +341,7 @@ fn engine_rejects_multiple_service_set_registrations() {
 }
 
 fn engine() -> vela_engine::engine::Engine {
-    TestServices::register_types(vela_engine::engine::Engine::builder())
+    TestServices::register(vela_engine::engine::Engine::builder())
         .build()
         .expect("generated registrations")
 }

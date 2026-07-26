@@ -57,21 +57,21 @@ collections.
 
 ```rust,ignore
 #[derive(Clone, Debug, vela_macros::Value)]
-#[script(path = "example::Request")]
+#[vela(path = "example::Request")]
 pub struct Request {
     pub key: i64,
     pub adjustment: i64,
 }
 
 #[derive(Clone, Debug, vela_macros::Value)]
-#[script(path = "example::ValueRow")]
+#[vela(path = "example::ValueRow")]
 pub struct ValueRow {
     pub key: i64,
     pub score: i64,
 }
 
 #[derive(Clone, Debug, vela_macros::Value)]
-#[script(path = "example::Response")]
+#[vela(path = "example::Response")]
 pub struct Response {
     pub accepted: bool,
     pub score: i64,
@@ -79,7 +79,7 @@ pub struct Response {
 }
 
 #[derive(Clone, Debug, vela_macros::Value)]
-#[script(path = "example::ServiceError")]
+#[vela(path = "example::ServiceError")]
 pub struct ServiceError {
     pub message: String,
 }
@@ -95,29 +95,29 @@ Rows and authoritative request state stay in Rust:
 
 ```rust,ignore
 #[derive(vela_macros::ScriptHost)]
-#[script(path = "example::Row")]
+#[vela(path = "example::Row")]
 pub struct Row {
-    #[script(get)]
+    #[vela(get)]
     pub key: i64,
-    #[script(get)]
+    #[vela(get)]
     pub base_score: i64,
 }
 
 #[derive(vela_macros::ScriptHost)]
-#[script(path = "example::Table")]
+#[vela(path = "example::Table")]
 pub struct Table {
-    #[script(skip)]
+    #[vela(skip)]
     rows: Vec<Row>,
 }
 
 #[derive(vela_macros::ScriptHost)]
-#[script(path = "example::RequestState")]
+#[vela(path = "example::RequestState")]
 pub struct RequestState {
-    #[script(get)]
+    #[vela(get)]
     total: i64,
-    #[script(skip)]
+    #[vela(skip)]
     services: ExampleServicesRoot,
-    #[script(skip)]
+    #[vela(skip)]
     runtime: ServiceRuntimeSlot,
 }
 ```
@@ -133,9 +133,9 @@ service. That object uses an explicit call-scoped Host constructor:
 
 ```rust,ignore
 #[derive(vela_macros::ScriptHost)]
-#[script(path = "example::PatchBuffer")]
+#[vela(path = "example::PatchBuffer")]
 pub struct PatchBuffer {
-    #[script(get)]
+    #[vela(get)]
     value: i64,
 }
 
@@ -376,17 +376,17 @@ The service set declares one Rust default per service:
 ```rust,ignore
 #[vela_macros::service_set(context = RequestState)]
 pub struct ExampleServices {
-    #[vela::default(RustStateService)]
+    #[vela(default = RustStateService)]
     pub state: dyn StateService,
-    #[vela::default(RustPolicyService)]
+    #[vela(default = RustPolicyService)]
     pub policy: dyn PolicyService,
-    #[vela::default(RustApplyService)]
+    #[vela(default = RustApplyService)]
     pub apply: dyn ApplyService,
-    #[vela::default(RustTransformService)]
+    #[vela(default = RustTransformService)]
     pub transform: dyn TransformService,
-    #[vela::default(RustAuditService)]
+    #[vela(default = RustAuditService)]
     pub audit: dyn AuditService,
-    #[vela::default(RustHandlerService)]
+    #[vela(default = RustHandlerService)]
     pub handler: dyn HandlerService,
 }
 ```
@@ -395,14 +395,14 @@ Generated registration closes every transitive Value/Host/container
 requirement:
 
 ```rust,ignore
-let builder = ExampleServices::register_types(
+let builder = ExampleServices::register(
     Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_rust_type::<Row>(Row::vela_type_binding())
-        .register_rust_type::<Table>(Table::vela_type_binding())
-        .register_rust_type::<RequestState>(RequestState::vela_type_binding())
-        .register_rust_type::<PatchBuffer>(patch_buffer),
+        .register_type::<Row>()
+        .register_type::<Table>()
+        .register_type::<RequestState>()
+        .register_type_binding::<PatchBuffer>(patch_buffer),
 );
 
 let engine = builder.build()?;

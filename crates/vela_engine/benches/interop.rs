@@ -27,9 +27,9 @@ fn round_trip_entry(value: i64) -> i64 { return bench::round_trip(value); }
 "#;
 
 #[derive(ScriptHost, ScriptReflect)]
-#[script(path = "bench::Player")]
+#[vela(path = "bench::Player")]
 pub struct Player {
-    #[script(get, set)]
+    #[vela(get, set)]
     value: i64,
 }
 
@@ -72,7 +72,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("vela_engine_interop iterations={iterations}");
 
     let engine = Engine::builder()
-        .register_host_type::<Player>()
+        .register_type::<Player>()
         .register_exports(vela_export_bundle_scalar())
         .register_exports(vela_export_bundle_read_player())
         .register_exports(vela_export_bundle_write_player())

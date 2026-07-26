@@ -4,7 +4,7 @@ use super::*;
 fn engine_rejects_type_names_that_shadow_standard_types() {
     let result = Engine::builder()
         .with_standard_natives()
-        .register_type(TypeDesc::new(TypeKey::new(TypeId::new(0x1234), "Option")))
+        .register_type_desc(TypeDesc::new(TypeKey::new(TypeId::new(0x1234), "Option")))
         .build();
 
     assert!(matches!(
@@ -20,7 +20,7 @@ fn engine_rejects_type_ids_that_collide_with_standard_types() {
     let int_type_id = standard_type_id("I64");
     let result = Engine::builder()
         .with_standard_natives()
-        .register_type(TypeDesc::new(TypeKey::new(int_type_id, "GameInt")))
+        .register_type_desc(TypeDesc::new(TypeKey::new(int_type_id, "GameInt")))
         .build();
 
     match result {
@@ -111,8 +111,8 @@ fn engine_rejects_module_names_that_shadow_controlled_random_modules() {
 #[test]
 fn engine_rejects_duplicate_type_names() {
     let result = Engine::builder()
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
-        .register_type(player_type(TypeId::new(2), HostTypeId::new(2)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(2), HostTypeId::new(2)))
         .build();
 
     assert!(matches!(
@@ -126,7 +126,7 @@ fn engine_rejects_duplicate_type_names() {
 #[test]
 fn engine_rejects_malformed_type_names() {
     let result = Engine::builder()
-        .register_type(TypeDesc::new(TypeKey::new(TypeId::new(1), "")))
+        .register_type_desc(TypeDesc::new(TypeKey::new(TypeId::new(1), "")))
         .build();
 
     assert!(matches!(
@@ -140,7 +140,7 @@ fn engine_rejects_malformed_type_names() {
 #[test]
 fn engine_rejects_incomplete_or_misclassified_tuple_descriptors() {
     let incomplete = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "host::Pair"))
                 .kind(TypeKind::Tuple)
                 .tuple_element("i64"),
@@ -156,7 +156,7 @@ fn engine_rejects_incomplete_or_misclassified_tuple_descriptors() {
     ));
 
     let misclassified = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(2), "host::Pair"))
                 .kind(TypeKind::ScriptStruct)
                 .tuple_element("i64")
@@ -176,7 +176,7 @@ fn engine_rejects_incomplete_or_misclassified_tuple_descriptors() {
 #[test]
 fn engine_rejects_empty_type_attribute_names() {
     let result = Engine::builder()
-        .register_type(TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).attr("", "bad"))
+        .register_type_desc(TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).attr("", "bad"))
         .build();
 
     assert!(matches!(
@@ -191,7 +191,7 @@ fn engine_rejects_empty_type_attribute_names() {
 #[test]
 fn engine_rejects_empty_field_type_hints() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .field(FieldDesc::new(FieldId::new(1), "level").type_hint("")),
         )
@@ -209,7 +209,7 @@ fn engine_rejects_empty_field_type_hints() {
 #[test]
 fn engine_accepts_supported_generic_field_type_hints() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .field(FieldDesc::new(FieldId::new(1), "inventory").type_hint("Array<i64>"))
                 .field(FieldDesc::new(FieldId::new(2), "scores").type_hint("Map<i64, String>"))
@@ -223,8 +223,8 @@ fn engine_accepts_supported_generic_field_type_hints() {
 #[test]
 fn engine_rejects_duplicate_type_ids() {
     let result = Engine::builder()
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
-        .register_type(
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Monster")).host_type(HostTypeId::new(2)),
         )
         .build();
@@ -238,7 +238,7 @@ fn engine_rejects_duplicate_type_ids() {
 #[test]
 fn engine_rejects_malformed_field_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(FieldId::new(1), "")),
@@ -258,7 +258,7 @@ fn engine_rejects_malformed_field_names() {
 #[test]
 fn engine_rejects_empty_field_required_permissions() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .host_type(HostTypeId::new(1))
                 .field(
@@ -280,7 +280,7 @@ fn engine_rejects_empty_field_required_permissions() {
 #[test]
 fn engine_rejects_empty_field_attribute_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .field(FieldDesc::new(FieldId::new(1), "level").attr("", "bad")),
         )
@@ -298,7 +298,7 @@ fn engine_rejects_empty_field_attribute_names() {
 #[test]
 fn engine_rejects_empty_variant_attribute_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
                 .variant(VariantDesc::new(VariantId::new(1), "Gold").attr("", "bad")),
         )
@@ -316,7 +316,7 @@ fn engine_rejects_empty_variant_attribute_names() {
 #[test]
 fn engine_rejects_empty_variant_field_attribute_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).variant(
                 VariantDesc::new(VariantId::new(1), "Gold")
                     .field(FieldDesc::new(FieldId::new(1), "count").attr("", "bad")),
@@ -336,7 +336,7 @@ fn engine_rejects_empty_variant_field_attribute_names() {
 #[test]
 fn engine_accepts_supported_generic_variant_field_type_hints() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).variant(
                 VariantDesc::new(VariantId::new(1), "Gold")
                     .field(FieldDesc::new(FieldId::new(1), "count").type_hint("Option<i64>")),
@@ -350,7 +350,7 @@ fn engine_accepts_supported_generic_variant_field_type_hints() {
 #[test]
 fn engine_accepts_tuple_payload_type_hints() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).variant(
                 VariantDesc::new(VariantId::new(1), "Gold").field(
                     FieldDesc::new(FieldId::new(1), "split").type_hint("Option<(String, String)>"),
@@ -365,7 +365,7 @@ fn engine_accepts_tuple_payload_type_hints() {
 #[test]
 fn engine_rejects_tuple_map_and_set_key_type_hints() {
     let map_result = Engine::builder()
-        .register_type(TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).field(
+        .register_type_desc(TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).field(
             FieldDesc::new(FieldId::new(1), "splits").type_hint("Map<(String, String), i64>"),
         ))
         .build();
@@ -383,7 +383,7 @@ fn engine_rejects_tuple_map_and_set_key_type_hints() {
 
     let set_result =
         Engine::builder()
-            .register_type(TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).field(
+            .register_type_desc(TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).field(
                 FieldDesc::new(FieldId::new(1), "splits").type_hint("Set<(String, String)>"),
             ))
             .build();
@@ -403,7 +403,7 @@ fn engine_rejects_tuple_map_and_set_key_type_hints() {
 #[test]
 fn engine_rejects_empty_trait_attribute_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .trait_impl(trait_desc_with_id(TraitId::new(1), "Damageable").attr("", "bad")),
         )
@@ -421,7 +421,7 @@ fn engine_rejects_empty_trait_attribute_names() {
 #[test]
 fn engine_rejects_empty_trait_method_attribute_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
                 trait_desc_with_id(TraitId::new(1), "Damageable")
                     .method(TraitMethodDesc::new(MethodId::new(1), "damage").attr("", "bad")),
@@ -441,7 +441,7 @@ fn engine_rejects_empty_trait_method_attribute_names() {
 #[test]
 fn engine_rejects_generic_trait_method_type_hints() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
                 trait_desc_with_id(TraitId::new(1), "Rewardable").method(
                     TraitMethodDesc::new(MethodId::new(1), "reward")
@@ -464,7 +464,7 @@ fn engine_rejects_generic_trait_method_type_hints() {
 #[test]
 fn engine_rejects_generic_trait_method_param_type_hints() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
                 trait_desc_with_id(TraitId::new(1), "Rewardable").method(
                     TraitMethodDesc::new(MethodId::new(1), "reward")

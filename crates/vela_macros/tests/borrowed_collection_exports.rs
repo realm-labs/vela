@@ -177,7 +177,7 @@ pub fn slice_reenter(context: &mut NativeCallContext<'_, '_>, values: &[i64]) ->
 }
 
 #[derive(ScriptHost)]
-#[script(path = "host::CollectionService")]
+#[vela(path = "host::CollectionService")]
 struct CollectionService {
     offset: i64,
 }
@@ -204,7 +204,7 @@ impl CollectionService {
 }
 
 #[derive(ScriptHost)]
-#[script(path = "host::CollectionOwner")]
+#[vela(path = "host::CollectionOwner")]
 struct CollectionOwner {
     values: Vec<i64>,
     totals: BTreeMap<String, i64>,
@@ -234,7 +234,7 @@ impl CollectionOwner {
 }
 
 #[derive(ScriptHost)]
-#[script(path = "host::ByteOwner")]
+#[vela(path = "host::ByteOwner")]
 struct ByteOwner {
     bytes: Vec<u8>,
 }
@@ -1166,9 +1166,9 @@ fn collection_engine() -> Engine {
     Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_host_type::<CollectionService>()
-        .register_host_type::<CollectionOwner>()
-        .register_host_type::<ByteOwner>()
+        .register_type::<CollectionService>()
+        .register_type::<CollectionOwner>()
+        .register_type::<ByteOwner>()
         .register_exports(vela_export_bundle_merge())
         .register_exports(vela_export_bundle_add())
         .register_exports(vela_export_bundle_lookup_i32())

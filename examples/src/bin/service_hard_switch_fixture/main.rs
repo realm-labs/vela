@@ -67,7 +67,7 @@ impl InventoryPatch {
 pub type ServiceResult<T> = Result<T, ServiceError>;
 
 #[derive(Debug, Value)]
-#[script(path = "fixture::ServiceError")]
+#[vela(path = "fixture::ServiceError")]
 pub struct ServiceError {
     message: String,
 }
@@ -89,7 +89,7 @@ impl std::fmt::Display for ServiceError {
 impl Error for ServiceError {}
 
 #[derive(Clone, Debug, Value)]
-#[script(path = "fixture::ItemGrant")]
+#[vela(path = "fixture::ItemGrant")]
 pub struct ItemGrant {
     template_id: i32,
     count: i32,
@@ -97,7 +97,7 @@ pub struct ItemGrant {
 }
 
 #[derive(Clone, Debug, Value)]
-#[script(path = "fixture::DisplayItem")]
+#[vela(path = "fixture::DisplayItem")]
 pub struct DisplayItem {
     template_id: i32,
     count: i32,
@@ -105,20 +105,20 @@ pub struct DisplayItem {
 }
 
 #[derive(Clone, Debug, Value)]
-#[script(path = "fixture::GrantRequest")]
+#[vela(path = "fixture::GrantRequest")]
 pub struct GrantRequest {
     items: Vec<ItemGrant>,
     multipliers: BTreeMap<i32, i32>,
 }
 
 #[derive(Clone, Debug, Value)]
-#[script(path = "fixture::GrantResponse")]
+#[vela(path = "fixture::GrantResponse")]
 pub struct GrantResponse {
     granted: Vec<DisplayItem>,
 }
 
 #[derive(Debug, Value)]
-#[script(path = "fixture::PatchAdjustment")]
+#[vela(path = "fixture::PatchAdjustment")]
 struct PatchAdjustment {
     bonus: i32,
     label: String,
@@ -160,15 +160,15 @@ fn construct_patch_adjustment(
 }
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "fixture::HostActor")]
+#[vela(path = "fixture::HostActor")]
 pub struct HostActor {
-    #[script(skip)]
+    #[vela(skip)]
     item_counts: BTreeMap<i32, i32>,
-    #[script(skip)]
+    #[vela(skip)]
     last_reward_count: usize,
-    #[script(skip)]
+    #[vela(skip)]
     event_calls: usize,
-    #[script(skip)]
+    #[vela(skip)]
     patch_score: i64,
 }
 
@@ -184,17 +184,17 @@ impl HostActor {
 }
 
 #[derive(ScriptHost)]
-#[script(path = "fixture::HostTurn")]
+#[vela(path = "fixture::HostTurn")]
 pub struct HostTurn {
-    #[script(skip)]
+    #[vela(skip)]
     actor: HostActor,
-    #[script(skip)]
+    #[vela(skip)]
     services: GameServicesRoot,
-    #[script(skip)]
+    #[vela(skip)]
     runtime: ServiceRuntimeSlot,
-    #[script(skip)]
+    #[vela(skip)]
     preview_count: i32,
-    #[script(skip)]
+    #[vela(skip)]
     observed_groups: usize,
 }
 
@@ -390,15 +390,15 @@ impl GrantHandlerService for RustGrantHandlerService {
 
 #[service_set(context = HostTurn)]
 pub struct GameServices {
-    #[vela::default(RustInventoryService)]
+    #[vela(default = RustInventoryService)]
     pub inventory: dyn InventoryService,
-    #[vela::default(RustRewardService)]
+    #[vela(default = RustRewardService)]
     pub reward: dyn RewardService,
-    #[vela::default(RustGrantRuleService)]
+    #[vela(default = RustGrantRuleService)]
     pub rule: dyn GrantRuleService,
-    #[vela::default(RustGrantEventService)]
+    #[vela(default = RustGrantEventService)]
     pub events: dyn GrantEventService,
-    #[vela::default(RustGrantHandlerService)]
+    #[vela(default = RustGrantHandlerService)]
     pub handler: dyn GrantHandlerService,
 }
 
@@ -519,16 +519,16 @@ fn block_on<T>(future: impl Future<Output = T>) -> T {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let builder = GameServices::register_types(
+    let builder = GameServices::register(
         Engine::builder()
             .capability(Capability::HostWrite)
-            .register_rust_type::<HostActor>(HostActor::vela_type_binding())
-            .register_rust_type::<HostTurn>(HostTurn::vela_type_binding())
+            .register_type::<HostActor>()
+            .register_type::<HostTurn>()
             .register_exports(HostActor::vela_inherent_exports())
             .register_exports(HostTurn::vela_inherent_exports()),
     );
     let engine = builder
-        .register_rust_type::<PatchAdjustment>(patch_adjustment_binding())
+        .register_type_binding::<PatchAdjustment>(patch_adjustment_binding())
         .build()?;
     let services = GameServices::new(&engine.type_bindings())?;
     assert_eq!(

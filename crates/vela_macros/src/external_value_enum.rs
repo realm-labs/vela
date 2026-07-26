@@ -65,10 +65,19 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
             fn register_value_type_closure(
                 builder: ::vela_engine::builder::EngineBuilder,
             ) -> ::vela_engine::builder::EngineBuilder {
-                builder.register_generated_rust_value::<Self>(
+                builder.register_generated_type_binding::<Self>(
                     <Self as ::vela_engine::schema::ScriptValueSchema>::
                         script_value_binding(),
                 )
+            }
+        }
+
+        impl ::vela_engine::type_registration::VelaType for #ty {
+            fn register(
+                builder: ::vela_engine::builder::EngineBuilder,
+            ) -> ::vela_engine::builder::EngineBuilder {
+                <Self as ::vela_engine::type_registration::RustValueType>::
+                    register_value_type_closure(builder)
             }
         }
 

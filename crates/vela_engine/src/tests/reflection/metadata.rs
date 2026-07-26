@@ -29,7 +29,7 @@ fn run_linked_program_with_host(
 #[test]
 fn engine_builder_registers_reflect_schema_metadata() {
     let engine = Engine::builder()
-        .register_reflect_schema::<ReflectOnlyPlayer>()
+        .register_type_desc(ReflectOnlyPlayer::script_reflect_type_desc())
         .build()
         .expect("engine should build with reflect schema");
 
@@ -45,8 +45,8 @@ fn engine_builder_registers_reflect_schema_metadata() {
 #[test]
 fn engine_builder_registers_host_methods_from_metadata_trait() {
     let engine = Engine::builder()
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
-        .register_host_methods::<MetadataOnlyPlayerMethods>()
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_host_method_desc(metadata_only_player_method())
         .build()
         .expect("engine should build with host method metadata");
 

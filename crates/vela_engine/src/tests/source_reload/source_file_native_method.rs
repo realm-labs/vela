@@ -435,7 +435,7 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(player_key.clone())
                 .host_type(HostTypeId::new(1))
                 .method(MethodDesc::new(HostMethodId::new(9), "grant_exp")),
@@ -445,7 +445,7 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(TypeDesc::new(player_key).host_type(HostTypeId::new(1)))
+        .register_type_desc(TypeDesc::new(player_key).host_type(HostTypeId::new(1)))
         .build()
         .expect("new engine should build");
     let mut runtime =
@@ -490,7 +490,7 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
 fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point() {
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(type_with_reload_method(MethodDesc::new(
+        .register_type_desc(type_with_reload_method(MethodDesc::new(
             HostMethodId::new(9),
             "grant_exp",
         )))
@@ -499,7 +499,7 @@ fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point(
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(type_with_reload_method(MethodDesc::new(
+        .register_type_desc(type_with_reload_method(MethodDesc::new(
             HostMethodId::new(10),
             "grant_exp",
         )))
@@ -548,7 +548,7 @@ fn runtime_stages_source_file_method_stable_id_rename_until_safe_point() {
     let method = HostMethodId::new(9);
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(type_with_reload_method(MethodDesc::new(
+        .register_type_desc(type_with_reload_method(MethodDesc::new(
             method,
             "grant_exp",
         )))
@@ -565,7 +565,7 @@ fn main(player: Player) {
     );
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(type_with_reload_method(MethodDesc::new(
+        .register_type_desc(type_with_reload_method(MethodDesc::new(
             method,
             "award_exp",
         )))
@@ -637,7 +637,7 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(player_key.clone())
                 .host_type(HostTypeId::new(1))
                 .method(
@@ -650,7 +650,7 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(player_key)
                 .host_type(HostTypeId::new(1))
                 .method(
@@ -708,7 +708,7 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(player_key.clone())
                 .host_type(HostTypeId::new(1))
                 .method(
@@ -721,7 +721,7 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(player_key)
                 .host_type(HostTypeId::new(1))
                 .method(
@@ -777,7 +777,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(player_key.clone())
                 .host_type(HostTypeId::new(1))
                 .method(
@@ -790,7 +790,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(player_key)
                 .host_type(HostTypeId::new(1))
                 .method(
@@ -850,7 +850,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(player_key.clone())
                 .host_type(HostTypeId::new(1))
                 .method(MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("i64")),
@@ -860,7 +860,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(player_key)
                 .host_type(HostTypeId::new(1))
                 .method(MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("()")),

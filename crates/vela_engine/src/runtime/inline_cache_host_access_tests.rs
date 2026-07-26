@@ -17,7 +17,7 @@ use crate::runtime::{CallOptions, Runtime};
 #[test]
 fn host_access_inline_cache_records_resolved_target_guard() {
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "CachedHostPlayer"))
                 .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(FieldId::new(1), "level")),
@@ -103,7 +103,7 @@ fn read_level(player: CachedHostPlayer) {
 #[test]
 fn host_access_inline_cache_refreshes_on_schema_epoch_change() {
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "EpochHostPlayer"))
                 .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(FieldId::new(1), "level")),
@@ -190,7 +190,7 @@ fn read_level(player: EpochHostPlayer) {
 #[test]
 fn host_write_inline_cache_refreshes_on_schema_epoch_change() {
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "EpochWriteHostPlayer"))
                 .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(FieldId::new(1), "level").writable(true)),
@@ -285,7 +285,7 @@ fn write_level(player: EpochWriteHostPlayer, value: i64) {
 #[test]
 fn host_access_inline_cache_misses_wrong_operation_guard() {
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "GuardedHostPlayer"))
                 .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(FieldId::new(1), "level").writable(true)),
@@ -369,7 +369,7 @@ fn write_level(player: GuardedHostPlayer, value: i64) {
 #[test]
 fn host_access_inline_cache_misses_wrong_target_guards() {
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "TargetGuardHostPlayer"))
                 .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(FieldId::new(1), "level").writable(true)),
@@ -495,7 +495,7 @@ fn write_level(player: TargetGuardHostPlayer, value: i64) {
 #[test]
 fn host_mutate_inline_cache_refreshes_on_schema_epoch_change() {
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "EpochMutateHostPlayer"))
                 .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(FieldId::new(1), "level").writable(true)),
@@ -595,7 +595,7 @@ fn gain_level(player: EpochMutateHostPlayer, amount: i64) {
 fn host_call_inline_cache_refreshes_on_schema_epoch_change() {
     let method = HostMethodId::new(9);
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "EpochCallHostPlayer"))
                 .host_type(HostTypeId::new(1))
                 .method(MethodDesc::new(method, "award")),
@@ -701,12 +701,12 @@ fn host_remove_inline_cache_refreshes_on_schema_epoch_change() {
     let inventory = FieldId::new(8);
     let items = FieldId::new(9);
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "EpochRemoveHostPlayer"))
                 .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(inventory, "inventory").type_hint("EpochInventory")),
         )
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(2), "EpochInventory"))
                 .host_type(HostTypeId::new(2))
                 .field(FieldDesc::new(items, "items").writable(true)),

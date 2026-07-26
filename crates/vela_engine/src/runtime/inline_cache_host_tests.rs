@@ -15,7 +15,7 @@ use crate::runtime::{CallOptions, Runtime};
 fn accepted_hot_reload_clears_host_access_inline_caches() {
     let level = FieldId::new(1);
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "ReloadHostPlayer"))
                 .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(level, "level")),

@@ -57,7 +57,7 @@ fn engine_registers_native_method_source_span_metadata() {
     let source_span = Span::new(SourceId::new(8), 30, 42);
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_native_method_fn(
             NativeMethodDesc::new(owner, HostMethodId::new(51), "grant_exp")
                 .param("amount", TypeHint::i64())
@@ -87,7 +87,7 @@ fn engine_registers_native_method_source_span_metadata() {
 #[test]
 fn engine_installs_permissioned_reflection_natives() {
     let engine = Engine::builder()
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .reflection_permissions(
             ReflectPermissionSet::read_only().with(ReflectPermission::InspectHostPath),
         )
@@ -135,7 +135,7 @@ fn main(player) {
 #[test]
 fn engine_compiler_keeps_reflect_module_calls_off_host_method_lowering() {
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             player_type(TypeId::new(1), HostTypeId::new(1))
                 .method(MethodDesc::new(HostMethodId::new(9), "set")),
         )
@@ -180,7 +180,7 @@ fn main(player: Player) {
 #[test]
 fn public_reflection_metadata_lists_do_not_need_engine_permissions() {
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(FieldId::new(1), "secret_level")),
@@ -228,7 +228,7 @@ fn main() {
 #[test]
 fn engine_missing_permissions_hide_reflection_metadata_lists() {
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .host_type(HostTypeId::new(1))
                 .field(

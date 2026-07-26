@@ -551,8 +551,8 @@ mod tests {
     fn registered_rust_primitives_round_trip_through_vela_behavior() {
         let engine = Engine::builder()
             .with_standard_natives()
-            .register_rust_type::<i64>(standard_type_binding::<i64>())
-            .register_rust_type::<String>(standard_type_binding::<String>())
+            .register_type_binding::<i64>(standard_type_binding::<i64>())
+            .register_type_binding::<String>(standard_type_binding::<String>())
             .build()
             .expect("primitive bindings should seal beside standard types");
         let bindings = engine.type_bindings();
@@ -627,7 +627,7 @@ fn echo_label(value: String) -> String {
 
         let pair_name = pair.key.name.clone();
         let engine = Engine::builder()
-            .register_rust_type::<Pair>(standard_type_binding::<Pair>())
+            .register_type_binding::<Pair>(standard_type_binding::<Pair>())
             .build()
             .expect("tuple binding should seal");
         let facts = RegistryFacts::from_compile_view(engine.compiler_registry())
@@ -651,8 +651,8 @@ fn echo_label(value: String) -> String {
 
         let engine = Engine::builder()
             .with_standard_natives()
-            .register_rust_type::<Pair>(standard_type_binding::<Pair>())
-            .register_rust_type::<Reversed>(standard_type_binding::<Reversed>())
+            .register_type_binding::<Pair>(standard_type_binding::<Pair>())
+            .register_type_binding::<Reversed>(standard_type_binding::<Reversed>())
             .build()
             .expect("ordered tuple bindings should seal together");
         let bindings = engine.type_bindings();
@@ -838,7 +838,7 @@ fn reverse_and_increment(value: (i64, String)) -> (String, i64) {
         };
 
         let result = Engine::builder()
-            .register_rust_type::<Vec<i64>>(binding)
+            .register_type_binding::<Vec<i64>>(binding)
             .register_native_fn(contract.native_function_desc(), |_| Ok(OwnedValue::Unit))
             .build();
         let error = match result {
@@ -856,7 +856,7 @@ fn reverse_and_increment(value: (i64, String)) -> (String, i64) {
         type Scores = BTreeMap<String, i64>;
 
         let engine = Engine::builder()
-            .register_rust_type::<Scores>(standard_type_binding::<Scores>())
+            .register_type_binding::<Scores>(standard_type_binding::<Scores>())
             .build()
             .expect("map view capabilities should seal");
         let expected = CollectionViewCapabilities::mutable(
@@ -908,8 +908,8 @@ fn reverse_and_increment(value: (i64, String)) -> (String, i64) {
 
         let engine = Engine::builder()
             .with_standard_natives()
-            .register_rust_type::<MaybeScore>(standard_type_binding::<MaybeScore>())
-            .register_rust_type::<ScoreResult>(standard_type_binding::<ScoreResult>())
+            .register_type_binding::<MaybeScore>(standard_type_binding::<MaybeScore>())
+            .register_type_binding::<ScoreResult>(standard_type_binding::<ScoreResult>())
             .build()
             .expect("standard Option and Result bindings should seal together");
         let bindings = engine.type_bindings();
@@ -1024,8 +1024,8 @@ fn echo_result(value: Result<i64, String>) -> Result<i64, String> {
 
         let engine = Engine::builder()
             .with_standard_natives()
-            .register_rust_type::<OrderedScores>(standard_type_binding::<OrderedScores>())
-            .register_rust_type::<HashedScores>(standard_type_binding::<HashedScores>())
+            .register_type_binding::<OrderedScores>(standard_type_binding::<OrderedScores>())
+            .register_type_binding::<HashedScores>(standard_type_binding::<HashedScores>())
             .build()
             .expect("standard map bindings should seal together");
         let bindings = engine.type_bindings();
@@ -1114,10 +1114,10 @@ fn retained_total(scores: Map<String, i64>) -> i64 {
 
         let engine = Engine::builder()
             .with_standard_natives()
-            .register_rust_type::<Values>(standard_type_binding::<Values>())
-            .register_rust_type::<Bytes>(standard_type_binding::<Bytes>())
-            .register_rust_type::<Ordered>(standard_type_binding::<Ordered>())
-            .register_rust_type::<Hashed>(standard_type_binding::<Hashed>())
+            .register_type_binding::<Values>(standard_type_binding::<Values>())
+            .register_type_binding::<Bytes>(standard_type_binding::<Bytes>())
+            .register_type_binding::<Ordered>(standard_type_binding::<Ordered>())
+            .register_type_binding::<Hashed>(standard_type_binding::<Hashed>())
             .build()
             .expect("standard Vec and Set bindings should seal together");
         let bindings = engine.type_bindings();

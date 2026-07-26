@@ -6,27 +6,26 @@ use std::collections::BTreeMap;
 use std::error::Error;
 
 use vela_engine::prelude::*;
-use vela_macros::{ScriptHost, script_context_function, script_function, script_methods};
+use vela_macros::{ScriptHost, export};
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let engine = vela_register_context_native_function_grant_level(
-        vela_register_native_function_collection_bonus(vela_register_native_function_bonus_macro(
-            Engine::builder()
-                .capability(Capability::HostRead)
-                .capability(Capability::HostWrite)
-                .register_script_host::<Player>()
-                .register_typed_native_fn::<(i64, i64), _>(
-                    NativeFunctionDesc::new("game::bonus_manual", NativeFunctionId::new(10_001))
-                        .param("amount", TypeHint::i64())
-                        .param("multiplier", TypeHint::i64())
-                        .returns(TypeHint::i64())
-                        .effects(EffectSet::pure())
-                        .access(FunctionAccess::public().reflect_callable(true)),
-                    bonus_manual,
-                ),
-        )),
-    )
-    .build()?;
+    let engine = Engine::builder()
+        .capability(Capability::HostRead)
+        .capability(Capability::HostWrite)
+        .register_type::<Player>()
+        .register_exports(vela_export_bundle_bonus_macro())
+        .register_exports(vela_export_bundle_collection_bonus())
+        .register_exports(vela_export_bundle_grant_level())
+        .register_typed_native_fn::<(i64, i64), _>(
+            NativeFunctionDesc::new("game::bonus_manual", NativeFunctionId::new(10_001))
+                .param("amount", TypeHint::i64())
+                .param("multiplier", TypeHint::i64())
+                .returns(TypeHint::i64())
+                .effects(EffectSet::pure())
+                .access(FunctionAccess::public().reflect_callable(true)),
+            bonus_manual,
+        )
+        .build()?;
     let program = engine.compile_source(include_str!("main.vela"))?;
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
     let mut player = Player { level: 1 };
@@ -46,43 +45,28 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "examples::native_function::Player")]
+#[vela(path = "examples::native_function::Player")]
 struct Player {
-    #[script(get, set, hint = "i64")]
+    #[vela(get, set, hint = "i64")]
     level: i64,
 }
-
-#[script_methods]
-impl Player {}
 
 fn bonus_manual(amount: i64, multiplier: i64) -> i64 {
     amount * multiplier
 }
 
-#[script_function(name = "game::bonus_macro", effect = "pure", reflect = true)]
-fn bonus_macro(amount: i64, extra: i64) -> i64 {
+#[export(path = "game::bonus_macro")]
+pub fn bonus_macro(amount: i64, extra: i64) -> i64 {
     amount + extra
 }
 
-#[script_function(name = "game::collection_bonus", effect = "pure", reflect = true)]
-fn collection_bonus(scores: BTreeMap<String, i64>, tags: Vec<String>) -> i64 {
+#[export(path = "game::collection_bonus")]
+pub fn collection_bonus(scores: BTreeMap<String, i64>, tags: Vec<String>) -> i64 {
     scores.values().sum::<i64>() + i64::try_from(tags.len()).unwrap_or_default()
 }
 
-#[script_context_function(name = "game::grant_level", effect = "write_host", reflect = true)]
-fn grant_level(
-    ctx: &mut NativeCallContext<'_, '_>,
-    player: HostRef,
-    amount: i64,
-) -> vela_vm::error::VmResult<i64> {
-    let path = Player::vela_field_path_level(player);
-    ctx.add_path(
-        path.clone(),
-        HostValue::Scalar(vela_common::ScalarValue::I64(amount)),
-        None,
-    )?;
-    match ctx.read_path(&path, None)? {
-        HostValue::Scalar(vela_common::ScalarValue::I64(level)) => Ok(level),
-        _ => Ok(0),
-    }
+#[export(path = "game::grant_level")]
+pub fn grant_level(player: &mut Player, amount: i64) -> i64 {
+    player.level += amount;
+    player.level
 }

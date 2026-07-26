@@ -41,7 +41,7 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
             continue;
         }
 
-        if !attr.path().is_ident("script") {
+        if !attr.path().is_ident("vela") {
             continue;
         }
 
@@ -64,39 +64,36 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
             if path_name(&meta.path, "name") {
                 parsed.name = Some(value.parse::<LitStr>()?.value());
             } else if path_name(&meta.path, "path") {
-                parsed.path = Some(parse_qualified_name(
-                    value.parse::<LitStr>()?,
-                    "script path",
-                )?);
+                parsed.path = Some(parse_qualified_name(value.parse::<LitStr>()?, "vela path")?);
             } else if path_name(&meta.path, "alias") {
                 parsed.alias = Some(parse_qualified_name(
                     value.parse::<LitStr>()?,
-                    "script alias",
+                    "vela alias",
                 )?);
             } else if path_name(&meta.path, "module") {
                 parsed.module = Some(parse_qualified_name(
                     value.parse::<LitStr>()?,
-                    "script module",
+                    "vela module",
                 )?);
             } else if path_name(&meta.path, "docs") {
                 parsed.docs = Some(value.parse::<LitStr>()?.value());
             } else if path_name(&meta.path, "attr") {
                 parsed
                     .attrs
-                    .push(parse_key_value_attr(value.parse::<LitStr>()?, "script")?);
+                    .push(parse_key_value_attr(value.parse::<LitStr>()?, "vela")?);
             } else if path_name(&meta.path, "implements") {
                 parsed.traits.push(parse_qualified_name(
                     value.parse::<LitStr>()?,
-                    "script implemented trait",
+                    "vela implemented trait",
                 )?);
             } else if path_name(&meta.path, "hint") || path_name(&meta.path, "type") {
-                parsed.type_hint = Some(parse_type_hint(value.parse::<LitStr>()?, "script")?);
+                parsed.type_hint = Some(parse_type_hint(value.parse::<LitStr>()?, "vela")?);
             } else if path_name(&meta.path, "permission") {
                 parsed
                     .permissions
-                    .push(parse_permission(value.parse::<LitStr>()?, "script")?);
+                    .push(parse_permission(value.parse::<LitStr>()?, "vela")?);
             } else {
-                return Err(meta.error("unsupported script attribute"));
+                return Err(meta.error("unsupported vela attribute"));
             }
             Ok(())
         })?;
@@ -106,7 +103,7 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
     parsed.permissions.dedup();
     parsed.traits.sort();
     parsed.traits.dedup();
-    reject_duplicate_attr_keys(&parsed.attrs, "script")?;
+    reject_duplicate_attr_keys(&parsed.attrs, "vela")?;
     if parsed.docs.is_none() && !doc_lines.is_empty() {
         parsed.docs = Some(doc_lines.join("\n"));
     }

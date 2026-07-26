@@ -1,4 +1,4 @@
-error: #[vela::export] requires a public Rust function
+error: #[vela_macros::export] requires a public Rust function
  --> tests/ui/interop/fail/non_public.rs:3:1
   |
 3 | #[export(path = "game::hidden")]

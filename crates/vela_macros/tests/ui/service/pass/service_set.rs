@@ -17,12 +17,12 @@ pub struct RequestContext;
 
 #[service_set(context = RequestContext)]
 pub struct GameServices {
-    #[vela::default(RustRewardService)]
+    #[vela(default = RustRewardService)]
     pub reward: dyn RewardService,
 }
 
 fn main() {
-    let engine = GameServices::register_types(
+    let engine = GameServices::register(
         vela_engine::engine::Engine::builder(),
     )
     .build()

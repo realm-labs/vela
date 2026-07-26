@@ -484,18 +484,18 @@ instrumentation.
 
 ```rust
 #[derive(ScriptHost, ScriptReflect)]
-#[script(path = "billing::account::Account")]
+#[vela(path = "billing::account::Account")]
 pub struct Account {
-    #[script(get, set)]
+    #[vela(get, set)]
     pub balance: i64,
 
-    #[script(get, set)]
+    #[vela(get, set)]
     pub status: String,
 
-    #[script(get, set)]
+    #[vela(get, set)]
     pub owner: String,
 
-    #[script(get)]
+    #[vela(get)]
     pub ledger: Ledger,
 }
 ```
@@ -507,9 +507,9 @@ runtime handles, but host authors do not choose them in derive/function macros.
 ### Method Exposure
 
 ```rust
-#[script_methods]
+#[vela_macros::methods]
 impl Account {
-    #[script_method(effect = "write_host")]
+    #[vela(effect = "write_host")]
     pub fn credit(
         ctx: &mut NativeCallContext,
         account: HostRef<Account>,
@@ -717,22 +717,22 @@ For structural DTOs, `#[derive(Value)]` generates the exact `ScriptStruct` or
 `IntoScriptArg`/`FromScriptArg` lowering, and `vela_type_binding()`. Named Rust
 struct fields and enum variants participate by default; enums support unit and
 named-field variants, while tuple variants are rejected until they have one
-explicit structural ABI. `#[script(name = "...")]` changes a public name and
+explicit structural ABI. `#[vela(name = "...")]` changes a public name and
 `alias` preserves stable identity. Fields and variants cannot be skipped
 because decoding and encoding must cover the exact Rust value; hosts with
 partial/private representations use a manual `ValueCodec`. The generated
 binding still enters the ordinary `TypeBinding` registry and does not create a
 macro-specific registry.
 
-`RustValueType` is the generated registration-closure contract for owned
-values. `EngineBuilder::register_rust_value_closure::<T>()` recursively installs
+`VelaType` is the single public registration contract for both owned Values and
+Rust-owned Hosts. `EngineBuilder::register_type::<T>()` recursively installs
 the exact concrete standard containers and derived Value field/variant types
 reachable from `T`, then installs `T` itself. Shared dependencies are
 idempotent only when their Rust `TypeId`, stable binding key, and complete
 pending ABI fingerprint agree; a different manual binding for the same Rust
 type remains a sealing error. This is Rust-side monomorphized registration of
 concrete ABI entries, not Vela
-generics. Manual `register_rust_type::<T>(binding)` remains the escape hatch for
+generics. Manual `register_type_binding::<T>(binding)` remains the escape hatch for
 external types and custom codecs; generated service bundles will combine those
 explicit leaves with the same recursive owned-Value closure.
 
@@ -742,23 +742,18 @@ native result is materialized against that table before script execution, so
 record shape checks and enum `match` use the same generation-local
 `TypeId`/`VariantId` identity as script constructors.
 
-For host-owned objects, `#[derive(ScriptHost)]` emits
-`vela_type_binding()` through `ScriptHostSchema::script_host_binding()`. The
-binding carries the generated Host descriptor and Host storage/capabilities
-into the same `register_rust_type::<T>` path as Value types; the object itself
-still enters execution only through a call-scoped or Runtime-owned `HostRef`.
-Generated method thunks remain separate macro output until the service bundle
-composition slice folds them into the same registration transaction.
+For host-owned objects, `#[derive(ScriptHost)]` implements `VelaType` and the
+Host object/field-access contracts. Registering the type therefore needs no
+empty method impl or Host-specific builder method. The object itself still
+enters execution only through a call-scoped or Runtime-owned `HostRef`.
 
-For macro-exposed functions, `#[script_function]`,
-`#[script_context_function]`, and `#[script_host_function]` derive the native
-function ID from the public `::` qualified function name and optional `alias`.
-They also expose descriptor access metadata such as `public`,
-`reflect_visible`, and `reflect` / `reflect_callable`, so hosts can publish
-private reflection-visible admin/debug functions without making them public
-script APIs or reflective call targets.
-Low-level descriptor constructors remain available for engine internals and
-tests that need explicit IDs:
+Rust callables use `#[vela_macros::export]`, `#[vela_macros::export_module]`,
+or `#[vela_macros::methods]`. These macros produce `ExportBundle` values;
+`EngineBuilder::register_exports` is the only ordinary callable-registration
+entry. Low-level descriptor constructors remain available only as framework
+escape hatches.
+Engine internals and tests that need explicit IDs may still use those
+low-level constructors:
 
 ```rust
 let engine = Engine::builder()
@@ -770,9 +765,9 @@ let engine = Engine::builder()
 ```
 
 The unified Rust/Vela interop hard switch replaces those shape-specific
-authoring macros with item-level `#[vela::export]`, explicit
-`#[vela::export_module]` groups for many free functions, and
-`#[vela::methods]` groups for inherent methods. An export module treats its
+authoring macros with item-level `#[vela_macros::export]`, explicit
+`#[vela_macros::export_module]` groups for many free functions, and
+`#[vela_macros::methods]` groups for inherent methods. An export module treats its
 supported immediate public functions as the approved surface, derives paths
 from one configured prefix, and generates one deterministic `vela_exports()`
 bundle. Engine registers that value once through `register_exports`; there is
@@ -782,15 +777,15 @@ error rather than a silently omitted export; private helpers remain Rust-only.
 
 Signature inference supplies ordinary `pure`/`host_read`/`host_write` cases.
 Only exceptional effects use an additive identifier list such as
-`#[vela::export(effects(random, event_emit))]`. Module-wide default effects are
+`#[vela_macros::export(effects(random, event_emit))]`. Module-wide default effects are
 not supported because they silently overgrant unrelated functions. The final
 normalized set, rather than annotation spelling, is callable ABI.
 The unified export path does not reuse the older shape-specific macro fallback
 that interprets every omitted effect as `pure`; omission means use the inferred
 signature base.
 
-An inherent `#[vela::methods]` item may attach audited, non-ABI metadata with
-`#[script_method(attr = "key=value")]`. The generated `CallableContract` and
+An inherent `#[vela_macros::methods]` item may attach audited, non-ABI metadata with
+`#[vela(attr = "key=value")]`. The generated `CallableContract` and
 sealed `NativeMethodDesc` retain the same entry; duplicate keys are rejected.
 These attributes support inventory and integration discovery only and never
 grant effects, capabilities, or reflection access.
@@ -875,35 +870,16 @@ path.
 
 ### Method Registration
 
-Host type methods are registered through `#[script_methods]` and become
-`MethodDesc { kind: MethodKind::HostNative(...) }`. Method calls receive the
-receiver as a `HostTargetInstance`, `PathProxy`, or host ref, not as `&mut T`
-in the VM.
+Host type methods are declared through `#[vela_macros::methods]`, collected in
+`Type::vela_inherent_exports()`, and installed with `register_exports`.
+Authored methods use ordinary `&self` and `&mut self`; generated adapters
+perform HostRef validation and lease acquisition before invoking them.
 
 ```rust
-#[script_methods]
+#[vela_macros::methods]
 impl Ledger {
-    #[script_method(
-        name = "add",
-        effect = "write_host",
-        docs = "Adds an entry to this ledger."
-    )]
-    pub fn add(
-        ctx: &mut NativeCallContext,
-        ledger: HostRef<Ledger>,
-        code: String,
-        amount: i64,
-    ) -> HostResult<()> {
-        ctx.call_method(
-            HostPath::new(ledger),
-            HostMethodId(1),
-            vec![
-                HostValue::String(code),
-                HostValue::Scalar(ScalarValue::I64(amount)),
-            ],
-            None,
-        )?;
-        Ok(())
+    pub fn add(&mut self, code: String, amount: i64) {
+        self.entries.push((code, amount));
     }
 }
 ```

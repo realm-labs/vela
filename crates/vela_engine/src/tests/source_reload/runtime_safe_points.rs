@@ -171,7 +171,7 @@ fn engine_exposes_registry_hot_reload_abi() {
     let method = HostMethodId::new(9);
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(player_key.clone())
                 .schema_hash(SchemaHash::new(0xfeed))
                 .host_type(HostTypeId::new(1))
@@ -1260,7 +1260,7 @@ fn explicit_event_end_reload_check_reports_staged_rejection_after_call() {
 fn runtime_checks_reload_at_explicit_safe_point() {
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
         .expect("engine should build");
     let initial = engine
@@ -1335,7 +1335,7 @@ fn main(player: Player) {
 fn runtime_write_error_does_not_consume_pending_reload() {
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
         .expect("engine should build");
     let initial = engine

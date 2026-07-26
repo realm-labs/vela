@@ -8,12 +8,22 @@ use crate::builder::EngineBuilder;
 use crate::interop::{VelaValueBoundary, VelaValueKeyBoundary};
 use crate::standard::{StandardTypeBinding, standard_type_binding};
 
+/// Registers one complete Rust type surface with an [`EngineBuilder`].
+///
+/// This is the single user-facing type-registration contract. Implementations
+/// install the full transitive dependency closure for structural Values or the
+/// exact Host binding for Rust-owned objects.
+pub trait VelaType: Sized + 'static {
+    fn register(builder: EngineBuilder) -> EngineBuilder;
+}
+
 /// Supplies one complete, concrete owned-Value registration closure.
 ///
 /// Implementations register dependencies before the root. Vela does not gain
 /// generic types: `Vec<Item>` and `Vec<Other>` still become separate concrete
 /// bindings. `#[derive(Value)]` implements this trait for user DTOs, while this
 /// module implements it for supported standard Rust values.
+#[doc(hidden)]
 pub trait RustValueType:
     VelaValueBoundary + IntoScriptArg + FromScriptArg + Sized + 'static
 {
@@ -25,7 +35,7 @@ fn register_standard<T>(builder: EngineBuilder) -> EngineBuilder
 where
     T: RustValueType + StandardTypeBinding,
 {
-    builder.register_generated_rust_value::<T>(standard_type_binding::<T>())
+    builder.register_generated_type_binding::<T>(standard_type_binding::<T>())
 }
 
 macro_rules! leaf_value_types {
@@ -34,6 +44,12 @@ macro_rules! leaf_value_types {
             impl RustValueType for $ty {
                 fn register_value_type_closure(builder: EngineBuilder) -> EngineBuilder {
                     register_standard::<Self>(builder)
+                }
+            }
+
+            impl VelaType for $ty {
+                fn register(builder: EngineBuilder) -> EngineBuilder {
+                    <Self as RustValueType>::register_value_type_closure(builder)
                 }
             }
         )*
@@ -67,6 +83,15 @@ where
     }
 }
 
+impl<T> VelaType for Vec<T>
+where
+    T: RustValueType,
+{
+    fn register(builder: EngineBuilder) -> EngineBuilder {
+        <Self as RustValueType>::register_value_type_closure(builder)
+    }
+}
+
 impl<T, const N: usize> RustValueType for [T; N]
 where
     T: RustValueType,
@@ -77,6 +102,15 @@ where
     }
 }
 
+impl<T, const N: usize> VelaType for [T; N]
+where
+    T: RustValueType,
+{
+    fn register(builder: EngineBuilder) -> EngineBuilder {
+        <Self as RustValueType>::register_value_type_closure(builder)
+    }
+}
+
 impl<T> RustValueType for Option<T>
 where
     T: RustValueType,
@@ -84,6 +118,15 @@ where
     fn register_value_type_closure(builder: EngineBuilder) -> EngineBuilder {
         let builder = T::register_value_type_closure(builder);
         register_standard::<Self>(builder)
+    }
+}
+
+impl<T> VelaType for Option<T>
+where
+    T: RustValueType,
+{
+    fn register(builder: EngineBuilder) -> EngineBuilder {
+        <Self as RustValueType>::register_value_type_closure(builder)
     }
 }
 
@@ -99,6 +142,16 @@ where
     }
 }
 
+impl<T, E> VelaType for Result<T, E>
+where
+    T: RustValueType,
+    E: RustValueType,
+{
+    fn register(builder: EngineBuilder) -> EngineBuilder {
+        <Self as RustValueType>::register_value_type_closure(builder)
+    }
+}
+
 impl<A, B> RustValueType for (A, B)
 where
     A: RustValueType,
@@ -108,6 +161,16 @@ where
         let builder = A::register_value_type_closure(builder);
         let builder = B::register_value_type_closure(builder);
         register_standard::<Self>(builder)
+    }
+}
+
+impl<A, B> VelaType for (A, B)
+where
+    A: RustValueType,
+    B: RustValueType,
+{
+    fn register(builder: EngineBuilder) -> EngineBuilder {
+        <Self as RustValueType>::register_value_type_closure(builder)
     }
 }
 
@@ -122,6 +185,17 @@ where
         let builder = B::register_value_type_closure(builder);
         let builder = C::register_value_type_closure(builder);
         register_standard::<Self>(builder)
+    }
+}
+
+impl<A, B, C> VelaType for (A, B, C)
+where
+    A: RustValueType,
+    B: RustValueType,
+    C: RustValueType,
+{
+    fn register(builder: EngineBuilder) -> EngineBuilder {
+        <Self as RustValueType>::register_value_type_closure(builder)
     }
 }
 
@@ -141,6 +215,18 @@ where
     }
 }
 
+impl<A, B, C, D> VelaType for (A, B, C, D)
+where
+    A: RustValueType,
+    B: RustValueType,
+    C: RustValueType,
+    D: RustValueType,
+{
+    fn register(builder: EngineBuilder) -> EngineBuilder {
+        <Self as RustValueType>::register_value_type_closure(builder)
+    }
+}
+
 impl<K, V> RustValueType for BTreeMap<K, V>
 where
     K: RustValueType + VelaValueKeyBoundary + Ord,
@@ -150,6 +236,16 @@ where
         let builder = K::register_value_type_closure(builder);
         let builder = V::register_value_type_closure(builder);
         register_standard::<Self>(builder)
+    }
+}
+
+impl<K, V> VelaType for BTreeMap<K, V>
+where
+    K: RustValueType + VelaValueKeyBoundary + Ord,
+    V: RustValueType,
+{
+    fn register(builder: EngineBuilder) -> EngineBuilder {
+        <Self as RustValueType>::register_value_type_closure(builder)
     }
 }
 
@@ -165,6 +261,16 @@ where
     }
 }
 
+impl<K, V> VelaType for HashMap<K, V>
+where
+    K: RustValueType + VelaValueKeyBoundary + Eq + Hash,
+    V: RustValueType,
+{
+    fn register(builder: EngineBuilder) -> EngineBuilder {
+        <Self as RustValueType>::register_value_type_closure(builder)
+    }
+}
+
 impl<T> RustValueType for BTreeSet<T>
 where
     T: RustValueType + VelaValueKeyBoundary + Ord,
@@ -175,6 +281,15 @@ where
     }
 }
 
+impl<T> VelaType for BTreeSet<T>
+where
+    T: RustValueType + VelaValueKeyBoundary + Ord,
+{
+    fn register(builder: EngineBuilder) -> EngineBuilder {
+        <Self as RustValueType>::register_value_type_closure(builder)
+    }
+}
+
 impl<T> RustValueType for HashSet<T>
 where
     T: RustValueType + VelaValueKeyBoundary + Eq + Hash + Ord,
@@ -182,6 +297,15 @@ where
     fn register_value_type_closure(builder: EngineBuilder) -> EngineBuilder {
         let builder = T::register_value_type_closure(builder);
         register_standard::<Self>(builder)
+    }
+}
+
+impl<T> VelaType for HashSet<T>
+where
+    T: RustValueType + VelaValueKeyBoundary + Eq + Hash + Ord,
+{
+    fn register(builder: EngineBuilder) -> EngineBuilder {
+        <Self as RustValueType>::register_value_type_closure(builder)
     }
 }
 
@@ -201,8 +325,8 @@ mod tests {
     #[test]
     fn standard_value_closure_registers_nested_types_once() {
         let engine = Engine::builder()
-            .register_rust_type::<i64>(standard_type_binding::<i64>())
-            .register_rust_value_closure::<NestedValue>()
+            .register_type_binding::<i64>(standard_type_binding::<i64>())
+            .register_type::<NestedValue>()
             .build()
             .expect("exact prior registrations and shared dependencies should deduplicate");
         let bindings = engine.type_bindings();
@@ -233,8 +357,8 @@ mod tests {
                 .kind(TypeKind::I64),
         );
         let result = Engine::builder()
-            .register_rust_type::<i64>(conflicting)
-            .register_rust_value_closure::<i64>()
+            .register_type_binding::<i64>(conflicting)
+            .register_type::<i64>()
             .build();
 
         assert!(matches!(
@@ -249,8 +373,8 @@ mod tests {
         let conflicting =
             standard_type_binding::<i64>().receiver_capabilities(ReceiverCapabilities::OWNED);
         let result = Engine::builder()
-            .register_rust_type::<i64>(conflicting)
-            .register_rust_value_closure::<i64>()
+            .register_type_binding::<i64>(conflicting)
+            .register_type::<i64>()
             .build();
 
         assert!(matches!(

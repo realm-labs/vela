@@ -21,6 +21,13 @@ expansion. The final P7 repository gate is recorded in the
 P0-P7 are accepted. Service patchability is no longer the active
 implementation checkpoint.
 
+Rust embedding now has one public registration vocabulary: every derived or
+generated Value/Host uses `register_type::<T>()`, callable bundles use
+`register_exports(...)`, and generated service sets use
+`ServiceSet::register(...)`. `ScriptHost` emits its Host object contract
+directly. The former Host/Value-specific builder aliases and shape-specific
+`script_*` callable macros have been removed without compatibility shims.
+
 Phase status:
 
 - S0 accepted: the migration inventory, executable fixture, and boundary
@@ -82,7 +89,7 @@ Phase status:
   all-feature workspace and example tests, documentation, benchmark builds,
   fuzz binaries, VS Code packaging, website checks/build, architecture size
   policy, and generated-path structural audits all pass.
-- Cross-cutting host-method checkpoint accepted: grouped `#[vela::methods]`
+- Cross-cutting host-method checkpoint accepted: grouped `#[vela_macros::methods]`
   exports accept explicit additive `effects(...)`, so read-only receivers may
   truthfully declare event, time, random, I/O, or reflection effects without
   falling back to the older, less complete method adapter path.

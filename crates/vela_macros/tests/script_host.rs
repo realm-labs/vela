@@ -13,63 +13,63 @@ use vela_reflect::registry::{FieldDesc, TraitDesc, TypeDesc, TypeKey, TypeKind, 
 
 #[allow(dead_code)]
 #[derive(ScriptHost, ScriptReflect)]
-#[script(
+#[vela(
     path = "game::player::Player",
     docs = "Player host schema.",
     attr = "domain=gameplay",
     implements = "Damageable"
 )]
 struct Player {
-    #[script(get, set, hint = "u32", docs = "Current level.", attr = "unit=level")]
+    #[vela(get, set, hint = "u32", docs = "Current level.", attr = "unit=level")]
     level: u32,
-    #[script(get, name = "display_name", permission = "player.profile")]
+    #[vela(get, name = "display_name", permission = "player.profile")]
     name: String,
-    #[script(skip)]
+    #[vela(skip)]
     internal_revision: u64,
 }
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(path = "game::reward::RewardConfig")]
+#[vela(path = "game::reward::RewardConfig")]
 struct RewardConfigA {
-    #[script(get, hint = "String")]
+    #[vela(get, hint = "String")]
     item_id: String,
-    #[script(get, hint = "i64")]
+    #[vela(get, hint = "i64")]
     count: i64,
 }
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(module = "game::reward", name = "RewardConfig")]
+#[vela(module = "game::reward", name = "RewardConfig")]
 struct RewardConfigB {
-    #[script(get, hint = "i64")]
+    #[vela(get, hint = "i64")]
     count: i64,
-    #[script(get, hint = "String")]
+    #[vela(get, hint = "String")]
     item_id: String,
 }
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(
+#[vela(
     path = "game::reward::RewardConfigV2",
     alias = "game::reward::RewardConfig"
 )]
 struct RewardConfigRenamed {
-    #[script(get, hint = "String", alias = "item_id")]
+    #[vela(get, hint = "String", alias = "item_id")]
     item_key: String,
-    #[script(get, hint = "i64")]
+    #[vela(get, hint = "i64")]
     count: i64,
 }
 
 #[allow(dead_code)]
 #[derive(ScriptReflect)]
-#[script(path = "game::quest::HostQuestProgress")]
+#[vela(path = "game::quest::HostQuestProgress")]
 enum HostQuestProgress {
-    #[script(docs = "Active quest progress.")]
+    #[vela(docs = "Active quest progress.")]
     Active {
-        #[script(get, set, hint = "i64")]
+        #[vela(get, set, hint = "i64")]
         quest_count: i64,
-        #[script(get, set, hint = "bool")]
+        #[vela(get, set, hint = "bool")]
         quest_done: bool,
     },
     Finished,
@@ -77,47 +77,47 @@ enum HostQuestProgress {
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(path = "game::monster::Monster", docs = "Monster host schema.")]
+#[vela(path = "game::monster::Monster", docs = "Monster host schema.")]
 struct Monster {
-    #[script(get, hint = "i64")]
+    #[vela(get, hint = "i64")]
     exp: i64,
-    #[script(get, hint = "String")]
+    #[vela(get, hint = "String")]
     species: String,
 }
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(path = "game::inventory::Inventory", docs = "Inventory host schema.")]
+#[vela(path = "game::inventory::Inventory", docs = "Inventory host schema.")]
 struct Inventory {
-    #[script(get, set, hint = "i64")]
+    #[vela(get, set, hint = "i64")]
     gold: i64,
-    #[script(get, hint = "u32")]
+    #[vela(get, hint = "u32")]
     capacity: u32,
 }
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(path = "game::config::Config", docs = "Config host schema.")]
+#[vela(path = "game::config::Config", docs = "Config host schema.")]
 struct GameConfig {
-    #[script(get, hint = "i64")]
+    #[vela(get, hint = "i64")]
     exp_to_next_level: i64,
-    #[script(get, hint = "u32")]
+    #[vela(get, hint = "u32")]
     max_inventory_slots: u32,
 }
 
 #[allow(dead_code)]
 #[derive(ScriptHost)]
-#[script(path = "game::containers::ContainerHints")]
+#[vela(path = "game::containers::ContainerHints")]
 struct ContainerHints {
-    #[script(get)]
+    #[vela(get)]
     rewards: Vec<i64>,
-    #[script(get)]
+    #[vela(get)]
     bytes: Vec<u8>,
-    #[script(get)]
+    #[vela(get)]
     tags: BTreeSet<String>,
-    #[script(get)]
+    #[vela(get)]
     scores: BTreeMap<String, i64>,
-    #[script(get, hint = "Array<i64>")]
+    #[vela(get, hint = "Array<i64>")]
     explicit_rewards: Vec<i64>,
 }
 
@@ -189,7 +189,7 @@ fn script_host_derive_generates_type_metadata() {
 #[test]
 fn script_host_derive_generates_unified_type_binding() {
     let engine = vela_engine::engine::Engine::builder()
-        .register_rust_type::<Player>(Player::vela_type_binding())
+        .register_type::<Player>()
         .build()
         .expect("derived host TypeBinding should seal");
     let type_bindings = engine.type_bindings();
@@ -274,7 +274,7 @@ fn script_reflect_derive_generates_enum_variant_metadata() {
 #[test]
 fn script_reflect_enum_schema_feeds_engine_registration_api() {
     let engine = vela_engine::engine::Engine::builder()
-        .register_reflect_schema::<HostQuestProgress>()
+        .register_type_desc(HostQuestProgress::vela_reflect_type_desc())
         .build()
         .expect("engine should build from reflected enum schema");
 
@@ -394,7 +394,7 @@ fn script_reflect_derive_generates_matching_metadata() {
 #[test]
 fn script_reflect_derive_feeds_engine_registration_api() {
     let engine = vela_engine::engine::Engine::builder()
-        .register_reflect_schema::<Player>()
+        .register_type_desc(Player::vela_reflect_type_desc())
         .build()
         .expect("engine should build from reflected schema");
 
@@ -413,11 +413,11 @@ fn script_reflect_derive_feeds_engine_registration_api() {
 #[test]
 fn script_host_and_reflect_derive_register_matching_engine_schemas() {
     let host_engine = vela_engine::engine::Engine::builder()
-        .register_host_type::<Player>()
+        .register_type::<Player>()
         .build()
         .expect("engine should build from host schema");
     let reflect_engine = vela_engine::engine::Engine::builder()
-        .register_reflect_schema::<Player>()
+        .register_type_desc(Player::vela_reflect_type_desc())
         .build()
         .expect("engine should build from reflected schema");
 
@@ -438,10 +438,10 @@ fn script_host_and_reflect_derive_register_matching_engine_schemas() {
 #[test]
 fn script_host_sample_game_schemas_register_with_engine_builder() {
     let engine = vela_engine::engine::Engine::builder()
-        .register_host_type::<Player>()
-        .register_host_type::<Monster>()
-        .register_host_type::<Inventory>()
-        .register_host_type::<GameConfig>()
+        .register_type::<Player>()
+        .register_type::<Monster>()
+        .register_type::<Inventory>()
+        .register_type::<GameConfig>()
         .build()
         .expect("engine should build from sample game host schemas");
     let registry = engine.registry();

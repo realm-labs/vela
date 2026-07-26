@@ -201,7 +201,16 @@ fn expand_struct(
                 builder: ::vela_engine::builder::EngineBuilder,
             ) -> ::vela_engine::builder::EngineBuilder {
                 #(#dependency_registrations)*
-                builder.register_generated_rust_value::<Self>(Self::vela_type_binding())
+                builder.register_generated_type_binding::<Self>(Self::vela_type_binding())
+            }
+        }
+
+        impl ::vela_engine::type_registration::VelaType for #ident {
+            fn register(
+                builder: ::vela_engine::builder::EngineBuilder,
+            ) -> ::vela_engine::builder::EngineBuilder {
+                <Self as ::vela_engine::type_registration::RustValueType>::
+                    register_value_type_closure(builder)
             }
         }
 
@@ -470,7 +479,16 @@ fn expand_enum(
                 builder: ::vela_engine::builder::EngineBuilder,
             ) -> ::vela_engine::builder::EngineBuilder {
                 #(#dependency_registrations)*
-                builder.register_generated_rust_value::<Self>(Self::vela_type_binding())
+                builder.register_generated_type_binding::<Self>(Self::vela_type_binding())
+            }
+        }
+
+        impl ::vela_engine::type_registration::VelaType for #ident {
+            fn register(
+                builder: ::vela_engine::builder::EngineBuilder,
+            ) -> ::vela_engine::builder::EngineBuilder {
+                <Self as ::vela_engine::type_registration::RustValueType>::
+                    register_value_type_closure(builder)
             }
         }
 
@@ -816,10 +834,10 @@ mod tests {
     #[test]
     fn rejects_skipped_fields_that_cannot_be_reconstructed() {
         let error = expand_result(quote! {
-            #[script(path = "host::PartialValue")]
+            #[vela(path = "host::PartialValue")]
             struct PartialValue {
                 visible: i64,
-                #[script(skip)]
+                #[vela(skip)]
                 hidden: i64,
             }
         })
@@ -831,7 +849,7 @@ mod tests {
     #[test]
     fn rejects_generic_structs_instead_of_generating_script_generics() {
         let error = expand_result(quote! {
-            #[script(path = "host::Envelope")]
+            #[vela(path = "host::Envelope")]
             struct Envelope<T> {
                 value: T,
             }
@@ -844,10 +862,10 @@ mod tests {
     #[test]
     fn rejects_skipped_variants_that_cannot_be_encoded() {
         let error = expand_result(quote! {
-            #[script(path = "host::State")]
+            #[vela(path = "host::State")]
             enum State {
                 Ready,
-                #[script(skip)]
+                #[vela(skip)]
                 Hidden,
             }
         })
@@ -859,7 +877,7 @@ mod tests {
     #[test]
     fn rejects_tuple_variants_without_a_named_structural_abi() {
         let error = expand_result(quote! {
-            #[script(path = "host::State")]
+            #[vela(path = "host::State")]
             enum State {
                 Ready(i64),
             }

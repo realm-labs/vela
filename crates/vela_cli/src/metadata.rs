@@ -19,14 +19,11 @@ mod tests {
     use super::schema_json;
 
     #[derive(ScriptHost)]
-    #[script(path = "cli_test::Observed")]
+    #[vela(path = "cli_test::Observed")]
     pub struct Observed {
-        #[script(get)]
+        #[vela(get)]
         value: i64,
     }
-
-    #[vela_macros::script_methods]
-    impl Observed {}
 
     #[service(path = "cli_test::handler")]
     pub trait HandlerService: Send + Sync {
@@ -53,7 +50,7 @@ mod tests {
 
     #[service_set(context = ())]
     pub struct CliServices {
-        #[vela::default(RustHandlerService)]
+        #[vela(default = RustHandlerService)]
         pub handler: dyn HandlerService,
     }
 
@@ -69,7 +66,7 @@ mod tests {
         let constructor = NativeFunctionDesc::new("Observed::new", FunctionId::new(0xdead))
             .returns(TypeHint::Host(Observed::vela_host_type_desc().key))
             .effects(EffectSet::pure());
-        let engine = CliServices::register_types(Engine::builder().register_rust_type::<Observed>(
+        let engine = CliServices::register(Engine::builder().register_type_binding::<Observed>(
             Observed::vela_type_binding().host_constructor_fn(
                 HostConstructionLifetime::CallScoped,
                 constructor,

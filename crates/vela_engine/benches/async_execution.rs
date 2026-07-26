@@ -10,7 +10,7 @@ use vela_def::FunctionId;
 use vela_engine::engine::Engine;
 use vela_engine::native::{FunctionAccess, NativeFunctionDesc, TypeHint};
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
-use vela_macros::{ScriptHost, script_methods};
+use vela_macros::{ScriptHost, methods};
 use vela_vm::owned_value::OwnedValue;
 
 #[path = "async_execution/provider.rs"]
@@ -64,7 +64,9 @@ fn throughput(iterations: usize) -> Result<(), Box<dyn Error>> {
          fn main() -> i64 { return countdown(10_000); }",
     )?;
     let method_engine = Engine::builder()
-        .register_script_host::<Counter>()
+        .register_type::<Counter>()
+        .register_exports(Counter::vela_inherent_exports())
+        .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
         .build()?;
     let mut method = runtime(
@@ -314,21 +316,19 @@ pub(crate) fn poll_to_completion<F: Future>(future: F) -> F::Output {
 }
 
 #[derive(ScriptHost)]
-#[script(path = "bench::Counter")]
+#[vela(path = "bench::Counter")]
 struct Counter {
-    #[script(get)]
+    #[vela(get)]
     value: i64,
 }
 
-#[script_methods]
+#[methods]
 impl Counter {
-    #[script_method()]
-    async fn read(&self) -> i64 {
+    pub async fn read(&self) -> i64 {
         self.value
     }
 
-    #[script_method(effect = "write_host")]
-    async fn increment(&mut self) -> i64 {
+    pub async fn increment(&mut self) -> i64 {
         self.value += 1;
         self.value
     }

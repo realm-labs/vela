@@ -1,4 +1,4 @@
-error: #[vela::service] traits must require Send + Sync
+error: #[vela_macros::service] traits must require Send + Sync
  --> tests/ui/service/fail/missing_send_sync.rs:3:1
   |
 3 | #[service(path = "game::reward")]

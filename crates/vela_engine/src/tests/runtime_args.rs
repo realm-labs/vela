@@ -516,7 +516,7 @@ fn direct_target_key<'a>(
 #[test]
 fn runtime_call_args_bind_named_values_by_function_params() {
     let engine = Engine::builder()
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
         .expect("engine should build");
     let program = engine
@@ -692,7 +692,7 @@ fn runtime_call_args_reject_mixed_modes() {
 #[test]
 fn runtime_call_args_host_mut_writes_through_to_rust_object() {
     let engine = Engine::builder()
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
         .expect("engine should build");
     let program = engine
@@ -728,7 +728,7 @@ fn main(player: Player, amount) {
 #[test]
 fn runtime_call_args_host_mut_writes_string_key_map_path_to_rust_object() {
     let engine = Engine::builder()
-        .register_type(direct_player_type())
+        .register_type_desc(direct_player_type())
         .build()
         .expect("engine should build");
     let program = engine
@@ -766,7 +766,7 @@ fn main(player: Player, amount) {
 #[test]
 fn runtime_call_args_host_mut_dispatches_root_and_child_host_methods() {
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(FieldId::new(1), "level").writable(true))
@@ -780,7 +780,7 @@ fn runtime_call_args_host_mut_dispatches_root_and_child_host_methods() {
                         .param(MethodParamDesc::new("amount").type_hint("i64")),
                 ),
         )
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(2), "Inventory"))
                 .host_type(HostTypeId::new(2))
                 .index_capability(
@@ -832,7 +832,7 @@ fn main(player: Player) {
 #[test]
 fn runtime_call_returns_runtime_value() {
     let engine = Engine::builder()
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
         .expect("engine should build");
     let program = engine
@@ -1083,7 +1083,7 @@ fn make_reward(gold) {
 #[test]
 fn runtime_call_args_safe_point_preserves_direct_host_bindings() {
     let engine = Engine::builder()
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
         .expect("engine should build");
     let program = engine
@@ -1120,7 +1120,7 @@ fn main(player: Player) {
 #[test]
 fn runtime_call_args_host_ref_denies_writes_to_rust_object() {
     let engine = Engine::builder()
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
         .expect("engine should build");
     let program = engine

@@ -11,22 +11,19 @@ use vela_hir::source_ingestion::build_single_source;
 use vela_macros::{ScriptHost, Value, service, service_set};
 
 #[derive(Clone, Debug, Value)]
-#[script(path = "slice_service::Entry")]
+#[vela(path = "slice_service::Entry")]
 pub struct Entry {
     amount: i64,
 }
 
 #[derive(ScriptHost)]
-#[script(path = "slice_service::Context")]
+#[vela(path = "slice_service::Context")]
 pub struct RequestContext {
-    #[script(skip)]
+    #[vela(skip)]
     runtime: ServiceRuntimeSlot,
-    #[script(skip)]
+    #[vela(skip)]
     rust_calls: usize,
 }
-
-#[vela_macros::script_methods]
-impl RequestContext {}
 
 impl ServiceRuntimeAuthority for RequestContext {
     fn take_service_runtime(
@@ -80,16 +77,16 @@ impl TotalService for RustTotalService {
 
 #[service_set(context = RequestContext)]
 pub struct TestServices {
-    #[vela::default(RustTotalService)]
+    #[vela(default = RustTotalService)]
     pub totals: dyn TotalService,
 }
 
 #[test]
 fn same_generation_base_decodes_read_only_value_slice_for_rust_default() {
-    let engine = TestServices::register_types(
+    let engine = TestServices::register(
         Engine::builder()
             .capability(Capability::HostWrite)
-            .register_rust_type::<RequestContext>(RequestContext::vela_type_binding()),
+            .register_type::<RequestContext>(),
     )
     .build()
     .expect("service engine");

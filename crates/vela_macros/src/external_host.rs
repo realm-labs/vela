@@ -177,7 +177,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
 
     let schema_hash = external_host_schema_hash(&type_name, &module_name, &fields);
     let field_tokens = fields.iter().map(ExternalFieldSchema::tokens);
-    let host_object_impl = crate::script_methods::base_script_host_object_impl_tokens(&self_ty);
+    let host_object_impl = crate::host_object::base_script_host_object_impl_tokens(&self_ty);
 
     Ok(quote! {
         #[allow(non_camel_case_types)]
@@ -218,6 +218,17 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 #(
                     .field(#field_tokens)
                 )*
+            }
+        }
+
+        impl ::vela_engine::type_registration::VelaType for #self_ty {
+            fn register(
+                builder: ::vela_engine::builder::EngineBuilder,
+            ) -> ::vela_engine::builder::EngineBuilder {
+                builder.register_type_binding::<Self>(
+                    <Self as ::vela_engine::schema::ScriptHostSchema>::
+                        script_host_binding(),
+                )
             }
         }
 
@@ -265,10 +276,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         pub fn #register_ident(
             builder: ::vela_engine::builder::EngineBuilder,
         ) -> ::vela_engine::builder::EngineBuilder {
-            let builder = builder.register_rust_type::<#self_ty>(
-                <#self_ty as ::vela_engine::schema::ScriptHostSchema>::
-                    script_host_binding(),
-            );
+            let builder = builder.register_type::<#self_ty>();
             #(
                 let builder = #adapter_ident::#registration_functions(builder);
             )*
@@ -451,12 +459,12 @@ mod tests {
                         count: i32 = self.count;
                     }
 
-                    #[script_method(name = "get")]
+                    #[vela(name = "get")]
                     pub fn get(&self, key: i32) -> Option<&crate::Item> {
                         crate::ItemTable::get(self, &key)
                     }
 
-                    #[script_method(name = "type")]
+                    #[vela(name = "type")]
                     pub fn r#type(&self) -> i32 {
                         1
                     }

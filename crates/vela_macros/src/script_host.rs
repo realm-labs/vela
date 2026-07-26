@@ -50,6 +50,17 @@ impl GeneratedMethod {
                         Self::#method()
                     }
                 }
+
+                impl ::vela_engine::type_registration::VelaType for #ident {
+                    fn register(
+                        builder: ::vela_engine::builder::EngineBuilder,
+                    ) -> ::vela_engine::builder::EngineBuilder {
+                        builder.register_type_binding::<Self>(
+                            <Self as ::vela_engine::schema::ScriptHostSchema>::
+                                script_host_binding(),
+                        )
+                    }
+                }
             },
             Self::Reflect => quote! {
                 impl ::vela_engine::schema::ScriptReflectSchema for #ident {
@@ -155,6 +166,12 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
         GeneratedMethod::Host => emission::field_access_impl_tokens(&ident, &fields),
         GeneratedMethod::Reflect => quote! {},
     };
+    let host_object_impl = match generated_method {
+        GeneratedMethod::Host => {
+            crate::host_object::base_script_host_object_impl_tokens(&syn::parse_quote!(#ident))
+        }
+        GeneratedMethod::Reflect => quote! {},
+    };
     let type_helper_tokens = match generated_method {
         GeneratedMethod::Host => quote! {
             #[must_use]
@@ -211,6 +228,7 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
         #trait_impl
 
         #field_access_impl
+        #host_object_impl
     })
 }
 
@@ -251,6 +269,8 @@ fn expand_enum_result(expansion: EnumExpansion) -> Result<TokenStream> {
             }
         });
         let field_access_impl = emission::field_access_impl_tokens(&ident, &[]);
+        let host_object_impl =
+            crate::host_object::base_script_host_object_impl_tokens(&syn::parse_quote!(#ident));
         return Ok(quote! {
             impl #ident {
                 #[must_use]
@@ -295,6 +315,7 @@ fn expand_enum_result(expansion: EnumExpansion) -> Result<TokenStream> {
 
             #trait_impl
             #field_access_impl
+            #host_object_impl
         });
     }
     let variants = schema::collect_variants(&input, &type_name, &stable_path)?;
@@ -377,7 +398,7 @@ pub(crate) fn type_identity(
             let module = module_attr.ok_or_else(|| {
                 error(
                     ident.span(),
-                    "ScriptHost requires #[script(path = \"module::Type\")] or #[script(module = \"module\")]",
+                    "ScriptHost requires #[vela(path = \"module::Type\")] or #[vela(module = \"module\")]",
                 )
             })?;
             let name = name_attr.unwrap_or_else(|| ident.to_string());
@@ -434,11 +455,11 @@ mod tests {
     fn rejects_duplicate_field_aliases() {
         let error = expand_result(
             quote! {
-                #[script(path = "game::player::Player")]
+                #[vela(path = "game::player::Player")]
                 struct Player {
-                    #[script(get, alias = "score")]
+                    #[vela(get, alias = "score")]
                     level: u32,
-                    #[script(get, alias = "score")]
+                    #[vela(get, alias = "score")]
                     exp: u64,
                 }
             },
@@ -453,11 +474,11 @@ mod tests {
     fn rejects_duplicate_field_names() {
         let error = expand_result(
             quote! {
-                #[script(path = "game::player::Player")]
+                #[vela(path = "game::player::Player")]
                 struct Player {
-                    #[script(get, name = "level")]
+                    #[vela(get, name = "level")]
                     level: u32,
-                    #[script(get, name = "level")]
+                    #[vela(get, name = "level")]
                     exp: u64,
                 }
             },
@@ -472,9 +493,9 @@ mod tests {
     fn rejects_empty_field_names() {
         let error = expand_result(
             quote! {
-                #[script(path = "game::player::Player")]
+                #[vela(path = "game::player::Player")]
                 struct Player {
-                    #[script(get, name = "")]
+                    #[vela(get, name = "")]
                     level: u32,
                 }
             },
@@ -493,9 +514,9 @@ mod tests {
     fn rejects_empty_field_permissions() {
         let error = expand_result(
             quote! {
-                #[script(path = "game::player::Player")]
+                #[vela(path = "game::player::Player")]
                 struct Player {
-                    #[script(get, permission = "")]
+                    #[vela(get, permission = "")]
                     level: u32,
                 }
             },
@@ -506,7 +527,7 @@ mod tests {
         assert!(
             error
                 .to_string()
-                .contains("script permission cannot be empty")
+                .contains("vela permission cannot be empty")
         );
     }
 
@@ -514,9 +535,9 @@ mod tests {
     fn rejects_duplicate_type_attrs() {
         let error = expand_result(
             quote! {
-                #[script(path = "game::player::Player", attr = "domain=gameplay", attr = "domain=combat")]
+                #[vela(path = "game::player::Player", attr = "domain=gameplay", attr = "domain=combat")]
                 struct Player {
-                    #[script(get)]
+                    #[vela(get)]
                     level: u32,
                 }
             },
@@ -527,7 +548,7 @@ mod tests {
         assert!(
             error
                 .to_string()
-                .contains("script attr metadata key `domain` is duplicated")
+                .contains("vela attr metadata key `domain` is duplicated")
         );
     }
 
@@ -535,9 +556,9 @@ mod tests {
     fn rejects_duplicate_field_attrs() {
         let error = expand_result(
             quote! {
-                #[script(path = "game::player::Player")]
+                #[vela(path = "game::player::Player")]
                 struct Player {
-                    #[script(get, attr = "unit=level", attr = "unit=rank")]
+                    #[vela(get, attr = "unit=level", attr = "unit=rank")]
                     level: u32,
                 }
             },
@@ -548,7 +569,7 @@ mod tests {
         assert!(
             error
                 .to_string()
-                .contains("script attr metadata key `unit` is duplicated")
+                .contains("vela attr metadata key `unit` is duplicated")
         );
     }
 
@@ -556,9 +577,9 @@ mod tests {
     fn rejects_empty_field_type_hints() {
         let error = expand_result(
             quote! {
-                #[script(path = "game::player::Player")]
+                #[vela(path = "game::player::Player")]
                 struct Player {
-                    #[script(get, hint = "")]
+                    #[vela(get, hint = "")]
                     inventory: Vec<String>,
                 }
             },
@@ -567,7 +588,7 @@ mod tests {
         .expect_err("empty field type hint should fail macro expansion");
 
         assert!(error.to_string().contains(
-            "script type hint must be a non-generic name or supported builtin type-hint contract"
+            "vela type hint must be a non-generic name or supported builtin type-hint contract"
         ));
     }
 
@@ -575,9 +596,9 @@ mod tests {
     fn derives_host_access_target_helpers_and_mutation_forwarder() {
         let expanded = expand_result(
             quote! {
-                #[script(path = "game::player::Player")]
+                #[vela(path = "game::player::Player")]
                 struct Player {
-                    #[script(get, set)]
+                    #[vela(get, set)]
                     level: i64,
                 }
             },
@@ -595,9 +616,9 @@ mod tests {
     fn rejects_unsupported_generic_field_type_hints() {
         let error = expand_result(
             quote! {
-                #[script(path = "game::player::Player")]
+                #[vela(path = "game::player::Player")]
                 struct Player {
-                    #[script(get, hint = "Player<i64>")]
+                    #[vela(get, hint = "Player<i64>")]
                     inventory: Vec<String>,
                 }
             },
@@ -606,7 +627,7 @@ mod tests {
         .expect_err("unsupported generic field type hint should fail macro expansion");
 
         assert!(error.to_string().contains(
-            "script type hint must be a non-generic name or supported builtin type-hint contract"
+            "vela type hint must be a non-generic name or supported builtin type-hint contract"
         ));
     }
 
@@ -614,11 +635,11 @@ mod tests {
     fn accepts_value_keyed_generic_field_type_hints() {
         let expanded = expand_result(
             quote! {
-                #[script(path = "game::player::Player")]
+                #[vela(path = "game::player::Player")]
                 struct Player {
-                    #[script(get, hint = "Map<i64, String>")]
+                    #[vela(get, hint = "Map<i64, String>")]
                     scores: std::collections::BTreeMap<String, String>,
-                    #[script(get, hint = "Set<Player>")]
+                    #[vela(get, hint = "Set<Player>")]
                     seen: std::collections::BTreeSet<String>,
                 }
             },
@@ -635,9 +656,9 @@ mod tests {
     fn rejects_non_keyable_generic_field_type_hints() {
         let error = expand_result(
             quote! {
-                #[script(path = "game::player::Player")]
+                #[vela(path = "game::player::Player")]
                 struct Player {
-                    #[script(get, hint = "Map<PathProxy, String>")]
+                    #[vela(get, hint = "Map<PathProxy, String>")]
                     inventory: Vec<String>,
                 }
             },
@@ -646,7 +667,7 @@ mod tests {
         .expect_err("non-keyable map key hint should fail macro expansion");
 
         assert!(error.to_string().contains(
-            "script type hint must be a non-generic name or supported builtin type-hint contract"
+            "vela type hint must be a non-generic name or supported builtin type-hint contract"
         ));
     }
 
@@ -654,9 +675,9 @@ mod tests {
     fn rejects_malformed_field_type_hints() {
         let error = expand_result(
             quote! {
-                #[script(path = "game::player::Player")]
+                #[vela(path = "game::player::Player")]
                 struct Player {
-                    #[script(get, type = "game::::Inventory")]
+                    #[vela(get, type = "game::::Inventory")]
                     inventory: Vec<String>,
                 }
             },
@@ -665,7 +686,7 @@ mod tests {
         .expect_err("malformed field type hint should fail macro expansion");
 
         assert!(error.to_string().contains(
-            "script type hint must be a non-generic name or supported builtin type-hint contract"
+            "vela type hint must be a non-generic name or supported builtin type-hint contract"
         ));
     }
 
@@ -674,7 +695,7 @@ mod tests {
         let error = expand_result(
             quote! {
                 struct Player {
-                    #[script(get)]
+                    #[vela(get)]
                     level: u32,
                 }
             },
@@ -685,7 +706,7 @@ mod tests {
         assert!(
             error
                 .to_string()
-                .contains("requires #[script(path = \"module::Type\")]")
+                .contains("requires #[vela(path = \"module::Type\")]")
         );
     }
 
@@ -693,9 +714,9 @@ mod tests {
     fn rejects_empty_type_names() {
         let error = expand_result(
             quote! {
-                #[script(module = "game::player", name = "")]
+                #[vela(module = "game::player", name = "")]
                 struct Player {
-                    #[script(get)]
+                    #[vela(get)]
                     level: u32,
                 }
             },
@@ -714,9 +735,9 @@ mod tests {
     fn rejects_empty_module_names() {
         let error = expand_result(
             quote! {
-                #[script(module = "")]
+                #[vela(module = "")]
                 struct Player {
-                    #[script(get)]
+                    #[vela(get)]
                     level: u32,
                 }
             },
@@ -727,7 +748,7 @@ mod tests {
         assert!(
             error
                 .to_string()
-                .contains("script module must be a non-empty `::` qualified name")
+                .contains("vela module must be a non-empty `::` qualified name")
         );
     }
 
@@ -736,9 +757,9 @@ mod tests {
         for module in ["::game", "game::", "game::::player", "game.player"] {
             let error = expand_result(
                 quote! {
-                    #[script(module = #module)]
+                    #[vela(module = #module)]
                     struct Player {
-                        #[script(get)]
+                        #[vela(get)]
                         level: u32,
                     }
                 },
@@ -749,7 +770,7 @@ mod tests {
             assert!(
                 error
                     .to_string()
-                    .contains("script module must be a non-empty `::` qualified name")
+                    .contains("vela module must be a non-empty `::` qualified name")
             );
         }
     }
@@ -758,9 +779,9 @@ mod tests {
     fn rejects_malformed_static_attrs() {
         let error = expand_result(
             quote! {
-                #[script(path = "game::player::Player", attr = "gameplay")]
+                #[vela(path = "game::player::Player", attr = "gameplay")]
                 struct Player {
-                    #[script(get)]
+                    #[vela(get)]
                     level: u32,
                 }
             },
@@ -771,7 +792,7 @@ mod tests {
         assert!(
             error
                 .to_string()
-                .contains("script attr metadata must use `key=value`")
+                .contains("vela attr metadata must use `key=value`")
         );
     }
 
@@ -779,9 +800,9 @@ mod tests {
     fn infers_fixed_array_field_type_hints() {
         let tokens = expand_result(
             quote! {
-                #[script(path = "game::spawn::SpawnTable")]
+                #[vela(path = "game::spawn::SpawnTable")]
                 struct SpawnTable {
-                    #[script(get)]
+                    #[vela(get)]
                     weights: [i64; 3],
                 }
             },
@@ -797,11 +818,11 @@ mod tests {
     fn infers_value_keyed_map_and_set_field_type_hints() {
         let tokens = expand_result(
             quote! {
-                #[script(path = "game::player::Scores")]
+                #[vela(path = "game::player::Scores")]
                 struct Scores {
-                    #[script(get)]
+                    #[vela(get)]
                     by_id: std::collections::BTreeMap<i64, String>,
-                    #[script(get)]
+                    #[vela(get)]
                     seen: std::collections::HashSet<i64>,
                 }
             },
@@ -818,12 +839,12 @@ mod tests {
     fn rejects_generic_host_schemas() {
         let error = expand_result(
             quote! {
-                #[script(path = "game::inventory::Inventory")]
+                #[vela(path = "game::inventory::Inventory")]
                 struct Inventory<T>
                 where
                     T: Clone,
                 {
-                    #[script(get)]
+                    #[vela(get)]
                     items: Vec<T>,
                 }
             },

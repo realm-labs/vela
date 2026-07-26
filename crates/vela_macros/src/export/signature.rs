@@ -248,7 +248,7 @@ fn classify_signature(
             FnArg::Receiver(receiver) => {
                 return Err(syn::Error::new_spanned(
                     receiver,
-                    "#[vela::export] functions cannot use a self receiver",
+                    "#[vela_macros::export] functions cannot use a self receiver",
                 ));
             }
         };

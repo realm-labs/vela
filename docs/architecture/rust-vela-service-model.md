@@ -121,7 +121,7 @@ No real Rust reference or Rust-owned object enters the script GC.
 The intended Rust surface is:
 
 ```rust,ignore
-#[vela::service(path = "game::inventory")]
+#[vela_macros::service(path = "game::inventory")]
 pub trait InventoryService: Send + Sync {
     fn grant(
         &self,
@@ -161,12 +161,12 @@ impl InventoryService for RustInventoryService {
     }
 }
 
-#[vela::service_set(context = GameTurn)]
+#[vela_macros::service_set(context = GameTurn)]
 pub struct GameServices {
-    #[vela::default(RustInventoryService)]
+    #[vela(default = RustInventoryService)]
     pub inventory: dyn InventoryService,
 
-    #[vela::default(RustRewardService)]
+    #[vela(default = RustRewardService)]
     pub reward: dyn RewardService,
 }
 ```
@@ -262,7 +262,7 @@ There is no `HandlerSlot`, `RuleSlot`, or `EventOverride` API. Framework-facing
 traits are service contracts:
 
 ```rust,ignore
-#[vela::service(path = "game::handlers::login")]
+#[vela_macros::service(path = "game::handlers::login")]
 pub trait LoginHandlerService: Send + Sync {
     async fn handle(
         &self,
@@ -519,7 +519,7 @@ binding must say whether they lower to a value or resolve to a host object.
 An owned boundary DTO derives one generated structural contract:
 
 ```rust,ignore
-#[derive(vela::Value)]
+#[derive(vela_macros::Value)]
 pub struct ItemGrant {
     pub template_id: i32,
     pub count: i32,
@@ -729,7 +729,7 @@ Hosts register custom types through the same low-level API used by standard
 bindings:
 
 ```rust,ignore
-Engine::builder().register_rust_type::<Inventory>(
+Engine::builder().register_type_binding::<Inventory>(
     TypeBinding::host("host::Inventory")
         .constructor("new", Inventory::new)
         .shared_method("contains", Inventory::contains)
@@ -738,7 +738,8 @@ Engine::builder().register_rust_type::<Inventory>(
 );
 ```
 
-`#[derive(vela::Value)]`, `#[derive(vela::Host)]`, and `#[vela::methods]` are
+`#[derive(vela_macros::Value)]`, `#[derive(vela_macros::ScriptHost)]`, and
+`#[vela_macros::methods]` are
 generators for this contract, not parallel registries. Manual registration is
 available for external types that cannot be annotated. Constructors are always
 explicit; Vela does not infer that every Rust `Default` or inherent `new`
@@ -824,8 +825,9 @@ No iterator may create an unbudgeted infinite execution path.
 
 The registry and macros must:
 
-- expose one public `register_rust_type::<T>(TypeBinding)` path for standard
-  and user-defined types;
+- expose one public `register_type::<T>()` path for derived/generated standard
+  and user-defined types, plus the explicit low-level
+  `register_type_binding::<T>(TypeBinding)` escape hatch;
 - generate stable identity, storage policy, conversion/view adapters,
   constructors, receiver-qualified methods, protocols, effects, and ABI;
 - provide manual bindings for unannotatable external Rust types;
@@ -834,7 +836,7 @@ The registry and macros must:
 - make the compiler, Runtime, reflection, LSP, and service schema consume the
   same sealed binding snapshot.
 
-### 6.2 `#[vela::service]`
+### 6.2 `#[vela_macros::service]`
 
 The trait macro must:
 
@@ -848,7 +850,7 @@ The trait macro must:
 - generate partial-composite dispatch without altering authored bodies; and
 - expose one registration bundle, never one handwritten function per method.
 
-### 6.3 `#[vela::service_set]`
+### 6.3 `#[vela_macros::service_set]`
 
 The set macro must:
 
@@ -904,7 +906,7 @@ DispatchRoot
 DispatchInvocation
 DispatchAuthority
 VelaOverrideTarget
-#[vela::replaceable]
+#[vela_macros::replaceable]
 #[override(...)]
 register_replaceable_slots
 vela_replaceable_slot_*

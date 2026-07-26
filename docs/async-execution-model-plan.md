@@ -672,7 +672,7 @@ mode trait or duplicate registration-trait implementation family.
 The target form is ordinary Rust:
 
 ```rust,ignore
-#[script_function]
+#[vela_macros::export]
 async fn load_profile(
     ctx: &mut NativeCallContext<'_>,
     player_id: u64,
@@ -690,10 +690,9 @@ async fn load_profile(
 And for stateful structs:
 
 ```rust,ignore
-#[script_methods]
+#[vela_macros::methods]
 impl RankService {
-    #[script_method(effect = "write_host")]
-    async fn update_score(
+    pub async fn update_score(
         &self,
         ctx: &mut NativeCallContext<'_>,
         actor: &mut ActorState,
@@ -1239,7 +1238,7 @@ driver with one scoped `Send` execution contract.
 - [x] Implement async native/context/host/method registries whose factories are
   `Send + Sync` and whose lifetime-dependent returned futures are `Send` without
   being required to be `'static`.
-- [x] Extend `#[script_function]` to generate async descriptors/wrappers and
+- [x] Extend `#[vela_macros::export]` to generate async descriptors/wrappers and
   add low-level/typed HostPath-based async method registration. Direct
   `&self`/`&mut self` method wrappers land with leases in Batch C.
 - [x] Execute awaited sync targets immediately and suspend on async targets.
@@ -1274,7 +1273,7 @@ Vela calls.
 - [x] Integrate Runtime-owned extern state with safe typed lease extraction or
   an explicit unsupported result; do not leave them on an accidental borrowing
   adapter path.
-- [x] Extend `#[script_methods]` to generate async direct-receiver and typed host
+- [x] Extend `#[vela_macros::methods]` to generate async direct-receiver and typed host
   parameter wrappers on top of the completed lease protocol.
 - [x] Make macro-generated `&self`, `&mut self`, `&T`, and `&mut T` host boundary
   parameters acquire the correct direct typed leases while keeping references
@@ -1356,7 +1355,7 @@ Primary ownership targets:
 | Work | Current files to inspect | Target ownership |
 |---|---|---|
 | dynamic roots | `vela_vm/src/heap_execution.rs`, `vela_vm/src/linked_execution.rs`, `vela_engine/src/runtime/{mod,reentry,vm_states,extern_state_bindings,call_future}.rs` | VM active-execution root admission plus Runtime cross-call handles |
-| lease state | `vela_engine/src/runtime/{call_args,execution_host}.rs`, `vela_host/src/lease.rs`, `vela_engine/src/host_lease.rs`, `vela_macros/src/script_methods/` | one capability-aware direct-host slot/lease protocol |
+| lease state | `vela_engine/src/runtime/{call_args,execution_host}.rs`, `vela_host/src/lease.rs`, `vela_engine/src/host_lease.rs`, `vela_macros/src/{methods,export}/` | one capability-aware direct-host slot/lease protocol |
 | reflection field | `vela_reflect/src/member_records.rs`, `vela_reflect/src/modules/records.rs`, reflection/runtime integration tests | one script-visible `is_async` spelling |
 | VM split | `vela_vm/src/linked_execution.rs`, `vela_vm/src/lib.rs`, linked execution tests | focused session, async-resume, and reentry modules around one dispatch loop |
 | provider resolution | `vela_engine/src/runtime/{provider,reentry,mod}.rs`, provider reload/reentry tests | one pure metadata resolver plus caller-specific receiver/root adaptation |

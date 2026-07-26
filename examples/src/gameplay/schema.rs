@@ -5,7 +5,7 @@ use vela_engine::error::EngineResult;
 use vela_engine::host_type::HostTypeSpec;
 use vela_engine::native::{EffectSet, FunctionAccess, NativeFunctionDesc, TypeHint};
 use vela_engine::permission::Capability;
-use vela_macros::{ScriptHost, ScriptReflect, script_methods};
+use vela_macros::{ScriptHost, ScriptReflect, methods};
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::permissions::ReflectPolicy;
 use vela_reflect::registry::HostIndexCapability;
@@ -43,25 +43,27 @@ pub(crate) fn build_gameplay_engine(options: GameEngineOptions) -> EngineResult<
     }
 
     if options.schema.context {
-        builder = builder.register_type(context_type_desc(options.schema.config));
+        builder = builder.register_type_desc(context_type_desc(options.schema.config));
     }
     if options.schema.player {
-        builder = builder.register_script_host::<Player>();
+        builder = builder
+            .register_type::<Player>()
+            .register_exports(Player::vela_inherent_exports());
     }
     if options.schema.monster {
-        builder = builder.register_host_type::<Monster>();
+        builder = builder.register_type::<Monster>();
     }
     if options.schema.inventory {
         builder = builder
-            .register_host_type::<Inventory>()
-            .register_host_type::<ItemStack>()
-            .register_host_type_spec(string_item_map_type());
+            .register_type::<Inventory>()
+            .register_type::<ItemStack>()
+            .register_type_spec(string_item_map_type());
     }
     if options.schema.quest {
-        builder = builder.register_reflect_schema::<HostQuestProgress>();
+        builder = builder.register_type_desc(HostQuestProgress::vela_reflect_type_desc());
     }
     if options.schema.config {
-        builder = builder.register_host_type::<Config>();
+        builder = builder.register_type::<Config>();
     }
     if options.schema.reward {
         builder = builder
@@ -102,68 +104,59 @@ fn gameplay_reward_grant(_: OwnedValue, _: String) -> bool {
 }
 
 #[derive(ScriptHost)]
-#[script(path = "game::player::Player", implements = "Damageable")]
+#[vela(path = "game::player::Player", implements = "Damageable")]
 pub(crate) struct Player {
-    #[script(get)]
+    #[vela(get)]
     id: i64,
-    #[script(get, set)]
+    #[vela(get, set)]
     level: i64,
-    #[script(get, set)]
+    #[vela(get, set)]
     exp: i64,
-    #[script(get, hint = "HostQuestProgress")]
+    #[vela(get, hint = "HostQuestProgress")]
     quest_progress: HostQuestProgress,
-    #[script(get)]
+    #[vela(get)]
     quest_goal: i64,
-    #[script(get, hint = "Inventory")]
+    #[vela(get, hint = "Inventory")]
     inventory: Inventory,
 }
 
-#[script_methods]
+#[methods]
 impl Player {
-    #[script_method(name = "add_reward", effect = "write_host", reflect = true)]
+    #[vela(name = "add_reward", reflect = true)]
     #[expect(
         dead_code,
         reason = "example registers this method for scripts; Rust never calls it directly"
     )]
-    pub fn add_reward(
-        _ctx: &mut vela_engine::context::NativeCallContext<'_, '_>,
-        _player: vela_host::path::HostRef,
-        _item_id: String,
-        _count: i64,
-    ) {
-    }
+    pub fn add_reward(&mut self, _item_id: String, _count: i64) {}
 }
 
 #[derive(ScriptHost)]
-#[script(path = "game::monster::Monster")]
+#[vela(path = "game::monster::Monster")]
 pub(crate) struct Monster {
-    #[script(get)]
+    #[vela(get)]
     id: i64,
-    #[script(get)]
+    #[vela(get)]
     exp: i64,
 }
 
 #[derive(ScriptHost)]
-#[script(
+#[vela(
     path = "game::config::Config",
     docs = "Demo host configuration exposed through context host paths."
 )]
 pub(crate) struct Config {
-    #[script(get, hint = "i64", docs = "Experience threshold for the next level.")]
+    #[vela(get, hint = "i64", docs = "Experience threshold for the next level.")]
     exp_to_next_level: i64,
-    #[script(get, hint = "array", docs = "Configured monster reward table.")]
+    #[vela(get, hint = "array", docs = "Configured monster reward table.")]
     kill_rewards: Vec<KillRewardConfig>,
 }
 
 #[derive(ScriptHost)]
-#[script(path = "game::inventory::Inventory")]
+#[vela(path = "game::inventory::Inventory")]
 pub(crate) struct Inventory {
-    #[script(get, hint = "StringItemMap")]
+    #[vela(get, hint = "StringItemMap")]
     items: std::collections::BTreeMap<String, ItemStack>,
 }
-
-#[script_methods]
-impl Inventory {}
 
 fn string_item_map_type() -> HostTypeSpec {
     HostTypeSpec::new(
@@ -178,26 +171,23 @@ fn string_item_map_type() -> HostTypeSpec {
 }
 
 #[derive(ScriptHost)]
-#[script(path = "game::inventory::ItemStack")]
+#[vela(path = "game::inventory::ItemStack")]
 pub(crate) struct ItemStack {
-    #[script(get, set, hint = "i64")]
+    #[vela(get, set, hint = "i64")]
     count: i64,
 }
 
-#[script_methods]
-impl ItemStack {}
-
 #[derive(ScriptReflect)]
-#[script(path = "game::quest::HostQuestProgress")]
+#[vela(path = "game::quest::HostQuestProgress")]
 enum HostQuestProgress {
     #[expect(
         dead_code,
         reason = "example registers this variant for script reflection; Rust never constructs it"
     )]
     Active {
-        #[script(get, set, hint = "i64")]
+        #[vela(get, set, hint = "i64")]
         quest_count: i64,
-        #[script(get, set, hint = "bool")]
+        #[vela(get, set, hint = "bool")]
         quest_done: bool,
     },
 }

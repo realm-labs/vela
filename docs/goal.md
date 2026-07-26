@@ -494,7 +494,7 @@ native function and native method registration with stable IDs
 Rust signature conversion rules
 vela_macros crate
 #[derive(ScriptHost, ScriptReflect)]
-#[script_methods] and #[script_method]
+#[vela_macros::methods] and #[vela]
 generated schema hashes, field accessors, method dispatch, and docs/origin data
 ```
 

@@ -5,7 +5,7 @@ pub struct RustRewardService;
 
 #[service_set(context = RequestContext)]
 pub struct GameServices {
-    #[vela::default(RustRewardService)]
+    #[vela(default = RustRewardService)]
     pub reward: RustRewardService,
 }
 

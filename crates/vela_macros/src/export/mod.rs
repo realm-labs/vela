@@ -22,13 +22,13 @@ pub(crate) fn expand(attr: TokenStream, input: TokenStream) -> TokenStream {
 
 fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let item = parse2::<ItemFn>(input)?;
-    reject_generic_signature(&item.sig.generics, "#[vela::export]")?;
-    reject_unsafe_signature(&item.sig, "#[vela::export]")?;
-    reject_extern_signature(&item.sig, "#[vela::export]")?;
+    reject_generic_signature(&item.sig.generics, "#[vela_macros::export]")?;
+    reject_unsafe_signature(&item.sig, "#[vela_macros::export]")?;
+    reject_extern_signature(&item.sig, "#[vela_macros::export]")?;
     if !matches!(item.vis, Visibility::Public(_)) {
         return Err(syn::Error::new_spanned(
             &item.vis,
-            "#[vela::export] requires a public Rust function",
+            "#[vela_macros::export] requires a public Rust function",
         ));
     }
 

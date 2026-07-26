@@ -1,7 +1,5 @@
 use vela_reflect::registry::TypeDesc;
 
-use crate::builder::EngineBuilder;
-use crate::method::NativeMethodDesc;
 use crate::type_binding::TypeBinding;
 use crate::{args::FromScriptArg, args::IntoScriptArg};
 
@@ -23,24 +21,5 @@ pub trait ScriptValueSchema: IntoScriptArg + FromScriptArg + Sized + 'static {
 
     fn script_value_binding() -> TypeBinding<Self> {
         TypeBinding::value(Self::script_value_type_desc())
-    }
-}
-
-pub trait ScriptHostMethodMetadata: Sized + 'static {
-    fn script_host_method_descs() -> Vec<NativeMethodDesc>;
-
-    fn script_host_type_binding() -> TypeBinding<Self>
-    where
-        Self: ScriptHostSchema,
-    {
-        Self::script_host_method_descs()
-            .into_iter()
-            .fold(Self::script_host_binding(), TypeBinding::method_desc)
-    }
-
-    fn register_script_host_methods(builder: EngineBuilder) -> EngineBuilder {
-        Self::script_host_method_descs()
-            .into_iter()
-            .fold(builder, EngineBuilder::register_host_method_desc)
     }
 }

@@ -50,7 +50,7 @@ fn run_linked_program_with_host(
 fn runtime_call_writes_through_host_method_and_updates_adapter() {
     let method = HostMethodId::new(23);
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             player_type(TypeId::new(1), HostTypeId::new(1))
                 .method(MethodDesc::new(method, "grant_exp")),
         )
@@ -99,7 +99,7 @@ fn main(player: Player) {
 fn engine_compiler_options_lower_registered_host_methods() {
     let method = HostMethodId::new(5);
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             player_type(TypeId::new(1), HostTypeId::new(1))
                 .method(MethodDesc::new(method, "grant_exp")),
         )
@@ -142,7 +142,7 @@ fn engine_compiler_registry_resolves_registered_host_definitions() {
     let method = HostMethodId::new(5);
     let host_type = HostTypeId::new(1);
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .host_type(host_type)
                 .field(FieldDesc::new(level, "level"))
@@ -180,12 +180,12 @@ fn engine_compiler_options_lower_registered_host_field_methods() {
     let inventory = FieldId::new(3);
     let method = HostMethodId::new(5);
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(inventory, "inventory").type_hint("Inventory")),
         )
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(2), "Inventory"))
                 .host_type(HostTypeId::new(2))
                 .method(MethodDesc::new(method, "add")),
@@ -228,12 +228,12 @@ fn engine_compiler_options_lower_registered_host_variant_fields() {
     let quest_progress = FieldId::new(3);
     let count = FieldId::new(4);
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(quest_progress, "quest_progress").type_hint("QuestProgress")),
         )
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(2), "QuestProgress"))
                 .host_type(HostTypeId::new(2))
                 .variant(
@@ -286,11 +286,11 @@ fn engine_compiler_options_disambiguate_host_methods_by_receiver_type() {
     let player_method = HostMethodId::new(5);
     let monster_method = HostMethodId::new(6);
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             player_type(TypeId::new(1), HostTypeId::new(1))
                 .method(MethodDesc::new(player_method, "grant_exp")),
         )
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(2), "Monster"))
                 .host_type(HostTypeId::new(2))
                 .method(MethodDesc::new(monster_method, "grant_exp")),
@@ -336,7 +336,7 @@ fn engine_registers_callable_native_methods_for_host_paths() {
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_native_method_fn(
             NativeMethodDesc::new(owner, method, "grant_exp")
                 .param("amount", TypeHint::i64())
@@ -435,7 +435,7 @@ fn engine_registers_typed_callable_native_methods_for_host_paths() {
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(i64,), _>(
             NativeMethodDesc::new(owner, method, "typed_grant_exp")
                 .param("amount", TypeHint::i64())
@@ -480,7 +480,7 @@ fn typed_callable_native_method_conversion_errors_before_host_access() {
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(i64,), _>(
             NativeMethodDesc::new(owner, method, "typed_grant_exp")
                 .access(FunctionAccess::public()),
@@ -514,7 +514,7 @@ fn typed_callable_native_method_maps_host_result_errors() {
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(bool,), _>(
             NativeMethodDesc::new(owner, method, "typed_require_grant")
                 .param("allowed", TypeHint::boolean())
@@ -557,7 +557,7 @@ fn callable_native_method_error_retains_written_mutation() {
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_native_method_fn(
             NativeMethodDesc::new(owner, method, "failing_method")
                 .param("amount", TypeHint::i64())
@@ -652,7 +652,7 @@ fn engine_registers_unified_host_type_spec_with_native_method_and_index_metadata
     );
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
-        .register_host_type_spec(spec)
+        .register_type_spec(spec)
         .build()
         .expect("engine should build");
     let registry = engine.registry();
@@ -708,8 +708,8 @@ fn typed_callable_native_method_accepts_typed_host_path_arguments() {
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
-        .register_type(
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(2), "Inventory")).host_type(HostTypeId::new(2)),
         )
         .register_typed_native_method_fn::<(TypedHostMut<InventoryArg>, i64), _>(
@@ -760,7 +760,7 @@ fn typed_host_argument_rejects_mismatched_host_type() {
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
         .capability(Capability::HostRead)
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(TypedHostRef<InventoryArg>,), _>(
             NativeMethodDesc::new(owner, method, "inspect_inventory")
                 .param("target", TypeHint::PathProxy)
@@ -862,7 +862,7 @@ fn engine_registers_four_arg_typed_callable_native_methods() {
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(i64, i64, i64, i64), _>(
             NativeMethodDesc::new(owner, method, "typed_sum4")
                 .param("a", TypeHint::i64())
@@ -907,7 +907,7 @@ fn engine_registers_five_arg_typed_callable_native_methods() {
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(i64, i64, i64, i64, i64), _>(
             NativeMethodDesc::new(owner, method, "typed_sum5")
                 .param("a", TypeHint::i64())
@@ -954,7 +954,7 @@ fn engine_registers_six_arg_typed_callable_native_methods() {
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_typed_native_method_fn::<(i64, i64, i64, i64, i64, i64), _>(
             NativeMethodDesc::new(owner, method, "typed_sum6")
                 .param("a", TypeHint::i64())
@@ -1061,7 +1061,7 @@ fn typed_sum6(
 #[test]
 fn engine_installs_type_registry_for_host_ref_script_impl_dispatch() {
     let engine = Engine::builder()
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .build()
         .expect("engine should build");
     let program = engine

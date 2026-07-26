@@ -48,7 +48,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         let TraitItem::Fn(method) = trait_item else {
             return Err(syn::Error::new_spanned(
                 trait_item,
-                "#[vela::service] traits support methods only",
+                "#[vela_macros::service] traits support methods only",
             ));
         };
         validate_method(method)?;
@@ -85,7 +85,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     if methods.is_empty() {
         return Err(syn::Error::new_spanned(
             &item,
-            "#[vela::service] requires at least one method",
+            "#[vela_macros::service] requires at least one method",
         ));
     }
     rewrite_async_trait_methods(&mut item);
@@ -293,14 +293,14 @@ fn validate_trait(item: &ItemTrait) -> Result<()> {
     if !matches!(item.vis, Visibility::Public(_)) {
         return Err(syn::Error::new_spanned(
             &item.vis,
-            "#[vela::service] requires a public Rust trait",
+            "#[vela_macros::service] requires a public Rust trait",
         ));
     }
-    reject_generic_signature(&item.generics, "#[vela::service]")?;
+    reject_generic_signature(&item.generics, "#[vela_macros::service]")?;
     if item.unsafety.is_some() || item.auto_token.is_some() {
         return Err(syn::Error::new_spanned(
             item,
-            "#[vela::service] does not support unsafe or auto traits",
+            "#[vela_macros::service] does not support unsafe or auto traits",
         ));
     }
     let mut required = BTreeSet::new();
@@ -308,13 +308,13 @@ fn validate_trait(item: &ItemTrait) -> Result<()> {
         let TypeParamBound::Trait(bound) = bound else {
             return Err(syn::Error::new_spanned(
                 bound,
-                "#[vela::service] supports only Send + Sync supertraits",
+                "#[vela_macros::service] supports only Send + Sync supertraits",
             ));
         };
         let Some(ident) = bound.path.get_ident() else {
             return Err(syn::Error::new_spanned(
                 bound,
-                "#[vela::service] supports only Send + Sync supertraits",
+                "#[vela_macros::service] supports only Send + Sync supertraits",
             ));
         };
         match ident.to_string().as_str() {
@@ -324,7 +324,7 @@ fn validate_trait(item: &ItemTrait) -> Result<()> {
             _ => {
                 return Err(syn::Error::new_spanned(
                     bound,
-                    "#[vela::service] supports only Send + Sync supertraits",
+                    "#[vela_macros::service] supports only Send + Sync supertraits",
                 ));
             }
         }
@@ -332,7 +332,7 @@ fn validate_trait(item: &ItemTrait) -> Result<()> {
     if required != BTreeSet::from(["Send".to_owned(), "Sync".to_owned()]) {
         return Err(syn::Error::new_spanned(
             &item.supertraits,
-            "#[vela::service] traits must require Send + Sync",
+            "#[vela_macros::service] traits must require Send + Sync",
         ));
     }
     Ok(())
@@ -349,15 +349,15 @@ fn validate_method(method: &syn::TraitItemFn) -> Result<()> {
     {
         return Err(syn::Error::new_spanned(
             &method.sig.generics,
-            "#[vela::service] does not support generic parameters or where clauses",
+            "#[vela_macros::service] does not support generic parameters or where clauses",
         ));
     }
-    reject_unsafe_signature(&method.sig, "#[vela::service]")?;
-    reject_extern_signature(&method.sig, "#[vela::service]")?;
+    reject_unsafe_signature(&method.sig, "#[vela_macros::service]")?;
+    reject_extern_signature(&method.sig, "#[vela_macros::service]")?;
     if method.sig.constness.is_some() || method.sig.variadic.is_some() {
         return Err(syn::Error::new_spanned(
             &method.sig,
-            "#[vela::service] does not support const or variadic methods",
+            "#[vela_macros::service] does not support const or variadic methods",
         ));
     }
     if method.sig.asyncness.is_some() && !method.sig.generics.params.is_empty() {
@@ -454,7 +454,7 @@ fn parse_path(attr: TokenStream) -> Result<String> {
     path.ok_or_else(|| {
         syn::Error::new(
             proc_macro2::Span::call_site(),
-            "#[vela::service] requires path = \"module::service\"",
+            "#[vela_macros::service] requires path = \"module::service\"",
         )
     })
 }

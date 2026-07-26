@@ -24,7 +24,7 @@ pub(crate) fn expand(attr: TokenStream, input: TokenStream) -> TokenStream {
 
 fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let mut item = parse2::<ItemImpl>(input)?;
-    reject_generic_signature(&item.generics, "#[vela::methods]")?;
+    reject_generic_signature(&item.generics, "#[vela_macros::methods]")?;
     let owner_path = parse_owner_path(attr, &item)?;
     let trait_path = item.trait_.as_ref().map(|(_, path, _)| path);
     let mut generated = Vec::new();
@@ -37,9 +37,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         if trait_path.is_none() && !matches!(method.vis, Visibility::Public(_)) {
             continue;
         }
-        reject_generic_signature(&method.sig.generics, "#[vela::methods]")?;
-        reject_unsafe_signature(&method.sig, "#[vela::methods]")?;
-        reject_extern_signature(&method.sig, "#[vela::methods]")?;
+        reject_generic_signature(&method.sig.generics, "#[vela_macros::methods]")?;
+        reject_unsafe_signature(&method.sig, "#[vela_macros::methods]")?;
+        reject_extern_signature(&method.sig, "#[vela_macros::methods]")?;
         let method_attrs = take_method_attrs(method)?;
         let signature = if method_attrs.host_collection {
             classify_method_with_host_collection_returns(&method.sig, &method_attrs.effects)?
@@ -80,7 +80,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     if trait_path.is_some() && generated.is_empty() {
         return Err(syn::Error::new_spanned(
             &item,
-            "#[vela::methods] requires at least one supported trait method",
+            "#[vela_macros::methods] requires at least one supported trait method",
         ));
     }
     let bundle = if let Some(trait_path) = trait_path {
@@ -121,16 +121,12 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         }
     };
     let self_ty = &item.self_ty;
-    let host_object_impl = trait_path
-        .is_none()
-        .then(|| crate::script_methods::base_script_host_object_impl_tokens(self_ty));
     Ok(quote! {
         #item
         impl #self_ty {
             #(#generated)*
             #bundle
         }
-        #host_object_impl
     })
 }
 
@@ -147,7 +143,7 @@ pub(crate) fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAt
     let mut parsed = MethodAttrs::default();
     let mut retained = Vec::with_capacity(method.attrs.len());
     for attr in std::mem::take(&mut method.attrs) {
-        if !attr.path().is_ident("script_method") {
+        if !attr.path().is_ident("vela") {
             retained.push(attr);
             continue;
         }
@@ -178,7 +174,7 @@ pub(crate) fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAt
             if meta.path.is_ident("attr") {
                 parsed.attrs.push(parse_key_value_attr(
                     meta.value()?.parse::<LitStr>()?,
-                    "script_method",
+                    "vela",
                 )?);
                 return Ok(());
             }
@@ -200,11 +196,11 @@ pub(crate) fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAt
                 });
             }
             Err(meta.error(
-                "#[methods] supports only name, reflect, host_collection, attr, and effects(...) on #[script_method]",
+                "#[methods] supports only name, reflect, host_collection, attr, and effects(...) on #[vela]",
             ))
         })?;
     }
-    reject_duplicate_attr_keys(&parsed.attrs, "script_method")?;
+    reject_duplicate_attr_keys(&parsed.attrs, "vela")?;
     method.attrs = retained;
     Ok(parsed)
 }
@@ -268,7 +264,7 @@ mod tests {
             quote! { path = "config::EquipmentTable" },
             quote! {
                 impl EquipmentTable {
-                    #[script_method(name = "get")]
+                    #[vela(name = "get")]
                     pub fn vela_get(&self, key: i32) -> Option<&Equipment> {
                         self.get(&key)
                     }
@@ -289,7 +285,7 @@ mod tests {
             quote! { path = "config::EquipmentTable" },
             quote! {
                 impl EquipmentTable {
-                    #[script_method(name = "values", host_collection)]
+                    #[vela(name = "values", host_collection)]
                     pub fn vela_values(&self) -> &[Equipment] {
                         self.values()
                     }
@@ -309,7 +305,7 @@ mod tests {
             quote! { path = "ops::Context" },
             quote! {
                 impl Context {
-                    #[script_method(effects(event_emit, time))]
+                    #[vela(effects(event_emit, time))]
                     pub fn diagnostic(&self, message: String) -> bool {
                         !message.is_empty()
                     }
@@ -353,17 +349,17 @@ mod tests {
     }
 
     #[test]
-    fn empty_inherent_method_group_still_emits_host_object_and_export_bundle() {
+    fn empty_inherent_method_group_emits_only_an_export_bundle() {
         let expanded = expand_result(
             quote! { path = "config::Tables" },
             quote! {
                 impl Tables {}
             },
         )
-        .expect("field-only host type should support an empty method group");
+        .expect("an empty method group should remain a valid empty bundle");
         let output = expanded.to_string();
 
         assert!(output.contains("vela_inherent_exports"));
-        assert!(output.contains("ScriptHostObject"));
+        assert!(!output.contains("ScriptHostObject"));
     }
 }

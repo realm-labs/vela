@@ -85,14 +85,14 @@ fn matrix_engine() -> Engine {
     Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_rust_value_closure::<Vec<i64>>()
-        .register_rust_value_closure::<Vec<u8>>()
-        .register_rust_value_closure::<[i64; 3]>()
+        .register_type::<Vec<i64>>()
+        .register_type::<Vec<u8>>()
+        .register_type::<[i64; 3]>()
         .register_rust_slice::<i64>()
-        .register_rust_value_closure::<BTreeMap<String, i64>>()
-        .register_rust_value_closure::<HashMap<String, i64>>()
-        .register_rust_value_closure::<BTreeSet<i64>>()
-        .register_rust_value_closure::<HashSet<i64>>()
+        .register_type::<BTreeMap<String, i64>>()
+        .register_type::<HashMap<String, i64>>()
+        .register_type::<BTreeSet<i64>>()
+        .register_type::<HashSet<i64>>()
         .build()
         .expect("standard collection matrix bindings should seal")
 }
@@ -456,7 +456,7 @@ fn exclusive_standard_collection_matrix_preserves_fixed_and_growable_writes() {
 fn complex_map_group_by_keeps_live_child_host_refs() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
-        .register_rust_value_closure::<BTreeMap<String, Vec<i64>>>()
+        .register_type::<BTreeMap<String, Vec<i64>>>()
         .build()
         .expect("nested standard Map binding should seal");
     let program = engine
@@ -489,7 +489,7 @@ fn complex_map_group_by_keeps_live_child_host_refs() {
 fn borrowed_map_iterator_fold_uses_live_complex_child_views() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
-        .register_rust_value_closure::<BTreeMap<String, Vec<i64>>>()
+        .register_type::<BTreeMap<String, Vec<i64>>>()
         .build()
         .expect("nested standard Map binding should seal");
     let program = engine

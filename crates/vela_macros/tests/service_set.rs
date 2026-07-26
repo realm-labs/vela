@@ -33,9 +33,9 @@ pub struct RequestContext;
 
 #[service_set(context = RequestContext)]
 pub struct GameServices {
-    #[vela::default(RustRewardService)]
+    #[vela(default = RustRewardService)]
     pub reward: dyn RewardService,
-    #[vela::default(RustInventoryService)]
+    #[vela(default = RustInventoryService)]
     pub inventory: dyn InventoryService,
 }
 
@@ -54,7 +54,7 @@ impl AsyncRewardService for RustAsyncRewardService {
 
 #[service_set(context = RequestContext)]
 pub struct AsyncGameServices {
-    #[vela::default(RustAsyncRewardService)]
+    #[vela(default = RustAsyncRewardService)]
     pub reward: dyn AsyncRewardService,
 }
 
@@ -83,7 +83,7 @@ fn patched_generation() -> GameServicesGeneration {
 
 #[test]
 fn generated_set_publishes_and_pins_one_complete_rust_generation() {
-    let engine = GameServices::register_types(vela_engine::engine::Engine::builder())
+    let engine = GameServices::register(vela_engine::engine::Engine::builder())
         .build()
         .expect("service registration bundle");
     let services = GameServices::new(&engine.type_bindings()).expect("service schema");
@@ -119,7 +119,7 @@ fn generated_set_publishes_and_pins_one_complete_rust_generation() {
 
 #[test]
 fn generated_set_rejects_stale_activation_and_rollback() {
-    let engine = GameServices::register_types(vela_engine::engine::Engine::builder())
+    let engine = GameServices::register(vela_engine::engine::Engine::builder())
         .build()
         .expect("service registration bundle");
     let services = GameServices::new(&engine.type_bindings()).expect("service schema");
@@ -156,7 +156,7 @@ fn generated_set_rejects_stale_activation_and_rollback() {
 
 #[test]
 fn generated_async_default_uses_object_safe_send_dispatch() {
-    let engine = AsyncGameServices::register_types(vela_engine::engine::Engine::builder())
+    let engine = AsyncGameServices::register(vela_engine::engine::Engine::builder())
         .build()
         .expect("async service registration bundle");
     let services = AsyncGameServices::new(&engine.type_bindings()).expect("async service schema");

@@ -435,7 +435,7 @@ impl RegistrationSpec {
     pub(super) fn tokens(&self) -> TokenStream {
         match self {
             Self::Value(ty) => quote! {
-                let builder = builder.register_rust_value_closure::<#ty>();
+                let builder = builder.register_type::<#ty>();
             },
             Self::Shared(ty) => quote! {
                 let builder =

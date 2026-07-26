@@ -34,7 +34,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     if services.is_empty() {
         return Err(syn::Error::new_spanned(
             &item,
-            "#[vela::service_set] requires at least one service field",
+            "#[vela_macros::service_set] requires at least one service field",
         ));
     }
 
@@ -481,7 +481,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
 
         impl #set_ident {
             #[must_use]
-            pub fn register_types(
+            pub fn register(
                 builder: ::vela_engine::builder::EngineBuilder,
             ) -> ::vela_engine::builder::EngineBuilder {
                 let builder = builder;
@@ -817,14 +817,14 @@ fn validate_struct(item: &ItemStruct) -> Result<()> {
     if !matches!(item.vis, Visibility::Public(_)) {
         return Err(syn::Error::new_spanned(
             &item.vis,
-            "#[vela::service_set] requires a public Rust struct",
+            "#[vela_macros::service_set] requires a public Rust struct",
         ));
     }
-    reject_generic_signature(&item.generics, "#[vela::service_set]")?;
+    reject_generic_signature(&item.generics, "#[vela_macros::service_set]")?;
     if !matches!(item.fields, Fields::Named(_)) {
         return Err(syn::Error::new_spanned(
             &item.fields,
-            "#[vela::service_set] requires named service fields",
+            "#[vela_macros::service_set] requires named service fields",
         ));
     }
     Ok(())
@@ -846,7 +846,7 @@ fn parse_context(attr: TokenStream) -> Result<Type> {
     context.ok_or_else(|| {
         syn::Error::new(
             proc_macro2::Span::call_site(),
-            "#[vela::service_set] requires context = HostContext",
+            "#[vela_macros::service_set] requires context = HostContext",
         )
     })
 }
@@ -1003,29 +1003,24 @@ fn parse_service_field(field: &syn::Field) -> Result<ServiceField> {
 fn parse_default(attrs: &[Attribute]) -> Result<Path> {
     let mut default = None;
     for attr in attrs {
-        let segments = &attr.path().segments;
-        let is_default = segments
-            .last()
-            .is_some_and(|segment| segment.ident == "default")
-            && (segments.len() == 1
-                || segments
-                    .first()
-                    .is_some_and(|segment| segment.ident == "vela"));
-        if !is_default {
+        if !attr.path().is_ident("vela") {
             continue;
         }
-        if default.is_some() {
-            return Err(syn::Error::new_spanned(
-                attr,
-                "service default is duplicated",
-            ));
-        }
-        default = Some(attr.parse_args::<Path>()?);
+        attr.parse_nested_meta(|meta| {
+            if !meta.path.is_ident("default") {
+                return Err(meta.error("unsupported service-set field attribute"));
+            }
+            if default.is_some() {
+                return Err(meta.error("service default is duplicated"));
+            }
+            default = Some(meta.value()?.parse::<Path>()?);
+            Ok(())
+        })?;
     }
     default.ok_or_else(|| {
         syn::Error::new(
             proc_macro2::Span::call_site(),
-            "service-set field requires #[vela::default(RustService)]",
+            "service-set field requires #[vela(default = RustService)]",
         )
     })
 }
@@ -1051,9 +1046,9 @@ mod tests {
             quote! { context = RequestContext },
             quote! {
                 pub struct GameServices {
-                    #[vela::default(RustRewardService)]
+                    #[vela(default = RustRewardService)]
                     pub reward: dyn RewardService,
-                    #[vela::default(RustInventoryService)]
+                    #[vela(default = RustInventoryService)]
                     pub inventory: dyn InventoryService,
                 }
             },
@@ -1084,6 +1079,6 @@ mod tests {
         )
         .expect_err("missing default must fail");
 
-        assert!(error.to_string().contains("requires #[vela::default"));
+        assert!(error.to_string().contains("requires #[vela(default"));
     }
 }

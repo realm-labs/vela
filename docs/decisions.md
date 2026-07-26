@@ -957,7 +957,7 @@ same registration and permission model.
 
 `#[derive(ScriptHost)]` owns generated direct-object field/path access for all
 script-visible host fields. Plain `get`/`set` field metadata also means the
-field participates in generated direct host path access. `#[script_methods]`
+field participates in generated direct host path access. `#[vela_macros::methods]`
 owns generated direct-object method dispatch for `&self` and `&mut self`
 receiver methods; method arguments cross the host boundary through scalar
 `HostValue` conversions. Child receiver method calls are forwarded through
@@ -1044,7 +1044,7 @@ authorization for native execution.
 
 User-facing host and native macros do not accept manually chosen numeric stable
 IDs. `ScriptHost` and `ScriptReflect` derive type and field IDs from the
-script-facing stable type path and field name, while `#[script_methods]` and
+script-facing stable type path and field name, while `#[vela_macros::methods]` and
 native function macros derive method/function IDs from the owner path or public
 `::` qualified function name. Optional `alias` values are the compatibility mechanism
 for rename-safe schema evolution. Low-level descriptor constructors may still
@@ -2250,11 +2250,11 @@ permission graph. Generated async host arguments use a prepared scoped
 `CallArgs` future whose Runtime/context borrow may be shorter than the retained
 host-reference lifetime; no reference lifetime is erased or extended.
 
-Scattered functions use item-level `#[vela::export]`. Related functions use an
-explicit `#[vela::export_module(path = "...")]` whose supported immediate
+Scattered functions use item-level `#[vela_macros::export]`. Related functions use an
+explicit `#[vela_macros::export_module(path = "...")]` whose supported immediate
 public functions form one approved export set and one generated
 `vela_exports()` registration bundle; private helpers remain Rust-only.
-`#[vela::methods]` is the equivalent explicit inherent-or-trait-impl boundary.
+`#[vela_macros::methods]` is the equivalent explicit inherent-or-trait-impl boundary.
 Engine registers bundles explicitly through `register_exports`; no ambient
 inventory, process-global discovery, or module-wide default effect is
 introduced. An unsupported public item inside either explicit group fails at
@@ -2264,7 +2264,7 @@ declaration time instead of being silently omitted.
 
 Implementing a Rust trait does not automatically expose it to Vela. A Vela
 protocol owns a stable public identity independent of the Rust trait path.
-Annotatable trait impls use `#[vela::methods]` and the ordinary method adapter
+Annotatable trait impls use `#[vela_macros::methods]` and the ordinary method adapter
 path without inherent forwarding methods. Existing external impls that cannot
 be annotated use a declaration-only adapter that lists the selected
 boundary-safe signatures and generates type-checked UFCS thunks without a
@@ -2328,7 +2328,7 @@ be staged.
 ### Type Bindings Seal Once And Project Into Existing Metadata Views
 
 `vela_engine::TypeBinding` is the host authoring and executable-registration
-unit. `EngineBuilder::register_rust_type::<T>` binds the Rust `TypeId` only for
+unit. `EngineBuilder::register_type_binding::<T>` binds the Rust `TypeId` only for
 Engine-local typed lookup, while `InteropTypeId` is the stable cross-process
 identity and is derived from the registered semantic `TypeId`. Rust `TypeId`
 never enters artifacts, fingerprints, deployment bundles, or script-visible
@@ -2351,7 +2351,7 @@ compiler and tooling crates never depend on Runtime closures or Rust
 `std::any::TypeId`.
 
 `TypeBinding<T>` carries the Rust type only at the host authoring boundary;
-`EngineBuilder::register_rust_type::<T>` infers and erases it while sealing the
+`EngineBuilder::register_type_binding::<T>` infers and erases it while sealing the
 registry. A Value binding owns one stateless typed `ValueCodec<T>` made from
 function pointers. `ValueCodec::structural()` reuses the generated
 `IntoScriptArg`/`FromScriptArg` field and element lowering, while
@@ -2427,19 +2427,29 @@ linked program, including async resumes. This attaches generation-local record
 or enum identity before guards, field slots, or variant matching run; name-only
 heap values are not an acceptable substitute for static enum `match`.
 
-### ScriptHost Methods Compose Into One Host Binding
+### Type And Callable Registration Use Separate Unified Entrypoints
 
-`#[derive(ScriptHost)]` generates `vela_type_binding()` from its existing
-schema through `ScriptHostSchema::script_host_binding()`. This is a Host-storage
-`TypeBinding<T>` and enters the same typed registry as generated Value
-bindings; it does not create a host-only registry or move Rust object ownership
-under script GC. `#[script_methods]` composes its metadata plus synchronous and
-asynchronous executable thunks into that binding through
-`script_host_type_binding()`. `EngineBuilder::register_script_host::<T>()`
-consumes the completed binding in one transaction; it does not separately
-register the schema and methods. Async direct and context-aware entries remain
-Engine-owned executable behavior while their descriptors participate in the
-same binding ABI.
+`VelaType` is the sole public contract for a registerable Rust type.
+`#[derive(Value)]`, `#[derive(ScriptHost)]`, `external_value_enum!`, and
+`external_host` implement it, and hosts install every ordinary type through
+`EngineBuilder::register_type::<T>()`. `ScriptHost` also emits the Host object
+contract directly, so an empty method impl is never required. Custom codecs or
+constructors use the explicitly low-level
+`register_type_binding::<T>(TypeBinding<T>)` escape hatch.
+
+Functions and methods are a separate surface. `export`, `export_module`, and
+`methods` generate `ExportBundle` values, all installed through
+`EngineBuilder::register_exports`. The older shape-specific `script_function`,
+`script_context_function`, `script_host_function`, and `script_methods` macros,
+their Host-specific builder aliases, and `ScriptHostMethodMetadata` are removed
+without compatibility shims. Generated service sets expose one
+`ServiceSet::register(builder)` entry.
+
+All nested authoring metadata uses one `#[vela(...)]` helper attribute:
+type/field/variant names and access, method metadata/effects, and
+`#[vela(default = RustService)]` on service-set fields. The older `#[script]`,
+`#[script_method]`, and `#[vela::default(...)]` spellings are removed without
+compatibility aliases.
 
 ### Repository Artifacts Use Domain-Neutral Host Names
 
@@ -2794,7 +2804,7 @@ generics. It is the owned-Value half of future service-signature traversal;
 Host/View/MutView capability closure remains separate because those entries
 must preserve leases, provenance, receiver authority, and registered methods.
 External unannotatable values continue to use explicit
-`register_rust_type::<T>(TypeBinding<T>)` leaves.
+`register_type_binding::<T>(TypeBinding<T>)` leaves.
 
 ### Callable ABI Carries Exact Binding Use Separately From Surface Type
 
@@ -3132,8 +3142,8 @@ Implementation and acceptance are tracked in
 
 ### Grouped Host Methods May Add Explicit Effects
 
-`#[vela::methods]` infers host-read or host-write from the receiver and
-parameters, then unions any explicit `#[script_method(effects(...))]` facts.
+`#[vela_macros::methods]` infers host-read or host-write from the receiver and
+parameters, then unions any explicit `#[vela(effects(...))]` facts.
 Explicit effects are additive: they cannot erase inferred host access or claim
 that an observable method is pure. This keeps the unified Value/Host adapter
 path usable for methods such as bounded diagnostics, whose shared receiver is a

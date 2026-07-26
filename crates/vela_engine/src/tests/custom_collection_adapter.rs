@@ -201,9 +201,9 @@ fn runtime(source: &str) -> Runtime {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_rust_type(timeline_binding())
-        .register_rust_type(ledger_binding())
-        .register_rust_type(tag_set_binding())
+        .register_type_binding(timeline_binding())
+        .register_type_binding(ledger_binding())
+        .register_type_binding(tag_set_binding())
         .build()
         .expect("custom collection binding should seal");
     let program = engine

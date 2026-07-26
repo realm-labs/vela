@@ -36,7 +36,7 @@ The `host_type_methods` example covers the host type method and argument model:
 - root and child host method calls resolved through host target plans and `HostMethodId`
 
 The Rust side uses `#[derive(ScriptHost)]` for field/path bindings and
-`#[script_methods]` for `&self` / `&mut self` host methods. Script-visible
+`#[vela_macros::methods]` for `&self` / `&mut self` host methods. Script-visible
 fields participate in resolved host access by default, so the example does not
 hand-write `ScriptHostObject` or `PathSegment` dispatch.
 

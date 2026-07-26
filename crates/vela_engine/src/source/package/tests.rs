@@ -1009,7 +1009,7 @@ impl LevelProvider for LevelUp {
     let field = FieldId::new(1);
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .host_type(host_type)
                 .field(FieldDesc::new(field, "level").writable(true)),

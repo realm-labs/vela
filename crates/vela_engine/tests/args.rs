@@ -511,7 +511,7 @@ fn script_arg_conversions_extract_owned_rust_values() {
 fn runtime_call_accepts_args_and_host_macros() {
     let method = HostMethodId::new(23);
     let engine = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .host_type(HostTypeId::new(1))
                 .method(MethodDesc::new(method, "grant_exp")),

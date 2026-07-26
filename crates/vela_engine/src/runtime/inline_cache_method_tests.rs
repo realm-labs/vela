@@ -440,7 +440,7 @@ fn read_match() {
 fn host_collection_element_method_uses_host_type_guarded_dynamic_cache() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
-        .register_rust_value_closure::<Vec<Vec<i64>>>()
+        .register_type::<Vec<Vec<i64>>>()
         .build()
         .expect("nested host collection binding should seal");
     let program = engine
@@ -498,7 +498,7 @@ fn total(values) {
 fn typed_host_collection_element_method_links_to_dense_method_id() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
-        .register_rust_value_closure::<Vec<Vec<i64>>>()
+        .register_type::<Vec<Vec<i64>>>()
         .build()
         .expect("nested host collection binding should seal");
     let program = engine

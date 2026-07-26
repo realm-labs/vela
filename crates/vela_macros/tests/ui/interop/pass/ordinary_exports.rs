@@ -2,9 +2,9 @@ use vela_macros::{ScriptHost, export, export_module, methods, trait_export};
 use vela_vm::error::VmResult;
 
 #[derive(ScriptHost)]
-#[script(path = "game::Player")]
+#[vela(path = "game::Player")]
 pub struct Player {
-    #[script(get, set)]
+    #[vela(get, set)]
     level: i64,
 }
 

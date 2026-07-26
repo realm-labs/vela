@@ -69,7 +69,7 @@ impl ExportAttrs {
         let path = path.ok_or_else(|| {
             syn::Error::new(
                 proc_macro2::Span::call_site(),
-                "#[vela::export] requires path = \"module::function\"",
+                "#[vela_macros::export] requires path = \"module::function\"",
             )
         })?;
         Ok(Self {

@@ -23,7 +23,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let Some((_, items)) = module.content.as_mut() else {
         return Err(syn::Error::new_spanned(
             &module,
-            "#[vela::export_module] requires an inline module",
+            "#[vela_macros::export_module] requires an inline module",
         ));
     };
     let mut generated = Vec::new();
@@ -36,9 +36,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         if !matches!(function.vis, Visibility::Public(_)) {
             continue;
         }
-        reject_generic_signature(&function.sig.generics, "#[vela::export_module]")?;
-        reject_unsafe_signature(&function.sig, "#[vela::export_module]")?;
-        reject_extern_signature(&function.sig, "#[vela::export_module]")?;
+        reject_generic_signature(&function.sig.generics, "#[vela_macros::export_module]")?;
+        reject_unsafe_signature(&function.sig, "#[vela_macros::export_module]")?;
+        reject_extern_signature(&function.sig, "#[vela_macros::export_module]")?;
         let default_path = format!("{prefix}::{}", function.sig.ident);
         let attrs = take_export_attrs(&mut function.attrs, default_path)?;
         let docs = attrs
@@ -68,7 +68,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     if contract_functions.is_empty() {
         return Err(syn::Error::new_spanned(
             &module,
-            "#[vela::export_module] requires at least one supported public function",
+            "#[vela_macros::export_module] requires at least one supported public function",
         ));
     }
     for generated in generated {
@@ -107,7 +107,7 @@ fn parse_prefix(attr: TokenStream) -> Result<String> {
     path.ok_or_else(|| {
         syn::Error::new(
             proc_macro2::Span::call_site(),
-            "#[vela::export_module] requires path = \"module\"",
+            "#[vela_macros::export_module] requires path = \"module\"",
         )
     })
 }
@@ -134,7 +134,7 @@ fn take_export_attrs(attrs: &mut Vec<Attribute>, default_path: String) -> Result
         Meta::NameValue(_) => {
             return Err(syn::Error::new_spanned(
                 attr,
-                "export overrides use #[vela::export(...)]",
+                "export overrides use #[vela(...)]",
             ));
         }
     };
@@ -142,10 +142,7 @@ fn take_export_attrs(attrs: &mut Vec<Attribute>, default_path: String) -> Result
 }
 
 fn is_export_attr(attr: &Attribute) -> bool {
-    attr.path()
-        .segments
-        .last()
-        .is_some_and(|segment| segment.ident == "export")
+    attr.path().is_ident("vela")
 }
 
 #[cfg(test)]
@@ -162,7 +159,7 @@ mod tests {
                 mod exports {
                     pub fn normalize(amount: i64) -> i64 { amount.max(0) }
 
-                    #[vela::export(effects(random))]
+                    #[vela(effects(random))]
                     pub fn roll() -> i64 { 4 }
 
                     fn helper() -> i64 { 1 }

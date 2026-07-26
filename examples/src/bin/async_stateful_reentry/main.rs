@@ -6,14 +6,15 @@ use std::task::Poll;
 
 use vela_engine::prelude::*;
 use vela_examples::async_executor::block_on;
-use vela_macros::{ScriptHost, script_methods};
+use vela_macros::{ScriptHost, methods};
 
 const SOURCE: &str = include_str!("main.vela");
 
 fn main() -> Result<(), Box<dyn Error>> {
     let engine = Engine::builder()
-        .register_script_host::<WorkflowState>()
-        .register_script_host::<RuleService>()
+        .register_type::<WorkflowState>()
+        .register_type::<RuleService>()
+        .register_exports(WorkflowState::vela_inherent_exports())
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
         .build()?;
@@ -56,16 +57,16 @@ struct WorkflowActor {
 }
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "examples::async_stateful_reentry::WorkflowState")]
+#[vela(path = "examples::async_stateful_reentry::WorkflowState")]
 struct WorkflowState {
-    #[script(get, set)]
+    #[vela(get, set)]
     total: i64,
 }
 
 #[derive(Debug, ScriptHost)]
-#[script(path = "examples::async_stateful_reentry::RuleService")]
+#[vela(path = "examples::async_stateful_reentry::RuleService")]
 struct RuleService {
-    #[script(get)]
+    #[vela(get)]
     multiplier: i64,
 }
 
@@ -85,13 +86,9 @@ impl RuleService {
     }
 }
 
-#[script_methods]
-impl RuleService {}
-
-#[script_methods]
+#[methods]
 impl WorkflowState {
-    #[script_method(effect = "write_host")]
-    async fn advance(
+    pub async fn advance(
         &mut self,
         context: &mut NativeCallContext<'_, '_>,
         service: &RuleService,

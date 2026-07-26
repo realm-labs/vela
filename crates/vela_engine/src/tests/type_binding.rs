@@ -188,7 +188,7 @@ fn decode_external_value(value: &OwnedValue) -> VmResult<ExternalValue> {
 fn unified_type_binding_is_sealed_into_engine_and_reflection_registry() {
     let owner = host_desc(101, 201).key;
     let engine = Engine::builder()
-        .register_rust_type::<ExternalHost>(
+        .register_type_binding::<ExternalHost>(
             TypeBinding::host(host_desc(101, 201)).method_desc(
                 NativeMethodDesc::new(owner.clone(), HostMethodId::new(301), "read")
                     .receiver(ReceiverCapability::Shared)
@@ -196,7 +196,7 @@ fn unified_type_binding_is_sealed_into_engine_and_reflection_registry() {
                     .effects(EffectSet::host_read()),
             ),
         )
-        .register_rust_type::<ExternalValue>(external_value_binding(value_desc(102, "amount")))
+        .register_type_binding::<ExternalValue>(external_value_binding(value_desc(102, "amount")))
         .build()
         .expect("unified type bindings should seal");
 
@@ -271,19 +271,19 @@ fn unified_type_binding_is_sealed_into_engine_and_reflection_registry() {
 #[test]
 fn type_binding_fingerprint_ignores_docs_but_tracks_structural_abi() {
     let first = Engine::builder()
-        .register_rust_type::<ExternalValue>(external_value_binding(
+        .register_type_binding::<ExternalValue>(external_value_binding(
             value_desc(102, "amount").docs("first docs"),
         ))
         .build()
         .expect("first binding");
     let second = Engine::builder()
-        .register_rust_type::<ExternalValue>(external_value_binding(
+        .register_type_binding::<ExternalValue>(external_value_binding(
             value_desc(102, "amount").docs("different docs"),
         ))
         .build()
         .expect("second binding");
     let changed = Engine::builder()
-        .register_rust_type::<ExternalValue>(external_value_binding(value_desc(102, "total")))
+        .register_type_binding::<ExternalValue>(external_value_binding(value_desc(102, "total")))
         .build()
         .expect("changed binding");
 
@@ -331,7 +331,7 @@ fn type_binding_fingerprint_tracks_collection_view_capabilities() {
 #[test]
 fn collection_view_kind_must_match_the_bound_representation() {
     let result = Engine::builder()
-        .register_rust_type::<ExternalValue>(
+        .register_type_binding::<ExternalValue>(
             external_value_binding(value_desc(102, "amount")).collection_view_capabilities(
                 CollectionViewCapabilities::read_only(CollectionViewKind::Array),
             ),
@@ -359,7 +359,7 @@ fn bytes_binding_accepts_array_view_capabilities() {
     ));
 
     Engine::builder()
-        .register_rust_type::<Vec<u8>>(binding)
+        .register_type_binding::<Vec<u8>>(binding)
         .build()
         .expect("Bytes values should support borrowed array views");
 }
@@ -367,7 +367,7 @@ fn bytes_binding_accepts_array_view_capabilities() {
 #[test]
 fn type_binding_rejects_ambiguous_storage_and_receiver_capabilities() {
     let value_with_host_storage = Engine::builder()
-        .register_rust_type::<ExternalValue>(external_value_binding(host_desc(101, 201)))
+        .register_type_binding::<ExternalValue>(external_value_binding(host_desc(101, 201)))
         .build();
     assert!(matches!(
         value_with_host_storage,
@@ -379,7 +379,7 @@ fn type_binding_rejects_ambiguous_storage_and_receiver_capabilities() {
     ));
 
     let exclusive_without_shared = Engine::builder()
-        .register_rust_type::<ExternalHost>(
+        .register_type_binding::<ExternalHost>(
             TypeBinding::host(host_desc(101, 201)).receiver_capabilities(
                 ReceiverCapabilities::OWNED.with(ReceiverCapability::Exclusive),
             ),
@@ -396,7 +396,7 @@ fn type_binding_rejects_ambiguous_storage_and_receiver_capabilities() {
 
     let owner = host_desc(101, 201).key;
     let method_exceeds_type = Engine::builder()
-        .register_rust_type::<ExternalHost>(
+        .register_type_binding::<ExternalHost>(
             TypeBinding::host(host_desc(101, 201))
                 .receiver_capabilities(ReceiverCapabilities::OWNED.with(ReceiverCapability::Shared))
                 .method_desc(
@@ -419,8 +419,8 @@ fn type_binding_rejects_ambiguous_storage_and_receiver_capabilities() {
 #[test]
 fn one_rust_type_cannot_map_to_two_interop_identities() {
     let result = Engine::builder()
-        .register_rust_type::<ExternalValue>(external_value_binding(value_desc(102, "amount")))
-        .register_rust_type::<ExternalValue>(external_value_binding(
+        .register_type_binding::<ExternalValue>(external_value_binding(value_desc(102, "amount")))
+        .register_type_binding::<ExternalValue>(external_value_binding(
             TypeDesc::new(TypeKey::new(TypeId::new(103), "host::OtherValue"))
                 .kind(TypeKind::ScriptStruct),
         ))
@@ -440,9 +440,12 @@ fn method_receiver_requirement_participates_in_type_abi() {
     let build = |receiver| {
         let owner = host_desc(101, 201).key;
         Engine::builder()
-            .register_rust_type::<ExternalHost>(TypeBinding::host(host_desc(101, 201)).method_desc(
-                NativeMethodDesc::new(owner, HostMethodId::new(302), "touch").receiver(receiver),
-            ))
+            .register_type_binding::<ExternalHost>(
+                TypeBinding::host(host_desc(101, 201)).method_desc(
+                    NativeMethodDesc::new(owner, HostMethodId::new(302), "touch")
+                        .receiver(receiver),
+                ),
+            )
             .build()
             .expect("receiver-specific binding should seal")
     };
@@ -467,7 +470,7 @@ fn method_return_collection_mutation_participates_in_type_abi() {
     let build = |mutation| {
         let owner = host_desc(101, 201).key;
         Engine::builder()
-            .register_rust_type::<ExternalHost>(
+            .register_type_binding::<ExternalHost>(
                 TypeBinding::host(host_desc(101, 201)).method_desc(
                     NativeMethodDesc::new(owner, HostMethodId::new(302), "values")
                         .returns(TypeHint::array_mut_of(TypeHint::i64(), mutation)),
@@ -523,7 +526,7 @@ fn method_return_collection_mutation_participates_in_type_abi() {
 #[test]
 fn registered_value_codec_round_trips_through_script_execution() {
     let engine = Engine::builder()
-        .register_rust_type::<ExternalValue>(external_value_binding(value_desc(102, "amount")))
+        .register_type_binding::<ExternalValue>(external_value_binding(value_desc(102, "amount")))
         .build()
         .expect("value binding should seal");
     let program = engine
@@ -561,7 +564,7 @@ fn increase(value: host::ExternalValue) {
 #[test]
 fn registered_value_constructor_is_callable_from_vela_and_projected_as_type_fact() {
     let engine = Engine::builder()
-        .register_rust_type::<ExternalValue>(
+        .register_type_binding::<ExternalValue>(
             external_value_binding(value_desc(102, "amount")).constructor_fn(
                 external_value_constructor(TypeHint::i64()),
                 construct_external_value,
@@ -625,7 +628,7 @@ fn make() {
 fn constructor_signature_participates_in_type_binding_abi() {
     let build = |hint| {
         Engine::builder()
-            .register_rust_type::<ExternalValue>(
+            .register_type_binding::<ExternalValue>(
                 external_value_binding(value_desc(102, "amount"))
                     .constructor_fn(external_value_constructor(hint), construct_external_value),
             )
@@ -651,7 +654,7 @@ fn constructor_signature_participates_in_type_binding_abi() {
 #[test]
 fn type_binding_rejects_constructor_with_wrong_owner_or_return_type() {
     let wrong_owner = Engine::builder()
-        .register_rust_type::<ExternalValue>(
+        .register_type_binding::<ExternalValue>(
             external_value_binding(value_desc(102, "amount")).constructor_fn(
                 crate::native::NativeFunctionDesc::new(
                     "host::OtherValue::new",
@@ -673,7 +676,7 @@ fn type_binding_rejects_constructor_with_wrong_owner_or_return_type() {
     ));
 
     let wrong_return = Engine::builder()
-        .register_rust_type::<ExternalValue>(
+        .register_type_binding::<ExternalValue>(
             external_value_binding(value_desc(102, "amount")).constructor_fn(
                 crate::native::NativeFunctionDesc::new(
                     "host::ExternalValue::new",
@@ -695,16 +698,18 @@ fn type_binding_rejects_constructor_with_wrong_owner_or_return_type() {
     ));
 
     let forged_host_ref = Engine::builder()
-        .register_rust_type::<ExternalHost>(TypeBinding::host(host_desc(101, 201)).constructor_fn(
-            external_host_constructor(),
-            |_args, _host| {
-                Ok(OwnedValue::HostRef(vela_host::path::HostRef::new(
-                    HostTypeId::new(201),
-                    vela_common::HostObjectId::new(1),
-                    1,
-                )))
-            },
-        ))
+        .register_type_binding::<ExternalHost>(
+            TypeBinding::host(host_desc(101, 201)).constructor_fn(
+                external_host_constructor(),
+                |_args, _host| {
+                    Ok(OwnedValue::HostRef(vela_host::path::HostRef::new(
+                        HostTypeId::new(201),
+                        vela_common::HostObjectId::new(1),
+                        1,
+                    )))
+                },
+            ),
+        )
         .build();
     assert!(matches!(
         forged_host_ref,
@@ -720,7 +725,7 @@ fn type_binding_rejects_constructor_with_wrong_owner_or_return_type() {
 #[test]
 fn host_constructor_retains_rust_object_outside_gc_across_runtime_calls() {
     let engine = Engine::builder()
-        .register_rust_type::<ExternalHost>(
+        .register_type_binding::<ExternalHost>(
             TypeBinding::host(host_desc(101, 201)).host_constructor_fn(
                 vela_common::HostConstructionLifetime::RuntimeOwned,
                 external_host_constructor(),
@@ -794,7 +799,7 @@ fn add_five(value: host::ExternalHost) {
 fn call_scoped_host_constructor_reclaims_at_root_and_rejects_escape() {
     CALL_SCOPED_HOST_DROPS.store(0, Ordering::SeqCst);
     let engine = Engine::builder()
-        .register_rust_type::<ExternalHost>(
+        .register_type_binding::<ExternalHost>(
             TypeBinding::host(host_desc(101, 201)).host_constructor_fn(
                 vela_common::HostConstructionLifetime::CallScoped,
                 external_host_constructor(),
@@ -867,7 +872,7 @@ fn leak(amount: i64) {
 fn exclusive_method_rejects_shared_view_and_accepts_mut_view() {
     let owner = host_desc(101, 201).key;
     let engine = Engine::builder()
-        .register_rust_type::<ExternalHost>(
+        .register_type_binding::<ExternalHost>(
             TypeBinding::host(host_desc(101, 201)).native_method_fn(
                 NativeMethodDesc::new(owner, HostMethodId::new(302), "touch")
                     .receiver(ReceiverCapability::Exclusive),

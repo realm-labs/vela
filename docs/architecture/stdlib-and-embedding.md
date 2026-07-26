@@ -352,9 +352,9 @@ failures are script-visible `Result::Err(IoError)` values.
 ```rust
 let engine = Engine::builder()
     .with_standard_natives()
-    .register_host_type::<Account>()
-    .register_host_type::<Invoice>()
-    .register_host_type::<Ledger>()
+    .register_type::<Account>()
+    .register_type::<Invoice>()
+    .register_type::<Ledger>()
     .register_reflect_schema::<CustomerView>()
     .register_typed_native_fn::<(String,), _>(
         NativeFunctionDesc::new("audit::log", NativeFunctionId::new(10_001))

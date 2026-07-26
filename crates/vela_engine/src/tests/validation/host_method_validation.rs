@@ -3,8 +3,8 @@ use super::*;
 #[test]
 fn engine_rejects_duplicate_host_type_ids() {
     let result = Engine::builder()
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
-        .register_type(
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(2), "Monster")).host_type(HostTypeId::new(1)),
         )
         .build();
@@ -18,7 +18,7 @@ fn engine_rejects_duplicate_host_type_ids() {
 #[test]
 fn engine_rejects_duplicate_field_ids() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(FieldId::new(1), "level"))
@@ -38,7 +38,7 @@ fn engine_rejects_duplicate_field_ids() {
 #[test]
 fn engine_rejects_duplicate_field_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(FieldId::new(1), "level"))
@@ -58,7 +58,7 @@ fn engine_rejects_duplicate_field_names() {
 #[test]
 fn engine_rejects_duplicate_variant_ids() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
                 .variant(VariantDesc::new(VariantId::new(1), "Gold"))
                 .variant(VariantDesc::new(VariantId::new(1), "Gem")),
@@ -77,7 +77,7 @@ fn engine_rejects_duplicate_variant_ids() {
 #[test]
 fn engine_rejects_duplicate_variant_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward"))
                 .variant(VariantDesc::new(VariantId::new(1), "Gold"))
                 .variant(VariantDesc::new(VariantId::new(2), "Gold")),
@@ -96,7 +96,7 @@ fn engine_rejects_duplicate_variant_names() {
 #[test]
 fn engine_rejects_duplicate_variant_field_ids() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).variant(
                 VariantDesc::new(VariantId::new(1), "Gold")
                     .field(FieldDesc::new(FieldId::new(1), "item_id"))
@@ -118,7 +118,7 @@ fn engine_rejects_duplicate_variant_field_ids() {
 #[test]
 fn engine_rejects_duplicate_variant_field_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Reward")).variant(
                 VariantDesc::new(VariantId::new(1), "Gold")
                     .field(FieldDesc::new(FieldId::new(1), "count"))
@@ -140,7 +140,7 @@ fn engine_rejects_duplicate_variant_field_names() {
 #[test]
 fn engine_rejects_duplicate_trait_ids() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .trait_impl(trait_desc_with_id(TraitId::new(1), "Damageable"))
                 .trait_impl(trait_desc_with_id(TraitId::new(1), "Rewardable")),
@@ -159,7 +159,7 @@ fn engine_rejects_duplicate_trait_ids() {
 #[test]
 fn engine_rejects_duplicate_trait_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
                 .trait_impl(trait_desc_with_id(TraitId::new(1), "Damageable"))
                 .trait_impl(trait_desc_with_id(TraitId::new(2), "Damageable")),
@@ -178,7 +178,7 @@ fn engine_rejects_duplicate_trait_names() {
 #[test]
 fn engine_rejects_duplicate_trait_method_ids() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
                 trait_desc_with_id(TraitId::new(1), "Damageable")
                     .method(TraitMethodDesc::new(MethodId::new(1), "damage"))
@@ -200,7 +200,7 @@ fn engine_rejects_duplicate_trait_method_ids() {
 #[test]
 fn engine_rejects_duplicate_trait_method_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
                 trait_desc_with_id(TraitId::new(1), "Damageable")
                     .method(TraitMethodDesc::new(MethodId::new(1), "damage"))
@@ -222,7 +222,7 @@ fn engine_rejects_duplicate_trait_method_names() {
 #[test]
 fn engine_rejects_duplicate_trait_method_param_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
                 trait_desc_with_id(TraitId::new(1), "Damageable").method(
                     TraitMethodDesc::new(MethodId::new(1), "damage")
@@ -247,7 +247,7 @@ fn engine_rejects_duplicate_trait_method_param_names() {
 #[test]
 fn engine_rejects_duplicate_host_method_ids() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             player_type(TypeId::new(1), HostTypeId::new(1))
                 .method(MethodDesc::new(HostMethodId::new(1), "grant_exp"))
                 .method(MethodDesc::new(HostMethodId::new(1), "heal")),
@@ -263,7 +263,7 @@ fn engine_rejects_duplicate_host_method_ids() {
 #[test]
 fn engine_rejects_malformed_trait_method_param_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
                 trait_desc_with_id(TraitId::new(1), "Damageable").method(
                     TraitMethodDesc::new(MethodId::new(1), "damage")
@@ -286,7 +286,7 @@ fn engine_rejects_malformed_trait_method_param_names() {
 #[test]
 fn engine_rejects_duplicate_host_method_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             player_type(TypeId::new(1), HostTypeId::new(1))
                 .method(MethodDesc::new(HostMethodId::new(1), "grant_exp"))
                 .method(MethodDesc::new(HostMethodId::new(2), "grant_exp")),
@@ -304,7 +304,7 @@ fn engine_rejects_duplicate_host_method_names() {
 #[test]
 fn engine_rejects_duplicate_host_method_param_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             player_type(TypeId::new(1), HostTypeId::new(1)).method(
                 MethodDesc::new(HostMethodId::new(1), "grant_exp")
                     .param(MethodParamDesc::new("amount"))
@@ -326,7 +326,7 @@ fn engine_rejects_duplicate_host_method_param_names() {
 #[test]
 fn engine_rejects_empty_host_method_required_permissions() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             player_type(TypeId::new(1), HostTypeId::new(1)).method(
                 MethodDesc::new(HostMethodId::new(1), "grant_exp")
                     .access(vela_reflect::access::MethodAccess::new().require_permission("")),
@@ -346,7 +346,7 @@ fn engine_rejects_empty_host_method_required_permissions() {
 #[test]
 fn engine_rejects_empty_host_method_attribute_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             player_type(TypeId::new(1), HostTypeId::new(1))
                 .method(MethodDesc::new(HostMethodId::new(1), "grant_exp").attr("", "bad")),
         )
@@ -364,7 +364,7 @@ fn engine_rejects_empty_host_method_attribute_names() {
 #[test]
 fn engine_rejects_generic_host_method_type_hints() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             player_type(TypeId::new(1), HostTypeId::new(1)).method(
                 MethodDesc::new(HostMethodId::new(1), "grant_rewards")
                     .param(MethodParamDesc::new("items").type_hint("Array<Item>"))
@@ -385,7 +385,7 @@ fn engine_rejects_generic_host_method_type_hints() {
 #[test]
 fn engine_rejects_generic_host_method_param_type_hints() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             player_type(TypeId::new(1), HostTypeId::new(1)).method(
                 MethodDesc::new(HostMethodId::new(1), "grant_rewards")
                     .param(MethodParamDesc::new("items").type_hint("Set<Function>"))
@@ -407,7 +407,7 @@ fn engine_rejects_generic_host_method_param_type_hints() {
 fn engine_rejects_empty_native_method_attribute_names() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let result = Engine::builder()
-        .register_type(player_type(player_key.id, HostTypeId::new(1)))
+        .register_type_desc(player_type(player_key.id, HostTypeId::new(1)))
         .register_host_method_desc(
             NativeMethodDesc::new(player_key, HostMethodId::new(45), "grant_exp").attr("", "bad"),
         )
@@ -426,7 +426,7 @@ fn engine_rejects_empty_native_method_attribute_names() {
 fn engine_rejects_duplicate_native_method_ids() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let result = Engine::builder()
-        .register_type(player_type(player_key.id, HostTypeId::new(1)))
+        .register_type_desc(player_type(player_key.id, HostTypeId::new(1)))
         .register_native_method_fn(
             NativeMethodDesc::new(player_key.clone(), HostMethodId::new(44), "grant_exp"),
             |_, _, _| Ok(OwnedValue::Unit),
@@ -446,7 +446,7 @@ fn engine_rejects_duplicate_native_method_ids() {
 #[test]
 fn engine_rejects_malformed_host_method_names() {
     let result = Engine::builder()
-        .register_type(
+        .register_type_desc(
             player_type(TypeId::new(1), HostTypeId::new(1))
                 .method(MethodDesc::new(HostMethodId::new(1), "")),
         )
@@ -466,7 +466,7 @@ fn engine_rejects_malformed_host_method_names() {
 fn engine_rejects_duplicate_native_method_param_names() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let result = Engine::builder()
-        .register_type(player_type(player_key.id, HostTypeId::new(1)))
+        .register_type_desc(player_type(player_key.id, HostTypeId::new(1)))
         .register_host_method_desc(
             NativeMethodDesc::new(player_key, HostMethodId::new(44), "grant_exp")
                 .param("amount", TypeHint::i64())
@@ -488,7 +488,7 @@ fn engine_rejects_duplicate_native_method_param_names() {
 fn engine_rejects_unknown_native_method_param_type_hints() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let result = Engine::builder()
-        .register_type(player_type(player_key.id, HostTypeId::new(1)))
+        .register_type_desc(player_type(player_key.id, HostTypeId::new(1)))
         .register_host_method_desc(
             NativeMethodDesc::new(player_key, HostMethodId::new(44), "grant_exp").param(
                 "target",

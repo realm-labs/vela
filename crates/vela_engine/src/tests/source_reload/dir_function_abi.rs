@@ -462,7 +462,7 @@ pub fn grant(player: Player) {
     let method = HostMethodId::new(9);
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(
+        .register_type_desc(
             player_type(TypeId::new(1), HostTypeId::new(1))
                 .method(MethodDesc::new(method, "grant_exp")),
         )
@@ -473,7 +473,7 @@ pub fn grant(player: Player) {
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(
+        .register_type_desc(
             player_type(TypeId::new(1), HostTypeId::new(1))
                 .method(MethodDesc::new(method, "award_exp")),
         )

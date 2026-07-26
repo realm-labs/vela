@@ -294,7 +294,7 @@ fn engine_rejects_unknown_native_function_return_type_hints() {
 fn engine_accepts_registered_native_function_record_type_hints() {
     let reward_key = TypeKey::new(TypeId::new(77), "Reward");
     let result = Engine::builder()
-        .register_type(TypeDesc::new(reward_key.clone()).kind(TypeKind::ScriptStruct))
+        .register_type_desc(TypeDesc::new(reward_key.clone()).kind(TypeKind::ScriptStruct))
         .register_native_fn(
             NativeFunctionDesc::new("game::inspect_reward", NativeFunctionId::new(36))
                 .param("reward", TypeHint::Record(reward_key.clone()))
@@ -328,7 +328,7 @@ fn engine_accepts_native_function_iterator_type_hints() {
 fn engine_accepts_native_function_value_keyed_map_and_set_hints() {
     let player = TypeKey::new(TypeId::new(1), "Player");
     let result = Engine::builder()
-        .register_type(TypeDesc::new(player.clone()))
+        .register_type_desc(TypeDesc::new(player.clone()))
         .register_native_fn(
             NativeFunctionDesc::new("game::scores", NativeFunctionId::new(371))
                 .param(

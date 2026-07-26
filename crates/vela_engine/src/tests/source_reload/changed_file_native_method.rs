@@ -839,7 +839,7 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
     let reward_file = write_host_method_reward_modules(&root, "grant_exp", 1);
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(type_with_reload_method(MethodDesc::new(
+        .register_type_desc(type_with_reload_method(MethodDesc::new(
             method,
             "grant_exp",
         )))
@@ -850,7 +850,7 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(type_with_reload_method(MethodDesc::new(
+        .register_type_desc(type_with_reload_method(MethodDesc::new(
             method,
             "award_exp",
         )))

@@ -9,10 +9,9 @@ mod export_module;
 mod external_host;
 mod external_value_enum;
 mod hash;
+mod host_object;
 mod methods;
-mod script_function;
 mod script_host;
-mod script_methods;
 mod service;
 mod service_set;
 mod signature;
@@ -81,43 +80,18 @@ pub fn export_external_trait_impl(input: TokenStream) -> TokenStream {
     export_external_trait_impl::expand(input.into()).into()
 }
 
-#[proc_macro_derive(ScriptHost, attributes(script))]
+#[proc_macro_derive(ScriptHost, attributes(vela))]
 pub fn derive_script_host(input: TokenStream) -> TokenStream {
     script_host::expand(input.into(), script_host::GeneratedMethod::Host).into()
 }
 
-#[proc_macro_derive(ScriptReflect, attributes(script))]
+#[proc_macro_derive(ScriptReflect, attributes(vela))]
 pub fn derive_script_reflect(input: TokenStream) -> TokenStream {
     script_host::expand(input.into(), script_host::GeneratedMethod::Reflect).into()
 }
 
 /// Generates a structural Value codec, schema, and unified TypeBinding.
-#[proc_macro_derive(Value, attributes(script))]
+#[proc_macro_derive(Value, attributes(vela))]
 pub fn derive_value(input: TokenStream) -> TokenStream {
     value::expand(input.into()).into()
-}
-
-#[proc_macro_attribute]
-pub fn script_methods(_attr: TokenStream, input: TokenStream) -> TokenStream {
-    script_methods::expand(input.into()).into()
-}
-
-#[proc_macro_attribute]
-pub fn script_method(_attr: TokenStream, input: TokenStream) -> TokenStream {
-    script_methods::expand_standalone_method(input.into()).into()
-}
-
-#[proc_macro_attribute]
-pub fn script_function(attr: TokenStream, input: TokenStream) -> TokenStream {
-    script_function::expand(attr.into(), input.into()).into()
-}
-
-#[proc_macro_attribute]
-pub fn script_context_function(attr: TokenStream, input: TokenStream) -> TokenStream {
-    script_function::expand_context(attr.into(), input.into()).into()
-}
-
-#[proc_macro_attribute]
-pub fn script_host_function(attr: TokenStream, input: TokenStream) -> TokenStream {
-    script_function::expand_host(attr.into(), input.into()).into()
 }

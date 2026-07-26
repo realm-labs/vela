@@ -358,7 +358,7 @@ pub(super) fn removed_method_descriptor_rejection_kind(
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(type_with_reload_method(MethodDesc::new(
+        .register_type_desc(type_with_reload_method(MethodDesc::new(
             HostMethodId::new(9),
             "grant_exp",
         )))
@@ -369,7 +369,7 @@ pub(super) fn removed_method_descriptor_rejection_kind(
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(
+        .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).host_type(HostTypeId::new(1)),
         )
         .build()
@@ -443,7 +443,7 @@ pub(super) fn method_stable_id_churn_rejection_kind(
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(type_with_reload_method(MethodDesc::new(
+        .register_type_desc(type_with_reload_method(MethodDesc::new(
             HostMethodId::new(9),
             "grant_exp",
         )))
@@ -454,7 +454,7 @@ pub(super) fn method_stable_id_churn_rejection_kind(
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(type_with_reload_method(MethodDesc::new(
+        .register_type_desc(type_with_reload_method(MethodDesc::new(
             HostMethodId::new(10),
             "grant_exp",
         )))
@@ -531,7 +531,7 @@ pub(super) fn dir_method_rejection_kind(
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(type_with_reload_method(old_method))
+        .register_type_desc(type_with_reload_method(old_method))
         .build()
         .expect("old engine should build");
     let initial = old_engine
@@ -539,7 +539,7 @@ pub(super) fn dir_method_rejection_kind(
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(type_with_reload_method(new_method))
+        .register_type_desc(type_with_reload_method(new_method))
         .build()
         .expect("new engine should build");
     let mut runtime =
@@ -617,7 +617,7 @@ pub(super) fn changed_file_method_rejection_kind(
     let reward_file = write_reward_modules(&root, "return grant();", 2);
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(type_with_reload_method(old_method))
+        .register_type_desc(type_with_reload_method(old_method))
         .build()
         .expect("old engine should build");
     let initial = old_engine
@@ -625,7 +625,7 @@ pub(super) fn changed_file_method_rejection_kind(
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(type_with_reload_method(new_method))
+        .register_type_desc(type_with_reload_method(new_method))
         .build()
         .expect("new engine should build");
     let mut runtime =

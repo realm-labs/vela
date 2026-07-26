@@ -29,7 +29,7 @@ fn run_linked_program_with_host(
 #[test]
 fn engine_installs_reflection_lookup_budget() {
     let engine = Engine::builder()
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .reflection_lookup_budget(1)
         .build()
         .expect("engine should build");
@@ -73,7 +73,7 @@ fn engine_reflect_call_denies_native_methods_without_effect_permission() {
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_native_method_fn(
             NativeMethodDesc::new(owner, method, "grant_exp")
                 .effects(EffectSet::host_write())
@@ -128,7 +128,7 @@ fn engine_reflect_call_records_approved_native_methods() {
     let owner = TypeKey::new(TypeId::new(1), "Player");
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
-        .register_type(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
         .register_native_method_fn(
             NativeMethodDesc::new(owner, method, "grant_exp")
                 .effects(EffectSet::host_write())

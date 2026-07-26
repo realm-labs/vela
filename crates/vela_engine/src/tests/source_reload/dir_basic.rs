@@ -60,7 +60,7 @@ fn main(player: Player) {
     let method = HostMethodId::new(77);
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type(
+        .register_type_desc(
             player_type(TypeId::new(1), HostTypeId::new(1))
                 .method(MethodDesc::new(method, "grant_exp")),
         )

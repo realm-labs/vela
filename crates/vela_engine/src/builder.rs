@@ -23,7 +23,6 @@ use crate::native::{
     ScopedHostNativeFunctionEntry,
 };
 use crate::permission::{Capability, CapabilitySet, ExecutionProfile};
-use crate::schema::{ScriptHostMethodMetadata, ScriptHostSchema, ScriptReflectSchema};
 use crate::type_binding::{TypeBinding, TypeBindingRegistration, TypeBindingRegistry};
 use crate::typed::{
     TypedAsyncContextHostNativeFunction, TypedAsyncHostNativeFunction, TypedAsyncNativeFunction,
@@ -67,38 +66,29 @@ impl EngineBuilder {
     }
 
     #[must_use]
-    pub fn register_type(mut self, desc: TypeDesc) -> Self {
+    #[doc(hidden)]
+    pub fn register_type_desc(mut self, desc: TypeDesc) -> Self {
         self.types.push(desc);
         self
     }
 
-    /// Registers one Rust type through the unified Rust/Vela binding model.
+    /// Registers one complete Rust type surface.
     #[must_use]
-    pub fn register_rust_type<T: 'static>(self, binding: TypeBinding<T>) -> Self {
-        self.push_rust_type::<T>(binding)
-    }
-
-    #[doc(hidden)]
-    #[must_use]
-    pub fn register_service_set_schema(
-        mut self,
-        factory: crate::service::ServiceSetSchemaFactory,
-    ) -> Self {
-        self.service_set_factories.push(factory);
-        self
-    }
-
-    /// Registers the complete owned-Value dependency closure rooted at `T`.
-    ///
-    /// Generated service bundles use this entrypoint so a signature such as
-    /// `BTreeMap<String, Vec<Dto>>` installs every concrete nested binding
-    /// without application-authored registration calls.
-    #[must_use]
-    pub fn register_rust_value_closure<T>(self) -> Self
+    pub fn register_type<T>(self) -> Self
     where
-        T: crate::type_registration::RustValueType,
+        T: crate::type_registration::VelaType,
     {
-        T::register_value_type_closure(self)
+        T::register(self)
+    }
+
+    /// Registers an explicitly constructed binding.
+    ///
+    /// This is the low-level escape hatch for custom codecs, constructors, and
+    /// framework-generated bindings. Ordinary derived types use
+    /// [`Self::register_type`].
+    #[must_use]
+    pub fn register_type_binding<T: 'static>(self, binding: TypeBinding<T>) -> Self {
+        self.push_rust_type::<T>(binding)
     }
 
     /// Registers one concrete borrowed slice view and its element dependency.
@@ -109,7 +99,7 @@ impl EngineBuilder {
         T: crate::type_registration::RustValueType,
     {
         let builder = T::register_value_type_closure(self);
-        builder.register_generated_rust_value::<crate::standard::SliceBinding<T>>(
+        builder.register_generated_type_binding::<crate::standard::SliceBinding<T>>(
             crate::standard::standard_slice_type_binding::<T>(),
         )
     }
@@ -121,7 +111,7 @@ impl EngineBuilder {
     where
         T: crate::interop::VelaHostBoundary,
     {
-        self.register_generated_rust_value::<crate::standard::HostSliceBinding<T>>(
+        self.register_generated_type_binding::<crate::standard::HostSliceBinding<T>>(
             crate::standard::host_slice_type_binding::<T>(),
         )
     }
@@ -134,13 +124,23 @@ impl EngineBuilder {
     /// Engine sealing reports the conflict instead of silently choosing one.
     #[doc(hidden)]
     #[must_use]
-    pub fn register_generated_rust_value<T: 'static>(self, binding: TypeBinding<T>) -> Self {
+    pub fn register_generated_type_binding<T: 'static>(self, binding: TypeBinding<T>) -> Self {
         let rust_type_id = RustTypeId::of::<T>();
         let identity = (binding.type_desc().key.clone(), binding.abi_fingerprint());
         if self.rust_type_bindings.get(&rust_type_id) == Some(&identity) {
             return self;
         }
         self.push_rust_type::<T>(binding)
+    }
+
+    #[doc(hidden)]
+    #[must_use]
+    pub fn register_service_set_schema(
+        mut self,
+        factory: crate::service::ServiceSetSchemaFactory,
+    ) -> Self {
+        self.service_set_factories.push(factory);
+        self
     }
 
     fn push_rust_type<T: 'static>(mut self, binding: TypeBinding<T>) -> Self {
@@ -177,13 +177,9 @@ impl EngineBuilder {
         bundle.install(self)
     }
 
+    #[doc(hidden)]
     #[must_use]
-    pub fn register_host_type<T: ScriptHostSchema>(self) -> Self {
-        self.register_type(T::script_host_type_desc())
-    }
-
-    #[must_use]
-    pub fn register_host_type_spec(mut self, spec: impl Into<HostTypeSpec>) -> Self {
+    pub fn register_type_spec(mut self, spec: impl Into<HostTypeSpec>) -> Self {
         let (type_desc, method_metadata, native_methods) = spec.into().into_parts();
         self.types.push(type_desc);
         self.host_method_metadata.extend(method_metadata);
@@ -192,34 +188,10 @@ impl EngineBuilder {
     }
 
     #[must_use]
-    pub fn register_script_host<T>(self) -> Self
-    where
-        T: ScriptHostSchema + ScriptHostMethodMetadata,
-    {
-        self.register_rust_type::<T>(T::script_host_type_binding())
-    }
-
-    #[must_use]
-    pub fn register_reflect_schema<T: ScriptReflectSchema>(self) -> Self {
-        self.register_type(T::script_reflect_type_desc())
-    }
-
-    #[must_use]
+    #[doc(hidden)]
     pub fn register_host_method_desc(mut self, desc: NativeMethodDesc) -> Self {
         self.host_method_metadata.push(desc);
         self
-    }
-
-    #[must_use]
-    pub fn register_host_method_metadata<T: ScriptHostMethodMetadata>(mut self) -> Self {
-        self.host_method_metadata
-            .extend(T::script_host_method_descs());
-        self
-    }
-
-    #[must_use]
-    pub fn register_host_methods<T: ScriptHostMethodMetadata>(self) -> Self {
-        T::register_script_host_methods(self)
     }
 
     #[must_use]
@@ -307,7 +279,7 @@ impl EngineBuilder {
 
     #[must_use]
     pub fn with_context_host_schema(self) -> Self {
-        self.register_type(crate::context_schema::context_host_type_desc())
+        self.register_type_desc(crate::context_schema::context_host_type_desc())
     }
 
     #[must_use]

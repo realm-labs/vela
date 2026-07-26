@@ -7,32 +7,32 @@ use vela_common::StoragePolicy;
 use vela_engine::args::{FromScriptArg, IntoScriptArg};
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
-use vela_macros::{Value, script_function};
+use vela_macros::{Value, export};
 use vela_reflect::registry::TypeKind;
 use vela_vm::owned_value::OwnedValue;
 
 #[derive(Debug, Eq, PartialEq, Value)]
-#[script(path = "host::ItemGrant", docs = "One structural grant value.")]
+#[vela(path = "host::ItemGrant", docs = "One structural grant value.")]
 struct ItemGrant {
     count: i64,
-    #[script(name = "item_name")]
+    #[vela(name = "item_name")]
     name: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Value)]
-#[script(path = "host::GrantDecision")]
-enum GrantDecision {
+#[vela(path = "host::GrantDecision")]
+pub enum GrantDecision {
     Pending,
-    #[script(name = "Accepted")]
+    #[vela(name = "Accepted")]
     Granted {
-        #[script(name = "total")]
+        #[vela(name = "total")]
         count: i64,
         item: String,
     },
 }
 
 #[derive(Debug, Eq, PartialEq, Value)]
-#[script(path = "host::GrantBundle")]
+#[vela(path = "host::GrantBundle")]
 struct GrantBundle {
     grants: Vec<ItemGrant>,
     decisions: BTreeMap<String, Option<GrantDecision>>,
@@ -40,26 +40,26 @@ struct GrantBundle {
 }
 
 #[derive(Debug, Eq, PartialEq, Value)]
-#[script(path = "host::EmptyValue")]
+#[vela(path = "host::EmptyValue")]
 struct EmptyValue {}
 
 #[derive(Debug, Eq, PartialEq, Value)]
-#[script(path = "host::ByteRecord")]
+#[vela(path = "host::ByteRecord")]
 struct ByteRecord {
     bytes: Vec<u8>,
     chunks: Vec<Vec<u8>>,
 }
 
-#[script_function(name = "host::current_decision", effect = "pure")]
-fn current_decision() -> GrantDecision {
+#[export(path = "host::current_decision")]
+pub fn current_decision() -> GrantDecision {
     GrantDecision::Granted {
         count: 6,
         item: "token".to_owned(),
     }
 }
 
-#[script_function(name = "host::async_decision", effect = "pure")]
-async fn async_decision() -> GrantDecision {
+#[export(path = "host::async_decision")]
+pub async fn async_decision() -> GrantDecision {
     GrantDecision::Pending
 }
 
@@ -89,7 +89,7 @@ fn value_derive_generates_schema_codec_and_unified_binding() {
     );
 
     let engine = Engine::builder()
-        .register_rust_type::<ItemGrant>(ItemGrant::vela_type_binding())
+        .register_type::<ItemGrant>()
         .build()
         .expect("derived Value binding should seal");
     let type_bindings = engine.type_bindings();
@@ -117,7 +117,7 @@ fn byte_vector_fields_use_the_runtime_bytes_contract() {
     assert_eq!(desc.fields[1].type_hint.as_deref(), Some("Array<Bytes>"));
 
     let engine = Engine::builder()
-        .register_rust_value_closure::<ByteRecord>()
+        .register_type::<ByteRecord>()
         .build()
         .expect("byte record binding should seal");
     let program = engine
@@ -156,7 +156,7 @@ fn make_bytes() {
 #[test]
 fn value_derive_registers_its_complete_nested_type_closure() {
     let engine = Engine::builder()
-        .register_rust_value_closure::<GrantBundle>()
+        .register_type::<GrantBundle>()
         .build()
         .expect("derived Value should recursively register all concrete dependencies");
     let bindings = engine.type_bindings();
@@ -216,7 +216,7 @@ fn value_derive_registers_its_complete_nested_type_closure() {
 #[test]
 fn derived_value_round_trips_through_real_vela_execution() {
     let engine = Engine::builder()
-        .register_rust_type::<ItemGrant>(ItemGrant::vela_type_binding())
+        .register_type::<ItemGrant>()
         .build()
         .expect("derived Value binding should seal");
     let program = engine
@@ -288,7 +288,7 @@ fn enum_value_derive_generates_schema_and_structural_codec() {
 #[test]
 fn derived_enum_round_trips_through_real_vela_match() {
     let engine = Engine::builder()
-        .register_rust_type::<GrantDecision>(GrantDecision::vela_type_binding())
+        .register_type::<GrantDecision>()
         .build()
         .expect("derived enum binding should seal");
     let program = engine
@@ -337,9 +337,9 @@ fn increase(value: host::GrantDecision) {
 
 #[test]
 fn derived_enum_returned_by_rust_native_keeps_match_identity() {
-    let builder =
-        Engine::builder().register_rust_type::<GrantDecision>(GrantDecision::vela_type_binding());
-    let engine = vela_register_native_function_current_decision(builder)
+    let builder = Engine::builder().register_type::<GrantDecision>();
+    let engine = builder
+        .register_exports(vela_export_bundle_current_decision())
         .build()
         .expect("derived enum and native should seal together");
     let program = engine
@@ -368,9 +368,9 @@ fn count_decision() {
 
 #[test]
 fn derived_enum_returned_by_async_rust_native_keeps_match_identity() {
-    let builder =
-        Engine::builder().register_rust_type::<GrantDecision>(GrantDecision::vela_type_binding());
-    let engine = vela_register_native_function_async_decision(builder)
+    let builder = Engine::builder().register_type::<GrantDecision>();
+    let engine = builder
+        .register_exports(vela_export_bundle_async_decision())
         .build()
         .expect("derived enum and async native should seal together");
     let program = engine
