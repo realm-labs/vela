@@ -68,13 +68,15 @@ fn linked_execution_rejects_undersized_inline_cache_provider() {
 
     let mut program = vela_bytecode::LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
+    let slot = vela_bytecode::test_support::push_extern_state(&mut program, "test::server");
+    let state_name = program.intern_debug_name("test::server");
     let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 1);
     let cache_site = code.push_cache_site(CacheSiteKind::ExternStateRead, InstructionOffset(0));
     code.push_instruction(vela_bytecode::linked::Instruction::new(
         vela_bytecode::linked::InstructionKind::LoadExternState {
             dst: Register(0),
-            slot: vela_common::StateSlot::new(0),
-            debug_name: main_name,
+            slot,
+            debug_name: state_name,
             cache_site: Some(cache_site),
         },
     ));

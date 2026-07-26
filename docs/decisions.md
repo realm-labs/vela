@@ -22,6 +22,13 @@ decision history lives in
 - Pre-release code should replace obsolete internal APIs instead of preserving
   compatibility shims. Product-level hot reload ABI and schema compatibility
   checks remain required.
+- `unsafe` Rust is denied workspace-wide rather than forbidden. A module may
+  opt in with `#[allow(unsafe_code)]` when a reviewed invariant justifies it,
+  the module documents that invariant, every block carries a `SAFETY:` comment
+  (`clippy::undocumented_unsafe_blocks`), and the file is enumerated in
+  `crates/vela_host/tests/unsafe_boundaries.rs`. An opt-in for performance
+  additionally requires an interleaved before/after measurement showing a win;
+  soundness alone does not justify it.
 - Ordinary active source files should stay under 1200 lines unless a clear
   exception is documented. Over-threshold implementation and test files should
   be reviewed and split by responsibility when no exception exists.
@@ -1920,6 +1927,22 @@ The root manifest is durable project state: a member or dependency manifest
 change triggers reconstruction from that root rather than promoting the changed
 manifest to a new project. A failed reconstruction publishes diagnostics while
 retaining the last valid graph and does not commit a database generation.
+
+### Register Access Stays Bounds-Checked
+
+Linked verification proves every register operand in range, so unchecked
+register indexing is sound. It was implemented, measured, and rejected: on
+macOS/aarch64 release builds with interleaved runs, `get_unchecked` was behind
+the checked path on every affected row (`scalar_branch_loop` +24%,
+`recursive_countdown` +9%, `function_calls` +8%, `object_field_methods` +1%).
+An `if cfg!(debug_assertions)` split and a `#[cfg]`-attribute split reproduced
+the same regression, so the cost is code layout in the dispatch match, not the
+branch. The bounds check predicts perfectly and is not a measurable cost.
+
+Register storage is owned by `RegisterFile` in `vela_vm::frame::registers`,
+which keeps the invariant and this finding documented in one place. Interpreter
+cost lives in per-call allocation, value and record layout, and instruction
+stream size — not in bounds checks.
 
 ## Active Async Architecture Decisions
 

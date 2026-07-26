@@ -77,7 +77,8 @@ vela_vm = { path = "crates/vela_vm" }
 wasm-bindgen = "0.2"
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+unsafe_code = "deny"
 
 [workspace.lints.clippy]
 unwrap_used = "deny"
+undocumented_unsafe_blocks = "deny"

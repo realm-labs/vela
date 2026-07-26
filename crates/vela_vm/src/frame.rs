@@ -5,6 +5,10 @@ use vela_bytecode::{LinkedArtifact, Register};
 use crate::heap::GcRef;
 use crate::{Value, VmError, VmErrorKind, VmResult};
 
+mod registers;
+
+use registers::RegisterFile;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct FrameHeapRoot {
     pub register: Register,
@@ -49,7 +53,7 @@ mod tests {
 
 #[derive(Clone, Debug)]
 pub(crate) struct CallFrame {
-    registers: Vec<Value>,
+    registers: RegisterFile,
     linked_owner: Option<Arc<LinkedArtifact>>,
 }
 
@@ -57,14 +61,14 @@ impl CallFrame {
     #[cfg(test)]
     pub(crate) fn new(register_count: u16) -> Self {
         Self {
-            registers: vec![Value::Unit; usize::from(register_count)],
+            registers: RegisterFile::new(register_count),
             linked_owner: None,
         }
     }
 
     pub(crate) fn new_linked(register_count: u16, owner: &Arc<LinkedArtifact>) -> Self {
         Self {
-            registers: vec![Value::Unit; usize::from(register_count)],
+            registers: RegisterFile::new(register_count),
             linked_owner: Some(Arc::clone(owner)),
         }
     }
@@ -74,34 +78,23 @@ impl CallFrame {
     }
 
     pub(crate) fn values(&self) -> &[Value] {
-        &self.registers
+        self.registers.values()
     }
 
     #[inline(always)]
     pub(crate) fn read(&self, register: Register) -> VmResult<Value> {
-        self.registers
-            .get(usize::from(register.0))
-            .copied()
-            .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))
+        self.registers.get(register).copied()
     }
 
     #[inline(always)]
     pub(crate) fn write(&mut self, register: Register, value: Value) -> VmResult<()> {
-        let slot = self
-            .registers
-            .get_mut(usize::from(register.0))
-            .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))?;
-        *slot = value;
+        *self.registers.get_mut(register)? = value;
         Ok(())
     }
 
     #[inline(always)]
     pub(crate) fn read_i64(&self, register: Register, operation: &'static str) -> VmResult<i64> {
-        match self
-            .registers
-            .get(usize::from(register.0))
-            .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))?
-        {
+        match self.registers.get(register)? {
             Value::I64(value) => Ok(*value),
             _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         }
@@ -109,21 +102,13 @@ impl CallFrame {
 
     #[inline(always)]
     pub(crate) fn write_i64(&mut self, register: Register, value: i64) -> VmResult<()> {
-        let slot = self
-            .registers
-            .get_mut(usize::from(register.0))
-            .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))?;
-        *slot = Value::I64(value);
+        *self.registers.get_mut(register)? = Value::I64(value);
         Ok(())
     }
 
     #[inline(always)]
     pub(crate) fn read_bool(&self, register: Register, operation: &'static str) -> VmResult<bool> {
-        match self
-            .registers
-            .get(usize::from(register.0))
-            .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))?
-        {
+        match self.registers.get(register)? {
             Value::Bool(value) => Ok(*value),
             _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         }
@@ -131,11 +116,7 @@ impl CallFrame {
 
     #[inline(always)]
     pub(crate) fn read_bool_lane(&self, register: Register) -> VmResult<Option<bool>> {
-        match self
-            .registers
-            .get(usize::from(register.0))
-            .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))?
-        {
+        match self.registers.get(register)? {
             Value::Bool(value) => Ok(Some(*value)),
             _ => Ok(None),
         }
@@ -143,11 +124,7 @@ impl CallFrame {
 
     #[inline(always)]
     pub(crate) fn write_bool(&mut self, register: Register, value: bool) -> VmResult<()> {
-        let slot = self
-            .registers
-            .get_mut(usize::from(register.0))
-            .ok_or_else(|| VmError::new(VmErrorKind::RegisterOutOfBounds { register }))?;
-        *slot = Value::Bool(value);
+        *self.registers.get_mut(register)? = Value::Bool(value);
         Ok(())
     }
 
@@ -160,6 +137,7 @@ impl CallFrame {
 
     pub(crate) fn extend_heap_roots(&self, roots: &mut Vec<GcRef>) {
         self.registers
+            .values()
             .iter()
             .for_each(|value| value.trace_heap_refs(roots));
     }
@@ -168,6 +146,7 @@ impl CallFrame {
     pub(crate) fn heap_root_slots(&self) -> Vec<FrameHeapRoot> {
         let mut roots = Vec::new();
         self.registers
+            .values()
             .iter()
             .enumerate()
             .filter_map(|(index, value)| Some((Register(u16::try_from(index).ok()?), value)))

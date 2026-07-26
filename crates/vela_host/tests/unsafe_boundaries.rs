@@ -5,6 +5,15 @@ use std::path::{Path, PathBuf};
 
 use syn::visit::{self, Visit};
 
+/// Files permitted to contain `unsafe` Rust.
+///
+/// The workspace lint is `unsafe_code = "deny"` rather than `forbid`, so a
+/// module may opt in locally when a reviewed invariant justifies it. This audit
+/// is the workspace-wide gate that keeps those opt-ins enumerated: adding
+/// `#[allow(unsafe_code)]` without adding the file here fails this test. Each
+/// entry must carry a module-level safety invariant explaining what proves the
+/// unchecked operation sound, and every `unsafe` block needs a `SAFETY:`
+/// comment (enforced separately by `clippy::undocumented_unsafe_blocks`).
 const REVIEWED_UNSAFE_BOUNDARIES: &[&str] = &[
     "crates/vela_c_api/src/lib.rs",
     "crates/vela_host/src/erased_slice.rs",

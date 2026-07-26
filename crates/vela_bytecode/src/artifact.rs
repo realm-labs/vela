@@ -85,6 +85,31 @@ pub mod test_support {
         Ordering, ProfileFunctionLayout, ProfileLayout, ProgramImage, test_mir_binding,
     };
 
+    /// Declares one extern state on a fixture program and returns its slot.
+    ///
+    /// Fixtures that execute `LoadExternState` need a matching declaration,
+    /// because `linked_artifact` verifies every program it wraps.
+    pub fn push_extern_state(
+        program: &mut LinkedProgram,
+        qualified_name: impl Into<String>,
+    ) -> vela_common::StateSlot {
+        let slot = vela_common::StateSlot::new(program.states().len());
+        let id = vela_def::StateId::new(u128::try_from(slot.get()).unwrap_or_default() + 1);
+        program.push_state(crate::LinkedStateDescriptor {
+            id,
+            qualified_name: qualified_name.into(),
+            visibility: crate::StateVisibility::Private,
+            storage: crate::StateStorage::Extern,
+            type_contract: vela_mir::MirTypeContract::Host(vela_mir::HostTypeTarget {
+                semantic: vela_def::TypeId::new(1),
+                runtime: vela_common::HostTypeId::new(1),
+            }),
+            initializer: None,
+            source_span: None,
+        });
+        slot
+    }
+
     #[must_use]
     pub fn linked_artifact(mut program: LinkedProgram) -> Arc<LinkedArtifact> {
         program.set_generation(ExecutableGenerationId::new(
@@ -107,7 +132,7 @@ pub mod test_support {
                 .into_boxed_slice(),
         };
         let (verified_mir, mir_executables) = test_mir_binding(&program);
-        Arc::new(LinkedArtifact {
+        let artifact = LinkedArtifact {
             program: Arc::new(program),
             image: ProgramImage::from_program(&crate::UnlinkedProgram::new()),
             cache_layout,
@@ -116,7 +141,16 @@ pub mod test_support {
             verified_mir,
             binding_schema: Arc::new(crate::RustBindingSchema::empty()),
             package_metadata: None,
-        })
+        };
+        // Every `LinkedArtifact` the interpreter can execute must be verified,
+        // including fixtures. The VM indexes registers without a bounds check
+        // and relies on `verify_register_count` having already proven every
+        // register operand in range; see `vela_vm::frame::registers`.
+        artifact
+            .program
+            .verify()
+            .expect("test fixture linked program must verify before it can be executed");
+        Arc::new(artifact)
     }
 
     #[must_use]
