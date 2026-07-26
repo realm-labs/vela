@@ -2,7 +2,9 @@ use std::collections::BTreeSet;
 
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
-use syn::{ImplItem, ItemImpl, LitBool, LitStr, Result, Visibility, parse::Parser, parse2};
+use syn::{
+    ImplItem, ItemImpl, LitBool, LitStr, Result, Visibility, ext::IdentExt, parse::Parser, parse2,
+};
 
 use crate::attrs::{parse_key_value_attr, parse_qualified_name, reject_duplicate_attr_keys};
 use crate::export::emission;
@@ -61,23 +63,19 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             &signature,
         ));
         generated.push(
-            emission::method_adapter(method, &item.self_ty, trait_path, &signature).ok_or_else(
-                || {
-                    syn::Error::new_spanned(
-                        &method.sig,
-                        "this exported method requires the async or borrowed-return adapter batch",
-                    )
-                },
-            )?,
+            emission::method_adapter(method, &item.self_ty, trait_path, &public_name, &signature)
+                .ok_or_else(|| {
+                syn::Error::new_spanned(
+                    &method.sig,
+                    "this exported method requires the async or borrowed-return adapter batch",
+                )
+            })?,
         );
+        let helper_ident = method.sig.ident.unraw();
         contract_functions.push(quote::format_ident!(
-            "vela_callable_contract_{}",
-            method.sig.ident
+            "vela_callable_contract_{helper_ident}"
         ));
-        registration_functions.push(quote::format_ident!(
-            "vela_register_export_{}",
-            method.sig.ident
-        ));
+        registration_functions.push(quote::format_ident!("vela_register_export_{helper_ident}"));
     }
     if trait_path.is_some() && generated.is_empty() {
         return Err(syn::Error::new_spanned(

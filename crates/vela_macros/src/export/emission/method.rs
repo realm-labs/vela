@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::ImplItemFn;
+use syn::{ImplItemFn, ext::IdentExt};
 
 use super::{
     binding_use_tokens, collection_registration_tokens, effect_tokens, exclusive_host_value_tokens,
@@ -27,7 +27,8 @@ pub(crate) fn method_contract(
     signature: &ClassifiedSignature,
 ) -> TokenStream {
     let method_ident = &method.sig.ident;
-    let contract_ident = format_ident!("vela_callable_contract_{method_ident}");
+    let helper_ident = method_ident.unraw();
+    let contract_ident = format_ident!("vela_callable_contract_{helper_ident}");
     let public_path = format!("{owner_path}::{public_name}");
     let callable_id = u128::from(vela_common::stable_id(
         "rust_method_export",
@@ -111,23 +112,35 @@ pub(crate) fn method_adapter(
     method: &ImplItemFn,
     self_ty: &syn::Type,
     trait_path: Option<&syn::Path>,
+    public_name: &str,
     signature: &ClassifiedSignature,
 ) -> Option<TokenStream> {
     if signature.supports_sync_scoped_method_adapter() {
         return Some(method_sync_scoped_host_adapter(
-            method, self_ty, trait_path, signature,
+            method,
+            self_ty,
+            trait_path,
+            public_name,
+            signature,
         ));
     }
     if signature.supports_async_method_adapter() {
-        return Some(method_async_adapter(method, self_ty, trait_path, signature));
+        return Some(method_async_adapter(
+            method,
+            self_ty,
+            trait_path,
+            public_name,
+            signature,
+        ));
     }
     if !signature.supports_sync_method_adapter() {
         return None;
     }
     let method_ident = &method.sig.ident;
+    let helper_ident = method_ident.unraw();
     let collection_registrations = collection_registration_tokens(signature);
-    let contract_ident = format_ident!("vela_callable_contract_{method_ident}");
-    let register_ident = format_ident!("vela_register_export_{method_ident}");
+    let contract_ident = format_ident!("vela_callable_contract_{helper_ident}");
+    let register_ident = format_ident!("vela_register_export_{helper_ident}");
     let receiver = signature
         .parameters
         .first()
@@ -276,7 +289,7 @@ pub(crate) fn method_adapter(
                 ::core::primitive::u128::from(::vela_common::stable_id(
                     "host_method",
                     <#self_ty>::vela_stable_type_path(),
-                    ::core::stringify!(#method_ident),
+                    #public_name,
                 )),
             );
             let __vela_callable = __vela_contract.public_path.clone();
@@ -330,12 +343,14 @@ fn method_sync_scoped_host_adapter(
     method: &ImplItemFn,
     self_ty: &syn::Type,
     trait_path: Option<&syn::Path>,
+    public_name: &str,
     signature: &ClassifiedSignature,
 ) -> TokenStream {
     let method_ident = &method.sig.ident;
+    let helper_ident = method_ident.unraw();
     let collection_registrations = collection_registration_tokens(signature);
-    let contract_ident = format_ident!("vela_callable_contract_{method_ident}");
-    let register_ident = format_ident!("vela_register_export_{method_ident}");
+    let contract_ident = format_ident!("vela_callable_contract_{helper_ident}");
+    let register_ident = format_ident!("vela_register_export_{helper_ident}");
     let receiver = signature
         .parameters
         .first()
@@ -675,7 +690,7 @@ fn method_sync_scoped_host_adapter(
                 ::core::primitive::u128::from(::vela_common::stable_id(
                     "host_method",
                     <#self_ty>::vela_stable_type_path(),
-                    ::core::stringify!(#method_ident),
+                    #public_name,
                 )),
             );
             builder.register_native_method_fn(__vela_desc, move |receiver, args, host| {
@@ -718,12 +733,14 @@ fn method_async_adapter(
     method: &ImplItemFn,
     self_ty: &syn::Type,
     trait_path: Option<&syn::Path>,
+    public_name: &str,
     signature: &ClassifiedSignature,
 ) -> TokenStream {
     let method_ident = &method.sig.ident;
+    let helper_ident = method_ident.unraw();
     let collection_registrations = collection_registration_tokens(signature);
-    let contract_ident = format_ident!("vela_callable_contract_{method_ident}");
-    let register_ident = format_ident!("vela_register_export_{method_ident}");
+    let contract_ident = format_ident!("vela_callable_contract_{helper_ident}");
+    let register_ident = format_ident!("vela_register_export_{helper_ident}");
     let receiver = signature
         .parameters
         .first()
@@ -861,7 +878,7 @@ fn method_async_adapter(
             ::core::primitive::u128::from(::vela_common::stable_id(
                 "host_method",
                 <#self_ty>::vela_stable_type_path(),
-                ::core::stringify!(#method_ident),
+                #public_name,
             )),
         );
     };

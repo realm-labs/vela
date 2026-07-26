@@ -1,6 +1,8 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
-use syn::{ImplItem, ItemImpl, LitStr, Result, Type, Visibility, parse::Parser, parse2};
+use syn::{
+    ImplItem, ItemImpl, LitStr, Result, Type, Visibility, ext::IdentExt, parse::Parser, parse2,
+};
 
 use crate::attrs::parse_qualified_name;
 use crate::export::emission;
@@ -84,6 +86,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 method,
                 &self_ty,
                 Some(&syn::parse_quote!(#trait_ident)),
+                &public_name,
                 &signature,
             )
             .ok_or_else(|| {
@@ -93,9 +96,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 )
             })?,
         );
-        let method_ident = &method.sig.ident;
-        contract_functions.push(format_ident!("vela_callable_contract_{method_ident}"));
-        registration_functions.push(format_ident!("vela_register_export_{method_ident}"));
+        let helper_ident = method.sig.ident.unraw();
+        contract_functions.push(format_ident!("vela_callable_contract_{helper_ident}"));
+        registration_functions.push(format_ident!("vela_register_export_{helper_ident}"));
 
         let signature = &method.sig;
         trait_signatures.push(quote! { #signature; });
@@ -274,6 +277,11 @@ mod tests {
                     pub fn get(&self, key: i32) -> Option<&crate::Item> {
                         crate::ItemTable::get(self, &key)
                     }
+
+                    #[script_method(name = "type")]
+                    pub fn r#type(&self) -> i32 {
+                        1
+                    }
                 }
             },
         )
@@ -285,5 +293,7 @@ mod tests {
         assert!(!expanded.contains("impl crate :: ItemTable { pub fn get"));
         assert!(expanded.contains("pub fn register_item_table"));
         assert!(expanded.contains("ScriptHostSchema for crate :: ItemTable"));
+        assert!(expanded.contains("vela_callable_contract_type"));
+        assert!(!expanded.contains("vela_callable_contract_r#type"));
     }
 }

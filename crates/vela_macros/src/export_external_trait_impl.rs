@@ -1,7 +1,9 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::parse::{Parse, ParseStream};
-use syn::{ImplItemFn, LitStr, Path, Result, Token, TraitItemFn, Type, TypePath, parse2};
+use syn::{
+    ImplItemFn, LitStr, Path, Result, Token, TraitItemFn, Type, TypePath, ext::IdentExt, parse2,
+};
 
 use crate::export::emission;
 use crate::export::signature::{ClassifiedSignature, classify_method};
@@ -101,6 +103,7 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
                 &impl_method,
                 &self_ty,
                 Some(&declaration.trait_path),
+                &public_name,
                 &signature,
             )
             .ok_or_else(|| {
@@ -110,8 +113,9 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
                 )
             })?,
         );
-        contract_functions.push(format_ident!("vela_callable_contract_{}", method.sig.ident));
-        registration_functions.push(format_ident!("vela_register_export_{}", method.sig.ident));
+        let helper_ident = method.sig.ident.unraw();
+        contract_functions.push(format_ident!("vela_callable_contract_{helper_ident}"));
+        registration_functions.push(format_ident!("vela_register_export_{helper_ident}"));
         classified.push((method, signature));
     }
     let protocol_methods = classified
