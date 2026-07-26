@@ -24,34 +24,46 @@ use crate::{
 };
 use vela_def::MethodId;
 
+/// Classifies a receiver into its standard family with one heap access.
+///
+/// The former predicate chain asked each family in turn and every heap-backed
+/// predicate dereferenced the receiver again, so a map receiver paid several
+/// heap lookups per call before its method could even resolve.
+fn classify_standard_receiver(
+    receiver: &Value,
+    heap: Option<&HeapExecution<'_>>,
+) -> Option<StandardMethodReceiver> {
+    match receiver {
+        Value::Char(_) => Some(StandardMethodReceiver::Char),
+        Value::Range(_) => Some(StandardMethodReceiver::Range),
+        Value::HeapRef(reference) => match heap?.heap.get(*reference)? {
+            crate::heap::HeapValue::String(_) => Some(StandardMethodReceiver::String),
+            crate::heap::HeapValue::Bytes(_) => Some(StandardMethodReceiver::Bytes),
+            crate::heap::HeapValue::Array(_) => Some(StandardMethodReceiver::Array),
+            crate::heap::HeapValue::Map(_) => Some(StandardMethodReceiver::Map),
+            crate::heap::HeapValue::Set(_) => Some(StandardMethodReceiver::Set),
+            crate::heap::HeapValue::Iterator(_) => Some(StandardMethodReceiver::Iterator),
+            crate::heap::HeapValue::Enum { .. } => {
+                if option_result_methods::is_option(receiver, heap) {
+                    Some(StandardMethodReceiver::Option)
+                } else if option_result_methods::is_result(receiver, heap) {
+                    Some(StandardMethodReceiver::Result)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 pub(crate) fn standard_cache_entry(
     method_id: MethodId,
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
 ) -> Option<StandardMethodInlineCacheEntry> {
-    let receiver = if crate::string_methods::is_string(receiver, heap) {
-        StandardMethodReceiver::String
-    } else if bytes_methods::is_bytes(receiver, heap) {
-        StandardMethodReceiver::Bytes
-    } else if crate::char_methods::is_char(receiver) {
-        StandardMethodReceiver::Char
-    } else if matches!(receiver, Value::Range(_)) {
-        StandardMethodReceiver::Range
-    } else if array_methods::is_array(receiver, heap) {
-        StandardMethodReceiver::Array
-    } else if map_methods::is_map(receiver, heap) {
-        StandardMethodReceiver::Map
-    } else if set_methods::is_set(receiver, heap) {
-        StandardMethodReceiver::Set
-    } else if crate::iteration::is_iterator(receiver, heap) {
-        StandardMethodReceiver::Iterator
-    } else if option_result_methods::is_option(receiver, heap) {
-        StandardMethodReceiver::Option
-    } else if option_result_methods::is_result(receiver, heap) {
-        StandardMethodReceiver::Result
-    } else {
-        return None;
-    };
+    let receiver = classify_standard_receiver(receiver, heap)?;
     let target = standard_method_target(receiver, method_id)?;
     Some(StandardMethodInlineCacheEntry { receiver, target })
 }
@@ -191,347 +203,340 @@ pub(crate) fn standard_cache_entry_matches_method_id(
     standard_method_target(cache.receiver, method_id) == Some(cache.target)
 }
 
+/// Resolves one standard method by receiver family first.
+///
+/// The former single guard chain compared `method_id` against every family's
+/// identifiers in declaration order, so a map or set method paid dozens of
+/// unrelated `MethodId` comparisons per call. Dispatching on the receiver
+/// keeps each lookup inside its own family.
 fn standard_method_target(
     receiver: StandardMethodReceiver,
     method_id: MethodId,
 ) -> Option<StandardMethodInlineCacheTarget> {
     let ids = std_method_ids();
-    if receiver == StandardMethodReceiver::String
-        && let Some(target) = string_parse_cache::target_for_method_id(method_id, ids)
-    {
+    match receiver {
+        StandardMethodReceiver::String => string_family_target(method_id, ids),
+        StandardMethodReceiver::Bytes => bytes_family_target(method_id, ids),
+        StandardMethodReceiver::Char => char_family_target(method_id, ids),
+        StandardMethodReceiver::Range => range_family_target(method_id, ids),
+        StandardMethodReceiver::Array => array_family_target(method_id, ids),
+        StandardMethodReceiver::Map => map_family_target(method_id, ids),
+        StandardMethodReceiver::Set => set_family_target(method_id, ids),
+        StandardMethodReceiver::Iterator => iterator_family_target(method_id, ids),
+        StandardMethodReceiver::Option => option_family_target(method_id, ids),
+        StandardMethodReceiver::Result => result_family_target(method_id, ids),
+    }
+}
+
+fn string_family_target(
+    method_id: MethodId,
+    ids: &crate::std_method_ids::StdMethodIds,
+) -> Option<StandardMethodInlineCacheTarget> {
+    if let Some(target) = string_parse_cache::target_for_method_id(method_id, ids) {
         return Some(target);
     }
-    let target = match (receiver, method_id) {
-        (StandardMethodReceiver::String, id) if id == ids.string_len => {
-            StandardMethodInlineCacheTarget::Len
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_is_empty => {
-            StandardMethodInlineCacheTarget::IsEmpty
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_contains => {
-            StandardMethodInlineCacheTarget::Contains
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_starts_with => {
-            StandardMethodInlineCacheTarget::StartsWith
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_ends_with => {
-            StandardMethodInlineCacheTarget::EndsWith
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_find => {
-            StandardMethodInlineCacheTarget::Find
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_strip_prefix => {
-            StandardMethodInlineCacheTarget::StripPrefix
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_strip_suffix => {
-            StandardMethodInlineCacheTarget::StripSuffix
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_split => {
-            StandardMethodInlineCacheTarget::Split
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_split_once => {
-            StandardMethodInlineCacheTarget::SplitOnce
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_split_lines => {
-            StandardMethodInlineCacheTarget::SplitLines
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_split_whitespace => {
-            StandardMethodInlineCacheTarget::SplitWhitespace
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_chars => {
-            StandardMethodInlineCacheTarget::Chars
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_bytes => {
-            StandardMethodInlineCacheTarget::Bytes
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_to_upper => {
-            StandardMethodInlineCacheTarget::ToUpper
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_to_lower => {
-            StandardMethodInlineCacheTarget::ToLower
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_trim => {
-            StandardMethodInlineCacheTarget::Trim
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_trim_start => {
-            StandardMethodInlineCacheTarget::TrimStart
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_trim_end => {
-            StandardMethodInlineCacheTarget::TrimEnd
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_slice => {
-            StandardMethodInlineCacheTarget::Slice
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_repeat => {
-            StandardMethodInlineCacheTarget::Repeat
-        }
-        (StandardMethodReceiver::String, id) if id == ids.string_replace => {
-            StandardMethodInlineCacheTarget::Replace
-        }
-        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_len => {
-            StandardMethodInlineCacheTarget::Len
-        }
-        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_is_empty => {
-            StandardMethodInlineCacheTarget::IsEmpty
-        }
-        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_get => {
-            StandardMethodInlineCacheTarget::Get
-        }
-        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_slice => {
-            StandardMethodInlineCacheTarget::Slice
-        }
-        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_to_hex => {
-            StandardMethodInlineCacheTarget::ToHex
-        }
-        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_read_u32_le => {
-            StandardMethodInlineCacheTarget::ReadU32Le
-        }
-        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_read_u32_be => {
-            StandardMethodInlineCacheTarget::ReadU32Be
-        }
-        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_iter => {
-            StandardMethodInlineCacheTarget::Iter
-        }
-        (StandardMethodReceiver::Bytes, id) if id == ids.bytes_values => {
-            StandardMethodInlineCacheTarget::Values
-        }
-        (StandardMethodReceiver::Char, id) if id == ids.char_to_string => {
-            StandardMethodInlineCacheTarget::ToString
-        }
-        (StandardMethodReceiver::Char, id) if id == ids.char_is_whitespace => {
-            StandardMethodInlineCacheTarget::IsWhitespace
-        }
-        (StandardMethodReceiver::Char, id) if id == ids.char_is_ascii => {
-            StandardMethodInlineCacheTarget::IsAscii
-        }
-        (StandardMethodReceiver::Char, id) if id == ids.char_is_ascii_digit => {
-            StandardMethodInlineCacheTarget::IsAsciiDigit
-        }
-        (StandardMethodReceiver::Range, id) if id == ids.range_len => {
-            StandardMethodInlineCacheTarget::Len
-        }
-        (StandardMethodReceiver::Range, id) if id == ids.range_is_empty => {
-            StandardMethodInlineCacheTarget::IsEmpty
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_len => {
-            StandardMethodInlineCacheTarget::Len
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_is_empty => {
-            StandardMethodInlineCacheTarget::IsEmpty
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_get => {
-            StandardMethodInlineCacheTarget::Get
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_contains => {
-            StandardMethodInlineCacheTarget::Contains
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_first => {
-            StandardMethodInlineCacheTarget::First
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_last => {
-            StandardMethodInlineCacheTarget::Last
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_index_of => {
-            StandardMethodInlineCacheTarget::IndexOf
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_slice => {
-            StandardMethodInlineCacheTarget::Slice
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_push => {
-            StandardMethodInlineCacheTarget::Push
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_pop => {
-            StandardMethodInlineCacheTarget::Pop
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_insert => {
-            StandardMethodInlineCacheTarget::Insert
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_remove_at => {
-            StandardMethodInlineCacheTarget::RemoveAt
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_clear => {
-            StandardMethodInlineCacheTarget::Clear
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_extend => {
-            StandardMethodInlineCacheTarget::Extend
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_reverse => {
-            StandardMethodInlineCacheTarget::Reverse
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_distinct => {
-            StandardMethodInlineCacheTarget::Distinct
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_join => {
-            StandardMethodInlineCacheTarget::Join
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_sort => {
-            StandardMethodInlineCacheTarget::Sort
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_min => {
-            StandardMethodInlineCacheTarget::Min
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_max => {
-            StandardMethodInlineCacheTarget::Max
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_sum => {
-            StandardMethodInlineCacheTarget::Sum
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_iter => {
-            StandardMethodInlineCacheTarget::Iter
-        }
-        (StandardMethodReceiver::Array, id) if id == ids.array_values => {
-            StandardMethodInlineCacheTarget::Values
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_len => {
-            StandardMethodInlineCacheTarget::Len
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_is_empty => {
-            StandardMethodInlineCacheTarget::IsEmpty
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_has => {
-            StandardMethodInlineCacheTarget::Has
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_contains_key => {
-            StandardMethodInlineCacheTarget::ContainsKey
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_get => {
-            StandardMethodInlineCacheTarget::Get
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_get_or => {
-            StandardMethodInlineCacheTarget::GetOr
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_get_or_insert => {
-            StandardMethodInlineCacheTarget::GetOrInsert
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_set => {
-            StandardMethodInlineCacheTarget::Set
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_insert => {
-            StandardMethodInlineCacheTarget::Insert
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_remove => {
-            StandardMethodInlineCacheTarget::Remove
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_clear => {
-            StandardMethodInlineCacheTarget::Clear
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_extend => {
-            StandardMethodInlineCacheTarget::Extend
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_keys => {
-            StandardMethodInlineCacheTarget::Keys
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_values => {
-            StandardMethodInlineCacheTarget::Values
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_entries => {
-            StandardMethodInlineCacheTarget::Entries
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_merge => {
-            StandardMethodInlineCacheTarget::Merge
-        }
-        (StandardMethodReceiver::Map, id) if id == ids.map_iter => {
-            StandardMethodInlineCacheTarget::Iter
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_len => {
-            StandardMethodInlineCacheTarget::Len
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_is_empty => {
-            StandardMethodInlineCacheTarget::IsEmpty
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_has => {
-            StandardMethodInlineCacheTarget::Has
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_contains => {
-            StandardMethodInlineCacheTarget::Contains
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_add => {
-            StandardMethodInlineCacheTarget::Add
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_insert => {
-            StandardMethodInlineCacheTarget::Insert
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_remove => {
-            StandardMethodInlineCacheTarget::Remove
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_clear => {
-            StandardMethodInlineCacheTarget::Clear
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_extend => {
-            StandardMethodInlineCacheTarget::Extend
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_values => {
-            StandardMethodInlineCacheTarget::Values
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_union => {
-            StandardMethodInlineCacheTarget::Union
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_intersection => {
-            StandardMethodInlineCacheTarget::Intersection
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_difference => {
-            StandardMethodInlineCacheTarget::Difference
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_symmetric_difference => {
-            StandardMethodInlineCacheTarget::SymmetricDifference
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_is_subset => {
-            StandardMethodInlineCacheTarget::IsSubset
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_is_superset => {
-            StandardMethodInlineCacheTarget::IsSuperset
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_is_disjoint => {
-            StandardMethodInlineCacheTarget::IsDisjoint
-        }
-        (StandardMethodReceiver::Set, id) if id == ids.set_iter => {
-            StandardMethodInlineCacheTarget::Iter
-        }
-        (StandardMethodReceiver::Option, id) if id == ids.option_is_some => {
-            StandardMethodInlineCacheTarget::IsSome
-        }
-        (StandardMethodReceiver::Option, id) if id == ids.option_is_none => {
-            StandardMethodInlineCacheTarget::IsNone
-        }
-        (StandardMethodReceiver::Option, id) if id == ids.option_unwrap_or => {
-            StandardMethodInlineCacheTarget::UnwrapOr
-        }
-        (StandardMethodReceiver::Option, id) if id == ids.option_ok_or => {
-            StandardMethodInlineCacheTarget::OkOr
-        }
-        (StandardMethodReceiver::Option, id) if id == ids.option_flatten => {
-            StandardMethodInlineCacheTarget::Flatten
-        }
-        (StandardMethodReceiver::Result, id) if id == ids.result_is_ok => {
-            StandardMethodInlineCacheTarget::IsOk
-        }
-        (StandardMethodReceiver::Result, id) if id == ids.result_is_err => {
-            StandardMethodInlineCacheTarget::IsErr
-        }
-        (StandardMethodReceiver::Result, id) if id == ids.result_unwrap_or => {
-            StandardMethodInlineCacheTarget::UnwrapOr
-        }
-        (StandardMethodReceiver::Result, id) if id == ids.result_to_option => {
-            StandardMethodInlineCacheTarget::ToOption
-        }
-        (StandardMethodReceiver::Result, id) if id == ids.result_to_error_option => {
-            StandardMethodInlineCacheTarget::ToErrorOption
-        }
-        (StandardMethodReceiver::Result, id) if id == ids.result_flatten => {
-            StandardMethodInlineCacheTarget::Flatten
-        }
-        (StandardMethodReceiver::Range, id) if id == ids.range_iter => {
-            StandardMethodInlineCacheTarget::Iter
-        }
-        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_take => {
-            StandardMethodInlineCacheTarget::Take
-        }
-        (StandardMethodReceiver::Iterator, id) if id == ids.iterator_skip => {
-            StandardMethodInlineCacheTarget::Skip
-        }
-        _ => return None,
-    };
-    Some(target)
+    if method_id == ids.string_len {
+        Some(StandardMethodInlineCacheTarget::Len)
+    } else if method_id == ids.string_is_empty {
+        Some(StandardMethodInlineCacheTarget::IsEmpty)
+    } else if method_id == ids.string_contains {
+        Some(StandardMethodInlineCacheTarget::Contains)
+    } else if method_id == ids.string_starts_with {
+        Some(StandardMethodInlineCacheTarget::StartsWith)
+    } else if method_id == ids.string_ends_with {
+        Some(StandardMethodInlineCacheTarget::EndsWith)
+    } else if method_id == ids.string_find {
+        Some(StandardMethodInlineCacheTarget::Find)
+    } else if method_id == ids.string_strip_prefix {
+        Some(StandardMethodInlineCacheTarget::StripPrefix)
+    } else if method_id == ids.string_strip_suffix {
+        Some(StandardMethodInlineCacheTarget::StripSuffix)
+    } else if method_id == ids.string_split {
+        Some(StandardMethodInlineCacheTarget::Split)
+    } else if method_id == ids.string_split_once {
+        Some(StandardMethodInlineCacheTarget::SplitOnce)
+    } else if method_id == ids.string_split_lines {
+        Some(StandardMethodInlineCacheTarget::SplitLines)
+    } else if method_id == ids.string_split_whitespace {
+        Some(StandardMethodInlineCacheTarget::SplitWhitespace)
+    } else if method_id == ids.string_chars {
+        Some(StandardMethodInlineCacheTarget::Chars)
+    } else if method_id == ids.string_bytes {
+        Some(StandardMethodInlineCacheTarget::Bytes)
+    } else if method_id == ids.string_to_upper {
+        Some(StandardMethodInlineCacheTarget::ToUpper)
+    } else if method_id == ids.string_to_lower {
+        Some(StandardMethodInlineCacheTarget::ToLower)
+    } else if method_id == ids.string_trim {
+        Some(StandardMethodInlineCacheTarget::Trim)
+    } else if method_id == ids.string_trim_start {
+        Some(StandardMethodInlineCacheTarget::TrimStart)
+    } else if method_id == ids.string_trim_end {
+        Some(StandardMethodInlineCacheTarget::TrimEnd)
+    } else if method_id == ids.string_slice {
+        Some(StandardMethodInlineCacheTarget::Slice)
+    } else if method_id == ids.string_repeat {
+        Some(StandardMethodInlineCacheTarget::Repeat)
+    } else if method_id == ids.string_replace {
+        Some(StandardMethodInlineCacheTarget::Replace)
+    } else {
+        None
+    }
+}
+
+fn bytes_family_target(
+    method_id: MethodId,
+    ids: &crate::std_method_ids::StdMethodIds,
+) -> Option<StandardMethodInlineCacheTarget> {
+    if method_id == ids.bytes_len {
+        Some(StandardMethodInlineCacheTarget::Len)
+    } else if method_id == ids.bytes_is_empty {
+        Some(StandardMethodInlineCacheTarget::IsEmpty)
+    } else if method_id == ids.bytes_get {
+        Some(StandardMethodInlineCacheTarget::Get)
+    } else if method_id == ids.bytes_slice {
+        Some(StandardMethodInlineCacheTarget::Slice)
+    } else if method_id == ids.bytes_to_hex {
+        Some(StandardMethodInlineCacheTarget::ToHex)
+    } else if method_id == ids.bytes_read_u32_le {
+        Some(StandardMethodInlineCacheTarget::ReadU32Le)
+    } else if method_id == ids.bytes_read_u32_be {
+        Some(StandardMethodInlineCacheTarget::ReadU32Be)
+    } else if method_id == ids.bytes_iter {
+        Some(StandardMethodInlineCacheTarget::Iter)
+    } else if method_id == ids.bytes_values {
+        Some(StandardMethodInlineCacheTarget::Values)
+    } else {
+        None
+    }
+}
+
+fn char_family_target(
+    method_id: MethodId,
+    ids: &crate::std_method_ids::StdMethodIds,
+) -> Option<StandardMethodInlineCacheTarget> {
+    if method_id == ids.char_to_string {
+        Some(StandardMethodInlineCacheTarget::ToString)
+    } else if method_id == ids.char_is_whitespace {
+        Some(StandardMethodInlineCacheTarget::IsWhitespace)
+    } else if method_id == ids.char_is_ascii {
+        Some(StandardMethodInlineCacheTarget::IsAscii)
+    } else if method_id == ids.char_is_ascii_digit {
+        Some(StandardMethodInlineCacheTarget::IsAsciiDigit)
+    } else {
+        None
+    }
+}
+
+fn range_family_target(
+    method_id: MethodId,
+    ids: &crate::std_method_ids::StdMethodIds,
+) -> Option<StandardMethodInlineCacheTarget> {
+    if method_id == ids.range_len {
+        Some(StandardMethodInlineCacheTarget::Len)
+    } else if method_id == ids.range_is_empty {
+        Some(StandardMethodInlineCacheTarget::IsEmpty)
+    } else if method_id == ids.range_iter {
+        Some(StandardMethodInlineCacheTarget::Iter)
+    } else {
+        None
+    }
+}
+
+fn array_family_target(
+    method_id: MethodId,
+    ids: &crate::std_method_ids::StdMethodIds,
+) -> Option<StandardMethodInlineCacheTarget> {
+    if method_id == ids.array_len {
+        Some(StandardMethodInlineCacheTarget::Len)
+    } else if method_id == ids.array_is_empty {
+        Some(StandardMethodInlineCacheTarget::IsEmpty)
+    } else if method_id == ids.array_get {
+        Some(StandardMethodInlineCacheTarget::Get)
+    } else if method_id == ids.array_contains {
+        Some(StandardMethodInlineCacheTarget::Contains)
+    } else if method_id == ids.array_first {
+        Some(StandardMethodInlineCacheTarget::First)
+    } else if method_id == ids.array_last {
+        Some(StandardMethodInlineCacheTarget::Last)
+    } else if method_id == ids.array_index_of {
+        Some(StandardMethodInlineCacheTarget::IndexOf)
+    } else if method_id == ids.array_slice {
+        Some(StandardMethodInlineCacheTarget::Slice)
+    } else if method_id == ids.array_push {
+        Some(StandardMethodInlineCacheTarget::Push)
+    } else if method_id == ids.array_pop {
+        Some(StandardMethodInlineCacheTarget::Pop)
+    } else if method_id == ids.array_insert {
+        Some(StandardMethodInlineCacheTarget::Insert)
+    } else if method_id == ids.array_remove_at {
+        Some(StandardMethodInlineCacheTarget::RemoveAt)
+    } else if method_id == ids.array_clear {
+        Some(StandardMethodInlineCacheTarget::Clear)
+    } else if method_id == ids.array_extend {
+        Some(StandardMethodInlineCacheTarget::Extend)
+    } else if method_id == ids.array_reverse {
+        Some(StandardMethodInlineCacheTarget::Reverse)
+    } else if method_id == ids.array_distinct {
+        Some(StandardMethodInlineCacheTarget::Distinct)
+    } else if method_id == ids.array_join {
+        Some(StandardMethodInlineCacheTarget::Join)
+    } else if method_id == ids.array_sort {
+        Some(StandardMethodInlineCacheTarget::Sort)
+    } else if method_id == ids.array_min {
+        Some(StandardMethodInlineCacheTarget::Min)
+    } else if method_id == ids.array_max {
+        Some(StandardMethodInlineCacheTarget::Max)
+    } else if method_id == ids.array_sum {
+        Some(StandardMethodInlineCacheTarget::Sum)
+    } else if method_id == ids.array_iter {
+        Some(StandardMethodInlineCacheTarget::Iter)
+    } else if method_id == ids.array_values {
+        Some(StandardMethodInlineCacheTarget::Values)
+    } else {
+        None
+    }
+}
+
+fn map_family_target(
+    method_id: MethodId,
+    ids: &crate::std_method_ids::StdMethodIds,
+) -> Option<StandardMethodInlineCacheTarget> {
+    if method_id == ids.map_len {
+        Some(StandardMethodInlineCacheTarget::Len)
+    } else if method_id == ids.map_is_empty {
+        Some(StandardMethodInlineCacheTarget::IsEmpty)
+    } else if method_id == ids.map_has {
+        Some(StandardMethodInlineCacheTarget::Has)
+    } else if method_id == ids.map_contains_key {
+        Some(StandardMethodInlineCacheTarget::ContainsKey)
+    } else if method_id == ids.map_get {
+        Some(StandardMethodInlineCacheTarget::Get)
+    } else if method_id == ids.map_get_or {
+        Some(StandardMethodInlineCacheTarget::GetOr)
+    } else if method_id == ids.map_get_or_insert {
+        Some(StandardMethodInlineCacheTarget::GetOrInsert)
+    } else if method_id == ids.map_set {
+        Some(StandardMethodInlineCacheTarget::Set)
+    } else if method_id == ids.map_insert {
+        Some(StandardMethodInlineCacheTarget::Insert)
+    } else if method_id == ids.map_remove {
+        Some(StandardMethodInlineCacheTarget::Remove)
+    } else if method_id == ids.map_clear {
+        Some(StandardMethodInlineCacheTarget::Clear)
+    } else if method_id == ids.map_extend {
+        Some(StandardMethodInlineCacheTarget::Extend)
+    } else if method_id == ids.map_keys {
+        Some(StandardMethodInlineCacheTarget::Keys)
+    } else if method_id == ids.map_values {
+        Some(StandardMethodInlineCacheTarget::Values)
+    } else if method_id == ids.map_entries {
+        Some(StandardMethodInlineCacheTarget::Entries)
+    } else if method_id == ids.map_merge {
+        Some(StandardMethodInlineCacheTarget::Merge)
+    } else if method_id == ids.map_iter {
+        Some(StandardMethodInlineCacheTarget::Iter)
+    } else {
+        None
+    }
+}
+
+fn set_family_target(
+    method_id: MethodId,
+    ids: &crate::std_method_ids::StdMethodIds,
+) -> Option<StandardMethodInlineCacheTarget> {
+    if method_id == ids.set_len {
+        Some(StandardMethodInlineCacheTarget::Len)
+    } else if method_id == ids.set_is_empty {
+        Some(StandardMethodInlineCacheTarget::IsEmpty)
+    } else if method_id == ids.set_has {
+        Some(StandardMethodInlineCacheTarget::Has)
+    } else if method_id == ids.set_contains {
+        Some(StandardMethodInlineCacheTarget::Contains)
+    } else if method_id == ids.set_add {
+        Some(StandardMethodInlineCacheTarget::Add)
+    } else if method_id == ids.set_insert {
+        Some(StandardMethodInlineCacheTarget::Insert)
+    } else if method_id == ids.set_remove {
+        Some(StandardMethodInlineCacheTarget::Remove)
+    } else if method_id == ids.set_clear {
+        Some(StandardMethodInlineCacheTarget::Clear)
+    } else if method_id == ids.set_extend {
+        Some(StandardMethodInlineCacheTarget::Extend)
+    } else if method_id == ids.set_values {
+        Some(StandardMethodInlineCacheTarget::Values)
+    } else if method_id == ids.set_union {
+        Some(StandardMethodInlineCacheTarget::Union)
+    } else if method_id == ids.set_intersection {
+        Some(StandardMethodInlineCacheTarget::Intersection)
+    } else if method_id == ids.set_difference {
+        Some(StandardMethodInlineCacheTarget::Difference)
+    } else if method_id == ids.set_symmetric_difference {
+        Some(StandardMethodInlineCacheTarget::SymmetricDifference)
+    } else if method_id == ids.set_is_subset {
+        Some(StandardMethodInlineCacheTarget::IsSubset)
+    } else if method_id == ids.set_is_superset {
+        Some(StandardMethodInlineCacheTarget::IsSuperset)
+    } else if method_id == ids.set_is_disjoint {
+        Some(StandardMethodInlineCacheTarget::IsDisjoint)
+    } else if method_id == ids.set_iter {
+        Some(StandardMethodInlineCacheTarget::Iter)
+    } else {
+        None
+    }
+}
+
+fn iterator_family_target(
+    method_id: MethodId,
+    ids: &crate::std_method_ids::StdMethodIds,
+) -> Option<StandardMethodInlineCacheTarget> {
+    if method_id == ids.iterator_take {
+        Some(StandardMethodInlineCacheTarget::Take)
+    } else if method_id == ids.iterator_skip {
+        Some(StandardMethodInlineCacheTarget::Skip)
+    } else {
+        None
+    }
+}
+
+fn option_family_target(
+    method_id: MethodId,
+    ids: &crate::std_method_ids::StdMethodIds,
+) -> Option<StandardMethodInlineCacheTarget> {
+    if method_id == ids.option_is_some {
+        Some(StandardMethodInlineCacheTarget::IsSome)
+    } else if method_id == ids.option_is_none {
+        Some(StandardMethodInlineCacheTarget::IsNone)
+    } else if method_id == ids.option_unwrap_or {
+        Some(StandardMethodInlineCacheTarget::UnwrapOr)
+    } else if method_id == ids.option_ok_or {
+        Some(StandardMethodInlineCacheTarget::OkOr)
+    } else if method_id == ids.option_flatten {
+        Some(StandardMethodInlineCacheTarget::Flatten)
+    } else {
+        None
+    }
+}
+
+fn result_family_target(
+    method_id: MethodId,
+    ids: &crate::std_method_ids::StdMethodIds,
+) -> Option<StandardMethodInlineCacheTarget> {
+    if method_id == ids.result_is_ok {
+        Some(StandardMethodInlineCacheTarget::IsOk)
+    } else if method_id == ids.result_is_err {
+        Some(StandardMethodInlineCacheTarget::IsErr)
+    } else if method_id == ids.result_unwrap_or {
+        Some(StandardMethodInlineCacheTarget::UnwrapOr)
+    } else if method_id == ids.result_to_option {
+        Some(StandardMethodInlineCacheTarget::ToOption)
+    } else if method_id == ids.result_to_error_option {
+        Some(StandardMethodInlineCacheTarget::ToErrorOption)
+    } else if method_id == ids.result_flatten {
+        Some(StandardMethodInlineCacheTarget::Flatten)
+    } else {
+        None
+    }
 }
 
 pub(crate) fn call_standard_cached(
