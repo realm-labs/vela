@@ -148,6 +148,15 @@ impl ParseDb {
         self.records.len()
     }
 
+    /// Indexes the trees this database already holds so HIR lowering can reuse
+    /// them instead of parsing every workspace source again.
+    fn syntax_by_source(&self) -> BTreeMap<SourceId, &SyntaxParse<SyntaxSourceFile>> {
+        self.records
+            .values()
+            .map(|record| (record.source, &record.syntax))
+            .collect()
+    }
+
     #[must_use]
     pub fn module_fingerprint(&self, module_key: &ModuleKey) -> Option<ModuleFingerprint> {
         self.records
@@ -349,10 +358,14 @@ impl HirDb {
         &mut self,
         sources: &[ModuleSource],
         dependencies: BTreeMap<PackageId, BTreeMap<PackageAlias, PackageId>>,
+        parses: &BTreeMap<SourceId, &SyntaxParse<SyntaxSourceFile>>,
     ) {
         let mut graph = ModuleGraph::with_package_dependencies(dependencies);
         for source in sources {
-            graph.add_source(source.clone());
+            match parses.get(&source.id) {
+                Some(parsed) => graph.add_parsed_source(source.clone(), parsed),
+                None => graph.add_source(source.clone()),
+            };
         }
         graph.resolve_imports();
         self.graph = graph;
@@ -890,8 +903,11 @@ impl LanguageServiceDatabases {
             .invalidate(self.generation, analysis_invalidated_modules.clone());
 
         if !hir_invalidated_modules.is_empty() {
-            self.hir_db
-                .rebuild(project.sources(), project.package_dependencies().clone());
+            self.hir_db.rebuild(
+                project.sources(),
+                project.package_dependencies().clone(),
+                &self.parse_db.syntax_by_source(),
+            );
             self.analysis_cache.invalidate_graph();
         }
         let scheduled_modules = schedule_modules(&hir_invalidated_modules, project, open_documents);
