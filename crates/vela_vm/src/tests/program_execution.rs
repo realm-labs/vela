@@ -155,9 +155,9 @@ fn main() {
         && popped_name.ends_with("st") && option::is_none(missing_pop) && option::unwrap_or(removed, 0) == 4 && rewards.is_empty() == false && ("quest").len() == 5
         && option::is_none(missing_get) && option::is_none(missing_remove)
         && rewards.has("quest") && option::unwrap_or(rewards.get("xp"), 0) == 6 && rewards.get_or("missing", "fallback") == "fallback"
-        && keys[0] == "quest" && keys[1] == "xp"
-        && amounts[0] == "done" && amounts[1] == 6
-        && entries[0].key == "quest" && entries[1].value == 6 {
+        && keys[0] == "xp" && keys[1] == "quest"
+        && amounts[0] == 6 && amounts[1] == "done"
+        && entries[0].key == "xp" && entries[1].value == "done" {
         return names[0].len();
     }
     return 0;

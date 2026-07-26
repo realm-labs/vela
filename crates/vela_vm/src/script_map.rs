@@ -1,12 +1,17 @@
-use std::collections::BTreeMap;
 use std::mem;
 
-use crate::value_key::ValueKey;
+use crate::ordered_keyed::OrderedKeyed;
+use crate::value_key::{KeyProbe, ValueKey};
 use crate::{HeapExecution, Value, VmResult, stored_runtime_value};
 
-#[derive(Clone, Debug, PartialEq)]
+/// Script map with deterministic first-insertion iteration order.
+///
+/// Lookups hash a borrowed [`KeyProbe`] against the stored keys, so reading or
+/// updating an existing entry clones no key payload; only inserting a new
+/// entry copies the key out of the heap.
+#[derive(Clone, Debug)]
 pub struct ScriptMap {
-    entries: BTreeMap<ValueKey, MapEntry>,
+    entries: OrderedKeyed<MapEntry>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -19,7 +24,7 @@ impl ScriptMap {
     #[must_use]
     pub(crate) fn new() -> Self {
         Self {
-            entries: BTreeMap::new(),
+            entries: OrderedKeyed::new(),
         }
     }
 
@@ -46,19 +51,19 @@ impl ScriptMap {
     }
 
     pub(crate) fn keys(&self) -> impl ExactSizeIterator<Item = &Value> {
-        self.entries.values().map(|entry| &entry.key)
+        self.entries.iter().map(|(_, entry)| &entry.key)
     }
 
     pub(crate) fn values(&self) -> impl ExactSizeIterator<Item = &Value> {
-        self.entries.values().map(|entry| &entry.value)
+        self.entries.iter().map(|(_, entry)| &entry.value)
     }
 
     pub(crate) fn entries(&self) -> impl ExactSizeIterator<Item = &MapEntry> {
-        self.entries.values()
+        self.entries.iter().map(|(_, entry)| entry)
     }
 
     pub(crate) fn key_order(&self) -> Vec<ValueKey> {
-        self.entries.keys().cloned().collect()
+        self.entries.iter().map(|(key, _)| key.clone()).collect()
     }
 
     pub(crate) fn entry_for_key(&self, key: &ValueKey) -> Option<&MapEntry> {
@@ -67,7 +72,7 @@ impl ScriptMap {
 
     #[must_use]
     pub(crate) fn contains_key(&self, key: &ValueKey) -> bool {
-        self.entries.contains_key(key)
+        self.entries.get(key).is_some()
     }
 
     pub(crate) fn get_keyed(&self, key: &ValueKey) -> Option<Value> {
@@ -82,8 +87,8 @@ impl ScriptMap {
         heap: Option<&HeapExecution<'_>>,
         operation: &'static str,
     ) -> VmResult<bool> {
-        let key = ValueKey::from_value(key, heap, operation)?;
-        Ok(self.entries.contains_key(&key))
+        let probe = KeyProbe::from_value(key, heap, operation)?;
+        Ok(self.entries.get_probe(&probe).is_some())
     }
 
     pub(crate) fn get(
@@ -92,10 +97,10 @@ impl ScriptMap {
         heap: Option<&HeapExecution<'_>>,
         operation: &'static str,
     ) -> VmResult<Option<Value>> {
-        let key = ValueKey::from_value(key, heap, operation)?;
+        let probe = KeyProbe::from_value(key, heap, operation)?;
         Ok(self
             .entries
-            .get(&key)
+            .get_probe(&probe)
             .map(|entry| stored_runtime_value(&entry.value)))
     }
 
@@ -106,21 +111,20 @@ impl ScriptMap {
         heap: Option<&HeapExecution<'_>>,
         operation: &'static str,
     ) -> VmResult<bool> {
-        let value_key = ValueKey::from_value(&key, heap, operation)?;
-        Ok(self.insert_keyed(value_key, key, value))
+        let probe = KeyProbe::from_value(&key, heap, operation)?;
+        if let Some(entry) = self.entries.get_probe_mut(&probe) {
+            entry.value = value;
+            return Ok(false);
+        }
+        Ok(self.entries.insert_probe(&probe, MapEntry { key, value }))
     }
 
     pub(crate) fn insert_keyed(&mut self, value_key: ValueKey, key: Value, value: Value) -> bool {
-        match self.entries.get_mut(&value_key) {
-            Some(entry) => {
-                entry.value = value;
-                false
-            }
-            None => {
-                self.entries.insert(value_key, MapEntry { key, value });
-                true
-            }
+        if let Some(entry) = self.entries.get_mut(&value_key) {
+            entry.value = value;
+            return false;
         }
+        self.entries.insert(value_key, MapEntry { key, value })
     }
 
     pub(crate) fn remove_keyed(&mut self, key: &ValueKey) -> Option<Value> {
@@ -148,9 +152,24 @@ impl ScriptMap {
         mem::size_of::<Self>()
             + self
                 .entries
-                .keys()
-                .map(|key| value_key_size_bytes(key) + mem::size_of::<MapEntry>())
+                .iter()
+                .map(|(key, _)| key.payload_size_bytes() + mem::size_of::<MapEntry>())
                 .sum::<usize>()
+    }
+}
+
+/// Content equality independent of insertion order.
+///
+/// The previous sorted storage made derived equality content-based; two maps
+/// holding the same entries must stay equal even when they were built in
+/// different orders.
+impl PartialEq for ScriptMap {
+    fn eq(&self, other: &Self) -> bool {
+        self.len() == other.len()
+            && self
+                .entries
+                .iter()
+                .all(|(key, entry)| other.entries.get(key) == Some(entry))
     }
 }
 
@@ -158,8 +177,4 @@ impl Default for ScriptMap {
     fn default() -> Self {
         Self::new()
     }
-}
-
-fn value_key_size_bytes(key: &ValueKey) -> usize {
-    key.payload_size_bytes()
 }

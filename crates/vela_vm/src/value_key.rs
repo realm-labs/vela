@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use crate::heap::HeapValue;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
 use vela_host::path::HostSlotRef;
@@ -84,6 +86,256 @@ impl ValueKey {
             Self::Bytes(value) => value.len(),
             _ => 0,
         }
+    }
+}
+
+/// Hashes one key part under an explicit tag byte.
+///
+/// `ValueKey` and `KeyProbe` are different enums that must hash identically,
+/// so neither may rely on its own derived discriminant. Both feed this
+/// canonical scheme instead; `str`/`String` and `[u8]`/`Vec<u8>` already share
+/// their standard-library hashing.
+macro_rules! hash_key_parts {
+    ($state:expr, $key:expr, $string:ty, $bytes:ty) => {{
+        let state = $state;
+        match $key {
+            KeyParts::<$string, $bytes>::Unit => state.write_u8(0),
+            KeyParts::Bool(value) => {
+                state.write_u8(1);
+                value.hash(state);
+            }
+            KeyParts::Char(value) => {
+                state.write_u8(2);
+                value.hash(state);
+            }
+            KeyParts::I64Class(value) => {
+                state.write_u8(3);
+                value.hash(state);
+            }
+            KeyParts::U64Class(value) => {
+                state.write_u8(4);
+                value.hash(state);
+            }
+            KeyParts::F32(value) => {
+                state.write_u8(5);
+                value.hash(state);
+            }
+            KeyParts::F64(value) => {
+                state.write_u8(6);
+                value.hash(state);
+            }
+            KeyParts::String(value) => {
+                state.write_u8(7);
+                value.hash(state);
+            }
+            KeyParts::Bytes(value) => {
+                state.write_u8(8);
+                value.hash(state);
+            }
+            KeyParts::HeapIdentity(reference) => {
+                state.write_u8(9);
+                reference.hash(state);
+            }
+            KeyParts::HostIdentity(reference) => {
+                state.write_u8(10);
+                reference.hash(state);
+            }
+        }
+    }};
+}
+
+/// Canonical hashed form of one key.
+///
+/// Integer widths keep their class tag but hash a widened payload, mirroring
+/// `PartialEq` on `ValueKey`, where `I8(1) != I64(1)` — the width byte is part
+/// of the payload below.
+enum KeyParts<S, B> {
+    Unit,
+    Bool(bool),
+    Char(char),
+    I64Class((u8, i64)),
+    U64Class((u8, u64)),
+    F32(u32),
+    F64(u64),
+    String(S),
+    Bytes(B),
+    HeapIdentity(crate::heap::GcRef),
+    HostIdentity(HostSlotRef),
+}
+
+impl ValueKey {
+    fn canonical_parts(&self) -> KeyParts<&str, &[u8]> {
+        match self {
+            Self::Unit => KeyParts::Unit,
+            Self::Bool(value) => KeyParts::Bool(*value),
+            Self::Char(value) => KeyParts::Char(*value),
+            Self::I8(value) => KeyParts::I64Class((8, i64::from(*value))),
+            Self::I16(value) => KeyParts::I64Class((16, i64::from(*value))),
+            Self::I32(value) => KeyParts::I64Class((32, i64::from(*value))),
+            Self::I64(value) => KeyParts::I64Class((64, *value)),
+            Self::U8(value) => KeyParts::U64Class((8, u64::from(*value))),
+            Self::U16(value) => KeyParts::U64Class((16, u64::from(*value))),
+            Self::U32(value) => KeyParts::U64Class((32, u64::from(*value))),
+            Self::U64(value) => KeyParts::U64Class((64, *value)),
+            Self::F32(value) => KeyParts::F32(*value),
+            Self::F64(value) => KeyParts::F64(*value),
+            Self::String(value) => KeyParts::String(value.as_str()),
+            Self::Bytes(value) => KeyParts::Bytes(value.as_slice()),
+            Self::HeapIdentity(reference) => KeyParts::HeapIdentity(*reference),
+            Self::HostIdentity(reference) => KeyParts::HostIdentity(*reference),
+        }
+    }
+}
+
+impl Hash for ValueKey {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        hash_key_parts!(state, self.canonical_parts(), &str, &[u8]);
+    }
+}
+
+/// Borrowed lookup key built directly against heap storage.
+///
+/// `ValueKey::from_value` clones string and bytes payloads out of the heap,
+/// which put one allocation on every map and set operation. A probe borrows
+/// them instead, hashes identically to `ValueKey` through the shared canonical
+/// scheme, and is converted to an owned key only when an insert actually
+/// creates a new entry.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum KeyProbe<'a> {
+    Unit,
+    Bool(bool),
+    Char(char),
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    F32(u32),
+    F64(u64),
+    String(&'a str),
+    Bytes(&'a [u8]),
+    HeapIdentity(crate::heap::GcRef),
+    HostIdentity(HostSlotRef),
+}
+
+impl<'a> KeyProbe<'a> {
+    pub(crate) fn from_value(
+        value: &Value,
+        heap: Option<&'a HeapExecution<'_>>,
+        operation: &'static str,
+    ) -> VmResult<Self> {
+        match value {
+            Value::Missing => type_error(operation),
+            Value::Unit => Ok(Self::Unit),
+            Value::Bool(value) => Ok(Self::Bool(*value)),
+            Value::Char(value) => Ok(Self::Char(*value)),
+            Value::I8(value) => Ok(Self::I8(*value)),
+            Value::I16(value) => Ok(Self::I16(*value)),
+            Value::I32(value) => Ok(Self::I32(*value)),
+            Value::I64(value) => Ok(Self::I64(*value)),
+            Value::U8(value) => Ok(Self::U8(*value)),
+            Value::U16(value) => Ok(Self::U16(*value)),
+            Value::U32(value) => Ok(Self::U32(*value)),
+            Value::U64(value) => Ok(Self::U64(*value)),
+            Value::F32(value) => finite_f32_key(*value, operation).map(Self::F32),
+            Value::F64(value) => finite_f64_key(*value, operation).map(Self::F64),
+            Value::Range(_) => type_error(operation),
+            Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+                Some(HeapValue::String(value)) => Ok(Self::String(value)),
+                Some(HeapValue::Bytes(value)) => Ok(Self::Bytes(value)),
+                Some(HeapValue::Tuple(_) | HeapValue::PathProxy(_)) | None => type_error(operation),
+                Some(
+                    HeapValue::Array(_)
+                    | HeapValue::Map(_)
+                    | HeapValue::Set(_)
+                    | HeapValue::Record { .. }
+                    | HeapValue::Enum { .. }
+                    | HeapValue::Closure(_)
+                    | HeapValue::Iterator(_),
+                ) => Ok(Self::HeapIdentity(*reference)),
+            },
+            Value::HostRef(reference) => Ok(Self::HostIdentity(*reference)),
+        }
+    }
+
+    /// Compares this probe against a stored owned key.
+    #[must_use]
+    pub(crate) fn matches(&self, key: &ValueKey) -> bool {
+        match (self, key) {
+            (Self::Unit, ValueKey::Unit) => true,
+            (Self::Bool(probe), ValueKey::Bool(key)) => probe == key,
+            (Self::Char(probe), ValueKey::Char(key)) => probe == key,
+            (Self::I8(probe), ValueKey::I8(key)) => probe == key,
+            (Self::I16(probe), ValueKey::I16(key)) => probe == key,
+            (Self::I32(probe), ValueKey::I32(key)) => probe == key,
+            (Self::I64(probe), ValueKey::I64(key)) => probe == key,
+            (Self::U8(probe), ValueKey::U8(key)) => probe == key,
+            (Self::U16(probe), ValueKey::U16(key)) => probe == key,
+            (Self::U32(probe), ValueKey::U32(key)) => probe == key,
+            (Self::U64(probe), ValueKey::U64(key)) => probe == key,
+            (Self::F32(probe), ValueKey::F32(key)) => probe == key,
+            (Self::F64(probe), ValueKey::F64(key)) => probe == key,
+            (Self::String(probe), ValueKey::String(key)) => *probe == key.as_str(),
+            (Self::Bytes(probe), ValueKey::Bytes(key)) => *probe == key.as_slice(),
+            (Self::HeapIdentity(probe), ValueKey::HeapIdentity(key)) => probe == key,
+            (Self::HostIdentity(probe), ValueKey::HostIdentity(key)) => probe == key,
+            _ => false,
+        }
+    }
+
+    /// Clones this probe into the owned key an insert stores.
+    #[must_use]
+    pub(crate) fn to_owned_key(self) -> ValueKey {
+        match self {
+            Self::Unit => ValueKey::Unit,
+            Self::Bool(value) => ValueKey::Bool(value),
+            Self::Char(value) => ValueKey::Char(value),
+            Self::I8(value) => ValueKey::I8(value),
+            Self::I16(value) => ValueKey::I16(value),
+            Self::I32(value) => ValueKey::I32(value),
+            Self::I64(value) => ValueKey::I64(value),
+            Self::U8(value) => ValueKey::U8(value),
+            Self::U16(value) => ValueKey::U16(value),
+            Self::U32(value) => ValueKey::U32(value),
+            Self::U64(value) => ValueKey::U64(value),
+            Self::F32(value) => ValueKey::F32(value),
+            Self::F64(value) => ValueKey::F64(value),
+            Self::String(value) => ValueKey::String(value.to_owned()),
+            Self::Bytes(value) => ValueKey::Bytes(value.to_vec()),
+            Self::HeapIdentity(reference) => ValueKey::HeapIdentity(reference),
+            Self::HostIdentity(reference) => ValueKey::HostIdentity(reference),
+        }
+    }
+
+    fn canonical_parts(&self) -> KeyParts<&'a str, &'a [u8]> {
+        match self {
+            Self::Unit => KeyParts::Unit,
+            Self::Bool(value) => KeyParts::Bool(*value),
+            Self::Char(value) => KeyParts::Char(*value),
+            Self::I8(value) => KeyParts::I64Class((8, i64::from(*value))),
+            Self::I16(value) => KeyParts::I64Class((16, i64::from(*value))),
+            Self::I32(value) => KeyParts::I64Class((32, i64::from(*value))),
+            Self::I64(value) => KeyParts::I64Class((64, *value)),
+            Self::U8(value) => KeyParts::U64Class((8, u64::from(*value))),
+            Self::U16(value) => KeyParts::U64Class((16, u64::from(*value))),
+            Self::U32(value) => KeyParts::U64Class((32, u64::from(*value))),
+            Self::U64(value) => KeyParts::U64Class((64, *value)),
+            Self::F32(value) => KeyParts::F32(*value),
+            Self::F64(value) => KeyParts::F64(*value),
+            Self::String(value) => KeyParts::String(value),
+            Self::Bytes(value) => KeyParts::Bytes(value),
+            Self::HeapIdentity(reference) => KeyParts::HeapIdentity(*reference),
+            Self::HostIdentity(reference) => KeyParts::HostIdentity(*reference),
+        }
+    }
+}
+
+impl Hash for KeyProbe<'_> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        hash_key_parts!(state, self.canonical_parts(), &str, &[u8]);
     }
 }
 

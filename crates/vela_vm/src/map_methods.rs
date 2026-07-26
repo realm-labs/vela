@@ -427,14 +427,14 @@ fn main() {
     let keys = rewards.keys().collect_array();
     let values = rewards.values().collect_array();
     let entries = rewards.entries().collect_array();
-    if keys.join(",") == "gold,quest,xp"
-        && values[0] == 4
-        && values[1] == 8
-        && values[2] == 6
-        && entries[0].key == "gold"
-        && entries[0].value == 4
-        && entries[2].key == "xp"
-        && entries[2].value == 6
+    if keys.join(",") == "xp,gold,quest"
+        && values[0] == 6
+        && values[1] == 4
+        && values[2] == 8
+        && entries[0].key == "xp"
+        && entries[0].value == 6
+        && entries[2].key == "quest"
+        && entries[2].value == 8
     {
         return values[1] + entries[0].value + keys[2].len();
     }
@@ -450,7 +450,7 @@ fn main() {
             run_linked_map_test_code(&vm, code).expect("map introspection methods should run");
         assert_eq!(
             result,
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(14))
+            OwnedValue::Scalar(vela_common::ScalarValue::I64(15))
         );
     }
 
@@ -462,11 +462,11 @@ fn main() {
     let keys = quests.keys().collect_array();
     let values = quests.values().collect_array();
     let entries = quests.entries().collect_array();
-    if keys.join(",") == "daily,raid,world"
-        && entries[0].key == "daily"
-        && entries[0].value == "done"
-        && entries[1].key == "raid"
-        && entries[1].value == "active"
+    if keys.join(",") == "raid,daily,world"
+        && entries[0].key == "raid"
+        && entries[0].value == "active"
+        && entries[1].key == "daily"
+        && entries[1].value == "done"
         && entries[2].key == "world"
         && entries[2].value == "open"
     {
@@ -483,7 +483,7 @@ fn main() {
 
         let result = run_linked_map_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap map introspection methods should run");
-        assert_eq!(result, OwnedValue::String("done|active|open".to_owned()));
+        assert_eq!(result, OwnedValue::String("active|done|open".to_owned()));
     }
 
     #[test]
@@ -583,7 +583,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = run_linked_map_test_code(&vm, code).expect("map merge should run");
-        assert_eq!(result, OwnedValue::String("gold,quest,xp".to_owned()));
+        assert_eq!(result, OwnedValue::String("gold,xp,quest".to_owned()));
     }
 
     #[test]
@@ -611,7 +611,7 @@ fn main() {
 
         let result = run_linked_map_test_code_with_budget(&vm, code, &mut budget)
             .expect("heap map merge should run");
-        assert_eq!(result, OwnedValue::String("wolf|gold|done".to_owned()));
+        assert_eq!(result, OwnedValue::String("done|wolf|gold".to_owned()));
     }
 
     #[test]
@@ -703,7 +703,7 @@ fn main() {
         vm.register_standard_natives();
 
         let result = run_linked_map_test_code(&vm, code).expect("map extend method should run");
-        assert_eq!(result, OwnedValue::String("gold,quest,xp".to_owned()));
+        assert_eq!(result, OwnedValue::String("gold,xp,quest".to_owned()));
     }
 
     #[test]

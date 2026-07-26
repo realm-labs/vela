@@ -1954,7 +1954,7 @@ the instruction stream rather than tuning around it.
 
 ### Map And Set Iteration Moves To Insertion Order
 
-Accepted 2026-07-26, not yet implemented. Map/Set storage will move from
+Accepted and implemented 2026-07-26. Map/Set storage moved from
 `BTreeMap<ValueKey, _>` to an insertion-ordered hash structure so lookups stop
 paying O(log n) string comparisons and a per-operation key clone
 (`value_key.rs` cloning the heap string into `ValueKey` was 15% of the

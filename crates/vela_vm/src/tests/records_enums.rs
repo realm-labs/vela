@@ -210,11 +210,11 @@ fn runs_compiled_map_literal_source() {
     )
     .expect("compile map literal source");
     let expected = OwnedValue::map([
-        ("exp", OwnedValue::Scalar(vela_common::ScalarValue::I64(15))),
         (
             "level",
             OwnedValue::Scalar(vela_common::ScalarValue::I64(2)),
         ),
+        ("exp", OwnedValue::Scalar(vela_common::ScalarValue::I64(15))),
     ]);
 
     assert_eq!(run_linked_test_code(code), Ok(expected));

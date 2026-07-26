@@ -236,8 +236,13 @@ semantics.
 
 Arrays and sets are repeatable sequences. Their `iter()` and `values()` methods
 create one-shot iterators over values. Maps are repeatable sequences whose
-direct iteration and `iter()` yield `MapEntry { key, value }` records in key
-order; `keys()` and `values()` expose explicit key and value projections.
+direct iteration and `iter()` yield `MapEntry { key, value }` records.
+
+Map and Set iteration order is a language contract: entries and elements are
+visited in first-insertion order, matching JavaScript and Python. Replacing an
+existing entry's value keeps its original position; removing and re-inserting
+a key moves it to the end. Iteration stays fully deterministic. `keys()` and
+`values()` expose explicit key and value projections in the same order.
 Ranges are repeatable sequences and may use specialized `i64` loop lowering
 when the compiler can prove the range facts.
 

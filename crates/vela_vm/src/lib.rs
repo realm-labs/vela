@@ -48,6 +48,7 @@ mod numeric_conversions;
 mod numeric_ops;
 mod option_result;
 mod option_result_methods;
+mod ordered_keyed;
 mod owned_contract;
 pub mod owned_value;
 pub mod ranges;

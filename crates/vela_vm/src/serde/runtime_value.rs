@@ -339,7 +339,7 @@ impl<'de> de::Deserializer<'de> for RuntimeValueDeserializer<'de> {
 
 enum RuntimeSeqIter<'de> {
     Slice(slice::Iter<'de, Value>),
-    Set(std::collections::btree_map::Values<'de, crate::value_key::ValueKey, Value>),
+    Set(crate::script_set::SetValues<'de>),
 }
 
 impl<'de> RuntimeSeqIter<'de> {

@@ -67,8 +67,8 @@ fn linked_standard_value_method_caches_map_merge_target() {
         StandardMethodInlineCacheTarget::Merge,
         OwnedValue::map([
             ("gold", OwnedValue::i64(4)),
-            ("quest", OwnedValue::i64(8)),
             ("xp", OwnedValue::i64(10)),
+            ("quest", OwnedValue::i64(8)),
         ]),
     );
 }
@@ -79,8 +79,8 @@ fn linked_cached_map_merge_limit_counts_unique_value_keys() {
     let caches = RecordingMethodCaches::new(1);
     let expected = Ok(OwnedValue::map([
         ("gold", OwnedValue::i64(4)),
-        ("quest", OwnedValue::i64(8)),
         ("xp", OwnedValue::i64(10)),
+        ("quest", OwnedValue::i64(8)),
     ]));
 
     assert_eq!(

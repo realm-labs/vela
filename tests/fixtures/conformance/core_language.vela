@@ -308,10 +308,10 @@ fn main() {
     let filtered_rewards = merged_rewards.filter(|key, value| key.len() >= 3 && value >= 5);
     let mutable_map: Map = {"daily": "open"};
     mutable_map.extend({"raid": "active", "daily": "done"});
-    let map_helper_score: i64 = if reward_keys.join(",") == "gem,gold,quest"
+    let map_helper_score: i64 = if reward_keys.join(",") == "gold,quest,gem"
         && reward_values.sum() == 15
-        && reward_entries[0].key == "gem"
-        && reward_entries[0].value == 6
+        && reward_entries[0].key == "gold"
+        && reward_entries[0].value == 5
         && found_entry.key == "gem"
         && found_entry.value == 6
         && filtered_rewards.len() == 2

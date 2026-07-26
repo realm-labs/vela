@@ -1,19 +1,24 @@
-use std::collections::{BTreeMap, btree_map};
 use std::mem;
 
-use crate::value_key::ValueKey;
+use crate::ordered_keyed::{LiveEntries, OrderedKeyed};
+use crate::value_key::{KeyProbe, ValueKey};
 use crate::{HeapExecution, Value, VmResult};
 
-#[derive(Clone, Debug, PartialEq)]
+/// Script set with deterministic first-insertion iteration order.
+///
+/// Membership checks hash a borrowed [`KeyProbe`] against the stored keys, so
+/// they clone no key payload; only inserting a new element copies the key out
+/// of the heap.
+#[derive(Clone, Debug)]
 pub struct ScriptSet {
-    entries: BTreeMap<ValueKey, Value>,
+    entries: OrderedKeyed<Value>,
 }
 
 impl ScriptSet {
     #[must_use]
     pub(crate) fn new() -> Self {
         Self {
-            entries: BTreeMap::new(),
+            entries: OrderedKeyed::new(),
         }
     }
 
@@ -40,12 +45,14 @@ impl ScriptSet {
     }
 
     pub(crate) fn values(&self) -> impl ExactSizeIterator<Item = &Value> {
-        self.entries.values()
+        self.entries.iter().map(|(_, value)| value)
     }
 
     #[cfg_attr(not(feature = "serde"), allow(dead_code))]
-    pub(crate) fn iter_values(&self) -> btree_map::Values<'_, ValueKey, Value> {
-        self.entries.values()
+    pub(crate) fn iter_values(&self) -> SetValues<'_> {
+        SetValues {
+            entries: self.entries.iter(),
+        }
     }
 
     pub(crate) fn values_vec(&self) -> Vec<Value> {
@@ -58,13 +65,13 @@ impl ScriptSet {
         heap: Option<&HeapExecution<'_>>,
         operation: &'static str,
     ) -> VmResult<bool> {
-        let key = ValueKey::from_value(value, heap, operation)?;
-        Ok(self.entries.contains_key(&key))
+        let probe = KeyProbe::from_value(value, heap, operation)?;
+        Ok(self.entries.get_probe(&probe).is_some())
     }
 
     #[must_use]
     pub(crate) fn contains_key(&self, key: &ValueKey) -> bool {
-        self.entries.contains_key(key)
+        self.entries.get(key).is_some()
     }
 
     pub(crate) fn insert(
@@ -73,18 +80,18 @@ impl ScriptSet {
         heap: Option<&HeapExecution<'_>>,
         operation: &'static str,
     ) -> VmResult<bool> {
-        let key = ValueKey::from_value(&value, heap, operation)?;
-        Ok(self.insert_keyed(key, value))
+        let probe = KeyProbe::from_value(&value, heap, operation)?;
+        if self.entries.get_probe(&probe).is_some() {
+            return Ok(false);
+        }
+        Ok(self.entries.insert_probe(&probe, value))
     }
 
     pub(crate) fn insert_keyed(&mut self, key: ValueKey, value: Value) -> bool {
-        match self.entries.entry(key) {
-            btree_map::Entry::Vacant(entry) => {
-                entry.insert(value);
-                true
-            }
-            btree_map::Entry::Occupied(_) => false,
+        if self.entries.get(&key).is_some() {
+            return false;
         }
+        self.entries.insert(key, value)
     }
 
     pub(crate) fn remove_keyed(&mut self, key: &ValueKey) -> bool {
@@ -100,18 +107,46 @@ impl ScriptSet {
         mem::size_of::<Self>()
             + self
                 .entries
-                .keys()
-                .map(|key| value_key_size_bytes(key) + mem::size_of::<Value>())
+                .iter()
+                .map(|(key, _)| key.payload_size_bytes() + mem::size_of::<Value>())
                 .sum::<usize>()
     }
 }
+
+/// Content equality independent of insertion order, matching the equality the
+/// previous sorted storage derived.
+impl PartialEq for ScriptSet {
+    fn eq(&self, other: &Self) -> bool {
+        self.len() == other.len()
+            && self
+                .entries
+                .iter()
+                .all(|(key, _)| other.entries.get(key).is_some())
+    }
+}
+
+/// Insertion-ordered iterator over stored element values.
+#[derive(Clone)]
+pub(crate) struct SetValues<'a> {
+    entries: LiveEntries<'a, Value>,
+}
+
+impl<'a> Iterator for SetValues<'a> {
+    type Item = &'a Value;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.entries.next().map(|(_, value)| value)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.entries.size_hint()
+    }
+}
+
+impl ExactSizeIterator for SetValues<'_> {}
 
 impl Default for ScriptSet {
     fn default() -> Self {
         Self::new()
     }
-}
-
-fn value_key_size_bytes(key: &ValueKey) -> usize {
-    key.payload_size_bytes()
 }

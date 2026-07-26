@@ -14,7 +14,7 @@ fn main() {
     let keys = merged.keys().collect_array().join(",");
     let total = merged.values().collect_array().sum();
     let entries = merged.entries().collect_array();
-    if keys == "bonus,gold,rank,xp" && total == 15 && entries.len() == 4 {
+    if keys == "gold,xp,rank,bonus" && total == 15 && entries.len() == 4 {
         return merged.get_or("xp", 0);
     }
     return 0;

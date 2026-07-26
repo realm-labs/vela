@@ -66,9 +66,9 @@ fn main() {
         && option::unwrap_or(removed, 0) == 4
         && option::is_none(missing_get) && option::is_none(missing_remove)
         && rewards.has("quest") && option::unwrap_or(rewards.get("xp"), 0) == 6 && rewards.get_or("missing", 10) == 10
-        && keys[0] == "quest" && keys[1] == "xp"
-        && amounts[0] == 8 && amounts[1] == 6
-        && entries[0].key == "quest" && entries[1].value == 6 {
+        && keys[0] == "xp" && keys[1] == "quest"
+        && amounts[0] == 6 && amounts[1] == 8
+        && entries[0].key == "xp" && entries[1].value == 8 {
         return values.len();
     }
     return 0;
