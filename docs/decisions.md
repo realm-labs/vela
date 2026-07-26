@@ -1977,6 +1977,32 @@ Implementation constraints for whoever lands it:
 - the language documentation gains the new iteration-order contract in the
   same change.
 
+### Unified Measurement Of The Value Slot And Shape Sharing Changes
+
+Fresh-from-scratch builds of both endpoints, interleaved on a quiet machine,
+measured the combined 16-byte `Value` and interned-shape changes at twelve
+rows significantly faster and four suspicious: `array_transform_sort` -13.6%,
+`float_math_loop` -12.3%, `string_methods` -11.1%, `array_scan` -10.5%,
+`recursive_countdown` -9.7%, `function_calls` -8.8%, with every checksum
+unchanged. The record-detail rows scale with field count exactly as the
+shape-sharing mechanism predicts: triplets -1.2%, quads about -5%, quints
+about -10%, sextets about -11%.
+
+Two findings are methodology, not source: comparing an incremental build
+against a fresh build of the same source produced differences up to 30% on
+map rows, so A/B endpoints must both be fresh worktree builds; and rows built
+on the randomly seeded hash tables (map lookups, closure_callbacks) vary by
+several percent per process because each process draws a new seed, so their
+verdicts need noise floors from many process-interleaved rounds.
+`closure_callbacks` flipped sign across runs and supports no conclusion.
+
+One open item: the map lookup rows showed a possible regression from the
+Value-slot commit, +7% at a comparable seed-variance floor, attribution
+bisected to that commit and entangled with seed variance. Nothing in the
+mechanism explains it (`MapEntry` shrank from 48 to 64-byte slots to one
+cache line); it needs a dedicated seed-controlled measurement before any
+code response.
+
 ### The External-Compare Map Rows Are Not Bounded By Resolution Work
 
 Three consecutive targeted optimizations of `map_string_key_lookup_update`'s
