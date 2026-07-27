@@ -1977,6 +1977,39 @@ Implementation constraints for whoever lands it:
 - the language documentation gains the new iteration-order contract in the
   same change.
 
+### The Dispatch Loop Is At A Local Optimum
+
+On the simplest workload, `scalar_branch_loop`, a profile attributes 83% of
+samples to `drive_linked_frame` itself and 16% to `dispatch_load_const`, with
+no allocation, no memmove, and no other helper above the noise. There is no fat
+left to trim; the loop's cost is the loop.
+
+Every attempt to improve it has measured worse, and the pattern is now
+consistent enough to be a design fact rather than a run of bad luck:
+
+- unchecked register access, sound under verification: `scalar_branch_loop`
+  +24%;
+- a 96-byte instruction stride: nine rows slower; padding it back to 128:
+  neutral; a genuine 64-byte stride: eleven rows slower;
+- inlining a scalar fast path for `LoadConst` into the match, removing an
+  out-of-line call and two `Option` reborrows from the hot path:
+  `range_iteration` +21.9%, `scalar_branch_loop` +20.3%, `float_math_loop`
+  +11.9%, `array_scan` +10.1%.
+
+That last one is the clearest signal. Adding a strictly-less-work path to the
+match made four rows substantially slower, so the ~80-arm match in safe Rust
+sits in a delicate register-allocation and code-layout optimum that LLVM found
+and that local edits disturb. Further tuning of the loop body is not a lever,
+in either direction.
+
+What remains open is the dispatch *mechanism*, not its body: reducing the
+number of dispatches (superinstructions, already deferred pending profile
+evidence and temporary-register liveness), or replacing the dispatch shape
+entirely (tail-call threading, which needs guaranteed TCO, or a JIT). Do not
+spend further effort tuning `drive_linked_frame` in place, and treat any
+proposal to do so as requiring a measurement before implementation rather than
+after.
+
 ### A 64-Byte Instruction Stride Is A Net Regression
 
 The compact instruction encoding was implemented in full and rejected on
