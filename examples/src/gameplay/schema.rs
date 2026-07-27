@@ -123,10 +123,6 @@ pub(crate) struct Player {
 #[methods]
 impl Player {
     #[vela(name = "add_reward", reflect = true)]
-    #[expect(
-        dead_code,
-        reason = "example registers this method for scripts; Rust never calls it directly"
-    )]
     pub fn add_reward(&mut self, _item_id: String, _count: i64) {}
 }
 

@@ -46,7 +46,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 #[derive(Debug, ScriptHost)]
 #[vela(path = "examples::native_function::Player")]
-struct Player {
+pub struct Player {
     #[vela(get, set, hint = "i64")]
     level: i64,
 }
