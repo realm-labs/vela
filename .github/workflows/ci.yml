@@ -52,8 +52,13 @@ jobs:
             echo "Rust import paths may not contain more than one super segment."
             exit 1
           fi
-          if grep -RIn 'include!' crates examples tests --include='*.rs'; then
+          # Handwritten source must use real module boundaries. Pulling build
+          # script output in from OUT_DIR is the documented exception and the
+          # published way to consume generated Rust bindings, so it is allowed.
+          if grep -RIn 'include!' crates examples tests --include='*.rs' \
+            | grep -v 'include!(concat!(env!("OUT_DIR")'; then
             echo "Handwritten Rust source must use real module boundaries, not include!."
+            echo "Only include!(concat!(env!(\"OUT_DIR\"), ...)) for generated code is allowed."
             exit 1
           fi
 
