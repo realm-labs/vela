@@ -1,0 +1,5 @@
+error: service-domain fields must use `Service<dyn ServiceTrait>`
+  --> tests/ui/service/fail/service_domain_bare_trait.rs:12:17
+   |
+12 |     pub reward: dyn RewardService,
+   |                 ^^^^^^^^^^^^^^^^^

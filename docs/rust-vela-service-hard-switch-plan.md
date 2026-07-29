@@ -223,20 +223,20 @@ audit are green.
 
 Deliverables:
 
-- implement `#[vela_macros::service]` and `#[vela_macros::service_set]` schema generation on
+- implement `#[vela_macros::service]` and `#[vela_macros::service_domain]` schema generation on
   the sealed TypeBinding registry;
 - reject service signatures whose transitive types lack complete bindings;
 - generate object-safe synchronous dispatch and Rust default composites;
 - implement whole-set generation identity, `ArcSwap` publication, safe-point
   pinning, and same-controller rollback validation;
-- migrate the fixture's callers to the generated service set; and
+- migrate the fixture's callers to the generated service domain; and
 - keep the generated Rust-default branch as a direct Rust call that creates no
   HostRef, performs no VM entry, and allocates nothing after root pinning.
 
 Authored `async fn` service adapters remain an S6 deliverable together with
 suspension, cancellation, dropped-future, and lease-lifetime proof. S4 rejects
 that spelling with a focused diagnostic instead of exposing a trait that the
-generated Rust-only service set cannot dispatch.
+generated Rust-only service domain cannot dispatch.
 
 Gate:
 

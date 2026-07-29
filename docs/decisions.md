@@ -2710,14 +2710,39 @@ Functions and methods are a separate surface. `export`, `export_module`, and
 `EngineBuilder::register_exports`. The older shape-specific `script_function`,
 `script_context_function`, `script_host_function`, and `script_methods` macros,
 their Host-specific builder aliases, and `ScriptHostMethodMetadata` are removed
-without compatibility shims. Generated service sets expose one
-`ServiceSet::register(builder)` entry.
+without compatibility shims. Generated service domains expose one application
+builder, which performs service registration and Engine sealing as part of its
+terminal `build`.
 
 All nested authoring metadata uses one `#[vela(...)]` helper attribute:
-type/field/variant names and access, method metadata/effects, and
-`#[vela(default = RustService)]` on service-set fields. The older `#[script]`,
-`#[script_method]`, and `#[vela::default(...)]` spellings are removed without
-compatibility aliases.
+type/field/variant names and access and method metadata/effects. Service-domain
+fields use `Service<dyn Trait>` markers, and their Rust defaults are supplied
+as instances to the application builder. The older `#[script]`,
+`#[script_method]`, `#[vela::default(...)]`, and
+`#[vela(default = RustService)]` spellings are removed without compatibility
+aliases.
+
+### Service Domains Own User-Facing Construction
+
+`#[vela_macros::service_domain(context = Context)]` is the public declaration
+of one atomic deployment boundary. Its fields are explicit
+`Service<dyn Trait>` schema markers; they are not runtime trait-object storage.
+The generated builder accepts one concrete Rust default instance per service
+and retains those exact instances behind `Arc` across every composed
+generation.
+
+The builder's terminal `build` is the only ordinary construction path. It
+registers the transitive service type closure, seals the Engine, validates the
+domain schema, validates Runtime authority, retains bounded call options, and
+creates the initial Rust generation. Missing defaults fail construction.
+
+The resulting application owns the Engine and the domain publication
+controller. `app.begin(&mut context)` establishes the request safe point and
+pins one generation; `app.patches()` owns the routine Snapshot-source and
+prebuilt-bundle staging, activation, dry-run, and rollback workflow. The
+removed `#[service_set]`, split `register`/`new`, default-type field attribute,
+public generation constructor, and `stage_rust` surfaces have no compatibility
+aliases.
 
 ### Repository Artifacts Use Domain-Neutral Host Names
 

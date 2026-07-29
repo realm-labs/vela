@@ -2,7 +2,8 @@ use std::alloc::System;
 use std::hint::black_box;
 
 use stats_alloc::{INSTRUMENTED_SYSTEM, Region, StatsAlloc};
-use vela_macros::{service, service_set};
+use vela_engine::service::Service;
+use vela_macros::{service, service_domain};
 
 #[global_allocator]
 static GLOBAL: &StatsAlloc<System> = &INSTRUMENTED_SYSTEM;
@@ -22,19 +23,18 @@ impl ScalarService for RustScalarService {
 
 pub struct RequestContext;
 
-#[service_set(context = RequestContext)]
+#[service_domain(context = RequestContext)]
 pub struct TestServices {
-    #[vela(default = RustScalarService)]
-    pub scalar: dyn ScalarService,
+    pub scalar: Service<dyn ScalarService>,
 }
 
 #[test]
 fn pinned_rust_default_dispatch_allocates_nothing_and_stays_in_rust() {
-    let engine = TestServices::register(vela_engine::engine::Engine::builder())
+    let app = TestServices::builder(vela_engine::engine::Engine::builder())
+        .scalar(RustScalarService)
         .build()
-        .expect("generated scalar registration bundle");
-    let services = TestServices::new(&engine.type_bindings()).expect("generated service schema");
-    let root = services.pin();
+        .expect("generated service domain");
+    let root = app.domain().pin();
     let mut checksum = 0_i64;
     let region = Region::new(GLOBAL);
 

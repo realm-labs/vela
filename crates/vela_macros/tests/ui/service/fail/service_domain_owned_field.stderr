@@ -1,0 +1,5 @@
+error: service-domain fields must use `Service<dyn ServiceTrait>`
+ --> tests/ui/service/fail/service_domain_owned_field.rs:8:17
+  |
+8 |     pub reward: RustRewardService,
+  |                 ^^^^^^^^^^^^^^^^^

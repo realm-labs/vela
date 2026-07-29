@@ -1,4 +1,4 @@
-use vela_macros::{service, service_set};
+use vela_macros::{service, service_domain};
 
 #[service(path = "game::reward")]
 pub trait RewardService: Send + Sync {
@@ -7,8 +7,8 @@ pub trait RewardService: Send + Sync {
 
 pub struct RequestContext;
 
-#[service_set(context = RequestContext)]
-pub struct GameServices {
+#[service_domain(context = RequestContext)]
+pub struct GameLogic {
     pub reward: dyn RewardService,
 }
 

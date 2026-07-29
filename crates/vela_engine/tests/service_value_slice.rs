@@ -5,10 +5,11 @@ use vela_engine::engine::Engine;
 use vela_engine::permission::Capability;
 use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
 use vela_engine::service::{
-    ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot, ServiceSourceManifest,
+    Service, ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot,
+    ServiceSourceManifest,
 };
 use vela_hir::source_ingestion::build_single_source;
-use vela_macros::{ScriptHost, Value, service, service_set};
+use vela_macros::{ScriptHost, Value, service, service_domain};
 
 #[derive(Clone, Debug, Value)]
 #[vela(path = "slice_service::Entry")]
@@ -75,22 +76,22 @@ impl TotalService for RustTotalService {
     }
 }
 
-#[service_set(context = RequestContext)]
+#[service_domain(context = RequestContext)]
 pub struct TestServices {
-    #[vela(default = RustTotalService)]
-    pub totals: dyn TotalService,
+    pub totals: Service<dyn TotalService>,
 }
 
 #[test]
 fn same_generation_base_decodes_read_only_value_slice_for_rust_default() {
-    let engine = TestServices::register(
+    let app = TestServices::builder(
         Engine::builder()
             .capability(Capability::HostWrite)
             .register_type::<RequestContext>(),
     )
+    .totals(RustTotalService)
     .build()
-    .expect("service engine");
-    let services = TestServices::new(&engine.type_bindings()).expect("service set");
+    .expect("service domain");
+    let (engine, services) = app.into_parts();
     let initial = services.pin();
     let source = r#"
 #[service_impl(slice_service::totals)]

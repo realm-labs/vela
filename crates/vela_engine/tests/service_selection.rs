@@ -1,9 +1,9 @@
 use vela_common::{ServiceAbiFingerprint, ServiceGenerationId, ServiceId, ServiceMethodId};
 use vela_engine::service::{
-    ServiceMethodSelection, ServiceMethodUpdate, ServiceSchema, ServiceSelectionError,
+    Service, ServiceMethodSelection, ServiceMethodUpdate, ServiceSchema, ServiceSelectionError,
     ServiceSelectionTable, ServiceSetSchema,
 };
-use vela_macros::{service, service_set};
+use vela_macros::{service, service_domain};
 
 #[service(path = "test::inventory")]
 pub trait InventoryService: Send + Sync {
@@ -38,12 +38,10 @@ impl RewardService for RustRewardService {
 
 pub struct RequestContext;
 
-#[service_set(context = RequestContext)]
+#[service_domain(context = RequestContext)]
 pub struct TestServices {
-    #[vela(default = RustInventoryService)]
-    pub inventory: dyn InventoryService,
-    #[vela(default = RustRewardService)]
-    pub reward: dyn RewardService,
+    pub inventory: Service<dyn InventoryService>,
+    pub reward: Service<dyn RewardService>,
 }
 
 #[test]
@@ -235,13 +233,12 @@ fn delta_rejects_a_non_exact_base_without_changing_the_base() {
 }
 
 fn schema() -> ServiceSetSchema {
-    let engine = TestServices::register(vela_engine::engine::Engine::builder())
+    let app = TestServices::builder(vela_engine::engine::Engine::builder())
+        .inventory(RustInventoryService)
+        .reward(RustRewardService)
         .build()
-        .expect("generated registrations");
-    TestServices::new(&engine.type_bindings())
-        .expect("generated service schema")
-        .schema()
-        .clone()
+        .expect("generated service domain");
+    app.domain().schema().clone()
 }
 
 fn service<'schema>(schema: &'schema ServiceSetSchema, path: &str) -> &'schema ServiceSchema {

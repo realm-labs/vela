@@ -14,12 +14,12 @@ use vela_engine::native::{EffectSet, NativeFunctionDesc, TypeHint};
 use vela_engine::permission::{Capability, CapabilitySet};
 use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
 use vela_engine::service::{
-    LinkedServiceSourceManifest, ServiceRuntimeAuthority, ServiceRuntimeBinding,
-    ServiceRuntimeSlot, ServiceSourceManifest, ServiceUpdateBundle,
+    LinkedServiceSourceManifest, Service, ServiceRuntimeAuthority, ServiceRuntimeSlot,
+    ServiceSourceManifest, ServiceUpdateBundle,
 };
 use vela_engine::type_binding::TypeBinding;
 use vela_hir::source_ingestion::build_single_source;
-use vela_macros::{ScriptHost, Value, service, service_set};
+use vela_macros::{ScriptHost, Value, service, service_domain};
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
@@ -187,10 +187,7 @@ pub trait LookupService: Send + Sync {
         allowed: bool,
     ) -> Result<&'borrow RequestState, ServiceError>;
 
-    fn required<'borrow>(
-        &self,
-        context: &'borrow mut RequestState,
-    ) -> &'borrow RequestState;
+    fn required<'borrow>(&self, context: &'borrow mut RequestState) -> &'borrow RequestState;
 }
 
 pub struct RustLookupService;
@@ -214,56 +211,33 @@ impl LookupService for RustLookupService {
             .ok_or_else(|| ServiceError::new("blocked"))
     }
 
-    fn required<'borrow>(
-        &self,
-        context: &'borrow mut RequestState,
-    ) -> &'borrow RequestState {
+    fn required<'borrow>(&self, context: &'borrow mut RequestState) -> &'borrow RequestState {
         &*context
     }
 }
 
 #[service(path = "coverage::policy")]
 pub trait PolicyService: Send + Sync {
-    fn score(
-        &self,
-        context: &mut RequestState,
-        row: &Row,
-        adjustment: i64,
-    ) -> ServiceResult<i64>;
+    fn score(&self, context: &mut RequestState, row: &Row, adjustment: i64) -> ServiceResult<i64>;
 }
 
 pub struct RustPolicyService;
 
 impl PolicyService for RustPolicyService {
-    fn score(
-        &self,
-        _context: &mut RequestState,
-        row: &Row,
-        adjustment: i64,
-    ) -> ServiceResult<i64> {
+    fn score(&self, _context: &mut RequestState, row: &Row, adjustment: i64) -> ServiceResult<i64> {
         Ok(row.score + adjustment)
     }
 }
 
 #[service(path = "coverage::apply")]
 pub trait ApplyService: Send + Sync {
-    fn apply(
-        &self,
-        context: &mut RequestState,
-        row: &Row,
-        score: i64,
-    ) -> ServiceResult<()>;
+    fn apply(&self, context: &mut RequestState, row: &Row, score: i64) -> ServiceResult<()>;
 }
 
 pub struct RustApplyService;
 
 impl ApplyService for RustApplyService {
-    fn apply(
-        &self,
-        context: &mut RequestState,
-        _row: &Row,
-        score: i64,
-    ) -> ServiceResult<()> {
+    fn apply(&self, context: &mut RequestState, _row: &Row, score: i64) -> ServiceResult<()> {
         context.applied += score;
         Ok(())
     }
@@ -287,12 +261,7 @@ pub trait TransformService: Send + Sync {
     fn consume(&self, context: &mut RequestState, values: Vec<ValueRow>) -> i64;
     fn inspect(&self, context: &mut RequestState, values: &[ValueRow]) -> i64;
     fn inspect_buffer(&self, context: &mut RequestState, buffer: &PatchBuffer) -> i64;
-    fn update_buffer(
-        &self,
-        context: &mut RequestState,
-        buffer: &mut PatchBuffer,
-        delta: i64,
-    );
+    fn update_buffer(&self, context: &mut RequestState, buffer: &mut PatchBuffer, delta: i64);
     fn collections(&self, context: &mut RequestState, values: Vec<ValueRow>) -> i64;
     fn buffer(&self, context: &mut RequestState) -> i64;
     fn copyback(&self, context: &mut RequestState, values: &mut Vec<i64>) -> i64;
@@ -313,12 +282,7 @@ impl TransformService for RustTransformService {
         buffer.value
     }
 
-    fn update_buffer(
-        &self,
-        _context: &mut RequestState,
-        buffer: &mut PatchBuffer,
-        delta: i64,
-    ) {
+    fn update_buffer(&self, _context: &mut RequestState, buffer: &mut PatchBuffer, delta: i64) {
         buffer.value += delta;
     }
 
@@ -363,9 +327,7 @@ impl HandlerService for RustHandlerService {
             .iter()
             .find(|row| row.key == request.key)
             .ok_or_else(|| ServiceError::new("missing row"))?;
-        let score = services
-            .policy()
-            .score(context, row, request.adjustment)?;
+        let score = services.policy().score(context, row, request.adjustment)?;
         services.apply().apply(context, row, score)?;
         services.audit().record(context, score);
         Ok(Response {
@@ -378,20 +340,14 @@ impl HandlerService for RustHandlerService {
     }
 }
 
-#[service_set(context = RequestState)]
+#[service_domain(context = RequestState)]
 pub struct CoverageServices {
-    #[vela(default = RustLookupService)]
-    pub lookup: dyn LookupService,
-    #[vela(default = RustPolicyService)]
-    pub policy: dyn PolicyService,
-    #[vela(default = RustApplyService)]
-    pub apply: dyn ApplyService,
-    #[vela(default = RustAuditService)]
-    pub audit: dyn AuditService,
-    #[vela(default = RustTransformService)]
-    pub transform: dyn TransformService,
-    #[vela(default = RustHandlerService)]
-    pub handler: dyn HandlerService,
+    pub lookup: Service<dyn LookupService>,
+    pub policy: Service<dyn PolicyService>,
+    pub apply: Service<dyn ApplyService>,
+    pub audit: Service<dyn AuditService>,
+    pub transform: Service<dyn TransformService>,
+    pub handler: Service<dyn HandlerService>,
 }
 
 fn table() -> Table {
@@ -497,7 +453,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     ROW_CODEC_ENTRIES.store(0, Ordering::SeqCst);
     PATCH_BUFFER_DROPS.store(0, Ordering::SeqCst);
 
-    let engine = CoverageServices::register(
+    let app = CoverageServices::builder(
         Engine::builder()
             .capabilities(
                 CapabilitySet::new()
@@ -509,8 +465,17 @@ fn main() -> Result<(), Box<dyn Error>> {
             .register_type::<RequestState>()
             .register_type_binding::<PatchBuffer>(patch_buffer_binding()),
     )
+    .lookup(RustLookupService)
+    .policy(RustPolicyService)
+    .apply(RustApplyService)
+    .audit(RustAuditService)
+    .transform(RustTransformService)
+    .handler(RustHandlerService)
+    .actor_runtime::<RequestState>()
+    .call_options(call_options())
     .build()?;
-    let services = CoverageServices::new(&engine.type_bindings())?;
+    let engine = app.engine().clone();
+    let services = app.domain();
     let table = table();
 
     let rust_root = services.pin();
@@ -531,25 +496,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         rust_state.audits.len(),
     );
 
-    let (snapshot_artifact, snapshot_update) =
-        linked_update(&engine, &services, 201, SNAPSHOT_SOURCE, SNAPSHOT_SOURCE)?;
-    let snapshot_bundle = ServiceUpdateBundle::snapshot(
-        services.schema(),
-        snapshot_artifact,
-        snapshot_update,
-    )?;
-    assert!(
-        services
-            .dry_run_bundle(&rust_root, &snapshot_bundle)
-            .accepted()
-    );
-    let snapshot_candidate = services.stage_bundle(
-        &rust_root,
-        snapshot_bundle,
-        ServiceRuntimeBinding::for_context::<RequestState>(),
-        call_options(),
-    )?;
-    services.activate_if_current(snapshot_candidate)?;
+    app.patches()
+        .stage_snapshot_source(SNAPSHOT_SOURCE)?
+        .activate()?;
     let snapshot_root = services.pin();
 
     let mut lookup_state = state(&engine, &snapshot_root);
@@ -577,8 +526,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         snapshot_root.lookup().required(&mut lookup_state) as *const RequestState as usize,
         expected_state_address
     );
-    let (snapshot_response, snapshot_state) =
-        run_handler(&snapshot_root, &engine, &table)?;
+    let (snapshot_response, snapshot_state) = run_handler(&snapshot_root, &engine, &table)?;
     assert_eq!(snapshot_response.score, 18);
     assert_eq!(snapshot_state.applied, 17);
     println!(
@@ -598,7 +546,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
     let (policy_artifact, policy_update) = linked_update(
         &engine,
-        &services,
+        services,
         202,
         DELTA_POLICY_SOURCE,
         &policy_complete_source,
@@ -612,13 +560,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         policy_artifact,
         policy_update,
     )?;
-    let policy_candidate = services.stage_bundle(
-        &snapshot_root,
-        policy_bundle,
-        ServiceRuntimeBinding::for_context::<RequestState>(),
-        call_options(),
-    )?;
-    services.activate_if_current(policy_candidate)?;
+    app.patches().stage_bundle(policy_bundle)?.activate()?;
     let policy_root = services.pin();
     let (policy_response, _) = run_handler(&policy_root, &engine, &table)?;
     assert_eq!(policy_response.score, 28);
@@ -628,13 +570,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     let complete_source = folded_source()?;
-    let (apply_artifact, apply_update) = linked_update(
-        &engine,
-        &services,
-        203,
-        DELTA_APPLY_SOURCE,
-        &complete_source,
-    )?;
+    let (apply_artifact, apply_update) =
+        linked_update(&engine, services, 203, DELTA_APPLY_SOURCE, &complete_source)?;
     let apply_bundle = ServiceUpdateBundle::delta(
         services.schema(),
         policy_root.generation_id(),
@@ -644,16 +581,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         apply_artifact,
         apply_update,
     )?;
-    let apply_candidate = services.stage_bundle(
-        &policy_root,
-        apply_bundle,
-        ServiceRuntimeBinding::for_context::<RequestState>(),
-        call_options(),
-    )?;
-    services.activate_if_current(apply_candidate)?;
+    app.patches().stage_bundle(apply_bundle)?.activate()?;
     let complete_root = services.pin();
-    let (complete_response, complete_state) =
-        run_handler(&complete_root, &engine, &table)?;
+    let (complete_response, complete_state) = run_handler(&complete_root, &engine, &table)?;
     assert_eq!(complete_response.score, 28);
     assert_eq!(complete_state.applied, 27);
     assert_eq!(complete_state.audits, [127, 27]);
@@ -673,7 +603,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let (stale_artifact, stale_update) = linked_update(
         &engine,
-        &services,
+        services,
         204,
         DELTA_POLICY_SOURCE,
         &policy_complete_source,
@@ -707,7 +637,7 @@ impl IncompatiblePolicy {
     let incompatible_attempt = (|| -> Result<bool, Box<dyn Error>> {
         let (artifact, update) = linked_update(
             &engine,
-            &services,
+            services,
             206,
             incompatible_source,
             &incompatible_complete_source,
@@ -721,9 +651,7 @@ impl IncompatiblePolicy {
             artifact,
             update,
         )?;
-        Ok(!services
-            .dry_run_bundle(&complete_root, &bundle)
-            .accepted())
+        Ok(!services.dry_run_bundle(&complete_root, &bundle).accepted())
     })();
     let abi_rejected = incompatible_attempt.unwrap_or(true);
     assert!(stale_rejected);
@@ -735,16 +663,10 @@ impl IncompatiblePolicy {
 
     let folded_source = complete_source;
     let (folded_artifact, folded_update) =
-        linked_update(&engine, &services, 205, &folded_source, &folded_source)?;
+        linked_update(&engine, services, 205, &folded_source, &folded_source)?;
     let folded_bundle =
         ServiceUpdateBundle::snapshot(services.schema(), folded_artifact, folded_update)?;
-    let folded_candidate = services.stage_bundle(
-        &complete_root,
-        folded_bundle,
-        ServiceRuntimeBinding::for_context::<RequestState>(),
-        call_options(),
-    )?;
-    let rollback = services.activate_if_current(folded_candidate)?;
+    let rollback = app.patches().stage_bundle(folded_bundle)?.activate()?;
     let folded_root = services.pin();
     let (folded_response, folded_state) = run_handler(&folded_root, &engine, &table)?;
     assert_eq!(folded_response, complete_response);
@@ -755,7 +677,7 @@ impl IncompatiblePolicy {
     );
 
     let committed_effect = folded_state.applied;
-    let restored = services.rollback_if_current(rollback)?;
+    let restored = app.patches().rollback(rollback)?;
     assert_eq!(restored.generation_id(), complete_root.generation_id());
     assert_eq!(folded_state.applied, committed_effect);
     let (rollback_response, _) = run_handler(&restored, &engine, &table)?;

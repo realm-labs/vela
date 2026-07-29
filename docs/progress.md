@@ -23,10 +23,13 @@ implementation checkpoint.
 
 Rust embedding now has one public registration vocabulary: every derived or
 generated Value/Host uses `register_type::<T>()`, callable bundles use
-`register_exports(...)`, and generated service sets use
-`ServiceSet::register(...)`. `ScriptHost` emits its Host object contract
-directly. The former Host/Value-specific builder aliases and shape-specific
-`script_*` callable macros have been removed without compatibility shims.
+`register_exports(...)`, and each generated service domain owns one application
+builder. `Service<dyn Trait>` fields declare the domain schema; concrete default
+instances, Runtime authority, call options, Engine sealing, schema validation,
+and the initial generation converge at `.build()`. `ScriptHost` emits its Host
+object contract directly. The former service-set registration/construction
+surface, Host/Value-specific builder aliases, and shape-specific `script_*`
+callable macros have been removed without compatibility shims.
 
 Phase status:
 
@@ -93,6 +96,13 @@ Phase status:
   exports accept explicit additive `effects(...)`, so read-only receivers may
   truthfully declare event, time, random, I/O, or reflection effects without
   falling back to the older, less complete method adapter path.
+- Cross-cutting service-domain ergonomics checkpoint accepted:
+  `#[service_domain]` generates one application builder, retains stateful Rust
+  default instances, exposes request-safe-point pinning through `app.begin`,
+  and centralizes Snapshot source and bundle deployment behind `app.patches()`.
+  The removed `#[service_set]`, default-type field attribute, split
+  register/new construction, public generation construction, and `stage_rust`
+  APIs have no aliases.
 
 S3 provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared
@@ -197,14 +207,16 @@ Host-backed and mutable collections retain HostRef identity and leases.
   constructors, methods, fields, protocols, and owned/shared/exclusive
   representation facts to runtime, reflection, compiler analysis, and LSP.
 - The former callable-level replacement implementation is absent. Generated
-  `#[service]` and `#[service_set]` contracts provide sealed schemas, direct
-  Rust defaults, whole-generation staging/publication, root pinning, and
-  conditional rollback. Sparse Vela methods compile to stable hidden targets,
-  bind to one verified artifact, and execute through generated Snapshot and
-  exact-base Delta adapters with explicit Runtime authority. Delta inheritance
-  rebinds all Vela targets to one artifact; explicit `RustDefault`, stale-base
-  rejection, effect ceilings, failure-without-fallback, and rollback are
-  covered.
+  `#[service]` and `#[service_domain]` contracts provide sealed schemas,
+  instance-supplied direct Rust defaults, whole-generation
+  staging/publication, request-scope root pinning, and conditional rollback.
+  The generated application joins Engine and domain construction, while its
+  patch facade owns the routine source-to-publication path. Sparse Vela methods
+  compile to stable hidden targets, bind to one verified artifact, and execute
+  through generated Snapshot and exact-base Delta adapters with explicit
+  Runtime authority. Delta inheritance rebinds all Vela targets to one
+  artifact; explicit `RustDefault`, stale-base rejection, effect ceilings,
+  failure-without-fallback, and rollback are covered.
 
 ### Standard Library, Tooling, And Proof
 

@@ -12,12 +12,12 @@ use vela_engine::native::{EffectSet, NativeFunctionDesc, TypeHint};
 use vela_engine::permission::Capability;
 use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
 use vela_engine::service::{
-    LinkedServiceSourceManifest, ServiceRuntimeAuthority, ServiceRuntimeBinding,
-    ServiceRuntimeSlot, ServiceSourceManifest, ServiceUpdateBundle,
+    LinkedServiceSourceManifest, Service, ServiceRuntimeAuthority, ServiceRuntimeSlot,
+    ServiceSourceManifest, ServiceUpdateBundle,
 };
 use vela_engine::type_binding::TypeBinding;
 use vela_hir::source_ingestion::build_single_source;
-use vela_macros::{ScriptHost, Value, methods, service, service_set};
+use vela_macros::{ScriptHost, Value, methods, service, service_domain};
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
@@ -388,18 +388,13 @@ impl GrantHandlerService for RustGrantHandlerService {
     }
 }
 
-#[service_set(context = HostTurn)]
+#[service_domain(context = HostTurn)]
 pub struct GameServices {
-    #[vela(default = RustInventoryService)]
-    pub inventory: dyn InventoryService,
-    #[vela(default = RustRewardService)]
-    pub reward: dyn RewardService,
-    #[vela(default = RustGrantRuleService)]
-    pub rule: dyn GrantRuleService,
-    #[vela(default = RustGrantEventService)]
-    pub events: dyn GrantEventService,
-    #[vela(default = RustGrantHandlerService)]
-    pub handler: dyn GrantHandlerService,
+    pub inventory: Service<dyn InventoryService>,
+    pub reward: Service<dyn RewardService>,
+    pub rule: Service<dyn GrantRuleService>,
+    pub events: Service<dyn GrantEventService>,
+    pub handler: Service<dyn GrantHandlerService>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -519,18 +514,25 @@ fn block_on<T>(future: impl Future<Output = T>) -> T {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let builder = GameServices::register(
+    let app = GameServices::builder(
         Engine::builder()
             .capability(Capability::HostWrite)
             .register_type::<HostActor>()
             .register_type::<HostTurn>()
             .register_exports(HostActor::vela_inherent_exports())
-            .register_exports(HostTurn::vela_inherent_exports()),
-    );
-    let engine = builder
-        .register_type_binding::<PatchAdjustment>(patch_adjustment_binding())
-        .build()?;
-    let services = GameServices::new(&engine.type_bindings())?;
+            .register_exports(HostTurn::vela_inherent_exports())
+            .register_type_binding::<PatchAdjustment>(patch_adjustment_binding()),
+    )
+    .inventory(RustInventoryService)
+    .reward(RustRewardService)
+    .rule(RustGrantRuleService)
+    .events(RustGrantEventService)
+    .handler(RustGrantHandlerService)
+    .actor_runtime::<HostTurn>()
+    .call_options(call_options())
+    .build()?;
+    let engine = app.engine().clone();
+    let services = app.domain();
     assert_eq!(
         engine
             .type_bindings()
@@ -542,7 +544,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     let rust_root = services.pin();
-    let (rust, _) = run_active(&services, &engine)?;
+    let (rust, _) = run_active(services, &engine)?;
     assert_eq!(
         rust,
         RequestSummary {
@@ -557,25 +559,17 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     );
 
-    let (rule_artifact, rule_update) =
-        linked_update(&engine, &services, 101, RULE_SOURCE, RULE_SOURCE)?;
-    let rule_bundle = ServiceUpdateBundle::snapshot(services.schema(), rule_artifact, rule_update)?;
-    assert!(services.dry_run_bundle(&rust_root, &rule_bundle).accepted());
-    let rule_candidate = services.stage_bundle(
-        &rust_root,
-        rule_bundle,
-        ServiceRuntimeBinding::for_context::<HostTurn>(),
-        call_options(),
-    )?;
-    services.activate_if_current(rule_candidate)?;
+    app.patches()
+        .stage_snapshot_source(RULE_SOURCE)?
+        .activate()?;
     let rule_root = services.pin();
-    let (rule, _) = run_active(&services, &engine)?;
+    let (rule, _) = run_active(services, &engine)?;
     assert_eq!(rule.checksum, 1741);
     assert_eq!(rule.item7, 8);
 
     let rule_reward_source = format!("{RULE_SOURCE}\n{REWARD_SOURCE}");
     let (reward_artifact, reward_update) =
-        linked_update(&engine, &services, 102, REWARD_SOURCE, &rule_reward_source)?;
+        linked_update(&engine, services, 102, REWARD_SOURCE, &rule_reward_source)?;
     let reward_bundle = ServiceUpdateBundle::delta(
         services.schema(),
         rule_root.generation_id(),
@@ -585,27 +579,17 @@ fn main() -> Result<(), Box<dyn Error>> {
         reward_artifact,
         reward_update,
     )?;
-    assert!(
-        services
-            .dry_run_bundle(&rule_root, &reward_bundle)
-            .accepted()
-    );
-    let reward_candidate = services.stage_bundle(
-        &rule_root,
-        reward_bundle,
-        ServiceRuntimeBinding::for_context::<HostTurn>(),
-        call_options(),
-    )?;
-    services.activate_if_current(reward_candidate)?;
+    assert!(app.patches().dry_run_bundle(&reward_bundle).accepted());
+    app.patches().stage_bundle(reward_bundle)?.activate()?;
     let reward_root = services.pin();
-    let (reward, _) = run_active(&services, &engine)?;
+    let (reward, _) = run_active(services, &engine)?;
     assert_eq!(reward.checksum, 1741);
     assert_eq!(reward.marker, 2);
     assert_eq!(reward.patch_score, 3);
 
     let complete_source = format!("{RULE_SOURCE}\n{REWARD_SOURCE}\n{INVENTORY_SOURCE}");
     let (inventory_artifact, inventory_update) =
-        linked_update(&engine, &services, 103, INVENTORY_SOURCE, &complete_source)?;
+        linked_update(&engine, services, 103, INVENTORY_SOURCE, &complete_source)?;
     let inventory_bundle = ServiceUpdateBundle::delta(
         services.schema(),
         reward_root.generation_id(),
@@ -615,20 +599,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         inventory_artifact,
         inventory_update,
     )?;
-    assert!(
-        services
-            .dry_run_bundle(&reward_root, &inventory_bundle)
-            .accepted()
-    );
-    let inventory_candidate = services.stage_bundle(
-        &reward_root,
-        inventory_bundle,
-        ServiceRuntimeBinding::for_context::<HostTurn>(),
-        call_options(),
-    )?;
-    services.activate_if_current(inventory_candidate)?;
+    assert!(app.patches().dry_run_bundle(&inventory_bundle).accepted());
+    app.patches().stage_bundle(inventory_bundle)?.activate()?;
     let complete_root = services.pin();
-    let (complete, _) = run_active(&services, &engine)?;
+    let (complete, _) = run_active(services, &engine)?;
     assert_eq!(
         complete,
         RequestSummary {
@@ -661,27 +635,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     assert_eq!(old_rule.checksum, 1741);
     assert_eq!(old_rule.marker, 0);
 
-    let (snapshot_artifact, snapshot_update) =
-        linked_update(&engine, &services, 104, &complete_source, &complete_source)?;
-    let snapshot_bundle =
-        ServiceUpdateBundle::snapshot(services.schema(), snapshot_artifact, snapshot_update)?;
-    assert!(
-        services
-            .dry_run_bundle(&complete_root, &snapshot_bundle)
-            .accepted()
-    );
-    let snapshot_candidate = services.stage_bundle(
-        &complete_root,
-        snapshot_bundle,
-        ServiceRuntimeBinding::for_context::<HostTurn>(),
-        call_options(),
-    )?;
-    let rollback = services.activate_if_current(snapshot_candidate)?;
+    let rollback = app
+        .patches()
+        .stage_snapshot_source(&complete_source)?
+        .activate()?;
     let folded_root = services.pin();
-    let (folded, folded_turn) = run_active(&services, &engine)?;
+    let (folded, folded_turn) = run_active(services, &engine)?;
     assert_eq!(folded, complete);
     let effects_before_rollback = folded_turn.actor.event_calls;
-    let restored = services.rollback_if_current(rollback)?;
+    let restored = app.patches().rollback(rollback)?;
     assert_eq!(restored.generation_id(), complete_root.generation_id());
     assert_eq!(
         folded_turn.actor.event_calls, effects_before_rollback,

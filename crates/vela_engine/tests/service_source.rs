@@ -1,11 +1,12 @@
 use vela_common::SourceId;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime, RuntimeBuildError};
+use vela_engine::service::Service;
 use vela_engine::service::{
     ServiceMethodSelection, ServiceRuntimeAuthority, ServiceRuntimeSlot, ServiceSchema,
     ServiceSetSchema, ServiceSourceErrorKind, ServiceSourceManifest,
 };
 use vela_hir::source_ingestion::build_single_source;
-use vela_macros::{service, service_set};
+use vela_macros::{service, service_domain};
 use vela_vm::owned_value::OwnedValue;
 
 #[service(path = "test::inventory")]
@@ -49,10 +50,9 @@ impl ServiceRuntimeAuthority for RuntimeContext {
     }
 }
 
-#[service_set(context = RequestContext)]
+#[service_domain(context = RequestContext)]
 pub struct TestServices {
-    #[vela(default = RustInventoryService)]
-    pub inventory: dyn InventoryService,
+    pub inventory: Service<dyn InventoryService>,
 }
 
 #[test]
@@ -183,15 +183,14 @@ impl InventoryHotfix {
 
 #[test]
 fn source_manifest_rejects_compiled_effects_above_the_rust_ceiling() {
-    let engine = TestServices::register(
+    let app = TestServices::builder(
         vela_engine::engine::Engine::builder().with_time_clock(1_700_000_000, 42),
     )
+    .inventory(RustInventoryService)
     .build()
-    .expect("service engine with time capability");
-    let schema = TestServices::new(&engine.type_bindings())
-        .expect("service schema")
-        .schema()
-        .clone();
+    .expect("service domain with time capability");
+    let schema = app.domain().schema().clone();
+    let engine = app.engine();
     let text = r#"
 #[service_impl(test::inventory)]
 impl InventoryHotfix {
@@ -311,8 +310,9 @@ fn source(text: &str) -> vela_hir::source_ingestion::HirSourceSet {
 }
 
 fn schema() -> ServiceSetSchema {
-    let engine = engine();
-    let services = TestServices::new(&engine.type_bindings()).expect("generated service schema");
+    let app = service_app(vela_engine::engine::Engine::builder());
+    let engine = app.engine();
+    let services = app.domain();
     assert_eq!(
         engine.service_set_schema(),
         Some(services.schema()),
@@ -328,22 +328,17 @@ fn schema() -> ServiceSetSchema {
     services.schema().clone()
 }
 
-#[test]
-fn engine_rejects_multiple_service_set_registrations() {
-    let builder = TestServices::register(vela_engine::engine::Engine::builder());
-    let Err(error) = TestServices::register(builder).build() else {
-        panic!("one Engine must not own two service sets");
-    };
-    assert!(matches!(
-        error.kind,
-        vela_engine::error::EngineErrorKind::MultipleServiceSets { count: 2 }
-    ));
+fn engine() -> vela_engine::engine::Engine {
+    service_app(vela_engine::engine::Engine::builder())
+        .into_parts()
+        .0
 }
 
-fn engine() -> vela_engine::engine::Engine {
-    TestServices::register(vela_engine::engine::Engine::builder())
+fn service_app(builder: vela_engine::builder::EngineBuilder) -> TestServicesApp {
+    TestServices::builder(builder)
+        .inventory(RustInventoryService)
         .build()
-        .expect("generated registrations")
+        .expect("generated service domain")
 }
 
 fn service(schema: &ServiceSetSchema) -> &ServiceSchema {

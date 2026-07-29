@@ -11,11 +11,11 @@ use vela_engine::native::{EffectSet, NativeFunctionDesc, TypeHint};
 use vela_engine::permission::{Capability, CapabilitySet};
 use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
 use vela_engine::service::{
-    LinkedServiceSourceManifest, ServiceMethodSelection, ServiceRuntimeAuthority,
+    LinkedServiceSourceManifest, Service, ServiceMethodSelection, ServiceRuntimeAuthority,
     ServiceRuntimeBinding, ServiceRuntimeSlot, ServiceSourceManifest,
 };
 use vela_hir::source_ingestion::build_single_source;
-use vela_macros::{ScriptHost, Value, service, service_set};
+use vela_macros::{ScriptHost, Value, service, service_domain};
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
@@ -272,18 +272,16 @@ impl AuditService for RustAuditService {
     }
 }
 
-#[service_set(context = RequestContext)]
+#[service_domain(context = RequestContext)]
 pub struct InteropServices {
-    #[vela(default = RustInventoryService)]
-    pub inventory: dyn InventoryService,
-    #[vela(default = RustAuditService)]
-    pub audit: dyn AuditService,
+    pub inventory: Service<dyn InventoryService>,
+    pub audit: Service<dyn AuditService>,
 }
 
 #[test]
 fn mixed_service_chain_preserves_custom_values_collection_identity_and_alias_preflight() {
     SCRATCH_STATE_DROPS.store(0, Ordering::SeqCst);
-    let engine = InteropServices::register(
+    let app = InteropServices::builder(
         Engine::builder()
             .capabilities(
                 CapabilitySet::new()
@@ -300,9 +298,11 @@ fn mixed_service_chain_preserves_custom_values_collection_identity_and_alias_pre
                 ),
             ),
     )
+    .inventory(RustInventoryService)
+    .audit(RustAuditService)
     .build()
-    .expect("interop service engine");
-    let services = InteropServices::new(&engine.type_bindings()).expect("interop service set");
+    .expect("interop service domain");
+    let (engine, services) = app.into_parts();
     let initial = services.pin();
     let source = r#"
 #[service_impl(interop::inventory)]

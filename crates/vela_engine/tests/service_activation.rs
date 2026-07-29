@@ -5,12 +5,12 @@ use vela_engine::engine::Engine;
 use vela_engine::permission::{Capability, CapabilitySet};
 use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
 use vela_engine::service::{
-    LinkedServiceSourceManifest, ServiceMethodSelection, ServiceMethodUpdate,
+    LinkedServiceSourceManifest, Service, ServiceMethodSelection, ServiceMethodUpdate,
     ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot, ServiceSourceManifest,
     ServiceUpdateBundle,
 };
 use vela_hir::source_ingestion::build_single_source;
-use vela_macros::{ScriptHost, service, service_set};
+use vela_macros::{ScriptHost, service, service_domain};
 
 #[derive(ScriptHost)]
 #[vela(path = "test::RequestContext")]
@@ -91,24 +91,57 @@ impl AuditService for RustAuditService {
     }
 }
 
-#[service_set(context = RequestContext)]
+#[service_domain(context = RequestContext)]
 pub struct TestServices {
-    #[vela(default = RustCalculatorService)]
-    pub calculator: dyn CalculatorService,
-    #[vela(default = RustAuditService)]
-    pub audit: dyn AuditService,
+    pub calculator: Service<dyn CalculatorService>,
+    pub audit: Service<dyn AuditService>,
 }
 
-#[test]
-fn deployment_bundle_build_load_dry_run_and_exact_base_diagnostics() {
-    let engine = TestServices::register(
+fn service_app() -> TestServicesApp {
+    TestServices::builder(
         Engine::builder()
             .capabilities(CapabilitySet::new().with(Capability::HostWrite))
             .register_type::<RequestContext>(),
     )
+    .calculator(RustCalculatorService)
+    .audit(RustAuditService)
+    .actor_runtime::<RequestContext>()
     .build()
-    .expect("service engine");
-    let services = TestServices::new(&engine.type_bindings()).expect("service set");
+    .expect("service domain")
+}
+
+#[test]
+fn application_patch_facade_compiles_stages_and_activates_snapshot_source() {
+    let app = service_app();
+    let old = app.domain().pin();
+    let staged = app
+        .patches()
+        .stage_snapshot_source(
+            r#"
+#[service_impl(test::calculator)]
+impl CalculatorHotfix {
+    fn adjust(context, value) {
+        return value + 40;
+    }
+}
+"#,
+        )
+        .expect("stage snapshot source");
+    assert_ne!(staged.generation_id(), old.generation_id());
+    staged.activate().expect("activate staged source");
+
+    let mut context = RequestContext {
+        counter: 0,
+        runtime: ServiceRuntimeSlot::new(app.engine().clone()),
+    };
+    let mut call = app.begin(&mut context);
+    let (root, request_context) = call.parts();
+    assert_eq!(root.calculator().adjust(request_context, 2), 42);
+}
+
+#[test]
+fn deployment_bundle_build_load_dry_run_and_exact_base_diagnostics() {
+    let (engine, services) = service_app().into_parts();
     let initial = services.pin();
     let source = r#"
 #[service_impl(test::calculator)]
@@ -208,14 +241,7 @@ impl CalculatorHotfix {
 
 #[test]
 fn snapshot_activates_one_vela_method_keeps_adjacent_rust_and_rolls_back() {
-    let engine = TestServices::register(
-        Engine::builder()
-            .capabilities(CapabilitySet::new().with(Capability::HostWrite))
-            .register_type::<RequestContext>(),
-    )
-    .build()
-    .expect("service engine");
-    let services = TestServices::new(&engine.type_bindings()).expect("service set");
+    let (engine, services) = service_app().into_parts();
     let old = services.pin();
     let mut context = RequestContext {
         counter: 0,
@@ -464,14 +490,7 @@ impl CalculatorTrap {
 
 #[test]
 fn lexical_base_and_pinned_cross_service_calls_keep_one_generation() {
-    let engine = TestServices::register(
-        Engine::builder()
-            .capabilities(CapabilitySet::new().with(Capability::HostWrite))
-            .register_type::<RequestContext>(),
-    )
-    .build()
-    .expect("service engine");
-    let services = TestServices::new(&engine.type_bindings()).expect("service set");
+    let (engine, services) = service_app().into_parts();
     let base = services.pin();
     let mut context = RequestContext {
         counter: 0,
@@ -585,14 +604,7 @@ fn linked_update(
 #[cfg(feature = "artifact-codec")]
 #[test]
 fn portable_service_bundle_round_trips_binds_and_executes_without_source_compilation() {
-    let engine = TestServices::register(
-        Engine::builder()
-            .capabilities(CapabilitySet::new().with(Capability::HostWrite))
-            .register_type::<RequestContext>(),
-    )
-    .build()
-    .expect("service engine");
-    let services = TestServices::new(&engine.type_bindings()).expect("service set");
+    let (engine, services) = service_app().into_parts();
     let base = services.pin();
     let source = r#"
 #[service_impl(test::calculator)]
@@ -759,14 +771,7 @@ impl CalculatorPortableDelta {
 #[cfg(feature = "artifact-codec")]
 #[test]
 fn portable_service_bundle_rejects_untyped_host_parameters_before_deployment() {
-    let engine = TestServices::register(
-        Engine::builder()
-            .capabilities(CapabilitySet::new().with(Capability::HostWrite))
-            .register_type::<RequestContext>(),
-    )
-    .build()
-    .expect("service engine");
-    let services = TestServices::new(&engine.type_bindings()).expect("service set");
+    let (engine, services) = service_app().into_parts();
     let source = r#"
 #[service_impl(test::calculator)]
 impl UntypedPortableHotfix {

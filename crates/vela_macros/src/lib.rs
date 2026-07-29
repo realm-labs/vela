@@ -13,7 +13,8 @@ mod host_object;
 mod methods;
 mod script_host;
 mod service;
-mod service_set;
+mod service_domain;
+mod service_domain_input;
 mod signature;
 mod trait_export;
 mod value;
@@ -67,10 +68,10 @@ pub fn service(attr: TokenStream, input: TokenStream) -> TokenStream {
     service::expand(attr.into(), input.into()).into()
 }
 
-/// Generates one whole-generation service set from Rust defaults.
+/// Generates one atomic service domain configured with Rust default instances.
 #[proc_macro_attribute]
-pub fn service_set(attr: TokenStream, input: TokenStream) -> TokenStream {
-    service_set::expand(attr.into(), input.into()).into()
+pub fn service_domain(attr: TokenStream, input: TokenStream) -> TokenStream {
+    service_domain::expand(attr.into(), input.into()).into()
 }
 
 /// Generates declaration-only UFCS adapters for an existing external trait

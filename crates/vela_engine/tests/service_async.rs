@@ -8,10 +8,11 @@ use vela_engine::engine::Engine;
 use vela_engine::permission::{Capability, CapabilitySet};
 use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
 use vela_engine::service::{
-    ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot, ServiceSourceManifest,
+    Service, ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot,
+    ServiceSourceManifest,
 };
 use vela_hir::source_ingestion::build_single_source;
-use vela_macros::{ScriptHost, Value, service, service_set};
+use vela_macros::{ScriptHost, Value, service, service_domain};
 
 const ASYNC_PATCH_SOURCE: &str = r#"
 #[service_impl(async_test::calculator)]
@@ -99,23 +100,26 @@ impl Future for YieldOnce {
     }
 }
 
-#[service_set(context = RequestContext)]
+#[service_domain(context = RequestContext)]
 pub struct AsyncServices {
-    #[vela(default = RustAsyncCalculatorService)]
-    pub calculator: dyn AsyncCalculatorService,
+    pub calculator: Service<dyn AsyncCalculatorService>,
+}
+
+fn service_app() -> AsyncServicesApp {
+    AsyncServices::builder(
+        Engine::builder()
+            .capabilities(CapabilitySet::new().with(Capability::HostWrite))
+            .register_type::<RequestContext>(),
+    )
+    .calculator(RustAsyncCalculatorService)
+    .build()
+    .expect("async service domain")
 }
 
 #[test]
 fn async_service_root_selects_rust_or_vela_through_one_send_adapter() {
     assert_sync::<ServiceRuntimeSlot>();
-    let engine = AsyncServices::register(
-        Engine::builder()
-            .capabilities(CapabilitySet::new().with(Capability::HostWrite))
-            .register_type::<RequestContext>(),
-    )
-    .build()
-    .expect("async service engine");
-    let services = AsyncServices::new(&engine.type_bindings()).expect("async service set");
+    let (engine, services) = service_app().into_parts();
     let rust_root = services.pin();
     let mut context = RequestContext {
         counter: 0,
@@ -208,9 +212,21 @@ fn pending_actors_are_isolated_and_drop_or_unwind_restores_runtime_and_leases() 
         finishing_future.as_mut().poll(&mut task),
         Poll::Pending
     ));
+    let rust_snapshot =
+        vela_engine::service::LinkedServiceSourceManifest::from_updates(std::iter::empty::<
+            vela_engine::service::ServiceMethodUpdate<
+                vela_engine::service::LinkedVelaServiceMethod,
+            >,
+        >())
+        .expect("Rust-default snapshot");
     let replacement = services
-        .stage_rust(&root, AsyncServicesGeneration::defaults())
-        .expect("stage Rust replacement while old actor is pending");
+        .stage_snapshot(
+            &root,
+            rust_snapshot,
+            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            CallOptions::new(100_000, 1024 * 1024, 64),
+        )
+        .expect("stage Rust-default snapshot while old actor is pending");
     services
         .activate_if_current(replacement)
         .expect("activate Rust replacement");
@@ -271,14 +287,7 @@ fn pending_actors_are_isolated_and_drop_or_unwind_restores_runtime_and_leases() 
 }
 
 fn active_fixture() -> (Engine, AsyncServices, AsyncServicesRoot) {
-    let engine = AsyncServices::register(
-        Engine::builder()
-            .capabilities(CapabilitySet::new().with(Capability::HostWrite))
-            .register_type::<RequestContext>(),
-    )
-    .build()
-    .expect("async service engine");
-    let services = AsyncServices::new(&engine.type_bindings()).expect("async service set");
+    let (engine, services) = service_app().into_parts();
     let base = services.pin();
     let sources =
         build_single_source(SourceId::new(62), ASYNC_PATCH_SOURCE).expect("valid async source");

@@ -17,12 +17,13 @@ use vela_engine::interop::{
 use vela_engine::permission::Capability;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime, RuntimeBuildError};
 use vela_engine::service::{
-    ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot, ServiceSourceManifest,
+    Service, ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot,
+    ServiceSourceManifest,
 };
 use vela_hir::source_ingestion::build_single_source;
 use vela_host::lease::HostLeaseKind;
 use vela_host::path::HostRef;
-use vela_macros::{ScriptHost, ScriptReflect, export, methods, service, service_set};
+use vela_macros::{ScriptHost, ScriptReflect, export, methods, service, service_domain};
 use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
@@ -182,10 +183,9 @@ impl BoundaryDefaultService for RustBoundaryDefaultService {
     }
 }
 
-#[service_set(context = BoundaryHost)]
+#[service_domain(context = BoundaryHost)]
 pub struct BoundaryServices {
-    #[vela(default = RustBoundaryDefaultService)]
-    pub boundary: dyn BoundaryDefaultService,
+    pub boundary: Service<dyn BoundaryDefaultService>,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -197,13 +197,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("suite=service_boundary_baseline iterations={iterations} warmup={WARMUP_ITERATIONS}");
 
     let mut runtime = boundary_runtime()?;
-    let service_engine = BoundaryServices::register(
+    let app = BoundaryServices::builder(
         Engine::builder()
             .capability(Capability::HostWrite)
             .register_type::<BoundaryHost>(),
     )
+    .boundary(RustBoundaryDefaultService)
     .build()?;
-    let services = BoundaryServices::new(&service_engine.type_bindings())?;
+    let (service_engine, services) = app.into_parts();
     let mut host = BoundaryHost {
         value: 1,
         child: BoundaryChild { value: 2 },

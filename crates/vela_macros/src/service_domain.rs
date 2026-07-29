@@ -1,16 +1,8 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{
-    Attribute, Fields, ItemStruct, Path, Result, Type, TypeParamBound, Visibility, parse::Parser,
-    parse_quote, parse2,
-};
+use syn::{Fields, ItemStruct, Result, parse2};
 
-use crate::service::{
-    composition_function_ident, dispatch_module_ident, registration_function_ident,
-    rust_async_dispatch_function_ident, rust_dispatch_function_ident, schema_function_ident,
-    service_id_function_ident,
-};
-use crate::signature::reject_generic_signature;
+use crate::service_domain_input::{parse_context, parse_service_field, validate_struct};
 
 pub(crate) fn expand(attr: TokenStream, input: TokenStream) -> TokenStream {
     match expand_result(attr, input) {
@@ -34,16 +26,28 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     if services.is_empty() {
         return Err(syn::Error::new_spanned(
             &item,
-            "#[vela_macros::service_set] requires at least one service field",
+            "#[vela_macros::service_domain] requires at least one service field",
         ));
     }
 
     let set_ident = &item.ident;
-    let generation_ident = format_ident!("{set_ident}Generation");
+    let generation_ident = format_ident!("__{set_ident}Generation");
+    let defaults_ident = format_ident!("__{set_ident}Defaults");
+    let builder_ident = format_ident!("{set_ident}Builder");
+    let app_ident = format_ident!("{set_ident}App");
+    let patches_ident = format_ident!("{set_ident}Patches");
+    let staged_patch_ident = format_ident!("{set_ident}StagedPatch");
+    let call_ident = format_ident!("{set_ident}Call");
     let root_ident = format_ident!("{set_ident}Root");
     let candidate_ident = format_ident!("{set_ident}Candidate");
     let rollback_ident = format_ident!("{set_ident}Rollback");
     let dispatcher_ident = format_ident!("__VelaServiceDispatcher{set_ident}");
+    let marker_uses = services.iter().map(|service| {
+        let marker = &service.marker;
+        quote! {
+            const _: usize = ::core::mem::size_of::<#marker<()>>();
+        }
+    });
     let register_calls = services.iter().map(|service| {
         let function = service.registration_path();
         quote! {
@@ -70,14 +74,68 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             #field: ::std::sync::Arc<dyn #trait_path>
         }
     });
-    let composed_defaults = services.iter().map(|service| {
+    let defaults_fields = services.iter().map(|service| {
         let field = &service.field;
         let trait_path = service.dispatch_trait_path();
-        let default = &service.default;
-        let default_ident = format_ident!("__vela_default_{field}");
         quote! {
-            let #default_ident: ::std::sync::Arc<dyn #trait_path> =
-                ::std::sync::Arc::new(#default);
+            #field: ::std::sync::Arc<dyn #trait_path>
+        }
+    });
+    let builder_fields = services.iter().map(|service| {
+        let field = &service.field;
+        let trait_path = service.dispatch_trait_path();
+        quote! {
+            #field: ::std::option::Option<::std::sync::Arc<dyn #trait_path>>
+        }
+    });
+    let empty_builder_fields = services.iter().map(|service| {
+        let field = &service.field;
+        quote! {
+            #field: None
+        }
+    });
+    let builder_setters = services.iter().map(|service| {
+        let field = &service.field;
+        let trait_path = &service.trait_path;
+        let dispatch_trait_path = service.dispatch_trait_path();
+        quote! {
+            #[must_use]
+            pub fn #field<__VelaDefault>(mut self, implementation: __VelaDefault) -> Self
+            where
+                __VelaDefault:
+                    #trait_path
+                    + ::std::marker::Send
+                    + ::std::marker::Sync
+                    + 'static,
+            {
+                let implementation: ::std::sync::Arc<dyn #dispatch_trait_path> =
+                    ::std::sync::Arc::new(implementation);
+                self.#field = Some(implementation);
+                self
+            }
+        }
+    });
+    let required_defaults = services.iter().map(|service| {
+        let field = &service.field;
+        quote! {
+            let #field = self.#field.ok_or(
+                ::vela_engine::service::ServiceDomainBuildError::MissingDefault {
+                    domain: ::std::stringify!(#set_ident),
+                    service: ::std::stringify!(#field),
+                },
+            )?;
+        }
+    });
+    let defaults_initializers = services.iter().map(|service| {
+        let field = &service.field;
+        quote! {
+            #field
+        }
+    });
+    let initial_generation_fields = services.iter().map(|service| {
+        let field = &service.field;
+        quote! {
+            #field: ::std::sync::Arc::clone(&defaults.#field)
         }
     });
     let dispatcher_fields = services.iter().map(|service| {
@@ -89,9 +147,8 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     });
     let dispatcher_initializers = services.iter().map(|service| {
         let field = &service.field;
-        let default_ident = format_ident!("__vela_default_{field}");
         quote! {
-            #field: ::std::sync::Arc::clone(&#default_ident)
+            #field: ::std::sync::Arc::clone(&defaults.#field)
         }
     });
     let dispatcher_rust_branches = services.iter().map(|service| {
@@ -128,10 +185,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         let field = &service.field;
         let trait_path = service.dispatch_trait_path();
         let composition = service.composition_path();
-        let default_ident = format_ident!("__vela_default_{field}");
         quote! {
             let #field: ::std::sync::Arc<dyn #trait_path> = #composition(
-                ::std::sync::Arc::clone(&#default_ident),
+                ::std::sync::Arc::clone(&defaults.#field),
                 runtime,
                 options.clone(),
                 ::std::sync::Arc::clone(&__vela_dispatcher),
@@ -139,24 +195,10 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             );
         }
     });
-    let generation_arguments = services.iter().map(|service| {
-        let field = &service.field;
-        let trait_path = service.dispatch_trait_path();
-        quote! {
-            #field: ::std::sync::Arc<dyn #trait_path>
-        }
-    });
     let generation_initializers = services
         .iter()
         .map(|service| &service.field)
         .collect::<Vec<_>>();
-    let default_initializers = services.iter().map(|service| {
-        let field = &service.field;
-        let default = &service.default;
-        quote! {
-            #field: ::std::sync::Arc::new(#default)
-        }
-    });
     let generation_accessors = services.iter().map(|service| {
         let field = &service.field;
         let trait_path = service.dispatch_trait_path();
@@ -177,14 +219,12 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             }
         }
     });
-    let doc_attrs = item
-        .attrs
-        .iter()
-        .filter(|attribute| attribute.path().is_ident("doc"));
     let vis = &item.vis;
-    let schema_factory_ident = format_ident!("__vela_service_set_schema_{set_ident}");
+    let schema_factory_ident = format_ident!("__vela_service_domain_schema_{set_ident}");
 
     Ok(quote! {
+        #(#marker_uses)*
+
         #[doc(hidden)]
         fn #schema_factory_ident(
             registry: &::vela_engine::type_binding::TypeBindingRegistry,
@@ -198,7 +238,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 ::std::stringify!(#set_ident),
             );
             let id = ::vela_common::ServiceSetId::new(
-                u128::from(::vela_common::stable_id("vela_service_set", "", path)),
+                u128::from(::vela_common::stable_id("vela_service_domain", "", path)),
             );
             ::vela_engine::service::ServiceSetSchema::new_named(
                 id,
@@ -208,8 +248,11 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             )
         }
 
-        #(#doc_attrs)*
-        #vis struct #generation_ident {
+        struct #defaults_ident {
+            #(#defaults_fields,)*
+        }
+
+        struct #generation_ident {
             #(#generation_fields,)*
             selections: ::std::option::Option<
                 ::vela_engine::service::ServiceSelectionTable<
@@ -222,25 +265,16 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         }
 
         impl #generation_ident {
-            #[must_use]
-            pub fn new(#(#generation_arguments),*) -> Self {
+            fn from_defaults(defaults: &#defaults_ident) -> Self {
                 Self {
-                    #(#generation_initializers,)*
-                    selections: None,
-                    artifact: None,
-                }
-            }
-
-            #[must_use]
-            pub fn defaults() -> Self {
-                Self {
-                    #(#default_initializers,)*
+                    #(#initial_generation_fields,)*
                     selections: None,
                     artifact: None,
                 }
             }
 
             fn __vela_composed(
+                defaults: &#defaults_ident,
                 runtime: ::vela_engine::service::ServiceRuntimeBinding,
                 options: ::vela_engine::runtime::CallOptions,
                 selections: ::vela_engine::service::ServiceSelectionTable<
@@ -250,7 +284,6 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     ::std::sync::Arc<::vela_engine::service::LinkedArtifact>
                 >,
             ) -> Self {
-                #(#composed_defaults)*
                 let __vela_dispatcher: ::std::sync::Arc<
                     dyn ::vela_engine::service::ServiceCallDispatcher
                 > = ::std::sync::Arc::new(#dispatcher_ident {
@@ -476,35 +509,27 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         #vis struct #set_ident {
             controller: ::vela_engine::service::ServiceController<#generation_ident>,
             schema: ::vela_engine::service::ServiceSetSchema,
+            defaults: #defaults_ident,
             _context: ::std::marker::PhantomData<fn(&mut #context)>,
         }
 
         impl #set_ident {
             #[must_use]
-            pub fn register(
+            pub fn builder(
                 builder: ::vela_engine::builder::EngineBuilder,
-            ) -> ::vela_engine::builder::EngineBuilder {
+            ) -> #builder_ident {
                 let builder = builder;
                 #(#register_calls)*
-                builder.register_service_set_schema(#schema_factory_ident)
-            }
-
-            pub fn new(
-                registry: &::vela_engine::type_binding::TypeBindingRegistry,
-            ) -> ::std::result::Result<
-                Self,
-                ::vela_engine::service::ServiceSchemaError,
-            > {
-                let schema = #schema_factory_ident(registry)?;
-                let id = schema.id();
-                Ok(Self {
-                    controller: ::vela_engine::service::ServiceController::new(
-                        id,
-                        #generation_ident::defaults(),
+                #builder_ident {
+                    engine: builder.register_service_set_schema(#schema_factory_ident),
+                    call_options: ::vela_engine::runtime::CallOptions::new(
+                        1_000_000,
+                        16 * 1024 * 1024,
+                        256,
                     ),
-                    schema,
-                    _context: ::std::marker::PhantomData,
-                })
+                    runtime: None,
+                    #(#empty_builder_fields,)*
+                }
             }
 
             #[must_use]
@@ -518,19 +543,6 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     root: self.controller.pin(),
                     _context: ::std::marker::PhantomData,
                 }
-            }
-
-            pub fn stage_rust(
-                &self,
-                base: &#root_ident,
-                generation: #generation_ident,
-            ) -> ::std::result::Result<
-                #candidate_ident,
-                ::vela_engine::service::ServicePublicationError,
-            > {
-                self.controller
-                    .stage(&base.root, generation)
-                    .map(|candidate| #candidate_ident { candidate })
             }
 
             pub fn stage_snapshot(
@@ -554,6 +566,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 let artifact = update.artifact().cloned();
                 let selections = update.into_snapshot(&self.schema)?;
                 let generation = #generation_ident::__vela_composed(
+                    &self.defaults,
                     runtime,
                     options,
                     selections,
@@ -605,6 +618,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     &base_selections,
                 )?;
                 let generation = #generation_ident::__vela_composed(
+                    &self.defaults,
                     runtime,
                     options,
                     selections,
@@ -678,6 +692,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     &base_selections,
                 )?;
                 let generation = #generation_ident::__vela_composed(
+                    &self.defaults,
                     runtime,
                     options,
                     selections,
@@ -714,6 +729,254 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                         root,
                         _context: ::std::marker::PhantomData,
                     })
+            }
+        }
+
+        #vis struct #builder_ident {
+            engine: ::vela_engine::builder::EngineBuilder,
+            call_options: ::vela_engine::runtime::CallOptions,
+            runtime: ::std::option::Option<
+                ::vela_engine::service::ServiceRuntimeBinding
+            >,
+            #(#builder_fields,)*
+        }
+
+        impl #builder_ident {
+            #[must_use]
+            pub fn call_options(
+                mut self,
+                options: ::vela_engine::runtime::CallOptions,
+            ) -> Self {
+                self.call_options = options;
+                self
+            }
+
+            #[must_use]
+            pub fn actor_runtime<__VelaContext>(mut self) -> Self
+            where
+                __VelaContext:
+                    ::vela_engine::service::ServiceRuntimeAuthority + 'static,
+            {
+                self.runtime = Some(
+                    ::vela_engine::service::ServiceRuntimeBinding::
+                        for_context::<__VelaContext>()
+                );
+                self
+            }
+
+            #(#builder_setters)*
+
+            pub fn build(
+                self,
+            ) -> ::std::result::Result<
+                #app_ident,
+                ::vela_engine::service::ServiceDomainBuildError,
+            > {
+                #(#required_defaults)*
+                if let Some(runtime) = self.runtime
+                    && !runtime.matches::<#context>()
+                {
+                    return Err(
+                        ::vela_engine::service::ServiceDomainBuildError::
+                            ContextTypeMismatch {
+                                expected: ::core::any::type_name::<#context>(),
+                                actual: runtime.context_name(),
+                            }
+                    );
+                }
+                let engine = self.engine.build()?;
+                let schema = #schema_factory_ident(engine.type_bindings().as_ref())?;
+                let id = schema.id();
+                let defaults = #defaults_ident {
+                    #(#defaults_initializers,)*
+                };
+                let initial = #generation_ident::from_defaults(&defaults);
+                let domain = #set_ident {
+                    controller: ::vela_engine::service::ServiceController::new(id, initial),
+                    schema,
+                    defaults,
+                    _context: ::std::marker::PhantomData,
+                };
+                Ok(#app_ident {
+                    engine,
+                    domain,
+                    call_options: self.call_options,
+                    runtime: self.runtime,
+                })
+            }
+        }
+
+        #vis struct #app_ident {
+            engine: ::vela_engine::engine::Engine,
+            domain: #set_ident,
+            call_options: ::vela_engine::runtime::CallOptions,
+            runtime: ::std::option::Option<
+                ::vela_engine::service::ServiceRuntimeBinding
+            >,
+        }
+
+        impl #app_ident {
+            #[must_use]
+            pub fn engine(&self) -> &::vela_engine::engine::Engine {
+                &self.engine
+            }
+
+            #[must_use]
+            pub fn domain(&self) -> &#set_ident {
+                &self.domain
+            }
+
+            #[must_use]
+            pub fn patches(&self) -> #patches_ident<'_> {
+                #patches_ident {
+                    engine: &self.engine,
+                    domain: &self.domain,
+                    call_options: &self.call_options,
+                    runtime: self.runtime,
+                }
+            }
+
+            #[must_use]
+            pub fn begin<'context>(
+                &self,
+                context: &'context mut #context,
+            ) -> #call_ident<'context> {
+                #call_ident {
+                    root: self.domain.pin(),
+                    context,
+                }
+            }
+
+            #[must_use]
+            pub fn into_parts(self) -> (::vela_engine::engine::Engine, #set_ident) {
+                (self.engine, self.domain)
+            }
+        }
+
+        #vis struct #call_ident<'context> {
+            root: #root_ident,
+            context: &'context mut #context,
+        }
+
+        impl #call_ident<'_> {
+            #[must_use]
+            pub fn generation_id(&self) -> ::vela_common::ServiceGenerationId {
+                self.root.generation_id()
+            }
+
+            #[must_use]
+            pub fn parts(&mut self) -> (&#root_ident, &mut #context) {
+                (&self.root, self.context)
+            }
+        }
+
+        #vis struct #patches_ident<'app> {
+            engine: &'app ::vela_engine::engine::Engine,
+            domain: &'app #set_ident,
+            call_options: &'app ::vela_engine::runtime::CallOptions,
+            runtime: ::std::option::Option<
+                ::vela_engine::service::ServiceRuntimeBinding
+            >,
+        }
+
+        impl<'app> #patches_ident<'app> {
+            pub fn stage_snapshot_source(
+                self,
+                source: &str,
+            ) -> ::std::result::Result<
+                #staged_patch_ident<'app>,
+                ::vela_engine::service::ServicePatchError,
+            > {
+                let runtime = self.runtime.ok_or(
+                    ::vela_engine::service::ServicePatchError::
+                        MissingRuntimeAuthority {
+                            domain: ::std::stringify!(#set_ident),
+                        }
+                )?;
+                let update = self.engine.compile_service_snapshot_source(
+                    self.domain.schema(),
+                    source,
+                )?;
+                let base = self.domain.pin();
+                let candidate = self.domain.stage_snapshot(
+                    &base,
+                    update,
+                    runtime,
+                    self.call_options.clone(),
+                )?;
+                Ok(#staged_patch_ident {
+                    domain: self.domain,
+                    candidate,
+                })
+            }
+
+            #[must_use]
+            pub fn dry_run_bundle(
+                &self,
+                bundle: &::vela_engine::service::ServiceUpdateBundle,
+            ) -> ::vela_engine::service::ServiceDryRunReport {
+                self.domain.dry_run_bundle(&self.domain.pin(), bundle)
+            }
+
+            pub fn stage_bundle(
+                self,
+                bundle: ::vela_engine::service::ServiceUpdateBundle,
+            ) -> ::std::result::Result<
+                #staged_patch_ident<'app>,
+                ::vela_engine::service::ServicePatchError,
+            > {
+                let runtime = self.runtime.ok_or(
+                    ::vela_engine::service::ServicePatchError::
+                        MissingRuntimeAuthority {
+                            domain: ::std::stringify!(#set_ident),
+                        }
+                )?;
+                let base = self.domain.pin();
+                let candidate = self.domain.stage_bundle(
+                    &base,
+                    bundle,
+                    runtime,
+                    self.call_options.clone(),
+                )?;
+                Ok(#staged_patch_ident {
+                    domain: self.domain,
+                    candidate,
+                })
+            }
+
+            pub fn rollback(
+                self,
+                rollback: #rollback_ident,
+            ) -> ::std::result::Result<
+                #root_ident,
+                ::vela_engine::service::ServicePatchError,
+            > {
+                self.domain
+                    .rollback_if_current(rollback)
+                    .map_err(::vela_engine::service::ServicePatchError::from)
+            }
+        }
+
+        #vis struct #staged_patch_ident<'app> {
+            domain: &'app #set_ident,
+            candidate: #candidate_ident,
+        }
+
+        impl #staged_patch_ident<'_> {
+            #[must_use]
+            pub fn generation_id(&self) -> ::vela_common::ServiceGenerationId {
+                self.candidate.generation_id()
+            }
+
+            pub fn activate(
+                self,
+            ) -> ::std::result::Result<
+                #rollback_ident,
+                ::vela_engine::service::ServicePatchError,
+            > {
+                self.domain
+                    .activate_if_current(self.candidate)
+                    .map_err(::vela_engine::service::ServicePatchError::from)
             }
         }
 
@@ -813,227 +1076,6 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     })
 }
 
-fn validate_struct(item: &ItemStruct) -> Result<()> {
-    if !matches!(item.vis, Visibility::Public(_)) {
-        return Err(syn::Error::new_spanned(
-            &item.vis,
-            "#[vela_macros::service_set] requires a public Rust struct",
-        ));
-    }
-    reject_generic_signature(&item.generics, "#[vela_macros::service_set]")?;
-    if !matches!(item.fields, Fields::Named(_)) {
-        return Err(syn::Error::new_spanned(
-            &item.fields,
-            "#[vela_macros::service_set] requires named service fields",
-        ));
-    }
-    Ok(())
-}
-
-fn parse_context(attr: TokenStream) -> Result<Type> {
-    let mut context = None;
-    let parser = syn::meta::parser(|meta| {
-        if meta.path.is_ident("context") {
-            if context.is_some() {
-                return Err(meta.error("service-set context is duplicated"));
-            }
-            context = Some(meta.value()?.parse::<Type>()?);
-            return Ok(());
-        }
-        Err(meta.error("unsupported service_set attribute"))
-    });
-    parser.parse2(attr)?;
-    context.ok_or_else(|| {
-        syn::Error::new(
-            proc_macro2::Span::call_site(),
-            "#[vela_macros::service_set] requires context = HostContext",
-        )
-    })
-}
-
-struct ServiceField {
-    field: syn::Ident,
-    trait_path: Path,
-    default: Path,
-}
-
-impl ServiceField {
-    fn dispatch_trait_path(&self) -> Path {
-        let mut path = replace_trait_ident(
-            &self.trait_path,
-            dispatch_module_ident(
-                &self
-                    .trait_path
-                    .segments
-                    .last()
-                    .expect("service trait path is non-empty")
-                    .ident,
-            ),
-        );
-        path.segments.push(parse_quote!(Dispatch));
-        path
-    }
-
-    fn registration_path(&self) -> Path {
-        replace_trait_ident(
-            &self.trait_path,
-            registration_function_ident(
-                &self
-                    .trait_path
-                    .segments
-                    .last()
-                    .expect("service trait path is non-empty")
-                    .ident,
-            ),
-        )
-    }
-
-    fn schema_path(&self) -> Path {
-        replace_trait_ident(
-            &self.trait_path,
-            schema_function_ident(
-                &self
-                    .trait_path
-                    .segments
-                    .last()
-                    .expect("service trait path is non-empty")
-                    .ident,
-            ),
-        )
-    }
-
-    fn composition_path(&self) -> Path {
-        replace_trait_ident(
-            &self.trait_path,
-            composition_function_ident(
-                &self
-                    .trait_path
-                    .segments
-                    .last()
-                    .expect("service trait path is non-empty")
-                    .ident,
-            ),
-        )
-    }
-
-    fn service_id_path(&self) -> Path {
-        replace_trait_ident(
-            &self.trait_path,
-            service_id_function_ident(
-                &self
-                    .trait_path
-                    .segments
-                    .last()
-                    .expect("service trait path is non-empty")
-                    .ident,
-            ),
-        )
-    }
-
-    fn rust_dispatch_path(&self) -> Path {
-        replace_trait_ident(
-            &self.trait_path,
-            rust_dispatch_function_ident(
-                &self
-                    .trait_path
-                    .segments
-                    .last()
-                    .expect("service trait path is non-empty")
-                    .ident,
-            ),
-        )
-    }
-
-    fn rust_async_dispatch_path(&self) -> Path {
-        replace_trait_ident(
-            &self.trait_path,
-            rust_async_dispatch_function_ident(
-                &self
-                    .trait_path
-                    .segments
-                    .last()
-                    .expect("service trait path is non-empty")
-                    .ident,
-            ),
-        )
-    }
-}
-
-fn parse_service_field(field: &syn::Field) -> Result<ServiceField> {
-    if !matches!(field.vis, Visibility::Public(_)) {
-        return Err(syn::Error::new_spanned(
-            &field.vis,
-            "service-set fields must be public",
-        ));
-    }
-    let field_ident = field.ident.clone().expect("named field");
-    let Type::TraitObject(object) = &field.ty else {
-        return Err(syn::Error::new_spanned(
-            &field.ty,
-            "service-set fields must use `dyn ServiceTrait`",
-        ));
-    };
-    let [TypeParamBound::Trait(bound)] = object.bounds.iter().collect::<Vec<_>>().as_slice() else {
-        return Err(syn::Error::new_spanned(
-            object,
-            "service-set fields must name exactly one `dyn ServiceTrait`",
-        ));
-    };
-    if !matches!(bound.modifier, syn::TraitBoundModifier::None)
-        || bound.lifetimes.is_some()
-        || !bound
-            .path
-            .segments
-            .iter()
-            .all(|segment| matches!(segment.arguments, syn::PathArguments::None))
-    {
-        return Err(syn::Error::new_spanned(
-            bound,
-            "service-set trait paths cannot use modifiers, binders, or generic arguments",
-        ));
-    }
-    let default = parse_default(&field.attrs)?;
-    Ok(ServiceField {
-        field: field_ident,
-        trait_path: bound.path.clone(),
-        default,
-    })
-}
-
-fn parse_default(attrs: &[Attribute]) -> Result<Path> {
-    let mut default = None;
-    for attr in attrs {
-        if !attr.path().is_ident("vela") {
-            continue;
-        }
-        attr.parse_nested_meta(|meta| {
-            if !meta.path.is_ident("default") {
-                return Err(meta.error("unsupported service-set field attribute"));
-            }
-            if default.is_some() {
-                return Err(meta.error("service default is duplicated"));
-            }
-            default = Some(meta.value()?.parse::<Path>()?);
-            Ok(())
-        })?;
-    }
-    default.ok_or_else(|| {
-        syn::Error::new(
-            proc_macro2::Span::call_site(),
-            "service-set field requires #[vela(default = RustService)]",
-        )
-    })
-}
-
-fn replace_trait_ident(path: &Path, ident: syn::Ident) -> Path {
-    let mut path = path.clone();
-    path.segments
-        .last_mut()
-        .expect("service trait path is non-empty")
-        .ident = ident;
-    path
-}
-
 #[cfg(test)]
 mod tests {
     use quote::quote;
@@ -1041,44 +1083,46 @@ mod tests {
     use super::expand_result;
 
     #[test]
-    fn service_set_generates_one_whole_generation_controller() {
+    fn service_domain_generates_one_whole_generation_controller() {
         let output = expand_result(
             quote! { context = RequestContext },
             quote! {
-                pub struct GameServices {
-                    #[vela(default = RustRewardService)]
-                    pub reward: dyn RewardService,
-                    #[vela(default = RustInventoryService)]
-                    pub inventory: dyn InventoryService,
+                pub struct GameLogic {
+                    pub reward: Service<dyn RewardService>,
+                    pub inventory: Service<dyn InventoryService>,
                 }
             },
         )
-        .expect("service set should expand")
+        .expect("service domain should expand")
         .to_string();
 
-        assert!(output.contains("GameServicesGeneration"));
-        assert!(output.contains("ServiceController < GameServicesGeneration >"));
+        assert!(output.contains("__GameLogicGeneration"));
+        assert!(output.contains("ServiceController < __GameLogicGeneration >"));
+        assert!(output.contains("GameLogicBuilder"));
+        assert!(output.contains("GameLogicApp"));
         assert!(output.contains("stage_snapshot"));
         assert!(output.contains("stage_delta"));
         assert!(output.contains("__vela_compose_service_RewardService"));
         assert!(output.contains("register_service_set_schema"));
         assert_eq!(output.matches("ServiceController <").count(), 1);
+        assert!(output.contains("MissingDefault"));
+        assert!(!output.contains("RustRewardService"));
         assert!(!output.contains("HostRef"));
         assert!(!output.contains("runtime : :: vela_engine :: runtime :: Runtime"));
     }
 
     #[test]
-    fn service_set_requires_explicit_default() {
+    fn service_domain_requires_marker_fields() {
         let error = expand_result(
             quote! { context = RequestContext },
             quote! {
-                pub struct GameServices {
+                pub struct GameLogic {
                     pub reward: dyn RewardService,
                 }
             },
         )
-        .expect_err("missing default must fail");
+        .expect_err("bare trait field must fail");
 
-        assert!(error.to_string().contains("requires #[vela(default"));
+        assert!(error.to_string().contains("Service<dyn ServiceTrait>"));
     }
 }

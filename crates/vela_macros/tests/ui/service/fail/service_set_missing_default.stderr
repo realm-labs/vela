@@ -1,7 +1,0 @@
-error: service-set field requires #[vela(default = RustService)]
-  --> tests/ui/service/fail/service_set_missing_default.rs:10:1
-   |
-10 | #[service_set(context = RequestContext)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the attribute macro `service_set` (in Nightly builds, run with -Z macro-backtrace for more info)

@@ -1,4 +1,4 @@
-//! Whole-generation publication for generated Rust/Vela service sets.
+//! Whole-generation publication for generated Rust/Vela service domains.
 
 mod deployment;
 #[cfg(feature = "artifact-codec")]
@@ -36,6 +36,7 @@ pub use source::{
 pub use vela_bytecode::{ArtifactChecksum, LinkedArtifact};
 
 use std::fmt;
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -44,6 +45,155 @@ use arc_swap::ArcSwap;
 use vela_common::{ServiceGenerationId, ServiceSetId};
 
 static NEXT_CONTROLLER_ID: AtomicU64 = AtomicU64::new(1);
+
+/// Declaration-only marker used by `#[vela_macros::service_domain]`.
+///
+/// A service domain struct is macro input rather than a runtime value with
+/// fields. `Service<dyn Trait>` makes that schema role explicit in source.
+pub struct Service<T: ?Sized>(PhantomData<fn() -> T>);
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ServiceDomainBuildError {
+    MissingDefault {
+        domain: &'static str,
+        service: &'static str,
+    },
+    ContextTypeMismatch {
+        expected: &'static str,
+        actual: &'static str,
+    },
+    Engine(crate::error::EngineError),
+    Schema(ServiceSchemaError),
+}
+
+impl fmt::Display for ServiceDomainBuildError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MissingDefault { domain, service } => {
+                write!(
+                    formatter,
+                    "service domain `{domain}` is missing Rust default `{service}`"
+                )
+            }
+            Self::ContextTypeMismatch { expected, actual } => {
+                write!(
+                    formatter,
+                    "service domain expects Runtime context `{expected}`, found `{actual}`"
+                )
+            }
+            Self::Engine(error) => write!(formatter, "service domain engine failed: {error}"),
+            Self::Schema(error) => write!(formatter, "service domain schema failed: {error}"),
+        }
+    }
+}
+
+impl std::error::Error for ServiceDomainBuildError {}
+
+impl From<crate::error::EngineError> for ServiceDomainBuildError {
+    fn from(error: crate::error::EngineError) -> Self {
+        Self::Engine(error)
+    }
+}
+
+impl From<ServiceSchemaError> for ServiceDomainBuildError {
+    fn from(error: ServiceSchemaError) -> Self {
+        Self::Schema(error)
+    }
+}
+
+#[derive(Debug)]
+pub enum ServicePatchError {
+    MissingRuntimeAuthority { domain: &'static str },
+    SourceIngestion(String),
+    Compile(crate::source::EngineSourceError),
+    Link(vela_bytecode::LinkError),
+    Source(ServiceSourceError),
+    Bundle(ServiceBundleError),
+    Staging(ServiceStagingError),
+    Publication(ServicePublicationError),
+}
+
+impl fmt::Display for ServicePatchError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MissingRuntimeAuthority { domain } => {
+                write!(
+                    formatter,
+                    "service domain `{domain}` has no actor Runtime authority"
+                )
+            }
+            Self::SourceIngestion(message) => {
+                write!(
+                    formatter,
+                    "service patch source ingestion failed: {message}"
+                )
+            }
+            Self::Compile(error) => write!(formatter, "service patch compilation failed: {error}"),
+            Self::Link(error) => write!(formatter, "service patch linking failed: {error}"),
+            Self::Source(error) => write!(formatter, "service patch manifest failed: {error}"),
+            Self::Bundle(error) => write!(formatter, "service patch bundle failed: {error}"),
+            Self::Staging(error) => write!(formatter, "service patch staging failed: {error}"),
+            Self::Publication(error) => {
+                write!(formatter, "service patch publication failed: {error}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for ServicePatchError {}
+
+impl From<crate::source::EngineSourceError> for ServicePatchError {
+    fn from(error: crate::source::EngineSourceError) -> Self {
+        Self::Compile(error)
+    }
+}
+
+impl From<vela_bytecode::LinkError> for ServicePatchError {
+    fn from(error: vela_bytecode::LinkError) -> Self {
+        Self::Link(error)
+    }
+}
+
+impl From<ServiceSourceError> for ServicePatchError {
+    fn from(error: ServiceSourceError) -> Self {
+        Self::Source(error)
+    }
+}
+
+impl From<ServiceBundleError> for ServicePatchError {
+    fn from(error: ServiceBundleError) -> Self {
+        Self::Bundle(error)
+    }
+}
+
+impl From<ServiceStagingError> for ServicePatchError {
+    fn from(error: ServiceStagingError) -> Self {
+        Self::Staging(error)
+    }
+}
+
+impl From<ServicePublicationError> for ServicePatchError {
+    fn from(error: ServicePublicationError) -> Self {
+        Self::Publication(error)
+    }
+}
+
+impl crate::engine::Engine {
+    /// Compiles and links one complete service-domain Snapshot source.
+    pub fn compile_service_snapshot_source(
+        &self,
+        schema: &ServiceSetSchema,
+        source: &str,
+    ) -> Result<LinkedServiceSourceManifest, ServicePatchError> {
+        let sources =
+            vela_hir::source_ingestion::build_single_source(vela_common::SourceId::new(1), source)
+                .map_err(|error| ServicePatchError::SourceIngestion(format!("{error:?}")))?;
+        let manifest = ServiceSourceManifest::link(sources.graph(), schema)?;
+        let compiled = self.compile_source(source)?;
+        let artifact = self.link_compiled_program(compiled)?;
+        manifest.bind_artifact(artifact).map_err(Into::into)
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 struct ServiceControllerId(u64);
@@ -54,7 +204,7 @@ impl ServiceControllerId {
     }
 }
 
-/// One complete immutable service-set generation.
+/// One complete immutable service-domain generation.
 pub struct ServiceGeneration<T> {
     controller_id: ServiceControllerId,
     service_set_id: ServiceSetId,

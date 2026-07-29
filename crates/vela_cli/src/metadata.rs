@@ -13,7 +13,8 @@ mod tests {
     use vela_def::FunctionId;
     use vela_engine::engine::Engine;
     use vela_engine::native::{EffectSet, NativeFunctionDesc, TypeHint};
-    use vela_macros::{ScriptHost, service, service_set};
+    use vela_engine::service::Service;
+    use vela_macros::{ScriptHost, service, service_domain};
     use vela_vm::error::VmResult;
 
     use super::schema_json;
@@ -48,10 +49,9 @@ mod tests {
         }
     }
 
-    #[service_set(context = ())]
+    #[service_domain(context = ())]
     pub struct CliServices {
-        #[vela(default = RustHandlerService)]
-        pub handler: dyn HandlerService,
+        pub handler: Service<dyn HandlerService>,
     }
 
     #[test]
@@ -66,16 +66,17 @@ mod tests {
         let constructor = NativeFunctionDesc::new("Observed::new", FunctionId::new(0xdead))
             .returns(TypeHint::Host(Observed::vela_host_type_desc().key))
             .effects(EffectSet::pure());
-        let engine = CliServices::register(Engine::builder().register_type_binding::<Observed>(
+        let app = CliServices::builder(Engine::builder().register_type_binding::<Observed>(
             Observed::vela_type_binding().host_constructor_fn(
                 HostConstructionLifetime::CallScoped,
                 constructor,
                 |_args, _host| -> VmResult<Observed> { Ok(Observed { value: 11 }) },
             ),
         ))
+        .handler(RustHandlerService)
         .build()
-        .expect("service engine");
-        let json = schema_json(&engine).expect("schema JSON");
+        .expect("service domain");
+        let json = schema_json(app.engine()).expect("schema JSON");
 
         assert!(json.contains(r#""serviceSet""#));
         assert!(json.contains(r#""path": "cli_test::handler""#));

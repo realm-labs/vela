@@ -10,9 +10,9 @@ implementation truth and remaining gaps live in [progress.md](../progress.md).
 
 ## 1. Non-Negotiable Model
 
-### 1.1 One service set, one published generation
+### 1.1 One service domain, one published generation
 
-The host owns one generated service set for a deployment domain:
+The host owns one generated service domain for each atomic deployment boundary:
 
 ```text
 ArcSwap<GameServiceGeneration>
@@ -33,7 +33,7 @@ half of a multi-service patch.
 The Vela core provides immutable generation construction, validation, pinning,
 and rollback facts. The generated host integration publishes the generation
 with `ArcSwap` or an equivalent single-pointer atomic primitive. There is no
-global mutable Runtime inside the service set.
+global mutable Runtime inside the service domain.
 
 ### 1.2 Pin once at the host safe point
 
@@ -161,25 +161,41 @@ impl InventoryService for RustInventoryService {
     }
 }
 
-#[vela_macros::service_set(context = GameTurn)]
-pub struct GameServices {
-    #[vela(default = RustInventoryService)]
-    pub inventory: dyn InventoryService,
-
-    #[vela(default = RustRewardService)]
-    pub reward: dyn RewardService,
+#[vela_macros::service_domain(context = GameTurn)]
+pub struct GameLogic {
+    pub inventory: Service<dyn InventoryService>,
+    pub reward: Service<dyn RewardService>,
 }
 ```
 
-The spelling is normative for the initial implementation. A later ergonomic
-alias may shorten it only if it generates the same schema and does not create a
-second runtime path.
+The domain declaration is schema input: `Service<dyn Trait>` is an explicit
+marker rather than a fake runtime trait-object field. Rust defaults are
+instance-supplied during application construction:
+
+```rust,ignore
+let app = GameLogic::builder(
+    Engine::builder()
+        .register_type::<GameTurn>()
+        .register_type::<Player>(),
+)
+.inventory(RustInventoryService::new(database.clone()))
+.reward(RustRewardService::new(config.clone()))
+.actor_runtime::<GameTurn>()
+.call_options(call_options)
+.build()?;
+```
+
+Construction registers the complete transitive type closure, seals the Engine,
+validates the domain schema, retains the supplied defaults behind `Arc`, and
+creates the initial Rust-only generation in one terminal operation. A later
+generation clones those exact default instances; it never reconstructs a
+default type during staging.
 
 The business author supplies only:
 
 1. a service trait;
 2. its Rust default implementation;
-3. one service-set declaration; and
+3. one service-domain declaration and its default instances; and
 4. ordinary boundary derives for business types when required.
 
 The macro supplies service IDs, method IDs, ABI descriptors, type-closure
@@ -188,7 +204,7 @@ logic, the hidden object-safe async dispatch surface, registration bundles,
 staging validation, and generation accessors. No Vela implementation is
 written until a real patch is needed.
 
-The service set declares its execution-authority carrier once. In an actor
+The service domain declares its execution-authority carrier once. In an actor
 server this is usually the normal `&mut GameTurn` or actor context already
 present in business signatures. Generated code borrows that actor's Runtime;
 it never finds one through ambient thread-local or process-global state. A
@@ -197,12 +213,17 @@ only through its Rust default until the host gives it one.
 
 ### 2.2 Rust call sites
 
-The actor or request framework pins the generation at its safe point and
-exposes it as ordinary dependency injection:
+The application pins the generation when a request begins and exposes the
+pinned domain together with the borrowed actor context:
 
 ```rust,ignore
-fn handle_grant(turn: &mut GameTurn, command: GrantCommand) -> GameResult<()> {
-    let services = turn.services().clone(); // already pinned for this turn
+fn handle_grant(
+    app: &GameLogicApp,
+    turn: &mut GameTurn,
+    command: GrantCommand,
+) -> GameResult<()> {
+    let mut call = app.begin(turn);
+    let (services, turn) = call.parts();
     services.inventory().grant(
         turn,
         &mut command.player,
@@ -214,9 +235,8 @@ fn handle_grant(turn: &mut GameTurn, command: GrantCommand) -> GameResult<()> {
 
 The caller does not test whether `grant` is patched. It does not hold a
 `DispatchRoot`, choose a slot, construct a proxy, or call a Vela-specific API.
-Existing frameworks may generate the `services` accessor or inject the pinned
-handle, but they must preserve the same explicit root authority and generation
-semantics.
+Framework adapters may wrap `begin`, but they must preserve the same explicit
+root authority and one-generation-per-request semantics.
 
 Calls made directly on `RustInventoryService` intentionally bypass Vela. Code
 that needs hotfix behavior must depend on the generated service contract, not a
@@ -850,19 +870,30 @@ The trait macro must:
 - generate partial-composite dispatch without altering authored bodies; and
 - expose one registration bundle, never one handwritten function per method.
 
-### 6.3 `#[vela_macros::service_set]`
+### 6.3 `#[vela_macros::service_domain]`
 
-The set macro must:
+The domain macro must:
 
-- validate unique service identities and one Rust default per service;
+- require explicit `Service<dyn Trait>` schema markers;
+- validate unique service identities and one supplied Rust default instance per
+  service;
+- combine service registration, Engine sealing, schema validation, default
+  retention, and initial generation creation behind one builder terminal;
 - declare the Runtime authority carrier once;
 - generate the immutable service generation and controller;
 - generate the `ArcSwap` publication owner and safe-point pin handle;
+- generate an application-owned request scope that pins at `begin`;
+- provide a patch facade that compiles and stages Snapshot source without
+  exposing manifests, artifacts, Runtime bindings, or per-call options;
 - generate Snapshot and exact-base Delta staging, conditional activate,
   conditional rollback, and current-generation APIs;
 - provide same-generation access for Rust and Vela cross-service calls; and
 - generate framework adapters without exposing Runtime or lease internals to
   business callers.
+
+The removed `#[service_set]`, `ServiceSet::register`, `ServiceSet::new`,
+`#[vela(default = ...)]`, public generation constructors, and `stage_rust`
+surfaces have no compatibility aliases.
 
 ### 6.4 `#[service_impl]`
 

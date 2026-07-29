@@ -17,7 +17,7 @@
 The final service model has one guarantee:
 
 ```text
-If a generated service set seals successfully, every admitted method can be
+If a generated service domain application builds successfully, every admitted method can be
 selected by Vela and called through its authored Rust signature.
 ```
 
@@ -339,7 +339,7 @@ remain live across `.await`; the handler awaits before creating that child,
 copies required Value facts before awaiting, or delegates the whole operation
 to a Rust async service.
 
-## 4. Rust Defaults And Service Set
+## 4. Rust Defaults And Service Domain
 
 Rust defaults are ordinary trait implementations:
 
@@ -371,31 +371,26 @@ impl StateService for RustStateService {
 }
 ```
 
-The service set declares one Rust default per service:
+The service domain declares its service schema explicitly:
 
 ```rust,ignore
-#[vela_macros::service_set(context = RequestState)]
+#[vela_macros::service_domain(context = RequestState)]
 pub struct ExampleServices {
-    #[vela(default = RustStateService)]
-    pub state: dyn StateService,
-    #[vela(default = RustPolicyService)]
-    pub policy: dyn PolicyService,
-    #[vela(default = RustApplyService)]
-    pub apply: dyn ApplyService,
-    #[vela(default = RustTransformService)]
-    pub transform: dyn TransformService,
-    #[vela(default = RustAuditService)]
-    pub audit: dyn AuditService,
-    #[vela(default = RustHandlerService)]
-    pub handler: dyn HandlerService,
+    pub state: Service<dyn StateService>,
+    pub policy: Service<dyn PolicyService>,
+    pub apply: Service<dyn ApplyService>,
+    pub transform: Service<dyn TransformService>,
+    pub audit: Service<dyn AuditService>,
+    pub handler: Service<dyn HandlerService>,
 }
 ```
 
-Generated registration closes every transitive Value/Host/container
-requirement:
+The application builder receives real default instances, closes every
+transitive Value/Host/container requirement, seals the Engine, validates the
+schema, and creates the initial Rust generation in one terminal operation:
 
 ```rust,ignore
-let builder = ExampleServices::register(
+let app = ExampleServices::builder(
     Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
@@ -403,14 +398,22 @@ let builder = ExampleServices::register(
         .register_type::<Table>()
         .register_type::<RequestState>()
         .register_type_binding::<PatchBuffer>(patch_buffer),
-);
-
-let engine = builder.build()?;
-let services = ExampleServices::new(&engine.type_bindings())?;
+)
+.state(RustStateService)
+.policy(RustPolicyService::new(policy_config.clone()))
+.apply(RustApplyService::new(store.clone()))
+.transform(RustTransformService)
+.audit(RustAuditService::new(audit_sink.clone()))
+.handler(RustHandlerService)
+.actor_runtime::<RequestState>()
+.call_options(call_options)
+.build()?;
 ```
 
 Missing storage capability, constructor lifetime, codec, collection fact, or
-adapter rejects construction before any request executes.
+adapter rejects construction before any request executes. A missing default
+also rejects construction. Published generations retain the exact supplied
+instances behind `Arc`; staging never reconstructs defaults from types.
 
 ## 5. Unchanged Rust Caller
 
@@ -420,13 +423,14 @@ The caller pins once and never branches on whether a method is patched:
 
 ```rust,ignore
 async fn handle_request(
-    services: &ExampleServices,
+    app: &ExampleServicesApp,
     state: &mut RequestState,
     table: &Table,
     request: Request,
 ) -> Result<Response, ServiceError> {
-    let root = services.pin();
-    root.handler().handle(state, table, request).await
+    let mut call = app.begin(state);
+    let (services, state) = call.parts();
+    services.handler().handle(state, table, request).await
 }
 ```
 
@@ -434,15 +438,16 @@ An ordinary Rust caller may also receive a borrowed result through the same
 authored signature:
 
 ```rust,ignore
-let root = services.pin();
+let mut call = app.begin(&mut state);
+let (root, state) = call.parts();
 
-let same: &mut RequestState = root.state().identity(&mut state);
-let some: Option<&RequestState> = root.state().optional(&mut state, true);
-let none: Option<&RequestState> = root.state().optional(&mut state, false);
+let same: &mut RequestState = root.state().identity(state);
+let some: Option<&RequestState> = root.state().optional(state, true);
+let none: Option<&RequestState> = root.state().optional(state, false);
 let ok: Result<&RequestState, ServiceError> =
-    root.state().checked(&mut state, true);
+    root.state().checked(state, true);
 let err: Result<&RequestState, ServiceError> =
-    root.state().checked(&mut state, false);
+    root.state().checked(state, false);
 ```
 
 This code is identical for Rust-default and Vela-selected generations. Calls
@@ -650,49 +655,23 @@ repeat the same lifetime and permission checks.
 
 ## 9. Hot-Update Deployment
 
-The control plane compiles and validates away from request execution:
+The application patch facade compiles, validates, stages, and publishes away
+from request execution:
 
 ```rust,ignore
-let old_root = services.pin();
-
-let snapshot = ServiceUpdateBundle::snapshot(
-    services.schema(),
-    snapshot_artifact,
-    snapshot_manifest,
-)?;
-
-assert!(services.dry_run_bundle(&old_root, &snapshot).accepted());
-
-let candidate = services.stage_bundle(
-    &old_root,
-    snapshot,
-    ServiceRuntimeBinding::for_context::<RequestState>(),
-    call_options,
-)?;
-
-let rollback = services.activate_if_current(candidate)?;
-let snapshot_root = services.pin();
+let staged = app.patches().stage_snapshot_source(snapshot_source)?;
+let generation = staged.generation_id();
+let rollback = staged.activate()?;
 ```
 
-Successive fixes use exact-base Delta:
+The facade hides source ingestion, compilation, linking, Runtime binding,
+call options, base pinning, and publication checks. A control plane that
+already owns a validated bundle can use the same facade:
 
 ```rust,ignore
-let delta = ServiceUpdateBundle::delta(
-    services.schema(),
-    snapshot_root.generation_id(),
-    snapshot_root.artifact_checksum().expect("Vela artifact"),
-    delta_artifact,
-    delta_manifest,
-)?;
-
-let candidate = services.stage_bundle(
-    &snapshot_root,
-    delta,
-    ServiceRuntimeBinding::for_context::<RequestState>(),
-    call_options,
-)?;
-
-services.activate_if_current(candidate)?;
+assert!(app.patches().dry_run_bundle(&delta_bundle).accepted());
+app.patches().stage_bundle(delta_bundle)?.activate()?;
+app.patches().rollback(rollback)?;
 ```
 
 Semantics:
