@@ -12,8 +12,8 @@ use vela_engine::native::{EffectSet, NativeFunctionDesc, TypeHint};
 use vela_engine::permission::Capability;
 use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
 use vela_engine::service::{
-    LinkedServiceSourceManifest, Service, ServiceRuntimeAuthority, ServiceRuntimeSlot,
-    ServiceSourceManifest, ServiceUpdateBundle,
+    LinkedServiceSourceManifest, PatchEdit, PatchSources, Service, ServicePatch,
+    ServiceRuntimeAuthority, ServiceRuntimeSlot, ServiceSourceManifest, ServiceUpdateBundle,
 };
 use vela_engine::type_binding::TypeBinding;
 use vela_hir::source_ingestion::build_single_source;
@@ -560,8 +560,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     app.patches()
-        .stage_snapshot_source(RULE_SOURCE)?
-        .activate()?;
+        .apply(PatchEdit::put("rule.vela", RULE_SOURCE))?;
     let rule_root = services.pin();
     let (rule, _) = run_active(services, &engine)?;
     assert_eq!(rule.checksum, 1741);
@@ -637,7 +636,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let rollback = app
         .patches()
-        .stage_snapshot_source(&complete_source)?
+        .stage(ServicePatch::replace(PatchSources::from_files([
+            ("rule.vela", RULE_SOURCE),
+            ("reward.vela", REWARD_SOURCE),
+            ("inventory.vela", INVENTORY_SOURCE),
+        ])?))?
         .activate()?;
     let folded_root = services.pin();
     let (folded, folded_turn) = run_active(services, &engine)?;

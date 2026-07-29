@@ -713,7 +713,10 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             > {
                 self.controller
                     .activate_if_current(candidate.candidate)
-                    .map(|token| #rollback_ident { token })
+                    .map(|token| #rollback_ident {
+                        token,
+                        patch: ::std::option::Option::None,
+                    })
             }
 
             pub fn rollback_if_current(
@@ -802,6 +805,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     domain,
                     call_options: self.call_options,
                     runtime: self.runtime,
+                    patch_state: ::vela_engine::service::ServicePatchState::new(
+                        ::vela_common::ServiceGenerationId::new(1),
+                    ),
                 })
             }
         }
@@ -813,6 +819,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             runtime: ::std::option::Option<
                 ::vela_engine::service::ServiceRuntimeBinding
             >,
+            patch_state: ::vela_engine::service::ServicePatchState,
         }
 
         impl #app_ident {
@@ -833,6 +840,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     domain: &self.domain,
                     call_options: &self.call_options,
                     runtime: self.runtime,
+                    patch_state: &self.patch_state,
                 }
             }
 
@@ -877,12 +885,27 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             runtime: ::std::option::Option<
                 ::vela_engine::service::ServiceRuntimeBinding
             >,
+            patch_state: &'app ::vela_engine::service::ServicePatchState,
         }
 
         impl<'app> #patches_ident<'app> {
-            pub fn stage_snapshot_source(
+            pub fn revision(
+                &self,
+            ) -> ::std::result::Result<
+                ::std::sync::Arc<::vela_engine::service::PatchRevision>,
+                ::vela_engine::service::ServicePatchError,
+            > {
+                let active = self.domain.pin();
+                self.patch_state
+                    .revision(active.generation_id())
+                    .map_err(::vela_engine::service::ServicePatchError::from)
+            }
+
+            pub fn stage(
                 self,
-                source: &str,
+                patch: impl ::core::convert::Into<
+                    ::vela_engine::service::ServicePatch
+                >,
             ) -> ::std::result::Result<
                 #staged_patch_ident<'app>,
                 ::vela_engine::service::ServicePatchError,
@@ -893,21 +916,39 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                             domain: ::std::stringify!(#set_ident),
                         }
                 )?;
-                let update = self.engine.compile_service_snapshot_source(
-                    self.domain.schema(),
-                    source,
-                )?;
                 let base = self.domain.pin();
-                let candidate = self.domain.stage_snapshot(
+                let revision = self.patch_state.prepare(
+                    base.generation_id(),
+                    patch.into(),
+                )?;
+                let bundle = self.engine.compile_service_patch(
+                    self.domain.schema(),
+                    &revision,
+                )?;
+                let candidate = self.domain.stage_bundle(
                     &base,
-                    update,
+                    bundle,
                     runtime,
                     self.call_options.clone(),
                 )?;
                 Ok(#staged_patch_ident {
                     domain: self.domain,
                     candidate,
+                    patch_state: self.patch_state,
+                    revision: ::std::option::Option::Some(revision),
                 })
+            }
+
+            pub fn apply(
+                self,
+                patch: impl ::core::convert::Into<
+                    ::vela_engine::service::ServicePatch
+                >,
+            ) -> ::std::result::Result<
+                #rollback_ident,
+                ::vela_engine::service::ServicePatchError,
+            > {
+                self.stage(patch)?.activate()
             }
 
             #[must_use]
@@ -941,6 +982,8 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 Ok(#staged_patch_ident {
                     domain: self.domain,
                     candidate,
+                    patch_state: self.patch_state,
+                    revision: ::std::option::Option::None,
                 })
             }
 
@@ -951,15 +994,29 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 #root_ident,
                 ::vela_engine::service::ServicePatchError,
             > {
-                self.domain
-                    .rollback_if_current(rollback)
-                    .map_err(::vela_engine::service::ServicePatchError::from)
+                let #rollback_ident { token, patch } = rollback;
+                let root = self.domain
+                    .controller
+                    .rollback_if_current(token)
+                    .map(|root| #root_ident {
+                        root,
+                        _context: ::std::marker::PhantomData,
+                    })
+                    .map_err(::vela_engine::service::ServicePatchError::from)?;
+                if let ::std::option::Option::Some(patch) = patch {
+                    self.patch_state.record_rollback(patch)?;
+                }
+                Ok(root)
             }
         }
 
         #vis struct #staged_patch_ident<'app> {
             domain: &'app #set_ident,
             candidate: #candidate_ident,
+            patch_state: &'app ::vela_engine::service::ServicePatchState,
+            revision: ::std::option::Option<
+                ::vela_engine::service::PatchRevision
+            >,
         }
 
         impl #staged_patch_ident<'_> {
@@ -974,9 +1031,29 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 #rollback_ident,
                 ::vela_engine::service::ServicePatchError,
             > {
-                self.domain
-                    .activate_if_current(self.candidate)
-                    .map_err(::vela_engine::service::ServicePatchError::from)
+                let expected = self.candidate.base_generation_id();
+                let installed = self.candidate.generation_id();
+                let token = self.domain
+                    .controller
+                    .activate_if_current(self.candidate.candidate)
+                    .map_err(::vela_engine::service::ServicePatchError::from)?;
+                let patch = match self.patch_state.record_activation(
+                    expected,
+                    installed,
+                    self.revision,
+                ) {
+                    Ok(patch) => patch,
+                    Err(error) => {
+                        let _ = self.domain.controller.rollback_if_current(token);
+                        return Err(
+                            ::vela_engine::service::ServicePatchError::from(error)
+                        );
+                    }
+                };
+                Ok(#rollback_ident {
+                    token,
+                    patch: ::std::option::Option::Some(patch),
+                })
             }
         }
 
@@ -1060,6 +1137,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
 
         #vis struct #rollback_ident {
             token: ::vela_engine::service::ServiceRollbackToken<#generation_ident>,
+            patch: ::std::option::Option<
+                ::vela_engine::service::ServicePatchStateRollback
+            >,
         }
 
         impl #rollback_ident {
@@ -1077,52 +1157,4 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
 }
 
 #[cfg(test)]
-mod tests {
-    use quote::quote;
-
-    use super::expand_result;
-
-    #[test]
-    fn service_domain_generates_one_whole_generation_controller() {
-        let output = expand_result(
-            quote! { context = RequestContext },
-            quote! {
-                pub struct GameLogic {
-                    pub reward: Service<dyn RewardService>,
-                    pub inventory: Service<dyn InventoryService>,
-                }
-            },
-        )
-        .expect("service domain should expand")
-        .to_string();
-
-        assert!(output.contains("__GameLogicGeneration"));
-        assert!(output.contains("ServiceController < __GameLogicGeneration >"));
-        assert!(output.contains("GameLogicBuilder"));
-        assert!(output.contains("GameLogicApp"));
-        assert!(output.contains("stage_snapshot"));
-        assert!(output.contains("stage_delta"));
-        assert!(output.contains("__vela_compose_service_RewardService"));
-        assert!(output.contains("register_service_set_schema"));
-        assert_eq!(output.matches("ServiceController <").count(), 1);
-        assert!(output.contains("MissingDefault"));
-        assert!(!output.contains("RustRewardService"));
-        assert!(!output.contains("HostRef"));
-        assert!(!output.contains("runtime : :: vela_engine :: runtime :: Runtime"));
-    }
-
-    #[test]
-    fn service_domain_requires_marker_fields() {
-        let error = expand_result(
-            quote! { context = RequestContext },
-            quote! {
-                pub struct GameLogic {
-                    pub reward: dyn RewardService,
-                }
-            },
-        )
-        .expect_err("bare trait field must fail");
-
-        assert!(error.to_string().contains("Service<dyn ServiceTrait>"));
-    }
-}
+mod tests;

@@ -357,6 +357,34 @@ ServiceUpdateBundle
   Vela state/schema reload facts
 ```
 
+The source-facing Snapshot API owns a complete virtual workspace rather than
+one concatenated string:
+
+```text
+PatchRevision
+  content checksum
+  optional installed service generation
+  PatchSources
+    virtual/path.vela -> source text
+
+ServicePatch
+  exact-base edits: Put | Remove
+  or complete PatchSources replacement
+```
+
+Applying one `Put` or `Remove` creates a new immutable revision and recompiles
+the complete resulting workspace. The caller therefore sends only changed
+files without changing Snapshot omission semantics. Exact-base edits reject a
+stale revision checksum or attached service generation, preventing an ABA
+cycle from making an old edit current again. Virtual paths are deterministic
+module identities, not host filesystem authority.
+
+Compilation, bundle loading, staging, and activation do not invoke a service
+method. Business logic runs only when the host explicitly calls a generated
+Service entry from an actor/request root. Administrative or one-shot workflows
+reuse this same Service model; Vela core does not add `eval`, an overlay
+Runtime, or a separate command-script lifecycle.
+
 The two modes have different omission semantics:
 
 | Update mode | Unmentioned service method | Explicit `RustDefault` |
@@ -883,8 +911,10 @@ The domain macro must:
 - generate the immutable service generation and controller;
 - generate the `ArcSwap` publication owner and safe-point pin handle;
 - generate an application-owned request scope that pins at `begin`;
-- provide a patch facade that compiles and stages Snapshot source without
-  exposing manifests, artifacts, Runtime bindings, or per-call options;
+- provide a patch facade that retains a checksummed virtual multi-file
+  `PatchRevision`, accepts `Put`/`Remove` or full replacement, and compiles the
+  complete resulting Snapshot without exposing manifests, artifacts, Runtime
+  bindings, or per-call options;
 - generate Snapshot and exact-base Delta staging, conditional activate,
   conditional rollback, and current-generation APIs;
 - provide same-generation access for Rust and Vela cross-service calls; and
@@ -892,8 +922,8 @@ The domain macro must:
   business callers.
 
 The removed `#[service_set]`, `ServiceSet::register`, `ServiceSet::new`,
-`#[vela(default = ...)]`, public generation constructors, and `stage_rust`
-surfaces have no compatibility aliases.
+`#[vela(default = ...)]`, public generation constructors, `stage_rust`, and
+single-string `stage_snapshot_source` surfaces have no compatibility aliases.
 
 ### 6.4 `#[service_impl]`
 

@@ -14,7 +14,7 @@ use vela_engine::native::{EffectSet, NativeFunctionDesc, TypeHint};
 use vela_engine::permission::{Capability, CapabilitySet};
 use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
 use vela_engine::service::{
-    LinkedServiceSourceManifest, Service, ServiceRuntimeAuthority, ServiceRuntimeSlot,
+    LinkedServiceSourceManifest, PatchEdit, Service, ServiceRuntimeAuthority, ServiceRuntimeSlot,
     ServiceSourceManifest, ServiceUpdateBundle,
 };
 use vela_engine::type_binding::TypeBinding;
@@ -497,8 +497,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     app.patches()
-        .stage_snapshot_source(SNAPSHOT_SOURCE)?
-        .activate()?;
+        .apply(PatchEdit::put("snapshot.vela", SNAPSHOT_SOURCE))?;
     let snapshot_root = services.pin();
 
     let mut lookup_state = state(&engine, &snapshot_root);

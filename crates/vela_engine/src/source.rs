@@ -148,7 +148,7 @@ impl Engine {
         self.compile_source_set(&sources)
     }
 
-    fn compile_source_set(
+    pub(crate) fn compile_source_set(
         &self,
         sources: &HirSourceSet,
     ) -> Result<CompiledProgram, EngineSourceError> {

@@ -99,10 +99,14 @@ Phase status:
 - Cross-cutting service-domain ergonomics checkpoint accepted:
   `#[service_domain]` generates one application builder, retains stateful Rust
   default instances, exposes request-safe-point pinning through `app.begin`,
-  and centralizes Snapshot source and bundle deployment behind `app.patches()`.
+  and centralizes revisioned multi-file Snapshot source and bundle deployment
+  behind `app.patches()`. `PatchEdit::Put/Remove` submits only changed virtual
+  files while compilation consumes the complete checksummed `PatchRevision`;
+  exact-base edits, source-state rollback, complete replacement after
+  source-less bundle activation, and portable compile/load are covered.
   The removed `#[service_set]`, default-type field attribute, split
   register/new construction, public generation construction, and `stage_rust`
-  APIs have no aliases.
+  APIs, plus the single-string `stage_snapshot_source` entry, have no aliases.
 
 S3 provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared
@@ -211,12 +215,12 @@ Host-backed and mutable collections retain HostRef identity and leases.
   instance-supplied direct Rust defaults, whole-generation
   staging/publication, request-scope root pinning, and conditional rollback.
   The generated application joins Engine and domain construction, while its
-  patch facade owns the routine source-to-publication path. Sparse Vela methods
-  compile to stable hidden targets, bind to one verified artifact, and execute
-  through generated Snapshot and exact-base Delta adapters with explicit
-  Runtime authority. Delta inheritance rebinds all Vela targets to one
-  artifact; explicit `RustDefault`, stale-base rejection, effect ceilings,
-  failure-without-fallback, and rollback are covered.
+  patch facade owns the routine virtual-workspace-to-publication path. Sparse
+  Vela methods compile to stable hidden targets, bind to one verified artifact,
+  and execute through generated Snapshot and exact-base Delta adapters with
+  explicit Runtime authority. Delta inheritance rebinds all Vela targets to
+  one artifact; explicit `RustDefault`, stale-base and stale-source rejection,
+  effect ceilings, failure-without-fallback, and rollback are covered.
 
 ### Standard Library, Tooling, And Proof
 

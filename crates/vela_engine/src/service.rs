@@ -7,6 +7,7 @@ mod runtime;
 mod schema;
 mod selection;
 mod source;
+mod workspace;
 
 pub use deployment::{
     ServiceBundleChecksum, ServiceBundleError, ServiceDryRunReport, ServicePackageIdentity,
@@ -34,6 +35,10 @@ pub use source::{
     ServiceSourceErrorKind, ServiceSourceManifest, VelaServiceMethod,
 };
 pub use vela_bytecode::{ArtifactChecksum, LinkedArtifact};
+pub use workspace::{
+    PatchEdit, PatchRevision, PatchRevisionChecksum, PatchSources, ServicePatch, ServicePatchState,
+    ServicePatchStateRollback, ServicePatchWorkspaceError,
+};
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -103,12 +108,17 @@ impl From<ServiceSchemaError> for ServiceDomainBuildError {
 
 #[derive(Debug)]
 pub enum ServicePatchError {
-    MissingRuntimeAuthority { domain: &'static str },
+    MissingRuntimeAuthority {
+        domain: &'static str,
+    },
+    Workspace(ServicePatchWorkspaceError),
     SourceIngestion(String),
     Compile(crate::source::EngineSourceError),
     Link(vela_bytecode::LinkError),
     Source(ServiceSourceError),
     Bundle(ServiceBundleError),
+    #[cfg(feature = "artifact-codec")]
+    Portable(PortableServiceBundleError),
     Staging(ServiceStagingError),
     Publication(ServicePublicationError),
 }
@@ -122,6 +132,7 @@ impl fmt::Display for ServicePatchError {
                     "service domain `{domain}` has no actor Runtime authority"
                 )
             }
+            Self::Workspace(error) => write!(formatter, "service patch workspace failed: {error}"),
             Self::SourceIngestion(message) => {
                 write!(
                     formatter,
@@ -132,6 +143,10 @@ impl fmt::Display for ServicePatchError {
             Self::Link(error) => write!(formatter, "service patch linking failed: {error}"),
             Self::Source(error) => write!(formatter, "service patch manifest failed: {error}"),
             Self::Bundle(error) => write!(formatter, "service patch bundle failed: {error}"),
+            #[cfg(feature = "artifact-codec")]
+            Self::Portable(error) => {
+                write!(formatter, "portable service patch bundle failed: {error}")
+            }
             Self::Staging(error) => write!(formatter, "service patch staging failed: {error}"),
             Self::Publication(error) => {
                 write!(formatter, "service patch publication failed: {error}")
@@ -141,6 +156,12 @@ impl fmt::Display for ServicePatchError {
 }
 
 impl std::error::Error for ServicePatchError {}
+
+impl From<ServicePatchWorkspaceError> for ServicePatchError {
+    fn from(error: ServicePatchWorkspaceError) -> Self {
+        Self::Workspace(error)
+    }
+}
 
 impl From<crate::source::EngineSourceError> for ServicePatchError {
     fn from(error: crate::source::EngineSourceError) -> Self {
@@ -166,6 +187,20 @@ impl From<ServiceBundleError> for ServicePatchError {
     }
 }
 
+#[cfg(feature = "artifact-codec")]
+impl From<PortableServiceBundleError> for ServicePatchError {
+    fn from(error: PortableServiceBundleError) -> Self {
+        Self::Portable(error)
+    }
+}
+
+#[cfg(feature = "artifact-codec")]
+impl From<vela_bytecode::PortableArtifactError> for ServicePatchError {
+    fn from(error: vela_bytecode::PortableArtifactError) -> Self {
+        Self::Portable(PortableServiceBundleError::from(error))
+    }
+}
+
 impl From<ServiceStagingError> for ServicePatchError {
     fn from(error: ServiceStagingError) -> Self {
         Self::Staging(error)
@@ -179,19 +214,60 @@ impl From<ServicePublicationError> for ServicePatchError {
 }
 
 impl crate::engine::Engine {
-    /// Compiles and links one complete service-domain Snapshot source.
-    pub fn compile_service_snapshot_source(
+    /// Compiles and links one complete virtual service patch workspace.
+    pub fn compile_service_patch(
         &self,
         schema: &ServiceSetSchema,
-        source: &str,
-    ) -> Result<LinkedServiceSourceManifest, ServicePatchError> {
-        let sources =
-            vela_hir::source_ingestion::build_single_source(vela_common::SourceId::new(1), source)
-                .map_err(|error| ServicePatchError::SourceIngestion(format!("{error:?}")))?;
-        let manifest = ServiceSourceManifest::link(sources.graph(), schema)?;
-        let compiled = self.compile_source(source)?;
+        revision: &PatchRevision,
+    ) -> Result<ServiceUpdateBundle, ServicePatchError> {
+        let (manifest, compiled) = self.compile_service_patch_sources(schema, revision)?;
         let artifact = self.link_compiled_program(compiled)?;
-        manifest.bind_artifact(artifact).map_err(Into::into)
+        let update = manifest.bind_artifact(Arc::clone(&artifact))?;
+        ServiceUpdateBundle::snapshot(schema, artifact, update).map_err(Into::into)
+    }
+
+    /// Compiles one complete virtual workspace into a source-independent
+    /// transport bundle for another Engine with the same sealed schema.
+    #[cfg(feature = "artifact-codec")]
+    pub fn compile_portable_service_patch(
+        &self,
+        schema: &ServiceSetSchema,
+        revision: &PatchRevision,
+        host_schema_hash: u64,
+    ) -> Result<PortableServiceUpdateBundle, ServicePatchError> {
+        let (manifest, compiled) = self.compile_service_patch_sources(schema, revision)?;
+        let artifact = vela_bytecode::PortableProgramArtifact::from_compiled(compiled)?;
+        let diagnostics = revision
+            .sources()
+            .iter()
+            .map(|(path, source)| PortableDiagnosticSource::new(path, source));
+        PortableServiceUpdateBundle::snapshot(
+            schema,
+            artifact,
+            &manifest,
+            host_schema_hash,
+            diagnostics,
+        )
+        .map_err(Into::into)
+    }
+
+    fn compile_service_patch_sources(
+        &self,
+        schema: &ServiceSetSchema,
+        revision: &PatchRevision,
+    ) -> Result<
+        (
+            ServiceSourceManifest,
+            vela_bytecode::compiler::CompiledProgram,
+        ),
+        ServicePatchError,
+    > {
+        let module_sources = revision.sources().module_sources()?;
+        let sources = vela_hir::source_ingestion::build_module_source_set(&module_sources)
+            .map_err(|error| ServicePatchError::SourceIngestion(format!("{error:?}")))?;
+        let manifest = ServiceSourceManifest::link(sources.graph(), schema)?;
+        let compiled = self.compile_source_set(&sources)?;
+        Ok((manifest, compiled))
     }
 }
 

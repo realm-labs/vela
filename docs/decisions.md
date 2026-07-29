@@ -2738,11 +2738,38 @@ creates the initial Rust generation. Missing defaults fail construction.
 
 The resulting application owns the Engine and the domain publication
 controller. `app.begin(&mut context)` establishes the request safe point and
-pins one generation; `app.patches()` owns the routine Snapshot-source and
-prebuilt-bundle staging, activation, dry-run, and rollback workflow. The
+pins one generation; `app.patches()` owns the routine virtual-workspace
+Snapshot and prebuilt-bundle staging, activation, dry-run, and rollback
+workflow. The
 removed `#[service_set]`, split `register`/`new`, default-type field attribute,
 public generation constructor, and `stage_rust` surfaces have no compatibility
 aliases.
+
+### Service Patch Source Is A Revisioned Virtual Workspace
+
+The user-facing patch input is `PatchSources`, a deterministic virtual
+`*.vela` file map retained in an immutable `PatchRevision`. A common update is
+one `PatchEdit::Put` or `PatchEdit::Remove`; a multi-file `ServicePatch`
+applies several edits against an exact revision checksum. Compilation always
+consumes the complete resulting workspace and emits one Snapshot bundle, so
+incremental submission does not create Delta-like omission semantics.
+An application-attached revision also carries its exact service generation;
+both generation and checksum must match, so rollback and later publication
+cannot create an ABA hole for an old edit.
+
+A complete `PatchSources` replacement reattaches source state after loading a
+bundle that did not carry the compiler's workspace. Source revisions advance
+only with successful service generation activation and are restored by the
+same conditional rollback. The removed single-string
+`stage_snapshot_source` entry has no compatibility alias.
+
+Administrative and one-shot operations do not have a separate Vela execution
+model. Business code may define a dedicated Service, distribute a normal
+portable Service bundle to the selected actor, activate it at the mailbox safe
+point, and explicitly invoke its typed entry. Compilation, loading, staging,
+and activation never invoke a Service method. This preserves ordinary
+registered Rust/Vela capabilities without adding `eval`, overlay state, or a
+second Runtime lifecycle.
 
 ### Repository Artifacts Use Domain-Neutral Host Names
 

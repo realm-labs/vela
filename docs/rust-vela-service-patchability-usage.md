@@ -659,20 +659,65 @@ The application patch facade compiles, validates, stages, and publishes away
 from request execution:
 
 ```rust,ignore
-let staged = app.patches().stage_snapshot_source(snapshot_source)?;
+let _grant_rollback = app
+    .patches()
+    .apply(PatchEdit::put("rules/grant.vela", grant_source))?;
+
+let revision = app.patches().revision()?;
+let staged = app.patches().stage(
+    ServicePatch::against(&revision)
+        .put("rules/audit.vela", audit_source)
+        .remove("rules/obsolete.vela"),
+)?;
 let generation = staged.generation_id();
 let rollback = staged.activate()?;
 ```
 
-The facade hides source ingestion, compilation, linking, Runtime binding,
-call options, base pinning, and publication checks. A control plane that
-already owns a validated bundle can use the same facade:
+`PatchEdit` is the common one-file path. `ServicePatch::against` batches
+several exact-base edits, while
+`ServicePatch::replace(PatchSources::from_files(...))` installs a complete
+workspace after a source-less deployment. Every form recompiles the complete
+resulting Snapshot; omitted service methods select their Rust defaults.
+
+The facade hides source ingestion, whole-workspace compilation, linking,
+Runtime binding, call options, base pinning, revision publication, and
+publication checks. A control plane can also compile a detached revision into
+a portable bundle when `vela_engine`'s `artifact-codec` feature is enabled:
 
 ```rust,ignore
-assert!(app.patches().dry_run_bundle(&delta_bundle).accepted());
-app.patches().stage_bundle(delta_bundle)?.activate()?;
-app.patches().rollback(rollback)?;
+let revision = PatchRevision::empty().apply(
+    PatchEdit::put("gm/operation.vela", operation_source),
+)?;
+let portable = engine.compile_portable_service_patch(
+    service_schema,
+    &revision,
+    host_schema_hash,
+)?;
+let bytes = portable.encode()?;
 ```
+
+The receiving Actor decodes and validates the portable bundle, loads it
+against its sealed Engine/schema, and stages it through the same facade:
+
+```rust,ignore
+let portable = PortableServiceUpdateBundle::decode(&bytes)?;
+let bundle = portable.load(app.engine(), app.domain().schema(), host_schema_hash)?;
+assert!(app.patches().dry_run_bundle(&bundle).accepted());
+let bundle_rollback = app.patches().stage_bundle(bundle)?.activate()?;
+
+// Activation does not execute the implementation.
+let mut call = app.begin(&mut actor);
+let (services, actor) = call.parts();
+services.operation().execute(actor, request)?;
+
+app.patches().rollback(bundle_rollback)?;
+```
+
+Actor routing, authorization, parameters, invocation, and result delivery are
+business responsibilities. A Service implementation has no implicit entry
+instruction: compilation, distribution, loading, staging, and activation are
+side-effect free with respect to business logic. The actor mailbox should
+activate and invoke the intended generation in one serialized turn.
 
 Semantics:
 

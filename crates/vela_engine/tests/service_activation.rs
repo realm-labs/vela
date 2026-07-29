@@ -4,10 +4,12 @@ use vela_common::SourceId;
 use vela_engine::engine::Engine;
 use vela_engine::permission::{Capability, CapabilitySet};
 use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
+#[cfg(feature = "artifact-codec")]
+use vela_engine::service::PatchRevision;
 use vela_engine::service::{
-    LinkedServiceSourceManifest, Service, ServiceMethodSelection, ServiceMethodUpdate,
-    ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot, ServiceSourceManifest,
-    ServiceUpdateBundle,
+    LinkedServiceSourceManifest, PatchEdit, PatchSources, Service, ServiceMethodSelection,
+    ServiceMethodUpdate, ServicePatch, ServiceRuntimeAuthority, ServiceRuntimeBinding,
+    ServiceRuntimeSlot, ServiceSourceManifest, ServiceUpdateBundle,
 };
 use vela_hir::source_ingestion::build_single_source;
 use vela_macros::{ScriptHost, service, service_domain};
@@ -111,13 +113,17 @@ fn service_app() -> TestServicesApp {
 }
 
 #[test]
-fn application_patch_facade_compiles_stages_and_activates_snapshot_source() {
+fn application_patch_facade_edits_multifile_workspace_and_activates_snapshot() {
     let app = service_app();
     let old = app.domain().pin();
+    let revision = app.patches().revision().expect("initial revision");
     let staged = app
         .patches()
-        .stage_snapshot_source(
-            r#"
+        .stage(
+            ServicePatch::against(&revision)
+                .put(
+                    "calculator.vela",
+                    r#"
 #[service_impl(test::calculator)]
 impl CalculatorHotfix {
     fn adjust(context, value) {
@@ -125,18 +131,83 @@ impl CalculatorHotfix {
     }
 }
 "#,
+                )
+                .put(
+                    "audit.vela",
+                    r#"
+#[service_impl(test::audit)]
+impl AuditHotfix {
+    fn record(context, value) {
+        return value + 5;
+    }
+}
+"#,
+                ),
         )
-        .expect("stage snapshot source");
+        .expect("stage source workspace");
     assert_ne!(staged.generation_id(), old.generation_id());
     staged.activate().expect("activate staged source");
+    let active_revision = app.patches().revision().expect("active revision");
+    assert_eq!(active_revision.sources().len(), 2);
+    assert!(active_revision.sources().contains("calculator.vela"));
+    assert!(active_revision.sources().contains("audit.vela"));
+    assert!(matches!(
+        app.patches().stage(ServicePatch::against(&revision).put(
+            "calculator.vela",
+            "fn stale_edit_must_not_compile() { return 0; }",
+        ),),
+        Err(vela_engine::service::ServicePatchError::Workspace(
+            vela_engine::service::ServicePatchWorkspaceError::StaleServiceGeneration { .. }
+        ))
+    ));
 
     let mut context = RequestContext {
         counter: 0,
         runtime: ServiceRuntimeSlot::new(app.engine().clone()),
     };
-    let mut call = app.begin(&mut context);
-    let (root, request_context) = call.parts();
-    assert_eq!(root.calculator().adjust(request_context, 2), 42);
+    {
+        let mut call = app.begin(&mut context);
+        let (root, request_context) = call.parts();
+        assert_eq!(root.calculator().adjust(request_context, 2), 42);
+        assert_eq!(root.audit().record(request_context, 2), 7);
+    }
+
+    let removal_rollback = app
+        .patches()
+        .apply(PatchEdit::remove("audit.vela"))
+        .expect("remove one source");
+    let active_revision = app.patches().revision().expect("edited revision");
+    assert_eq!(active_revision.sources().len(), 1);
+    {
+        let mut call = app.begin(&mut context);
+        let (root, request_context) = call.parts();
+        assert_eq!(root.audit().record(request_context, 2), 4);
+    }
+    app.patches()
+        .rollback(removal_rollback)
+        .expect("rollback source removal");
+    assert_eq!(
+        app.patches()
+            .revision()
+            .expect("restored revision")
+            .sources()
+            .len(),
+        2
+    );
+
+    let replacement = PatchSources::from_files([("calculator.vela", "fn helper() { return 1; }")])
+        .expect("replacement sources");
+    app.patches()
+        .apply(ServicePatch::replace(replacement))
+        .expect("complete replacement");
+    assert_eq!(
+        app.patches()
+            .revision()
+            .expect("replacement revision")
+            .sources()
+            .len(),
+        1
+    );
 }
 
 #[test]
@@ -615,26 +686,25 @@ impl CalculatorPortableHotfix {
     }
 }
 "#;
-    let sources = build_single_source(SourceId::new(91), source).expect("valid source");
-    let manifest =
-        ServiceSourceManifest::link(sources.graph(), services.schema()).expect("service manifest");
-    let portable_program = vela_bytecode::PortableProgramArtifact::from_compiled(
-        engine.compile_source(source).expect("offline compile"),
-    )
-    .expect("portable bytecode");
-    let artifact_checksum = portable_program.checksum();
+    let audit_source = r#"
+#[service_impl(test::audit)]
+impl AuditPortableHotfix {
+    fn record(context: RequestContext, value: i64) -> i64 {
+        context.counter += 7;
+        return value + 50;
+    }
+}
+"#;
+    let revision = PatchRevision::empty();
+    let patch = ServicePatch::against(&revision)
+        .put("calculator.vela", source)
+        .put("audit.vela", audit_source);
+    let revision = revision.apply(patch).expect("offline multi-file revision");
     let host_schema_hash = 0x1234_5678_9abc_def0;
-    let portable = vela_engine::service::PortableServiceUpdateBundle::snapshot(
-        services.schema(),
-        portable_program,
-        &manifest,
-        host_schema_hash,
-        [vela_engine::service::PortableDiagnosticSource::new(
-            "hotfix.vela",
-            source,
-        )],
-    )
-    .expect("portable service bundle");
+    let portable = engine
+        .compile_portable_service_patch(services.schema(), &revision, host_schema_hash)
+        .expect("portable service bundle");
+    let artifact_checksum = portable.artifact_checksum();
     let first = portable.encode().expect("first encoding");
     let second = portable.encode().expect("second encoding");
     assert_eq!(first, second);
@@ -657,7 +727,9 @@ impl CalculatorPortableHotfix {
         decoded.mode(),
         vela_engine::service::ServiceUpdateMode::Snapshot
     );
-    assert_eq!(decoded.diagnostics()[0].path(), "hotfix.vela");
+    assert_eq!(decoded.diagnostics().len(), 2);
+    assert_eq!(decoded.diagnostics()[0].path(), "audit.vela");
+    assert_eq!(decoded.diagnostics()[1].path(), "calculator.vela");
     assert!(matches!(
         decoded
             .clone()
@@ -694,6 +766,8 @@ impl CalculatorPortableHotfix {
     };
     assert_eq!(services.pin().calculator().adjust(&mut context, 2), 32);
     assert_eq!(context.counter, 5);
+    assert_eq!(services.pin().audit().record(&mut context, 2), 52);
+    assert_eq!(context.counter, 12);
 
     let active = services.pin();
     let delta_source = r#"
@@ -708,9 +782,10 @@ impl CalculatorPortableDelta {
         build_single_source(SourceId::new(93), delta_source).expect("valid Delta source");
     let delta_manifest = ServiceSourceManifest::link(delta_sources.graph(), services.schema())
         .expect("Delta service manifest");
+    let delta_complete_source = format!("{audit_source}\n{delta_source}");
     let delta_program = vela_bytecode::PortableProgramArtifact::from_compiled(
         engine
-            .compile_source(delta_source)
+            .compile_source(&delta_complete_source)
             .expect("offline Delta compile"),
     )
     .expect("portable Delta bytecode");
