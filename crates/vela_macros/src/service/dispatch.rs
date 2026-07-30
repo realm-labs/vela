@@ -1,5 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
+use syn::visit::{self, Visit};
 use syn::{Result, parse_quote};
 
 use crate::export::emission::{exclusive_host_value_tokens, shared_host_value_tokens};
@@ -33,6 +34,18 @@ pub(super) fn emit_rust_dispatch_arm(
     };
     if matches!(signature.returns.mode, ReturnMode::ScopedHost { .. }) {
         return emit_scoped_rust_dispatch_arm(method, signature, method_id, arity);
+    }
+    if requires_opaque_host_dispatch(signature) {
+        return Ok(quote! {
+            #method_id => {
+                #arity
+                Err(::vela_vm::error::VmError::new(
+                    ::vela_vm::error::VmErrorKind::TypeMismatch {
+                        operation: "base call for a call-scoped opaque Host parameter",
+                    },
+                ))
+            }
+        });
     }
 
     let mut lease_index = 0_usize;
@@ -260,6 +273,34 @@ pub(super) fn emit_async_rust_dispatch_arm(
             "async service methods cannot return call-scoped host borrows",
         ));
     }
+    if requires_opaque_host_dispatch(signature) {
+        let expected = signature.parameters.len().saturating_sub(1);
+        let method_ident = &method.sig.ident;
+        return Ok(quote! {
+            #method_id => {
+                ::std::boxed::Box::pin(async move {
+                    if __vela_args.len() != #expected {
+                        return Err(::vela_vm::error::VmError::new(
+                            ::vela_vm::error::VmErrorKind::ArityMismatch {
+                                name: ::std::concat!(
+                                    #service_path,
+                                    "::",
+                                    ::std::stringify!(#method_ident),
+                                ).to_owned(),
+                                expected: #expected,
+                                actual: __vela_args.len(),
+                            },
+                        ));
+                    }
+                    Err(::vela_vm::error::VmError::new(
+                        ::vela_vm::error::VmErrorKind::TypeMismatch {
+                            operation: "base call for a call-scoped opaque Host parameter",
+                        },
+                    ))
+                })
+            }
+        });
+    }
     let method_ident = &method.sig.ident;
     let expected = signature.parameters.len().saturating_sub(1);
     let mut argument_bindings = Vec::new();
@@ -440,6 +481,37 @@ pub(super) fn emit_async_rust_dispatch_arm(
             })
         }
     })
+}
+
+fn requires_opaque_host_dispatch(signature: &ClassifiedSignature) -> bool {
+    signature.parameters.iter().skip(1).any(|parameter| {
+        matches!(
+            parameter.mode,
+            ParameterMode::SharedHost | ParameterMode::ExclusiveHost
+        ) && parameter
+            .rust_ty
+            .as_ref()
+            .is_some_and(type_has_non_static_lifetime)
+    })
+}
+
+fn type_has_non_static_lifetime(ty: &syn::Type) -> bool {
+    struct LifetimeVisitor {
+        found: bool,
+    }
+
+    impl<'ast> Visit<'ast> for LifetimeVisitor {
+        fn visit_lifetime(&mut self, lifetime: &'ast syn::Lifetime) {
+            if lifetime.ident != "static" {
+                self.found = true;
+            }
+            visit::visit_lifetime(self, lifetime);
+        }
+    }
+
+    let mut visitor = LifetimeVisitor { found: false };
+    visitor.visit_type(ty);
+    visitor.found
 }
 
 fn emit_scoped_rust_dispatch_arm(

@@ -3,13 +3,13 @@ use std::sync::Arc;
 use vela_common::SourceId;
 use vela_engine::engine::Engine;
 use vela_engine::permission::{Capability, CapabilitySet};
-use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
+use vela_engine::runtime::CallOptions;
 #[cfg(feature = "artifact-codec")]
 use vela_engine::service::PatchRevision;
 use vela_engine::service::{
     LinkedServiceSourceManifest, PatchEdit, PatchSources, Service, ServiceMethodSelection,
-    ServiceMethodUpdate, ServicePatch, ServiceRuntimeAuthority, ServiceRuntimeBinding,
-    ServiceRuntimeSlot, ServiceSourceManifest, ServiceUpdateBundle,
+    ServiceMethodUpdate, ServicePatch, ServiceRuntimeBinding, ServiceSourceManifest,
+    ServiceUpdateBundle,
 };
 use vela_hir::source_ingestion::build_single_source;
 use vela_macros::{ScriptHost, service, service_domain};
@@ -19,44 +19,6 @@ use vela_macros::{ScriptHost, service, service_domain};
 pub struct RequestContext {
     #[vela(get, set)]
     pub counter: i64,
-    #[vela(skip)]
-    runtime: ServiceRuntimeSlot,
-}
-
-impl ServiceRuntimeAuthority for RequestContext {
-    fn take_service_runtime(
-        &mut self,
-        artifact: &Arc<vela_bytecode::LinkedArtifact>,
-    ) -> Result<Runtime, RuntimeBuildError> {
-        self.runtime.take(artifact)
-    }
-
-    fn restore_service_runtime(
-        &mut self,
-        artifact: &Arc<vela_bytecode::LinkedArtifact>,
-        runtime: Runtime,
-    ) {
-        self.runtime.restore(artifact, runtime);
-    }
-}
-
-struct WrongContext;
-
-impl ServiceRuntimeAuthority for WrongContext {
-    fn take_service_runtime(
-        &mut self,
-        _artifact: &Arc<vela_bytecode::LinkedArtifact>,
-    ) -> Result<Runtime, RuntimeBuildError> {
-        unreachable!("a mismatched context must fail during staging")
-    }
-
-    fn restore_service_runtime(
-        &mut self,
-        _artifact: &Arc<vela_bytecode::LinkedArtifact>,
-        _runtime: Runtime,
-    ) {
-        unreachable!("a mismatched context must fail during staging")
-    }
 }
 
 #[service(path = "test::calculator")]
@@ -107,7 +69,6 @@ fn service_app() -> TestServicesApp {
     )
     .calculator(RustCalculatorService)
     .audit(RustAuditService)
-    .actor_runtime::<RequestContext>()
     .build()
     .expect("service domain")
 }
@@ -161,10 +122,7 @@ impl AuditHotfix {
         ))
     ));
 
-    let mut context = RequestContext {
-        counter: 0,
-        runtime: ServiceRuntimeSlot::new(app.engine().clone()),
-    };
+    let mut context = RequestContext { counter: 0 };
     app.with_request(&mut context, |root, request_context| {
         assert_eq!(root.calculator().adjust(request_context, 2), 42);
         assert_eq!(root.audit().record(request_context, 2), 7);
@@ -254,7 +212,7 @@ impl CalculatorHotfix {
         .stage_bundle(
             &initial,
             loaded,
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             call_options(),
         )
         .expect("staged bundle");
@@ -310,10 +268,7 @@ impl CalculatorHotfix {
 fn snapshot_activates_one_vela_method_keeps_adjacent_rust_and_rolls_back() {
     let (engine, services) = service_app().into_parts();
     let old = services.pin();
-    let mut context = RequestContext {
-        counter: 0,
-        runtime: ServiceRuntimeSlot::new(engine.clone()),
-    };
+    let mut context = RequestContext { counter: 0 };
 
     assert_eq!(old.calculator().adjust(&mut context, 5), 6);
     assert_eq!(context.counter, 1);
@@ -338,24 +293,11 @@ impl CalculatorHotfix {
     let update = manifest
         .bind_artifact(artifact)
         .expect("artifact-bound update");
-    let Err(error) = services.stage_snapshot(
-        &old,
-        update.clone(),
-        ServiceRuntimeBinding::for_context::<WrongContext>(),
-        CallOptions::new(100_000, 1024 * 1024, 64),
-    ) else {
-        panic!("foreign Runtime context must fail");
-    };
-    assert!(matches!(
-        error,
-        vela_engine::service::ServiceStagingError::ContextTypeMismatch { .. }
-    ));
-    assert_eq!(services.pin().generation_id(), old.generation_id());
     let candidate = services
         .stage_snapshot(
             &old,
             update.clone(),
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             call_options(),
         )
         .expect("snapshot candidate");
@@ -384,7 +326,7 @@ impl CalculatorHotfix {
         .stage_snapshot(
             &restored,
             update,
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             call_options(),
         )
         .expect("second snapshot candidate");
@@ -441,7 +383,7 @@ impl CalculatorHotfix {
         .stage_delta(
             &vela_base,
             sparse_delta,
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             call_options(),
         )
         .expect("exact-base Delta");
@@ -481,7 +423,7 @@ impl CalculatorHotfix {
         .stage_delta(
             &delta_root,
             rust_default.clone(),
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             call_options(),
         )
         .expect("RustDefault candidate");
@@ -489,7 +431,7 @@ impl CalculatorHotfix {
         .stage_delta(
             &delta_root,
             rust_default,
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             call_options(),
         )
         .expect("concurrent stale candidate");
@@ -536,7 +478,7 @@ impl CalculatorTrap {
         .stage_snapshot(
             &default_root,
             trap_update,
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             call_options(),
         )
         .expect("trap snapshot");
@@ -559,10 +501,7 @@ impl CalculatorTrap {
 fn lexical_base_and_pinned_cross_service_calls_keep_one_generation() {
     let (engine, services) = service_app().into_parts();
     let base = services.pin();
-    let mut context = RequestContext {
-        counter: 0,
-        runtime: ServiceRuntimeSlot::new(engine.clone()),
-    };
+    let mut context = RequestContext { counter: 0 };
     let snapshot_source = r#"
 #[service_impl(test::calculator)]
 impl CalculatorHotfix {
@@ -577,7 +516,7 @@ impl CalculatorHotfix {
         .stage_snapshot(
             &base,
             snapshot_update,
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             call_options(),
         )
         .expect("lexical snapshot");
@@ -624,7 +563,7 @@ impl AuditHotfix {
         .stage_delta(
             &first,
             sparse_delta,
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             call_options(),
         )
         .expect("exact-base cross-service Delta");
@@ -741,7 +680,7 @@ impl AuditPortableHotfix {
         .stage_bundle(
             &base,
             loaded,
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             call_options(),
         )
         .expect("stage portable bundle");
@@ -756,10 +695,7 @@ impl AuditPortableHotfix {
         Some(linked_artifact_checksum)
     );
 
-    let mut context = RequestContext {
-        counter: 0,
-        runtime: ServiceRuntimeSlot::new(engine.clone()),
-    };
+    let mut context = RequestContext { counter: 0 };
     assert_eq!(services.pin().calculator().adjust(&mut context, 2), 32);
     assert_eq!(context.counter, 5);
     assert_eq!(services.pin().audit().record(&mut context, 2), 52);
@@ -829,7 +765,7 @@ impl CalculatorPortableDelta {
         .stage_bundle(
             &active,
             delta,
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             call_options(),
         )
         .expect("stage exact-base Delta");

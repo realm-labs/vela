@@ -461,14 +461,18 @@ The Rust type implements the host object adapter surface that reads and writes
 closures, and mutate aliases inside the same call; they still never receive
 real `&T` or `&mut T`.
 
-`with_host_ref` creates a read-only handle. `with_host_mut` creates a writable
-`Send + Sync` binding whose mutations write through immediately through
-`HostAccess`. Its direct lease slot has exact `available`, `shared(n)`, and
-`exclusive` states: shared async methods may coexist and leave parent reads
-available, while mutation conflicts until every shared lease drops. Exclusive
-leases block both reads and writes through the parent handle. Non-`Sync` and
-opaque mutable origins fail closed instead of being represented by a stronger
-lease kind. Hosts that
+`with_host_ref` creates a read-only handle and therefore requires a `Sync`
+origin. `with_host_mut` creates a writable binding, requires only `Send`, and
+its mutations write through immediately through `HostAccess`. A mutable origin
+has one exclusive root lease for the whole Rust method call. A method declared
+with a shared receiver receives a temporary shared view through that exclusive
+root guard; it does not create a second independently borrowable root. This is
+the same ownership rule as reborrowing `&T` from an existing `&mut T`.
+Consequently a non-`Sync`, non-`'static` call-scoped context is valid, while
+concurrent method calls on the same mutable origin conflict until the active
+lease drops. The guard may cross `await` only when the returned future is
+`Send`, and RAII releases it on completion, error, cancellation, or unwind.
+Hosts that
 already store state behind their own adapter should pass existing handles with
 `with_host_handle` and attach that adapter to the same `CallArgs` with
 `with_fallback_adapter`. Runtime consumes the arguments into one

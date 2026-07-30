@@ -2203,11 +2203,11 @@ documentation, and zero-hit gates are recorded in
   reentry-returned heap value must join the current `HeapExecution` roots before
   its child frame roots are released; engine-owned Runtime retention alone is
   not an active-session GC contract.
-- Lease request kind and acquired state must agree. Eligible `Sync`
-  mutable-origin bindings may enter true `shared(n)` state; unsupported
-  type-erased capabilities fail closed instead of being extracted through an
-  exclusive lease labeled shared. Safe-Rust proof precedes any bound or
-  capability correction, and no parallel CallArgs/Runtime mode is added.
+- Shared and mutable origins have different root capabilities. A shared origin
+  requires `Sync` and may support concurrent shared leases. A mutable origin
+  requires only `Send` and has one exclusive root lease; a shared receiver is a
+  temporary view reborrowed from that guard. No parallel CallArgs/Runtime mode
+  is added.
 - Script-visible callable reflection metadata is named `is_async`. The keyword
   field `async` was removed rather than retained as a compatibility alias.
 - `linked_execution.rs` remains opcode dispatch/root glue. Execution-session,
@@ -2233,12 +2233,14 @@ owner and stores active tokens in a sparse root-ID sidecar, so ordinary
 the token, and session teardown drops the VM registry without a custom
 destructor or extended heap borrow.
 
-Mutable-origin direct bindings now require `Send + Sync` and store their erased
-borrow behind an owned read/write-guard slot. Read guards implement true
-`shared(n)` state and write guards implement `exclusive`; both are scoped
-`Send`, release by RAII, and support atomic rollback. This is a direct
-pre-release capability correction: non-`Sync` mutable origins no longer enter
-`with_host_mut`, and no exclusive lease is labeled shared.
+Mutable-origin direct bindings require `Send` and store their erased borrow
+behind an owned exclusive guard. A shared-receiver method reborrows `&T` from
+that guard, exactly as ordinary Rust does from `&mut T`; it does not create a
+second root lease. The scoped guard is `Send`, releases by RAII, and supports
+atomic rollback. This supersedes the earlier `Send + Sync`/`shared(n)` mutable
+origin decision: that model confused a method's receiver view with the
+capability of the root Rust borrow and unnecessarily rejected non-`Sync`
+call-scoped contexts.
 
 Batch E performance keeps ordinary entry/provider and suspended-memory costs
 within the accepted comparison, and creates no eager dynamic-root allocation.
@@ -3416,16 +3418,29 @@ and emits a hidden object-safe dispatcher whose async methods return
 Async scoped-borrow returns and explicit async lifetime parameters remain
 rejected because their lifetime cannot escape the generated call future.
 
-A Vela-selected async root removes one Runtime from its actor-owned
-`ServiceRuntimeSlot` and holds it in a cancellation-safe lease together with
-the pinned artifact and generation dispatcher. Internal async `base` and
-`services` calls re-enter the same session after preflighting the complete host
-lease set. Completion, cancellation, drop, and unwind all restore the Runtime
-and release leases; already performed host effects are not rolled back.
-`ServiceRuntimeSlot` needs no mutex: all Runtime take/restore operations require
-exclusive access to the host context. Runtime-owned extern-state objects must
-therefore be `Send + Sync`, matching the ordinary host-call boundary and making
-the slot naturally `Sync` without unsafe code.
+A Vela-selected async root leases one Runtime from the generated service
+application's bounded cache and holds it together with the pinned artifact and
+generation dispatcher. Business Host parameters are independent call-scoped
+arguments; they do not store Runtime state or implement a Runtime-authority
+trait. Internal async `base` and `services` calls re-enter the same session
+after preflighting the complete host lease set. Completion, cancellation,
+drop, and unwind all restore the Runtime and release leases; already performed
+host effects are not rolled back. Concurrent roots may construct independent
+Runtimes, while the cache retains at most one idle Runtime.
+
+Static Host registration is likewise separate from concrete instances.
+`EngineBuilder::register_host_type` seals a stable `HostTypeId`, fields, method
+IDs, receiver requirements, asyncness, effects, and boundary schemas without a
+Rust `TypeId`. `CallArgs::with_host_mut` may then admit a non-`'static`,
+non-`Sync` implementation of that contract for one call. Erased field and
+method dispatch uses `dyn ScriptHostObject`; `Any` remains only for typed
+`'static` adapters. A scoped async Host method may borrow the instance until
+its `Send` future completes or is dropped, and the HostRef cannot escape the
+root call. A Vela override cannot invoke Rust `base` for a non-`'static`
+concrete Host parameter because erased dispatch cannot safely recover that
+Rust type; the direct Rust default and the Vela override remain available.
+Closing that gap requires a generated typed outer-call thunk, not an `Any` or
+unsafe downcast.
 
 ### Service Deployment And Tooling Share Sealed Generation Facts
 

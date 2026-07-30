@@ -513,13 +513,24 @@ fn emit_method(
         let ty = &requirement.ty;
         let representation = &requirement.representation;
         let location = &requirement.location;
-        quote! {
-            let #ident =
-                ::vela_engine::service::ServiceTypeRequirement::for_rust_type::<#ty>(
+        if requirement.host_contract {
+            quote! {
+                let #ident =
+                    ::vela_engine::service::ServiceTypeRequirement::for_host_type::<#ty>(
+                        registry,
+                        #location,
+                        #representation,
+                    )?;
+            }
+        } else {
+            quote! {
+                let #ident =
+                    ::vela_engine::service::ServiceTypeRequirement::for_rust_type::<#ty>(
                     registry,
                     #location,
                     #representation,
                 )?;
+            }
         }
     });
     let parameters = signature
@@ -680,46 +691,12 @@ fn emit_adapter_method(
         );
     }
 
-    let context_candidates = signature
-        .parameters
-        .iter()
-        .skip(1)
-        .filter_map(|parameter| match (&parameter.ty, parameter.mode) {
-            (TypeShape::Host(ty, HostAccess::Exclusive), ParameterMode::ExclusiveHost) => {
-                Some((format_ident!("{}", parameter.name), ty))
-            }
-            _ => None,
-        })
-        .collect::<Vec<_>>();
     let call_arguments = signature
         .parameters
         .iter()
         .skip(1)
         .map(service_call_argument_tokens)
         .collect::<Result<Vec<_>>>()?;
-    let context_branches = context_candidates
-        .iter()
-        .map(|(context_ident, context_ty)| {
-            quote! {
-                if self.__vela_runtime.matches::<#context_ty>() {
-                    self.__vela_runtime.invoke(
-                        #context_ident,
-                        __vela_target.artifact(),
-                        |__vela_runtime, #context_ident| {
-                            let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
-                            #(#call_arguments)*
-                            let __vela_value = __vela_target.method().call_with_dispatcher(
-                                __vela_runtime,
-                                __vela_args,
-                                self.__vela_options.clone(),
-                                ::std::sync::Arc::clone(&self.__vela_dispatcher),
-                            )?;
-                            __vela_runtime.value_to_owned(&__vela_value)
-                        },
-                    )
-                } else
-            }
-        });
     let return_ty: Type = match &method.sig.output {
         ReturnType::Default => parse_quote!(()),
         ReturnType::Type(_, ty) => ty.as_ref().clone(),
@@ -730,13 +707,20 @@ fn emit_adapter_method(
             let Some(__vela_target) = self.#target_ident.as_ref() else {
                 return #default_call;
             };
-            let __vela_result = #(#context_branches)* {
-                Err(::vela_engine::service::ServiceInvocationError::MissingRuntimeContext {
-                    service: #service_path.to_owned(),
-                    method: ::core::stringify!(#method_ident).to_owned(),
-                    expected: self.__vela_runtime.context_name(),
-                })
-            };
+            let __vela_result = self.__vela_runtime.invoke(
+                __vela_target.artifact(),
+                |__vela_runtime| {
+                    let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
+                    #(#call_arguments)*
+                    let __vela_value = __vela_target.method().call_with_dispatcher(
+                        __vela_runtime,
+                        __vela_args,
+                        self.__vela_options.clone(),
+                        ::std::sync::Arc::clone(&self.__vela_dispatcher),
+                    )?;
+                    __vela_runtime.value_to_owned(&__vela_value)
+                },
+            );
             match __vela_result {
                 Ok(__vela_value) => {
                     <#return_ty as ::vela_engine::args::FromScriptArg>::from_script_arg(
@@ -769,61 +753,12 @@ fn emit_async_adapter_method(
     default_call: TokenStream,
 ) -> Result<TokenStream> {
     let method_ident = &method.sig.ident;
-    let context_candidates = signature
-        .parameters
-        .iter()
-        .skip(1)
-        .filter_map(|parameter| match (&parameter.ty, parameter.mode) {
-            (TypeShape::Host(ty, HostAccess::Exclusive), ParameterMode::ExclusiveHost) => {
-                Some((format_ident!("{}", parameter.name), ty))
-            }
-            _ => None,
-        })
-        .collect::<Vec<_>>();
     let call_arguments = signature
         .parameters
         .iter()
         .skip(1)
         .map(service_call_argument_tokens)
         .collect::<Result<Vec<_>>>()?;
-    let context_branches = context_candidates
-        .iter()
-        .map(|(context_ident, context_ty)| {
-            quote! {
-                if self.__vela_runtime.matches::<#context_ty>() {
-                    match self.__vela_runtime.lease(
-                        #context_ident,
-                        __vela_target.artifact(),
-                    ) {
-                        Ok(mut __vela_runtime_lease) => {
-                            let (__vela_runtime, #context_ident) =
-                                __vela_runtime_lease.parts();
-                            let mut __vela_args =
-                                ::vela_engine::runtime::CallArgs::new();
-                            #(#call_arguments)*
-                            match __vela_target.method().call_async_with_dispatcher(
-                                __vela_runtime,
-                                __vela_args,
-                                self.__vela_options.clone(),
-                                ::std::sync::Arc::clone(&self.__vela_dispatcher),
-                            ).await {
-                                Ok(__vela_value) => __vela_runtime
-                                    .value_to_owned(&__vela_value)
-                                    .map_err(
-                                        ::vela_engine::service::ServiceInvocationError::Vm
-                                    ),
-                                Err(__vela_error) => Err(
-                                    ::vela_engine::service::ServiceInvocationError::Vm(
-                                        __vela_error
-                                    )
-                                ),
-                            }
-                        }
-                        Err(__vela_error) => Err(__vela_error),
-                    }
-                } else
-            }
-        });
     let return_ty: Type = match &method.sig.output {
         ReturnType::Default => parse_quote!(()),
         ReturnType::Type(_, ty) => ty.as_ref().clone(),
@@ -835,15 +770,32 @@ fn emit_async_adapter_method(
                 return #default_call;
             };
             ::std::boxed::Box::pin(async move {
-                let __vela_result = #(#context_branches)* {
-                    Err(
-                        ::vela_engine::service::ServiceInvocationError::
-                            MissingRuntimeContext {
-                                service: #service_path.to_owned(),
-                                method: ::core::stringify!(#method_ident).to_owned(),
-                                expected: self.__vela_runtime.context_name(),
-                            }
-                    )
+                let __vela_result = match self.__vela_runtime.lease(
+                    __vela_target.artifact(),
+                ) {
+                    Ok(mut __vela_runtime_lease) => {
+                        let __vela_runtime = __vela_runtime_lease.runtime();
+                        let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
+                        #(#call_arguments)*
+                        match __vela_target.method().call_async_with_dispatcher(
+                            __vela_runtime,
+                            __vela_args,
+                            self.__vela_options.clone(),
+                            ::std::sync::Arc::clone(&self.__vela_dispatcher),
+                        ).await {
+                            Ok(__vela_value) => __vela_runtime
+                                .value_to_owned(&__vela_value)
+                                .map_err(
+                                    ::vela_engine::service::ServiceInvocationError::Vm
+                                ),
+                            Err(__vela_error) => Err(
+                                ::vela_engine::service::ServiceInvocationError::Vm(
+                                    __vela_error
+                                )
+                            ),
+                        }
+                    }
+                    Err(__vela_error) => Err(__vela_error),
                 };
                 match __vela_result {
                     Ok(__vela_value) => {

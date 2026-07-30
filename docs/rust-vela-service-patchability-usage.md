@@ -44,6 +44,19 @@ The same Rust caller works before and after a Vela patch. Vela may:
 Vela never receives a real Rust reference, owns Rust Host state, or silently
 gains a capability that was not registered.
 
+One safe-erasure restriction applies to non-`'static` Host parameter types:
+the Vela override may use the Host contract normally, but a nested Vela
+`base(...)` call cannot reconstruct the original concrete Rust reference from
+the erased HostRef. The ordinary unpatched Rust default remains callable.
+Supporting that nested case would require a generated typed outer-call thunk;
+Vela deliberately does not use `Any`, a forged `TypeId`, or an unsafe
+downcast.
+
+Erased Host-contract methods currently use the `HostValue` boundary vocabulary:
+unit, booleans, characters, numeric scalars, strings, bytes, and HostRefs.
+Structured business Values should remain ordinary service parameters, be
+referenced through another HostRef, or use an explicit boundary codec.
+
 ## 2. Complete Example Model
 
 The example uses only domain-neutral table, row, request, policy, transform,
@@ -117,8 +130,6 @@ pub struct RequestState {
     total: i64,
     #[vela(skip)]
     services: ExampleServicesRoot,
-    #[vela(skip)]
-    runtime: ServiceRuntimeSlot,
 }
 ```
 
@@ -126,7 +137,58 @@ pub struct RequestState {
 because the Rust caller supplies them to a service root. Merely registering
 their schemas does not grant construction authority.
 
-### 2.3 Constructible scratch Host
+### 2.3 Borrowed call-scoped Host contexts
+
+A business context may itself borrow state and therefore have no `'static`
+Rust type:
+
+```rust,ignore
+pub struct RequestContext<'ctx, A> {
+    actor: &'ctx mut A,
+}
+
+impl<A> ScriptHostSchema for RequestContext<'_, A> {
+    fn script_host_type_desc() -> TypeDesc {
+        request_context_contract()
+    }
+}
+
+impl<A: Send> ScriptHostObject for RequestContext<'_, A> {
+    // Generated field and method dispatch uses the static contract IDs.
+}
+
+#[vela_macros::service(path = "example::handler")]
+pub trait HandlerService: Send + Sync {
+    async fn handle(
+        &self,
+        context: &mut RequestContext<'_, OrderActor>,
+        request: Request,
+    ) -> Result<Response, ServiceError>;
+}
+
+#[vela_macros::service_domain]
+pub struct ExampleServices {
+    pub handler: Service<dyn HandlerService>,
+}
+```
+
+The engine registers the static schema and erased method vtables, not the
+borrowed Rust instantiation:
+
+```rust,ignore
+let app = ExampleServices::builder(
+    Engine::builder().register_host_type(request_context_host_spec()),
+)
+.handler(RustHandlerService)
+.build()?;
+```
+
+The normal generated service caller keeps its authored Rust signature. At the
+low-level Runtime boundary the same instance can be supplied with
+`CallArgs::new().with_host_mut("context", &mut context)`. No scoped variant of
+that method exists, and the business context stores no Vela Runtime slot.
+
+### 2.4 Constructible scratch Host
 
 A patch may need a new mutable Rust object that is not returned by another
 service. That object uses an explicit call-scoped Host constructor:
@@ -405,7 +467,6 @@ let app = ExampleServices::builder(
 .transform(RustTransformService)
 .audit(RustAuditService::new(audit_sink.clone()))
 .handler(RustHandlerService)
-.actor_runtime::<RequestState>()
 .call_options(call_options)
 .build()?;
 ```

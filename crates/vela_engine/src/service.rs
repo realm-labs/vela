@@ -20,7 +20,7 @@ pub use portable::{
 };
 pub use runtime::{
     ServiceCallDispatcher, ServiceCallTarget, ServiceFuture, ServiceInvocationError,
-    ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeLease, ServiceRuntimeSlot,
+    ServiceRuntimeBinding, ServiceRuntimeLease,
 };
 pub use schema::{
     ServiceMethodDescriptor, ServiceSchema, ServiceSchemaError, ServiceSetSchema,
@@ -63,10 +63,6 @@ pub enum ServiceDomainBuildError {
         domain: &'static str,
         service: &'static str,
     },
-    ContextTypeMismatch {
-        expected: &'static str,
-        actual: &'static str,
-    },
     Engine(crate::error::EngineError),
     Schema(ServiceSchemaError),
 }
@@ -78,12 +74,6 @@ impl fmt::Display for ServiceDomainBuildError {
                 write!(
                     formatter,
                     "service domain `{domain}` is missing Rust default `{service}`"
-                )
-            }
-            Self::ContextTypeMismatch { expected, actual } => {
-                write!(
-                    formatter,
-                    "service domain expects Runtime context `{expected}`, found `{actual}`"
                 )
             }
             Self::Engine(error) => write!(formatter, "service domain engine failed: {error}"),
@@ -447,10 +437,6 @@ impl std::error::Error for ServicePublicationError {}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ServiceStagingError {
-    ContextTypeMismatch {
-        expected: &'static str,
-        actual: &'static str,
-    },
     Source(ServiceSourceError),
     Selection(ServiceSelectionError),
     Deployment(ServiceBundleError),
@@ -460,10 +446,6 @@ pub enum ServiceStagingError {
 impl fmt::Display for ServiceStagingError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::ContextTypeMismatch { expected, actual } => write!(
-                formatter,
-                "service set expects Runtime context `{expected}`, found `{actual}`"
-            ),
             Self::Source(error) => write!(formatter, "service source failed: {error}"),
             Self::Selection(error) => write!(formatter, "service selection failed: {error}"),
             Self::Deployment(error) => write!(formatter, "service deployment failed: {error}"),

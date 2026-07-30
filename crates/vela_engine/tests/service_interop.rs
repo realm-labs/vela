@@ -1,7 +1,4 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicUsize, Ordering},
-};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use vela_common::{HostConstructionLifetime, SourceId};
 use vela_def::FunctionId;
@@ -9,10 +6,10 @@ use vela_engine::args::FromScriptArg;
 use vela_engine::engine::Engine;
 use vela_engine::native::{EffectSet, NativeFunctionDesc, TypeHint};
 use vela_engine::permission::{Capability, CapabilitySet};
-use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
+use vela_engine::runtime::CallOptions;
 use vela_engine::service::{
-    LinkedServiceSourceManifest, Service, ServiceMethodSelection, ServiceRuntimeAuthority,
-    ServiceRuntimeBinding, ServiceRuntimeSlot, ServiceSourceManifest,
+    LinkedServiceSourceManifest, Service, ServiceMethodSelection, ServiceRuntimeBinding,
+    ServiceSourceManifest,
 };
 use vela_hir::source_ingestion::build_single_source;
 use vela_macros::{ScriptHost, Value, service, service_domain};
@@ -29,8 +26,6 @@ pub struct PatchCommand {
 #[derive(ScriptHost)]
 #[vela(path = "interop::RequestContext")]
 pub struct RequestContext {
-    #[vela(skip)]
-    runtime: ServiceRuntimeSlot,
     #[vela(skip)]
     expected_values_address: usize,
     #[vela(skip)]
@@ -88,23 +83,6 @@ fn construct_scratch_state(
     Ok(ScratchState {
         value: i64::from_script_arg(value)?,
     })
-}
-
-impl ServiceRuntimeAuthority for RequestContext {
-    fn take_service_runtime(
-        &mut self,
-        artifact: &Arc<vela_bytecode::LinkedArtifact>,
-    ) -> Result<Runtime, RuntimeBuildError> {
-        self.runtime.take(artifact)
-    }
-
-    fn restore_service_runtime(
-        &mut self,
-        artifact: &Arc<vela_bytecode::LinkedArtifact>,
-        runtime: Runtime,
-    ) {
-        self.runtime.restore(artifact, runtime);
-    }
 }
 
 #[service(path = "interop::inventory")]
@@ -511,8 +489,8 @@ impl AuditPatch {
 }
 
 fn context(engine: &Engine, values: &mut Vec<i64>) -> RequestContext {
+    let _ = engine;
     RequestContext {
-        runtime: ServiceRuntimeSlot::new(engine.clone()),
         expected_values_address: values as *mut Vec<i64> as usize,
         rust_inventory_calls: 0,
         rust_audit_calls: 0,
@@ -546,7 +524,7 @@ fn stage_snapshot(
         .stage_snapshot(
             base,
             update,
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             call_options(),
         )
         .expect("stage snapshot")
@@ -588,7 +566,7 @@ fn stage_delta(
         .stage_delta(
             base,
             update,
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             call_options(),
         )
         .expect("stage exact-base Delta")

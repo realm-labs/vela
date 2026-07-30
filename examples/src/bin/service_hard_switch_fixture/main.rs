@@ -10,10 +10,10 @@ use vela_engine::args::{FromScriptArg, IntoScriptArg};
 use vela_engine::engine::Engine;
 use vela_engine::native::{EffectSet, NativeFunctionDesc, TypeHint};
 use vela_engine::permission::Capability;
-use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
+use vela_engine::runtime::CallOptions;
 use vela_engine::service::{
     LinkedServiceSourceManifest, PatchEdit, PatchSources, Service, ServicePatch,
-    ServiceRuntimeAuthority, ServiceRuntimeSlot, ServiceSourceManifest, ServiceUpdateBundle,
+    ServiceSourceManifest, ServiceUpdateBundle,
 };
 use vela_engine::type_binding::TypeBinding;
 use vela_hir::source_ingestion::build_single_source;
@@ -191,8 +191,6 @@ pub struct HostTurn {
     #[vela(skip)]
     services: GameServicesRoot,
     #[vela(skip)]
-    runtime: ServiceRuntimeSlot,
-    #[vela(skip)]
     preview_count: i32,
     #[vela(skip)]
     observed_groups: usize,
@@ -207,23 +205,6 @@ impl HostTurn {
     pub fn record_preview(&mut self, preview: i32, groups: i64) {
         self.preview_count = preview;
         self.observed_groups = usize::try_from(groups).unwrap_or_default();
-    }
-}
-
-impl ServiceRuntimeAuthority for HostTurn {
-    fn take_service_runtime(
-        &mut self,
-        artifact: &Arc<vela_bytecode::LinkedArtifact>,
-    ) -> Result<Runtime, RuntimeBuildError> {
-        self.runtime.take(artifact)
-    }
-
-    fn restore_service_runtime(
-        &mut self,
-        artifact: &Arc<vela_bytecode::LinkedArtifact>,
-        runtime: Runtime,
-    ) {
-        self.runtime.restore(artifact, runtime);
     }
 }
 
@@ -444,7 +425,6 @@ fn run_pinned(
             patch_score: 0,
         },
         services: root.clone(),
-        runtime: ServiceRuntimeSlot::new(engine.clone()),
         preview_count: 0,
         observed_groups: 0,
     };
@@ -528,7 +508,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     .rule(RustGrantRuleService)
     .events(RustGrantEventService)
     .handler(RustGrantHandlerService)
-    .actor_runtime::<HostTurn>()
     .call_options(call_options())
     .build()?;
     let engine = app.engine().clone();

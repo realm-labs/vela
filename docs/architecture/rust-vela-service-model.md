@@ -180,7 +180,6 @@ let app = GameLogic::builder(
 )
 .inventory(RustInventoryService::new(database.clone()))
 .reward(RustRewardService::new(config.clone()))
-.actor_runtime::<GameTurn>()
 .call_options(call_options)
 .build()?;
 ```
@@ -204,12 +203,12 @@ logic, the hidden object-safe async dispatch surface, registration bundles,
 staging validation, and generation accessors. No Vela implementation is
 written until a real patch is needed.
 
-The service domain declares its execution-authority carrier once. In an actor
-server this is usually the normal `&mut GameTurn` or actor context already
-present in business signatures. Generated code borrows that actor's Runtime;
-it never finds one through ambient thread-local or process-global state. A
-service contract that cannot reach an explicit Runtime authority is callable
-only through its Rust default until the host gives it one.
+The generated service application owns the bounded Runtime cache used by
+Vela-selected methods. A business context such as `&mut GameTurn` remains an
+ordinary call-scoped Host argument: it stores no Vela Runtime state and
+implements no Runtime-authority trait. The static service schema identifies
+that argument through its registered Host contract; the concrete borrowed
+instance is supplied only for the duration of the call.
 
 ### 2.2 Rust call sites
 

@@ -298,13 +298,14 @@ emit the same contract for Rust `async fn`.
 `#[vela_macros::methods]` also supports async `&self`/`&mut self` methods. Runtime
 atomically acquires Rust-only `HostLeaseRef`/`HostLeaseMut` scopes for the
 receiver and any typed `&T`/`&mut T` host parameters. Mutable-origin call
-bindings require `Send + Sync` and use an owned read/write guard state machine:
-`available`, `shared(n)`, or `exclusive`. Shared guards coexist across await
-and nested reentry, preserve read-only parent HostAccess, and exclude mutation;
-exclusive guards exclude every competing access. RAII restores the exact prior
-state on return, error, cancellation, unwind, or failed multi-acquisition.
-Runtime-owned VM state, non-`Sync` origins, and opaque adapters fail closed with
-`HostLeaseUnsupported` unless they implement an explicit safe lease contract.
+bindings require `Send` and use one owned exclusive root guard. A shared
+receiver is a temporary `&T` view reborrowed from that guard, not a concurrent
+shared root lease. The same mutable origin therefore cannot enter two Rust
+method calls at once, even when both methods have shared receivers. RAII
+restores the root on return, error, cancellation, unwind, or failed
+multi-acquisition. Async Host methods may hold the guard across suspension only
+through a scoped `Send` future. Runtime-owned VM state and adapters without the
+requested erased receiver capability fail closed with `HostLeaseUnsupported`.
 Neither lease wrapper is a Vela value or reflection type.
 
 An active `NativeCallContext` can call a sync child with `call`, call a sync or

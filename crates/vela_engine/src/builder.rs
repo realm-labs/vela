@@ -100,6 +100,26 @@ impl EngineBuilder {
         self.push_rust_type::<T>(binding)
     }
 
+    /// Registers a stable Host contract without binding it to one `'static`
+    /// Rust implementation type.
+    ///
+    /// Call-scoped objects passed through `CallArgs` satisfy the contract by
+    /// reporting the same `HostTypeId`. Their concrete Rust type and lifetime
+    /// are not stored in the Engine.
+    #[must_use]
+    pub fn register_host_type(mut self, spec: HostTypeSpec) -> Self {
+        let (type_desc, method_metadata, native_methods, async_native_methods) = spec.into_parts();
+        self.type_bindings
+            .push(TypeBindingRegistration::host_contract(
+                type_desc.key.clone(),
+            ));
+        self.types.push(type_desc);
+        self.host_method_metadata.extend(method_metadata);
+        self.native_methods.extend(native_methods);
+        self.async_native_methods.extend(async_native_methods);
+        self
+    }
+
     /// Registers one concrete borrowed slice view and its element dependency.
     #[doc(hidden)]
     #[must_use]
@@ -118,7 +138,7 @@ impl EngineBuilder {
     #[must_use]
     pub fn register_rust_host_slice<T>(self) -> Self
     where
-        T: crate::interop::VelaHostBoundary,
+        T: crate::interop::VelaHostBoundary + 'static,
     {
         self.register_generated_type_binding::<crate::standard::HostSliceBinding<T>>(
             crate::standard::host_slice_type_binding::<T>(),
@@ -189,10 +209,12 @@ impl EngineBuilder {
     #[doc(hidden)]
     #[must_use]
     pub fn register_type_spec(mut self, spec: impl Into<HostTypeSpec>) -> Self {
-        let (type_desc, method_metadata, native_methods) = spec.into().into_parts();
+        let (type_desc, method_metadata, native_methods, async_native_methods) =
+            spec.into().into_parts();
         self.types.push(type_desc);
         self.host_method_metadata.extend(method_metadata);
         self.native_methods.extend(native_methods);
+        self.async_native_methods.extend(async_native_methods);
         self
     }
 

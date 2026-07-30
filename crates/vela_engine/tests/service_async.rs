@@ -1,16 +1,12 @@
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
 
 use vela_common::SourceId;
 use vela_engine::engine::Engine;
 use vela_engine::permission::{Capability, CapabilitySet};
-use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
-use vela_engine::service::{
-    Service, ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot,
-    ServiceSourceManifest,
-};
+use vela_engine::runtime::CallOptions;
+use vela_engine::service::{Service, ServiceRuntimeBinding, ServiceSourceManifest};
 use vela_hir::source_ingestion::build_single_source;
 use vela_macros::{ScriptHost, Value, service, service_domain};
 
@@ -36,25 +32,6 @@ pub struct Input {
 pub struct RequestContext {
     #[vela(get, set)]
     pub counter: i64,
-    #[vela(skip)]
-    runtime: ServiceRuntimeSlot,
-}
-
-impl ServiceRuntimeAuthority for RequestContext {
-    fn take_service_runtime(
-        &mut self,
-        artifact: &Arc<vela_bytecode::LinkedArtifact>,
-    ) -> Result<Runtime, RuntimeBuildError> {
-        self.runtime.take(artifact)
-    }
-
-    fn restore_service_runtime(
-        &mut self,
-        artifact: &Arc<vela_bytecode::LinkedArtifact>,
-        runtime: Runtime,
-    ) {
-        self.runtime.restore(artifact, runtime);
-    }
 }
 
 #[service(path = "async_test::calculator")]
@@ -118,13 +95,9 @@ fn service_app() -> AsyncServicesApp {
 
 #[test]
 fn async_service_root_selects_rust_or_vela_through_one_send_adapter() {
-    assert_sync::<ServiceRuntimeSlot>();
     let (engine, services) = service_app().into_parts();
     let rust_root = services.pin();
-    let mut context = RequestContext {
-        counter: 0,
-        runtime: ServiceRuntimeSlot::new(engine.clone()),
-    };
+    let mut context = RequestContext { counter: 0 };
 
     let rust_input = Input { value: 5 };
     let rust_future = rust_root.calculator().apply(&mut context, &rust_input);
@@ -149,7 +122,7 @@ fn async_service_root_selects_rust_or_vela_through_one_send_adapter() {
         .stage_snapshot(
             &rust_root,
             update,
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             CallOptions::new(100_000, 1024 * 1024, 64),
         )
         .expect("async snapshot");
@@ -163,28 +136,12 @@ fn async_service_root_selects_rust_or_vela_through_one_send_adapter() {
     assert_send(&vela_future);
     assert_eq!(poll_after_one_pending(vela_future), 26);
     assert_eq!(context.counter, 14);
-    assert_eq!(
-        context.runtime.cached_generation(),
-        vela_root.selections().and_then(|selections| {
-            selections
-                .iter()
-                .find_map(|(_, selection)| match selection {
-                    vela_engine::service::ServiceMethodSelection::Vela(method) => {
-                        Some(method.artifact().generation())
-                    }
-                    vela_engine::service::ServiceMethodSelection::RustDefault => None,
-                })
-        })
-    );
 }
 
 #[test]
 fn application_runs_one_async_request_against_one_pinned_generation() {
     let app = service_app();
-    let mut context = RequestContext {
-        counter: 0,
-        runtime: ServiceRuntimeSlot::new(app.engine().clone()),
-    };
+    let mut context = RequestContext { counter: 0 };
     let input = Input { value: 5 };
 
     let future = app.with_request_async(&mut context, async |root, request_context| {
@@ -198,22 +155,10 @@ fn application_runs_one_async_request_against_one_pinned_generation() {
 #[test]
 fn pending_actors_are_isolated_and_drop_or_unwind_restores_runtime_and_leases() {
     let (engine, services, root) = active_fixture();
-    let mut first = RequestContext {
-        counter: 0,
-        runtime: ServiceRuntimeSlot::new(engine.clone()),
-    };
-    let mut second = RequestContext {
-        counter: 0,
-        runtime: ServiceRuntimeSlot::new(engine.clone()),
-    };
-    let mut third = RequestContext {
-        counter: 0,
-        runtime: ServiceRuntimeSlot::new(engine.clone()),
-    };
-    let mut finishing = RequestContext {
-        counter: 0,
-        runtime: ServiceRuntimeSlot::new(engine),
-    };
+    let mut first = RequestContext { counter: 0 };
+    let mut second = RequestContext { counter: 0 };
+    let mut third = RequestContext { counter: 0 };
+    let mut finishing = RequestContext { counter: 0 };
     let first_input = Input { value: 5 };
     let finishing_input = Input { value: 4 };
     let mut first_future = root.calculator().apply(&mut first, &first_input);
@@ -240,7 +185,7 @@ fn pending_actors_are_isolated_and_drop_or_unwind_restores_runtime_and_leases() 
         .stage_snapshot(
             &root,
             rust_snapshot,
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             CallOptions::new(100_000, 1024 * 1024, 64),
         )
         .expect("stage Rust-default snapshot while old actor is pending");
@@ -272,10 +217,6 @@ fn pending_actors_are_isolated_and_drop_or_unwind_restores_runtime_and_leases() 
 
     drop(first_future);
     assert_eq!(first.counter, 11, "completed effects are not rolled back");
-    assert!(
-        first.runtime.cached_generation().is_some(),
-        "dropping a pending service future restores its actor Runtime"
-    );
     assert_eq!(
         poll_after_one_pending(root.calculator().apply(&mut first, &Input { value: 7 }),),
         28,
@@ -292,10 +233,6 @@ fn pending_actors_are_isolated_and_drop_or_unwind_restores_runtime_and_leases() 
     }));
     assert!(panic.is_err());
     assert_eq!(first.counter, 34);
-    assert!(
-        first.runtime.cached_generation().is_some(),
-        "panic unwind restores the actor Runtime"
-    );
     assert_eq!(
         poll_after_one_pending(root.calculator().apply(&mut first, &Input { value: 8 }),),
         29
@@ -323,7 +260,7 @@ fn active_fixture() -> (Engine, AsyncServices, AsyncServicesRoot) {
         .stage_snapshot(
             &base,
             update,
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             CallOptions::new(100_000, 1024 * 1024, 64),
         )
         .expect("async snapshot");
@@ -347,5 +284,3 @@ fn poll_after_one_pending<T>(mut future: impl Future<Output = T> + Unpin) -> T {
 }
 
 fn assert_send<T: Send>(_: &T) {}
-
-fn assert_sync<T: Sync>() {}

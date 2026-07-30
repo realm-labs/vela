@@ -9,14 +9,13 @@ use crate::export::signature::{
 use crate::signature::type_generic_args;
 
 pub(super) fn emit_scoped_adapter_method(
-    service_path: &str,
+    _service_path: &str,
     method: &syn::TraitItemFn,
     signature: &ClassifiedSignature,
     target_ident: &syn::Ident,
     default_call: TokenStream,
 ) -> Result<TokenStream> {
     let method_signature = super::dispatch_signature(method);
-    let method_ident = &method.sig.ident;
     let ReturnMode::ScopedHost {
         origin: BorrowOrigin::Parameter(origin),
         ..
@@ -49,50 +48,6 @@ pub(super) fn emit_scoped_adapter_method(
             }
         })
         .collect::<Result<Vec<_>>>()?;
-    let context_candidates = signature
-        .parameters
-        .iter()
-        .skip(1)
-        .filter_map(|parameter| match (&parameter.ty, parameter.mode) {
-            (TypeShape::Host(ty, HostAccess::Exclusive), ParameterMode::ExclusiveHost) => {
-                Some((format_ident!("{}", parameter.name), ty))
-            }
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-    let context_branches = context_candidates
-        .iter()
-        .map(|(context_ident, context_ty)| {
-            quote! {
-                if self.__vela_runtime.matches::<#context_ty>() {
-                    match self.__vela_runtime.lease(
-                        #context_ident,
-                        __vela_target.artifact(),
-                    ) {
-                        Ok(mut __vela_runtime_lease) => {
-                            let (__vela_runtime, #context_ident) =
-                                __vela_runtime_lease.parts();
-                            let mut __vela_args =
-                                ::vela_engine::runtime::CallArgs::new();
-                            #(#call_arguments)*
-                            __vela_target.method().call_scoped_with_dispatcher(
-                                __vela_runtime,
-                                __vela_args,
-                            self.__vela_options.clone(),
-                            ::std::sync::Arc::clone(&self.__vela_dispatcher),
-                            ::vela_engine::runtime::ServiceScopedReturnEgress::new(
-                                &__vela_return_origin_identity,
-                                #envelope_token,
-                            ),
-                        ).map_err(
-                                ::vela_engine::service::ServiceInvocationError::Vm
-                            )
-                        }
-                        Err(__vela_error) => Err(__vela_error),
-                    }
-                } else
-            }
-        });
     let decode = return_decode(envelope, &method.sig.output, &origin_ident)?;
 
     Ok(quote! {
@@ -100,12 +55,27 @@ pub(super) fn emit_scoped_adapter_method(
             let Some(__vela_target) = self.#target_ident.as_ref() else {
                 return #default_call;
             };
-            let __vela_result = #(#context_branches)* {
-                Err(::vela_engine::service::ServiceInvocationError::MissingRuntimeContext {
-                    service: #service_path.to_owned(),
-                    method: ::core::stringify!(#method_ident).to_owned(),
-                    expected: self.__vela_runtime.context_name(),
-                })
+            let __vela_result = match self.__vela_runtime.lease(
+                __vela_target.artifact(),
+            ) {
+                Ok(mut __vela_runtime_lease) => {
+                    let __vela_runtime = __vela_runtime_lease.runtime();
+                    let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
+                    #(#call_arguments)*
+                    __vela_target.method().call_scoped_with_dispatcher(
+                        __vela_runtime,
+                        __vela_args,
+                        self.__vela_options.clone(),
+                        ::std::sync::Arc::clone(&self.__vela_dispatcher),
+                        ::vela_engine::runtime::ServiceScopedReturnEgress::new(
+                            &__vela_return_origin_identity,
+                            #envelope_token,
+                        ),
+                    ).map_err(
+                        ::vela_engine::service::ServiceInvocationError::Vm
+                    )
+                }
+                Err(__vela_error) => Err(__vela_error),
             };
             match __vela_result {
                 Ok(__vela_return) => #decode,

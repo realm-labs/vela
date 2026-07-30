@@ -12,10 +12,9 @@ use vela_engine::args::FromScriptArg;
 use vela_engine::engine::Engine;
 use vela_engine::native::{EffectSet, NativeFunctionDesc, TypeHint};
 use vela_engine::permission::{Capability, CapabilitySet};
-use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
+use vela_engine::runtime::CallOptions;
 use vela_engine::service::{
-    LinkedServiceSourceManifest, PatchEdit, Service, ServiceRuntimeAuthority, ServiceRuntimeSlot,
-    ServiceSourceManifest, ServiceUpdateBundle,
+    LinkedServiceSourceManifest, PatchEdit, Service, ServiceSourceManifest, ServiceUpdateBundle,
 };
 use vela_engine::type_binding::TypeBinding;
 use vela_hir::source_ingestion::build_single_source;
@@ -147,30 +146,11 @@ pub struct RequestState {
     #[vela(skip)]
     services: CoverageServicesRoot,
     #[vela(skip)]
-    runtime: ServiceRuntimeSlot,
-    #[vela(skip)]
     applied: i64,
     #[vela(skip)]
     audits: Vec<i64>,
     #[vela(skip)]
     rust_copyback_calls: usize,
-}
-
-impl ServiceRuntimeAuthority for RequestState {
-    fn take_service_runtime(
-        &mut self,
-        artifact: &Arc<vela_bytecode::LinkedArtifact>,
-    ) -> Result<Runtime, RuntimeBuildError> {
-        self.runtime.take(artifact)
-    }
-
-    fn restore_service_runtime(
-        &mut self,
-        artifact: &Arc<vela_bytecode::LinkedArtifact>,
-        runtime: Runtime,
-    ) {
-        self.runtime.restore(artifact, runtime);
-    }
 }
 
 #[service(path = "coverage::lookup")]
@@ -360,7 +340,6 @@ fn state(engine: &Engine, root: &CoverageServicesRoot) -> RequestState {
     RequestState {
         marker: 1,
         services: root.clone(),
-        runtime: ServiceRuntimeSlot::new(engine.clone()),
         applied: 0,
         audits: Vec::new(),
         rust_copyback_calls: 0,
@@ -471,7 +450,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     .audit(RustAuditService)
     .transform(RustTransformService)
     .handler(RustHandlerService)
-    .actor_runtime::<RequestState>()
     .call_options(call_options())
     .build()?;
     let engine = app.engine().clone();

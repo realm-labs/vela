@@ -13,8 +13,10 @@ use crate::interop::{BoundaryMode, CallableContract, CallableKind, ReturnMode};
 use crate::native::TypeHint;
 use crate::type_binding::TypeBindingRegistry;
 
+mod requirements;
 mod validation;
 
+pub use requirements::ServiceTypeRequirement;
 use validation::{
     ServicePathKind, is_simple_identifier, service_compile_effect, valid_service_member_name,
     validate_qualified_path,
@@ -23,59 +25,6 @@ use validation::{
 #[doc(hidden)]
 pub type ServiceSetSchemaFactory =
     fn(&TypeBindingRegistry) -> Result<ServiceSetSchema, ServiceSchemaError>;
-
-/// One exact Rust type representation reachable from a service boundary.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ServiceTypeRequirement {
-    location: String,
-    contract: InteropBindingContract,
-}
-
-impl ServiceTypeRequirement {
-    /// Resolves a concrete Rust type against the sealed registry while the
-    /// generated service schema is being built.
-    pub fn for_rust_type<T: 'static>(
-        registry: &TypeBindingRegistry,
-        location: impl Into<String>,
-        representation: InteropRepresentation,
-    ) -> Result<Self, ServiceSchemaError> {
-        let location = location.into();
-        let Some(binding) = registry.get_for::<T>() else {
-            return Err(ServiceSchemaError::MissingRustTypeBinding {
-                location,
-                rust_type: std::any::type_name::<T>(),
-            });
-        };
-        if !binding.supports_representation(representation) {
-            return Err(ServiceSchemaError::UnsupportedTypeRepresentation {
-                location,
-                rust_type: std::any::type_name::<T>(),
-                representation,
-            });
-        }
-        let contract =
-            InteropBindingContract::new(binding.id, representation, binding.abi_fingerprint);
-        Ok(Self { location, contract })
-    }
-
-    #[must_use]
-    pub fn from_contract(location: impl Into<String>, contract: InteropBindingContract) -> Self {
-        Self {
-            location: location.into(),
-            contract,
-        }
-    }
-
-    #[must_use]
-    pub fn location(&self) -> &str {
-        &self.location
-    }
-
-    #[must_use]
-    pub const fn contract(&self) -> InteropBindingContract {
-        self.contract
-    }
-}
 
 /// One generated service method and its complete boundary type closure.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -416,9 +365,20 @@ pub enum ServiceSchemaError {
         location: String,
         rust_type: &'static str,
     },
+    MissingHostTypeBinding {
+        location: String,
+        type_name: String,
+        type_id: InteropTypeId,
+    },
     UnsupportedTypeRepresentation {
         location: String,
         rust_type: &'static str,
+        representation: InteropRepresentation,
+    },
+    UnsupportedHostTypeRepresentation {
+        location: String,
+        type_name: String,
+        type_id: InteropTypeId,
         representation: InteropRepresentation,
     },
     InvalidTypeBinding {
@@ -536,6 +496,15 @@ impl fmt::Display for ServiceSchemaError {
                 formatter,
                 "service boundary {location} has no binding for Rust type {rust_type}"
             ),
+            Self::MissingHostTypeBinding {
+                location,
+                type_name,
+                type_id,
+            } => write!(
+                formatter,
+                "service boundary {location} has no binding for Host contract {type_name} ({})",
+                type_id.get()
+            ),
             Self::UnsupportedTypeRepresentation {
                 location,
                 rust_type,
@@ -543,6 +512,17 @@ impl fmt::Display for ServiceSchemaError {
             } => write!(
                 formatter,
                 "service boundary {location} cannot use {rust_type} as {}",
+                representation.abi_name()
+            ),
+            Self::UnsupportedHostTypeRepresentation {
+                location,
+                type_name,
+                type_id,
+                representation,
+            } => write!(
+                formatter,
+                "service boundary {location} cannot use Host contract {type_name} ({}) as {}",
+                type_id.get(),
                 representation.abi_name()
             ),
             Self::InvalidTypeBinding { method, location } => write!(

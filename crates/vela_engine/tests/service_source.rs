@@ -1,9 +1,9 @@
 use vela_common::SourceId;
-use vela_engine::runtime::{CallArgs, CallOptions, Runtime, RuntimeBuildError};
+use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_engine::service::Service;
 use vela_engine::service::{
-    ServiceMethodSelection, ServiceRuntimeAuthority, ServiceRuntimeSlot, ServiceSchema,
-    ServiceSetSchema, ServiceSourceErrorKind, ServiceSourceManifest,
+    ServiceMethodSelection, ServiceSchema, ServiceSetSchema, ServiceSourceErrorKind,
+    ServiceSourceManifest,
 };
 use vela_hir::source_ingestion::build_single_source;
 use vela_macros::{service, service_domain};
@@ -28,27 +28,6 @@ impl InventoryService for RustInventoryService {
 }
 
 pub struct RequestContext;
-
-struct RuntimeContext {
-    slot: ServiceRuntimeSlot,
-}
-
-impl ServiceRuntimeAuthority for RuntimeContext {
-    fn take_service_runtime(
-        &mut self,
-        artifact: &std::sync::Arc<vela_bytecode::LinkedArtifact>,
-    ) -> Result<Runtime, RuntimeBuildError> {
-        self.slot.take(artifact)
-    }
-
-    fn restore_service_runtime(
-        &mut self,
-        artifact: &std::sync::Arc<vela_bytecode::LinkedArtifact>,
-        runtime: Runtime,
-    ) {
-        self.slot.restore(artifact, runtime);
-    }
-}
 
 #[service_domain(context = RequestContext)]
 pub struct TestServices {
@@ -107,22 +86,20 @@ impl InventoryHotfix {
     else {
         panic!("grant should retain a linked Vela target");
     };
-    let mut context = RuntimeContext {
-        slot: ServiceRuntimeSlot::new(engine.clone()),
-    };
-    let linked_output = linked_target
-        .with_runtime(&mut context, |runtime, _context| {
-            linked_target
-                .method()
-                .call(
-                    runtime,
-                    CallArgs::from_positional([OwnedValue::i64(8)]),
-                    CallOptions::unbounded(),
-                )
-                .and_then(|value| runtime.value_to_owned(&value))
-        })
-        .expect("runtime authority")
+    let mut linked_runtime =
+        Runtime::from_linked_artifact(engine.clone(), linked_target.artifact().clone())
+            .expect("linked target Runtime");
+    let linked_value = linked_target
+        .method()
+        .call(
+            &mut linked_runtime,
+            CallArgs::from_positional([OwnedValue::i64(8)]),
+            CallOptions::unbounded(),
+        )
         .expect("linked target call");
+    let linked_output = linked_runtime
+        .value_to_owned(&linked_value)
+        .expect("materialized linked output");
     assert_eq!(linked_output, OwnedValue::i64(9));
     assert!(
         artifact

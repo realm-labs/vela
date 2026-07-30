@@ -188,7 +188,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         quote! {
             let #field: ::std::sync::Arc<dyn #trait_path> = #composition(
                 ::std::sync::Arc::clone(&defaults.#field),
-                runtime,
+                runtime.clone(),
                 options.clone(),
                 ::std::sync::Arc::clone(&__vela_dispatcher),
                 &selections,
@@ -527,7 +527,6 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                         16 * 1024 * 1024,
                         256,
                     ),
-                    runtime: None,
                     #(#empty_builder_fields,)*
                 }
             }
@@ -555,14 +554,6 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 #candidate_ident,
                 ::vela_engine::service::ServiceStagingError,
             > {
-                if !runtime.matches::<#context>() {
-                    return Err(
-                        ::vela_engine::service::ServiceStagingError::ContextTypeMismatch {
-                            expected: ::core::any::type_name::<#context>(),
-                            actual: runtime.context_name(),
-                        }
-                    );
-                }
                 let artifact = update.artifact().cloned();
                 let selections = update.into_snapshot(&self.schema)?;
                 let generation = #generation_ident::__vela_composed(
@@ -588,14 +579,6 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 #candidate_ident,
                 ::vela_engine::service::ServiceStagingError,
             > {
-                if !runtime.matches::<#context>() {
-                    return Err(
-                        ::vela_engine::service::ServiceStagingError::ContextTypeMismatch {
-                            expected: ::core::any::type_name::<#context>(),
-                            actual: runtime.context_name(),
-                        }
-                    );
-                }
                 let base_selections = match base.selections() {
                     Some(selections) => selections.clone(),
                     None => ::vela_engine::service::ServiceSelectionTable::snapshot(
@@ -665,14 +648,6 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 #candidate_ident,
                 ::vela_engine::service::ServiceStagingError,
             > {
-                if !runtime.matches::<#context>() {
-                    return Err(
-                        ::vela_engine::service::ServiceStagingError::ContextTypeMismatch {
-                            expected: ::core::any::type_name::<#context>(),
-                            actual: runtime.context_name(),
-                        }
-                    );
-                }
                 let artifact = ::std::sync::Arc::clone(bundle.artifact());
                 let base_selections = match base.selections() {
                     Some(selections) => selections.clone(),
@@ -738,9 +713,6 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         #vis struct #builder_ident {
             engine: ::vela_engine::builder::EngineBuilder,
             call_options: ::vela_engine::runtime::CallOptions,
-            runtime: ::std::option::Option<
-                ::vela_engine::service::ServiceRuntimeBinding
-            >,
             #(#builder_fields,)*
         }
 
@@ -754,19 +726,6 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 self
             }
 
-            #[must_use]
-            pub fn actor_runtime<__VelaContext>(mut self) -> Self
-            where
-                __VelaContext:
-                    ::vela_engine::service::ServiceRuntimeAuthority + 'static,
-            {
-                self.runtime = Some(
-                    ::vela_engine::service::ServiceRuntimeBinding::
-                        for_context::<__VelaContext>()
-                );
-                self
-            }
-
             #(#builder_setters)*
 
             pub fn build(
@@ -776,18 +735,11 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 ::vela_engine::service::ServiceDomainBuildError,
             > {
                 #(#required_defaults)*
-                if let Some(runtime) = self.runtime
-                    && !runtime.matches::<#context>()
-                {
-                    return Err(
-                        ::vela_engine::service::ServiceDomainBuildError::
-                            ContextTypeMismatch {
-                                expected: ::core::any::type_name::<#context>(),
-                                actual: runtime.context_name(),
-                            }
-                    );
-                }
                 let engine = self.engine.build()?;
+                let runtime =
+                    ::vela_engine::service::ServiceRuntimeBinding::for_engine(
+                        engine.clone()
+                    );
                 let schema = #schema_factory_ident(engine.type_bindings().as_ref())?;
                 let id = schema.id();
                 let defaults = #defaults_ident {
@@ -804,7 +756,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     engine,
                     domain,
                     call_options: self.call_options,
-                    runtime: self.runtime,
+                    runtime,
                     patch_state: ::vela_engine::service::ServicePatchState::new(
                         ::vela_common::ServiceGenerationId::new(1),
                     ),
@@ -816,9 +768,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             engine: ::vela_engine::engine::Engine,
             domain: #set_ident,
             call_options: ::vela_engine::runtime::CallOptions,
-            runtime: ::std::option::Option<
-                ::vela_engine::service::ServiceRuntimeBinding
-            >,
+            runtime: ::vela_engine::service::ServiceRuntimeBinding,
             patch_state: ::vela_engine::service::ServicePatchState,
         }
 
@@ -839,7 +789,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     engine: &self.engine,
                     domain: &self.domain,
                     call_options: &self.call_options,
-                    runtime: self.runtime,
+                    runtime: self.runtime.clone(),
                     patch_state: &self.patch_state,
                 }
             }
@@ -909,9 +859,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             engine: &'app ::vela_engine::engine::Engine,
             domain: &'app #set_ident,
             call_options: &'app ::vela_engine::runtime::CallOptions,
-            runtime: ::std::option::Option<
-                ::vela_engine::service::ServiceRuntimeBinding
-            >,
+            runtime: ::vela_engine::service::ServiceRuntimeBinding,
             patch_state: &'app ::vela_engine::service::ServicePatchState,
         }
 
@@ -937,12 +885,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 #staged_patch_ident<'app>,
                 ::vela_engine::service::ServicePatchError,
             > {
-                let runtime = self.runtime.ok_or(
-                    ::vela_engine::service::ServicePatchError::
-                        MissingRuntimeAuthority {
-                            domain: ::std::stringify!(#set_ident),
-                        }
-                )?;
+                let runtime = self.runtime;
                 let base = self.domain.pin();
                 let revision = self.patch_state.prepare(
                     base.generation_id(),
@@ -993,12 +936,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 #staged_patch_ident<'app>,
                 ::vela_engine::service::ServicePatchError,
             > {
-                let runtime = self.runtime.ok_or(
-                    ::vela_engine::service::ServicePatchError::
-                        MissingRuntimeAuthority {
-                            domain: ::std::stringify!(#set_ident),
-                        }
-                )?;
+                let runtime = self.runtime;
                 let base = self.domain.pin();
                 let candidate = self.domain.stage_bundle(
                     &base,

@@ -373,12 +373,12 @@ impl<'a> CallArgs<'a> {
 
     /// Adds writable call-scoped host state.
     ///
-    /// Mutable-origin bindings require `Sync` as well as `Send` so async
-    /// `&self` methods can acquire genuine coexisting shared leases. Types
-    /// without that capability fail at the embedding boundary.
+    /// Mutable-origin bindings are one exclusive root. Shared method receivers
+    /// are projected from that root while the same exclusive lease remains
+    /// live, so the host needs `Send` but not `Sync`.
     pub fn push_host_mut<T>(&mut self, name: impl Into<String>, value: &'a mut T) -> &mut Self
     where
-        T: ScriptHostObject + Send + Sync + 'a,
+        T: ScriptHostObject + Send + 'a,
     {
         self.entries.push(CallArg::NamedHost {
             name: name.into(),
@@ -386,7 +386,7 @@ impl<'a> CallArgs<'a> {
             identity: None,
             type_id: value.host_type_id(),
             binding: HostArgBinding::Mutable {
-                object: Arc::new(parking_lot::RwLock::new(value)),
+                object: Arc::new(parking_lot::Mutex::new(value)),
             },
         });
         self
@@ -405,7 +405,7 @@ impl<'a> CallArgs<'a> {
             identity: None,
             type_id: crate::standard::standard_collection_host_type_id::<T>(),
             binding: HostArgBinding::Mutable {
-                object: Arc::new(parking_lot::RwLock::new(value)),
+                object: Arc::new(parking_lot::Mutex::new(value)),
             },
         });
         self
@@ -441,14 +441,14 @@ impl<'a> CallArgs<'a> {
     #[doc(hidden)]
     pub fn push_positional_host_mut<T>(&mut self, value: &'a mut T) -> &mut Self
     where
-        T: ScriptHostObject + Send + Sync + 'a,
+        T: ScriptHostObject + Send + 'a,
     {
         self.entries.push(CallArg::PositionalHost {
             host_ref: None,
             identity: None,
             type_id: value.host_type_id(),
             binding: HostArgBinding::Mutable {
-                object: Arc::new(parking_lot::RwLock::new(value)),
+                object: Arc::new(parking_lot::Mutex::new(value)),
             },
         });
         self
@@ -464,7 +464,7 @@ impl<'a> CallArgs<'a> {
             identity: None,
             type_id: crate::standard::standard_collection_host_type_id::<T>(),
             binding: HostArgBinding::Mutable {
-                object: Arc::new(parking_lot::RwLock::new(value)),
+                object: Arc::new(parking_lot::Mutex::new(value)),
             },
         });
         self
@@ -498,12 +498,12 @@ impl<'a> CallArgs<'a> {
     #[doc(hidden)]
     pub fn push_tracked_positional_host_mut<T>(&mut self, value: &'a mut T) -> DirectHostIdentity
     where
-        T: ScriptHostObject + Send + Sync + 'a,
+        T: ScriptHostObject + Send + 'a,
     {
         self.push_tracked_positional_binding(
             value.host_type_id(),
             HostArgBinding::Mutable {
-                object: Arc::new(parking_lot::RwLock::new(value)),
+                object: Arc::new(parking_lot::Mutex::new(value)),
             },
         )
     }
@@ -519,7 +519,7 @@ impl<'a> CallArgs<'a> {
         self.push_tracked_positional_binding(
             crate::standard::standard_collection_host_type_id::<T>(),
             HostArgBinding::Mutable {
-                object: Arc::new(parking_lot::RwLock::new(value)),
+                object: Arc::new(parking_lot::Mutex::new(value)),
             },
         )
     }
@@ -590,7 +590,7 @@ impl<'a> CallArgs<'a> {
         value: &'a mut T,
     ) -> &mut Self
     where
-        T: ScriptHostObject + Send + Sync + 'a,
+        T: ScriptHostObject + Send + 'a,
     {
         self.entries.push(CallArg::NamedHost {
             name: name.into(),
@@ -598,7 +598,7 @@ impl<'a> CallArgs<'a> {
             identity: None,
             type_id: value.host_type_id(),
             binding: HostArgBinding::Mutable {
-                object: Arc::new(parking_lot::RwLock::new(value)),
+                object: Arc::new(parking_lot::Mutex::new(value)),
             },
         });
         self
@@ -665,12 +665,16 @@ impl<'a> CallArgs<'a> {
         self
     }
 
-    /// Adds writable call-scoped host state with shared/exclusive async lease
-    /// support. The bound deliberately rejects non-`Sync` mutable origins.
+    /// Adds writable call-scoped host state behind one exclusive root lease.
+    ///
+    /// Shared receiver methods borrow through that exclusive root for the
+    /// duration of the Rust call. This keeps mutable origins available for
+    /// non-`Sync` request-local contexts without exposing a Rust reference to
+    /// Vela.
     #[must_use]
     pub fn with_host_mut<T>(mut self, name: impl Into<String>, value: &'a mut T) -> Self
     where
-        T: ScriptHostObject + Send + Sync + 'a,
+        T: ScriptHostObject + Send + 'a,
     {
         self.push_host_mut(name, value);
         self
@@ -929,9 +933,6 @@ impl<'a> CallArgs<'a> {
         };
         match (binding, kind) {
             (HostArgBinding::Shared { object, leases }, HostLeaseKind::Shared) => {
-                if object.lease_any().is_none() {
-                    return Err(host_lease_unsupported(root));
-                }
                 leases.fetch_add(1, Ordering::AcqRel);
                 Ok(ErasedHostLease::SharedBorrowed {
                     object: *object,
@@ -941,22 +942,10 @@ impl<'a> CallArgs<'a> {
             (HostArgBinding::Shared { .. }, HostLeaseKind::Exclusive) => {
                 Err(host_object_busy(root))
             }
-            (HostArgBinding::Mutable { object }, HostLeaseKind::Shared) => {
-                let Some(leased) = object.try_read_arc() else {
+            (HostArgBinding::Mutable { object }, _) => {
+                let Some(leased) = object.try_lock_arc() else {
                     return Err(host_object_busy(root));
                 };
-                if leased.lease_any().is_none() {
-                    return Err(host_lease_unsupported(root));
-                }
-                Ok(ErasedHostLease::SharedMutable { object: leased })
-            }
-            (HostArgBinding::Mutable { object }, HostLeaseKind::Exclusive) => {
-                let Some(mut leased) = object.try_write_arc() else {
-                    return Err(host_object_busy(root));
-                };
-                if leased.lease_any().is_none() || leased.lease_any_mut().is_none() {
-                    return Err(host_lease_unsupported(root));
-                }
                 Ok(ErasedHostLease::Exclusive { object: leased })
             }
             (HostArgBinding::Scoped { object, .. }, HostLeaseKind::Shared) => {
@@ -1112,7 +1101,7 @@ impl HostArgBinding<'_> {
         match self {
             Self::Shared { object, .. } => inspect(*object),
             Self::Mutable { object } => object
-                .try_read()
+                .try_lock()
                 .ok_or_else(|| host_object_busy(root))
                 .and_then(|object| inspect(&**object)),
             Self::Scoped { object, .. } => object
@@ -1130,7 +1119,7 @@ impl HostArgBinding<'_> {
         match self {
             Self::Shared { .. } => Err(host_object_busy(root)),
             Self::Mutable { object } => object
-                .try_write()
+                .try_lock()
                 .ok_or_else(|| host_object_busy(root))
                 .and_then(|mut object| mutate(&mut **object)),
             Self::Scoped { object, .. } => object

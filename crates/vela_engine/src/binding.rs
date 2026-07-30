@@ -388,7 +388,7 @@ pub trait BindingAuthority {
         value: &'args mut T,
     ) -> VmResult<()>
     where
-        T: ScriptHostObject + Send + Sync + 'args;
+        T: ScriptHostObject + Send + 'args;
 }
 
 impl BindingAuthority for RootBinding<'_> {
@@ -486,7 +486,7 @@ impl BindingAuthority for RootBinding<'_> {
         value: &'args mut T,
     ) -> VmResult<()>
     where
-        T: ScriptHostObject + Send + Sync + 'args,
+        T: ScriptHostObject + Send + 'args,
     {
         args.push_host_mut(name, value);
         Ok(())
@@ -596,7 +596,7 @@ impl BindingAuthority for ActiveBinding<'_, '_, '_> {
         value: &'args mut T,
     ) -> VmResult<()>
     where
-        T: ScriptHostObject + Send + Sync + 'args,
+        T: ScriptHostObject + Send + 'args,
     {
         let root = self
             .context

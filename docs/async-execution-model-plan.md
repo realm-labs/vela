@@ -1390,6 +1390,13 @@ Primary ownership targets:
   `with_host_mut_async`, a second Runtime/CallArgs mode, unsafe, raw pointers,
   self-referential owners, or an exclusive lease disguised as shared.
 
+> Superseded on 2026-07-30 by the unified call-scoped Host model. The E1
+> `Send + Sync`/`shared(n)` result remains historical acceptance evidence, but
+> mutable origins now require only `Send` and expose one exclusive root guard.
+> A shared-receiver method is a temporary `&T` reborrow from that guard, so the
+> acquired root capability remains truthful and non-`Sync` borrowed contexts
+> are admitted without a second CallArgs API.
+
 E1 checkpoint: the new GC and lease regressions pass under pending/wake,
 incremental/full collection, nested reentry, error, and cancellation. Existing
 host write-through, exclusive mutable service, Runtime reuse, memory budget,

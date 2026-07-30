@@ -18,7 +18,7 @@ pub use crate::schema::{ScriptHostSchema, ScriptReflectSchema, ScriptValueSchema
 pub use crate::service::{
     PatchEdit, PatchRevision, PatchRevisionChecksum, PatchSources, Service,
     ServiceDomainBuildError, ServiceDryRunReport, ServicePatch, ServicePatchError,
-    ServicePatchWorkspaceError, ServiceRuntimeAuthority, ServiceRuntimeSlot, ServiceUpdateBundle,
+    ServicePatchWorkspaceError, ServiceUpdateBundle,
 };
 #[cfg(feature = "artifact-codec")]
 pub use crate::service::{PortableServiceBundleError, PortableServiceUpdateBundle};

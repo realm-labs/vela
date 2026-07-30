@@ -22,7 +22,7 @@ use super::{
 };
 use crate::context::NativeCallContext;
 use crate::native::EffectSet;
-use crate::runtime::{CallArgs, CallOptions, Runtime, RuntimeBuildError, VelaValue};
+use crate::runtime::{CallArgs, CallOptions, Runtime, VelaValue};
 
 /// One Vela method body resolved against an imported Rust service schema.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -247,17 +247,6 @@ impl LinkedVelaServiceMethod {
     #[must_use]
     pub fn artifact(&self) -> &Arc<LinkedArtifact> {
         &self.artifact
-    }
-
-    pub fn with_runtime<C, R>(
-        &self,
-        context: &mut C,
-        invoke: impl FnOnce(&mut Runtime, &mut C) -> R,
-    ) -> Result<R, RuntimeBuildError>
-    where
-        C: super::ServiceRuntimeAuthority,
-    {
-        context.with_service_runtime(&self.artifact, invoke)
     }
 
     #[doc(hidden)]

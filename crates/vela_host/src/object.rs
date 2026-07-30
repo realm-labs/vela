@@ -1,6 +1,8 @@
 use std::any::Any;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::future::Future;
 use std::hash::Hash;
+use std::pin::Pin;
 
 use vela_common::{HostMethodId, HostTypeId, ScalarValue};
 
@@ -34,6 +36,9 @@ use errors::{invalid_arg, missing_target, permission_denied, unsupported_method}
 pub use mutation::mutate_host_value;
 pub use slice::{lease_slice_mut, lease_slice_ref};
 use target::{target_index, target_is_leaf};
+
+pub type HostCallFuture<'call> =
+    Pin<Box<dyn Future<Output = HostResult<HostValue>> + Send + 'call>>;
 
 pub trait ScriptHostObject {
     fn host_type_id(&self) -> HostTypeId;
@@ -218,6 +223,28 @@ pub trait ScriptHostObject {
         } else {
             missing_target(target)
         })
+    }
+
+    /// Dispatches one schema-declared async shared receiver without requiring
+    /// a concrete Rust downcast.
+    fn call_async_host_shared<'call>(
+        &'call self,
+        method: HostMethodId,
+        _args: Vec<HostValue>,
+    ) -> HostCallFuture<'call> {
+        let error = unsupported_method(method);
+        Box::pin(async move { Err(error) })
+    }
+
+    /// Dispatches one schema-declared async exclusive receiver without
+    /// requiring a concrete Rust downcast.
+    fn call_async_host_exclusive<'call>(
+        &'call mut self,
+        method: HostMethodId,
+        _args: Vec<HostValue>,
+    ) -> HostCallFuture<'call> {
+        let error = unsupported_method(method);
+        Box::pin(async move { Err(error) })
     }
 }
 

@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::cell::Cell;
 
 use vela_common::HostTypeId;
 use vela_host::lease::HostLeaseKind;
@@ -32,6 +33,48 @@ impl ScriptHostObject for LeaseHost {
     }
 }
 
+struct NonSyncLeaseHost(Cell<i64>);
+
+impl ScriptHostObject for NonSyncLeaseHost {
+    fn host_type_id(&self) -> HostTypeId {
+        HostTypeId::new(0x5EED)
+    }
+
+    fn lease_any(&self) -> Option<&dyn Any> {
+        Some(self)
+    }
+
+    fn lease_any_mut(&mut self) -> Option<&mut dyn Any> {
+        Some(self)
+    }
+
+    fn read_resolved_host(
+        &self,
+        _access: vela_host::resolved::ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+    ) -> vela_host::error::HostResult<HostValue> {
+        Ok(HostValue::i64(self.0.get()))
+    }
+}
+
+struct BorrowedOpaqueHost<'a> {
+    value: &'a mut i64,
+}
+
+impl ScriptHostObject for BorrowedOpaqueHost<'_> {
+    fn host_type_id(&self) -> HostTypeId {
+        HostTypeId::new(45)
+    }
+
+    fn read_resolved_host(
+        &self,
+        _access: vela_host::resolved::ResolvedHostAccess,
+        _target: HostTargetInstance<'_>,
+    ) -> vela_host::error::HostResult<HostValue> {
+        Ok(HostValue::i64(*self.value))
+    }
+}
+
 #[test]
 fn multi_lease_acquisition_rolls_back_on_conflict() {
     let mut host = LeaseHost;
@@ -60,8 +103,8 @@ fn multi_lease_acquisition_rolls_back_on_conflict() {
 
 #[test]
 fn acquired_lease_guards_stay_inline_for_common_arities() {
-    let mut host = LeaseHost;
-    let mut args = CallArgs::new().with_host_mut("host", &mut host);
+    let host = LeaseHost;
+    let mut args = CallArgs::new().with_host_ref("host", &host);
     let mut next = 1_u64 << 63;
     args.assign_direct_host_refs(&mut next);
     let root = bound_root(&args);
@@ -140,10 +183,10 @@ fn preassigned_reborrow_uses_its_child_binding_without_reacquiring_parent() {
 }
 
 #[test]
-fn mutable_origin_shared_leases_coexist_and_restore_exclusive_access() {
+fn mutable_origin_uses_one_exclusive_root_for_every_receiver_view() {
     fn require_send<T: Send>(_: &T) {}
 
-    let mut host = LeaseHost;
+    let mut host = NonSyncLeaseHost(Cell::new(7));
     let mut args = CallArgs::new().with_host_mut("host", &mut host);
     let mut next = 1_u64 << 63;
     args.assign_direct_host_refs(&mut next);
@@ -151,14 +194,9 @@ fn mutable_origin_shared_leases_coexist_and_restore_exclusive_access() {
 
     let first = args
         .take_host_lease(root, HostLeaseKind::Shared)
-        .expect("first shared lease should be available");
-    let second = args
-        .take_host_lease(root, HostLeaseKind::Shared)
-        .expect("second shared lease should coexist");
+        .expect("a shared receiver view should acquire the exclusive mutable root");
     require_send(&first);
-    require_send(&second);
-    assert!(!first.is_exclusive());
-    assert!(!second.is_exclusive());
+    assert!(first.is_exclusive());
 
     let binding = args
         .direct_binding(root)
@@ -167,15 +205,11 @@ fn mutable_origin_shared_leases_coexist_and_restore_exclusive_access() {
         panic!("binding should have mutable origin");
     };
     assert!(
-        object.try_read().is_some(),
-        "parent read access remains legal"
-    );
-    assert!(
-        object.try_write().is_none(),
-        "shared leases exclude mutation"
+        object.try_lock().is_none(),
+        "the mutable root remains exclusively leased"
     );
     let conflict = match args.take_host_lease(root, HostLeaseKind::Exclusive) {
-        Ok(_) => panic!("exclusive acquisition must conflict with shared leases"),
+        Ok(_) => panic!("a second acquisition must conflict with the exclusive root"),
         Err(error) => error,
     };
     assert!(matches!(
@@ -184,13 +218,34 @@ fn mutable_origin_shared_leases_coexist_and_restore_exclusive_access() {
     ));
 
     drop(first);
-    drop(second);
     let exclusive = args
         .take_host_lease(root, HostLeaseKind::Exclusive)
-        .expect("dropping all shared leases should restore exclusive access");
+        .expect("dropping the receiver view should restore exclusive access");
     require_send(&exclusive);
     assert!(exclusive.is_exclusive());
     drop(exclusive);
+}
+
+#[test]
+fn mutable_origin_leases_non_static_opaque_objects_without_any() {
+    let mut value = 7_i64;
+    let mut host = BorrowedOpaqueHost { value: &mut value };
+    let mut args = CallArgs::new().with_host_mut("host", &mut host);
+    let mut next = 1_u64 << 63;
+    args.assign_direct_host_refs(&mut next);
+    let root = bound_root(&args);
+
+    let lease = args
+        .take_host_lease(root, HostLeaseKind::Shared)
+        .expect("opaque mutable origin uses its exclusive root lease");
+    assert!(lease.is_exclusive());
+    assert!(lease.object().lease_any().is_none());
+    drop(lease);
+
+    let lease = args
+        .take_host_lease(root, HostLeaseKind::Exclusive)
+        .expect("opaque mutable origin remains available after release");
+    assert!(lease.is_exclusive());
 }
 
 #[test]

@@ -405,10 +405,12 @@ Direct `CallArgs::with_host_ref("name", &value)` and
 shortcuts. The script still receives a call-scope `HostRef`, not a real Rust
 reference. Field reads and writes dispatch through the type's host object
 adapter and `HostAccess`; `&T` is read-only, while `&mut T` allows write-through
-mutation during the call. The mutable type must be `Send + Sync`; this is the
-capability boundary that permits true shared async leases as well as exclusive
-leases without changing the public CallArgs mode. Non-`Sync` mutable state must
-stay behind a host adapter or another explicitly supported boundary. Hosts that
+mutation during the call. A shared origin must be `Sync`; a mutable origin
+requires only `Send` and may be non-`Sync` and non-`'static`. The mutable
+binding has one exclusive root lease. Shared-receiver Host methods reborrow
+`&T` through that guard, so they do not permit a second concurrent call on the
+same origin. An async Host method may retain the scoped guard until its `Send`
+future completes or is dropped. Hosts that
 already manage object identity through a
 state adapter can pass an existing low-level handle with
 `CallArgs::with_host_handle("name", host_ref)` and attach the adapter to the

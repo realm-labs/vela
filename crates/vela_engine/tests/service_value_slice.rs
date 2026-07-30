@@ -1,13 +1,8 @@
-use std::sync::Arc;
-
 use vela_common::SourceId;
 use vela_engine::engine::Engine;
 use vela_engine::permission::Capability;
-use vela_engine::runtime::{CallOptions, Runtime, RuntimeBuildError};
-use vela_engine::service::{
-    Service, ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot,
-    ServiceSourceManifest,
-};
+use vela_engine::runtime::CallOptions;
+use vela_engine::service::{Service, ServiceRuntimeBinding, ServiceSourceManifest};
 use vela_hir::source_ingestion::build_single_source;
 use vela_macros::{ScriptHost, Value, service, service_domain};
 
@@ -21,26 +16,7 @@ pub struct Entry {
 #[vela(path = "slice_service::Context")]
 pub struct RequestContext {
     #[vela(skip)]
-    runtime: ServiceRuntimeSlot,
-    #[vela(skip)]
     rust_calls: usize,
-}
-
-impl ServiceRuntimeAuthority for RequestContext {
-    fn take_service_runtime(
-        &mut self,
-        artifact: &Arc<vela_bytecode::LinkedArtifact>,
-    ) -> Result<Runtime, RuntimeBuildError> {
-        self.runtime.take(artifact)
-    }
-
-    fn restore_service_runtime(
-        &mut self,
-        artifact: &Arc<vela_bytecode::LinkedArtifact>,
-        runtime: Runtime,
-    ) {
-        self.runtime.restore(artifact, runtime);
-    }
 }
 
 #[service(path = "slice_service::totals")]
@@ -128,7 +104,7 @@ impl TotalPatch {
         .stage_snapshot(
             &initial,
             update,
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             CallOptions::unbounded(),
         )
         .expect("staged Snapshot");
@@ -137,10 +113,7 @@ impl TotalPatch {
         .expect("activated Snapshot");
 
     let root = services.pin();
-    let mut context = RequestContext {
-        runtime: ServiceRuntimeSlot::new(engine.clone()),
-        rust_calls: 0,
-    };
+    let mut context = RequestContext { rust_calls: 0 };
     let values = [
         Entry { amount: 4 },
         Entry { amount: 7 },
@@ -203,7 +176,7 @@ impl InvalidCopyBack {
         .stage_snapshot(
             &root,
             invalid_update,
-            ServiceRuntimeBinding::for_context::<RequestContext>(),
+            ServiceRuntimeBinding::for_engine(engine.clone()),
             CallOptions::unbounded(),
         )
         .expect("negative Snapshot stages");

@@ -41,12 +41,7 @@ pub(super) fn parse_context(attr: TokenStream) -> Result<Type> {
         Err(meta.error("unsupported service_domain attribute"))
     });
     parser.parse2(attr)?;
-    context.ok_or_else(|| {
-        syn::Error::new(
-            proc_macro2::Span::call_site(),
-            "#[vela_macros::service_domain] requires context = HostContext",
-        )
-    })
+    Ok(context.unwrap_or_else(|| parse_quote!(())))
 }
 
 pub(super) struct ServiceField {

@@ -327,11 +327,13 @@ there is no handler/rule/event-specific replacement API
 
 Status: **Accepted.** Authored Rust `async fn` methods keep their ordinary
 trait authoring surface while the macro emits one hidden object-safe
-`ServiceFuture` dispatcher. Vela-selected calls retain one actor-owned Runtime,
-the pinned artifact/dispatcher, and the complete host lease set across
-suspension; direct host write-through, `base.await`, old/new-root isolation,
-cancel/drop/unwind restoration, `Send` futures, and a mutex-free
-`ServiceRuntimeSlot` are covered. Immutable Snapshot/Delta bundles carry
+`ServiceFuture` dispatcher. Vela-selected calls lease a Runtime from the
+generated service application and retain it with the pinned
+artifact/dispatcher and complete host lease set across suspension. Business
+Host contexts carry neither a Runtime slot nor an authority implementation.
+Direct host write-through, `base.await` for statically typed Host parameters,
+old/new-root isolation, cancel/drop/unwind restoration, and `Send` futures are
+covered. Immutable Snapshot/Delta bundles carry
 content-stable artifact checksums, exact-base metadata, load/build validation,
 and non-mutating dry-run reports. Handlers, rules, and events use only generated
 service contracts; CLI/LSP metadata includes complete service and TypeBinding

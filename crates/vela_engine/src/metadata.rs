@@ -31,6 +31,7 @@ pub(crate) fn inject_host_method_metadata(
         let mut method = MethodDesc::new(desc.id, desc.name.clone())
             .return_type(type_hint_display(&desc.returns))
             .effects(reflect_effects(&desc.effects))
+            .asyncness(desc.asyncness)
             .receiver(desc.receiver)
             .access(reflect_access(&desc.access));
         if let Some(mutation) = type_hint_collection_mutation(&desc.returns) {

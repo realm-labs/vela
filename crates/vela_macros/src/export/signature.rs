@@ -659,16 +659,6 @@ fn direct_host_type(ty: &Type) -> Result<Type> {
             "host reference must name one exact concrete Rust type",
         ));
     };
-    if path
-        .segments
-        .last()
-        .is_some_and(|segment| !matches!(segment.arguments, syn::PathArguments::None))
-    {
-        return Err(syn::Error::new_spanned(
-            ty,
-            "generic host reference types are unsupported",
-        ));
-    }
     let ident = path
         .segments
         .last()

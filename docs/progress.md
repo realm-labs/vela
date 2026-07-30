@@ -25,11 +25,12 @@ Rust embedding now has one public registration vocabulary: every derived or
 generated Value/Host uses `register_type::<T>()`, callable bundles use
 `register_exports(...)`, and each generated service domain owns one application
 builder. `Service<dyn Trait>` fields declare the domain schema; concrete default
-instances, Runtime authority, call options, Engine sealing, schema validation,
-and the initial generation converge at `.build()`. `ScriptHost` emits its Host
-object contract directly. The former service-set registration/construction
-surface, Host/Value-specific builder aliases, and shape-specific `script_*`
-callable macros have been removed without compatibility shims.
+instances, service-owned Runtime leasing, call options, Engine sealing, schema
+validation, and the initial generation converge at `.build()`. Business Host
+contexts do not carry Runtime authority. `ScriptHost` emits its Host object
+contract directly. The former service-set registration/construction surface,
+Host/Value-specific builder aliases, and shape-specific `script_*` callable
+macros have been removed without compatibility shims.
 
 Phase status:
 
@@ -123,6 +124,14 @@ Phase status:
   generation; Rust type plus inherent exports have one combined registration
   helper; and Rust bindgen uses one schema-only builder instead of a separate
   options object and free generation function.
+- Cross-cutting call-scoped Host checkpoint accepted: schema-only
+  `register_host_type` registration seals stable Host contracts without a Rust
+  `TypeId`; `with_host_mut` accepts `Send`, non-`Sync`, non-`'static` objects
+  through one exclusive root lease; erased sync/async Host methods dispatch
+  without `Any`; and generated Services keep authored
+  `&mut RequestContext<'_, A>` signatures without a Runtime slot or authority
+  implementation. The focused regression holds an exclusive Host lease across
+  a pending Rust future and reborrows the context after resume.
 
 S3 provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared

@@ -372,8 +372,10 @@ impl<T: 'static> TypeBinding<T> {
         let capabilities = self.capabilities;
         let collection_views = self.collection_views;
         let constructors = self.constructors;
-        let async_native_methods = self.async_native_methods;
-        let (type_desc, method_metadata, native_methods) = self.spec.into_parts();
+        let mut async_native_methods = self.async_native_methods;
+        let (type_desc, method_metadata, native_methods, spec_async_native_methods) =
+            self.spec.into_parts();
+        async_native_methods.extend(spec_async_native_methods);
         let registration = TypeBindingRegistration {
             key: type_desc.key.clone(),
             storage,
@@ -480,6 +482,18 @@ impl TypeBindingRegistration {
     pub(crate) fn bind_rust_type<T: 'static>(&mut self) {
         self.rust_type_id = Some(RustTypeId::of::<T>());
     }
+
+    pub(crate) fn host_contract(key: TypeKey) -> Self {
+        Self {
+            rust_type_id: None,
+            key,
+            storage: StoragePolicy::Host,
+            capabilities: ReceiverCapabilities::HOST_OBJECT,
+            collection_views: None,
+            value_codec: None,
+            constructors: Vec::new(),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -548,19 +562,18 @@ impl TypeBindingRegistry {
                     id: id.get(),
                 }));
             }
-            let rust_type_id = registration
-                .rust_type_id
-                .expect("EngineBuilder binds every pending registration to a Rust type");
-            if let Some(existing) = by_rust_type.insert(rust_type_id, id) {
-                return Err(EngineError::new(
-                    EngineErrorKind::DuplicateRustTypeBinding {
-                        first: existing.get(),
-                        second: id.get(),
-                    },
-                ));
-            }
-            if let Some(codec) = registration.value_codec {
-                value_codecs_by_rust_type.insert(rust_type_id, codec);
+            if let Some(rust_type_id) = registration.rust_type_id {
+                if let Some(existing) = by_rust_type.insert(rust_type_id, id) {
+                    return Err(EngineError::new(
+                        EngineErrorKind::DuplicateRustTypeBinding {
+                            first: existing.get(),
+                            second: id.get(),
+                        },
+                    ));
+                }
+                if let Some(codec) = registration.value_codec {
+                    value_codecs_by_rust_type.insert(rust_type_id, codec);
+                }
             }
         }
         let canonical = by_id

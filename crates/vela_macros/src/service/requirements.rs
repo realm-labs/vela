@@ -49,7 +49,7 @@ pub(super) fn add_parameter_requirements(
         (TypeShape::Host(ty, access), _) => Ok(push_requirement(
             requirements,
             requirement_keys,
-            RequirementSpec::new(ty.clone(), host_representation(*access), location),
+            RequirementSpec::host(ty.clone(), host_representation(*access), location),
         )),
         (TypeShape::BorrowedCollection(collection), _) => {
             let top = push_borrowed_collection_requirement(
@@ -121,7 +121,7 @@ pub(super) fn add_return_requirements(
             TypeShape::Host(ty, access) => Ok(push_requirement(
                 requirements,
                 requirement_keys,
-                RequirementSpec::new(ty.clone(), host_representation(*access), location),
+                RequirementSpec::host(ty.clone(), host_representation(*access), location),
             )),
             TypeShape::BorrowedCollection(collection) => Ok(push_borrowed_collection_requirement(
                 collection,
@@ -174,7 +174,7 @@ fn push_scoped_envelope_requirement(
         TypeShape::Host(ty, HostAccess::Shared) => push_requirement(
             requirements,
             requirement_keys,
-            RequirementSpec::new(
+            RequirementSpec::host(
                 ty.clone(),
                 host_representation(HostAccess::Shared),
                 "return",
@@ -393,6 +393,7 @@ pub(super) struct RequirementSpec {
     pub(super) ty: Type,
     pub(super) representation: TokenStream,
     pub(super) location: String,
+    pub(super) host_contract: bool,
 }
 
 impl RequirementSpec {
@@ -401,6 +402,16 @@ impl RequirementSpec {
             ty,
             representation,
             location: location.into(),
+            host_contract: false,
+        }
+    }
+
+    fn host(ty: Type, representation: TokenStream, location: impl Into<String>) -> Self {
+        Self {
+            ty,
+            representation,
+            location: location.into(),
+            host_contract: true,
         }
     }
 
@@ -413,7 +424,12 @@ impl RequirementSpec {
     }
 
     fn key(&self) -> String {
-        format!("{}:{}", self.ty.to_token_stream(), self.representation)
+        format!(
+            "{}:{}:{}",
+            self.host_contract,
+            self.ty.to_token_stream(),
+            self.representation
+        )
     }
 }
 

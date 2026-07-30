@@ -1,7 +1,9 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use parking_lot::{ArcRwLockReadGuard, ArcRwLockWriteGuard, RawRwLock, RwLock};
+use parking_lot::{
+    ArcMutexGuard, ArcRwLockReadGuard, ArcRwLockWriteGuard, Mutex, RawMutex, RawRwLock, RwLock,
+};
 
 use crate::error::{HostError, HostErrorKind};
 use crate::object::ScriptHostObject;
@@ -36,11 +38,9 @@ impl BorrowLeaseId {
 }
 
 pub type SharedHostLeaseCount = Arc<AtomicUsize>;
-pub type MutableHostLeaseObject<'host> = &'host mut (dyn ScriptHostObject + Send + Sync);
-pub type MutableHostLeaseSlot<'host> = Arc<RwLock<MutableHostLeaseObject<'host>>>;
-pub type SharedMutableHostLease<'host> =
-    ArcRwLockReadGuard<RawRwLock, MutableHostLeaseObject<'host>>;
-pub type ExclusiveHostLease<'host> = ArcRwLockWriteGuard<RawRwLock, MutableHostLeaseObject<'host>>;
+pub type MutableHostLeaseObject<'host> = &'host mut (dyn ScriptHostObject + Send);
+pub type MutableHostLeaseSlot<'host> = Arc<Mutex<MutableHostLeaseObject<'host>>>;
+pub type ExclusiveHostLease<'host> = ArcMutexGuard<RawMutex, MutableHostLeaseObject<'host>>;
 pub type ScopedHostLeaseObject<'host> = Box<dyn ScriptHostObject + Send + Sync + 'host>;
 pub type ScopedHostLeaseSlot<'host> = Arc<RwLock<ScopedHostLeaseObject<'host>>>;
 pub type SharedScopedHostLease<'host> = ArcRwLockReadGuard<RawRwLock, ScopedHostLeaseObject<'host>>;
@@ -56,9 +56,6 @@ pub enum ErasedHostLease<'host> {
     SharedBorrowed {
         object: &'host (dyn ScriptHostObject + Sync),
         leases: SharedHostLeaseCount,
-    },
-    SharedMutable {
-        object: SharedMutableHostLease<'host>,
     },
     Exclusive {
         object: ExclusiveHostLease<'host>,
@@ -87,7 +84,6 @@ impl ErasedHostLease<'_> {
         match self {
             Self::Vacant => panic!("vacant host lease has no object"),
             Self::SharedBorrowed { object, .. } => *object,
-            Self::SharedMutable { object } => &***object,
             Self::Exclusive { object } => &***object,
             Self::ScopedShared { object } => &***object,
             Self::ScopedExclusive { object } => &***object,
@@ -100,12 +96,37 @@ impl ErasedHostLease<'_> {
         match self {
             Self::Vacant
             | Self::SharedBorrowed { .. }
-            | Self::SharedMutable { .. }
             | Self::ScopedShared { .. }
             | Self::OwnedShared { .. } => None,
             Self::Exclusive { object } => Some(&mut ***object),
             Self::ScopedExclusive { object } => Some(&mut ***object),
             Self::OwnedExclusive { object } => Some(&mut ***object),
+        }
+    }
+
+    /// Returns a shared object whose erased capability proves `Sync`.
+    #[must_use]
+    pub fn object_sync(&self) -> Option<&(dyn ScriptHostObject + Sync)> {
+        match self {
+            Self::SharedBorrowed { object, .. } => Some(*object),
+            Self::ScopedShared { object } => Some(&***object),
+            Self::ScopedExclusive { object } => Some(&***object),
+            Self::OwnedShared { object } => Some(&***object),
+            Self::OwnedExclusive { object } => Some(&***object),
+            Self::Vacant | Self::Exclusive { .. } => None,
+        }
+    }
+
+    /// Returns an exclusive object whose erased capability proves `Send`.
+    pub fn object_send_mut(&mut self) -> Option<&mut (dyn ScriptHostObject + Send)> {
+        match self {
+            Self::Exclusive { object } => Some(&mut ***object),
+            Self::ScopedExclusive { object } => Some(&mut ***object),
+            Self::OwnedExclusive { object } => Some(&mut ***object),
+            Self::Vacant
+            | Self::SharedBorrowed { .. }
+            | Self::ScopedShared { .. }
+            | Self::OwnedShared { .. } => None,
         }
     }
 
