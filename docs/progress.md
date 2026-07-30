@@ -107,6 +107,11 @@ Phase status:
   The removed `#[service_set]`, default-type field attribute, split
   register/new construction, public generation construction, and `stage_rust`
   APIs, plus the single-string `stage_snapshot_source` entry, have no aliases.
+- Cross-cutting public-API cleanup checkpoint accepted: the standalone
+  administrative script ABI/bundle model is deleted in favor of dedicated
+  Services, and the embedding prelude now exposes the ordinary Engine/Runtime
+  and Service Patch authoring path rather than reflection, HIR, HostAccess, or
+  service-controller internals.
 
 S3 provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared

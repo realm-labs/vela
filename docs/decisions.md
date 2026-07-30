@@ -2769,7 +2769,18 @@ portable Service bundle to the selected actor, activate it at the mailbox safe
 point, and explicitly invoke its typed entry. Compilation, loading, staging,
 and activation never invoke a Service method. This preserves ordinary
 registered Rust/Vela capabilities without adding `eval`, overlay state, or a
-second Runtime lifecycle.
+second Runtime lifecycle. The former `vela_engine::admin` ABI and portable
+bundle surface is removed without a compatibility module.
+
+### Embedding Prelude Boundary
+
+`vela_engine::prelude` contains only the ordinary Engine/Runtime call path,
+typed callable registration, capability configuration, source/reload results,
+and generated Service patch authoring vocabulary. Reflection descriptors,
+HIR metadata, raw HostAccess objects, package/provider control types, service
+controllers, generations, and selection tables require explicit module
+imports. Public types needed only by downstream macro expansion remain
+`#[doc(hidden)]` rather than becoming prelude vocabulary.
 
 ### Repository Artifacts Use Domain-Neutral Host Names
 

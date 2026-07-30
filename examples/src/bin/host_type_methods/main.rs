@@ -1,12 +1,14 @@
 #![cfg_attr(not(test), deny(clippy::wildcard_imports))]
-
 #![allow(clippy::result_large_err)]
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 
+use vela_def::TypeId;
+use vela_engine::host_type::HostTypeSpec;
 use vela_engine::prelude::*;
 use vela_macros::{ScriptHost, methods};
+use vela_reflect::registry::{HostIndexCapability, TypeDesc, TypeKey};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let engine = Engine::builder()

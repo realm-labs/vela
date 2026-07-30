@@ -1,174 +1,75 @@
-use std::fs;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use vela_engine::prelude::*;
-use vela_host::mock::MockStateAdapter;
-
-fn call_raw(
-    runtime: &mut Runtime,
-    entry: &str,
-    args: &[OwnedValue],
-    options: CallOptions,
-    adapter: &mut MockStateAdapter,
-    _access: &mut HostAccess,
-) -> vela_vm::error::VmResult<OwnedValue> {
-    let args = CallArgs::from_positional(args.iter().cloned()).with_fallback_adapter(adapter);
-    let value = runtime.call(entry, args, options)?;
-    runtime.value_to_owned(&value)
-}
 
 #[test]
-fn prelude_imports_cover_runtime_embedding_flow() {
-    let method = HostMethodId::new(23);
-    let engine = Engine::builder()
-        .register_type_desc(
-            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
-                .host_type(HostTypeId::new(1))
-                .method(MethodDesc::new(method, "grant_exp")),
-        )
-        .build()
-        .expect("engine should build");
-
-    let root = unique_test_dir("prelude_compile_file_runtime_flow");
-    fs::create_dir_all(root.path()).expect("create compile_file test dir");
-    let source = root.path().join("main.vela");
-    fs::write(
-        &source,
-        r#"
-fn main(player: Player, amount: i64) {
-    player.grant_exp(amount);
-    return amount;
-}
-"#,
-    )
-    .expect("write source file");
+fn prelude_covers_the_ordinary_compile_and_call_path() {
+    let engine = Engine::builder().build().expect("engine should build");
     let program = engine
-        .compile_file(&source)
-        .expect("program should compile");
+        .compile_source("pub fn add(left: i64, right: i64) { return left + right; }")
+        .expect("source should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-    let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
-    let args = args![host(player), 12_i64];
 
-    let result = call_raw(
-        &mut runtime,
-        "main",
-        &args,
-        CallOptions::unbounded(),
-        &mut adapter,
-        &mut tx,
-    )
-    .expect("runtime call should run");
+    let value = runtime
+        .call(
+            "add",
+            CallArgs::from_positional([2_i64.into(), 3_i64.into()]),
+            CallOptions::unbounded(),
+        )
+        .expect("call should succeed");
 
     assert_eq!(
-        result,
-        OwnedValue::Scalar(vela_common::ScalarValue::I64(12))
+        runtime.value_to_owned(&value),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 }
 
 #[test]
-fn prelude_imports_cover_script_arg_conversion_traits() {
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
-    let proxy = PathProxy::from_diagnostic_path(HostPath::new(host_ref).field(FieldId::new(9)));
-    let args = args![host(host_ref), proxy.clone(), Some(3_i64), "tag"];
-
-    assert_eq!(args.required::<HostRef>(0), Ok(host_ref));
-    assert_eq!(args.required::<PathProxy>(1), Ok(proxy));
-    assert_eq!(args.required::<Option<i64>>(2), Ok(Some(3)));
-    assert_eq!(String::from_script_arg(&args[3]), Ok("tag".to_owned()));
-    assert_eq!(
-        "done".into_script_arg(),
-        OwnedValue::String("done".to_owned())
-    );
-    assert_eq!((1_u32, 42_u64, 7_u32).into_host_ref(), host_ref);
-}
-
-#[test]
-fn prelude_imports_cover_compile_dir_runtime_call_embedding_flow() {
-    let root = unique_test_dir("prelude_compile_dir_runtime_call");
-    let game_dir = root.path().join("game");
-    fs::create_dir_all(&game_dir).expect("create game module dir");
-    fs::write(
-        game_dir.join("main.vela"),
-        r#"
-fn main(amount: i64) {
-    return game::grant_bonus(amount = amount, base = game::config::BASE);
-}
-"#,
-    )
-    .expect("write main module");
-    fs::write(
-        game_dir.join("config.vela"),
-        r#"
-pub const BASE: i64 = 10;
-"#,
-    )
-    .expect("write config module");
-    fs::write(root.path().join("ignored.txt"), "fn main() { return 99; }")
-        .expect("write ignored non-source file");
-
+fn prelude_covers_typed_native_registration() {
     let engine = Engine::builder()
-        .register_native_fn(
-            NativeFunctionDesc::new("game::grant_bonus", NativeFunctionId::new(44))
-                .param("base", TypeHint::i64())
-                .param("amount", TypeHint::i64())
+        .register_typed_native_fn::<(i64, i64), _>(
+            NativeFunctionDesc::new("math::add", NativeFunctionId::new(44))
+                .param("left", TypeHint::i64())
+                .param("right", TypeHint::i64())
                 .returns(TypeHint::i64())
                 .effects(EffectSet::pure())
                 .access(FunctionAccess::public()),
-            #[allow(clippy::result_large_err)]
-            |args| {
-                let [
-                    OwnedValue::Scalar(vela_common::ScalarValue::I64(base)),
-                    OwnedValue::Scalar(vela_common::ScalarValue::I64(amount)),
-                ] = args
-                else {
-                    return Ok(OwnedValue::Unit);
-                };
-                Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(
-                    base + amount,
-                )))
-            },
+            |left: i64, right: i64| left + right,
         )
         .build()
         .expect("engine should build");
-    let registry = engine.registry();
-    let function = registry
-        .function_by_name("game::grant_bonus")
-        .expect("native function metadata should register");
-    assert_eq!(function.id, NativeFunctionId::new(44));
-    assert_eq!(function.params[0].name, "base");
-    assert_eq!(function.params[0].type_hint.as_deref(), Some("i64"));
-    assert_eq!(function.params[1].name, "amount");
-    assert_eq!(function.params[1].type_hint.as_deref(), Some("i64"));
-    assert_eq!(function.return_type.as_deref(), Some("i64"));
-    assert!(function.access.required_permissions().is_empty());
-
     let program = engine
-        .compile_dir(root.path())
-        .expect("directory modules should compile");
-    assert!(program.function("ignored.main").is_none());
+        .compile_source("pub fn main() { return math::add(4, 5); }")
+        .expect("source should compile");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
+    let value = runtime
+        .call("main", CallArgs::new(), CallOptions::unbounded())
+        .expect("call should succeed");
 
     assert_eq!(
-        call_raw(
-            &mut runtime,
-            "game::main::main",
-            &args![5_i64],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(15)))
+        runtime.value_to_owned(&value),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
     );
 }
 
 #[test]
-fn prelude_imports_cover_source_and_reload_results() {
+fn prelude_covers_service_patch_authoring() {
+    let empty = PatchRevision::empty();
+    let revision = empty
+        .apply(PatchEdit::put(
+            "rules/reward.vela",
+            "pub fn reward() { return 1; }",
+        ))
+        .expect("patch should apply");
+    let patch = ServicePatch::against(&revision)
+        .put("rules/audit.vela", "pub fn audit() {}")
+        .remove("rules/reward.vela");
+
+    assert!(revision.sources().contains("rules/reward.vela"));
+    assert!(matches!(patch, ServicePatch::Edit { .. }));
+}
+
+#[test]
+fn prelude_covers_source_and_reload_results() {
     let engine = Engine::builder().build().expect("engine should build");
     let compile_error: EngineSourceError = engine
         .compile_file("missing-prelude-source.vela")
@@ -189,131 +90,4 @@ fn prelude_imports_cover_source_and_reload_results() {
             kind: EngineSourceErrorKind::Io { .. },
         })
     ));
-
-    fn accepts_update_result(_result: EngineHotReloadSourceResult<HotUpdate>) {}
-    fn accepts_safe_point_report(_report: Option<HotReloadReport>) {}
-    fn accepts_vela_function(_function: Option<VelaFunction>) {}
-    fn accepts_vela_method(_method: Option<VelaMethod>) {}
-    fn accepts_call_target<T: RuntimeCallTarget>(_target: T) {}
-    fn accepts_method_selector<T: RuntimeMethodSelector>(_target: T) {}
-    fn accepts_hot_reload_result(_result: EngineHotReloadSourceResult<ProgramVersion>) {}
-    fn accepts_report_diagnostics(_diagnostics: Vec<HotReloadDiagnostic>) {}
-    fn accepts_report_detail(_detail: Option<HotReloadDiagnosticDetail>) {}
-    fn accepts_report_lines(_lines: Vec<HotReloadReportLine>) {}
-    fn accepts_report_line_kind(_kind: Option<HotReloadReportLineKind>) {}
-    fn accepts_version_id(_version: Option<ProgramVersionId>) {}
-    fn accepts_code_object(_code: Option<Arc<UnlinkedCodeObject>>) {}
-    fn accepts_script_metadata(_metadata: Option<&ModuleGraph>) {}
-    fn accepts_module_path(_path: ModulePath) {}
-    fn accepts_module_id(_module: Option<ModuleId>) {}
-    fn accepts_decl_id(_declaration: Option<HirDeclId>) {}
-    fn accepts_declaration_index(_index: Option<&DeclarationIndex>) {}
-    fn accepts_declaration(_declaration: Option<&Declaration>) {}
-    fn accepts_declaration_kind(_kind: DeclarationKind) {}
-    fn accepts_script_methods(_methods: &ScriptMethodTable) {}
-    fn accepts_script_method(_method: Option<&ScriptMethod>) {}
-
-    accepts_update_result(Err(reload_error));
-    accepts_safe_point_report(None);
-    accepts_vela_function(None);
-    accepts_vela_method(None);
-    accepts_call_target("main");
-    accepts_method_selector("score");
-    accepts_hot_reload_result(engine.compile_hot_reload_initial("fn main() {}"));
-    accepts_report_diagnostics(Vec::new());
-    accepts_report_detail(None);
-    accepts_report_lines(Vec::new());
-    accepts_report_line_kind(None);
-    accepts_version_id(None);
-
-    let version = engine
-        .compile_hot_reload_initial(
-            r#"
-struct Player {
-    score
-}
-
-trait Bonus {
-    fn bonus(self)
-}
-
-impl Bonus for Player {
-    fn bonus(self) {
-        return self.score;
-    }
-}
-
-fn main() {
-    return Player { score: 7 }.bonus();
-}
-"#,
-        )
-        .expect("script metadata should compile");
-    let code = version.function("main");
-    let metadata = version.script_metadata();
-    let module_path = ModulePath::from_qualified("");
-    let module_key = ModuleKey::new(PackageId::anonymous(), module_path.clone());
-    let module = metadata.and_then(|metadata| metadata.module_id(&module_key));
-    let declaration_index =
-        module.and_then(|module| metadata.and_then(|metadata| metadata.module(module)));
-    let declaration_id = declaration_index.and_then(|index| index.get("Player"));
-    let declaration =
-        declaration_id.and_then(|id| metadata.and_then(|metadata| metadata.declaration(id)));
-    let player = vela_def::script_type_id(PackageId::anonymous().as_str(), "Player", None);
-    let method = version.script_method(player, "bonus");
-
-    assert!(code.is_some());
-    assert!(metadata.is_some());
-    assert!(module.is_some());
-    assert!(declaration_index.is_some());
-    assert!(declaration_id.is_some());
-    assert_eq!(
-        declaration.map(|declaration| declaration.kind),
-        Some(DeclarationKind::Struct)
-    );
-    assert!(method.is_some());
-    assert!(version.script_method_function(player, "bonus").is_some());
-
-    accepts_code_object(code);
-    accepts_script_metadata(metadata);
-    accepts_module_path(module_path);
-    accepts_module_id(module);
-    accepts_declaration_index(declaration_index);
-    accepts_decl_id(declaration_id);
-    accepts_declaration(declaration);
-    accepts_declaration_kind(DeclarationKind::Struct);
-    accepts_script_methods(version.script_methods());
-    accepts_script_method(method);
-    accepts_code_object(version.script_method_function(player, "bonus"));
-}
-
-struct TestDir(PathBuf);
-
-impl TestDir {
-    fn path(&self) -> &std::path::Path {
-        &self.0
-    }
-}
-
-impl Drop for TestDir {
-    fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.0);
-    }
-}
-
-fn unique_test_dir(name: &str) -> TestDir {
-    static NEXT_ID: AtomicU64 = AtomicU64::new(0);
-
-    let mut path = std::env::temp_dir();
-    let sequence = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-    path.push(format!(
-        "vela_engine_{name}_{}_{}_{}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("system time after epoch")
-            .as_nanos(),
-        sequence
-    ));
-    TestDir(path)
 }

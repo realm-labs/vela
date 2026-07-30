@@ -1,16 +1,10 @@
 //! Common imports for embedding Vela in a Rust host.
 
-pub use crate::args::{
-    FromScriptArg, HostArgType, IntoHostArg, IntoScriptArg, ScriptArgsExt, TypedHostMut,
-    TypedHostRef, host,
-};
+pub use crate::args::{FromScriptArg, IntoHostArg, IntoScriptArg, ScriptArgsExt, host};
 pub use crate::builder::EngineBuilder;
 pub use crate::context::NativeCallContext;
 pub use crate::engine::Engine;
-pub use crate::host_lease::{HostLeaseMut, HostLeaseRef};
-pub use crate::host_type::HostTypeSpec;
 pub use crate::io::FsSandbox;
-pub use crate::method::NativeMethodDesc;
 pub use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint,
 };
@@ -19,66 +13,22 @@ pub use crate::reload::{
     EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineHotReloadSourceResult,
 };
 pub use crate::runtime::{
-    CallArgs, CallOptions, HotReloadStagingHandle, IntoStateValue, ProviderHandle, Runtime,
-    RuntimeBuildError, RuntimeBuilder, RuntimeCallFuture, RuntimeCallTarget,
-    RuntimeInitializationLimits, RuntimeMethodSelector, VelaFunction, VelaMethod, VelaMethodTarget,
-    VelaValue,
+    CallArgs, CallOptions, Runtime, RuntimeBuildError, RuntimeBuilder, RuntimeCallFuture,
+    RuntimeInitializationLimits, VelaFunction, VelaMethod, VelaMethodTarget, VelaValue,
 };
 pub use crate::schema::{ScriptHostSchema, ScriptReflectSchema, ScriptValueSchema};
 pub use crate::service::{
-    LinkedServiceSourceManifest, LinkedVelaServiceMethod, ServiceController, ServiceGeneration,
-    ServiceGenerationCandidate, ServiceInvocationError, ServiceMethodDescriptor, ServiceMethodKey,
-    ServiceMethodSelection, ServiceMethodUpdate, ServicePublicationError, ServiceRollbackToken,
-    ServiceRoot, ServiceRuntimeAuthority, ServiceRuntimeBinding, ServiceRuntimeSlot, ServiceSchema,
-    ServiceSchemaError, ServiceSelectionError, ServiceSelectionTable, ServiceSetSchema,
-    ServiceSourceError, ServiceSourceErrorKind, ServiceSourceManifest, ServiceStagingError,
-    ServiceTypeRequirement, VelaServiceMethod,
+    PatchEdit, PatchRevision, PatchRevisionChecksum, PatchSources, Service,
+    ServiceDomainBuildError, ServiceDryRunReport, ServicePatch, ServicePatchError,
+    ServicePatchWorkspaceError, ServiceRuntimeAuthority, ServiceRuntimeSlot, ServiceUpdateBundle,
 };
-pub use crate::source::{
-    EnginePackageError, EnginePackageErrorKind, PackageCompilationSnapshot,
-    PackageCompilationSnapshotId, PackageCompileRequest, ProviderCatalog, ProviderCatalogError,
-    ProviderCompileRequest, ProviderDescriptor, ProviderMethodDescriptor, ProviderSelection,
-    ProviderSourceLocation,
-};
+#[cfg(feature = "artifact-codec")]
+pub use crate::service::{PortableServiceBundleError, PortableServiceUpdateBundle};
 pub use crate::source::{EngineSourceError, EngineSourceErrorKind};
-pub use crate::standard::{StandardTypeBinding, standard_type_binding};
-pub use crate::type_binding::{TypeBinding, TypeBindingRegistry, ValueCodec};
 pub use crate::type_registration::VelaType;
 pub use crate::{args, host};
-pub use vela_bytecode::{
-    UnlinkedCodeObject,
-    script_methods::{ScriptMethod, ScriptMethodTable},
-};
-pub use vela_common::{
-    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, HostMethodId,
-    HostObjectId, HostTypeId, ServiceAbiFingerprint, ServiceGenerationId, ServiceId,
-    ServiceMethodId, ServiceSetAbiFingerprint, ServiceSetId,
-};
-pub use vela_def::{FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId};
-pub use vela_hir::ids::{HirDeclId, ModuleId};
-pub use vela_hir::module_graph::{
-    Declaration, DeclarationIndex, DeclarationKind, Import, ImportResolution, ModuleGraph,
-    ModuleSource, ResolvedImport,
-};
-pub use vela_host::access::HostAccess;
-pub use vela_host::adapter::ScriptStateAdapter;
-pub use vela_host::object::ScriptHostObject;
-pub use vela_host::path::{HostPath, HostRef};
-pub use vela_host::proxy::PathProxy;
-pub use vela_host::value::HostValue;
-pub use vela_hot_reload::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
-pub use vela_hot_reload::policy::HotReloadPolicy;
 pub use vela_hot_reload::report::{HotReloadDiagnostic, HotReloadReport};
-pub use vela_hot_reload::report_detail::HotReloadDiagnosticDetail;
-pub use vela_hot_reload::report_render::{HotReloadReportLine, HotReloadReportLineKind};
-pub use vela_hot_reload::symbol::ProgramVersionId;
 pub use vela_hot_reload::version::{HotUpdate, ProgramVersion};
-pub use vela_package::{ModuleKey, ModulePath, PackageId};
-pub use vela_reflect::permissions::{ReflectPermission, ReflectPermissionSet, ReflectPolicy};
-pub use vela_reflect::registry::{
-    FieldDesc, HostIndexCapability, MethodDesc, MethodParamDesc, SchemaHash, TraitDesc,
-    TraitMethodDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
-};
 pub use vela_vm::owned_value::OwnedValue;
 #[cfg(feature = "serde")]
 pub use vela_vm::serde::{from_owned_value, to_owned_value};
