@@ -5,6 +5,7 @@ use parking_lot::{
     ArcMutexGuard, ArcRwLockReadGuard, ArcRwLockWriteGuard, Mutex, RawMutex, RawRwLock, RwLock,
 };
 
+use crate::call_value::HostCallValue;
 use crate::error::{HostError, HostErrorKind};
 use crate::object::ScriptHostObject;
 use crate::path::{HostPath, HostRef};
@@ -404,8 +405,8 @@ where
         _access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         _method: vela_common::HostMethodId,
-        _args: &[HostValue],
-    ) -> crate::error::HostResult<HostValue> {
+        _args: &[HostCallValue],
+    ) -> crate::error::HostResult<HostCallValue> {
         Err(scoped_read_only_error(target, "call"))
     }
 }
@@ -484,8 +485,8 @@ where
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         method: vela_common::HostMethodId,
-        args: &[HostValue],
-    ) -> crate::error::HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> crate::error::HostResult<HostCallValue> {
         self.0.call_resolved_host(access, target, method, args)
     }
 }
@@ -627,8 +628,8 @@ impl ScriptHostObject for ScopedBorrowedHostCell<'_> {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         method: vela_common::HostMethodId,
-        args: &[HostValue],
-    ) -> crate::error::HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> crate::error::HostResult<HostCallValue> {
         self.with_dependent_mut(|_, object| object.call_resolved_host(access, target, method, args))
     }
 }

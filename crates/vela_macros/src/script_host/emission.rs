@@ -616,8 +616,8 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
                 target: ::vela_host::target::HostTargetInstance<'_>,
                 offset: usize,
                 method: ::vela_common::HostMethodId,
-                args: &[::vela_host::value::HostValue],
-            ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
+                args: &[::vela_host::call_value::HostCallValue],
+            ) -> ::vela_host::error::HostResult<::vela_host::call_value::HostCallValue> {
                 if offset >= target.plan.parts.len() {
                     return Err(::vela_host::error::HostError {
                         kind: ::vela_host::error::HostErrorKind::UnsupportedMethod { method },
@@ -641,8 +641,8 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
                 access: ::vela_host::resolved::ResolvedHostAccess,
                 target: ::vela_host::target::HostTargetInstance<'_>,
                 method: ::vela_common::HostMethodId,
-                args: &[::vela_host::value::HostValue],
-            ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
+                args: &[::vela_host::call_value::HostCallValue],
+            ) -> ::vela_host::error::HostResult<::vela_host::call_value::HostCallValue> {
                 match slot {
                     #(#prepared_call_arms)*
                     _ => Err(::vela_host::error::HostError {

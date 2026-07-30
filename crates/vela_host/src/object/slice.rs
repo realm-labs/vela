@@ -1,5 +1,6 @@
 use vela_common::{HostMethodId, HostTypeId};
 
+use crate::call_value::HostCallValue;
 use crate::error::HostResult;
 use crate::protocol::{
     HostCollectionMutation, HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot,
@@ -286,8 +287,8 @@ where
         target: HostTargetInstance<'_>,
         offset: usize,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         let index = checked_index(target, offset)?;
         self.get_mut(index)
             .ok_or_else(|| missing_target(target))?
@@ -412,8 +413,8 @@ where
         _access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         ScriptHostFieldAccess::call_host_target_from(self, target, 0, method, args)
     }
 }

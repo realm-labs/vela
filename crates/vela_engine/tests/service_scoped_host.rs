@@ -6,7 +6,9 @@ use std::task::{Context, Poll, Waker};
 use vela_common::{CallableAsyncness, HostMethodId, HostTypeId, ReceiverCapability, SourceId};
 use vela_def::{FieldId, TypeId};
 use vela_engine::engine::Engine;
+use vela_engine::host_call::{decode_host_call_arg, encode_host_call_return};
 use vela_engine::host_type::HostTypeSpec;
+use vela_engine::interop::VelaValueBoundary;
 use vela_engine::method::NativeMethodDesc;
 use vela_engine::native::{EffectSet, TypeHint};
 use vela_engine::permission::{Capability, CapabilitySet};
@@ -14,17 +16,43 @@ use vela_engine::runtime::CallOptions;
 use vela_engine::schema::ScriptHostSchema;
 use vela_engine::service::{Service, ServiceRuntimeBinding, ServiceSourceManifest};
 use vela_hir::source_ingestion::build_single_source;
+use vela_host::call_value::HostCallValue;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::object::ScriptHostObject;
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
-use vela_macros::{service, service_domain};
+use vela_macros::{Value, service, service_domain};
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey};
 
 const CONTEXT_TYPE_ID: u128 = 0x51C0_0E01;
 const CONTEXT_HOST_TYPE_ID: u64 = 0x51C0;
 const BUMP_METHOD_ID: u128 = 0x51C0_0E02;
 const BUMP_ASYNC_METHOD_ID: u128 = 0x51C0_0E03;
+const PROCESS_METHOD_ID: u128 = 0x51C0_0E04;
+const PROCESS_ASYNC_METHOD_ID: u128 = 0x51C0_0E05;
+
+#[derive(Clone, Debug, Eq, PartialEq, Value)]
+#[vela(path = "scoped_test::Decision")]
+pub enum Decision {
+    Accepted { code: i64 },
+    Deferred,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Value)]
+#[vela(path = "scoped_test::Payload")]
+pub struct Payload {
+    pub amount: i64,
+    pub values: Vec<i64>,
+    pub decision: Decision,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Value)]
+#[vela(path = "scoped_test::Reply")]
+pub struct Reply {
+    pub total: i64,
+    pub values: Vec<i64>,
+    pub decision: Decision,
+}
 
 pub struct BorrowedContext<'ctx> {
     value: &'ctx mut i64,
@@ -73,29 +101,44 @@ impl ScriptHostObject for BorrowedContext<'_> {
         _access: vela_host::resolved::ResolvedHostAccess,
         _target: HostTargetInstance<'_>,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
+        if method == HostMethodId::new(PROCESS_METHOD_ID) {
+            let payload: Payload = decode_host_call_arg(required_payload(args.first())?)?;
+            let adjustment = rust_payload_adjustment(&payload);
+            *self.value += adjustment;
+            return encode_host_call_return(reply(*self.value, adjustment));
+        }
         if method != HostMethodId::new(BUMP_METHOD_ID) {
             return Err(invalid_method());
         }
-        let delta = host_i64(args.first())?;
+        let delta = host_call_i64(args.first())?;
         *self.value += delta;
-        Ok(HostValue::i64(*self.value))
+        Ok(HostCallValue::i64(*self.value))
     }
 
     fn call_async_host_exclusive<'call>(
         &'call mut self,
         method: HostMethodId,
-        args: Vec<HostValue>,
+        args: Vec<HostCallValue>,
     ) -> vela_host::object::HostCallFuture<'call> {
+        if method == HostMethodId::new(PROCESS_ASYNC_METHOD_ID) {
+            return Box::pin(async move {
+                HostYieldOnce { pending: true }.await;
+                let payload: Payload = decode_host_call_arg(required_payload(args.first())?)?;
+                let adjustment = rust_payload_adjustment(&payload);
+                *self.value += adjustment;
+                encode_host_call_return(reply(*self.value, adjustment))
+            });
+        }
         if method != HostMethodId::new(BUMP_ASYNC_METHOD_ID) {
             return Box::pin(async { Err(invalid_method()) });
         }
         Box::pin(async move {
             HostYieldOnce { pending: true }.await;
-            let delta = host_i64(args.first())?;
+            let delta = host_call_i64(args.first())?;
             *self.value += delta;
-            Ok(HostValue::i64(*self.value))
+            Ok(HostCallValue::i64(*self.value))
         })
     }
 }
@@ -127,21 +170,42 @@ fn context_type_spec() -> HostTypeSpec {
             .asyncness(CallableAsyncness::Async)
             .param("delta", TypeHint::i64())
             .returns(TypeHint::i64());
+    let process = NativeMethodDesc::new(
+        context_type_desc().key,
+        HostMethodId::new(PROCESS_METHOD_ID),
+        "process",
+    )
+    .receiver(ReceiverCapability::Exclusive)
+    .effects(EffectSet::host_write())
+    .param("payload", Payload::vela_type_hint())
+    .returns(Reply::vela_type_hint());
+    let process_async = NativeMethodDesc::new(
+        context_type_desc().key,
+        HostMethodId::new(PROCESS_ASYNC_METHOD_ID),
+        "process_async",
+    )
+    .receiver(ReceiverCapability::Exclusive)
+    .effects(EffectSet::host_write())
+    .asyncness(CallableAsyncness::Async)
+    .param("payload", Payload::vela_type_hint())
+    .returns(Reply::vela_type_hint());
     HostTypeSpec::new(context_type_desc())
         .erased_method(bump)
         .erased_async_method(bump_async)
+        .erased_method(process)
+        .erased_async_method(process_async)
 }
 
 #[service(path = "scoped_test::handler")]
 pub trait ScopedHandlerService: Send + Sync {
-    async fn handle(&self, context: &mut BorrowedContext<'_>, delta: i64) -> i64;
+    async fn handle(&self, context: &mut BorrowedContext<'_>, payload: Payload, delta: i64) -> i64;
 }
 
 struct RustScopedHandler;
 
 impl ScopedHandlerService for RustScopedHandler {
-    async fn handle(&self, context: &mut BorrowedContext<'_>, delta: i64) -> i64 {
-        *context.value += delta;
+    async fn handle(&self, context: &mut BorrowedContext<'_>, payload: Payload, delta: i64) -> i64 {
+        *context.value += delta + rust_payload_adjustment(&payload);
         *context.value
     }
 }
@@ -154,9 +218,14 @@ pub struct ScopedServices {
 const PATCH_SOURCE: &str = r#"
 #[service_impl(scoped_test::handler)]
 impl HandlerPatch {
-    async fn handle(context: BorrowedContext, delta: i64) -> i64 {
-        let after_sync = context.bump(delta);
-        return after_sync + context.bump_async(delta).await;
+    async fn handle(context: BorrowedContext, payload: Payload, delta: i64) -> i64 {
+        let after_sync = context.process(payload);
+        let after_async = context.process_async(payload).await;
+        return after_sync.total
+            + after_sync.values.len()
+            + after_async.total
+            + after_async.values.len()
+            + delta;
     }
 }
 "#;
@@ -166,6 +235,7 @@ fn async_service_accepts_send_non_sync_non_static_host_context() {
     let app = ScopedServices::builder(
         Engine::builder()
             .capabilities(CapabilitySet::new().with(Capability::HostWrite))
+            .register_type::<Reply>()
             .register_host_type(context_type_spec()),
     )
     .handler(RustScopedHandler)
@@ -178,10 +248,10 @@ fn async_service_accepts_send_non_sync_non_static_host_context() {
         value: &mut default_value,
         not_sync: Cell::new(()),
     };
-    let default_future = base.handler().handle(&mut default_context, 4);
+    let default_future = base.handler().handle(&mut default_context, payload(), 4);
     assert_send(&default_future);
-    assert_eq!(poll_ready(default_future), 7);
-    assert_eq!(*default_context.value, 7);
+    assert_eq!(poll_ready(default_future), 24);
+    assert_eq!(*default_context.value, 24);
 
     let sources = build_single_source(SourceId::new(0x51C0), PATCH_SOURCE).expect("service source");
     let manifest =
@@ -210,10 +280,10 @@ fn async_service_accepts_send_non_sync_non_static_host_context() {
         not_sync: Cell::new(()),
     };
     let root = services.pin();
-    let future = root.handler().handle(&mut context, 7);
+    let future = root.handler().handle(&mut context, payload(), 7);
     assert_send(&future);
-    assert_eq!(poll_after_one_pending(future), 41);
-    assert_eq!(*context.value, 24);
+    assert_eq!(poll_after_one_pending(future), 82);
+    assert_eq!(*context.value, 44);
     context.not_sync.get();
 }
 
@@ -235,15 +305,52 @@ impl Future for HostYieldOnce {
     }
 }
 
-fn host_i64(value: Option<&HostValue>) -> HostResult<i64> {
+fn host_call_i64(value: Option<&HostCallValue>) -> HostResult<i64> {
     match value {
-        Some(HostValue::Scalar(vela_common::ScalarValue::I64(value))) => Ok(*value),
+        Some(HostCallValue::Scalar(vela_common::ScalarValue::I64(value))) => Ok(*value),
         _ => Err(HostError {
             kind: HostErrorKind::InvalidArgument {
                 expected: "one i64 Host method argument",
             },
             source_span: None,
         }),
+    }
+}
+
+fn payload() -> Payload {
+    Payload {
+        amount: 5,
+        values: vec![2, 3],
+        decision: Decision::Accepted { code: 7 },
+    }
+}
+
+fn rust_payload_adjustment(payload: &Payload) -> i64 {
+    let decision = match payload.decision {
+        Decision::Accepted { code } => code,
+        Decision::Deferred => 0,
+    };
+    payload.amount + payload.values.iter().sum::<i64>() + decision
+}
+
+fn reply(total: i64, adjustment: i64) -> Reply {
+    Reply {
+        total,
+        values: vec![adjustment, total],
+        decision: Decision::Accepted { code: total },
+    }
+}
+
+fn required_payload(value: Option<&HostCallValue>) -> HostResult<&HostCallValue> {
+    value.ok_or_else(invalid_host_method_value)
+}
+
+fn invalid_host_method_value() -> HostError {
+    HostError {
+        kind: HostErrorKind::InvalidArgument {
+            expected: "scoped_test::Payload Host method value",
+        },
+        source_span: None,
     }
 }
 

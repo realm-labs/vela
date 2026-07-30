@@ -277,8 +277,8 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
                 access: ::vela_host::resolved::ResolvedHostAccess,
                 target: ::vela_host::target::HostTargetInstance<'_>,
                 method: ::vela_common::HostMethodId,
-                args: &[::vela_host::value::HostValue],
-            ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
+                args: &[::vela_host::call_value::HostCallValue],
+            ) -> ::vela_host::error::HostResult<::vela_host::call_value::HostCallValue> {
                 if let Some((slot, child_access)) = access.next_prepared_field() {
                     return ::vela_host::object::ScriptHostFieldAccess::call_prepared_field_target(
                         self,

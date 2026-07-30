@@ -418,6 +418,13 @@ same argument owner with `CallArgs::with_fallback_adapter(adapter)`. Runtime
 consumes the arguments and composes direct bindings, Runtime extern state, and the
 fallback adapter behind one execution-owned `ExecutionHost`.
 
+Erased Host methods receive detached `HostCallValue` arguments. Adapter code
+normally calls `decode_host_call_arg::<T>` and
+`encode_host_call_return(value)`, which supports the same derived Rust Value
+records, enums, tuples, and collections as registered native method thunks.
+The call boundary does not retain VM closures, iterators, ranges, or
+PathProxies.
+
 `call` returns a runtime-managed `VelaValue`. Hosts can pass it back to later
 calls without materializing a detached copy, decode it with `from_value` when
 the `serde` feature is enabled, or explicitly call `value_to_owned` when Rust

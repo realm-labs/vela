@@ -8,6 +8,7 @@ use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
 use vela_def::{FieldId, TypeId};
 use vela_host::access::HostAccess;
 use vela_host::adapter::{ExternStateBinding, ScriptStateAdapter};
+use vela_host::call_value::HostCallValue;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::mock::MockStateAdapter;
 use vela_host::object::ScriptHostObject;
@@ -324,8 +325,8 @@ impl ScriptStateAdapter for CountingExternStateLookupAdapter {
         _access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         _method: HostMethodId,
-        _args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        _args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         Err(HostError {
             kind: HostErrorKind::MissingPath {
                 path: target.to_diagnostic_path().to_host_path(),
@@ -432,27 +433,29 @@ impl ScriptHostObject for DirectPlayer {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         match (target.plan.parts.as_slice(), method, args) {
-            ([], method, [HostValue::Scalar(vela_common::ScalarValue::I64(amount))])
+            ([], method, [HostCallValue::Scalar(vela_common::ScalarValue::I64(amount))])
                 if method == HostMethodId::new(10) =>
             {
                 require_direct_method(access, 0)?;
                 self.level += amount;
-                Ok(HostValue::Scalar(vela_common::ScalarValue::I64(self.level)))
+                Ok(HostCallValue::Scalar(vela_common::ScalarValue::I64(
+                    self.level,
+                )))
             }
             (
                 [HostPathPart::Field(field)],
                 method,
                 [
-                    HostValue::String(key),
-                    HostValue::Scalar(vela_common::ScalarValue::I64(amount)),
+                    HostCallValue::String(key),
+                    HostCallValue::Scalar(vela_common::ScalarValue::I64(amount)),
                 ],
             ) if *field == FieldId::new(2) && method == HostMethodId::new(11) => {
                 require_direct_method(access, 1)?;
                 *self.inventory.entry(key.clone()).or_insert(0) += amount;
-                Ok(HostValue::Unit)
+                Ok(HostCallValue::Unit)
             }
             _ => Err(HostError {
                 kind: HostErrorKind::UnsupportedMethod { method },

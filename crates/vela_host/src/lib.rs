@@ -6,6 +6,8 @@
 pub mod access;
 #[forbid(unsafe_code)]
 pub mod adapter;
+#[forbid(unsafe_code)]
+pub mod call_value;
 #[allow(unsafe_code)]
 mod erased_slice;
 #[forbid(unsafe_code)]

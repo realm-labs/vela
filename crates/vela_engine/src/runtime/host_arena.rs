@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use parking_lot::RwLock;
 use vela_common::{HostMethodId, HostObjectId, HostTypeId};
+use vela_host::call_value::HostCallValue;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::lease::{ErasedHostLease, HostLeaseKind, OwnedHostLeaseSlot, host_object_busy};
 use vela_host::object::ScriptHostObject;
@@ -206,8 +207,8 @@ impl RuntimeHostArena {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> Option<HostResult<HostValue>> {
+        args: &[HostCallValue],
+    ) -> Option<HostResult<HostCallValue>> {
         let object = &self.entry(target.root)?.object;
         Some(
             object

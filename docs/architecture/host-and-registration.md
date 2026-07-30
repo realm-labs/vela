@@ -269,11 +269,18 @@ For ordinary returned script values, `Runtime::call` yields a runtime-managed
 `value_to_owned` creates a detached boundary copy, and `from_value` performs
 typed deserialization when serde support is enabled.
 
-Direct call-boundary objects implement the same method shape through
-`ScriptHostObject::call_resolved_host(ResolvedHostAccess, HostTargetInstance,
-HostMethodId, &[HostValue])`. Passing the receiver target instance is required
-for child methods such as `player.inventory.add("gold", 10)` and trait-object
-fields whose callable surface lives behind a nested host target.
+Direct call-boundary objects implement erased methods through
+`ScriptHostObject::call_resolved_host(ResolvedHostAccess,
+HostTargetInstance, HostMethodId, &[HostCallValue])`. `HostCallValue` is a
+detached structural boundary: it preserves scalars, HostRefs, tuples,
+collections, records, and enums without storing a VM heap handle or requiring
+the concrete Host object to be `'static`. The engine's typed helpers decode and
+encode derived Rust Value types through the same `FromScriptArg` and
+`IntoScriptArg` contracts used by registered native thunks. Field/path
+operations continue to use the narrower `HostValue` vocabulary. Passing the
+receiver target instance is required for child methods such as
+`player.inventory.add("gold", 10)` and trait-object fields whose callable
+surface lives behind a nested host target.
 
 ### Host Type Methods And Indexing
 
@@ -294,8 +301,12 @@ Host method calls use a single runtime shape:
 receiver: HostTargetInstance
 access: ResolvedHostAccess
 method_id: HostMethodId
-args: scalar HostValue values or typed script-owned arguments
+args: detached HostCallValue values decoded into typed Rust arguments
 ```
+
+`HostCallValue` accepts tuples, arrays, maps, sets, records, enums, HostRefs,
+and scalar values. Closures, runtime iterators, ranges, and PathProxies remain
+runtime-managed capabilities and fail closed at this detached method boundary.
 
 The VM does not special-case a concrete Rust collection family. Standard
 collection calls are lowered to semantic host protocols such as

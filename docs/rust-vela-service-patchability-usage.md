@@ -52,10 +52,14 @@ Supporting that nested case would require a generated typed outer-call thunk;
 Vela deliberately does not use `Any`, a forged `TypeId`, or an unsafe
 downcast.
 
-Erased Host-contract methods currently use the `HostValue` boundary vocabulary:
-unit, booleans, characters, numeric scalars, strings, bytes, and HostRefs.
-Structured business Values should remain ordinary service parameters, be
-referenced through another HostRef, or use an explicit boundary codec.
+Erased Host-contract methods use the detached `HostCallValue` vocabulary.
+Besides scalar `HostValue` data and HostRefs, it preserves tuples, arrays,
+maps, sets, records, and enums. Generated or handwritten adapters use
+`decode_host_call_arg` and `encode_host_call_return`, so a method can receive
+and return the same derived Rust `Value` types as a statically registered
+native thunk. Runtime-only values such as closures, iterators, ranges, and
+PathProxies are not detached method arguments; they retain their dedicated
+runtime or HostRef protocols.
 
 ## 2. Complete Example Model
 
@@ -154,7 +158,22 @@ impl<A> ScriptHostSchema for RequestContext<'_, A> {
 }
 
 impl<A: Send> ScriptHostObject for RequestContext<'_, A> {
-    // Generated field and method dispatch uses the static contract IDs.
+    fn call_resolved_host(
+        &mut self,
+        access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+        method: HostMethodId,
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
+        match method {
+            PROCESS => {
+                let request: Request = decode_host_call_arg(&args[0])?;
+                let response = self.process(request)?;
+                encode_host_call_return(response)
+            }
+            _ => self.dispatch_generated_method(access, target, method, args),
+        }
+    }
 }
 
 #[vela_macros::service(path = "example::handler")]

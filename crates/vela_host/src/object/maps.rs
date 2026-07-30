@@ -3,6 +3,7 @@ use std::hash::Hash;
 
 use vela_common::{HostMethodId, HostTypeId};
 
+use crate::call_value::HostCallValue;
 use crate::error::HostResult;
 use crate::protocol::{
     HostCollectionMutation, HostCollectionProjection, HostCollectionQuery, HostCollectionSnapshot,
@@ -165,8 +166,8 @@ where
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         if let Some((PreparedHostStep::AdapterLocal(0), child_access)) = access.next_prepared_step()
         {
             let key = K::from_host_collection_key(target_key(target, target.offset)?)?;
@@ -279,8 +280,8 @@ where
         target: HostTargetInstance<'_>,
         offset: usize,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get_mut(&key)
             .ok_or_else(|| missing_collection_entry(target))?
@@ -436,8 +437,8 @@ where
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         if let Some((PreparedHostStep::AdapterLocal(0), child_access)) = access.next_prepared_step()
         {
             let key = K::from_host_collection_key(target_key(target, target.offset)?)?;
@@ -552,8 +553,8 @@ where
         target: HostTargetInstance<'_>,
         offset: usize,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         let key = K::from_host_collection_key(target_key(target, offset)?)?;
         self.get_mut(&key)
             .ok_or_else(|| missing_collection_entry(target))?

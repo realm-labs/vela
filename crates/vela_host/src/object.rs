@@ -7,6 +7,7 @@ use std::pin::Pin;
 use vela_common::{HostMethodId, HostTypeId, ScalarValue};
 
 use crate::{
+    call_value::HostCallValue,
     error::HostResult,
     protocol::{
         HostCollectionKey, HostCollectionKeyRef, HostCollectionMutation, HostCollectionProjection,
@@ -38,7 +39,7 @@ pub use slice::{lease_slice_mut, lease_slice_ref};
 use target::{target_index, target_is_leaf};
 
 pub type HostCallFuture<'call> =
-    Pin<Box<dyn Future<Output = HostResult<HostValue>> + Send + 'call>>;
+    Pin<Box<dyn Future<Output = HostResult<HostCallValue>> + Send + 'call>>;
 
 pub trait ScriptHostObject {
     fn host_type_id(&self) -> HostTypeId;
@@ -214,8 +215,8 @@ pub trait ScriptHostObject {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         let _ = access;
         let _ = args;
         Err(if target.offset >= target.plan.parts.len() {
@@ -230,7 +231,7 @@ pub trait ScriptHostObject {
     fn call_async_host_shared<'call>(
         &'call self,
         method: HostMethodId,
-        _args: Vec<HostValue>,
+        _args: Vec<HostCallValue>,
     ) -> HostCallFuture<'call> {
         let error = unsupported_method(method);
         Box::pin(async move { Err(error) })
@@ -241,7 +242,7 @@ pub trait ScriptHostObject {
     fn call_async_host_exclusive<'call>(
         &'call mut self,
         method: HostMethodId,
-        _args: Vec<HostValue>,
+        _args: Vec<HostCallValue>,
     ) -> HostCallFuture<'call> {
         let error = unsupported_method(method);
         Box::pin(async move { Err(error) })
@@ -420,8 +421,8 @@ pub trait ScriptHostFieldAccess {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         let _ = access;
         self.call_host_target_from(target, target.offset, method, args)
     }
@@ -503,8 +504,8 @@ pub trait ScriptHostFieldAccess {
         target: HostTargetInstance<'_>,
         offset: usize,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         let _ = args;
         Err(if offset >= target.plan.parts.len() {
             unsupported_method(method)
@@ -522,8 +523,8 @@ pub trait ScriptHostFieldAccess {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         let _ = slot;
         let _ = access;
         self.call_host_target_from(target, target.offset, method, args)
@@ -825,8 +826,8 @@ macro_rules! impl_script_host_object_via_field {
                 access: ResolvedHostAccess,
                 target: HostTargetInstance<'_>,
                 method: HostMethodId,
-                args: &[HostValue],
-            ) -> HostResult<HostValue> {
+                args: &[HostCallValue],
+            ) -> HostResult<HostCallValue> {
                 ScriptHostFieldAccess::call_resolved_host_target_from(
                     self, access, target, method, args,
                 )

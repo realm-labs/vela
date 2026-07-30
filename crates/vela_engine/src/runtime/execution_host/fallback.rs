@@ -1,5 +1,6 @@
 use vela_common::HostMethodId;
 use vela_host::adapter::{ExternStateBinding, ScriptStateAdapter};
+use vela_host::call_value::HostCallValue;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
 use vela_host::lease::HostLeaseKind;
 use vela_host::path::HostRef;
@@ -175,8 +176,8 @@ impl ScriptStateAdapter for FallbackAdapter<'_> {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         self.adapter_mut().map_or_else(
             || {
                 Err(HostError {

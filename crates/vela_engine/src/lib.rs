@@ -16,6 +16,7 @@ pub mod context;
 pub mod context_schema;
 pub mod engine;
 pub mod error;
+pub mod host_call;
 pub mod host_lease;
 pub mod host_type;
 pub mod interop;

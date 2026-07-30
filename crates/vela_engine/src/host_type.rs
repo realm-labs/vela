@@ -2,7 +2,6 @@ use vela_common::ReceiverCapability;
 use vela_host::path::{HostPath, PathSegment};
 use vela_host::resolved::{HostAccessOp, HostAccessSpec};
 use vela_host::target::{HostTargetInstance, HostTargetPlan};
-use vela_host::value::HostValue;
 use vela_reflect::registry::TypeDesc;
 use vela_vm::HostExecution;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
@@ -10,6 +9,8 @@ use vela_vm::owned_value::OwnedValue;
 
 use crate::method::{AsyncNativeMethodEntry, NativeMethodDesc, NativeMethodEntry};
 use crate::typed::TypedNativeMethodFunction;
+
+use crate::host_call::{host_call_to_owned_value, owned_to_host_call_value};
 
 #[derive(Clone)]
 pub struct HostTypeSpec {
@@ -72,12 +73,12 @@ impl HostTypeSpec {
                     .resolve_host_access(HostAccessSpec::new(HostAccessOp::Call(method), &plan))?;
                 let args = args
                     .iter()
-                    .map(owned_to_host_value)
+                    .map(owned_to_host_call_value)
                     .collect::<VmResult<Vec<_>>>()?;
                 let target = HostTargetInstance::new(receiver.root, &plan, &[]);
                 host.adapter
                     .call_host(access, target, method, &args)
-                    .map(host_to_owned_value)
+                    .map(host_call_to_owned_value)
                     .map_err(Into::into)
             }));
         self
@@ -102,7 +103,7 @@ impl HostTypeSpec {
                     Box::pin(async move {
                         let args = args
                             .iter()
-                            .map(owned_to_host_value)
+                            .map(owned_to_host_call_value)
                             .collect::<VmResult<Vec<_>>>()?;
                         let call = match lease_kind {
                             vela_host::lease::HostLeaseKind::Shared => {
@@ -118,7 +119,7 @@ impl HostTypeSpec {
                                 .call_async_host_exclusive(method, args),
                         };
                         let result = call.await?;
-                        Ok(host_to_owned_value(result))
+                        Ok(host_call_to_owned_value(result))
                     })
                 },
             ));
@@ -173,31 +174,4 @@ fn host_target_plan(receiver: &HostPath) -> HostTargetPlan {
         plan.parts.push(part);
     }
     plan
-}
-
-fn owned_to_host_value(value: &OwnedValue) -> VmResult<HostValue> {
-    match value {
-        OwnedValue::Unit => Ok(HostValue::Unit),
-        OwnedValue::Bool(value) => Ok(HostValue::Bool(*value)),
-        OwnedValue::Char(value) => Ok(HostValue::Char(*value)),
-        OwnedValue::Scalar(value) => Ok(HostValue::Scalar(*value)),
-        OwnedValue::String(value) => Ok(HostValue::String(value.clone())),
-        OwnedValue::Bytes(value) => Ok(HostValue::Bytes(value.clone())),
-        OwnedValue::HostRef(value) => Ok(HostValue::HostRef(*value)),
-        _ => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "erased Host method boundary value",
-        })),
-    }
-}
-
-fn host_to_owned_value(value: HostValue) -> OwnedValue {
-    match value {
-        HostValue::Unit => OwnedValue::Unit,
-        HostValue::Bool(value) => OwnedValue::Bool(value),
-        HostValue::Char(value) => OwnedValue::Char(value),
-        HostValue::Scalar(value) => OwnedValue::Scalar(value),
-        HostValue::String(value) => OwnedValue::String(value),
-        HostValue::Bytes(value) => OwnedValue::Bytes(value),
-        HostValue::HostRef(value) => OwnedValue::HostRef(value),
-    }
 }

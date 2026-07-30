@@ -3,6 +3,7 @@ use std::any::{Any, TypeId};
 use vela_common::{HostMethodId, HostTypeId};
 
 use crate::{
+    call_value::HostCallValue,
     error::HostResult,
     protocol::{
         HostCollectionMutation, HostCollectionProjection, HostCollectionQuery,
@@ -232,8 +233,8 @@ where
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         if let Some((PreparedHostStep::AdapterLocal(0), child_access)) = access.next_prepared_step()
         {
             let index = usize::try_from(target_index(target, target.offset)?)
@@ -369,8 +370,8 @@ where
         target: HostTargetInstance<'_>,
         offset: usize,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         let index = usize::try_from(target_index(target, offset)?)
             .map_err(|_| invalid_arg("array index"))?;
         self.get_mut(index)

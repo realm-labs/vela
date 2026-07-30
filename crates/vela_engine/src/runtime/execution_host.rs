@@ -6,6 +6,7 @@ use vela_host::adapter::{
     ExternStateBinding, HostLeaseInvoker, ScopedHostReturnInvoker, ScopedHostReturns,
     ScriptStateAdapter,
 };
+use vela_host::call_value::HostCallValue;
 use vela_host::error::{HostError, HostErrorKind, HostRefLifetimeBoundary, HostResult};
 use vela_host::lease::{
     BorrowLeaseId, ErasedHostLease, ErasedHostLeaseSet, HostLeaseKind, ScopedBorrowedHostGroupCell,
@@ -698,8 +699,8 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         match self.args.direct_binding_mut(target.root) {
             Some(binding) if binding.receiver_access() == HostLeaseKind::Shared => {
                 Err(ExecutionHost::direct_access_error(target, "call"))
@@ -1145,8 +1146,8 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         if let Some(binding) = self.extern_states.binding_mut(target.root) {
             return binding
                 .object

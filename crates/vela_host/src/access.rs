@@ -2,6 +2,7 @@ use vela_common::{HostMethodId, Span};
 
 use crate::{
     adapter::ScriptStateAdapter,
+    call_value::HostCallValue,
     error::{HostError, HostErrorKind, HostResult},
     path::{HostPath, HostRef},
     protocol::{
@@ -360,9 +361,20 @@ impl HostAccess {
         args: &[HostValue],
         source_span: Option<Span>,
     ) -> HostResult<HostValue> {
-        adapter
-            .call_host(access, target, method, args)
-            .map_err(|error| error.with_source_span_if_absent(source_span))
+        let args = args
+            .iter()
+            .cloned()
+            .map(HostCallValue::from_host_value)
+            .collect::<Vec<_>>();
+        let value = adapter
+            .call_host(access, target, method, &args)
+            .map_err(|error| error.with_source_span_if_absent(source_span))?;
+        value.to_host_value().ok_or_else(|| {
+            HostError::new(HostErrorKind::InvalidArgument {
+                expected: "scalar Host method return value",
+            })
+            .with_source_span_if_absent(source_span)
+        })
     }
 
     pub fn require_fresh_ref(host_ref: HostRef, snapshot: &HostObjectSnapshot) -> HostResult<()> {

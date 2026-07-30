@@ -3442,6 +3442,17 @@ Rust type; the direct Rust default and the Vela override remain available.
 Closing that gap requires a generated typed outer-call thunk, not an `Any` or
 unsafe downcast.
 
+Erased Host method arguments and returns use `HostCallValue`, not the
+field/path-oriented scalar `HostValue` boundary. It is a detached,
+lifetime-neutral structural value that preserves tuples, arrays, maps, sets,
+records, enums, scalars, bytes, and HostRefs. Engine helpers route it through
+the existing `FromScriptArg` and `IntoScriptArg` codecs, so schema-only Host
+contracts and typed native thunks accept the same derived Rust Value shapes.
+Closures, ranges, runtime iterators, and PathProxies are excluded because they
+are live runtime capabilities rather than detached business values. This
+widens the existing `call_host`/`call_resolved_host` ABI; there is no separate
+scoped or structured method-dispatch path.
+
 ### Service Deployment And Tooling Share Sealed Generation Facts
 
 Deployment bundles are immutable descriptions paired with one already-linked

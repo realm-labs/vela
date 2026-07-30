@@ -2,6 +2,7 @@ use vela_common::HostMethodId;
 use vela_def::StateId;
 
 use crate::{
+    call_value::HostCallValue,
     error::{HostError, HostErrorKind, HostRefLifetimeBoundary, HostResult},
     lease::{
         ErasedHostLease, HostLeaseKind, ScopedBorrowedHostCell, ScopedBorrowedHostGroupCell,
@@ -255,8 +256,8 @@ pub trait ScriptStateAdapter {
         access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue>;
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue>;
 }
 
 impl ScriptStateAdapter for HostRefSlots {
@@ -314,8 +315,8 @@ impl ScriptStateAdapter for HostRefSlots {
         _access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         _method: HostMethodId,
-        _args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        _args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         Err(slot_only_access_error(target, "call"))
     }
 }

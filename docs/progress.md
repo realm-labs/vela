@@ -128,7 +128,10 @@ Phase status:
   `register_host_type` registration seals stable Host contracts without a Rust
   `TypeId`; `with_host_mut` accepts `Send`, non-`Sync`, non-`'static` objects
   through one exclusive root lease; erased sync/async Host methods dispatch
-  without `Any`; and generated Services keep authored
+  without `Any`; their detached `HostCallValue` boundary round-trips derived
+  Rust Value records, enums, and collections through the standard typed
+  codecs through the single existing Host method ABI; and generated Services
+  keep authored
   `&mut RequestContext<'_, A>` signatures without a Runtime slot or authority
   implementation. The focused regression holds an exclusive Host lease across
   a pending Rust future and reborrows the context after resume.

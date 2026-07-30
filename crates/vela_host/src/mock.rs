@@ -6,7 +6,9 @@ use crate::{
     access::{HostAccess, HostObjectSnapshot},
     adapter::ExternStateBinding,
     adapter::ScriptStateAdapter,
-    add_values, div_values,
+    add_values,
+    call_value::HostCallValue,
+    div_values,
     error::{HostError, HostErrorKind, HostResult},
     mul_values,
     path::{HostPath, HostRef, HostSlotRef},
@@ -365,8 +367,8 @@ impl ScriptStateAdapter for MockStateAdapter {
         _access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
         method: HostMethodId,
-        args: &[HostValue],
-    ) -> HostResult<HostValue> {
+        args: &[HostCallValue],
+    ) -> HostResult<HostCallValue> {
         let key = MockValueKey::from_instance(target);
         self.validate_access(&key, "call")?;
         self.validate_writable_key(&key)?;
@@ -376,11 +378,20 @@ impl ScriptStateAdapter for MockStateAdapter {
             .cloned()
             .unwrap_or(HostValue::Unit);
         self.ensure_object(key.root);
+        let args = args
+            .iter()
+            .map(HostCallValue::to_host_value)
+            .collect::<Option<Vec<_>>>()
+            .ok_or_else(|| {
+                HostError::new(HostErrorKind::InvalidArgument {
+                    expected: "scalar mock Host method arguments",
+                })
+            })?;
         self.method_calls.push(MockMethodCall {
             target: key,
             method,
-            args: args.to_vec(),
+            args,
         });
-        Ok(value)
+        Ok(HostCallValue::from_host_value(value))
     }
 }
