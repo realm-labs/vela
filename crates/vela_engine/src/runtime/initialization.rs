@@ -4,7 +4,9 @@ use vela_host::error::HostErrorKind;
 use vela_host::error::HostResult;
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
+use vela_hot_reload::compile::initial_version_from_linked_artifact;
 use vela_hot_reload::error::{HotReloadError, HotReloadErrorKind};
+use vela_hot_reload::runtime::HotReloadRuntime;
 use vela_hot_reload::version::HotUpdate;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::VmError;
@@ -55,6 +57,7 @@ impl Default for RuntimeInitializationLimits {
 #[derive(Clone, Debug, PartialEq)]
 pub enum RuntimeBuildError {
     Link(vela_bytecode::linker::LinkError),
+    HotReload(HotReloadError),
     Initializer {
         state: String,
         source_span: Option<Span>,
@@ -70,6 +73,9 @@ impl std::fmt::Display for RuntimeBuildError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Link(error) => write!(formatter, "runtime image link failed: {error:?}"),
+            Self::HotReload(error) => {
+                write!(formatter, "hot reload initialization failed: {error}")
+            }
             Self::Initializer { state, error, .. } => {
                 write!(formatter, "state initializer for `{state}` failed: {error}")
             }
@@ -85,6 +91,12 @@ impl std::error::Error for RuntimeBuildError {}
 impl From<vela_bytecode::linker::LinkError> for RuntimeBuildError {
     fn from(error: vela_bytecode::linker::LinkError) -> Self {
         Self::Link(error)
+    }
+}
+
+impl From<HotReloadError> for RuntimeBuildError {
+    fn from(error: HotReloadError) -> Self {
+        Self::HotReload(error)
     }
 }
 
@@ -154,6 +166,24 @@ where
         }
         self.runtime.initialize_vm_states(self.limits)?;
         Ok(self.runtime)
+    }
+}
+
+impl RuntimeBuilder<OwnedImage> {
+    /// Enables source reloads for this Runtime.
+    ///
+    /// The already-linked program becomes generation zero, so ordinary and
+    /// reloadable runtimes share the same compile and construction path.
+    pub fn with_hot_reload(mut self) -> Result<Self, RuntimeBuildError> {
+        let engine = self.runtime.image.engine().clone();
+        let version = initial_version_from_linked_artifact(
+            engine.hot_reload_abi(),
+            std::sync::Arc::clone(self.runtime.image.linked_artifact()),
+        )?;
+        self.runtime.image =
+            OwnedImage::from_image(RuntimeImage::from_program_version(engine, &version));
+        self.runtime.hot_reload = Some(HotReloadRuntime::new(version));
+        Ok(self)
     }
 }
 

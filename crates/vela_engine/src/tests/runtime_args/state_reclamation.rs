@@ -36,11 +36,7 @@ fn current() { return 1; }
         .expect("extern state descriptor")
         .id;
     let update = engine
-        .compile_hot_reload_update_with_id(
-            &initial,
-            SourceId::new(25),
-            "fn current() { return 2; }",
-        )
+        .compile_reload_with_id(&initial, SourceId::new(25), "fn current() { return 2; }")
         .expect("private state removal is compatible");
     let drops = Arc::new(AtomicUsize::new(0));
     let mut builder = Runtime::builder_from_hot_reload_version(engine, initial);
@@ -54,9 +50,11 @@ fn current() { return 1; }
         .expect("extern state binding");
     let mut runtime = builder.build().expect("runtime initializes");
 
-    let report = runtime.apply_hot_update(update).expect("reload applies");
+    let report = runtime
+        .apply_reload_update_for_test(update)
+        .expect("reload applies");
     assert!(report.accepted);
-    assert_eq!(runtime.check_reload(), Ok(None));
+    assert_eq!(runtime.activate_reload(), Ok(None));
 
     assert_eq!(runtime.retained_generation_count(), 1);
     assert!(!runtime.retains_vm_state_id(vm_state));
@@ -96,7 +94,7 @@ fn invoke(callback) { return callback(); }
         .expect("extern state descriptor")
         .id;
     let update = engine
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             &initial,
             SourceId::new(27),
             "fn make() { return || 0; } fn invoke(callback) { return callback(); }",
@@ -117,20 +115,22 @@ fn invoke(callback) { return callback(); }
         .call("make", CallArgs::new(), CallOptions::unbounded())
         .expect("old closure");
 
-    let report = runtime.apply_hot_update(update).expect("reload applies");
+    let report = runtime
+        .apply_reload_update_for_test(update)
+        .expect("reload applies");
 
     assert!(report.accepted);
     assert_eq!(runtime.retained_generation_count(), 2);
     assert!(runtime.retains_vm_state_id(vm_state));
     assert!(runtime.retains_extern_state_id(extern_state));
     assert_eq!(drops.load(Ordering::SeqCst), 0);
-    assert_eq!(runtime.check_reload(), Ok(None));
+    assert_eq!(runtime.activate_reload(), Ok(None));
     assert_eq!(runtime.retained_generation_count(), 2);
     assert!(runtime.retains_vm_state_id(vm_state));
     assert!(runtime.retains_extern_state_id(extern_state));
 
     drop(old_closure);
-    assert_eq!(runtime.check_reload(), Ok(None));
+    assert_eq!(runtime.activate_reload(), Ok(None));
 
     assert_eq!(runtime.retained_generation_count(), 1);
     assert!(!runtime.retains_vm_state_id(vm_state));

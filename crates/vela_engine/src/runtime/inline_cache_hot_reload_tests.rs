@@ -48,7 +48,7 @@ fn read_value() {
     );
 
     let update = runtime
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             SourceId::new(2),
             r#"
 struct Reward {
@@ -65,7 +65,7 @@ fn read_value() {
         .expect("runtime should compile record field hot reload update")
         .expect("record field target change should be accepted");
     let report = runtime
-        .apply_hot_update(update)
+        .apply_reload_update_for_test(update)
         .expect("record field hot reload update should apply");
     assert!(report.accepted);
 
@@ -133,7 +133,7 @@ fn call_dynamic(value) {
     );
 
     let update = runtime
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             SourceId::new(2),
             r#"
 fn call_dynamic(value) {
@@ -144,7 +144,7 @@ fn call_dynamic(value) {
         .expect("runtime should compile dynamic method hot reload update")
         .expect("dynamic method body update should be accepted");
     let report = runtime
-        .apply_hot_update(update)
+        .apply_reload_update_for_test(update)
         .expect("dynamic method hot reload update should apply");
     assert!(report.accepted);
 
@@ -203,7 +203,7 @@ fn invoke(callback, value: String) -> bool { return callback(value); }
     assert!(old_data.inline_caches().method_dispatch(old_site).is_none());
 
     let update = runtime
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             SourceId::new(2),
             r#"
 fn make() { return |value: String| value.ends_with("new"); }
@@ -213,7 +213,7 @@ fn invoke(callback, value: String) -> bool { return callback(value); }
         .expect("runtime should compile closure update")
         .expect("closure update should be compatible");
     runtime
-        .apply_hot_update(update)
+        .apply_reload_update_for_test(update)
         .expect("closure update should apply");
     let new_site = first_method_call_site(&runtime);
     assert!(!Arc::ptr_eq(&old_data, runtime.image.execution_data()));
@@ -256,7 +256,7 @@ fn invoke(callback, value: String) -> bool { return callback(value); }
     assert!(old_lifetime.upgrade().is_some());
     assert_eq!(
         runtime
-            .check_reload()
+            .activate_reload()
             .expect("ordinary safe point succeeds"),
         None
     );

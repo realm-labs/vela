@@ -33,12 +33,13 @@ pub(super) fn removed_script_function_rejection_kind(
     write_reward_module(&reward_file, 6);
     match workflow {
         ScriptFunctionReloadWorkflow::Directory => runtime
-            .stage_hot_reload_update_dir(&root)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::directory(&root))
             .expect("dir removed function rejection should be staged"),
         ScriptFunctionReloadWorkflow::ChangedFile => runtime
-            .stage_hot_reload_update_changed_file(&root, &reward_file)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::changed_file(
+                &root,
+                &reward_file,
+            ))
             .expect("changed-file removed function rejection should be staged"),
     };
     assert_eq!(
@@ -53,7 +54,7 @@ pub(super) fn removed_script_function_rejection_kind(
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged removed function rejection report");
 
@@ -123,12 +124,13 @@ pub(super) fn removed_native_descriptor_rejection_kind(
     write_reward_module(&reward_file, 6);
     match workflow {
         NativeDescriptorReloadWorkflow::Directory => runtime
-            .stage_hot_reload_update_dir(&root)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::directory(&root))
             .expect("dir removed native descriptor ABI rejection should be staged"),
         NativeDescriptorReloadWorkflow::ChangedFile => runtime
-            .stage_hot_reload_update_changed_file(&root, &reward_file)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::changed_file(
+                &root,
+                &reward_file,
+            ))
             .expect("changed-file removed native descriptor ABI rejection should be staged"),
     };
     assert_eq!(
@@ -143,7 +145,7 @@ pub(super) fn removed_native_descriptor_rejection_kind(
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged removed native descriptor ABI rejection report");
 
@@ -214,12 +216,13 @@ pub(super) fn native_stable_id_churn_rejection_kind(
     write_reward_module(&reward_file, 6);
     match workflow {
         NativeDescriptorReloadWorkflow::Directory => runtime
-            .stage_hot_reload_update_dir(&root)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::directory(&root))
             .expect("dir native stable-ID churn ABI rejection should be staged"),
         NativeDescriptorReloadWorkflow::ChangedFile => runtime
-            .stage_hot_reload_update_changed_file(&root, &reward_file)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::changed_file(
+                &root,
+                &reward_file,
+            ))
             .expect("changed-file native stable-ID churn ABI rejection should be staged"),
     };
     assert_eq!(
@@ -234,7 +237,7 @@ pub(super) fn native_stable_id_churn_rejection_kind(
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged native stable-ID churn ABI rejection report");
 
@@ -298,8 +301,7 @@ pub(super) fn dir_native_rejection_kind(
 
     write_reward_module(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir native descriptor ABI rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -313,7 +315,7 @@ pub(super) fn dir_native_rejection_kind(
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir native descriptor ABI rejection report");
 
@@ -393,12 +395,13 @@ pub(super) fn removed_method_descriptor_rejection_kind(
     write_reward_module(&reward_file, 6);
     match workflow {
         MethodDescriptorReloadWorkflow::Directory => runtime
-            .stage_hot_reload_update_dir(&root)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::directory(&root))
             .expect("dir removed method descriptor ABI rejection should be staged"),
         MethodDescriptorReloadWorkflow::ChangedFile => runtime
-            .stage_hot_reload_update_changed_file(&root, &reward_file)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::changed_file(
+                &root,
+                &reward_file,
+            ))
             .expect("changed-file removed method descriptor ABI rejection should be staged"),
     };
     assert_eq!(
@@ -413,7 +416,7 @@ pub(super) fn removed_method_descriptor_rejection_kind(
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged removed method descriptor ABI rejection report");
 
@@ -479,12 +482,13 @@ pub(super) fn method_stable_id_churn_rejection_kind(
     write_reward_module(&reward_file, 6);
     match workflow {
         MethodDescriptorReloadWorkflow::Directory => runtime
-            .stage_hot_reload_update_dir(&root)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::directory(&root))
             .expect("dir method stable-ID churn ABI rejection should be staged"),
         MethodDescriptorReloadWorkflow::ChangedFile => runtime
-            .stage_hot_reload_update_changed_file(&root, &reward_file)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::changed_file(
+                &root,
+                &reward_file,
+            ))
             .expect("changed-file method stable-ID churn ABI rejection should be staged"),
     };
     assert_eq!(
@@ -499,7 +503,7 @@ pub(super) fn method_stable_id_churn_rejection_kind(
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged method stable-ID churn ABI rejection report");
 
@@ -560,8 +564,7 @@ pub(super) fn dir_method_rejection_kind(
 
     write_reward_module(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir method ABI rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -575,7 +578,7 @@ pub(super) fn dir_method_rejection_kind(
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir method ABI rejection report");
 
@@ -646,8 +649,10 @@ pub(super) fn changed_file_method_rejection_kind(
 
     write_reward_module(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file method ABI rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -661,7 +666,7 @@ pub(super) fn changed_file_method_rejection_kind(
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file method ABI rejection report");
 

@@ -87,10 +87,9 @@ fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
-    let update = runtime
-        .compile_hot_reload_update("fn main() { return 2; }")
-        .expect("runtime should be hot-reload enabled")
-        .expect("compatible update should compile");
+    runtime
+        .stage_reload("fn main() { return 2; }")
+        .expect("compatible update should stage");
 
     assert_eq!(
         runtime
@@ -112,8 +111,9 @@ fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
     );
 
     let report = runtime
-        .apply_hot_update(update)
-        .expect("runtime should apply update at safe point");
+        .activate_reload()
+        .expect("runtime should activate update at safe point")
+        .expect("staged update should produce a report");
 
     assert!(report.accepted);
     assert_eq!(
@@ -167,7 +167,7 @@ fn version() -> i64 { return 2; }
         Pin::new(&mut future).poll(&mut context),
         Poll::Pending
     ));
-    assert_eq!(staging.stage_hot_update(update), None);
+    assert_eq!(staging.stage_reload_update(update), None);
     assert!(staging.has_pending_update());
 
     ready.store(true, Ordering::SeqCst);
@@ -188,7 +188,7 @@ fn version() -> i64 { return 2; }
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("reload check should succeed")
         .expect("staged update should activate after completion");
     assert!(report.accepted);
@@ -239,7 +239,7 @@ fn version() -> i64 { return 2; }
         Pin::new(&mut future).poll(&mut context),
         Poll::Pending
     ));
-    assert_eq!(staging.stage_hot_update(update), None);
+    assert_eq!(staging.stage_reload_update(update), None);
     drop(future);
 
     let old_version = runtime
@@ -248,7 +248,7 @@ fn version() -> i64 { return 2; }
     assert_eq!(runtime.value_to_owned(&old_version), Ok(OwnedValue::i64(1)));
 
     runtime
-        .check_reload()
+        .activate_reload()
         .expect("reload check should succeed")
         .expect("staged update should activate after cancellation");
     let new_version = runtime
@@ -275,8 +275,8 @@ fn invoke(callback, value: i64) -> i64 { return callback(value); }
         .call("make", CallArgs::new(), CallOptions::unbounded())
         .expect("old closure should be retained");
 
-    let update = runtime
-        .compile_hot_reload_update(
+    runtime
+        .stage_reload(
             r#"
 fn alpha_private(value: i64) -> i64 { return value * 1000; }
 fn helper(value: i64) -> i64 { return value + 100; }
@@ -284,11 +284,11 @@ fn make() { return |value: i64| helper(value) + 20; }
 fn invoke(callback, value: i64) -> i64 { return callback(value); }
 "#,
         )
-        .expect("runtime should compile closure reload")
-        .expect("closure reload should be compatible");
+        .expect("closure reload should stage");
     runtime
-        .apply_hot_update(update)
-        .expect("closure reload should apply at the safe point");
+        .activate_reload()
+        .expect("closure reload should activate")
+        .expect("staged closure reload should produce a report");
 
     let mut old_args = CallArgs::from_values([old_closure.clone()]);
     old_args.push(5_i64);
@@ -345,17 +345,19 @@ fn invoke(callback) -> i64 { return callback(); }
     let old_closure = runtime
         .call("make", CallArgs::new(), CallOptions::unbounded())
         .expect("old closure should be retained");
-    let update = runtime
-        .compile_hot_reload_update(
+    runtime
+        .stage_reload(
             r#"
 fn make() { return || 0; }
 fn invoke(callback) -> i64 { return callback(); }
 "#,
         )
-        .expect("removed-state update should compile")
-        .expect("state removal should be compatible");
+        .expect("removed-state update should stage");
 
-    let report = runtime.apply_hot_update(update).expect("reload applies");
+    let report = runtime
+        .activate_reload()
+        .expect("reload activates")
+        .expect("staged update should produce a report");
 
     assert_eq!(report.removed_states, ["main::retired"]);
     assert_eq!(runtime.state("main::retired"), Ok(None));
@@ -390,15 +392,19 @@ fn invoke(callback, value: String) -> bool { return callback(value); }
         .call("make", CallArgs::new(), CallOptions::unbounded())
         .expect("old closure should be retained");
 
-    let rejected = runtime
-        .compile_hot_reload_update(
+    runtime
+        .stage_reload(
             r#"
 fn make(extra) { return |value: String| value.ends_with("new"); }
 fn invoke(callback, value: String) -> bool { return callback(value); }
 "#,
         )
-        .expect("incompatible source should be reported, not fail compilation");
-    assert!(rejected.is_err());
+        .expect("ABI rejection should stage for a safe-point report");
+    let rejected = runtime
+        .activate_reload()
+        .expect("rejected reload should activate as a report")
+        .expect("staged rejection should produce a report");
+    assert!(!rejected.accepted);
     assert_eq!(
         runtime
             .hot_reload_version()
@@ -461,8 +467,8 @@ fn main() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
-    let update = runtime
-        .compile_hot_reload_update(
+    runtime
+        .stage_reload(
             r#"
 enum QuestProgress {
     Active { count }
@@ -484,8 +490,7 @@ fn main() {
 }
 "#,
         )
-        .expect("runtime should be hot-reload enabled")
-        .expect("compatible update should compile");
+        .expect("compatible update should stage");
 
     assert_eq!(
         call_raw(
@@ -500,8 +505,9 @@ fn main() {
     );
 
     let report = runtime
-        .apply_hot_update(update)
-        .expect("runtime should apply update at safe point");
+        .activate_reload()
+        .expect("runtime should activate update at safe point")
+        .expect("staged update should produce a report");
 
     assert!(report.accepted);
     assert_eq!(
@@ -560,8 +566,8 @@ fn main() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 
-    let update = runtime
-        .compile_hot_reload_update(
+    runtime
+        .stage_reload(
             r#"
 trait BonusSource {
     fn bonus(self, amount) -> i64;
@@ -582,8 +588,7 @@ fn main() {
 }
 "#,
         )
-        .expect("runtime should be hot-reload enabled")
-        .expect("compatible update should compile");
+        .expect("compatible update should stage");
 
     assert_eq!(
         call_raw(
@@ -598,8 +603,9 @@ fn main() {
     );
 
     let report = runtime
-        .apply_hot_update(update)
-        .expect("runtime should apply update at safe point");
+        .activate_reload()
+        .expect("runtime should activate update at safe point")
+        .expect("staged update should produce a report");
 
     assert!(report.accepted);
     assert_eq!(

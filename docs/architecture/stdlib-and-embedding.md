@@ -575,11 +575,14 @@ surface through their bound provider-method target.
 ### Hot Reload
 
 ```rust
-runtime
-    .stage_hot_reload_update_file("scripts/combat.vela")?
-    ?;
+let program = engine.compile_source(initial_source)?;
+let mut runtime = Runtime::builder(engine, program)?
+    .with_hot_reload()?
+    .build()?;
 
-if let Some(report) = runtime.check_reload()? {
+runtime.stage_reload(ReloadSource::file("scripts/combat.vela"))?;
+
+if let Some(report) = runtime.activate_reload()? {
     if !report.accepted {
         log::error!("hot reload failed: {:#?}", report.errors);
     }
@@ -589,18 +592,15 @@ if let Some(report) = runtime.check_reload()? {
 Runtime update compilation uses the runtime's active `ProgramVersion`, so hosts
 do not need to separately fetch the current version before compiling an update.
 Source load and path errors are returned immediately, while accepted updates and
-ABI or policy rejections are staged until the host calls `runtime.check_reload()`
-at a safe point. Tick-loop hosts can call
-`runtime.check_reload_at_tick_boundary()` when no event boundary is active. Host
-mutations write through during the call, so reload checks are separate from host
-state mutation.
+ABI or policy rejections are staged until the host calls
+`runtime.activate_reload()` at a caller-selected safe point. Host mutations
+write through during the call, so reload activation is separate from host state
+mutation.
 
-For full module-root workflows, hosts can call
-`runtime.stage_hot_reload_update_dir("scripts")` with the same safe-point
-semantics. For file-watcher workflows, hosts may stage an update from a changed
-`.vela` file inside a module root. The engine validates the changed path and
-recompiles the full root so imports, module dependency impact, and ABI checks
-are based on the same complete module graph as directory reloads.
+`Runtime::stage_reload` accepts text directly and uses `ReloadSource::file`,
+`ReloadSource::directory`, or `ReloadSource::changed_file` for filesystem
+workflows. A changed-file update still recompiles the full module root so
+imports, dependency impact, and ABI checks use one complete graph.
 
 Hot-reload ABI manifests copy optional declaration spans from reflected schema,
 function, and method descriptors. When schema, function effect/access, or method

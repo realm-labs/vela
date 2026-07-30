@@ -112,6 +112,11 @@ Phase status:
   Services, and the embedding prelude now exposes the ordinary Engine/Runtime
   and Service Patch authoring path rather than reflection, HIR, HostAccess, or
   service-controller internals.
+- Cross-cutting Runtime API cleanup checkpoint accepted: ordinary and
+  reloadable execution now share `compile_source` plus `Runtime::builder`;
+  `with_hot_reload` promotes that linked program to generation zero, and
+  `stage_reload` plus `activate_reload` replace the split compile/stage/apply
+  method families without compatibility aliases.
 
 S3 provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared

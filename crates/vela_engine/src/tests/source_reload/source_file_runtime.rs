@@ -16,7 +16,7 @@ fn runtime_compiles_hot_reload_update_from_active_version() {
     let mut tx = HostAccess::new();
 
     let first_update = runtime
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             SourceId::new(2),
             r#"
 fn helper() {
@@ -32,7 +32,7 @@ fn main() {
         .expect("compatible update should compile");
     assert!(first_update.linked_program().function_count() > 0);
     let first_report = runtime
-        .apply_hot_update(first_update)
+        .apply_reload_update_for_test(first_update)
         .expect("runtime should apply first update");
     assert!(first_report.accepted);
     assert!(
@@ -49,7 +49,7 @@ fn main() {
     );
 
     let rejected_update = runtime
-        .compile_hot_reload_update_with_id(SourceId::new(3), "fn main() { return 3; }")
+        .compile_reload_with_id(SourceId::new(3), "fn main() { return 3; }")
         .expect("runtime should be hot-reload enabled");
     let error =
         hot_reload_result(rejected_update).expect_err("active helper removal should be rejected");
@@ -81,12 +81,12 @@ fn runtime_compiles_hot_reload_update_file_from_active_version() {
     std::fs::write(&path, "fn main() { return 5; }").expect("update file should write");
 
     let update = runtime
-        .compile_hot_reload_update_file(&path)
+        .compile_reload_file_for_test(&path)
         .expect("runtime should be hot-reload enabled")
         .expect("file update should compile");
     std::fs::remove_file(&path).expect("update file should clean up");
     let report = runtime
-        .apply_hot_update(update)
+        .apply_reload_update_for_test(update)
         .expect("runtime should apply file update");
     assert!(report.accepted);
 
@@ -123,12 +123,11 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
 
     std::fs::write(&path, "fn main() { return 5; }").expect("write updated source");
     runtime
-        .stage_hot_reload_update_file(&path)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::file(&path))
         .expect("file update should stage");
     assert!(
         runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("file update should be pending")
     );
     assert_eq!(
@@ -137,7 +136,7 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged file report");
 
@@ -145,7 +144,7 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
     assert_eq!(report.changed_functions, vec!["main"]);
     assert!(
         !runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("safe point should consume file update")
     );
     assert_eq!(
@@ -182,7 +181,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged helper report");
 
@@ -222,7 +221,7 @@ pub fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged public function report");
 
@@ -279,7 +278,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged removed function rejection report");
 

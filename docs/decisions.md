@@ -2775,12 +2775,31 @@ bundle surface is removed without a compatibility module.
 ### Embedding Prelude Boundary
 
 `vela_engine::prelude` contains only the ordinary Engine/Runtime call path,
-typed callable registration, capability configuration, source/reload results,
-and generated Service patch authoring vocabulary. Reflection descriptors,
+typed callable registration, capability configuration, ordinary source and
+Runtime reload results, and generated Service patch authoring vocabulary. Reflection descriptors,
 HIR metadata, raw HostAccess objects, package/provider control types, service
 controllers, generations, and selection tables require explicit module
-imports. Public types needed only by downstream macro expansion remain
-`#[doc(hidden)]` rather than becoming prelude vocabulary.
+imports. `ProgramVersion`, `HotUpdate`, and Engine-level hot-reload compilation
+results are advanced artifact APIs and are not prelude vocabulary. Public types
+needed only by downstream macro expansion remain `#[doc(hidden)]` rather than
+becoming prelude vocabulary.
+
+### Runtime Construction And Reload Use One Path
+
+Ordinary and reloadable source execution share
+`Engine::compile_source` and `Runtime::builder`. Calling
+`RuntimeBuilder::with_hot_reload` promotes the already-linked image to
+generation zero; callers do not compile an initial `ProgramVersion` through a
+parallel construction flow.
+
+One `Runtime::stage_reload` accepts complete source text, a source file, a
+module directory, or a changed file within its module root. Source and link
+errors return immediately; ABI and policy rejection remains staged so
+`Runtime::activate_reload` reports it at the actor-selected safe point.
+Precompiled package or service tooling uses `stage_reload_update`. The removed
+`stage_hot_reload_update*`, `compile_hot_reload_update*`,
+`stage_hot_update*`, `apply_hot_update`, and `check_reload*` Runtime methods
+have no compatibility aliases.
 
 ### Repository Artifacts Use Domain-Neutral Host Names
 

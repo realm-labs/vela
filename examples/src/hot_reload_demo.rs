@@ -15,24 +15,24 @@ pub fn run(
 ) -> Result<(), Box<dyn Error>> {
     let engine = crate::gameplay::build_engine(crate::gameplay::GameEngineOptions::default())
         .map_err(|error| format!("{error:?}"))?;
-    let initial = engine
-        .compile_hot_reload_initial(initial_source)
-        .map_err(|error| {
-            crate::diagnostics::render_hot_reload_error(initial_label, initial_source, &error)
-        })?;
-    let mut runtime = Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
+    let program = engine.compile_source(initial_source).map_err(|error| {
+        crate::diagnostics::render_engine_source_error(initial_label, initial_source, &error)
+    })?;
+    let mut runtime = Runtime::builder(engine, program)?
+        .with_hot_reload()?
+        .build()?;
     let old = runtime
         .hot_reload_version()
         .ok_or("runtime must keep the initial hot reload version")?;
     let old_before = run_current_main(&mut runtime)?;
 
     runtime
-        .stage_hot_reload_update(updated_source)?
+        .stage_reload(updated_source)
         .map_err(|error| {
-            crate::diagnostics::render_hot_reload_error(updated_label, updated_source, &error)
+            crate::diagnostics::render_runtime_reload_error(updated_label, updated_source, &error)
         })?;
     let report = runtime
-        .check_reload_at_tick_boundary()?
+        .activate_reload()?
         .ok_or("staged hot reload update was not consumed at the safe point")?;
     let report_lines = report.render_lines();
     let new = report.version().ok_or_else(|| {

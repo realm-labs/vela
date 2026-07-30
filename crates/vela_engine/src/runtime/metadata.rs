@@ -1,12 +1,10 @@
 use vela_hot_reload::report::HotReloadReport;
 use vela_hot_reload::symbol::ProgramVersionId;
-use vela_hot_reload::version::ProgramVersion;
 use vela_vm::error::VmResult;
 
 use super::image::{RuntimeImage, RuntimeImageStorage};
 use super::value_support::value_type_id;
 use super::{RuntimeImpl, VelaValue};
-use crate::error::{EngineError, EngineErrorKind, EngineResult};
 
 impl<I> RuntimeImpl<I>
 where
@@ -36,13 +34,6 @@ where
             self.image.engine().registry().as_ref(),
             |handle| self.state.host_slots.resolve(handle),
         )
-    }
-
-    pub(super) fn current_hot_reload_version(
-        &self,
-    ) -> EngineResult<std::sync::Arc<ProgramVersion>> {
-        self.hot_reload_version()
-            .ok_or_else(|| EngineError::new(EngineErrorKind::RuntimeNotHotReloadEnabled))
     }
 
     pub(super) fn rebind_image_from_reload_report(&mut self, report: Option<&HotReloadReport>) {

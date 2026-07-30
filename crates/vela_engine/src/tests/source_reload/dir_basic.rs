@@ -205,7 +205,9 @@ pub fn grant() {
         .engine()
         .compile_hot_reload_update_dir(&current, &root)
         .expect("compatible hot reload dir update");
-    let report = runtime.apply_hot_update(update).expect("apply update");
+    let report = runtime
+        .apply_reload_update_for_test(update)
+        .expect("apply update");
 
     assert!(report.accepted);
     assert_eq!(
@@ -258,12 +260,11 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
 
     write_reward_module(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir update should stage");
     assert!(
         runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("dir update should be pending")
     );
     assert_eq!(
@@ -278,7 +279,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir report");
 
@@ -291,7 +292,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
     );
     assert!(
         !runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("safe point should consume dir update")
     );
     assert_eq!(
@@ -325,8 +326,7 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
 
     write_reward_module_with_helper(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("hot reload rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -340,7 +340,7 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged rejection report");
 
@@ -408,8 +408,7 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
 
     write_typed_reward_module(&reward_file, "f64", "6.0");
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir return ABI rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -423,7 +422,7 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir return ABI rejection report");
 

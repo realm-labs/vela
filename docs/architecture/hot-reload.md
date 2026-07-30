@@ -91,7 +91,7 @@ Suggested safe points:
 ```text
 event end
 tick boundary
-explicit runtime.check_reload()
+explicit runtime.activate_reload()
 ```
 
 Avoid interrupting arbitrary instructions to replace function bodies.

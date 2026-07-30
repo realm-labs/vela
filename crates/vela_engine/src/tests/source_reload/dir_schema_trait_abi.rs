@@ -29,8 +29,7 @@ fn runtime_stages_dir_defaulted_schema_addition_until_safe_point() {
 
     write_schema_reward_module(&reward_file, 6, StructCountField::Defaulted);
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir defaulted schema addition should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -44,7 +43,7 @@ fn runtime_stages_dir_defaulted_schema_addition_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir schema addition report");
 
@@ -91,8 +90,7 @@ fn runtime_stages_dir_stable_id_schema_renames_until_safe_point() {
 
     write_stable_schema_rename_module(&reward_file, 6, true);
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir stable-id schema rename should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -106,7 +104,7 @@ fn runtime_stages_dir_stable_id_schema_renames_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir stable-id schema rename report");
 
@@ -153,8 +151,7 @@ fn runtime_stages_dir_required_schema_field_rejection_until_safe_point() {
 
     write_schema_reward_module(&reward_file, 6, StructCountField::Required);
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir schema field rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -168,7 +165,7 @@ fn runtime_stages_dir_required_schema_field_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir schema field rejection report");
 
@@ -229,8 +226,7 @@ pub fn grant() {
     )
     .expect("write schema-free reward module");
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir removed schema rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -244,7 +240,7 @@ pub fn grant() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir removed schema rejection report");
 
@@ -308,8 +304,7 @@ fn runtime_stages_dir_schema_field_type_rejection_until_safe_point() {
 
     write_schema_reward_module(&reward_file, 6, StructCountField::Float);
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir schema field type rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -323,7 +318,7 @@ fn runtime_stages_dir_schema_field_type_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir schema field type rejection report");
 
@@ -376,8 +371,7 @@ fn runtime_stages_dir_defaulted_enum_variant_field_addition_until_safe_point() {
 
     write_enum_reward_module(&reward_file, 6, EnumVariantCountField::Defaulted);
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir defaulted enum variant field addition should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -391,7 +385,7 @@ fn runtime_stages_dir_defaulted_enum_variant_field_addition_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir enum variant field addition report");
 
@@ -438,8 +432,7 @@ fn runtime_stages_dir_required_enum_variant_field_rejection_until_safe_point() {
 
     write_enum_reward_module(&reward_file, 6, EnumVariantCountField::Required);
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir enum variant field rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -453,7 +446,7 @@ fn runtime_stages_dir_required_enum_variant_field_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir enum variant field rejection report");
 
@@ -506,8 +499,7 @@ fn runtime_stages_dir_enum_variant_field_type_rejection_until_safe_point() {
 
     write_enum_reward_module(&reward_file, 6, EnumVariantCountField::Float);
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir enum variant field type rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -521,7 +513,7 @@ fn runtime_stages_dir_enum_variant_field_type_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir enum variant field type rejection report");
 
@@ -574,8 +566,7 @@ fn runtime_stages_dir_removed_trait_impl_rejection_until_safe_point() {
 
     write_trait_impl_module(&reward_file, 6, false);
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir removed trait impl rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -589,7 +580,7 @@ fn runtime_stages_dir_removed_trait_impl_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir removed trait impl rejection report");
 
@@ -642,8 +633,7 @@ fn runtime_stages_dir_added_trait_impl_until_safe_point() {
 
     write_trait_impl_module(&reward_file, 6, true);
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir added trait impl update should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -657,7 +647,7 @@ fn runtime_stages_dir_added_trait_impl_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir added trait impl report");
 
@@ -708,8 +698,7 @@ fn runtime_stages_dir_removed_trait_rejection_until_safe_point() {
 
     write_reward_module(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir removed trait rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -723,7 +712,7 @@ fn runtime_stages_dir_removed_trait_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir removed trait rejection report");
 
@@ -776,8 +765,7 @@ fn runtime_stages_dir_trait_method_return_rejection_until_safe_point() {
 
     write_trait_abi_module(&reward_file, 6, "f64");
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir trait method return rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -791,7 +779,7 @@ fn runtime_stages_dir_trait_method_return_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir trait method return rejection report");
 
@@ -844,8 +832,7 @@ fn runtime_stages_dir_required_trait_method_rejection_until_safe_point() {
 
     write_trait_abi_module_with_required_method(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir required trait method rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -859,7 +846,7 @@ fn runtime_stages_dir_required_trait_method_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir required trait method rejection report");
 
@@ -912,8 +899,7 @@ fn runtime_stages_dir_defaulted_trait_method_addition_until_safe_point() {
 
     write_trait_abi_module_with_defaulted_method(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir defaulted trait method addition should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -927,7 +913,7 @@ fn runtime_stages_dir_defaulted_trait_method_addition_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir defaulted trait method addition report");
 
@@ -978,8 +964,7 @@ pub fn grant() {
     )
     .expect("write side-effecting module update");
     let error = runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect_err("front-end rejection should return immediately");
     assert_top_level_side_effect_source_error(&error);
     assert_eq!(
@@ -994,7 +979,9 @@ pub fn grant() {
     );
 
     assert_eq!(
-        runtime.check_reload().expect("check reload at safe point"),
+        runtime
+            .activate_reload()
+            .expect("check reload at safe point"),
         None
     );
     assert_eq!(
@@ -1025,19 +1012,18 @@ fn runtime_returns_hot_reload_dir_source_errors_immediately() {
     let missing = root.join("missing_dir");
 
     let error = runtime
-        .stage_hot_reload_update_dir(&missing)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&missing))
         .expect_err("missing source root should not stage a hot reload report");
 
     assert!(matches!(
-        error.kind,
-        EngineHotReloadSourceErrorKind::Source(crate::source::EngineSourceError {
+        error,
+        crate::runtime::RuntimeReloadError::Source(crate::source::EngineSourceError {
             kind: EngineSourceErrorKind::Io { .. }
         })
     ));
     assert!(
         !runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("source error should not stage an update")
     );
 }

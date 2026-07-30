@@ -196,7 +196,7 @@ fn suspended_slice_future_keeps_its_code_generation_until_completion() {
         std::future::Future::poll(future.as_mut(), &mut context),
         Poll::Pending
     ));
-    assert_eq!(staging.stage_hot_update(update), None);
+    assert_eq!(staging.stage_reload_update(update), None);
 
     SLICE_GATE_READY.store(true, Ordering::SeqCst);
     let Poll::Ready(result) = std::future::Future::poll(future.as_mut(), &mut context) else {
@@ -216,7 +216,7 @@ fn suspended_slice_future_keeps_its_code_generation_until_completion() {
     );
 
     runtime
-        .check_reload()
+        .activate_reload()
         .expect("slice generation reload check should succeed")
         .expect("the staged generation should activate after completion");
     let mut args = CallArgs::new();

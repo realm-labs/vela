@@ -29,11 +29,11 @@ fn runtime_compiles_hot_reload_changed_file_from_active_version() {
 
     write_reward_module(&reward_file, 6);
     let update = runtime
-        .compile_hot_reload_update_changed_file(&root, &reward_file)
+        .compile_reload_changed_file_for_test(&root, &reward_file)
         .expect("runtime should be hot-reload enabled")
         .expect("changed file update should compile");
     let report = runtime
-        .apply_hot_update(update)
+        .apply_reload_update_for_test(update)
         .expect("runtime should apply changed file update");
 
     assert!(report.accepted);
@@ -79,12 +79,14 @@ fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
 
     write_reward_module(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed file update should stage");
     assert!(
         runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("changed file update should be pending")
     );
     assert_eq!(
@@ -99,7 +101,7 @@ fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file report");
 
@@ -112,7 +114,7 @@ fn runtime_stages_hot_reload_changed_file_until_check_reload_safe_point() {
     );
     assert!(
         !runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("safe point should consume changed-file update")
     );
     assert_eq!(
@@ -162,8 +164,10 @@ fn runtime_stages_changed_file_hot_reload_rejection_until_safe_point() {
 
     write_reward_module_with_helper(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("hot reload rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -177,7 +181,7 @@ fn runtime_stages_changed_file_hot_reload_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged rejection report");
 
@@ -229,8 +233,10 @@ fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
 
     write_typed_reward_module(&reward_file, "f64", "6.0");
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file return ABI rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -244,7 +250,7 @@ fn runtime_stages_changed_file_return_abi_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file return ABI rejection report");
 
@@ -306,8 +312,10 @@ fn runtime_stages_changed_file_required_parameter_rejection_until_safe_point() {
 
     write_reward_module_with_signature(&reward_file, "(amount: i64) -> i64", "amount");
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file required parameter rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -321,7 +329,7 @@ fn runtime_stages_changed_file_required_parameter_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file required parameter rejection report");
 
@@ -398,8 +406,10 @@ fn grant() {
     )
     .expect("write reward without public export");
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file script function access ABI rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -413,7 +423,7 @@ fn grant() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file script function access ABI rejection report");
 

@@ -230,7 +230,7 @@ fn read_bonus() {
     );
 
     let update = runtime
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             SourceId::new(2),
             r#"
 struct Counter { amount: i64 }
@@ -249,7 +249,7 @@ fn read_bonus() {
         .expect("runtime should compile method hot reload update")
         .expect("method body update should be accepted");
     let report = runtime
-        .apply_hot_update(update)
+        .apply_reload_update_for_test(update)
         .expect("method hot reload update should apply");
     assert!(report.accepted);
 
@@ -323,7 +323,7 @@ pub fn read_bonus() -> i64 {
     );
 
     let update = runtime
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             SourceId::new(2),
             r#"
 struct Counter { amount: i64 }
@@ -348,7 +348,7 @@ pub fn read_bonus() -> f64 {
         Err(error) => panic!("source compilation should succeed: {error}"),
     };
     let report = runtime
-        .apply_hot_update_result_report(update)
+        .apply_reload_result_for_test(update)
         .expect("rejected method hot reload update should report");
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
@@ -404,7 +404,7 @@ fn read_match() {
     assert_callback_value_method_cache(&runtime, initial_call.cache_site);
 
     let update = runtime
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             SourceId::new(2),
             r#"
 fn read_match() {
@@ -415,7 +415,7 @@ fn read_match() {
         .expect("runtime should compile callback hot reload update")
         .expect("callback body update should be accepted");
     let report = runtime
-        .apply_hot_update(update)
+        .apply_reload_update_for_test(update)
         .expect("callback hot reload update should apply");
     assert!(report.accepted);
 
@@ -580,7 +580,7 @@ fn read_total() {
     );
 
     let update = runtime
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             SourceId::new(2),
             r#"
 fn read_total() {
@@ -595,7 +595,7 @@ fn read_total() {
         .expect("runtime should compile iterator adapter hot reload update")
         .expect("iterator adapter body update should be accepted");
     let report = runtime
-        .apply_hot_update(update)
+        .apply_reload_update_for_test(update)
         .expect("iterator adapter hot reload update should apply");
     assert!(report.accepted);
 

@@ -32,8 +32,8 @@ fn run_demo() -> Result<(i64, i64), Box<dyn std::error::Error>> {
         &initial,
         root.join("app/vela.toml"),
     )?;
-    runtime.stage_hot_update(update)?;
-    runtime.check_reload()?.ok_or("missing reload report")?;
+    runtime.stage_reload_update(update)?;
+    runtime.activate_reload()?.ok_or("missing reload report")?;
     let after = call_main(&mut runtime)?;
     fs::remove_dir_all(root)?;
     Ok((before, after))

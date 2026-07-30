@@ -297,22 +297,24 @@ mod tests {
             .capability(vela_engine::permission::Capability::Random)
             .build()
             .expect("engine");
-        let initial = engine
-            .compile_hot_reload_initial(include_str!("../script.vela"))
+        let program = engine
+            .compile_source(include_str!("../script.vela"))
             .expect("initial program");
-        let mut runtime = vela_engine::runtime::Runtime::from_hot_reload_version(engine, initial)
+        let mut runtime = vela_engine::runtime::Runtime::builder(engine, program)
+            .expect("runtime image")
+            .with_hot_reload()
+            .expect("hot reload")
+            .build()
             .expect("runtime");
 
         assert_eq!(super::call_generated_add(&mut runtime), Ok(42));
+        let updated_source = include_str!("../script.vela")
+            .replace("return left + right;", "return left + right + 1;");
         runtime
-            .stage_hot_reload_update(
-                &include_str!("../script.vela")
-                    .replace("return left + right;", "return left + right + 1;"),
-            )
-            .expect("compatible update should compile")
+            .stage_reload(updated_source.as_str())
             .expect("compatible update should stage");
         runtime
-            .check_reload()
+            .activate_reload()
             .expect("compatible update should publish");
 
         assert_eq!(super::call_generated_add(&mut runtime), Ok(43));

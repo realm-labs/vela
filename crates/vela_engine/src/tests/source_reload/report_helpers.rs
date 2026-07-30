@@ -32,12 +32,13 @@ pub(super) fn private_helper_addition_report(
     write_reward_module_calling_helper(&reward_file, 6);
     match workflow {
         ScriptFunctionReloadWorkflow::Directory => runtime
-            .stage_hot_reload_update_dir(&root)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::directory(&root))
             .expect("dir helper addition should be staged"),
         ScriptFunctionReloadWorkflow::ChangedFile => runtime
-            .stage_hot_reload_update_changed_file(&root, &reward_file)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::changed_file(
+                &root,
+                &reward_file,
+            ))
             .expect("changed-file helper addition should be staged"),
     };
     assert_eq!(
@@ -52,7 +53,7 @@ pub(super) fn private_helper_addition_report(
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged helper addition report");
 
@@ -111,12 +112,13 @@ pub(super) fn public_function_addition_report(
     write_reward_module_calling_public_helper(&reward_file, 6);
     match workflow {
         ScriptFunctionReloadWorkflow::Directory => runtime
-            .stage_hot_reload_update_dir(&root)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::directory(&root))
             .expect("dir public function addition should be staged"),
         ScriptFunctionReloadWorkflow::ChangedFile => runtime
-            .stage_hot_reload_update_changed_file(&root, &reward_file)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::changed_file(
+                &root,
+                &reward_file,
+            ))
             .expect("changed-file public function addition should be staged"),
     };
     assert_eq!(
@@ -142,7 +144,7 @@ pub(super) fn public_function_addition_report(
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged public function addition report");
 
@@ -237,12 +239,13 @@ fn on_kill(monster_id: i64, player_id: i64) {
     .expect("write reordered event module");
     match workflow {
         EventReloadWorkflow::Directory => runtime
-            .stage_hot_reload_update_dir(&root)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::directory(&root))
             .expect("dir event ABI rejection should be staged"),
         EventReloadWorkflow::ChangedFile => runtime
-            .stage_hot_reload_update_changed_file(&root, &event_file)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::changed_file(
+                &root,
+                &event_file,
+            ))
             .expect("changed-file event ABI rejection should be staged"),
     };
     assert_eq!(
@@ -260,7 +263,7 @@ fn on_kill(monster_id: i64, player_id: i64) {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged event ABI rejection report");
 
@@ -343,12 +346,13 @@ fn on_kill(player_id: i64, monster_id: i64) {
     .expect("write retargeted event module");
     match workflow {
         EventReloadWorkflow::Directory => runtime
-            .stage_hot_reload_update_dir(&root)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::directory(&root))
             .expect("dir event target rejection should be staged"),
         EventReloadWorkflow::ChangedFile => runtime
-            .stage_hot_reload_update_changed_file(&root, &event_file)
-            .expect("runtime should be hot-reload enabled")
+            .stage_reload(crate::runtime::ReloadSource::changed_file(
+                &root,
+                &event_file,
+            ))
             .expect("changed-file event target rejection should be staged"),
     };
     assert_eq!(
@@ -366,7 +370,7 @@ fn on_kill(player_id: i64, monster_id: i64) {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged event target rejection report");
 
@@ -425,11 +429,11 @@ pub(super) fn assert_changed_function_access_rejection(
 }
 
 pub(super) fn assert_top_level_side_effect_source_error(
-    error: &crate::reload::EngineHotReloadSourceError,
+    error: &crate::runtime::RuntimeReloadError,
 ) {
-    let EngineHotReloadSourceErrorKind::Source(crate::source::EngineSourceError {
+    let crate::runtime::RuntimeReloadError::Source(crate::source::EngineSourceError {
         kind: EngineSourceErrorKind::Frontend(error),
-    }) = &error.kind
+    }) = error
     else {
         panic!("expected front-end source error, got {error:?}");
     };

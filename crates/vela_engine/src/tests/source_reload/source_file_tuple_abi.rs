@@ -35,7 +35,7 @@ fn main() -> i64 {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged equivalent tuple signature update report");
 
@@ -85,7 +85,7 @@ fn main() -> i64 {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged tuple signature ABI rejection report");
 

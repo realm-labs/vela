@@ -154,11 +154,11 @@ fn accepted_reload_publishes_a_fresh_generation_profile() {
     );
 
     let update = runtime
-        .compile_hot_reload_update_with_id(SourceId::new(2), "fn main() { return 2; }")
+        .compile_reload_with_id(SourceId::new(2), "fn main() { return 2; }")
         .expect("runtime should compile hot reload update")
         .expect("compatible return-value change should be accepted");
     let report = runtime
-        .apply_hot_update(update)
+        .apply_reload_update_for_test(update)
         .expect("hot reload update should apply");
     assert!(report.accepted);
 

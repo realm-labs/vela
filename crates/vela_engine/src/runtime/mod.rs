@@ -1,15 +1,11 @@
-use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use vela_common::SourceId;
 use vela_host::access::HostAccess;
 #[cfg(test)]
 use vela_host::adapter::ScriptStateAdapter;
-use vela_hot_reload::error::HotReloadResult;
-use vela_hot_reload::report::HotReloadReport;
 use vela_hot_reload::runtime::HotReloadRuntime;
 pub use vela_hot_reload::runtime::HotReloadStagingHandle;
-use vela_hot_reload::version::{HotUpdate, ProgramVersion};
+use vela_hot_reload::version::ProgramVersion;
 use vela_vm::HostExecution;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
@@ -23,10 +19,6 @@ use vela_vm::{
 };
 
 use crate::engine::Engine;
-use crate::error::{EngineError, EngineErrorKind, EngineResult};
-use crate::reload::{
-    EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineHotReloadSourceResult,
-};
 
 mod bytecode_profile;
 #[cfg(test)]
@@ -49,6 +41,7 @@ mod ownership_proof;
 mod profile_api;
 mod provider;
 mod reentry;
+mod reload_api;
 mod service_egress;
 mod state;
 mod state_api;
@@ -71,6 +64,7 @@ pub use handles::{
 pub use image::{OwnedImage, RuntimeImage, RuntimeImageStorage, SharedImage};
 pub use initialization::{RuntimeBuildError, RuntimeBuilder, RuntimeInitializationLimits};
 pub use provider::{ProviderHandle, ProviderMethodTarget};
+pub use reload_api::{ReloadSource, RuntimeReloadError};
 pub use service_egress::ServiceScopedReturnEgress;
 pub use vm_states::{IntoStateValue, RuntimeVmStateStore, VelaValue};
 
@@ -208,230 +202,6 @@ where
     #[must_use]
     pub fn engine(&self) -> &Engine {
         self.image.engine()
-    }
-
-    #[must_use]
-    pub fn hot_reload_version(&self) -> Option<std::sync::Arc<ProgramVersion>> {
-        self.hot_reload.as_ref().map(HotReloadRuntime::current)
-    }
-
-    /// Returns a staging-only handle that may queue an update while an async
-    /// outer call has the Runtime borrowed.
-    ///
-    /// The handle cannot activate the update. Call `check_reload` on the
-    /// Runtime after the outer call completes or is cancelled.
-    #[must_use]
-    pub fn hot_reload_staging_handle(&self) -> Option<HotReloadStagingHandle> {
-        self.hot_reload
-            .as_ref()
-            .map(HotReloadRuntime::staging_handle)
-    }
-
-    pub fn apply_hot_update(&mut self, update: HotUpdate) -> EngineResult<HotReloadReport> {
-        self.apply_hot_update_result_report(Ok(update))
-    }
-
-    pub fn stage_hot_update(&mut self, update: HotUpdate) -> EngineResult<()> {
-        self.stage_hot_update_result(Ok(update))
-    }
-
-    pub fn stage_hot_update_result(
-        &mut self,
-        update: HotReloadResult<HotUpdate>,
-    ) -> EngineResult<()> {
-        let Some(hot_reload) = self.hot_reload.as_mut() else {
-            return Err(EngineError::new(
-                EngineErrorKind::RuntimeNotHotReloadEnabled,
-            ));
-        };
-        let _replaced = hot_reload.stage_hot_update_result(update);
-        Ok(())
-    }
-
-    pub fn stage_hot_reload_update(
-        &mut self,
-        text: &str,
-    ) -> EngineResult<EngineHotReloadSourceResult<()>> {
-        let update = self.compile_hot_reload_update(text)?;
-        self.stage_hot_reload_source_update_result(update)
-    }
-
-    pub fn has_pending_hot_update(&self) -> EngineResult<bool> {
-        let Some(hot_reload) = self.hot_reload.as_ref() else {
-            return Err(EngineError::new(
-                EngineErrorKind::RuntimeNotHotReloadEnabled,
-            ));
-        };
-        Ok(hot_reload.has_pending_update())
-    }
-
-    pub fn check_reload(&mut self) -> EngineResult<Option<HotReloadReport>> {
-        let Some(hot_reload) = self.hot_reload.as_mut() else {
-            return Err(EngineError::new(
-                EngineErrorKind::RuntimeNotHotReloadEnabled,
-            ));
-        };
-        let update = hot_reload.take_pending_update();
-        let report = update
-            .map(|update| self.apply_hot_update_result_report(update))
-            .transpose();
-        self.state.reclaim_dead_generations();
-        report
-    }
-
-    pub fn check_reload_at_tick_boundary(&mut self) -> EngineResult<Option<HotReloadReport>> {
-        self.check_reload()
-    }
-
-    pub fn apply_hot_update_result_report(
-        &mut self,
-        update: HotReloadResult<HotUpdate>,
-    ) -> EngineResult<HotReloadReport> {
-        let Some(current) = self.hot_reload.as_ref().map(HotReloadRuntime::current) else {
-            return Err(EngineError::new(
-                EngineErrorKind::RuntimeNotHotReloadEnabled,
-            ));
-        };
-        let update = match update {
-            Ok(update) => update,
-            Err(error) => {
-                return Ok(HotReloadReport::rejected(current.id, error));
-            }
-        };
-        let staging =
-            match self.prepare_hot_update_state(&update, RuntimeInitializationLimits::default()) {
-                Ok(staging) => staging,
-                Err(error) => return Ok(HotReloadReport::rejected(current.id, error)),
-            };
-        let next_states = update.linked_artifact().image().states().to_vec();
-        let report = self
-            .hot_reload
-            .as_mut()
-            .expect("hot reload runtime was checked above")
-            .apply_hot_update_report(update);
-        self.commit_hot_update_state(&next_states, staging);
-        self.rebind_image_from_reload_report(Some(&report));
-        Ok(report)
-    }
-
-    pub fn compile_hot_reload_update(
-        &self,
-        text: &str,
-    ) -> EngineResult<EngineHotReloadSourceResult<HotUpdate>> {
-        self.compile_hot_reload_update_with_id(SourceId::new(1), text)
-    }
-
-    pub(crate) fn compile_hot_reload_update_with_id(
-        &self,
-        source: SourceId,
-        text: &str,
-    ) -> EngineResult<EngineHotReloadSourceResult<HotUpdate>> {
-        let previous = self.current_hot_reload_version()?;
-        Ok(self
-            .image
-            .engine()
-            .compile_hot_reload_update_with_id(&previous, source, text))
-    }
-
-    pub fn compile_hot_reload_update_file(
-        &self,
-        path: impl AsRef<Path>,
-    ) -> EngineResult<EngineHotReloadSourceResult<HotUpdate>> {
-        let previous = self.current_hot_reload_version()?;
-        Ok(self
-            .image
-            .engine()
-            .compile_hot_reload_update_file(&previous, path))
-    }
-
-    pub fn compile_hot_reload_update_dir(
-        &self,
-        root: impl AsRef<Path>,
-    ) -> EngineResult<EngineHotReloadSourceResult<HotUpdate>> {
-        let previous = self.current_hot_reload_version()?;
-        Ok(self
-            .image
-            .engine()
-            .compile_hot_reload_update_dir(&previous, root))
-    }
-
-    pub fn compile_hot_reload_update_changed_file(
-        &self,
-        root: impl AsRef<Path>,
-        changed_file: impl AsRef<Path>,
-    ) -> EngineResult<EngineHotReloadSourceResult<HotUpdate>> {
-        let previous = self.current_hot_reload_version()?;
-        Ok(self.image.engine().compile_hot_reload_update_changed_file(
-            &previous,
-            root,
-            changed_file,
-        ))
-    }
-
-    pub fn stage_hot_reload_update_file(
-        &mut self,
-        path: impl AsRef<Path>,
-    ) -> EngineResult<EngineHotReloadSourceResult<()>> {
-        let previous = self.current_hot_reload_version()?;
-        let update = self
-            .image
-            .engine()
-            .compile_hot_reload_update_file(&previous, path);
-        self.stage_hot_reload_source_update_result(update)
-    }
-
-    pub fn stage_hot_reload_update_dir(
-        &mut self,
-        root: impl AsRef<Path>,
-    ) -> EngineResult<EngineHotReloadSourceResult<()>> {
-        let previous = self.current_hot_reload_version()?;
-        let update = self
-            .image
-            .engine()
-            .compile_hot_reload_update_dir(&previous, root);
-        self.stage_hot_reload_source_update_result(update)
-    }
-
-    pub fn stage_hot_reload_update_changed_file(
-        &mut self,
-        root: impl AsRef<Path>,
-        changed_file: impl AsRef<Path>,
-    ) -> EngineResult<EngineHotReloadSourceResult<()>> {
-        let previous = self.current_hot_reload_version()?;
-        let update = self.image.engine().compile_hot_reload_update_changed_file(
-            &previous,
-            root,
-            changed_file,
-        );
-        self.stage_hot_reload_source_update_result(update)
-    }
-
-    fn stage_hot_reload_source_update_result(
-        &mut self,
-        update: EngineHotReloadSourceResult<HotUpdate>,
-    ) -> EngineResult<EngineHotReloadSourceResult<()>> {
-        match update {
-            Ok(update) => {
-                self.stage_hot_update(update)?;
-                Ok(Ok(()))
-            }
-            Err(error) => match error.kind {
-                EngineHotReloadSourceErrorKind::Source(error) => {
-                    Ok(Err(EngineHotReloadSourceError {
-                        kind: EngineHotReloadSourceErrorKind::Source(error),
-                    }))
-                }
-                EngineHotReloadSourceErrorKind::Link(error) => {
-                    Ok(Err(EngineHotReloadSourceError {
-                        kind: EngineHotReloadSourceErrorKind::Link(error),
-                    }))
-                }
-                EngineHotReloadSourceErrorKind::HotReload(error) => {
-                    self.stage_hot_update_result(Err(error))?;
-                    Ok(Ok(()))
-                }
-            },
-        }
     }
 
     pub fn entry(&self, name: impl Into<String>) -> VmResult<VelaFunction> {

@@ -9,12 +9,10 @@ pub use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint,
 };
 pub use crate::permission::{Capability, CapabilitySet, ExecutionProfile};
-pub use crate::reload::{
-    EngineHotReloadSourceError, EngineHotReloadSourceErrorKind, EngineHotReloadSourceResult,
-};
 pub use crate::runtime::{
-    CallArgs, CallOptions, Runtime, RuntimeBuildError, RuntimeBuilder, RuntimeCallFuture,
-    RuntimeInitializationLimits, VelaFunction, VelaMethod, VelaMethodTarget, VelaValue,
+    CallArgs, CallOptions, ReloadSource, Runtime, RuntimeBuildError, RuntimeBuilder,
+    RuntimeCallFuture, RuntimeInitializationLimits, RuntimeReloadError, VelaFunction, VelaMethod,
+    VelaMethodTarget, VelaValue,
 };
 pub use crate::schema::{ScriptHostSchema, ScriptReflectSchema, ScriptValueSchema};
 pub use crate::service::{
@@ -28,7 +26,6 @@ pub use crate::source::{EngineSourceError, EngineSourceErrorKind};
 pub use crate::type_registration::VelaType;
 pub use crate::{args, host};
 pub use vela_hot_reload::report::{HotReloadDiagnostic, HotReloadReport};
-pub use vela_hot_reload::version::{HotUpdate, ProgramVersion};
 pub use vela_vm::owned_value::OwnedValue;
 #[cfg(feature = "serde")]
 pub use vela_vm::serde::{from_owned_value, to_owned_value};

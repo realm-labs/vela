@@ -55,10 +55,10 @@ pub(super) fn hot_reload_initial_from_source(
 
 pub(super) fn stage_source_update(runtime: &mut Runtime, source: &str) {
     let update = runtime
-        .compile_hot_reload_update_with_id(SourceId::new(2), source)
+        .compile_reload_with_id(SourceId::new(2), source)
         .expect("runtime should be hot-reload enabled");
     runtime
-        .stage_hot_update_result(hot_reload_result(update))
+        .stage_reload_result_for_test(hot_reload_result(update))
         .expect("source update should stage");
 }
 

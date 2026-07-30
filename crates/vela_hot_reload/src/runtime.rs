@@ -26,7 +26,7 @@ impl HotReloadStagingHandle {
         self.pending().is_some()
     }
 
-    pub fn stage_hot_update(&self, update: HotUpdate) -> Option<HotReloadResult<HotUpdate>> {
+    pub fn stage_reload_update(&self, update: HotUpdate) -> Option<HotReloadResult<HotUpdate>> {
         self.stage_hot_update_result(Ok(update))
     }
 

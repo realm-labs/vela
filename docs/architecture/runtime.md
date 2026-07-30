@@ -331,9 +331,9 @@ all nested frames, providers, closures, and reentry retain one
 `Arc<LinkedArtifact>`. A cloneable `HotReloadStagingHandle` may replace only the
 pending-update slot while `call_async` holds its scoped mutable Runtime borrow;
 it cannot activate an update or mutate the active image. After the outer future
-completes or is dropped, the embedding host calls `Runtime::check_reload` at its
-existing explicit safe point. No suspended frame, register file, native future,
-or host lease migrates generations.
+completes or is dropped, the embedding host calls `Runtime::activate_reload` at
+its existing explicit safe point. No suspended frame, register file, native
+future, or host lease migrates generations.
 
 Provider calls use the same target and driver. One pure resolver validates the
 Runtime-bound provider handle and reads method dispatch, callable asyncness,

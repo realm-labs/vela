@@ -33,7 +33,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged native effect ABI rejection report");
 
@@ -95,7 +95,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged native access ABI rejection report");
 
@@ -155,7 +155,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged native parameter ABI rejection report");
 
@@ -222,7 +222,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged native return ABI rejection report");
 
@@ -277,7 +277,7 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged removed native function ABI rejection report");
 
@@ -337,7 +337,7 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged native stable-ID churn ABI rejection report");
 
@@ -418,7 +418,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged source-file native stable-ID rename report");
 
@@ -460,7 +460,7 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged removed host method ABI rejection report");
 
@@ -517,7 +517,7 @@ fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point(
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged method stable-ID churn ABI rejection report");
 
@@ -612,7 +612,7 @@ fn main(player: Player) {
     assert_host_method_access(&tx, method, 7);
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged source-file method stable-ID rename report");
 
@@ -672,7 +672,7 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged method effect ABI rejection report");
 
@@ -743,7 +743,7 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged method access ABI rejection report");
 
@@ -812,7 +812,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged method parameter ABI rejection report");
 
@@ -879,7 +879,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged method return ABI rejection report");
 
@@ -937,7 +937,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged rejection report");
 
@@ -965,7 +965,7 @@ fn runtime_returns_source_text_frontend_rejection_immediately() {
     let mut tx = HostAccess::new();
 
     let error = runtime
-        .stage_hot_reload_update(
+        .stage_reload(
             r#"
 const BAD = register_event("monster.kill");
 
@@ -974,7 +974,6 @@ fn main() {
 }
 "#,
         )
-        .expect("runtime should be hot-reload enabled")
         .expect_err("front-end rejection should return immediately");
     assert_top_level_side_effect_source_error(&error);
     assert_eq!(
@@ -983,7 +982,9 @@ fn main() {
     );
 
     assert_eq!(
-        runtime.check_reload().expect("check reload at safe point"),
+        runtime
+            .activate_reload()
+            .expect("check reload at safe point"),
         None
     );
     assert_eq!(
@@ -1010,19 +1011,18 @@ fn runtime_returns_hot_reload_file_source_errors_immediately() {
     let missing = root.join("missing.vela");
 
     let error = runtime
-        .stage_hot_reload_update_file(&missing)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::file(&missing))
         .expect_err("missing source should not stage a hot reload report");
 
     assert!(matches!(
-        error.kind,
-        EngineHotReloadSourceErrorKind::Source(crate::source::EngineSourceError {
+        error,
+        crate::runtime::RuntimeReloadError::Source(crate::source::EngineSourceError {
             kind: EngineSourceErrorKind::Io { .. }
         })
     ));
     assert!(
         !runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("source error should not stage an update")
     );
 }

@@ -43,8 +43,10 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
 
     write_reward_module(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file native effect ABI rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -58,7 +60,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file native effect ABI rejection report");
 
@@ -136,8 +138,10 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
 
     write_reward_module(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file native access ABI rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -151,7 +155,7 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file native access ABI rejection report");
 
@@ -227,8 +231,10 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
 
     write_reward_module(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file native parameter ABI rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -242,7 +248,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file native parameter ABI rejection report");
 
@@ -325,8 +331,10 @@ fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_
 
     write_reward_module(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file native path proxy ABI rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -340,7 +348,7 @@ fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file native path proxy ABI rejection report");
 
@@ -423,8 +431,10 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
 
     write_reward_module(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file native return ABI rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -438,7 +448,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file native return ABI rejection report");
 
@@ -514,8 +524,10 @@ fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_poi
 
     write_reward_module(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file native path proxy return ABI rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -529,7 +541,7 @@ fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_poi
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file native path proxy return ABI rejection report");
 
@@ -644,8 +656,10 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
 
     write_native_reward_module(&reward_file, "grant_bonus_v2", " + 1");
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file native stable-ID rename should be staged");
 
     assert_eq!(
@@ -660,7 +674,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file native stable-ID rename report");
 
@@ -876,8 +890,10 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
 
     write_host_method_reward_module(&reward_file, "award_exp", 2);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file method stable-ID rename should be staged");
 
     let mut tx = HostAccess::new();
@@ -894,7 +910,7 @@ fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
     assert_host_method_access(&tx, method, 7);
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file method stable-ID rename report");
 

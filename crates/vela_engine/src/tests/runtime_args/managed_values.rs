@@ -172,13 +172,13 @@ fn main() { return 1; }
 fn player_level() { return player.level; }
 "#;
     let missing_update = engine
-        .compile_hot_reload_update_with_id(&initial, SourceId::new(22), update_source)
+        .compile_reload_with_id(&initial, SourceId::new(22), update_source)
         .expect("state addition compiles");
     let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone())
         .expect("runtime initializes");
 
     let rejected = runtime
-        .apply_hot_update(missing_update)
+        .apply_reload_update_for_test(missing_update)
         .expect("missing binding is a reload rejection");
     assert!(!rejected.accepted);
     assert_eq!(
@@ -188,13 +188,13 @@ fn player_level() { return player.level; }
     assert!(runtime.extern_state_ref("main::player").is_none());
 
     let update = engine
-        .compile_hot_reload_update_with_id(&initial, SourceId::new(23), update_source)
+        .compile_reload_with_id(&initial, SourceId::new(23), update_source)
         .expect("retry update compiles");
     let binding = runtime
         .stage_extern_state("main::player", direct_player(12))
         .expect("binding stages");
     let accepted = runtime
-        .apply_hot_update(update)
+        .apply_reload_update_for_test(update)
         .expect("apply bound update");
 
     assert!(accepted.accepted);
@@ -215,7 +215,7 @@ fn reload_rejects_mismatched_staged_extern_state_binding() {
         .compile_hot_reload_initial_with_id(SourceId::new(24), "fn main() { return 1; }")
         .expect("initial generation");
     let update = engine
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             &initial,
             SourceId::new(25),
             "extern state player: Player; fn main() { return 1; }",
@@ -229,7 +229,7 @@ fn reload_rejects_mismatched_staged_extern_state_binding() {
         .expect("unresolved future binding can stage");
 
     let report = runtime
-        .apply_hot_update(update)
+        .apply_reload_update_for_test(update)
         .expect("reload reports rejection");
 
     assert!(!report.accepted);

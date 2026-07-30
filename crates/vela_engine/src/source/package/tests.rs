@@ -313,7 +313,7 @@ fn ordinary_dependency_body_reload_updates_root_package_calls() {
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     assert_eq!(call_i64(&mut runtime), 1);
     runtime
-        .apply_hot_update(update)
+        .apply_reload_update_for_test(update)
         .expect("apply package update");
     assert_eq!(call_i64(&mut runtime), 2);
     remove_fixture(root);
@@ -922,9 +922,9 @@ impl CommandProvider for Command {{ pub fn run(self) -> i64 {{ return {value}; }
     let update = engine
         .compile_provider_hot_reload_update(&initial, &second, &second_request)
         .expect("body-only update");
-    runtime.stage_hot_update(update).expect("stage update");
+    runtime.stage_reload_update(update).expect("stage update");
     runtime
-        .check_reload()
+        .activate_reload()
         .expect("safe-point update")
         .expect("reload report");
 

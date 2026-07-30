@@ -40,7 +40,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged schema addition report");
 
@@ -109,7 +109,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged stable-id schema rename report");
 
@@ -161,7 +161,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged schema field rejection report");
 
@@ -212,7 +212,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged removed schema rejection report");
 
@@ -279,7 +279,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged schema field type rejection report");
 
@@ -338,7 +338,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged enum variant field addition report");
 
@@ -394,7 +394,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged enum variant field rejection report");
 
@@ -454,7 +454,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged enum variant field type rejection report");
 
@@ -518,7 +518,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged removed trait impl rejection report");
 
@@ -582,7 +582,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged added trait impl report");
 
@@ -629,7 +629,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged removed trait rejection report");
 
@@ -683,7 +683,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged trait method return rejection report");
 
@@ -738,7 +738,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged required trait method rejection report");
 
@@ -793,7 +793,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged defaulted trait method addition report");
 
@@ -848,7 +848,7 @@ fn on_kill(monster_id: i64, player_id: i64) {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged event ABI rejection report");
 
@@ -920,7 +920,7 @@ fn on_kill(player_id: i64, monster_id: i64) {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged event target rejection report");
 
@@ -986,7 +986,7 @@ fn main() -> f64 {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged return ABI rejection report");
 
@@ -1054,7 +1054,7 @@ fn main(player_id: i64, amount: i64) {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged required parameter rejection report");
 
@@ -1128,7 +1128,7 @@ fn main() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged script function access ABI rejection report");
 

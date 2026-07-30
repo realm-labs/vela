@@ -3,7 +3,6 @@ use std::hint::black_box;
 use std::time::{Duration, Instant};
 
 use vela_engine::engine::Engine;
-use vela_engine::reload::{EngineHotReloadSourceError, EngineHotReloadSourceErrorKind};
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_hot_reload::version::ProgramVersion;
 use vela_vm::owned_value::OwnedValue;
@@ -151,7 +150,10 @@ fn run_accepted_update(engine: &Engine, initial: &ProgramVersion) -> Result<u64,
     let update = engine.compile_hot_reload_update(initial, UPDATED_SOURCE)?;
     let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone())
         .expect("runtime should initialize");
-    let report = runtime.apply_hot_update(update)?;
+    runtime.stage_reload_update(update)?;
+    let report = runtime
+        .activate_reload()?
+        .ok_or("accepted update did not produce a report")?;
     let value = runtime.call("main", CallArgs::new(), CallOptions::unbounded())?;
     let value = runtime.value_to_owned(&value)?;
 
@@ -163,17 +165,12 @@ fn run_accepted_update(engine: &Engine, initial: &ProgramVersion) -> Result<u64,
 }
 
 fn run_abi_rejection(engine: &Engine, initial: &ProgramVersion) -> Result<u64, Box<dyn Error>> {
-    let update = engine.compile_hot_reload_update(initial, ABI_REJECT_SOURCE);
-    let update = match update {
-        Err(EngineHotReloadSourceError {
-            kind: EngineHotReloadSourceErrorKind::HotReload(error),
-        }) => Err(error),
-        Ok(_) => return Err("ABI rejection benchmark update was accepted".into()),
-        Err(error) => return Err(error.into()),
-    };
     let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone())
         .expect("runtime should initialize");
-    let report = runtime.apply_hot_update_result_report(update)?;
+    runtime.stage_reload(ABI_REJECT_SOURCE)?;
+    let report = runtime
+        .activate_reload()?
+        .ok_or("ABI rejection did not produce a report")?;
     let active_version = runtime
         .hot_reload_version()
         .map_or(0, |version| version.id.0);

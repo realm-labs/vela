@@ -50,10 +50,10 @@ impl Engine {
         previous: &ProgramVersion,
         text: &str,
     ) -> EngineHotReloadSourceResult<HotUpdate> {
-        self.compile_hot_reload_update_with_id(previous, SourceId::new(1), text)
+        self.compile_reload_with_id(previous, SourceId::new(1), text)
     }
 
-    pub(crate) fn compile_hot_reload_update_with_id(
+    pub(crate) fn compile_reload_with_id(
         &self,
         previous: &ProgramVersion,
         source: SourceId,

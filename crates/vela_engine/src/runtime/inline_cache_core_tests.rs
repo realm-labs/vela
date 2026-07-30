@@ -254,7 +254,7 @@ fn read_value() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(10)))
     );
     let update = runtime
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             SourceId::new(2),
             r#"
 state first: i64 = 0;
@@ -268,7 +268,7 @@ fn read_value() {
         .expect("runtime should compile hot reload update")
         .expect("global read target change should be accepted");
     let report = runtime
-        .apply_hot_update(update)
+        .apply_reload_update_for_test(update)
         .expect("hot reload update should apply");
 
     assert!(report.accepted);

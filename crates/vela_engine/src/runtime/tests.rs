@@ -344,7 +344,7 @@ fn reload_charges_live_heap_staging_to_the_initializer_transaction() {
         )
         .expect("initial generation compiles");
     let update = engine
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             &initial,
             SourceId::new(802),
             "state existing: i64 = 3; state added: Array<i64> = [1, 2, 3, 4]; fn read() { return existing; }",
@@ -382,7 +382,7 @@ fn reload_staging_preserves_initializer_aliases_and_cycles() {
         )
         .expect("initial generation compiles");
     let update = engine
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             &initial,
             SourceId::new(804),
             r#"
@@ -407,7 +407,9 @@ fn graph_ok() {
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime initializes");
 
-    let report = runtime.apply_hot_update(update).expect("reload applies");
+    let report = runtime
+        .apply_reload_update_for_test(update)
+        .expect("reload applies");
     assert!(report.accepted, "{report:?}");
     let result = runtime
         .call("graph_ok", CallArgs::new(), CallOptions::unbounded())

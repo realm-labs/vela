@@ -63,7 +63,7 @@ fn read_level(player: ReloadHostPlayer) {
     );
 
     let update = runtime
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             SourceId::new(2),
             r#"
 fn read_level(player: ReloadHostPlayer) {
@@ -74,7 +74,7 @@ fn read_level(player: ReloadHostPlayer) {
         .expect("runtime should compile host read hot reload update")
         .expect("host read body update should be accepted");
     let report = runtime
-        .apply_hot_update(update)
+        .apply_reload_update_for_test(update)
         .expect("host read hot reload update should apply");
     assert!(report.accepted);
 

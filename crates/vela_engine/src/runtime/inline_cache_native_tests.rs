@@ -52,7 +52,7 @@ fn main() {
     );
 
     let update = runtime
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             SourceId::new(2),
             r#"
 fn main() {
@@ -63,7 +63,7 @@ fn main() {
         .expect("runtime should compile native hot reload update")
         .expect("native call body update should be accepted");
     let report = runtime
-        .apply_hot_update(update)
+        .apply_reload_update_for_test(update)
         .expect("native hot reload update should apply");
     assert!(report.accepted);
 

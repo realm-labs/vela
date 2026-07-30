@@ -203,7 +203,7 @@ fn main(player: Player) {
         )
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             &initial,
             SourceId::new(2),
             r#"
@@ -252,7 +252,7 @@ fn runtime_applies_engine_hot_reload_updates() {
         .expect("initial hot reload compile");
     assert!(initial.linked_program().function_count() > 0);
     let update = engine
-        .compile_hot_reload_update_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
+        .compile_reload_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
     assert!(update.linked_program().function_count() > 0);
     let mut runtime =
@@ -265,7 +265,9 @@ fn runtime_applies_engine_hot_reload_updates() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
-    let report = runtime.apply_hot_update(update).expect("apply update");
+    let report = runtime
+        .apply_reload_update_for_test(update)
+        .expect("apply update");
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["main".to_owned()]);
     assert_eq!(
@@ -319,7 +321,7 @@ fn bump(amount) {
         .expect("script global should insert");
 
     runtime
-        .stage_hot_reload_update(
+        .stage_reload(
             r#"
 struct ServerState {
     level: i64,
@@ -338,10 +340,9 @@ fn bump(amount) {
 }
 "#,
         )
-        .expect("runtime supports source text update")
         .expect("stage source text update");
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("pending report");
 
@@ -388,7 +389,7 @@ fn reload_preserves_compatible_state_and_initializes_only_added_vm_state() {
         )
         .expect("initial generation");
     let update = engine
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             &initial,
             SourceId::new(302),
             "state added: i64 = 7; state counter: i64 = 999; fn read() { return counter + added; }",
@@ -400,7 +401,9 @@ fn reload_preserves_compatible_state_and_initializes_only_added_vm_state() {
         .set_state("main::counter", 10_i64)
         .expect("set state");
 
-    let report = runtime.apply_hot_update(update).expect("apply update");
+    let report = runtime
+        .apply_reload_update_for_test(update)
+        .expect("apply update");
 
     assert!(report.accepted);
     assert_eq!(report.added_states, ["main::added"]);
@@ -434,7 +437,7 @@ fn read() { return value; }
         )
         .expect("initial generation");
     let update = engine
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             &initial,
             SourceId::new(311),
             r#"
@@ -451,7 +454,9 @@ fn read() { return value; }
         .set_state("main::value", 17_i64)
         .expect("existing runtime state replacement");
 
-    let report = runtime.apply_hot_update(update).expect("reload applies");
+    let report = runtime
+        .apply_reload_update_for_test(update)
+        .expect("reload applies");
 
     assert!(report.accepted);
     assert_eq!(report.initializer_changed_states, ["main::value"]);
@@ -482,12 +487,9 @@ fn reload_rejects_public_state_export_breaks_without_publishing_image_or_state()
             "pub state value: i64 = 1; fn read() { return value; }",
         )
         .expect("initial generation");
-    let removal = engine.compile_hot_reload_update_with_id(
-        &initial,
-        SourceId::new(308),
-        "fn read() { return 0; }",
-    );
-    let downgrade = engine.compile_hot_reload_update_with_id(
+    let removal =
+        engine.compile_reload_with_id(&initial, SourceId::new(308), "fn read() { return 0; }");
+    let downgrade = engine.compile_reload_with_id(
         &initial,
         SourceId::new(309),
         "state value: i64 = 1; fn read() { return value; }",
@@ -504,7 +506,7 @@ fn reload_rejects_public_state_export_breaks_without_publishing_image_or_state()
         (downgrade, "reload.state.visibility_downgraded"),
     ] {
         let report = runtime
-            .apply_hot_update_result_report(hot_reload_result(update))
+            .apply_reload_result_for_test(hot_reload_result(update))
             .expect("runtime returns a rejection report");
 
         assert!(!report.accepted);
@@ -535,7 +537,7 @@ fn added_state_initializer_failure_rolls_back_image_and_state_publication() {
         .expect("initial generation");
     let initial_id = initial.id;
     let update = engine
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             &initial,
             SourceId::new(304),
             "fn recurse() -> i64 { return recurse(); } state added: i64 = recurse(); state counter: i64 = 3; fn read() { return counter + 100; }",
@@ -545,7 +547,7 @@ fn added_state_initializer_failure_rolls_back_image_and_state_publication() {
         Runtime::from_hot_reload_version(engine, initial).expect("runtime initializes");
 
     let report = runtime
-        .apply_hot_update(update)
+        .apply_reload_update_for_test(update)
         .expect("reload reports rejection");
 
     assert!(!report.accepted);
@@ -571,7 +573,7 @@ fn shared_update_initializes_added_state_independently_per_runtime() {
         )
         .expect("initial generation");
     let update = engine
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             &initial,
             SourceId::new(306),
             "state added: i64 = 7; state existing: i64 = 1; fn read() { return existing + added; }",
@@ -583,13 +585,13 @@ fn shared_update_initializes_added_state_independently_per_runtime() {
 
     assert!(
         first
-            .apply_hot_update(update.clone())
+            .apply_reload_update_for_test(update.clone())
             .expect("first apply")
             .accepted
     );
     assert!(
         second
-            .apply_hot_update(update)
+            .apply_reload_update_for_test(update)
             .expect("second apply")
             .accepted
     );
@@ -627,7 +629,7 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
         .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
+        .compile_reload_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
@@ -635,11 +637,11 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
     let mut tx = HostAccess::new();
 
     runtime
-        .stage_hot_update(update)
+        .stage_reload_update(update)
         .expect("stage pending update");
     assert!(
         runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("hot reload runtime should report pending update")
     );
     assert_eq!(
@@ -648,7 +650,7 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("pending report");
 
@@ -664,7 +666,7 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
     assert_eq!(report.changed_functions, vec!["main".to_owned()]);
     assert!(
         !runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("pending update should be consumed")
     );
     assert_eq!(
@@ -688,12 +690,11 @@ fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
     let mut tx = HostAccess::new();
 
     runtime
-        .stage_hot_reload_update("fn main() { return 2; }")
-        .expect("runtime supports source text update")
+        .stage_reload("fn main() { return 2; }")
         .expect("stage source text update");
     assert!(
         runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("hot reload runtime should report pending update")
     );
     assert_eq!(
@@ -702,7 +703,7 @@ fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("pending report");
 
@@ -729,8 +730,7 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
     let mut tx = HostAccess::new();
 
     runtime
-        .stage_hot_reload_update("pub fn main() -> f64 { return 2.0; }")
-        .expect("runtime supports source text update")
+        .stage_reload("pub fn main() -> f64 { return 2.0; }")
         .expect("stage rejected source text update");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -738,7 +738,7 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("pending report");
 
@@ -772,7 +772,7 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
         .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
+        .compile_reload_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
@@ -780,7 +780,7 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
     let mut tx = HostAccess::new();
 
     runtime
-        .stage_hot_update(update)
+        .stage_reload_update(update)
         .expect("stage pending update");
     assert_eq!(
         runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
@@ -788,7 +788,7 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
     );
 
     let report = runtime
-        .check_reload_at_tick_boundary()
+        .activate_reload()
         .expect("check reload at tick boundary")
         .expect("pending report");
 
@@ -796,7 +796,7 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
     assert_eq!(report.changed_functions, vec!["main".to_owned()]);
     assert!(
         !runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("pending update should be consumed")
     );
     assert_eq!(
@@ -805,7 +805,7 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
     );
     assert_eq!(
         runtime
-            .check_reload_at_tick_boundary()
+            .activate_reload()
             .expect("check empty tick boundary"),
         None
     );
@@ -820,7 +820,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_reload_rejection() {
     let initial = engine
         .compile_hot_reload_initial_with_id(SourceId::new(1), "pub fn main() -> i64 { return 1; }")
         .expect("initial hot reload compile");
-    let update = hot_reload_result(engine.compile_hot_reload_update_with_id(
+    let update = hot_reload_result(engine.compile_reload_with_id(
         &initial,
         SourceId::new(2),
         "pub fn main() -> f64 { return 2.0; }",
@@ -832,10 +832,10 @@ fn runtime_tick_boundary_safe_point_reports_staged_reload_rejection() {
     let mut tx = HostAccess::new();
 
     runtime
-        .stage_hot_update_result(Err(update))
+        .stage_reload_result_for_test(Err(update))
         .expect("stage rejected update");
     let report = runtime
-        .check_reload_at_tick_boundary()
+        .activate_reload()
         .expect("check reload at tick boundary")
         .expect("pending report");
 
@@ -855,7 +855,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_reload_rejection() {
     assert!(source_span.is_some());
     assert!(
         !runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("pending rejection should be consumed")
     );
     assert_eq!(
@@ -888,7 +888,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_module_export_rejection() {
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     runtime
-        .stage_hot_update_result(Err(update))
+        .stage_reload_result_for_test(Err(update))
         .expect("stage rejected module export update");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -899,7 +899,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_module_export_rejection() {
     );
 
     let report = runtime
-        .check_reload_at_tick_boundary()
+        .activate_reload()
         .expect("tick boundary should report staged module rejection")
         .expect("staged module export rejection report");
 
@@ -944,7 +944,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_function_abi_rejectio
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     runtime
-        .stage_hot_update_result(Err(update))
+        .stage_reload_result_for_test(Err(update))
         .expect("stage rejected removed function update");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -955,7 +955,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_function_abi_rejectio
     );
 
     let report = runtime
-        .check_reload_at_tick_boundary()
+        .activate_reload()
         .expect("tick boundary should report staged function rejection")
         .expect("staged removed function ABI rejection report");
 
@@ -1004,7 +1004,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_method_abi_rejection(
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     runtime
-        .stage_hot_update_result(Err(update))
+        .stage_reload_result_for_test(Err(update))
         .expect("stage rejected removed method update");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -1015,7 +1015,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_method_abi_rejection(
     );
 
     let report = runtime
-        .check_reload_at_tick_boundary()
+        .activate_reload()
         .expect("tick boundary should report staged method rejection")
         .expect("staged removed method ABI rejection report");
 
@@ -1059,7 +1059,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     runtime
-        .stage_hot_update_result(Err(update))
+        .stage_reload_result_for_test(Err(update))
         .expect("stage rejected removed module update");
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
@@ -1070,7 +1070,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
     );
 
     let report = runtime
-        .check_reload_at_tick_boundary()
+        .activate_reload()
         .expect("tick boundary should report staged module rejection")
         .expect("staged removed module rejection report");
 
@@ -1099,7 +1099,7 @@ fn explicit_event_end_reload_check_consumes_staged_update_after_call() {
         .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
+        .compile_reload_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
@@ -1107,13 +1107,13 @@ fn explicit_event_end_reload_check_consumes_staged_update_after_call() {
     let mut tx = HostAccess::new();
 
     runtime
-        .stage_hot_update(update)
+        .stage_reload_update(update)
         .expect("stage pending update");
     let value = runtime
         .call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
         .expect("event call should run");
     let reload = runtime
-        .check_reload()
+        .activate_reload()
         .expect("reload check should run")
         .expect("staged reload should be consumed");
 
@@ -1122,7 +1122,7 @@ fn explicit_event_end_reload_check_consumes_staged_update_after_call() {
     assert_eq!(reload.changed_functions, vec!["main".to_owned()]);
     assert!(
         !runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("pending update should be consumed")
     );
     assert_eq!(
@@ -1152,7 +1152,7 @@ fn main() {
         )
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             &initial,
             SourceId::new(2),
             r#"
@@ -1172,13 +1172,13 @@ fn main() {
     let mut tx = HostAccess::new();
 
     runtime
-        .stage_hot_update(update)
+        .stage_reload_update(update)
         .expect("stage pending update");
     let value = runtime
         .call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
         .expect("event call should run on the old version");
     let reload = runtime
-        .check_reload()
+        .activate_reload()
         .expect("reload check should run")
         .expect("staged reload should be consumed");
 
@@ -1190,7 +1190,7 @@ fn main() {
     );
     assert!(
         !runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("pending update should be consumed")
     );
     assert_eq!(
@@ -1208,7 +1208,7 @@ fn explicit_event_end_reload_check_reports_staged_rejection_after_call() {
     let initial = engine
         .compile_hot_reload_initial_with_id(SourceId::new(1), "pub fn main() -> i64 { return 1; }")
         .expect("initial hot reload compile");
-    let update = hot_reload_result(engine.compile_hot_reload_update_with_id(
+    let update = hot_reload_result(engine.compile_reload_with_id(
         &initial,
         SourceId::new(2),
         "pub fn main() -> f64 { return 2.0; }",
@@ -1220,13 +1220,13 @@ fn explicit_event_end_reload_check_reports_staged_rejection_after_call() {
     let mut tx = HostAccess::new();
 
     runtime
-        .stage_hot_update_result(Err(update))
+        .stage_reload_result_for_test(Err(update))
         .expect("stage rejected update");
     let value = runtime
         .call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
         .expect("event call should run before reporting reload rejection");
     let reload = runtime
-        .check_reload()
+        .activate_reload()
         .expect("reload check should run")
         .expect("staged rejection should be consumed");
 
@@ -1247,7 +1247,7 @@ fn explicit_event_end_reload_check_reports_staged_rejection_after_call() {
     assert!(source_span.is_some());
     assert!(
         !runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("pending rejection should be consumed")
     );
     assert_eq!(
@@ -1275,7 +1275,7 @@ fn main(player: Player) {
         )
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             &initial,
             SourceId::new(2),
             r#"
@@ -1308,11 +1308,11 @@ fn main(player: Player) {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
     runtime
-        .stage_hot_update(update)
+        .stage_reload_update(update)
         .expect("stage pending update");
 
     let report = runtime
-        .check_reload_at_tick_boundary()
+        .activate_reload()
         .expect("reload check should run")
         .expect("pending update should be consumed");
     assert!(report.accepted);
@@ -1350,7 +1350,7 @@ fn main(player: Player) {
         )
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update_with_id(
+        .compile_reload_with_id(
             &initial,
             SourceId::new(2),
             r#"
@@ -1371,7 +1371,7 @@ fn main(player: Player) {
         HostValue::Scalar(vela_common::ScalarValue::I64(10)),
     );
     runtime
-        .stage_hot_update(update)
+        .stage_reload_update(update)
         .expect("stage pending update");
     adapter.deny_diagnostic_path_write(level_path.clone());
     let mut tx = HostAccess::new();
@@ -1395,7 +1395,7 @@ fn main(player: Player) {
     ));
     assert!(
         runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("failed write should not consume pending reload")
     );
 }

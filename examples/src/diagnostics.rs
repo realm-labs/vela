@@ -1,8 +1,8 @@
 use vela_bytecode::compiler::error::{CompileError, CompileErrorKind};
 use vela_common::diagnostic_render::{DiagnosticRenderer, DiagnosticSource};
 use vela_common::{Diagnostic, SourceId};
+use vela_engine::runtime::RuntimeReloadError;
 use vela_engine::source::{EngineSourceError, EngineSourceErrorKind};
-use vela_engine::reload::{EngineHotReloadSourceError, EngineHotReloadSourceErrorKind};
 use vela_hot_reload::report::HotReloadReport;
 use vela_vm::error::VmError;
 
@@ -33,18 +33,14 @@ pub fn render_hot_reload_report(label: &str, source: &str, report: &HotReloadRep
         .join("\n")
 }
 
-pub fn render_hot_reload_error(
+pub fn render_runtime_reload_error(
     label: &str,
     source: &str,
-    error: &EngineHotReloadSourceError,
+    error: &RuntimeReloadError,
 ) -> String {
-    match &error.kind {
-        EngineHotReloadSourceErrorKind::Source(error) => {
-            render_engine_source_error(label, source, error)
-        }
-        EngineHotReloadSourceErrorKind::Link(_) | EngineHotReloadSourceErrorKind::HotReload(_) => {
-            format!("{error:?}")
-        }
+    match error {
+        RuntimeReloadError::Source(error) => render_engine_source_error(label, source, error),
+        RuntimeReloadError::NotEnabled | RuntimeReloadError::Link(_) => format!("{error:?}"),
     }
 }
 

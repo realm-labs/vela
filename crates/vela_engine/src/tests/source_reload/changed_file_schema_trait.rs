@@ -29,8 +29,10 @@ fn runtime_stages_changed_file_defaulted_schema_addition_until_safe_point() {
 
     write_schema_reward_module(&reward_file, 6, StructCountField::Defaulted);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file defaulted schema addition should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -44,7 +46,7 @@ fn runtime_stages_changed_file_defaulted_schema_addition_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file schema addition report");
 
@@ -91,8 +93,10 @@ fn runtime_stages_changed_file_stable_id_schema_renames_until_safe_point() {
 
     write_stable_schema_rename_module(&reward_file, 6, true);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file stable-id schema rename should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -106,7 +110,7 @@ fn runtime_stages_changed_file_stable_id_schema_renames_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file stable-id schema rename report");
 
@@ -153,8 +157,10 @@ fn runtime_stages_changed_file_required_schema_field_rejection_until_safe_point(
 
     write_schema_reward_module(&reward_file, 6, StructCountField::Required);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file schema field rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -168,7 +174,7 @@ fn runtime_stages_changed_file_required_schema_field_rejection_until_safe_point(
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file schema field rejection report");
 
@@ -229,8 +235,10 @@ pub fn grant() {
     )
     .expect("write schema-free reward module");
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file removed schema rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -244,7 +252,7 @@ pub fn grant() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file removed schema rejection report");
 
@@ -308,8 +316,10 @@ fn runtime_stages_changed_file_schema_field_type_rejection_until_safe_point() {
 
     write_schema_reward_module(&reward_file, 6, StructCountField::Float);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file schema field type rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -323,7 +333,7 @@ fn runtime_stages_changed_file_schema_field_type_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file schema field type rejection report");
 
@@ -376,8 +386,10 @@ fn runtime_stages_changed_file_defaulted_enum_variant_field_addition_until_safe_
 
     write_enum_reward_module(&reward_file, 6, EnumVariantCountField::Defaulted);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file defaulted enum variant field addition should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -391,7 +403,7 @@ fn runtime_stages_changed_file_defaulted_enum_variant_field_addition_until_safe_
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file enum variant field addition report");
 
@@ -438,8 +450,10 @@ fn runtime_stages_changed_file_required_enum_variant_field_rejection_until_safe_
 
     write_enum_reward_module(&reward_file, 6, EnumVariantCountField::Required);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file enum variant field rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -453,7 +467,7 @@ fn runtime_stages_changed_file_required_enum_variant_field_rejection_until_safe_
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file enum variant field rejection report");
 
@@ -506,8 +520,10 @@ fn runtime_stages_changed_file_enum_variant_field_type_rejection_until_safe_poin
 
     write_enum_reward_module(&reward_file, 6, EnumVariantCountField::Float);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file enum variant field type rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -521,7 +537,7 @@ fn runtime_stages_changed_file_enum_variant_field_type_rejection_until_safe_poin
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file enum variant field type rejection report");
 
@@ -574,8 +590,10 @@ fn runtime_stages_changed_file_removed_trait_impl_rejection_until_safe_point() {
 
     write_trait_impl_module(&reward_file, 6, false);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file removed trait impl rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -589,7 +607,7 @@ fn runtime_stages_changed_file_removed_trait_impl_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file removed trait impl rejection report");
 
@@ -642,8 +660,10 @@ fn runtime_stages_changed_file_added_trait_impl_until_safe_point() {
 
     write_trait_impl_module(&reward_file, 6, true);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file added trait impl update should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -657,7 +677,7 @@ fn runtime_stages_changed_file_added_trait_impl_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file added trait impl report");
 
@@ -708,8 +728,10 @@ fn runtime_stages_changed_file_removed_trait_rejection_until_safe_point() {
 
     write_reward_module(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file removed trait rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -723,7 +745,7 @@ fn runtime_stages_changed_file_removed_trait_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file removed trait rejection report");
 
@@ -776,8 +798,10 @@ fn runtime_stages_changed_file_trait_method_return_rejection_until_safe_point() 
 
     write_trait_abi_module(&reward_file, 6, "f64");
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file trait method return rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -791,7 +815,7 @@ fn runtime_stages_changed_file_trait_method_return_rejection_until_safe_point() 
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file trait method return rejection report");
 
@@ -844,8 +868,10 @@ fn runtime_stages_changed_file_required_trait_method_rejection_until_safe_point(
 
     write_trait_abi_module_with_required_method(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file required trait method rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -859,7 +885,7 @@ fn runtime_stages_changed_file_required_trait_method_rejection_until_safe_point(
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file required trait method rejection report");
 
@@ -912,8 +938,10 @@ fn runtime_stages_changed_file_defaulted_trait_method_addition_until_safe_point(
 
     write_trait_abi_module_with_defaulted_method(&reward_file, 6);
     runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect("changed-file defaulted trait method addition should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -927,7 +955,7 @@ fn runtime_stages_changed_file_defaulted_trait_method_addition_until_safe_point(
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged changed-file defaulted trait method addition report");
 
@@ -978,8 +1006,10 @@ pub fn grant() {
     )
     .expect("write side-effecting changed file");
     let error = runtime
-        .stage_hot_reload_update_changed_file(&root, &reward_file)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(
+            &root,
+            &reward_file,
+        ))
         .expect_err("front-end rejection should return immediately");
     assert_top_level_side_effect_source_error(&error);
     assert_eq!(
@@ -994,7 +1024,9 @@ pub fn grant() {
     );
 
     assert_eq!(
-        runtime.check_reload().expect("check reload at safe point"),
+        runtime
+            .activate_reload()
+            .expect("check reload at safe point"),
         None
     );
     assert_eq!(
@@ -1026,19 +1058,18 @@ fn runtime_returns_hot_reload_changed_file_source_errors_immediately() {
     std::fs::write(&changed, "not a vela source file").expect("write non-source file");
 
     let error = runtime
-        .stage_hot_reload_update_changed_file(&root, &changed)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::changed_file(&root, &changed))
         .expect_err("invalid changed-file path should not stage a hot reload report");
 
     assert!(matches!(
-        error.kind,
-        EngineHotReloadSourceErrorKind::Source(crate::source::EngineSourceError {
+        error,
+        crate::runtime::RuntimeReloadError::Source(crate::source::EngineSourceError {
             kind: EngineSourceErrorKind::InvalidSourcePath { .. }
         })
     ));
     assert!(
         !runtime
-            .has_pending_hot_update()
+            .has_pending_reload()
             .expect("source error should not stage an update")
     );
 }

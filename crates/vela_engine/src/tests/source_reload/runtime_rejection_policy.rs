@@ -10,7 +10,7 @@ fn runtime_preserves_program_when_engine_hot_reload_update_is_rejected() {
     let initial = engine
         .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
-    let update = engine.compile_hot_reload_update_with_id(
+    let update = engine.compile_reload_with_id(
         &initial,
         SourceId::new(2),
         r#"
@@ -29,7 +29,7 @@ fn main() {
     let mut tx = HostAccess::new();
 
     let report = runtime
-        .apply_hot_update_result_report(hot_reload_result(update))
+        .apply_reload_result_for_test(hot_reload_result(update))
         .expect("runtime should return rejection report");
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
@@ -49,7 +49,7 @@ fn runtime_rejects_hot_update_when_not_created_from_version() {
         .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
     let update = engine
-        .compile_hot_reload_update_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
+        .compile_reload_with_id(&initial, SourceId::new(2), "fn main() { return 2; }")
         .expect("compatible update should compile");
     let compiled = engine
         .compile_source_with_id(SourceId::new(3), "fn main() { return 1; }")
@@ -57,8 +57,8 @@ fn runtime_rejects_hot_update_when_not_created_from_version() {
     let mut runtime = Runtime::new_compiled(engine, compiled).expect("runtime should initialize");
 
     assert!(matches!(
-        runtime.apply_hot_update(update),
-        Err(error) if error.kind == EngineErrorKind::RuntimeNotHotReloadEnabled
+        runtime.apply_reload_update_for_test(update),
+        Err(crate::runtime::RuntimeReloadError::NotEnabled)
     ));
 }
 
@@ -77,8 +77,8 @@ fn runtime_rejects_compile_update_when_not_created_from_version() {
     let runtime = Runtime::new_compiled(engine, compiled).expect("runtime should initialize");
 
     assert!(matches!(
-        runtime.compile_hot_reload_update_with_id(SourceId::new(2), "fn main() { return 2; }"),
-        Err(error) if error.kind == EngineErrorKind::RuntimeNotHotReloadEnabled
+        runtime.compile_reload_with_id(SourceId::new(2), "fn main() { return 2; }"),
+        Err(crate::runtime::RuntimeReloadError::NotEnabled)
     ));
 }
 
@@ -94,7 +94,7 @@ fn engine_applies_configured_hot_reload_policy() {
         .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
         .expect("initial hot reload compile");
 
-    let error = hot_reload_result(engine.compile_hot_reload_update_with_id(
+    let error = hot_reload_result(engine.compile_reload_with_id(
         &initial,
         SourceId::new(2),
         r#"

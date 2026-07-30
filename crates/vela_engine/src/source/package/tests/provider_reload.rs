@@ -357,9 +357,9 @@ impl CallbackProvider for Callback {{
     let update = engine
         .compile_package_hot_reload_update_from_previous(&initial, &second)
         .expect("compatible provider update");
-    runtime.stage_hot_update(update).expect("stage update");
+    runtime.stage_reload_update(update).expect("stage update");
     runtime
-        .check_reload()
+        .activate_reload()
         .expect("safe point")
         .expect("accepted report");
     let new_callback = runtime

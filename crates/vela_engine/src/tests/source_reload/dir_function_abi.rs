@@ -29,8 +29,7 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
 
     write_reward_module_with_signature(&reward_file, "(amount: i64) -> i64", "amount");
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir required parameter rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -44,7 +43,7 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir required parameter rejection report");
 
@@ -153,8 +152,7 @@ fn grant() {
     )
     .expect("write reward without public export");
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir script function access ABI rejection should be staged");
     assert_eq!(
         runtime.call_raw(
@@ -168,7 +166,7 @@ fn grant() {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir script function access ABI rejection report");
 
@@ -409,12 +407,11 @@ pub fn grant() {
     )
     .expect("write renamed native reward module");
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir native stable-ID rename should be staged");
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir native stable-ID rename report");
 
@@ -507,8 +504,7 @@ pub fn grant(player: Player) {
     )
     .expect("write renamed method reward module");
     runtime
-        .stage_hot_reload_update_dir(&root)
-        .expect("runtime should be hot-reload enabled")
+        .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir method stable-ID rename should be staged");
 
     let mut tx = HostAccess::new();
@@ -524,7 +520,7 @@ pub fn grant(player: Player) {
     );
 
     let report = runtime
-        .check_reload()
+        .activate_reload()
         .expect("check reload at safe point")
         .expect("staged dir method stable-ID rename report");
 
