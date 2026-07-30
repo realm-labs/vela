@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::path::PathBuf;
 
-use vela_bindgen::{RustBindingGeneratorOptions, generate_rust_bindings};
+use vela_bindgen::RustBindingsBuilder;
 use vela_engine::binding::VmResult;
 use vela_engine::context::NativeCallContext;
 use vela_engine::engine::Engine;
@@ -50,10 +50,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let program = engine
         .compile_source(include_str!("script.vela"))
         .map_err(|error| error.to_string())?;
-    let generated = generate_rust_bindings(
-        program.binding_schema(),
-        &RustBindingGeneratorOptions::default(),
-    )?;
+    let generated = RustBindingsBuilder::new(program.binding_schema()).generate()?;
     let output = PathBuf::from(std::env::var_os("OUT_DIR").ok_or("OUT_DIR is not set")?)
         .join("vela_bindings.rs");
     std::fs::write(output, generated.code)?;

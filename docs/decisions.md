@@ -2737,10 +2737,11 @@ domain schema, validates Runtime authority, retains bounded call options, and
 creates the initial Rust generation. Missing defaults fail construction.
 
 The resulting application owns the Engine and the domain publication
-controller. `app.begin(&mut context)` establishes the request safe point and
-pins one generation; `app.patches()` owns the routine virtual-workspace
-Snapshot and prebuilt-bundle staging, activation, dry-run, and rollback
-workflow. The
+controller. `app.with_request` and `app.with_request_async` pin one generation
+and lend that root with the Actor context for one request. `app.begin` remains
+the explicit owned request guard when a caller must control the guard's scope.
+`app.patches()` owns the routine virtual-workspace Snapshot and prebuilt-bundle
+staging, activation, dry-run, and rollback workflow. The
 removed `#[service_set]`, split `register`/`new`, default-type field attribute,
 public generation constructor, and `stage_rust` surfaces have no compatibility
 aliases.
@@ -2800,6 +2801,23 @@ Precompiled package or service tooling uses `stage_reload_update`. The removed
 `stage_hot_reload_update*`, `compile_hot_reload_update*`,
 `stage_hot_update*`, `apply_hot_update`, and `check_reload*` Runtime methods
 have no compatibility aliases.
+
+### Rust Type And Callable Registration Stay Explicit
+
+`register_type::<T>()` installs a Rust Value/Host contract and
+`register_exports(bundle)` installs an independently generated callable bundle.
+For the common inherent-method case,
+`register_type_with_exports::<T>(T::vela_inherent_exports())` performs both
+operations without hiding either registration dependency. Free-function and
+protocol bundles remain explicit `register_exports` calls.
+
+### Rust Bindgen Has One Schema-Only Builder
+
+`vela_bindgen::RustBindingsBuilder` accepts the compiler-owned
+`RustBindingSchema`, optional generation settings such as the module name, and
+terminates in `generate`. Bindgen does not read Vela source, construct an
+Engine, or write build outputs. The removed options-struct plus
+`generate_rust_bindings` free-function pair has no compatibility alias.
 
 ### Repository Artifacts Use Domain-Neutral Host Names
 

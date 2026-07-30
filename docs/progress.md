@@ -98,7 +98,8 @@ Phase status:
   falling back to the older, less complete method adapter path.
 - Cross-cutting service-domain ergonomics checkpoint accepted:
   `#[service_domain]` generates one application builder, retains stateful Rust
-  default instances, exposes request-safe-point pinning through `app.begin`,
+  default instances, exposes request-safe-point pinning through
+  `app.with_request` / `app.with_request_async`,
   and centralizes revisioned multi-file Snapshot source and bundle deployment
   behind `app.patches()`. `PatchEdit::Put/Remove` submits only changed virtual
   files while compilation consumes the complete checksummed `PatchRevision`;
@@ -117,6 +118,11 @@ Phase status:
   `with_hot_reload` promotes that linked program to generation zero, and
   `stage_reload` plus `activate_reload` replace the split compile/stage/apply
   method families without compatibility aliases.
+- Cross-cutting embedding ergonomics checkpoint accepted: generated Service
+  applications expose sync and async one-request closures that pin exactly one
+  generation; Rust type plus inherent exports have one combined registration
+  helper; and Rust bindgen uses one schema-only builder instead of a separate
+  options object and free generation function.
 
 S3 provides recursive standard bindings; exact owned/shared/exclusive
 View and MutView facts; scoped reborrow for borrowed collections; prepared

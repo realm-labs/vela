@@ -165,12 +165,10 @@ impl AuditHotfix {
         counter: 0,
         runtime: ServiceRuntimeSlot::new(app.engine().clone()),
     };
-    {
-        let mut call = app.begin(&mut context);
-        let (root, request_context) = call.parts();
+    app.with_request(&mut context, |root, request_context| {
         assert_eq!(root.calculator().adjust(request_context, 2), 42);
         assert_eq!(root.audit().record(request_context, 2), 7);
-    }
+    });
 
     let removal_rollback = app
         .patches()
@@ -178,11 +176,9 @@ impl AuditHotfix {
         .expect("remove one source");
     let active_revision = app.patches().revision().expect("edited revision");
     assert_eq!(active_revision.sources().len(), 1);
-    {
-        let mut call = app.begin(&mut context);
-        let (root, request_context) = call.parts();
+    app.with_request(&mut context, |root, request_context| {
         assert_eq!(root.audit().record(request_context, 2), 4);
-    }
+    });
     app.patches()
         .rollback(removal_rollback)
         .expect("rollback source removal");

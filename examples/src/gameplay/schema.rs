@@ -46,9 +46,8 @@ pub(crate) fn build_gameplay_engine(options: GameEngineOptions) -> EngineResult<
         builder = builder.register_type_desc(context_type_desc(options.schema.config));
     }
     if options.schema.player {
-        builder = builder
-            .register_type::<Player>()
-            .register_exports(Player::vela_inherent_exports());
+        builder =
+            builder.register_type_with_exports::<Player>(Player::vela_inherent_exports());
     }
     if options.schema.monster {
         builder = builder.register_type::<Monster>();

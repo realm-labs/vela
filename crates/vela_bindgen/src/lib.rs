@@ -7,6 +7,5 @@
 mod rust;
 
 pub use rust::{
-    GeneratedRustBindings, RustBindingDiagnostic, RustBindingGenerationError,
-    RustBindingGeneratorOptions, generate_rust_bindings,
+    GeneratedRustBindings, RustBindingDiagnostic, RustBindingGenerationError, RustBindingsBuilder,
 };

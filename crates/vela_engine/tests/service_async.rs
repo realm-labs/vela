@@ -179,6 +179,23 @@ fn async_service_root_selects_rust_or_vela_through_one_send_adapter() {
 }
 
 #[test]
+fn application_runs_one_async_request_against_one_pinned_generation() {
+    let app = service_app();
+    let mut context = RequestContext {
+        counter: 0,
+        runtime: ServiceRuntimeSlot::new(app.engine().clone()),
+    };
+    let input = Input { value: 5 };
+
+    let future = app.with_request_async(&mut context, async |root, request_context| {
+        root.calculator().apply(request_context, &input).await
+    });
+    assert_send(&future);
+    assert_eq!(poll_after_one_pending(Box::pin(future)), 6);
+    assert_eq!(context.counter, 2);
+}
+
+#[test]
 fn pending_actors_are_isolated_and_drop_or_unwind_restores_runtime_and_leases() {
     let (engine, services, root) = active_fixture();
     let mut first = RequestContext {

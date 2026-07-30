@@ -8,16 +8,29 @@ use vela_bytecode::{
 };
 use vela_common::Span;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RustBindingGeneratorOptions {
-    pub module_name: String,
+#[derive(Clone, Debug)]
+pub struct RustBindingsBuilder<'schema> {
+    schema: &'schema RustBindingSchema,
+    module_name: String,
 }
 
-impl Default for RustBindingGeneratorOptions {
-    fn default() -> Self {
+impl<'schema> RustBindingsBuilder<'schema> {
+    #[must_use]
+    pub fn new(schema: &'schema RustBindingSchema) -> Self {
         Self {
+            schema,
             module_name: "vela_bindings".to_owned(),
         }
+    }
+
+    #[must_use]
+    pub fn module_name(mut self, module_name: impl Into<String>) -> Self {
+        self.module_name = module_name.into();
+        self
+    }
+
+    pub fn generate(self) -> Result<GeneratedRustBindings, RustBindingGenerationError> {
+        generate_rust_bindings(self.schema, &self.module_name)
     }
 }
 
@@ -59,9 +72,9 @@ impl fmt::Display for RustBindingGenerationError {
 
 impl std::error::Error for RustBindingGenerationError {}
 
-pub fn generate_rust_bindings(
+fn generate_rust_bindings(
     schema: &RustBindingSchema,
-    options: &RustBindingGeneratorOptions,
+    module_name: &str,
 ) -> Result<GeneratedRustBindings, RustBindingGenerationError> {
     let mut diagnostics = Vec::new();
     if schema.version() != RUST_BINDING_SCHEMA_VERSION {
@@ -75,13 +88,10 @@ pub fn generate_rust_bindings(
             source: None,
         });
     }
-    let module_name = rust_identifier(&options.module_name, NameStyle::Snake).ok_or_else(|| {
+    let module_name = rust_identifier(module_name, NameStyle::Snake).ok_or_else(|| {
         generation_error(RustBindingDiagnostic {
             code: "bindgen::invalid_module_name",
-            message: format!(
-                "`{}` cannot be represented as a Rust module",
-                options.module_name
-            ),
+            message: format!("`{}` cannot be represented as a Rust module", module_name),
             source: None,
         })
     })?;
@@ -1085,9 +1095,12 @@ pub fn add(left: i64, right: i64 = 1) -> i64 { return left + right; }
 pub async fn names(values: Array<String>) -> Result<String, String> { return "ok"; }
 "#,
         );
-        let options = RustBindingGeneratorOptions::default();
-        let first = generate_rust_bindings(&schema, &options).expect("first bindings");
-        let second = generate_rust_bindings(&schema, &options).expect("second bindings");
+        let first = RustBindingsBuilder::new(&schema)
+            .generate()
+            .expect("first bindings");
+        let second = RustBindingsBuilder::new(&schema)
+            .generate()
+            .expect("second bindings");
 
         assert_eq!(first, second);
         assert_eq!(first.schema_checksum, schema.checksum());
@@ -1096,13 +1109,20 @@ pub async fn names(values: Array<String>) -> Result<String, String> { return "ok
         assert!(first.code.contains("pub async fn names"));
         assert!(first.code.contains("Adds two values."));
         assert!(first.code.contains(&format!("{:016x}", schema.checksum())));
+
+        let named = RustBindingsBuilder::new(&schema)
+            .module_name("game_api")
+            .generate()
+            .expect("named bindings");
+        assert!(named.code.contains("pub mod game_api"));
     }
 
     #[test]
     fn generation_uses_schema_only_and_rejects_unsupported_iterator_boundaries() {
         let schema =
             schema("pub fn consume(values: Iterator<i64>) -> i64 { return values.count(); }");
-        let error = generate_rust_bindings(&schema, &RustBindingGeneratorOptions::default())
+        let error = RustBindingsBuilder::new(&schema)
+            .generate()
             .expect_err("iterator boundary should fail");
 
         assert!(error.diagnostics().iter().any(|diagnostic| {
@@ -1121,7 +1141,8 @@ pub fn choose(value: Choice) -> Point { return Point { x: 1, y: 2 }; }
 impl Point { pub fn sum(self) -> i64 { return self.x + self.y; } }
 "#,
         );
-        let generated = generate_rust_bindings(&schema, &RustBindingGeneratorOptions::default())
+        let generated = RustBindingsBuilder::new(&schema)
+            .generate()
             .expect("model bindings");
 
         syn::parse_file(&generated.code).expect("generated models must parse as Rust");
@@ -1144,7 +1165,8 @@ pub struct Stream { values: Iterator<i64> }
 pub fn echo(value: Stream) -> Stream { return value; }
 "#,
         );
-        let error = generate_rust_bindings(&schema, &RustBindingGeneratorOptions::default())
+        let error = RustBindingsBuilder::new(&schema)
+            .generate()
             .expect_err("nested iterator boundary should fail");
 
         assert!(error.diagnostics().iter().any(|diagnostic| {

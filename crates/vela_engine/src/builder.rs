@@ -81,6 +81,15 @@ impl EngineBuilder {
         T::register(self)
     }
 
+    /// Registers a Rust type together with one generated callable bundle.
+    #[must_use]
+    pub fn register_type_with_exports<T>(self, bundle: crate::interop::ExportBundle) -> Self
+    where
+        T: crate::type_registration::VelaType,
+    {
+        self.register_type::<T>().register_exports(bundle)
+    }
+
     /// Registers an explicitly constructed binding.
     ///
     /// This is the low-level escape hatch for custom codecs, constructors, and

@@ -12,9 +12,8 @@ const SOURCE: &str = include_str!("main.vela");
 
 fn main() -> Result<(), Box<dyn Error>> {
     let engine = Engine::builder()
-        .register_type::<WorkflowState>()
+        .register_type_with_exports::<WorkflowState>(WorkflowState::vela_inherent_exports())
         .register_type::<RuleService>()
-        .register_exports(WorkflowState::vela_inherent_exports())
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
         .build()?;

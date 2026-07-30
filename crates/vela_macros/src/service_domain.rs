@@ -855,6 +855,33 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 }
             }
 
+            pub fn with_request<'context, __VelaOutput>(
+                &self,
+                context: &'context mut #context,
+                call: impl ::core::ops::FnOnce(
+                    &#root_ident,
+                    &'context mut #context,
+                ) -> __VelaOutput,
+            ) -> __VelaOutput {
+                let root = self.domain.pin();
+                call(&root, context)
+            }
+
+            pub async fn with_request_async<__VelaCall, __VelaOutput>(
+                &self,
+                context: &mut #context,
+                call: __VelaCall,
+            ) -> __VelaOutput
+            where
+                __VelaCall: ::core::ops::AsyncFnOnce(
+                    &#root_ident,
+                    &mut #context,
+                ) -> __VelaOutput,
+            {
+                let root = self.domain.pin();
+                call(&root, context).await
+            }
+
             #[must_use]
             pub fn into_parts(self) -> (::vela_engine::engine::Engine, #set_ident) {
                 (self.engine, self.domain)

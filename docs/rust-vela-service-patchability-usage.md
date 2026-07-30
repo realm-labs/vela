@@ -428,9 +428,9 @@ async fn handle_request(
     table: &Table,
     request: Request,
 ) -> Result<Response, ServiceError> {
-    let mut call = app.begin(state);
-    let (services, state) = call.parts();
-    services.handler().handle(state, table, request).await
+    app.with_request_async(state, async |services, state| {
+        services.handler().handle(state, table, request).await
+    }).await
 }
 ```
 
@@ -438,16 +438,15 @@ An ordinary Rust caller may also receive a borrowed result through the same
 authored signature:
 
 ```rust,ignore
-let mut call = app.begin(&mut state);
-let (root, state) = call.parts();
-
-let same: &mut RequestState = root.state().identity(state);
-let some: Option<&RequestState> = root.state().optional(state, true);
-let none: Option<&RequestState> = root.state().optional(state, false);
-let ok: Result<&RequestState, ServiceError> =
-    root.state().checked(state, true);
-let err: Result<&RequestState, ServiceError> =
-    root.state().checked(state, false);
+app.with_request(&mut state, |root, state| {
+    let same: &mut RequestState = root.state().identity(state);
+    let some: Option<&RequestState> = root.state().optional(state, true);
+    let none: Option<&RequestState> = root.state().optional(state, false);
+    let ok: Result<&RequestState, ServiceError> =
+        root.state().checked(state, true);
+    let err: Result<&RequestState, ServiceError> =
+        root.state().checked(state, false);
+});
 ```
 
 This code is identical for Rust-default and Vela-selected generations. Calls
@@ -706,9 +705,9 @@ assert!(app.patches().dry_run_bundle(&bundle).accepted());
 let bundle_rollback = app.patches().stage_bundle(bundle)?.activate()?;
 
 // Activation does not execute the implementation.
-let mut call = app.begin(&mut actor);
-let (services, actor) = call.parts();
-services.operation().execute(actor, request)?;
+app.with_request(&mut actor, |services, actor| {
+    services.operation().execute(actor, request)
+})?;
 
 app.patches().rollback(bundle_rollback)?;
 ```

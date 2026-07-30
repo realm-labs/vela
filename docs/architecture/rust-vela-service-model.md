@@ -222,20 +222,19 @@ fn handle_grant(
     turn: &mut GameTurn,
     command: GrantCommand,
 ) -> GameResult<()> {
-    let mut call = app.begin(turn);
-    let (services, turn) = call.parts();
-    services.inventory().grant(
-        turn,
-        &mut command.player,
-        &command.items,
-    )?;
-    Ok(())
+    app.with_request(turn, |services, turn| {
+        services.inventory().grant(
+            turn,
+            &mut command.player,
+            &command.items,
+        )
+    })
 }
 ```
 
 The caller does not test whether `grant` is patched. It does not hold a
 `DispatchRoot`, choose a slot, construct a proxy, or call a Vela-specific API.
-Framework adapters may wrap `begin`, but they must preserve the same explicit
+Framework adapters may wrap `with_request`, but they must preserve the same explicit
 root authority and one-generation-per-request semantics.
 
 Calls made directly on `RustInventoryService` intentionally bypass Vela. Code

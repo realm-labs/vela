@@ -29,8 +29,7 @@ pub fn normalize(amount: i64) -> i64 {
 
 pub fn build_engine() -> Result<Engine, Box<dyn Error>> {
     Ok(Engine::builder()
-        .register_type::<RoundTripPlayer>()
-        .register_exports(RoundTripPlayer::vela_inherent_exports())
+        .register_type_with_exports::<RoundTripPlayer>(RoundTripPlayer::vela_inherent_exports())
         .register_exports(vela_export_bundle_normalize())
         .capability(vela_common::Capability::HostRead)
         .capability(vela_common::Capability::HostWrite)

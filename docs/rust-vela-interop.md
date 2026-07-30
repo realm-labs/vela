@@ -98,9 +98,10 @@ authority for that invocation; direct Vela path writes still use fine-grained
 ## Generate Typed Rust Bindings
 
 The compiler-owned `RustBindingSchema` is the only generator input. A build
-script compiles the same Vela source and passes `program.binding_schema()` to
-`vela_bindgen::generate_rust_bindings`, writing the result to `OUT_DIR`. The
-application includes that generated file and binds it to an explicit Runtime:
+script compiles the same Vela source, then calls
+`RustBindingsBuilder::new(program.binding_schema()).generate()` and writes the
+result to `OUT_DIR`. The application includes that generated file and binds it
+to an explicit Runtime:
 
 ```rust,ignore
 include!(concat!(env!("OUT_DIR"), "/vela_bindings.rs"));
