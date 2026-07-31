@@ -336,7 +336,7 @@ fn table() -> Table {
     }
 }
 
-fn state(engine: &Engine, root: &CoverageServicesRoot) -> RequestState {
+fn state(root: &CoverageServicesRoot) -> RequestState {
     RequestState {
         marker: 1,
         services: root.clone(),
@@ -348,10 +348,9 @@ fn state(engine: &Engine, root: &CoverageServicesRoot) -> RequestState {
 
 fn run_handler(
     root: &CoverageServicesRoot,
-    engine: &Engine,
     table: &Table,
 ) -> ServiceResult<(Response, RequestState)> {
-    let mut context = state(engine, root);
+    let mut context = state(root);
     let response = block_on(root.handler().handle(
         &mut context,
         table,
@@ -457,7 +456,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let table = table();
 
     let rust_root = services.pin();
-    let (rust_response, rust_state) = run_handler(&rust_root, &engine, &table)?;
+    let (rust_response, rust_state) = run_handler(&rust_root, &table)?;
     assert_eq!(
         rust_response,
         Response {
@@ -478,7 +477,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .apply(PatchEdit::put("snapshot.vela", SNAPSHOT_SOURCE))?;
     let snapshot_root = services.pin();
 
-    let mut lookup_state = state(&engine, &snapshot_root);
+    let mut lookup_state = state(&snapshot_root);
     let expected_state_address = &mut lookup_state as *mut RequestState as usize;
     let some_address = snapshot_root
         .lookup()
@@ -503,7 +502,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         snapshot_root.lookup().required(&mut lookup_state) as *const RequestState as usize,
         expected_state_address
     );
-    let (snapshot_response, snapshot_state) = run_handler(&snapshot_root, &engine, &table)?;
+    let (snapshot_response, snapshot_state) = run_handler(&snapshot_root, &table)?;
     assert_eq!(snapshot_response.score, 18);
     assert_eq!(snapshot_state.applied, 17);
     println!(
@@ -539,7 +538,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     )?;
     app.patches().stage_bundle(policy_bundle)?.activate()?;
     let policy_root = services.pin();
-    let (policy_response, _) = run_handler(&policy_root, &engine, &table)?;
+    let (policy_response, _) = run_handler(&policy_root, &table)?;
     assert_eq!(policy_response.score, 28);
     println!(
         "service_hotfix_coverage delta-1 score={}",
@@ -560,7 +559,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     )?;
     app.patches().stage_bundle(apply_bundle)?.activate()?;
     let complete_root = services.pin();
-    let (complete_response, complete_state) = run_handler(&complete_root, &engine, &table)?;
+    let (complete_response, complete_state) = run_handler(&complete_root, &table)?;
     assert_eq!(complete_response.score, 28);
     assert_eq!(complete_state.applied, 27);
     assert_eq!(complete_state.audits, [127, 27]);
@@ -571,7 +570,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         complete_state.audits.len(),
     );
 
-    let (old_response, _) = run_handler(&snapshot_root, &engine, &table)?;
+    let (old_response, _) = run_handler(&snapshot_root, &table)?;
     assert_eq!(old_response.score, 18);
     println!(
         "service_hotfix_coverage old-root score={}",
@@ -645,7 +644,7 @@ impl IncompatiblePolicy {
         ServiceUpdateBundle::snapshot(services.schema(), folded_artifact, folded_update)?;
     let rollback = app.patches().stage_bundle(folded_bundle)?.activate()?;
     let folded_root = services.pin();
-    let (folded_response, folded_state) = run_handler(&folded_root, &engine, &table)?;
+    let (folded_response, folded_state) = run_handler(&folded_root, &table)?;
     assert_eq!(folded_response, complete_response);
     assert_eq!(folded_state.audits, complete_state.audits);
     println!(
@@ -657,7 +656,7 @@ impl IncompatiblePolicy {
     let restored = app.patches().rollback(rollback)?;
     assert_eq!(restored.generation_id(), complete_root.generation_id());
     assert_eq!(folded_state.applied, committed_effect);
-    let (rollback_response, _) = run_handler(&restored, &engine, &table)?;
+    let (rollback_response, _) = run_handler(&restored, &table)?;
     assert_eq!(rollback_response, complete_response);
     println!(
         "service_hotfix_coverage rollback score={} effects=preserved",
@@ -672,7 +671,7 @@ impl IncompatiblePolicy {
         ROW_CODEC_ENTRIES.load(Ordering::SeqCst),
     );
 
-    let mut transform_state = state(&engine, &restored);
+    let mut transform_state = state(&restored);
     let buffer_result = restored.transform().buffer(&mut transform_state);
     assert_eq!(buffer_result, 712);
     assert_eq!(PATCH_BUFFER_DROPS.load(Ordering::SeqCst), 1);

@@ -64,7 +64,6 @@ fn compile_diagnostics(error: &CompileError) -> Vec<Diagnostic> {
     }
 }
 
-
 fn render_diagnostics(diagnostics: &[Diagnostic], source: DiagnosticSource) -> String {
     let renderer = DiagnosticRenderer::new(Some(source));
     diagnostics

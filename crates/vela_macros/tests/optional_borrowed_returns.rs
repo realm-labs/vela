@@ -115,7 +115,12 @@ fn nested_scoped_method_returns_release_child_before_parent() {
     let program = engine
         .compile_source(
             "fn main(config: Config) { \
-                 return config.table().get(1)?.value; \
+                 let table = config.table(); \
+                 let row = table.get(1)?; \
+                 let value = row.value; \
+                 host::release(row); \
+                 host::release(table); \
+                 return value; \
              }",
         )
         .expect("nested borrowed returns should compile");
@@ -203,7 +208,8 @@ fn optional_borrow_contract_preserves_container_type_and_provenance() {
     let program = engine()
         .compile_source(
             "fn main(table: Table) { \
-                 return table.get(99).is_none() && table.touch() == 1; \
+                 let missing = table.get(99); \
+                 return missing.is_none() && table.touch() == 1; \
              }",
         )
         .expect("optional borrowed return should compile");
@@ -226,7 +232,7 @@ fn some_and_none_use_host_identity_without_cloning_rows() {
         "fn method(table: Table) { let row = table.get(1)?; return row.value; } \
          fn function(table: Table) { let row = host::lookup(table, 2)?; return row.value; } \
          fn direct(table: Table) { let row = host::first_row(table); return row.value; } \
-         fn missing(table: Table) { return table.get(99).is_none() && table.touch() == 1; }",
+         fn missing(table: Table) { let missing = table.get(99); return missing.is_none() && table.touch() == 1; }",
     );
     let mut table = Table::fixture();
     let first_address = std::ptr::from_ref(&table.rows[0]).addr();
@@ -378,10 +384,7 @@ fn live_optional_child_cannot_cross_async_suspend() {
         .expect_err("a live borrowed child cannot cross suspension");
     assert!(matches!(
         error.kind(),
-        VmErrorKind::Host(HostErrorKind::BorrowedHostRefEscape {
-            boundary: HostRefLifetimeBoundary::AsyncSuspend,
-            ..
-        })
+        VmErrorKind::Host(HostErrorKind::UnreleasedScopedResourcesAtAwait { .. })
     ));
     assert_eq!(
         call_async(&mut runtime, "released", &mut table),

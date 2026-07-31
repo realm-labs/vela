@@ -43,6 +43,8 @@ impl RewardPatch {
         actor.record_patch(adjustment.bonus, classes.len());
         let counts = actor.item_counts_mut();
         counts.insert(-1i32, adjustment.bonus);
+        host::release(counts);
+        host::release(actor);
         return result;
     }
 }
@@ -413,10 +415,7 @@ fn request() -> GrantRequest {
     }
 }
 
-fn run_pinned(
-    root: &GameServicesRoot,
-    engine: &Engine,
-) -> Result<(RequestSummary, HostTurn), ServiceError> {
+fn run_pinned(root: &GameServicesRoot) -> Result<(RequestSummary, HostTurn), ServiceError> {
     let mut turn = HostTurn {
         actor: HostActor {
             item_counts: BTreeMap::new(),
@@ -448,12 +447,9 @@ fn run_pinned(
     Ok((summary, turn))
 }
 
-fn run_active(
-    services: &GameServices,
-    engine: &Engine,
-) -> Result<(RequestSummary, HostTurn), ServiceError> {
+fn run_active(services: &GameServices) -> Result<(RequestSummary, HostTurn), ServiceError> {
     let root = services.pin();
-    run_pinned(&root, engine)
+    run_pinned(&root)
 }
 
 fn linked_update(
@@ -523,7 +519,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     let rust_root = services.pin();
-    let (rust, _) = run_active(services, &engine)?;
+    let (rust, _) = run_active(services)?;
     assert_eq!(
         rust,
         RequestSummary {
@@ -541,7 +537,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     app.patches()
         .apply(PatchEdit::put("rule.vela", RULE_SOURCE))?;
     let rule_root = services.pin();
-    let (rule, _) = run_active(services, &engine)?;
+    let (rule, _) = run_active(services)?;
     assert_eq!(rule.checksum, 1741);
     assert_eq!(rule.item7, 8);
 
@@ -560,7 +556,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     assert!(app.patches().dry_run_bundle(&reward_bundle).accepted());
     app.patches().stage_bundle(reward_bundle)?.activate()?;
     let reward_root = services.pin();
-    let (reward, _) = run_active(services, &engine)?;
+    let (reward, _) = run_active(services)?;
     assert_eq!(reward.checksum, 1741);
     assert_eq!(reward.marker, 2);
     assert_eq!(reward.patch_score, 3);
@@ -580,7 +576,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     assert!(app.patches().dry_run_bundle(&inventory_bundle).accepted());
     app.patches().stage_bundle(inventory_bundle)?.activate()?;
     let complete_root = services.pin();
-    let (complete, _) = run_active(services, &engine)?;
+    let (complete, _) = run_active(services)?;
     assert_eq!(
         complete,
         RequestSummary {
@@ -607,9 +603,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         3
     );
 
-    let (old_rust, _) = run_pinned(&rust_root, &engine)?;
+    let (old_rust, _) = run_pinned(&rust_root)?;
     assert_eq!(old_rust.checksum, 1711);
-    let (old_rule, _) = run_pinned(&rule_root, &engine)?;
+    let (old_rule, _) = run_pinned(&rule_root)?;
     assert_eq!(old_rule.checksum, 1741);
     assert_eq!(old_rule.marker, 0);
 
@@ -622,7 +618,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         ])?))?
         .activate()?;
     let folded_root = services.pin();
-    let (folded, folded_turn) = run_active(services, &engine)?;
+    let (folded, folded_turn) = run_active(services)?;
     assert_eq!(folded, complete);
     let effects_before_rollback = folded_turn.actor.event_calls;
     let restored = app.patches().rollback(rollback)?;

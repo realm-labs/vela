@@ -13,7 +13,9 @@ use crate::{
 use vela_def::FunctionId;
 
 const MAGIC: &[u8; 8] = b"VELAPRG\0";
-const FORMAT_VERSION: u32 = 1;
+// Version 1 bytecode was compiled under implicit Host-borrow release semantics.
+// The explicit-release hard switch intentionally has no compatibility loader.
+const FORMAT_VERSION: u32 = 2;
 const HEADER_LEN: usize = MAGIC.len() + size_of::<u32>() + size_of::<u64>() + 32;
 const MAX_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
 
@@ -46,7 +48,7 @@ impl fmt::Display for PortableArtifactChecksum {
 ///
 /// Loading still binds stable native/type identities against the receiving
 /// Engine and runs the bytecode verifier. MIR and process-local executable
-/// generations are deliberately not portable in format version 1.
+/// generations are deliberately not portable in format version 2.
 #[derive(Debug)]
 pub struct PortableCompiledProgram {
     pub(crate) bytecode: UnlinkedProgram,
@@ -305,7 +307,7 @@ impl fmt::Display for PortableArtifactError {
                 write!(formatter, "portable artifact decode failed: {message}")
             }
             Self::UnsupportedPackageMetadata => formatter.write_str(
-                "portable artifact format 1 does not yet encode package/provider runtime metadata",
+                "portable artifact format 2 does not yet encode package/provider runtime metadata",
             ),
         }
     }
@@ -345,7 +347,7 @@ mod tests {
     }
 
     #[test]
-    fn portable_program_rejects_corruption_and_foreign_format() {
+    fn portable_program_rejects_corruption_and_old_implicit_release_format() {
         let compiled =
             crate::compiler::compile_test_program(SourceId::new(2), "fn main() { return 7; }")
                 .expect("compile program");
@@ -358,14 +360,14 @@ mod tests {
             Err(PortableArtifactError::ChecksumMismatch)
         );
 
-        let mut foreign = artifact.encode().expect("encode artifact");
-        foreign[MAGIC.len()..MAGIC.len() + size_of::<u32>()]
-            .copy_from_slice(&(FORMAT_VERSION + 1).to_le_bytes());
+        let mut old_implicit_release = artifact.encode().expect("encode artifact");
+        old_implicit_release[MAGIC.len()..MAGIC.len() + size_of::<u32>()]
+            .copy_from_slice(&1_u32.to_le_bytes());
         assert_eq!(
-            PortableProgramArtifact::decode(&foreign),
+            PortableProgramArtifact::decode(&old_implicit_release),
             Err(PortableArtifactError::UnsupportedFormat {
                 expected: FORMAT_VERSION,
-                actual: FORMAT_VERSION + 1,
+                actual: 1,
             })
         );
     }

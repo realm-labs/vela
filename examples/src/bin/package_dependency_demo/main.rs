@@ -21,7 +21,8 @@ fn run_demo() -> Result<(i64, i64), Box<dyn std::error::Error>> {
     let app = PackageId::new("dev.vela.example.app")?;
     let request = PackageCompileRequest::for_root(&snapshot, &app);
     let initial = engine.compile_package_hot_reload_initial(&snapshot, &request)?;
-    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone()).expect("runtime should initialize");
+    let mut runtime = Runtime::from_hot_reload_version(engine.clone(), initial.clone())
+        .expect("runtime should initialize");
     let before = call_main(&mut runtime)?;
 
     fs::write(

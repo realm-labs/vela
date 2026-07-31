@@ -1,5 +1,12 @@
 pub fn apply(player: RoundTripPlayer, amount: i64) -> i64 {
     let normalized = interop::normalize(amount);
+    let stats = player.stats_mut();
+    stats.record(normalized);
+    if normalized == 0 {
+        host::release(stats);
+    }
+    // The branch may already have released the group. This closes either path.
+    host::try_release(stats);
     player.grant(normalized);
     return player.level();
 }

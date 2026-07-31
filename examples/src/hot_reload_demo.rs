@@ -26,11 +26,9 @@ pub fn run(
         .ok_or("runtime must keep the initial hot reload version")?;
     let old_before = run_current_main(&mut runtime)?;
 
-    runtime
-        .stage_reload(updated_source)
-        .map_err(|error| {
-            crate::diagnostics::render_runtime_reload_error(updated_label, updated_source, &error)
-        })?;
+    runtime.stage_reload(updated_source).map_err(|error| {
+        crate::diagnostics::render_runtime_reload_error(updated_label, updated_source, &error)
+    })?;
     let report = runtime
         .activate_reload()?
         .ok_or("staged hot reload update was not consumed at the safe point")?;

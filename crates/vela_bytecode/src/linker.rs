@@ -131,7 +131,7 @@ impl<'registry> Linker<'registry> {
     /// Binds a decoded, source-independent bytecode artifact against this
     /// process's exact native/type registry.
     ///
-    /// Format version 1 portable artifacts are interpreter-only and therefore
+    /// Format version 2 portable artifacts are interpreter-only and therefore
     /// carry no process-local MIR/JIT layouts.
     #[cfg(feature = "artifact-codec")]
     pub fn link_portable_program(

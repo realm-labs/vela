@@ -1,5 +1,4 @@
 #![cfg_attr(not(test), deny(clippy::wildcard_imports))]
-
 #![allow(clippy::result_large_err)]
 
 use std::collections::BTreeMap;

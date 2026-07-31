@@ -208,6 +208,12 @@ fn compile_error_response(error: CompileError) -> PlaygroundResponse {
             "invalid compile-target registry snapshot: {message}"
         )),
         CompileErrorKind::ServiceCall(message) => single_error_response(message),
+        CompileErrorKind::DiscardedScopedResource { kind, parent } => single_error_response(
+            format!("discarded scoped {kind:?} result retaining {parent:?}"),
+        ),
+        CompileErrorKind::UnnameableScopedResource { kind, parent } => single_error_response(
+            format!("unnamed scoped {kind:?} result retaining {parent:?}"),
+        ),
     }
 }
 

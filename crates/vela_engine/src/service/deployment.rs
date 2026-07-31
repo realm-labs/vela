@@ -13,7 +13,9 @@ use super::{
     ServiceSelectionTable, ServiceSetSchema, ServiceStagingError,
 };
 
-const SERVICE_BUNDLE_FORMAT_VERSION: u32 = 1;
+// Version 1 metadata identifies generations built under the old implicit
+// Host-borrow release contract and is deliberately not loadable.
+const SERVICE_BUNDLE_FORMAT_VERSION: u32 = 2;
 
 /// Checksum used for service manifests, sparse operations, and package metadata.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

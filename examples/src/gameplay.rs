@@ -160,11 +160,7 @@ impl<'a> GameScript<'a> {
         let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
         let args = args.with_fallback_adapter(host.adapter_mut());
         let output = runtime
-            .call(
-                "main",
-                args,
-                CallOptions::new(10_000, 1024 * 1024, 64),
-            )
+            .call("main", args, CallOptions::new(10_000, 1024 * 1024, 64))
             .map_err(|error| {
                 crate::diagnostics::render_vm_error(self.label, self.source, &error)
             })?;

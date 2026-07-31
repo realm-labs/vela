@@ -55,6 +55,12 @@ fn borrowed_return_release(actor: BoundaryHost) {
     return actor.touch();
 }
 
+fn borrowed_return_try_release(actor: BoundaryHost) {
+    let child = bench::borrowed_child(actor);
+    host::try_release(child);
+    return actor.touch();
+}
+
 fn host_backed_bulk_collection(host: BoundaryHost) {
     return host.sum_values();
 }
@@ -215,7 +221,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     )?;
     services.activate_if_current(candidate)?;
     let vela_root = services.pin();
-    report("generated_active_vela", iterations, || {
+    report("generated_vela_service_base_dispatch", iterations, || {
         Ok(black_box(vela_root.boundary()).apply(black_box(&mut host)) as u64)
     })?;
 
@@ -314,6 +320,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     })?;
     report("borrowed_return_release", iterations, || {
         call_host(&mut runtime, "borrowed_return_release", &mut host)
+    })?;
+    report("borrowed_return_try_release", iterations, || {
+        call_host(&mut runtime, "borrowed_return_try_release", &mut host)
     })?;
     report("host_backed_bulk_collection", iterations, || {
         call_host(&mut runtime, "host_backed_bulk_collection", &mut host)
