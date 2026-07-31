@@ -17,6 +17,9 @@
 > guarantee that every admitted borrowed-return signature is executable through
 > a Vela selection is tracked by
 > [the archived service patchability completion plan](archive/rust-vela-service-patchability-completion-plan.md).
+> Explicit scoped release, total typed `service::base` dispatch, and the
+> namespaced replacement for contextual `base` / `services` are active in the
+> [final interop hard switch](rust-vela-interop-final-shape-hard-switch-plan.md).
 
 ## 0. Objective
 
@@ -263,7 +266,9 @@ Deliverables:
 - import service schemas into Vela and link sparse `#[service_impl]` blocks;
 - stage one method while adjacent methods remain Rust, then stage a second
   exact-base Delta while the first Vela implementation remains active;
-- implement `base` and `services.other.method(...)` on the pinned generation;
+- implement the original contextual `base.method(...)` and
+  `services.service.method(...)` calls on the pinned generation; E4 of the
+  active final interop hard switch replaces these spellings without aliases;
 - preserve registered constructors, Rust methods, custom types, container
   protocols, HostRef reborrow, borrowed returns, and type identity throughout
   the Rust/Vela/Rust chain;
@@ -290,11 +295,14 @@ nested reborrow retains complete alias preflight without global lookup/allocatio
 This is the first accepted end-to-end service hotfix slice because it proves
 that a patch can express realistic Rust-side logic, not only scalar arithmetic.
 
-Status: **Accepted.** Sparse declarations compile to artifact-bound targets;
-Snapshot and exact-base Delta candidates publish complete immutable
-generations; lexical `base` and `services` calls stay in the pinned
-same-session dispatcher; and explicit `RustDefault`, stale activation,
-failure-without-fallback, and rollback are covered. The mixed-boundary fixture
+Status: **Accepted foundation.** Sparse declarations compile to artifact-bound
+targets; Snapshot and exact-base Delta candidates publish complete immutable
+generations; the currently implemented contextual `base` and `services` calls
+stay in the pinned same-session dispatcher; and explicit `RustDefault`, stale
+activation, failure-without-fallback, and rollback are covered. E4 of the
+active final interop hard switch changes those spellings to the compiler-owned
+`service::base::*` and `service::pinned::*` paths without retaining aliases.
+The mixed-boundary fixture
 constructs a registered custom Value, preserves one host-backed collection
 identity across Vela/Rust/Vela/Rust calls, observes every write immediately,
 and carries a Vela-selected scoped borrowed return into another Rust service.
@@ -331,9 +339,11 @@ trait authoring surface while the macro emits one hidden object-safe
 generated service application and retain it with the pinned
 artifact/dispatcher and complete host lease set across suspension. Business
 Host contexts carry neither a Runtime slot nor an authority implementation.
-Direct host write-through, `base.await` for statically typed Host parameters,
-old/new-root isolation, cancel/drop/unwind restoration, and `Send` futures are
-covered. Immutable Snapshot/Delta bundles carry
+Direct host write-through, awaited contextual `base` calls for statically typed
+Host parameters, old/new-root isolation, cancel/drop/unwind restoration, and
+`Send` futures are covered. E4 preserves that behavior through
+`service::base::method(...)` while deleting the contextual spelling. Immutable
+Snapshot/Delta bundles carry
 content-stable artifact checksums, exact-base metadata, load/build validation,
 and non-mutating dry-run reports. Handlers, rules, and events use only generated
 service contracts; CLI/LSP metadata includes complete service and TypeBinding

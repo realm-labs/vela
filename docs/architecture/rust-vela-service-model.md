@@ -93,19 +93,22 @@ have performed irreversible host writes or nested calls.
 
 ### 1.5 Explicit base and cross-service calls
 
-Inside a Vela service method, two compiler-provided lexical bindings are
-available:
+Inside a Vela service method, one compiler-owned namespace exposes two static
+call-path families:
 
-- `base` calls the Rust default implementation of the current service and
-  bypasses the current Vela method selection.
-- `services` calls any service from the same pinned generation, including
-  another Vela-patched method.
+- `service::base::method(...)` calls the Rust default implementation of the
+  current service and bypasses the current Vela method selection.
+- `service::pinned::service_name::method(...)` calls any service from the same
+  pinned generation, including another Vela-patched method.
 
-Neither binding is a global singleton, a script-storable value, or part of the
-business method ABI. They are scoped capabilities created by the generated
-service invocation. `base` prevents accidental recursion when a patch wants to
-wrap the original Rust behavior. `services` preserves the original service call
-chain and generation coherence.
+Neither path family is a global singleton, lexical binding, script-storable
+value, or part of the business method ABI. They are statically resolved
+capabilities authorized by the generated service invocation.
+`service::base::method(...)` prevents accidental recursion when a patch wraps
+the original Rust behavior. `service::pinned::service_name::method(...)`
+preserves the original service call chain and generation coherence. The former
+`base.method(...)` and `services.service.method(...)` contextual spellings are
+not compatibility aliases.
 
 ### 1.6 One Rust type interaction model
 
@@ -258,10 +261,11 @@ contract:
 impl InventoryHotfix {
     fn grant(turn, player, items) {
         let grouped = items.group_by(|item| item.template_id);
-        let rewards = services.reward.apply(turn, player, grouped)?;
+        let rewards =
+            service::pinned::reward::apply(turn, player, grouped)?;
 
         if rewards.is_empty() {
-            return base.grant(turn, player, items);
+            return service::base::grant(turn, player, items);
         }
 
         player.last_reward_count += rewards.len();
@@ -479,8 +483,8 @@ generation. A generated service invocation borrows the current actor turn's
 
 A selected Vela method enters the existing `Runtime::call` /
 `Runtime::call_async` and `ExecutionSession` driver. A nested call made through
-`services` or a generated Rust binding uses the active `NativeCallContext` and
-pushes onto the same session. It inherits:
+`service::pinned::service_name::method(...)` or a generated Rust binding uses the
+active `NativeCallContext` and pushes onto the same session. It inherits:
 
 - pinned service and linked-artifact generations;
 - heap, script state, and extern state view;
@@ -502,13 +506,13 @@ implementation, and the inherited Rust third implementation. Old roots retain
 G12; new roots pin G13. An explicit `RustDefault` operation is required to
 remove the second Vela implementation in a later Delta.
 
-`base.method(...)` always names the registered Rust default, never the prior
-Vela implementation. The runtime therefore does not build `patch v3 -> patch
-v2 -> patch v1 -> Rust` call chains. Shared Vela behavior that a later patch
-needs to reuse must remain an ordinary named Vela function and enter the same
-module/function update artifact. Operators should periodically fold accepted
-Deltas into a new Snapshot so deployment history is not a permanent source
-dependency even though each runtime generation is already flattened.
+`service::base::method(...)` always names the registered Rust default, never
+the prior Vela implementation. The runtime therefore does not build `patch v3
+-> patch v2 -> patch v1 -> Rust` call chains. Shared Vela behavior that a later
+patch needs to reuse must remain an ordinary named Vela function and enter the
+same module/function update artifact. Operators should periodically fold
+accepted Deltas into a new Snapshot so deployment history is not a permanent
+source dependency even though each runtime generation is already flattened.
 
 ## 4. Unified Rust Type Interop Model
 
@@ -939,7 +943,10 @@ The Vela compiler must:
 - resolve the imported service contract statically;
 - accept a sparse method set;
 - infer method parameter/return contracts from Rust metadata;
-- expose lexical `base` and `services` capabilities;
+- bind `service::base::method(...)` and
+  `service::pinned::service_name::method(...)` as compiler-owned static call
+  paths;
+- reject bare contextual `base.method` and `services.service.method` spellings;
 - reject unknown, duplicate, incompatible, or over-effect methods;
 - include exact source spans in stage diagnostics; and
 - emit sparse `Replace` operations and never mutate a live service table. The

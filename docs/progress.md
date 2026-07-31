@@ -18,12 +18,16 @@ foundation, but two gaps prevent the final model from being total:
 - the compiler still inserts scoped Host release after proven last use and on
   selected control-flow edges; and
 - an admitted non-`'static` call-scoped Host Service can still reach a generated
-  runtime `base` placeholder instead of an executable typed Rust default.
+  runtime `base` placeholder instead of an executable typed Rust default; and
+- Service patches still reserve the common contextual names `base` and
+  `services` instead of using the final compiler-owned
+  `service::base::*` / `service::pinned::*` namespace.
 
 E0 freezes the replacement contract. E1-E5 remove all implicit early release,
-make scoped-resource and await facts explicit, add root-local typed `base`
-thunks, reject old artifacts, and rerun the repository acceptance gate. There
-is no compatibility mode or second dispatch path.
+make scoped-resource and await facts explicit, add root-local typed
+`service::base` thunks, delete the contextual capability spellings, reject old
+artifacts, and rerun the repository acceptance gate. There is no compatibility
+mode or second dispatch path.
 
 Rust embedding now has one public registration vocabulary: every derived or
 generated Value/Host uses `register_type::<T>()`, callable bundles use
@@ -50,10 +54,11 @@ Phase status:
   complete.
 - S4 accepted: generated Rust-only service contracts publish and pin one
   complete immutable generation with direct zero-VM Rust defaults.
-- S5 accepted: sparse Vela implementations, exact-base Delta inheritance,
-  lexical `base`, pinned cross-service calls, custom Values, host-backed
+- S5 accepted as a foundation: sparse Vela implementations, exact-base Delta
+  inheritance, contextual `base` / `services`, custom Values, host-backed
   collections, scoped borrowed returns, and atomic nested reborrow are
-  validated in one mixed Rust/Vela generation.
+  validated in one mixed Rust/Vela generation. E4 replaces the contextual
+  spellings with `service::base::*` / `service::pinned::*`.
 - S6 accepted: async lifecycle/lease proof, immutable deployment bundles and
   dry-run diagnostics, service-only handler/rule/event roles, CLI/LSP service
   and TypeBinding metadata, replacement examples, active-Vela benchmarks, and
@@ -284,9 +289,10 @@ without fabricating references; nested borrowed containers and projected
 children fail during macro expansion.
 
 The Service boundary is not yet fully total: a non-`'static` call-scoped Host
-parameter can be admitted while its Vela patch's `base` call reaches a runtime
-placeholder. E4 replaces that branch with a generated root-local typed thunk
-and a reviewed erased-reborrow boundary. E1-E3 simultaneously remove hybrid
+parameter can be admitted while its Vela patch's current contextual `base` call
+reaches a runtime placeholder. E4 replaces that branch with a generated
+root-local typed thunk and replaces both contextual receivers with
+`service::base::*` / `service::pinned::*`. E1-E3 simultaneously remove hybrid
 automatic scoped release and make every await inspect the complete active
 scoped-resource table. The target contract and gates are in the
 [final interop plan](rust-vela-interop-final-shape-hard-switch-plan.md).

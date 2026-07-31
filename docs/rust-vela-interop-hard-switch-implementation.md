@@ -28,7 +28,7 @@ generated Rust Service caller
   -> creates root CallArgs and HostRef slots
   -> installs generated typed default thunks
   -> enters selected Vela method
-       -> base.method(...)
+       -> service::base::method(...)
        -> ServiceId + MethodId lookup
        -> validate exact argument ABI and complete lease set
        -> typed root-local reborrow
@@ -73,8 +73,8 @@ HostRef payloads.
 
 | Area | Required change |
 |---|---|
-| `docs` | Replace hybrid release claims; document typed `base` totality and explicit examples. |
-| `vela_hir` | Preserve `host::release`; tag scoped producer results; reject discarded or unnameable scoped results. |
+| `docs` | Replace hybrid release claims; document typed `service::base` totality and explicit examples. |
+| `vela_hir` | Bind compiler-owned `service::base::*` and `service::pinned::*`; delete contextual `base`/`services`; preserve `host::release`; tag scoped producer results. |
 | `vela_analysis` | Expose View/MutView/iterator facts; remove “released after last use” facts and hints. |
 | `vela_mir` | Delete `borrow_release.rs`, `MirBorrowReleaseSchedule`, and release-liveness analysis. |
 | `vela_bytecode` | Delete statement/edge release insertion; compile only explicit release; bump artifact semantics. |
@@ -96,6 +96,12 @@ The current deletion inventory is concrete:
   releases;
 - `crates/vela_mir/src/builder/calls.rs` is retained because it lowers authored
   `host::release`;
+- `crates/vela_hir/src/binding/syntax_binding.rs` and `scopes.rs` currently
+  recognize contextual `base` / `services` receivers and reserve those local
+  names; the hard switch replaces them with compiler-owned `service::*` paths;
+- `crates/vela_bytecode/src/compiler/semantic_input/placements/service_calls.rs`
+  currently diagnoses and lowers the old receiver shapes and must accept only
+  the namespaced static paths;
 - `crates/vela_engine/src/runtime/lifetime.rs` currently derives async-suspend
   safety by walking reachable live values and must instead query every active
   scoped group in the ExecutionHost; and
@@ -186,7 +192,12 @@ Deliverables:
 
 - add root-local generated typed default thunks;
 - add the quarantined non-`'static` reborrow boundary;
-- route sync and async `base` through typed thunks;
+- bind `service::base::method(...)` and
+  `service::pinned::service_name::method(...)` as
+  compiler-owned non-value paths;
+- delete contextual `base.method` and `services.service.method` bindings without
+  aliases;
+- route sync and async `service::base` through typed thunks;
 - route pinned cross-Service Rust defaults through the same path;
 - delete `requires_opaque_host_dispatch` and placeholder errors; and
 - reject incomplete methods during macro expansion or schema sealing.
@@ -194,8 +205,8 @@ Deliverables:
 Gate:
 
 ```text
-non-static non-Sync call-scoped Host patches call sync and async base
-patch -> services.other -> target patch -> target base works
+non-static non-Sync call-scoped Host patches call sync and async service::base
+patch -> service::pinned::other -> target patch -> target service::base works
 alias, effect, capability, generation, and cancellation checks remain
 production contains no admitted runtime unsupported Service branch
 ```
@@ -284,6 +295,9 @@ progress.md marks interop complete only after E0-E5
 | ST-10 | unsupported signature fails at macro/schema time |
 | ST-11 | old root stays on old generation across await |
 | ST-12 | cancellation and panic release Runtime and Host leases |
+| ST-13 | locals named `base` and `services` work inside a Service patch |
+| ST-14 | `service::base` and `service::pinned` cannot become values |
+| ST-15 | old contextual receiver spellings fail during binding |
 
 ### 4.5 Structural audits
 
@@ -292,6 +306,8 @@ no MirBorrowReleaseSchedule
 no emit_automatic_release
 no requires_opaque_host_dispatch
 no "base call for a call-scoped opaque Host parameter"
+no accepted base.method(...) contextual capability
+no accepted services.service.method(...) contextual capability
 no compatibility release mode
 no old portable artifact acceptance
 ```
@@ -305,9 +321,9 @@ Before closing the hard switch, all answers must be yes:
 3. Does every await check the complete active scoped-resource set?
 4. Does every root exit mode clean remaining resources?
 5. Does every admitted Service method support Rust default, Vela selection,
-   `base`, pinned `services`, async completion, and result restoration?
-6. Can a non-`'static`, non-`Sync` Host reach Rust `base` without `Any` or a
-   script-visible reference?
+   `service::base`, `service::pinned`, async completion, and result restoration?
+6. Can a non-`'static`, non-`Sync` Host reach Rust `service::base` without `Any`
+   or a script-visible reference?
 7. Do ordinary exports and Services share TypeBinding and conversion rules?
 8. Are unsupported shapes rejected before Engine construction or activation?
 9. Are old artifacts rejected without compatibility interpretation?

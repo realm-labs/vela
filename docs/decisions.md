@@ -2552,6 +2552,10 @@ UFCS guessing.
 
 ### Rust Hotfixes Use One Generated Service-Generation Model
 
+> Superseded for Vela capability spelling by
+> [Service Compiler Capabilities Use One Namespace](#service-compiler-capabilities-use-one-namespace).
+> The generated service-generation and pinned-dispatch model remains active.
+
 The active direction is defined by
 [rust-vela-service-hard-switch-plan.md](rust-vela-service-hard-switch-plan.md).
 Rust defines an explicitly exported service trait and ordinary default
@@ -3427,11 +3431,12 @@ A Vela-selected async root leases one Runtime from the generated service
 application's bounded cache and holds it together with the pinned artifact and
 generation dispatcher. Business Host parameters are independent call-scoped
 arguments; they do not store Runtime state or implement a Runtime-authority
-trait. Internal async `base` and `services` calls re-enter the same session
-after preflighting the complete host lease set. Completion, cancellation,
-drop, and unwind all restore the Runtime and release leases; already performed
-host effects are not rolled back. Concurrent roots may construct independent
-Runtimes, while the cache retains at most one idle Runtime.
+trait. Internal async `service::base::*` and `service::pinned::*` calls re-enter
+the same session after preflighting the complete host lease set. Completion,
+cancellation, drop, and unwind all restore the Runtime and release leases;
+already performed host effects are not rolled back. Concurrent roots may
+construct independent Runtimes, while the cache retains at most one idle
+Runtime.
 
 Static Host registration is likewise separate from concrete instances.
 `EngineBuilder::register_host_type` seals a stable `HostTypeId`, fields, method
@@ -3586,15 +3591,31 @@ cleanup remain RAII boundaries because Vela never owns those references.
 Every await validates the complete active scoped-resource table before polling;
 a dead but unreleased Vela local still blocks suspension.
 
-Service admission includes executable typed Rust `base` dispatch for every
-accepted Host parameter shape. Non-`'static` call-scoped Host parameters use a
-generated root-local typed thunk and a reviewed erased-reborrow boundary after
-exact identity, generation, capability, and lease validation. They do not use
-`Any`, expose references to Vela, or defer failure to a generated runtime
-placeholder. The final contract and hard-switch gates live in
+Service admission includes executable typed Rust `service::base::method(...)`
+dispatch for every accepted Host parameter shape. Non-`'static` call-scoped
+Host parameters use a generated root-local typed thunk and a reviewed
+erased-reborrow boundary after exact identity, generation, capability, and
+lease validation. They do not use `Any`, expose references to Vela, or defer
+failure to a generated runtime placeholder. The final contract and hard-switch
+gates live in
 [the final interop contract](rust-vela-interop-final-shape-hard-switch-plan.md)
 and its
 [implementation plan](rust-vela-interop-hard-switch-implementation.md).
+
+### Service Compiler Capabilities Use One Namespace
+
+Vela Service patches call the current Rust default through
+`service::base::method(...)` and a Service in the root-pinned generation through
+`service::pinned::service_name::method(...)`. The bare builtin root `service` is
+compiler-owned like `host` and `reflect`; these paths resolve statically and
+cannot be stored, returned, captured, dynamically called, or reflected.
+
+The contextual receiver spellings `base.method(...)` and
+`services.service.method(...)` are deleted without aliases. Consequently,
+`base` and `services` remain available as ordinary parameter and local names
+inside `#[service_impl]`, while user declarations cannot shadow the bare
+builtin `service` root. Qualified business modules such as `game::service`
+remain ordinary user modules.
 
 ## Validation Rules
 

@@ -556,20 +556,25 @@ call context so they inherit the current root, generation, leases, budgets,
 capabilities, cancellation, and tracing.
 
 This entry is appropriate for explicitly script-owned workflows. It does not
-provide a Rust default, sparse service composition, `base`, or conditional
-service-generation activation.
+provide a Rust default, sparse service composition, `service::base`, or
+conditional service-generation activation.
 
 ## 6. Sparse Vela Patch
 
 The Vela patch implements only methods that need correction.
+The compiler-owned `service` namespace is available only inside these methods:
+`service::base::method(...)` calls the current Rust default, while
+`service::pinned::service_name::method(...)` calls through the root-pinned
+generation. Neither path is a value, and the former bare `base` / `services`
+receivers are rejected.
 
-### 6.1 Borrowed return through `base`
+### 6.1 Borrowed return through `service::base`
 
 ```vela
 #[service_impl(example::state)]
 impl StatePatch {
     fn identity(state) {
-        return base.identity(state);
+        return service::base::identity(state);
     }
 
     fn optional(state, present) {
@@ -577,7 +582,7 @@ impl StatePatch {
             return Option::None {};
         }
 
-        return base.optional(state, present);
+        return service::base::optional(state, present);
     }
 
     fn checked(state, allowed) {
@@ -587,7 +592,7 @@ impl StatePatch {
             });
         }
 
-        return base.checked(state, allowed);
+        return service::base::checked(state, allowed);
     }
 }
 ```
@@ -604,11 +609,13 @@ HostRef.
 impl HandlerPatch {
     async fn handle(state, table, request) {
         // Root arguments may cross this await. No returned child exists yet.
-        let baseline = base.handle(state, table, request).await?;
+        let baseline =
+            service::base::handle(state, table, request).await?;
 
         let buffer = example::PatchBuffer::new(request.adjustment);
-        services.transform.update_buffer(buffer, 2);
-        let inspected_buffer = services.transform.inspect_buffer(buffer);
+        service::pinned::transform::update_buffer(buffer, 2);
+        let inspected_buffer =
+            service::pinned::transform::inspect_buffer(buffer);
 
         let projected = table
             .rows()
@@ -619,14 +626,15 @@ impl HandlerPatch {
             })
             .collect();
 
-        let owned_total = services.transform.consume(projected);
-        let shared_total = services.transform.inspect(projected);
+        let owned_total = service::pinned::transform::consume(projected);
+        let shared_total = service::pinned::transform::inspect(projected);
 
         match table.get(request.key) {
             Option::Some(row) => {
-                let score = services.policy.score(state, row, request)?;
-                services.apply.apply(state, row, score)?;
-                services.audit.record(state, row.key);
+                let score =
+                    service::pinned::policy::score(state, row, request)?;
+                service::pinned::apply::apply(state, row, score)?;
+                service::pinned::audit::record(state, row.key);
                 return Result::Ok(example::Response {
                     accepted: true,
                     score,

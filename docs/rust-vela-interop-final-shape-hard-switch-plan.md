@@ -80,8 +80,8 @@ Service dispatch adds only:
 
 ```text
 RustDefault or Vela selection
-lexical base
-lexical pinned services
+service::base::method(...)
+service::pinned::service_name::method(...)
 one immutable published generation
 Snapshot and exact-base Delta deployment
 ```
@@ -331,8 +331,8 @@ releasing it therefore still blocks await until root teardown.
 
 Initial final-shape rules:
 
-- root Host arguments may be used by awaited Rust, `base`, and `services`
-  calls;
+- root Host arguments may be used by awaited Rust, `service::base::method(...)`,
+  and `service::pinned::service_name::method(...)` calls;
 - invocation leases owned by the awaited native future may cross suspension;
 - Vela-held scoped View, MutView, and scoped Host iterators may not cross
   suspension;
@@ -720,7 +720,7 @@ pub trait OperationService: Send + Sync {
 The ordinary Rust caller always calls the generated Service API. It does not
 inspect patch state, target strings, Runtime values, or HostRefs.
 
-### 6.2 Sparse Vela patch with `base`
+### 6.2 Sparse Vela patch with `service::base`
 
 Supported Vela:
 
@@ -735,16 +735,41 @@ impl OperationPatch {
             return Result::Err(ApplyError::InvalidAmount);
         }
 
-        return base.apply(inventory, request);
+        return service::base::apply(inventory, request);
     }
 }
 ```
 
-`base` always means the registered Rust default, never the previous Vela body.
-It is a compiler-owned lexical capability and cannot be stored, returned,
-captured, reflected, or dynamically invoked.
+`service::base::apply` always means the registered Rust default, never the
+previous Vela body. `service::base` is a compiler-owned static namespace, not a
+lexical variable or object. It cannot be stored, returned, captured, reflected,
+or dynamically invoked.
 
-### 6.3 Non-`'static` call-scoped Host with `base`
+The builtin root `service` is reserved like `host` and `reflect`, but the common
+local names `base` and `services` are no longer reserved:
+
+```vela
+#[service_impl(inventory::operation)]
+impl OperationPatch {
+    fn apply(
+        inventory: Inventory,
+        request: Request,
+    ) -> Result<Reply, ApplyError> {
+        let base = request.amount;
+        let services = request.tags;
+        inventory.record_debug(base, services.len());
+        return service::base::apply(inventory, request);
+    }
+}
+```
+
+The `service::base::*` and `service::pinned::*` paths exist only inside a
+`#[service_impl]` method. User modules, imports, parameters, locals, and fields
+cannot shadow the builtin `service` root. A package may still contain a
+qualified business module such as `game::service`; only the bare builtin root
+has compiler meaning.
+
+### 6.3 Non-`'static` call-scoped Host with `service::base`
 
 Supported final Rust:
 
@@ -774,7 +799,7 @@ impl HandlerPatch {
         request: Request,
     ) -> Result<Reply, HandleError> {
         context.record_attempt(request.item_id);
-        return base.handle(context, request).await;
+        return service::base::handle(context, request).await;
     }
 }
 ```
@@ -796,16 +821,16 @@ impl HandlerPatch {
         context: RequestContext,
         request: Request,
     ) -> Result<Reply, HandleError> {
-        services.audit.record(context, request).await?;
-        return base.handle(context, request).await;
+        service::pinned::audit::record(context, request).await?;
+        return service::base::handle(context, request).await;
     }
 }
 ```
 
-If `audit.record` is Vela-selected, it runs the target patch. A `base` call
-inside that target patch invokes the Audit Service's Rust default. Returning to
-the caller and invoking `base.handle` uses the same root-pinned immutable
-generation.
+If `service::pinned::audit::record` is Vela-selected, it runs the target patch.
+A `service::base::record` call inside that target patch invokes the Audit
+Service's Rust default. Returning to the caller and invoking
+`service::base::handle` uses the same root-pinned immutable generation.
 
 ### 6.5 Service borrowed return terminal transfer
 
@@ -861,7 +886,7 @@ impl HandlerPatch {
             return Result::Err(HandleError::Disabled);
         }
 
-        return base.handle(context, request).await;
+        return service::base::handle(context, request).await;
     }
 }
 ```
@@ -901,7 +926,10 @@ Snapshot, exact-base Delta, and rollback semantics remain unchanged:
 | direct synchronous `&mut HostT` return | yes | exact admitted origin | scoped MutView |
 | `Option<&HostT>` | yes | exact admitted origin | optional scoped View |
 | `Result<&HostT, E>` | yes | exact origin and owned `E` | scoped View or owned error |
-| non-`'static` call-scoped Host parameter | yes | yes, including `base` | root Host capability |
+| non-`'static` call-scoped Host parameter | yes | yes, including `service::base` | root Host capability |
+| current Service Rust default | n/a | yes | `service::base::method(...)` |
+| root-pinned cross-Service call | n/a | yes | `service::pinned::service_name::method(...)` |
+| locals named `base` or `services` | yes | yes | ordinary lexical values |
 | async owned return | yes | yes | owned Value |
 | generated Rust-to-Vela call | yes | generated Service API | typed binding |
 
@@ -1117,18 +1145,25 @@ pub fn apply(value: String);
 Rust generic exports require explicit generated monomorphizations if added in
 a future plan. Vela does not resolve overloads by arity or type.
 
-### 8.15 Dynamic `base` and `services`
+### 8.15 Dynamic Service compiler capabilities
 
 Unsupported:
 
 ```vela
-let callable = base.apply;
-reflect::call(base, "apply", [inventory, request]);
-let deferred = || services.operation.apply(inventory, request);
+base.apply(inventory, request);
+services.operation.apply(inventory, request);
+
+let base_namespace = service::base;
+let callable = service::base::apply;
+reflect::call(service::base, "apply", [inventory, request]);
+let deferred = || service::pinned::operation::apply(inventory, request);
 ```
 
-`base` and `services` are lexical compiler capabilities with non-escaping call
-shapes, not ordinary values.
+`service::base::method(...)` and
+`service::pinned::service_name::method(...)` are
+compiler-owned static call paths with non-escaping call shapes, not ordinary
+values. The first two lines are rejected old contextual spellings; no
+compatibility aliases remain.
 
 ### 8.16 Patching direct concrete Rust calls
 

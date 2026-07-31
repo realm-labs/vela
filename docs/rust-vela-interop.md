@@ -2,7 +2,9 @@
 
 > **Active hard switch — 2026-07-31:** retained scoped Host capabilities move
 > to authored `host::release`, and every admitted generated Service gains a
-> complete typed Rust `base` path. The final behavior, supported shapes, and
+> complete typed Rust `service::base::method(...)` path. Pinned cross-Service
+> calls use `service::pinned::service_name::method(...)`; bare `base` and
+> `services` receivers are removed. The final behavior, supported shapes, and
 > rejected shapes are defined in the
 > [final interop contract](rust-vela-interop-final-shape-hard-switch-plan.md).
 
@@ -90,10 +92,10 @@ impl Item {
 ```
 
 Vela observes the same member distinction as Rust: data is read as
-`item.id`, and behavior is called as `table.get(id)`. Borrowed Host returns
-may be chained directly, including
-`config.tables().item().get(id)?.id`; the compiler carries each scoped return
-as a new validated HostRef path root.
+`item.id`, and behavior is called as `table.get(id)`. A method or property that
+produces a scoped Host return must be bound to a named local and explicitly
+released. Scalar and owned-value HostPath chaining remains valid; unnameable
+scoped-result chains such as `config.tables().item().get(id)?.id` are rejected.
 
 Shared and exclusive Rust references infer `host_read` and `host_write`.
 `effects(...)` adds exceptional effects but cannot remove signature-inferred
