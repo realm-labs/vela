@@ -209,6 +209,8 @@ pub enum VmErrorKind {
         budget: ExecutionBudgetKind,
         limit: u64,
     },
+    CallCancelled,
+    DeadlineExceeded,
     CollectionLimitExceeded {
         collection: &'static str,
         limit: usize,
@@ -258,6 +260,8 @@ impl VmErrorKind {
             Self::IndexOutOfBounds { .. } => "vm::index_out_of_bounds",
             Self::UnknownMapKey { .. } => "vm::unknown_map_key",
             Self::BudgetExceeded { .. } => "vm::budget_exceeded",
+            Self::CallCancelled => "vm::call_cancelled",
+            Self::DeadlineExceeded => "vm::deadline_exceeded",
             Self::CollectionLimitExceeded { .. } => "vm::collection_limit_exceeded",
             Self::CollectionChangedDuringCallback { .. } => {
                 "vm::collection_changed_during_callback"
@@ -371,6 +375,8 @@ impl VmErrorKind {
             Self::BudgetExceeded { budget, limit } => {
                 format!("execution budget exceeded for {budget:?} with limit {limit}")
             }
+            Self::CallCancelled => "runtime call was cancelled".to_owned(),
+            Self::DeadlineExceeded => "runtime call deadline was exceeded".to_owned(),
             Self::CollectionLimitExceeded { collection, limit } => {
                 format!("{collection} length exceeds collection limit {limit}")
             }

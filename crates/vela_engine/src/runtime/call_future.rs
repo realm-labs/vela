@@ -5,6 +5,7 @@ use std::task::{Context, Poll};
 use vela_vm::error::VmResult;
 
 use super::VelaValue;
+use super::control::{CallPolicy, CallStatus};
 
 /// A scoped, executor-neutral `Send` future for one Runtime execution.
 ///
@@ -23,14 +24,46 @@ use super::VelaValue;
 /// require_static(future);
 /// ```
 pub struct RuntimeCallFuture<'call> {
-    inner: Pin<Box<dyn Future<Output = VmResult<VelaValue>> + Send + 'call>>,
+    inner: Option<Pin<Box<dyn Future<Output = VmResult<VelaValue>> + Send + 'call>>>,
+    policy: Option<CallPolicy>,
 }
 
 impl<'call> RuntimeCallFuture<'call> {
     pub(crate) fn new(future: impl Future<Output = VmResult<VelaValue>> + Send + 'call) -> Self {
         Self {
-            inner: Box::pin(future),
+            inner: Some(Box::pin(future)),
+            policy: None,
         }
+    }
+
+    pub(crate) fn new_controlled(
+        future: impl Future<Output = VmResult<VelaValue>> + Send + 'call,
+        policy: Option<CallPolicy>,
+    ) -> Self {
+        if let Some(policy) = &policy
+            && let Some(control) = &policy.control
+        {
+            control.attach(policy.deadline);
+        }
+        Self {
+            inner: Some(Box::pin(future)),
+            policy,
+        }
+    }
+
+    fn abort_status(&self) -> Option<CallStatus> {
+        let policy = self.policy.as_ref()?;
+        if policy
+            .control
+            .as_ref()
+            .is_some_and(|control| control.cancelled())
+        {
+            return Some(CallStatus::Cancelled);
+        }
+        policy
+            .deadline
+            .is_some_and(|deadline| std::time::Instant::now() >= deadline)
+            .then_some(CallStatus::DeadlineExceeded)
     }
 }
 
@@ -38,8 +71,78 @@ impl Future for RuntimeCallFuture<'_> {
     type Output = VmResult<VelaValue>;
 
     fn poll(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {
-        self.get_mut().inner.as_mut().poll(context)
+        let this = self.get_mut();
+        if let Some(control) = this
+            .policy
+            .as_ref()
+            .and_then(|policy| policy.control.as_ref())
+        {
+            control.begin_poll(context.waker());
+        }
+        if let Some(status) = this.abort_status() {
+            this.inner.take();
+            if let Some(control) = this
+                .policy
+                .as_ref()
+                .and_then(|policy| policy.control.as_ref())
+            {
+                control.finish(status);
+            }
+            return Poll::Ready(Err(control_error(status)));
+        }
+        let outcome = this
+            .inner
+            .as_mut()
+            .expect("RuntimeCallFuture polled after completion")
+            .as_mut()
+            .poll(context);
+        match outcome {
+            Poll::Pending => {
+                if let Some(control) = this
+                    .policy
+                    .as_ref()
+                    .and_then(|policy| policy.control.as_ref())
+                {
+                    control.pending();
+                }
+                Poll::Pending
+            }
+            Poll::Ready(result) => {
+                if let Some(status) = this.abort_status() {
+                    this.inner.take();
+                    if let Some(control) = this
+                        .policy
+                        .as_ref()
+                        .and_then(|policy| policy.control.as_ref())
+                    {
+                        control.finish(status);
+                    }
+                    return Poll::Ready(Err(control_error(status)));
+                }
+                this.inner.take();
+                if let Some(control) = this
+                    .policy
+                    .as_ref()
+                    .and_then(|policy| policy.control.as_ref())
+                {
+                    control.finish(if result.is_ok() {
+                        CallStatus::Completed
+                    } else {
+                        CallStatus::Failed
+                    });
+                }
+                Poll::Ready(result)
+            }
+        }
     }
+}
+
+fn control_error(status: CallStatus) -> vela_vm::error::VmError {
+    vela_vm::error::VmError::new(match status {
+        CallStatus::Cancelled => vela_vm::error::VmErrorKind::CallCancelled,
+        CallStatus::DeadlineExceeded => vela_vm::error::VmErrorKind::DeadlineExceeded,
+        _ => unreachable!("only abort states create control errors"),
+    })
 }
 
 #[cfg(test)]
@@ -50,6 +153,7 @@ mod tests {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::task::{Context, Poll, Waker};
+    use std::time::{Duration, Instant};
 
     use vela_common::{HostMethodId, HostObjectId, HostTypeId, ScalarValue};
     use vela_def::{FieldId, FunctionId, TypeId};
@@ -63,7 +167,7 @@ mod tests {
     use crate::method::NativeMethodDesc;
     use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, TypeHint};
     use crate::permission::Capability;
-    use crate::runtime::{CallArgs, CallOptions, Runtime};
+    use crate::runtime::{CallArgs, CallControl, CallOptions, CallStatus, Runtime};
     use vela_reflect::permissions::ReflectPermissionSet;
     use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey};
 
@@ -488,6 +592,78 @@ async fn main(value) {
 
         assert_eq!(polls.load(Ordering::SeqCst), 2);
         assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(42)));
+    }
+
+    #[test]
+    fn call_control_observes_pending_and_cancels_the_execution() {
+        let engine = Engine::builder()
+            .register_async_fn(
+                NativeFunctionDesc::new("pending_forever", vela_def::FunctionId::new(0xA51D))
+                    .returns(TypeHint::i64()),
+                |_args| Box::pin(std::future::pending()),
+            )
+            .build()
+            .expect("engine should build");
+        let program = engine
+            .compile_source(
+                "async fn main() -> i64 { return pending_forever().await; } \
+                 fn healthy() -> i64 { return 7; }",
+            )
+            .expect("async entry should compile");
+        let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+        let control = CallControl::new();
+        let mut future = runtime.call_async(
+            "main",
+            CallArgs::new(),
+            CallOptions::unbounded().with_control(control.clone()),
+        );
+        let mut context = Context::from_waker(Waker::noop());
+        assert!(matches!(
+            Pin::new(&mut future).poll(&mut context),
+            Poll::Pending
+        ));
+        assert_eq!(control.snapshot().status, CallStatus::Pending);
+        assert_eq!(control.snapshot().polls, 1);
+        assert!(control.cancel());
+        let error = match Pin::new(&mut future).poll(&mut context) {
+            Poll::Ready(Err(error)) => error,
+            _ => panic!("cancelled call should finish with an error"),
+        };
+        assert!(matches!(
+            error.kind(),
+            vela_vm::error::VmErrorKind::CallCancelled
+        ));
+        drop(future);
+        assert_eq!(control.snapshot().status, CallStatus::Cancelled);
+        let healthy = runtime
+            .call("healthy", CallArgs::new(), CallOptions::unbounded())
+            .expect("cancelled execution should release the Runtime");
+        assert_eq!(runtime.value_to_owned(&healthy), Ok(OwnedValue::i64(7)));
+    }
+
+    #[test]
+    fn expired_deadline_rejects_before_execution() {
+        let engine = Engine::builder().build().expect("engine should build");
+        let program = engine
+            .compile_source("async fn main() -> i64 { return 42; }")
+            .expect("async entry should compile");
+        let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+        let control = CallControl::new();
+        let error = run_to_completion(
+            runtime.call_async(
+                "main",
+                CallArgs::new(),
+                CallOptions::unbounded()
+                    .with_deadline(Instant::now() - Duration::from_millis(1))
+                    .with_control(control.clone()),
+            ),
+        )
+        .expect_err("expired deadline should reject the call");
+        assert!(matches!(
+            error.kind(),
+            vela_vm::error::VmErrorKind::DeadlineExceeded
+        ));
+        assert_eq!(control.snapshot().status, CallStatus::DeadlineExceeded);
     }
 
     #[test]

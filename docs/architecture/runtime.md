@@ -281,6 +281,15 @@ adapter for the invocation lifetime; it does not require Runtime ownership or
 Rust future does, and resumes only when its caller polls again. Core runtime
 crates contain no executor or Tokio dependency.
 
+`CallOptions` may attach one `CallControl` and a host-clock deadline. The
+control reports created/running/pending/terminal state plus poll count, and
+cancellation wakes the last registered task waker. Cancellation or deadline
+expiry is observed at a Runtime-future poll boundary and immediately drops the
+inner execution, so the existing frame, lease, root, and adapter RAII cleanup
+remains authoritative. Completed host effects are not rolled back. Core crates
+still own no timer: if an awaited Rust future supplies no wake, the embedding
+executor must arrange a wake at the deadline or cancel through `CallControl`.
+
 Before polling an awaited target, the session checks the ExecutionHost's
 complete active scoped-resource table. A scoped child cannot cross suspension;
 the author must execute `host::release` or `host::try_release` first. A dead or

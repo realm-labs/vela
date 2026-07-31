@@ -2250,6 +2250,15 @@ that boundary cost without weakening exact lease state or RAII.
 
 ### Executor-Neutral Async Execution
 
+The host may attach one `CallControl` and an optional `Instant` deadline to
+`CallOptions`. This adds cancellation propagation and pending/poll
+observability without adding an executor or timer to core crates. Cancellation
+wakes the registered waker; cancellation and deadline expiry apply at the next
+Runtime-future poll and immediately drop the inner execution, preserving the
+existing frame, root, adapter, and lease RAII contract. The host schedules its
+own deadline wake when the awaited operation supplies none, and completed
+effects remain non-transactional.
+
 The executor-neutral async contract is defined by
 [async-execution-model-plan.md](async-execution-model-plan.md). Batch A makes
 callable asyncness and explicit await/resume control flow authoritative from

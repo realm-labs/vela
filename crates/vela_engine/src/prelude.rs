@@ -10,9 +10,9 @@ pub use crate::native::{
 };
 pub use crate::permission::{Capability, CapabilitySet, ExecutionProfile};
 pub use crate::runtime::{
-    CallArgs, CallOptions, ReloadSource, Runtime, RuntimeBuildError, RuntimeBuilder,
-    RuntimeCallFuture, RuntimeInitializationLimits, RuntimeReloadError, VelaFunction, VelaMethod,
-    VelaMethodTarget, VelaValue,
+    CallArgs, CallControl, CallOptions, CallSnapshot, CallStatus, ReloadSource, Runtime,
+    RuntimeBuildError, RuntimeBuilder, RuntimeCallFuture, RuntimeInitializationLimits,
+    RuntimeReloadError, VelaFunction, VelaMethod, VelaMethodTarget, VelaValue,
 };
 pub use crate::schema::{ScriptHostSchema, ScriptReflectSchema, ScriptValueSchema};
 pub use crate::service::{

@@ -241,6 +241,10 @@ Host-backed and mutable collections retain HostRef identity and leases.
 - `LinkedArtifact` is the sole production executable generation. Sync and async
   execution share one explicit frame driver, and old generations remain pinned
   across active or suspended calls.
+- Async outer calls accept an optional `CallControl` and cooperative host-clock
+  deadline. Hosts can observe running/pending/terminal state and poll count;
+  cancellation wakes the task and drops execution through existing RAII
+  cleanup without rolling back completed effects.
 
 ### Host Boundary And Embedding
 

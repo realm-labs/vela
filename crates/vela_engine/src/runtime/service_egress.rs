@@ -94,17 +94,21 @@ where
         'args: 'call,
     {
         let diagnostic_name = diagnostic_name.into();
-        RuntimeCallFuture::new(async move {
-            self.call_impl_async(
-                handles::StableVelaFunction {
-                    function,
-                    diagnostic_name,
-                },
-                args,
-                options,
-                Some(dispatcher),
-            )
-            .await
-        })
+        let policy = options.call_policy();
+        RuntimeCallFuture::new_controlled(
+            async move {
+                self.call_impl_async(
+                    handles::StableVelaFunction {
+                        function,
+                        diagnostic_name,
+                    },
+                    args,
+                    options,
+                    Some(dispatcher),
+                )
+                .await
+            },
+            policy,
+        )
     }
 }

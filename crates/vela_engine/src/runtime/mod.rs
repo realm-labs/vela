@@ -25,6 +25,7 @@ mod bytecode_profile;
 mod bytecode_profile_tests;
 mod call_args;
 mod call_future;
+mod control;
 pub(crate) mod execution_data;
 mod execution_host;
 mod extern_state_bindings;
@@ -57,6 +58,7 @@ pub use call_args::{
     CallArgs, DirectHostIdentity, ServiceScopedReturn, ServiceScopedReturnEnvelope,
 };
 pub use call_future::RuntimeCallFuture;
+pub use control::{CallControl, CallSnapshot, CallStatus};
 pub use extern_state_bindings::RuntimeExternStateBindings;
 pub use handles::{
     RuntimeCallTarget, RuntimeMethodSelector, VelaFunction, VelaMethod, VelaMethodTarget,
@@ -381,7 +383,8 @@ where
         T: RuntimeCallTarget + Send + 'call,
         'args: 'call,
     {
-        RuntimeCallFuture::new(self.call_impl_async(entry, args, options, None))
+        let policy = options.call_policy();
+        RuntimeCallFuture::new_controlled(self.call_impl_async(entry, args, options, None), policy)
     }
 
     async fn call_impl_async<'call, 'args, T>(
