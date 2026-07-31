@@ -8,6 +8,10 @@
 
 use vela_host::call_value::{HostCallField, HostCallMapEntry, HostCallValue};
 use vela_host::error::{HostError, HostErrorKind, HostResult};
+use vela_host::path::HostPath;
+use vela_host::resolved::{HostAccessOp, HostAccessSpec};
+use vela_host::target::{HostTargetInstance, HostTargetPlan};
+use vela_vm::HostExecution;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::{OwnedMapEntry, OwnedValue};
 
@@ -29,6 +33,32 @@ where
 {
     owned_to_host_call_value(&value.into_script_arg())
         .map_err(|_| invalid_argument("detached Host method return value"))
+}
+
+/// Invokes the controlled adapter method vtable when a registered receiver is
+/// represented by a HostAccess path rather than a directly leased Rust object.
+///
+/// Generated method adapters call this only after proving that the receiver
+/// itself cannot supply a typed lease. Other lease, permission, and invocation
+/// errors remain terminal.
+#[doc(hidden)]
+pub fn call_registered_host_method_through_adapter(
+    receiver: &HostPath,
+    args: &[OwnedValue],
+    method: vela_common::HostMethodId,
+    host: &mut HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    let plan = HostTargetPlan::from(receiver);
+    let target = HostTargetInstance::new(receiver.root, &plan, &[]);
+    let access = host
+        .adapter
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Call(method), &plan))?;
+    let args = args
+        .iter()
+        .map(owned_to_host_call_value)
+        .collect::<VmResult<Vec<_>>>()?;
+    let result = host.adapter.call_host(access, target, method, &args)?;
+    Ok(host_call_to_owned_value(result))
 }
 
 pub(crate) fn owned_to_host_call_value(value: &OwnedValue) -> VmResult<HostCallValue> {

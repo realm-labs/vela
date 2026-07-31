@@ -21,6 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .register_type::<IntIntMap>()
         .register_type::<TagSet>()
         .register_type::<RewardSink>()
+        .register_exports(Player::vela_inherent_exports())
         .register_exports(IntIntMap::vela_inherent_exports())
         .register_exports(TagSet::vela_inherent_exports())
         .register_exports(RewardSink::vela_inherent_exports())
@@ -85,6 +86,13 @@ impl Player {
 
     fn reward_sink_grant_count(&self) -> usize {
         self.reward_sink.grant_count()
+    }
+}
+
+#[methods]
+impl Player {
+    pub fn reward_sink_mut(&mut self) -> &mut RewardSink {
+        &mut self.reward_sink
     }
 }
 

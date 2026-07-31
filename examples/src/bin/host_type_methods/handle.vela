@@ -7,7 +7,9 @@ fn main(player: Player, scores: IntIntMap, tags: TagSet, rewards: RewardSink) {
         player.inventory.items["gold"].count += amount;
         rewards.grant("gold", amount);
         rewards.grant("badge", 1);
-        player.reward_sink.grant("quest", 1);
+        let player_rewards = player.reward_sink_mut();
+        player_rewards.grant("quest", 1);
+        host::release(player_rewards);
     }
 
     return player.inventory.items["gold"].count;

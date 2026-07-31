@@ -292,6 +292,7 @@ pub(crate) fn method_adapter(
                     #public_name,
                 )),
             );
+            let __vela_method_id = __vela_desc.id;
             let __vela_callable = __vela_contract.public_path.clone();
             let __vela_plan = ::vela_engine::interop::PreparedHostLeasePlan::new(
                 __vela_contract,
@@ -307,11 +308,16 @@ pub(crate) fn method_adapter(
             );
             builder.register_native_method_fn(__vela_desc, move |receiver, args, host| {
                 if !receiver.segments.is_empty() {
-                    return Err(::vela_host::lease::host_lease_unsupported(receiver.root).into());
+                    return ::vela_engine::host_call::call_registered_host_method_through_adapter(
+                        receiver,
+                        args,
+                        __vela_method_id,
+                        host,
+                    );
                 }
                 let __vela_lease_requests = __vela_plan.prepare_method(receiver.root, args)?;
                 let mut __vela_result = None;
-                host.adapter.with_host_leases(
+                let __vela_lease_result = host.adapter.with_host_leases(
                     &__vela_lease_requests,
                     &mut |__vela_erased_leases, _leased_adapter| {
                         __vela_result = Some((|| -> ::vela_vm::error::VmResult<
@@ -332,7 +338,22 @@ pub(crate) fn method_adapter(
                         })());
                         Ok(())
                     },
-                )?;
+                );
+                if let Err(__vela_error) = __vela_lease_result {
+                    if matches!(
+                        &__vela_error.kind,
+                        ::vela_host::error::HostErrorKind::HostLeaseUnsupported { path }
+                            if path.root == receiver.root
+                    ) {
+                        return ::vela_engine::host_call::call_registered_host_method_through_adapter(
+                            receiver,
+                            args,
+                            __vela_method_id,
+                            host,
+                        );
+                    }
+                    return Err(__vela_error.into());
+                }
                 __vela_result.expect("host lease callback must run exactly once")
             })
         }

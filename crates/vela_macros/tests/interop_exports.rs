@@ -8,6 +8,9 @@ use vela_engine::native::{EffectSet, TypeHint};
 use vela_engine::permission::Capability;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_engine::source::EngineSourceErrorKind;
+use vela_host::mock::MockStateAdapter;
+use vela_host::path::HostRef;
+use vela_host::value::HostValue;
 use vela_macros::{
     ScriptHost, export, export_external_trait_impl, export_module, external_host,
     external_value_enum, methods, trait_export,
@@ -581,6 +584,53 @@ fn host_exports_allow_two_shared_aliases() {
         .expect("shared aliases should coexist");
 
     assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(12)));
+}
+
+#[test]
+fn generated_sync_method_uses_controlled_adapter_for_fallback_host_refs() {
+    let engine = Engine::builder()
+        .capability(Capability::HostRead)
+        .capability(Capability::HostWrite)
+        .register_type::<Player>()
+        .register_exports(Player::vela_inherent_exports())
+        .build()
+        .expect("generated Player methods should register");
+    let program = engine
+        .compile_source("fn main(player: Player) { player.increment(3); return 7; }")
+        .expect("fallback HostRef method call should compile");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+    let method = vela_common::HostMethodId::new(u128::from(vela_common::stable_id(
+        "host_method",
+        Player::vela_stable_type_path(),
+        "increment",
+    )));
+    let root = HostRef::new(
+        Player::vela_host_type_id(),
+        vela_common::HostObjectId::new(41),
+        1,
+    );
+    let mut adapter = MockStateAdapter::new();
+    adapter.insert_method_return(method, HostValue::Unit);
+    let mut args = CallArgs::new();
+    args.push_host_handle("player", root);
+
+    let result = runtime
+        .call(
+            "main",
+            args.with_fallback_adapter(&mut adapter),
+            CallOptions::unbounded(),
+        )
+        .expect("generated method should use the controlled fallback adapter");
+
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(7)));
+    assert_eq!(
+        adapter
+            .method_calls()
+            .iter()
+            .filter(|call| call.method == method)
+            .count(),
+        1
+    );
 }
 
 #[test]

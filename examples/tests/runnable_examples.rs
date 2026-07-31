@@ -121,7 +121,7 @@ success_example!(
 success_example!(
     interop_round_trip_example_runs,
     env!("CARGO_BIN_EXE_interop_round_trip"),
-    "interop_round_trip result=6 level=6\n",
+    "interop_round_trip result=6 level=6 recorded=5\n",
 );
 
 success_example!(
