@@ -218,6 +218,8 @@ contract before changing that subsystem:
 - [Packages and service providers](packages-and-providers.md)
 - [Rust/Vela unified service model](architecture/rust-vela-service-model.md)
 - [Rust/Vela unified service hard-switch plan](rust-vela-service-hard-switch-plan.md)
+- [Rust/Vela final interop and explicit-release hard switch](rust-vela-interop-final-shape-hard-switch-plan.md)
+- [Rust/Vela interop hard-switch implementation](rust-vela-interop-hard-switch-implementation.md)
 - [Rust/Vela interop authoring and deployment](rust-vela-interop.md)
 - [Clean identity refactor](architecture/clean-identity-refactor.md)
 - [Executor-neutral async execution plan](async-execution-model-plan.md)

@@ -1,6 +1,7 @@
 # Rust/Vela Service Patchability — Final Usage Shape
 
-> Status: accepted
+> Status: accepted foundation; explicit-release and typed-`base` hard switch
+> active.
 >
 > The generation/deployment model, direct/optional/fallible borrowed service
 > returns to ordinary Rust callers, explicit call-scoped Host construction,
@@ -11,6 +12,9 @@
 > [archived plan](archive/rust-vela-service-patchability-completion-plan.md)
 > and
 > [acceptance report](archive/rust-vela-service-patchability-acceptance-2026-07-25.md).
+> The [final interop contract](rust-vela-interop-final-shape-hard-switch-plan.md)
+> supersedes the former compiler-driven early-release rule and the incomplete
+> non-`'static` Host `base` path.
 
 ## 1. User-Facing Guarantee
 
@@ -729,8 +733,11 @@ For a top-level `Result<&T, E>`, `Ok` follows the same child rules and `Err`
 uses the registered owned Value codec for `E`. A scoped Result does not make
 borrowed Results inside Array, Map, tuple, Option, or another Result legal.
 
-Compiler-proven last use may release a child early. Dynamic and reflected paths
-repeat the same lifetime and permission checks.
+Only authored `host::release` releases a retained child early. A generated
+terminal Service sink may transfer the exact admitted borrow to the original
+Rust caller, and root teardown remains the unconditional safety cleanup.
+Compiler liveness and lexical scope never release a child. Dynamic and
+reflected paths repeat the same lifetime and permission checks.
 
 ## 9. Hot-Update Deployment
 

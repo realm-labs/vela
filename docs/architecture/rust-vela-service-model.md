@@ -1,5 +1,12 @@
 # Rust/Vela Unified Service Model
 
+> **Active hard switch — 2026-07-31:** the
+> [final interop contract](../rust-vela-interop-final-shape-hard-switch-plan.md)
+> supersedes this document wherever it removes compiler-driven scoped-borrow
+> release or requires typed `base` totality for non-`'static` Host parameters.
+> The remaining sections describe the accepted generation and boundary
+> foundation that the hard switch preserves.
+
 This document is the normative technical contract for Rust/Vela service
 authoring, immutable service generations, unified Rust type interop, generated
 macros, and the callable-replacement deletion boundary.
@@ -607,11 +614,13 @@ shared-to-exclusive upgrade, overlapping exclusive alias, expired parent, or
 mismatched type fails before the nested body executes.
 
 Returned Rust borrows use the existing call-tree-scoped child HostRef and
-parent-freeze rules. They may flow through Vela locals, temporary collections,
-and nested service calls in the same root, but cannot escape to persistent
-state, globals, native caches, unscoped tasks, or the root result. Early
-compiler-proven release and `host::release` remain valid; GC timing is never a
-correctness dependency.
+parent-freeze rules. They may flow through named Vela locals and admitted
+nested service calls in the same root, but cannot enter owned containers or
+escape to persistent state, globals, native caches, unscoped tasks, or an
+ordinary root result. Authored `host::release` is the only early release;
+generated terminal Service transfer and unconditional root teardown are the
+remaining sinks. Compiler liveness, lexical scope, and GC timing never release
+them.
 
 The initial service return whitelist admits synchronous exact-parameter
 borrows, exact borrowed collection parameters, `Option<&T>`, and

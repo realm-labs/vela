@@ -858,12 +858,13 @@ ambiguous sources and shared-to-exclusive upgrades are macro errors.
 These enveloped children are valid only inside the current synchronous root
 call tree. The VM recursively rejects them in persistent state, closure
 captures that escape through state or the root result, root returns, and live
-frame values at an async suspension. Root cleanup, explicit `host::release`,
-stale generation checks, and automatic proven-last-use release are the same
-machinery used by direct borrowed returns. Async exported Rust functions and
-methods cannot declare call-scoped borrowed returns. Dynamic and reflected
-dispatch invoke the same generated thunk and the same boundary validators as
-static dispatch.
+frame values at an async suspension. Authored `host::release` is the only early
+release, and unconditional root cleanup is the safety backstop; liveness and
+lexical scope never release a child. Stale-generation checks use the same
+machinery as direct borrowed returns. Async exported Rust functions and methods
+cannot declare call-scoped borrowed returns. Dynamic and reflected dispatch
+invoke the same generated thunk and the same boundary validators as static
+dispatch.
 
 If a native function needs to mutate host state, it should either:
 

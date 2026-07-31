@@ -1,5 +1,11 @@
 # Rust/Vela Interop
 
+> **Active hard switch — 2026-07-31:** retained scoped Host capabilities move
+> to authored `host::release`, and every admitted generated Service gains a
+> complete typed Rust `base` path. The final behavior, supported shapes, and
+> rejected shapes are defined in the
+> [final interop contract](rust-vela-interop-final-shape-hard-switch-plan.md).
+
 > **Active direction — 2026-07-23:** ordinary export/binding and
 > HostRef/re-entry remain the general Rust/Vela call model. The sole Rust
 > hotfix model is the generated service generation in
@@ -128,8 +134,9 @@ Authored signatures use supported values plus ordinary `&T` and `&mut T`.
 Generated code internally creates exact call-scoped HostRefs and acquires all
 host leases atomically before any Rust reference exists. Conflicting shared and
 exclusive aliases fail before the body. Borrowed host returns remain scoped to
-the root call tree; compiler-proven last use closes them early, and dynamic
-code can use `host::release(value)`.
+the root call tree. Authored `host::release(value)` is the only early-release
+path; unconditional root teardown is the safety backstop. Compiler liveness and
+lexical scope do not release them.
 
 Synchronous generated exports and the target service ABI admit direct borrows,
 `Option<&T>`, and `Result<&T, E>`. `Some`/`Ok` retain the same child HostRef;

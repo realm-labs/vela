@@ -10,16 +10,20 @@ Completed execution plans and acceptance reports live under
 
 ## Current Focus
 
-The Rust/Vela unified service hard switch and its
-[service patchability completion plan](archive/rust-vela-service-patchability-completion-plan.md)
-are complete. Every admitted service method is executable through Rust
-defaults and Vela selections, including borrowed results returned to ordinary
-Rust callers; unsupported nested borrowed containers fail during macro
-expansion. The final P7 repository gate is recorded in the
-[acceptance report](archive/rust-vela-service-patchability-acceptance-2026-07-25.md).
+The Rust/Vela interop checkpoint is reopened under the
+[final interop and explicit-release hard switch](rust-vela-interop-final-shape-hard-switch-plan.md).
+The accepted S0-S7 generation model and P0-P7 boundary work remain the
+foundation, but two gaps prevent the final model from being total:
 
-P0-P7 are accepted. Service patchability is no longer the active
-implementation checkpoint.
+- the compiler still inserts scoped Host release after proven last use and on
+  selected control-flow edges; and
+- an admitted non-`'static` call-scoped Host Service can still reach a generated
+  runtime `base` placeholder instead of an executable typed Rust default.
+
+E0 freezes the replacement contract. E1-E5 remove all implicit early release,
+make scoped-resource and await facts explicit, add root-local typed `base`
+thunks, reject old artifacts, and rerun the repository acceptance gate. There
+is no compatibility mode or second dispatch path.
 
 Rust embedding now has one public registration vocabulary: every derived or
 generated Value/Host uses `register_type::<T>()`, callable bundles use
@@ -196,7 +200,7 @@ Host-backed and mutable collections retain HostRef identity and leases.
 | M19.5 | Complete enough | Cache-ready IDs, linked bytecode, profile ownership, and prepared host paths are validated. |
 | M20 | Complete enough | Actor Runtime/cache ownership, lifetime, reload, and concurrency gates are accepted. |
 | M20.5 | In progress | Per-keystroke latency is fixed for requests and diagnostics; the HIR rebuild is still whole-workspace. |
-| Rust/Vela service interop | Complete | The generation hard switch, total admitted boundary, complete coverage demo, and P7 repository gate are accepted. |
+| Rust/Vela service interop | In progress | S0-S7 and P0-P7 are accepted foundations; E0-E5 replace implicit release and complete typed `base` totality. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, and debugger contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation, and performance targets. |
@@ -223,6 +227,10 @@ Host-backed and mutable collections retain HostRef identity and leases.
   `PathProxy`, `HostTargetPlan`, and call-scoped `HostAccess`.
 - Host reads, writes, compound mutations, methods, permissions, generations,
   lease conflicts, retained borrows, and same-session re-entry are covered.
+- The current compiler still emits proven-last-use and selected edge releases
+  for scoped Host capabilities. The active hard switch deletes those emitters;
+  only authored `host::release`, terminal Service transfer, and root teardown
+  remain in the final model.
 - Generated synchronous functions and methods support direct `&T`,
   `Option<&T>`, and `Result<&T, E>` scoped returns for registered host-backed
   types. Successful envelopes preserve receiver or unique-parameter
@@ -232,9 +240,10 @@ Host-backed and mutable collections retain HostRef identity and leases.
   async borrowed-return signatures are rejected during macro expansion.
 - Centralized `external_host` companions can publish typed read-only fields
   through one `vela_fields!` block. Vela uses property syntax for those fields,
-  and method/property HostRef results can be chained without temporary
-  bindings; dispatch remains statically registered and uses no runtime
-  field-name lookup.
+  and dispatch remains statically registered with no runtime field-name lookup.
+  The current implementation can chain scoped method/property HostRef results
+  without bindings; E2 will require a named handle and explicit release for
+  each scoped producer while retaining scalar and owned-value path chaining.
 - One sealed `TypeBinding` model supplies stable identity, ABI, codecs,
   constructors, methods, fields, protocols, and owned/shared/exclusive
   representation facts to runtime, reflection, compiler analysis, and LSP.
@@ -268,11 +277,19 @@ Host-backed and mutable collections retain HostRef identity and leases.
 
 ### Service Patchability Totality
 
-The admitted borrowed-return matrix is now total for direct `&T`, direct
+The admitted borrowed-return matrix remains executable for direct `&T`, direct
 `&mut T`, `Option<&T>`, and `Result<&T, E>` when the return is the exact direct
 Host parameter. Vela-selected outer Rust calls restore the authored borrow
 without fabricating references; nested borrowed containers and projected
 children fail during macro expansion.
+
+The Service boundary is not yet fully total: a non-`'static` call-scoped Host
+parameter can be admitted while its Vela patch's `base` call reaches a runtime
+placeholder. E4 replaces that branch with a generated root-local typed thunk
+and a reviewed erased-reborrow boundary. E1-E3 simultaneously remove hybrid
+automatic scoped release and make every await inspect the complete active
+scoped-resource table. The target contract and gates are in the
+[final interop plan](rust-vela-interop-final-shape-hard-switch-plan.md).
 
 Shared custom service parameters now use one storage-directed boundary:
 sealed Value storage decodes one invocation-local temporary, while sealed Host
@@ -362,11 +379,16 @@ changes.
 
 ## Next Up
 
-1. Continue M20.5 with incremental HIR re-lowering, which unblocks per-module
+1. Execute E1-E3 of the interop hard switch: delete compiler-driven release,
+   make scoped producer facts explicit, and check the complete active resource
+   table at await.
+2. Execute E4-E5: generate total typed `base` thunks, reject old artifacts, and
+   rerun the focused and repository-wide acceptance matrices.
+3. Continue M20.5 with incremental HIR re-lowering, which unblocks per-module
    fact reuse and is the last superlinear term in a keystroke.
-2. Audit the parameterized container and value-keyed Map/Set plans against
+4. Audit the parameterized container and value-keyed Map/Set plans against
    their explicit acceptance matrices.
-3. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
+5. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
    post-S2 optimization follow-up.
 
 ## Update Rules

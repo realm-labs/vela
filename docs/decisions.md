@@ -2426,6 +2426,11 @@ upgrades fail before Vela execution.
 
 ### Borrowed Host Returns Freeze Their Parent Owner
 
+> Superseded for early-release scheduling by
+> [Explicit Scoped Release And Typed Base Totality](#explicit-scoped-release-and-typed-base-totality-supersede-hybrid-interop).
+> Borrow-group identity, parent freezing, alias invalidation, and root cleanup
+> remain active.
+
 A supported Rust `&T`/`&mut T` host return is exposed to Vela as a
 call-tree-scoped HostRef backed by the retained, pinned parent owner/service
 lease and provenance. It does not require a business ID, resolver, or
@@ -3569,6 +3574,27 @@ Reproducible evidence for these rules is
 `cargo bench -p vela_language_service --bench incremental_latency`, which
 replays a keystroke against a synthetic multi-module workspace and reports
 P50/P95 for the change cycle, completion, hover, and the snapshot.
+
+### Explicit Scoped Release And Typed Base Totality Supersede Hybrid Interop
+
+Scoped Host capabilities retained across Vela statements release only through
+authored `host::release`, an admitted generated Service terminal-return sink,
+or unconditional root teardown. MIR last-use, lexical-scope, branch-edge, and
+temporary-death analysis must not insert release operations. Invocation-scoped
+Rust `&T`/`&mut T` leases and root success/error/panic/cancellation/future-drop
+cleanup remain RAII boundaries because Vela never owns those references.
+Every await validates the complete active scoped-resource table before polling;
+a dead but unreleased Vela local still blocks suspension.
+
+Service admission includes executable typed Rust `base` dispatch for every
+accepted Host parameter shape. Non-`'static` call-scoped Host parameters use a
+generated root-local typed thunk and a reviewed erased-reborrow boundary after
+exact identity, generation, capability, and lease validation. They do not use
+`Any`, expose references to Vela, or defer failure to a generated runtime
+placeholder. The final contract and hard-switch gates live in
+[the final interop contract](rust-vela-interop-final-shape-hard-switch-plan.md)
+and its
+[implementation plan](rust-vela-interop-hard-switch-implementation.md).
 
 ## Validation Rules
 
