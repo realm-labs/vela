@@ -240,6 +240,7 @@ fn verify_linked_instruction(
         | InstructionKind::Truthy { dst, src }
         | InstructionKind::Negate { dst, src }
         | InstructionKind::ReleaseBorrowLease { dst, src }
+        | InstructionKind::TryReleaseBorrowLease { dst, src }
         | InstructionKind::TryPropagate { dst, src, .. } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_register(function, instruction_index, code, *src)

@@ -48,7 +48,9 @@ pub(super) fn verify_host(
     operation: &MirHostOperation,
     destination: Option<MirValueType>,
 ) -> Result<(), MirVerifyError> {
-    if let MirHostOperation::ReleaseBorrowLease { root } = operation {
+    if let MirHostOperation::ReleaseBorrowLease { root }
+    | MirHostOperation::TryReleaseBorrowLease { root } = operation
+    {
         let root_type = verifier.operand_type(root, block, Some(statement), origin)?;
         if !matches!(root_type, MirValueType::Dynamic | MirValueType::Host(_)) {
             return Err(host_error(
@@ -59,17 +61,16 @@ pub(super) fn verify_host(
                 "borrow lease release requires a host operand",
             ));
         }
-        return destination_accepts(
-            verifier,
-            block,
-            statement,
-            origin,
-            destination,
-            MirValueType::Unit,
-        );
+        let result_type = if matches!(operation, MirHostOperation::TryReleaseBorrowLease { .. }) {
+            MirValueType::Primitive(vela_common::PrimitiveTag::Bool)
+        } else {
+            MirValueType::Unit
+        };
+        return destination_accepts(verifier, block, statement, origin, destination, result_type);
     }
     let (root, path) = match operation {
-        MirHostOperation::ReleaseBorrowLease { .. } => unreachable!(),
+        MirHostOperation::ReleaseBorrowLease { .. }
+        | MirHostOperation::TryReleaseBorrowLease { .. } => unreachable!(),
         MirHostOperation::Read { root, path }
         | MirHostOperation::Write { root, path, .. }
         | MirHostOperation::Mutate { root, path, .. }
@@ -91,7 +92,8 @@ pub(super) fn verify_host(
     verify_prefix_access(verifier, block, statement, origin, path)?;
 
     match operation {
-        MirHostOperation::ReleaseBorrowLease { .. } => unreachable!(),
+        MirHostOperation::ReleaseBorrowLease { .. }
+        | MirHostOperation::TryReleaseBorrowLease { .. } => unreachable!(),
         MirHostOperation::Read { .. } => {
             require_terminal(
                 verifier,

@@ -13,23 +13,25 @@ Completed execution plans and acceptance reports live under
 The Rust/Vela interop checkpoint is reopened under the
 [final interop and explicit-release hard switch](rust-vela-interop-final-shape-hard-switch-plan.md).
 The accepted S0-S7 generation model and P0-P7 boundary work remain the
-foundation, but four gaps prevent the final model from being total:
+foundation. E1 has removed every MIR/bytecode automatic-release producer and
+implemented the authored `host::try_release(value) -> bool` operation. The
+remaining gaps that prevent the final model from being total are:
 
-- the compiler still inserts scoped Host release after proven last use and on
-  selected control-flow edges; and
-- only strict `host::release` exists; the final authored convergence operation
-  `host::try_release(value) -> bool` is not implemented; and
+- scoped producer results are not yet rejected uniformly when discarded or
+  otherwise made unnameable; and
+- await validation does not yet derive from one complete active
+  scoped-resource table; and
 - an admitted non-`'static` call-scoped Host Service can still reach a generated
   runtime `base` placeholder instead of an executable typed Rust default; and
 - Service patches still reserve the common contextual names `base` and
   `services` instead of using the final compiler-owned
   `service::base::*` / `service::pinned::*` namespace.
 
-E0 freezes the replacement contract. E1-E5 remove all implicit early release,
-add narrowly idempotent `host::try_release`, make scoped-resource and await
-facts explicit, add root-local typed `service::base` thunks, delete the
-contextual capability spellings, reject old artifacts, and rerun the repository
-acceptance gate. There is no compatibility mode or second dispatch path.
+E0 froze the replacement contract and E1 completed the explicit-release hard
+switch. E2-E5 make scoped-resource and await facts explicit, add root-local
+typed `service::base` thunks, delete the contextual capability spellings,
+reject old artifacts, and rerun the repository acceptance gate. There is no
+compatibility mode or second dispatch path.
 
 Rust embedding now has one public registration vocabulary: every derived or
 generated Value/Host uses `register_type::<T>()`, callable bundles use
@@ -44,6 +46,12 @@ macros have been removed without compatibility shims.
 
 Phase status:
 
+- E0 accepted: the final explicit-release, namespaced Service capability, and
+  typed-base totality contract is frozen in the interop plans.
+- E1 accepted: last-use, lexical-scope, branch-edge, and pre-await automatic
+  release scheduling is deleted. Authored strict `host::release` and narrowly
+  idempotent `host::try_release -> bool` lower to distinct dedicated
+  MIR/bytecode operations; root teardown remains unchanged.
 - S0 accepted: the migration inventory, executable fixture, and boundary
   baselines are frozen.
 - S1 accepted: the callable-level replacement model is deleted without aliases
@@ -295,9 +303,9 @@ The Service boundary is not yet fully total: a non-`'static` call-scoped Host
 parameter can be admitted while its Vela patch's current contextual `base` call
 reaches a runtime placeholder. E4 replaces that branch with a generated
 root-local typed thunk and replaces both contextual receivers with
-`service::base::*` / `service::pinned::*`. E1-E3 simultaneously remove hybrid
-automatic scoped release and make every await inspect the complete active
-scoped-resource table. The target contract and gates are in the
+`service::base::*` / `service::pinned::*`. E2-E3 make scoped-resource facts
+complete and make every await inspect the complete active scoped-resource
+table. The target contract and gates are in the
 [final interop plan](rust-vela-interop-final-shape-hard-switch-plan.md).
 
 Shared custom service parameters now use one storage-directed boundary:

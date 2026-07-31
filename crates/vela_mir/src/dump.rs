@@ -660,6 +660,11 @@ fn write_host(formatter: &mut fmt::Formatter<'_>, operation: &MirHostOperation) 
             "host.release_borrow_lease {}",
             operand_text(root)
         ),
+        MirHostOperation::TryReleaseBorrowLease { root } => write!(
+            formatter,
+            "host.try_release_borrow_lease {}",
+            operand_text(root)
+        ),
         MirHostOperation::Read { root, path } => write!(
             formatter,
             "host.read {} type#{} path={:?}",

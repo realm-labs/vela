@@ -161,6 +161,54 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
         }
     }
 
+    fn release_scoped_host_impl(&mut self, root: HostRef, allow_expired: bool) -> HostResult<bool> {
+        let Some(handle) = self.scoped_handle(root) else {
+            if self.expired_scoped_hosts.contains_key(&root) {
+                if allow_expired {
+                    return Ok(false);
+                }
+                return Err(HostError {
+                    kind: HostErrorKind::ExpiredBorrowedHostRef {
+                        path: vela_host::path::HostPath::new(root),
+                    },
+                    source_span: None,
+                });
+            }
+            return Err(HostError {
+                kind: HostErrorKind::NotScopedBorrow {
+                    path: vela_host::path::HostPath::new(root),
+                },
+                source_span: None,
+            });
+        };
+        let binding = self
+            .scoped_hosts
+            .get(handle)
+            .expect("validated scoped host handle remains present");
+        let in_use = match &binding.object {
+            ScopedHostObjectBinding::Single(object) => Arc::strong_count(object) != 1,
+            ScopedHostObjectBinding::Group { .. } => Arc::strong_count(&binding.activity) != 1,
+        };
+        if in_use {
+            return Err(HostError {
+                kind: HostErrorKind::BorrowStillInUse {
+                    path: vela_host::path::HostPath::new(root),
+                },
+                source_span: None,
+            });
+        }
+        let borrow_lease_id = binding.borrow_lease_id;
+        self.scoped_hosts
+            .remove(handle)
+            .expect("validated scoped host handle remains present");
+        self.expired_scoped_hosts.insert(root, borrow_lease_id);
+        if let Some(handle) = self.host_slots.handle_for(root) {
+            let _ = self.host_slots.release(handle);
+            self.expired_scoped_slots.insert(handle, root);
+        }
+        Ok(true)
+    }
+
     #[cfg(test)]
     pub(super) const fn next_direct_object_id(&self) -> u64 {
         self.next_direct_object_id
@@ -542,6 +590,10 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         self.parent.release_scoped_host(root)
     }
 
+    fn try_release_scoped_host(&mut self, root: HostRef) -> HostResult<bool> {
+        self.parent.try_release_scoped_host(root)
+    }
+
     fn validate_host_ref_lifetime(
         &self,
         root: HostRef,
@@ -814,47 +866,11 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
     }
 
     fn release_scoped_host(&mut self, root: HostRef) -> HostResult<()> {
-        let Some(handle) = self.scoped_handle(root) else {
-            let kind = if self.expired_scoped_hosts.contains_key(&root) {
-                HostErrorKind::ExpiredBorrowedHostRef {
-                    path: vela_host::path::HostPath::new(root),
-                }
-            } else {
-                HostErrorKind::NotScopedBorrow {
-                    path: vela_host::path::HostPath::new(root),
-                }
-            };
-            return Err(HostError {
-                kind,
-                source_span: None,
-            });
-        };
-        let binding = self
-            .scoped_hosts
-            .get(handle)
-            .expect("validated scoped host handle remains present");
-        let in_use = match &binding.object {
-            ScopedHostObjectBinding::Single(object) => Arc::strong_count(object) != 1,
-            ScopedHostObjectBinding::Group { .. } => Arc::strong_count(&binding.activity) != 1,
-        };
-        if in_use {
-            return Err(HostError {
-                kind: HostErrorKind::BorrowStillInUse {
-                    path: vela_host::path::HostPath::new(root),
-                },
-                source_span: None,
-            });
-        }
-        let borrow_lease_id = binding.borrow_lease_id;
-        self.scoped_hosts
-            .remove(handle)
-            .expect("validated scoped host handle remains present");
-        self.expired_scoped_hosts.insert(root, borrow_lease_id);
-        if let Some(handle) = self.host_slots.handle_for(root) {
-            let _ = self.host_slots.release(handle);
-            self.expired_scoped_slots.insert(handle, root);
-        }
-        Ok(())
+        self.release_scoped_host_impl(root, false).map(|_| ())
+    }
+
+    fn try_release_scoped_host(&mut self, root: HostRef) -> HostResult<bool> {
+        self.release_scoped_host_impl(root, true)
     }
 
     fn validate_host_ref_lifetime(

@@ -157,6 +157,14 @@ pub trait ScriptStateAdapter {
         Err(host_lease_unsupported(root))
     }
 
+    /// Releases a scoped host group and reports whether this call performed
+    /// the release. Implementations may return `false` only for a group that
+    /// is known to have already been released in the current root execution.
+    fn try_release_scoped_host(&mut self, root: HostRef) -> HostResult<bool> {
+        self.release_scoped_host(root)?;
+        Ok(true)
+    }
+
     /// Validates a host handle before it crosses a boundary that can outlive
     /// its synchronous root call tree.
     fn validate_host_ref_lifetime(

@@ -1298,6 +1298,10 @@ pub enum UnlinkedInstructionKind {
         dst: Register,
         src: Register,
     },
+    TryReleaseBorrowLease {
+        dst: Register,
+        src: Register,
+    },
     HostRead {
         dst: Register,
         root: Register,

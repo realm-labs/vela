@@ -422,7 +422,7 @@ fn nested_standard_collection_views_keep_exact_identity_and_release_order() {
     assert_eq!(inner.type_id, inner_type);
 
     let error = host
-        .release_scoped_host(outer)
+        .try_release_scoped_host(outer)
         .expect_err("a parent view cannot release while its child is live");
     assert!(matches!(error.kind, HostErrorKind::BorrowStillInUse { .. }));
 
@@ -441,10 +441,21 @@ fn nested_standard_collection_views_keep_exact_identity_and_release_order() {
         )
         .expect("inner standard collection should write through both parent leases");
 
-    host.release_scoped_host(inner)
-        .expect("inner view should release first");
-    host.release_scoped_host(outer)
-        .expect("outer view should release after its child");
+    assert_eq!(
+        host.try_release_scoped_host(inner),
+        Ok(true),
+        "inner view should release first"
+    );
+    assert_eq!(
+        host.try_release_scoped_host(inner),
+        Ok(false),
+        "known expiry should be the only idempotent no-op"
+    );
+    assert_eq!(
+        host.try_release_scoped_host(outer),
+        Ok(true),
+        "outer view should release after its child"
+    );
 
     let inner_error = access
         .read_resolved_scoped(&mut host, scalar_write, scalar_target, None)

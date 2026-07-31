@@ -880,7 +880,82 @@ fn host_release_invalidates_alias_group_and_unfreezes_owner() {
 }
 
 #[test]
-fn only_explicit_release_compiles_to_dedicated_instruction() {
+fn host_try_release_is_idempotent_but_preserves_strict_errors() {
+    let mut runtime = host_export_runtime(
+        "fn live(service: PlayerService) { let player = service.player_mut(); let released = host::try_release(player); game::touch_service(service); return released; } \
+         fn expired(service: PlayerService) { let player = service.player_mut(); let alias = player; host::release(player); return host::try_release(alias); } \
+         fn strict_after_try(service: PlayerService) { let player = service.player_mut(); let alias = player; host::try_release(player); host::release(alias); } \
+         fn root(service: PlayerService) { return host::try_release(service); } \
+         fn converge(service: PlayerService, early: bool) { let player = service.player_mut(); if early { host::release(player); } let released = host::try_release(player); game::touch_service(service); return released; }",
+    );
+    let mut service = PlayerService {
+        player: Player { level: 5 },
+        touches: 0,
+    };
+
+    let result = runtime
+        .call(
+            "live",
+            CallArgs::new().with_host_mut("service", &mut service),
+            CallOptions::unbounded(),
+        )
+        .expect("try-release should close a live scoped group");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
+    assert_eq!(service.touches, 1);
+
+    let result = runtime
+        .call(
+            "expired",
+            CallArgs::new().with_host_mut("service", &mut service),
+            CallOptions::unbounded(),
+        )
+        .expect("try-release should suppress only known expiry");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(false)));
+
+    let error = runtime
+        .call(
+            "strict_after_try",
+            CallArgs::new().with_host_mut("service", &mut service),
+            CallOptions::unbounded(),
+        )
+        .expect_err("strict release after try-release must still report expiry");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::Host(vela_host::error::HostErrorKind::ExpiredBorrowedHostRef { .. })
+    ));
+
+    let error = runtime
+        .call(
+            "root",
+            CallArgs::new().with_host_mut("service", &mut service),
+            CallOptions::unbounded(),
+        )
+        .expect_err("try-release must reject ordinary root hosts");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::Host(vela_host::error::HostErrorKind::NotScopedBorrow { .. })
+    ));
+
+    for (early, expected) in [(true, false), (false, true)] {
+        let result = runtime
+            .call(
+                "converge",
+                CallArgs::new()
+                    .with_host_mut("service", &mut service)
+                    .with_value("early", early),
+                CallOptions::unbounded(),
+            )
+            .expect("one try-release should converge path-dependent release state");
+        assert_eq!(
+            runtime.value_to_owned(&result),
+            Ok(OwnedValue::Bool(expected))
+        );
+    }
+    assert_eq!(service.touches, 3);
+}
+
+#[test]
+fn authored_release_intrinsics_compile_to_dedicated_instructions() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
@@ -892,22 +967,36 @@ fn only_explicit_release_compiles_to_dedicated_instruction() {
         .expect("release instruction fixture should register");
     let program = engine
         .compile_source(
-            "fn explicit(service: PlayerService) { let player = service.player_mut(); host::release(player); } fn implicit(service: PlayerService) { let player = service.player_mut(); player.increment(1); }",
+            "fn strict(service: PlayerService) { let player = service.player_mut(); host::release(player); } fn idempotent(service: PlayerService) { let player = service.player_mut(); return host::try_release(player); } fn implicit(service: PlayerService) { let player = service.player_mut(); player.increment(1); }",
         )
         .expect("release instruction fixture should compile");
 
-    let explicit = program
+    let strict = program
         .bytecode()
-        .function("explicit")
-        .expect("explicit function should exist");
-    assert!(explicit.instructions.iter().any(|instruction| matches!(
+        .function("strict")
+        .expect("strict function should exist");
+    assert!(strict.instructions.iter().any(|instruction| matches!(
         instruction.kind,
         UnlinkedInstructionKind::ReleaseBorrowLease { .. }
     )));
-    assert!(!explicit.instructions.iter().any(|instruction| matches!(
+    assert!(!strict.instructions.iter().any(|instruction| matches!(
         instruction.kind,
         UnlinkedInstructionKind::CallNative { native, .. }
             if native == vela_def::host_release_function_id()
+    )));
+
+    let idempotent = program
+        .bytecode()
+        .function("idempotent")
+        .expect("idempotent function should exist");
+    assert!(idempotent.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::TryReleaseBorrowLease { .. }
+    )));
+    assert!(!idempotent.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::CallNative { native, .. }
+            if native == vela_def::host_try_release_function_id()
     )));
 
     let implicit = program
@@ -917,6 +1006,7 @@ fn only_explicit_release_compiles_to_dedicated_instruction() {
     assert!(!implicit.instructions.iter().any(|instruction| matches!(
         instruction.kind,
         UnlinkedInstructionKind::ReleaseBorrowLease { .. }
+            | UnlinkedInstructionKind::TryReleaseBorrowLease { .. }
     )));
 }
 
@@ -1101,12 +1191,14 @@ fn tuple_borrowed_method_return_uses_the_same_sibling_group_model() {
 }
 
 #[test]
-fn bare_release_name_is_not_registered() {
+fn bare_release_names_are_not_registered() {
     let engine = Engine::builder().build().expect("engine should build");
-    let error = engine
-        .compile_source("fn main(value) { release(value); }")
-        .expect_err("only host::release is reserved");
-    assert!(error.to_string().contains("release"));
+    for name in ["release", "try_release"] {
+        let error = engine
+            .compile_source(&format!("fn main(value) {{ {name}(value); }}"))
+            .expect_err("only namespaced host release intrinsics are reserved");
+        assert!(error.to_string().contains(name));
+    }
 }
 
 #[test]

@@ -183,8 +183,15 @@ impl<'a> FunctionBackend<'a> {
                 src: self.operand(root, span)?,
             });
         }
+        if let MirHostOperation::TryReleaseBorrowLease { root } = operation {
+            return Ok(UnlinkedInstructionKind::TryReleaseBorrowLease {
+                dst: dst.ok_or(MirBackendError::MissingDestination)?,
+                src: self.operand(root, span)?,
+            });
+        }
         let (root, path) = match operation {
-            MirHostOperation::ReleaseBorrowLease { .. } => unreachable!(),
+            MirHostOperation::ReleaseBorrowLease { .. }
+            | MirHostOperation::TryReleaseBorrowLease { .. } => unreachable!(),
             MirHostOperation::Read { root, path } | MirHostOperation::Remove { root, path } => {
                 (root, path)
             }
@@ -195,7 +202,8 @@ impl<'a> FunctionBackend<'a> {
         let root = self.operand(root, span)?;
         let (target, dynamic_args) = self.host_target(path, span)?;
         let kind = match operation {
-            MirHostOperation::ReleaseBorrowLease { .. } => unreachable!(),
+            MirHostOperation::ReleaseBorrowLease { .. }
+            | MirHostOperation::TryReleaseBorrowLease { .. } => unreachable!(),
             MirHostOperation::Read { .. } => UnlinkedInstructionKind::HostRead {
                 dst: dst.ok_or(MirBackendError::MissingDestination)?,
                 root,

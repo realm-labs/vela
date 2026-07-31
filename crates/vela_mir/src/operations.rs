@@ -304,6 +304,9 @@ pub enum MirHostOperation {
     ReleaseBorrowLease {
         root: MirOperand,
     },
+    TryReleaseBorrowLease {
+        root: MirOperand,
+    },
     Read {
         root: MirOperand,
         path: MirHostPath,
@@ -469,7 +472,10 @@ impl MirAwaitOperation {
     pub(crate) const fn minimum_effect(&self) -> MirEffect {
         match self {
             Self::Call(call) => call.minimum_effect(),
-            Self::Host(MirHostOperation::ReleaseBorrowLease { .. }) => MirEffect::PURE,
+            Self::Host(
+                MirHostOperation::ReleaseBorrowLease { .. }
+                | MirHostOperation::TryReleaseBorrowLease { .. },
+            ) => MirEffect::PURE,
             Self::Host(MirHostOperation::Read { .. }) => MirEffect::host_read(),
             Self::Host(
                 MirHostOperation::Write { .. }
@@ -549,7 +555,8 @@ impl MirStatementKind {
             Self::MakeRange { .. } => MirEffect::may_trap(),
             Self::Call(call) => call.minimum_effect(),
             Self::Host(operation) => match operation {
-                MirHostOperation::ReleaseBorrowLease { .. } => MirEffect::PURE,
+                MirHostOperation::ReleaseBorrowLease { .. }
+                | MirHostOperation::TryReleaseBorrowLease { .. } => MirEffect::PURE,
                 MirHostOperation::Read { .. } => MirEffect::host_read(),
                 MirHostOperation::Write { .. }
                 | MirHostOperation::Mutate { .. }
@@ -588,6 +595,7 @@ impl MirStatementKind {
             | Self::Call(_)
             | Self::Host(
                 MirHostOperation::ReleaseBorrowLease { .. }
+                | MirHostOperation::TryReleaseBorrowLease { .. }
                 | MirHostOperation::Read { .. }
                 | MirHostOperation::Call { .. },
             )

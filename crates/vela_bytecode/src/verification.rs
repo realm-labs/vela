@@ -522,6 +522,7 @@ fn verify_instruction(
         | UnlinkedInstructionKind::Truthy { dst, src }
         | UnlinkedInstructionKind::Negate { dst, src }
         | UnlinkedInstructionKind::ReleaseBorrowLease { dst, src }
+        | UnlinkedInstructionKind::TryReleaseBorrowLease { dst, src }
         | UnlinkedInstructionKind::TryPropagate { dst, src, .. } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *src)

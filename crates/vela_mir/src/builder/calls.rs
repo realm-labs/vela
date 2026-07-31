@@ -56,33 +56,54 @@ impl FunctionBuilder<'_> {
         if matches!(target.callee, CompileCalleeTarget::Reflection { .. }) {
             return self.lower_reflection_call(expression, call, &target, origin, await_context);
         }
-        if matches!(target.callee, CompileCalleeTarget::NativeFunction { function, .. } if function == vela_def::host_release_function_id())
+        if let CompileCalleeTarget::NativeFunction { function, .. } = target.callee
+            && (function == vela_def::host_release_function_id()
+                || function == vela_def::host_try_release_function_id())
         {
+            let try_release = function == vela_def::host_try_release_function_id();
+            let intrinsic_name = if try_release {
+                "host::try_release"
+            } else {
+                "host::release"
+            };
             if await_context.is_some() {
-                return Err(self.unsupported(origin, "awaiting host::release"));
+                return Err(self.unsupported(origin, &format!("awaiting {intrinsic_name}")));
             }
             let descriptor = self
                 .input
                 .targets()
-                .function_descriptor(vela_def::host_release_function_id())
+                .function_descriptor(function)
                 .cloned()
                 .ok_or_else(|| {
-                    self.inconsistent(origin, "host::release has no function descriptor")
+                    self.inconsistent(
+                        origin,
+                        format!("{intrinsic_name} has no function descriptor"),
+                    )
                 })?;
             let arguments =
                 self.lower_external_arguments(&target.arguments, &descriptor.signature, origin)?;
             let [root] = arguments.as_slice() else {
-                return Err(self.inconsistent(origin, "host::release requires one argument"));
+                return Err(
+                    self.inconsistent(origin, format!("{intrinsic_name} requires one argument"))
+                );
             };
-            let destination = self.function.add_temp(MirValueType::Unit, origin);
+            let result_type = if try_release {
+                MirValueType::Primitive(vela_common::PrimitiveTag::Bool)
+            } else {
+                MirValueType::Unit
+            };
+            let operation = if try_release {
+                MirHostOperation::TryReleaseBorrowLease { root: root.clone() }
+            } else {
+                MirHostOperation::ReleaseBorrowLease { root: root.clone() }
+            };
+            let destination = self.function.add_temp(result_type, origin);
             self.function.append_statement(
                 self.current_block,
                 MirStatement::new(
                     origin,
                     Some(MirPlace::temp(destination)),
-                    MirStatementKind::Host(MirHostOperation::ReleaseBorrowLease {
-                        root: root.clone(),
-                    }),
+                    MirStatementKind::Host(operation),
                     MirEffect::PURE,
                     None,
                 ),

@@ -693,11 +693,14 @@ fn visit_host(
     operation: &MirHostOperation,
     visitor: &mut impl FnMut(&MirOperand) -> Result<(), MirVerifyError>,
 ) -> Result<(), MirVerifyError> {
-    if let MirHostOperation::ReleaseBorrowLease { root } = operation {
+    if let MirHostOperation::ReleaseBorrowLease { root }
+    | MirHostOperation::TryReleaseBorrowLease { root } = operation
+    {
         return visitor(root);
     }
     let (root, path) = match operation {
-        MirHostOperation::ReleaseBorrowLease { .. } => unreachable!(),
+        MirHostOperation::ReleaseBorrowLease { .. }
+        | MirHostOperation::TryReleaseBorrowLease { .. } => unreachable!(),
         MirHostOperation::Read { root, path }
         | MirHostOperation::Remove { root, path }
         | MirHostOperation::Call { root, path, .. } => (root, path),

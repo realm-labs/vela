@@ -661,6 +661,27 @@ impl EngineBuilder {
                     Ok(OwnedValue::Unit)
                 },
             ));
+        let try_release_id = vela_def::host_try_release_function_id();
+        self.host_native_functions
+            .push(HostNativeFunctionEntry::new(
+                NativeFunctionDesc::new("host::try_release", try_release_id)
+                    .param("value", crate::native::TypeHint::Any)
+                    .returns(crate::native::TypeHint::boolean())
+                    .effects(crate::native::EffectSet::pure())
+                    .access(crate::native::FunctionAccess::public())
+                    .docs("Idempotently releases one call-tree-scoped borrowed host value."),
+                |args, host| {
+                    let [OwnedValue::HostRef(root)] = args else {
+                        return Err(vela_vm::error::VmError::new(
+                            vela_vm::error::VmErrorKind::TypeMismatch {
+                                operation: "host::try_release scoped host value",
+                            },
+                        ));
+                    };
+                    let released = host.adapter.try_release_scoped_host(*root)?;
+                    Ok(OwnedValue::Bool(released))
+                },
+            ));
         let mut types = self.types;
         if self.stdio || self.fs_io {
             types.push(crate::io::io_error_type_desc());

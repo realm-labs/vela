@@ -2350,6 +2350,26 @@ impl Vm {
                     host.adapter.release_scoped_host(reference)?;
                     frame.write(*dst, Value::Unit)?;
                 }
+                InstructionKind::TryReleaseBorrowLease { dst, src } => {
+                    let root = crate::heap_values::optional_borrowed_host_ref(
+                        frame.read(*src)?,
+                        heap.as_deref().map(|heap| &*heap.heap),
+                    )
+                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    let Some(root) = root else {
+                        frame.write(*dst, Value::Bool(false))?;
+                        continue;
+                    };
+                    let host = host.as_deref_mut().ok_or_else(|| {
+                        VmError::new(VmErrorKind::TypeMismatch {
+                            operation: "try-release borrowed host lease without host boundary",
+                        })
+                        .with_source_span(instruction.span)
+                    })?;
+                    let reference = host.resolve_host_ref(root)?;
+                    let released = host.adapter.try_release_scoped_host(reference)?;
+                    frame.write(*dst, Value::Bool(released))?;
+                }
                 InstructionKind::HostRead {
                     dst,
                     root,

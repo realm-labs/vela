@@ -132,6 +132,7 @@ macro_rules! non_cache_instructions {
             | Self::EnumTagEqual { .. }
             | Self::StoreState { .. }
             | Self::ReleaseBorrowLease { .. }
+            | Self::TryReleaseBorrowLease { .. }
             | Self::Return { .. }
     };
 }

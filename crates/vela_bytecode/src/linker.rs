@@ -1221,6 +1221,12 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     src: *src,
                 }
             }
+            UnlinkedInstructionKind::TryReleaseBorrowLease { dst, src } => {
+                InstructionKind::TryReleaseBorrowLease {
+                    dst: *dst,
+                    src: *src,
+                }
+            }
             UnlinkedInstructionKind::HostRead {
                 dst,
                 root,
