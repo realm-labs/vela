@@ -32,7 +32,8 @@ The hard switch is complete only when both of these invariants hold.
 Any Host capability that remains live across Vela statements is released only
 by:
 
-1. an authored `host::release(value)` call;
+1. an authored strict `host::release(value)` or idempotent
+   `host::try_release(value)` call;
 2. an explicit terminal capability transfer defined by a generated Service
    return sink; or
 3. unconditional root teardown after success, error, panic, cancellation, or
@@ -214,7 +215,8 @@ alias.count += 1;
 host::release(item);
 ```
 
-After release, every alias fails deterministically:
+After release, ordinary alias use and strict release fail deterministically;
+`host::try_release(alias)` is the sole idempotent exception:
 
 ```vela
 // Runtime error: ExpiredBorrowedHostRef.
@@ -282,7 +284,7 @@ if enabled {
 host::release(item);
 ```
 
-Also supported, with deliberately path-dependent lifetime:
+Supported branch convergence without a second guard:
 
 ```vela
 let item = inventory.item_mut(id)?;
@@ -290,12 +292,12 @@ if release_now {
     host::release(item);
 }
 
-// This succeeds only on paths where the group remains live.
-// If release_now was true, it fails as ExpiredBorrowedHostRef.
-return item.count;
+finish_unrelated_work();
+// Releases and returns true if live; already released returns false.
+host::try_release(item);
 ```
 
-The runtime does not block and does not guess author intent.
+`try_release` is still an authored release point; it adds no liveness analysis.
 
 ### 4.6 Await boundaries
 
@@ -367,25 +369,29 @@ fn inspect(inventory: Inventory, id: i64) -> Option<i64> {
 Authors should normally release explicitly for clarity, but root teardown
 remains the final cleanup authority.
 
-### 4.8 Double release and invalid targets
-
-Unsupported Vela:
+### 4.8 Strict and idempotent release
 
 ```vela
 let item = inventory.item(id)?;
+let alias = item;
 host::release(item);
-host::release(item); // ExpiredBorrowedHostRef
+host::try_release(alias); // false; no-op
+host::release(alias);     // ExpiredBorrowedHostRef
 ```
 
-Unsupported Vela:
+| Target state | `host::release` | `host::try_release` |
+|---|---|---|
+| active releasable group | release, return Unit | release, return `true` |
+| group already released in this root | `ExpiredBorrowedHostRef` | no-op, return `false` |
+| root or other non-scoped Host | `NotScopedBorrow` | `NotScopedBorrow` |
+| active parent with live child | `BorrowStillInUse` | `BorrowStillInUse` |
+| invalid, forged, stale, or cross-root ref | original Host error | original Host error |
 
-```vela
-// inventory is a root Host, not a scoped returned capability.
-host::release(inventory); // NotScopedBorrow
-```
-
-`host::release` is the sole release spelling. No bare `release`, compatibility
-alias, destructor protocol, or GC hook is added.
+`try_release` does not recursively release children and suppresses only the
+known-already-released case. The state check and release are one Host operation;
+there is no separate `host::is_live` API. These are the only two release
+spellings; no bare `release`, destructor protocol, compatibility alias, or GC
+hook exists.
 
 ### 4.9 Scoped producer results must be nameable
 
@@ -394,7 +400,7 @@ scoped resource. A scoped producer result must therefore be:
 
 - bound to a local;
 - forwarded to another script function that takes responsibility for it;
-- consumed by `host::release`; or
+- consumed by `host::release` or `host::try_release`; or
 - transferred to an admitted generated Service return sink.
 
 Unsupported discarded result:
@@ -927,6 +933,7 @@ Snapshot, exact-base Delta, and rollback semantics remain unchanged:
 | `Option<&HostT>` | yes | exact admitted origin | optional scoped View |
 | `Result<&HostT, E>` | yes | exact origin and owned `E` | scoped View or owned error |
 | non-`'static` call-scoped Host parameter | yes | yes, including `service::base` | root Host capability |
+| authored scoped early release | yes | yes | strict Unit or idempotent Bool |
 | current Service Rust default | n/a | yes | `service::base::method(...)` |
 | root-pinned cross-Service call | n/a | yes | `service::pinned::service_name::method(...)` |
 | locals named `base` or `services` | yes | yes | ordinary lexical values |

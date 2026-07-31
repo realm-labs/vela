@@ -283,12 +283,13 @@ crates contain no executor or Tokio dependency.
 
 Before polling an awaited target, the session checks the ExecutionHost's
 complete active scoped-resource table. A scoped child cannot cross suspension;
-the author must execute `host::release` first. A dead or unreachable but
-unreleased Vela local still blocks await, and an immediately-ready future gets
-no exception. Escape validation separately rejects call-scoped children inside
-state values, closures, aggregates, PathProxy roots, and the final root result.
-Dynamic and reflection calls do not form alternate lifetime domains: they
-return through the same frame, heap, host adapter, and root-boundary checks.
+the author must execute `host::release` or `host::try_release` first. A dead or
+unreachable but unreleased Vela local still blocks await, and an
+immediately-ready future gets no exception. Escape validation separately
+rejects call-scoped children inside state values, closures, aggregates,
+PathProxy roots, and the final root result. Dynamic and reflection calls do not
+form alternate lifetime domains: they return through the same frame, heap, host
+adapter, and root-boundary checks.
 
 Restricted JIT input marks declared async and await-containing MIR functions
 with `MirJitIneligibility::Async`. The future backend boundary remains the same

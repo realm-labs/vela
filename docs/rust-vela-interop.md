@@ -1,11 +1,12 @@
 # Rust/Vela Interop
 
 > **Active hard switch — 2026-07-31:** retained scoped Host capabilities move
-> to authored `host::release`, and every admitted generated Service gains a
-> complete typed Rust `service::base::method(...)` path. Pinned cross-Service
-> calls use `service::pinned::service_name::method(...)`; bare `base` and
-> `services` receivers are removed. The final behavior, supported shapes, and
-> rejected shapes are defined in the
+> to authored strict `host::release` or idempotent `host::try_release`, and every
+> admitted generated Service gains a complete typed Rust
+> `service::base::method(...)` path. Pinned cross-Service calls use
+> `service::pinned::service_name::method(...)`; bare `base` and `services`
+> receivers are removed. The final behavior, supported shapes, and rejected
+> shapes are defined in the
 > [final interop contract](rust-vela-interop-final-shape-hard-switch-plan.md).
 
 > **Active direction — 2026-07-23:** ordinary export/binding and
@@ -136,8 +137,10 @@ Authored signatures use supported values plus ordinary `&T` and `&mut T`.
 Generated code internally creates exact call-scoped HostRefs and acquires all
 host leases atomically before any Rust reference exists. Conflicting shared and
 exclusive aliases fail before the body. Borrowed host returns remain scoped to
-the root call tree. Authored `host::release(value)` is the only early-release
-path; unconditional root teardown is the safety backstop. Compiler liveness and
+the root call tree. Authored `host::release(value)` and
+`host::try_release(value)` are the only early-release paths; the latter returns
+`false` only when the scoped alias group was already released in this root.
+Unconditional root teardown is the safety backstop. Compiler liveness and
 lexical scope do not release them.
 
 Synchronous generated exports and the target service ABI admit direct borrows,

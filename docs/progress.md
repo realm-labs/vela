@@ -13,10 +13,12 @@ Completed execution plans and acceptance reports live under
 The Rust/Vela interop checkpoint is reopened under the
 [final interop and explicit-release hard switch](rust-vela-interop-final-shape-hard-switch-plan.md).
 The accepted S0-S7 generation model and P0-P7 boundary work remain the
-foundation, but two gaps prevent the final model from being total:
+foundation, but four gaps prevent the final model from being total:
 
 - the compiler still inserts scoped Host release after proven last use and on
   selected control-flow edges; and
+- only strict `host::release` exists; the final authored convergence operation
+  `host::try_release(value) -> bool` is not implemented; and
 - an admitted non-`'static` call-scoped Host Service can still reach a generated
   runtime `base` placeholder instead of an executable typed Rust default; and
 - Service patches still reserve the common contextual names `base` and
@@ -24,10 +26,10 @@ foundation, but two gaps prevent the final model from being total:
   `service::base::*` / `service::pinned::*` namespace.
 
 E0 freezes the replacement contract. E1-E5 remove all implicit early release,
-make scoped-resource and await facts explicit, add root-local typed
-`service::base` thunks, delete the contextual capability spellings, reject old
-artifacts, and rerun the repository acceptance gate. There is no compatibility
-mode or second dispatch path.
+add narrowly idempotent `host::try_release`, make scoped-resource and await
+facts explicit, add root-local typed `service::base` thunks, delete the
+contextual capability spellings, reject old artifacts, and rerun the repository
+acceptance gate. There is no compatibility mode or second dispatch path.
 
 Rust embedding now has one public registration vocabulary: every derived or
 generated Value/Host uses `register_type::<T>()`, callable bundles use
@@ -233,9 +235,10 @@ Host-backed and mutable collections retain HostRef identity and leases.
 - Host reads, writes, compound mutations, methods, permissions, generations,
   lease conflicts, retained borrows, and same-session re-entry are covered.
 - The current compiler still emits proven-last-use and selected edge releases
-  for scoped Host capabilities. The active hard switch deletes those emitters;
-  only authored `host::release`, terminal Service transfer, and root teardown
-  remain in the final model.
+  for scoped Host capabilities and exposes only strict `host::release`. The
+  active hard switch deletes those emitters and adds idempotent
+  `host::try_release`; only those authored operations, terminal Service
+  transfer, and root teardown remain in the final model.
 - Generated synchronous functions and methods support direct `&T`,
   `Option<&T>`, and `Result<&T, E>` scoped returns for registered host-backed
   types. Successful envelopes preserve receiver or unique-parameter
@@ -386,10 +389,10 @@ changes.
 ## Next Up
 
 1. Execute E1-E3 of the interop hard switch: delete compiler-driven release,
-   make scoped producer facts explicit, and check the complete active resource
-   table at await.
-2. Execute E4-E5: generate total typed `base` thunks, reject old artifacts, and
-   rerun the focused and repository-wide acceptance matrices.
+   add `host::try_release`, make scoped producer facts explicit, and check the
+   complete active resource table at await.
+2. Execute E4-E5: generate total typed `service::base` thunks, reject old
+   artifacts, and rerun the focused and repository-wide acceptance matrices.
 3. Continue M20.5 with incremental HIR re-lowering, which unblocks per-module
    fact reuse and is the last superlinear term in a keystroke.
 4. Audit the parameterized container and value-keyed Map/Set plans against

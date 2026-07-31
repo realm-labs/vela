@@ -621,10 +621,10 @@ Returned Rust borrows use the existing call-tree-scoped child HostRef and
 parent-freeze rules. They may flow through named Vela locals and admitted
 nested service calls in the same root, but cannot enter owned containers or
 escape to persistent state, globals, native caches, unscoped tasks, or an
-ordinary root result. Authored `host::release` is the only early release;
-generated terminal Service transfer and unconditional root teardown are the
-remaining sinks. Compiler liveness, lexical scope, and GC timing never release
-them.
+ordinary root result. Authored strict `host::release` and idempotent
+`host::try_release` are the only early-release operations. Generated terminal
+Service transfer and unconditional root teardown are the remaining sinks.
+Compiler liveness, lexical scope, and GC timing never release them.
 
 The initial service return whitelist admits synchronous exact-parameter
 borrows, exact borrowed collection parameters, `Option<&T>`, and

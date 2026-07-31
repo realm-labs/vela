@@ -3583,13 +3583,14 @@ P50/P95 for the change cycle, completion, hover, and the snapshot.
 ### Explicit Scoped Release And Typed Base Totality Supersede Hybrid Interop
 
 Scoped Host capabilities retained across Vela statements release only through
-authored `host::release`, an admitted generated Service terminal-return sink,
-or unconditional root teardown. MIR last-use, lexical-scope, branch-edge, and
-temporary-death analysis must not insert release operations. Invocation-scoped
-Rust `&T`/`&mut T` leases and root success/error/panic/cancellation/future-drop
-cleanup remain RAII boundaries because Vela never owns those references.
-Every await validates the complete active scoped-resource table before polling;
-a dead but unreleased Vela local still blocks suspension.
+authored strict `host::release`, authored idempotent `host::try_release`, an
+admitted generated Service terminal-return sink, or unconditional root
+teardown. MIR last-use, lexical-scope, branch-edge, and temporary-death analysis
+must not insert release operations. Invocation-scoped Rust `&T`/`&mut T` leases
+and root success/error/panic/cancellation/future-drop cleanup remain RAII
+boundaries because Vela never owns those references. Every await validates the
+complete active scoped-resource table before polling; a dead but unreleased
+Vela local still blocks suspension.
 
 Service admission includes executable typed Rust `service::base::method(...)`
 dispatch for every accepted Host parameter shape. Non-`'static` call-scoped
@@ -3616,6 +3617,20 @@ The contextual receiver spellings `base.method(...)` and
 inside `#[service_impl]`, while user declarations cannot shadow the bare
 builtin `service` root. Qualified business modules such as `game::service`
 remain ordinary user modules.
+
+### Try Release Is Narrowly Idempotent
+
+`host::try_release(value) -> bool` is an authored release operation for
+control-flow convergence. It releases an active scoped alias group and returns
+`true`; if the current root's expired-group registry proves that the group was
+already released, it performs no work and returns `false`.
+
+It suppresses no other failure. A root or non-scoped Host still reports
+`NotScopedBorrow`; an active parent with a live child still reports
+`BorrowStillInUse`; invalid, forged, stale, and cross-root HostRefs keep their
+original errors. It never recursively releases children. Strict
+`host::release` remains available so ordinary straight-line double release is
+diagnosed.
 
 ## Validation Rules
 

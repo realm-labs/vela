@@ -720,8 +720,8 @@ The following succeed inside the current synchronous root call tree:
 - nested shared reborrow from shared access, and shared/exclusive reborrow from
   exclusive access;
 - passing a child to later Rust or Vela services;
-- temporary local containers that do not escape;
-- explicit `host::release(value)`; and
+- named local aliases that do not escape;
+- explicit `host::release(value)` or `host::try_release(value)`; and
 - the generated terminal Rust-return sink declared by the service ABI.
 
 The following always fail:
@@ -741,11 +741,14 @@ For a top-level `Result<&T, E>`, `Ok` follows the same child rules and `Err`
 uses the registered owned Value codec for `E`. A scoped Result does not make
 borrowed Results inside Array, Map, tuple, Option, or another Result legal.
 
-Only authored `host::release` releases a retained child early. A generated
-terminal Service sink may transfer the exact admitted borrow to the original
-Rust caller, and root teardown remains the unconditional safety cleanup.
-Compiler liveness and lexical scope never release a child. Dynamic and
-reflected paths repeat the same lifetime and permission checks.
+Only authored strict `host::release` or idempotent `host::try_release` releases
+a retained child early. `try_release` returns `false` for an alias group already
+released in the same root but preserves `NotScopedBorrow`, `BorrowStillInUse`,
+and other Host errors. A generated terminal Service sink may transfer the exact
+admitted borrow to the original Rust caller, and root teardown remains the
+unconditional safety cleanup. Compiler liveness and lexical scope never release
+a child. Dynamic and reflected paths repeat the same lifetime and permission
+checks.
 
 ## 9. Hot-Update Deployment
 
