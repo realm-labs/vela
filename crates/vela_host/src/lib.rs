@@ -8,6 +8,9 @@ pub mod access;
 pub mod adapter;
 #[forbid(unsafe_code)]
 pub mod call_value;
+#[doc(hidden)]
+#[allow(unsafe_code)]
+pub mod erased_reborrow;
 #[allow(unsafe_code)]
 mod erased_slice;
 #[forbid(unsafe_code)]

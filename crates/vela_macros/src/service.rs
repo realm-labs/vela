@@ -191,6 +191,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         }
 
         #[doc(hidden)]
+        #[allow(unsafe_code)]
         pub fn #dispatch_ident(
             __vela_default: &(dyn #dispatch_module_ident::Dispatch + 'static),
             __vela_method: ::vela_common::ServiceMethodId,
@@ -212,6 +213,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         }
 
         #[doc(hidden)]
+        #[allow(unsafe_code)]
         pub fn #async_dispatch_ident<'__vela_call, '__vela_lease>(
             __vela_default:
                 &'__vela_call (dyn #dispatch_module_ident::Dispatch + 'static),
@@ -1038,6 +1040,25 @@ mod tests {
         assert!(output.contains("HostLeaseRequestSet"));
         assert!(output.contains("BorrowedReturnOrigin :: Parameter (0"));
         assert!(!output.contains("borrowed service return dispatch is not executable"));
+    }
+
+    #[test]
+    fn non_static_host_defaults_generate_typed_sync_and_async_reborrows() {
+        let output = expand_result(
+            quote! { path = "request::handler" },
+            quote! {
+                pub trait HandlerService: Send + Sync {
+                    fn apply(&self, context: &mut RequestContext<'_>) -> i64;
+                    async fn apply_async(&self, context: &mut RequestContext<'_>) -> i64;
+                }
+            },
+        )
+        .expect("non-static Host service defaults must have total dispatch")
+        .to_string();
+
+        assert!(output.contains("erased_reborrow :: exclusive"));
+        assert!(output.contains("VelaHostBoundary"));
+        assert!(!output.contains("call-scoped opaque Host parameter"));
     }
 
     #[test]

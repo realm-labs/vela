@@ -485,10 +485,15 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                                 ::vela_engine::service::ServiceMethodSelection::Vela(
                                     __vela_method,
                                 )
-                            ) => __vela_method.call_in_context_async(
-                                __vela_context,
-                                __vela_args,
-                            ),
+                            ) => {
+                                __vela_context.release_service_leases_for_vela_reentry(
+                                    __vela_leases,
+                                );
+                                __vela_method.call_in_context_async(
+                                    __vela_context,
+                                    __vela_args,
+                                )
+                            }
                             None => ::std::boxed::Box::pin(async move {
                                 Err(::vela_vm::error::VmError::new(
                                     ::vela_vm::error::VmErrorKind::UnknownMethod {

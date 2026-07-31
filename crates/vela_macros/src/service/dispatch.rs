@@ -5,8 +5,8 @@ use syn::{Result, parse_quote};
 
 use crate::export::emission::{exclusive_host_value_tokens, shared_host_value_tokens};
 use crate::export::signature::{
-    BorrowOrigin, BorrowedCollectionKind, ClassifiedSignature, ParameterMode, ReturnMode,
-    ScopedReturnContainer, TypeShape,
+    BorrowOrigin, BorrowedCollectionKind, ClassifiedParameter, ClassifiedSignature, ParameterMode,
+    ReturnMode, ScopedReturnContainer, TypeShape,
 };
 
 pub(super) fn emit_rust_dispatch_arm(
@@ -35,19 +35,6 @@ pub(super) fn emit_rust_dispatch_arm(
     if matches!(signature.returns.mode, ReturnMode::ScopedHost { .. }) {
         return emit_scoped_rust_dispatch_arm(method, signature, method_id, arity);
     }
-    if requires_opaque_host_dispatch(signature) {
-        return Ok(quote! {
-            #method_id => {
-                #arity
-                Err(::vela_vm::error::VmError::new(
-                    ::vela_vm::error::VmErrorKind::TypeMismatch {
-                        operation: "base call for a call-scoped opaque Host parameter",
-                    },
-                ))
-            }
-        });
-    }
-
     let mut lease_index = 0_usize;
     let mut lease_requests = Vec::new();
     let mut argument_bindings = Vec::new();
@@ -116,30 +103,33 @@ pub(super) fn emit_rust_dispatch_arm(
                 });
                 let binding = match parameter.mode {
                     ParameterMode::SharedHost => {
-                        let value = shared_host_value_tokens(
-                            &parameter.ty,
-                            quote! { __vela_lease.object() },
+                        let value = shared_service_host_value(
+                            parameter,
+                            quote! { __vela_lease },
+                            quote! { __vela_lease_requests[#request_index_name].0 },
                         );
                         quote! {
-                            let #name = __vela_leases
+                            let __vela_lease = __vela_leases
                                 .next()
-                                .and_then(|__vela_lease| #value)
                                 .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
                                     __vela_lease_requests[#request_index_name].0,
                                 ))?;
+                            let #name = #value?;
                         }
                     }
                     ParameterMode::ExclusiveHost => {
-                        let value =
-                            exclusive_host_value_tokens(&parameter.ty, quote! { __vela_object });
+                        let value = exclusive_service_host_value(
+                            parameter,
+                            quote! { __vela_lease },
+                            quote! { __vela_lease_requests[#request_index_name].0 },
+                        );
                         quote! {
-                            let #name = __vela_leases
+                            let __vela_lease = __vela_leases
                                 .next()
-                                .and_then(|__vela_lease| __vela_lease.object_mut())
-                                .and_then(|__vela_object| #value)
                                 .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
                                     __vela_lease_requests[#request_index_name].0,
                                 ))?;
+                            let #name = #value?;
                         }
                     }
                     _ => unreachable!(),
@@ -273,34 +263,6 @@ pub(super) fn emit_async_rust_dispatch_arm(
             "async service methods cannot return call-scoped host borrows",
         ));
     }
-    if requires_opaque_host_dispatch(signature) {
-        let expected = signature.parameters.len().saturating_sub(1);
-        let method_ident = &method.sig.ident;
-        return Ok(quote! {
-            #method_id => {
-                ::std::boxed::Box::pin(async move {
-                    if __vela_args.len() != #expected {
-                        return Err(::vela_vm::error::VmError::new(
-                            ::vela_vm::error::VmErrorKind::ArityMismatch {
-                                name: ::std::concat!(
-                                    #service_path,
-                                    "::",
-                                    ::std::stringify!(#method_ident),
-                                ).to_owned(),
-                                expected: #expected,
-                                actual: __vela_args.len(),
-                            },
-                        ));
-                    }
-                    Err(::vela_vm::error::VmError::new(
-                        ::vela_vm::error::VmErrorKind::TypeMismatch {
-                            operation: "base call for a call-scoped opaque Host parameter",
-                        },
-                    ))
-                })
-            }
-        });
-    }
     let method_ident = &method.sig.ident;
     let expected = signature.parameters.len().saturating_sub(1);
     let mut argument_bindings = Vec::new();
@@ -342,36 +304,60 @@ pub(super) fn emit_async_rust_dispatch_arm(
         }
         match parameter.mode {
             ParameterMode::SharedHost | ParameterMode::ExclusiveHost => {
+                let root_name = format_ident!("__vela_root_{}", parameter.name);
                 let binding = match parameter.mode {
                     ParameterMode::SharedHost => {
-                        let value = shared_host_value_tokens(
-                            &parameter.ty,
-                            quote! { __vela_lease.object() },
+                        let value = shared_service_host_value(
+                            parameter,
+                            quote! { __vela_lease },
+                            quote! { #root_name },
                         );
                         quote! {
-                            let #name = __vela_leases
+                            let #root_name = match &__vela_args[#argument_index] {
+                                ::vela_vm::owned_value::OwnedValue::HostRef(__vela_root) => {
+                                    *__vela_root
+                                }
+                                _ => {
+                                    return Err(::vela_vm::error::VmError::new(
+                                        ::vela_vm::error::VmErrorKind::TypeMismatch {
+                                            operation: "async service shared host argument",
+                                        },
+                                    ));
+                                }
+                            };
+                            let __vela_lease = __vela_leases
                                 .next()
-                                .and_then(|__vela_lease| #value)
-                                .ok_or_else(|| ::vela_vm::error::VmError::new(
-                                    ::vela_vm::error::VmErrorKind::TypeMismatch {
-                                        operation: "async service shared host argument",
-                                    },
+                                .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
+                                    #root_name,
                                 ))?;
+                            let #name = #value?;
                         }
                     }
                     ParameterMode::ExclusiveHost => {
-                        let value =
-                            exclusive_host_value_tokens(&parameter.ty, quote! { __vela_object });
+                        let value = exclusive_service_host_value(
+                            parameter,
+                            quote! { __vela_lease },
+                            quote! { #root_name },
+                        );
                         quote! {
-                            let #name = __vela_leases
+                            let #root_name = match &__vela_args[#argument_index] {
+                                ::vela_vm::owned_value::OwnedValue::HostRef(__vela_root) => {
+                                    *__vela_root
+                                }
+                                _ => {
+                                    return Err(::vela_vm::error::VmError::new(
+                                        ::vela_vm::error::VmErrorKind::TypeMismatch {
+                                            operation: "async service exclusive host argument",
+                                        },
+                                    ));
+                                }
+                            };
+                            let __vela_lease = __vela_leases
                                 .next()
-                                .and_then(|__vela_lease| __vela_lease.object_mut())
-                                .and_then(|__vela_object| #value)
-                                .ok_or_else(|| ::vela_vm::error::VmError::new(
-                                    ::vela_vm::error::VmErrorKind::TypeMismatch {
-                                        operation: "async service exclusive host argument",
-                                    },
+                                .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(
+                                    #root_name,
                                 ))?;
+                            let #name = #value?;
                         }
                     }
                     _ => unreachable!(),
@@ -483,16 +469,62 @@ pub(super) fn emit_async_rust_dispatch_arm(
     })
 }
 
-fn requires_opaque_host_dispatch(signature: &ClassifiedSignature) -> bool {
-    signature.parameters.iter().skip(1).any(|parameter| {
-        matches!(
-            parameter.mode,
-            ParameterMode::SharedHost | ParameterMode::ExclusiveHost
-        ) && parameter
-            .rust_ty
-            .as_ref()
-            .is_some_and(type_has_non_static_lifetime)
-    })
+fn shared_service_host_value(
+    parameter: &ClassifiedParameter,
+    lease: TokenStream,
+    root: TokenStream,
+) -> TokenStream {
+    if let Some(ty) = non_static_direct_host_type(parameter) {
+        return quote! {
+            unsafe {
+                ::vela_host::erased_reborrow::shared::<#ty>(
+                    #lease,
+                    #root,
+                    <#ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_id(),
+                )
+            }
+        };
+    }
+    let value = shared_host_value_tokens(&parameter.ty, quote! { (#lease).object() });
+    quote! {
+        #value.ok_or_else(|| ::vela_host::lease::host_lease_unsupported(#root))
+    }
+}
+
+fn exclusive_service_host_value(
+    parameter: &ClassifiedParameter,
+    lease: TokenStream,
+    root: TokenStream,
+) -> TokenStream {
+    if let Some(ty) = non_static_direct_host_type(parameter) {
+        return quote! {
+            unsafe {
+                ::vela_host::erased_reborrow::exclusive::<#ty>(
+                    #lease,
+                    #root,
+                    <#ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_id(),
+                )
+            }
+        };
+    }
+    let value = exclusive_host_value_tokens(&parameter.ty, quote! { __vela_object });
+    quote! {
+        (#lease)
+            .object_mut()
+            .and_then(|__vela_object| #value)
+            .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(#root))
+    }
+}
+
+fn non_static_direct_host_type(parameter: &ClassifiedParameter) -> Option<&syn::Type> {
+    let TypeShape::Host(ty, _) = &parameter.ty else {
+        return None;
+    };
+    parameter
+        .rust_ty
+        .as_ref()
+        .is_some_and(type_has_non_static_lifetime)
+        .then_some(ty)
 }
 
 fn type_has_non_static_lifetime(ty: &syn::Type) -> bool {
@@ -611,45 +643,23 @@ fn emit_scoped_rust_dispatch_arm(
                     };
                     __vela_lease_requests.push((__vela_root, #kind));
                 });
-                let (shared_object, exclusive_object) =
-                    if argument_index == usize::from(origin_index) {
-                        (
-                            quote! { __vela_parent_lease.object() },
-                            quote! {
-                                __vela_parent_lease
-                                    .object_mut()
-                                    .expect("exclusive service parent lease")
-                            },
-                        )
-                    } else {
-                        (
-                            quote! { __vela_leases[#current_lease].object() },
-                            quote! {
-                                __vela_leases[#current_lease]
-                                    .object_mut()
-                                    .expect("exclusive service argument lease")
-                            },
-                        )
-                    };
+                let lease = if argument_index == usize::from(origin_index) {
+                    quote! { __vela_parent_lease }
+                } else {
+                    quote! { &mut __vela_leases[#current_lease] }
+                };
+                let root = quote! { __vela_lease_requests[#current_lease].0 };
                 let binding = match parameter.mode {
                     ParameterMode::SharedHost => {
-                        let value = shared_host_value_tokens(&parameter.ty, shared_object);
+                        let value = shared_service_host_value(parameter, lease, root);
                         quote! {
-                            let #name = #value.ok_or_else(|| {
-                                ::vela_host::lease::host_lease_unsupported(
-                                    __vela_lease_requests[#current_lease].0,
-                                )
-                            })?;
+                            let #name = #value?;
                         }
                     }
                     ParameterMode::ExclusiveHost => {
-                        let value = exclusive_host_value_tokens(&parameter.ty, exclusive_object);
+                        let value = exclusive_service_host_value(parameter, lease, root);
                         quote! {
-                            let #name = #value.ok_or_else(|| {
-                                ::vela_host::lease::host_lease_unsupported(
-                                    __vela_lease_requests[#current_lease].0,
-                                )
-                            })?;
+                            let #name = #value?;
                         }
                     }
                     _ => unreachable!(),

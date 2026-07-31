@@ -16,6 +16,7 @@ use syn::visit::{self, Visit};
 /// comment (enforced separately by `clippy::undocumented_unsafe_blocks`).
 const REVIEWED_UNSAFE_BOUNDARIES: &[&str] = &[
     "crates/vela_c_api/src/lib.rs",
+    "crates/vela_host/src/erased_reborrow.rs",
     "crates/vela_host/src/erased_slice.rs",
 ];
 

@@ -374,6 +374,20 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             .collect();
     }
 
+    /// Releases invocation-scoped Rust argument leases before an internal
+    /// pinned Service call re-enters another Vela implementation.
+    ///
+    /// Rust defaults keep these guards for their whole call or future. A Vela
+    /// target instead reacquires roots through the nested VM entry, so holding
+    /// the outer guards would create a false self-conflict.
+    #[doc(hidden)]
+    pub fn release_service_leases_for_vela_reentry(&mut self, leases: &mut [ErasedHostLease<'_>]) {
+        for lease in leases {
+            drop(lease.take());
+        }
+        self.host_provenance.clear();
+    }
+
     pub fn read_path(&mut self, path: &HostPath, source_span: Option<Span>) -> VmResult<HostValue> {
         self.require_effects("NativeCallContext::read_path", EffectSet::host_read())?;
         let host = self.host_execution();

@@ -3616,6 +3616,13 @@ gates live in
 and its
 [implementation plan](rust-vela-interop-hard-switch-implementation.md).
 
+The erased boundary accepts only direct borrowed root lease variants and checks
+the sealed Host type against both the root handle and leased object before the
+generated thunk reconstructs its invocation-scoped reference. Async pinned
+calls release their preflight Rust argument guards and clear lease provenance
+before entering a Vela-selected target; the target then reacquires the same
+root normally, while Rust-selected targets retain guards across their future.
+
 ### Service Compiler Capabilities Use One Namespace
 
 Vela Service patches call the current Rust default through
