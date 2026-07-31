@@ -78,10 +78,10 @@ vela_vm = { path = "crates/vela_vm" }
 wasm-bindgen = "0.2"
 
 [profile.dev]
-debug = 0
+debug = "line-tables-only"
 
 [profile.test]
-debug = 0
+debug = "line-tables-only"
 
 [profile.dev-debug]
 inherits = "dev"
