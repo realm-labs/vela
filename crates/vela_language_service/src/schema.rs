@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use vela_analysis::registry::{
     RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryFunctionFact,
     RegistryIndexCapabilityFact, RegistryMemberFact, RegistryMethodAccessFact, RegistryModuleFact,
+    ScopedResourceKindDef, ScopedResourceParentDef, ScopedResourceReturnDef,
 };
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{CollectionViewMutation, PrimitiveTag, ReceiverCapability, SourceId, Span};
@@ -328,7 +329,7 @@ impl SchemaArtifactFacts {
                 .fields()
                 .map(|member| {
                     let docs = facts.field_docs(&member.owner, &member.name);
-                    SchemaMemberFact::from_registry_member(member, docs)
+                    SchemaMemberFact::from_registry_member(member, docs, None)
                 })
                 .collect(),
             field_access: facts
@@ -339,14 +340,15 @@ impl SchemaArtifactFacts {
                 .variants()
                 .map(|member| {
                     let docs = facts.variant_docs(&member.owner, &member.name);
-                    SchemaMemberFact::from_registry_member(member, docs)
+                    SchemaMemberFact::from_registry_member(member, docs, None)
                 })
                 .collect(),
             methods: facts
                 .methods()
                 .map(|member| {
                     let docs = facts.method_docs(&member.owner, &member.name);
-                    SchemaMemberFact::from_registry_member(member, docs)
+                    let resource = facts.method_scoped_resource(&member.owner, &member.name);
+                    SchemaMemberFact::from_registry_member(member, docs, resource)
                 })
                 .collect(),
             method_effects: facts
@@ -361,7 +363,7 @@ impl SchemaArtifactFacts {
                 .trait_methods()
                 .map(|member| {
                     let docs = facts.trait_method_docs(&member.owner, &member.name);
-                    SchemaMemberFact::from_registry_member(member, docs)
+                    SchemaMemberFact::from_registry_member(member, docs, None)
                 })
                 .collect(),
             trait_method_effects: facts
@@ -372,7 +374,8 @@ impl SchemaArtifactFacts {
                 .functions()
                 .map(|function| {
                     let docs = facts.function_docs(&function.name);
-                    SchemaFunctionFact::from_registry_function(function, docs)
+                    let resource = facts.function_scoped_resource(&function.name);
+                    SchemaFunctionFact::from_registry_function(function, docs, resource)
                 })
                 .collect(),
             function_effects: facts
@@ -444,6 +447,13 @@ impl SchemaArtifactFacts {
             if let Some(docs) = &entry.docs {
                 facts.insert_method_docs(entry.owner.clone(), entry.name.clone(), docs.clone());
             }
+            if let Some(resource) = entry.scoped_resource {
+                facts.insert_method_scoped_resource(
+                    entry.owner.clone(),
+                    entry.name.clone(),
+                    resource.into(),
+                );
+            }
         }
         for effect in &self.method_effects {
             facts.insert_method_effect(
@@ -480,6 +490,9 @@ impl SchemaArtifactFacts {
             facts.insert_function(entry.name.clone(), entry.fact.to_type_fact());
             if let Some(docs) = &entry.docs {
                 facts.insert_function_docs(entry.name.clone(), docs.clone());
+            }
+            if let Some(resource) = entry.scoped_resource {
+                facts.insert_function_scoped_resource(entry.name.clone(), resource.into());
             }
         }
         for effect in &self.function_effects {
@@ -639,6 +652,8 @@ struct SchemaMemberFact {
     fact: SchemaTypeFact,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     docs: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    scoped_resource: Option<SchemaScopedResourceReturn>,
     #[serde(
         default,
         rename = "sourceSpan",
@@ -649,12 +664,17 @@ struct SchemaMemberFact {
 }
 
 impl SchemaMemberFact {
-    fn from_registry_member(value: RegistryMemberFact, docs: Option<&str>) -> Self {
+    fn from_registry_member(
+        value: RegistryMemberFact,
+        docs: Option<&str>,
+        scoped_resource: Option<ScopedResourceReturnDef>,
+    ) -> Self {
         Self {
             owner: value.owner,
             name: value.name,
             fact: SchemaTypeFact::from_type_fact(&value.fact),
             docs: docs.map(str::to_owned),
+            scoped_resource: scoped_resource.map(Into::into),
             source_span: None,
         }
     }
@@ -666,6 +686,8 @@ struct SchemaFunctionFact {
     fact: SchemaTypeFact,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     docs: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    scoped_resource: Option<SchemaScopedResourceReturn>,
     #[serde(
         default,
         rename = "sourceSpan",
@@ -676,12 +698,74 @@ struct SchemaFunctionFact {
 }
 
 impl SchemaFunctionFact {
-    fn from_registry_function(value: RegistryFunctionFact, docs: Option<&str>) -> Self {
+    fn from_registry_function(
+        value: RegistryFunctionFact,
+        docs: Option<&str>,
+        scoped_resource: Option<ScopedResourceReturnDef>,
+    ) -> Self {
         Self {
             name: value.name,
             fact: SchemaTypeFact::from_type_fact(&value.fact),
             docs: docs.map(str::to_owned),
+            scoped_resource: scoped_resource.map(Into::into),
             source_span: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum SchemaScopedResourceKind {
+    View,
+    MutView,
+    Iterator,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case", tag = "source")]
+enum SchemaScopedResourceParent {
+    Receiver,
+    Parameter { index: u16 },
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
+struct SchemaScopedResourceReturn {
+    kind: SchemaScopedResourceKind,
+    parent: SchemaScopedResourceParent,
+}
+
+impl From<ScopedResourceReturnDef> for SchemaScopedResourceReturn {
+    fn from(value: ScopedResourceReturnDef) -> Self {
+        Self {
+            kind: match value.kind {
+                ScopedResourceKindDef::View => SchemaScopedResourceKind::View,
+                ScopedResourceKindDef::MutView => SchemaScopedResourceKind::MutView,
+                ScopedResourceKindDef::Iterator => SchemaScopedResourceKind::Iterator,
+            },
+            parent: match value.parent {
+                ScopedResourceParentDef::Receiver => SchemaScopedResourceParent::Receiver,
+                ScopedResourceParentDef::Parameter(index) => {
+                    SchemaScopedResourceParent::Parameter { index }
+                }
+            },
+        }
+    }
+}
+
+impl From<SchemaScopedResourceReturn> for ScopedResourceReturnDef {
+    fn from(value: SchemaScopedResourceReturn) -> Self {
+        Self {
+            kind: match value.kind {
+                SchemaScopedResourceKind::View => ScopedResourceKindDef::View,
+                SchemaScopedResourceKind::MutView => ScopedResourceKindDef::MutView,
+                SchemaScopedResourceKind::Iterator => ScopedResourceKindDef::Iterator,
+            },
+            parent: match value.parent {
+                SchemaScopedResourceParent::Receiver => ScopedResourceParentDef::Receiver,
+                SchemaScopedResourceParent::Parameter { index } => {
+                    ScopedResourceParentDef::Parameter(index)
+                }
+            },
         }
     }
 }

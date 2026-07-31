@@ -240,10 +240,7 @@ impl FunctionBuilder<'_> {
                         debug_name,
                         signature: descriptor.signature,
                         arguments,
-                        scoped_borrow_return: self
-                            .input
-                            .targets()
-                            .is_scoped_borrow_function(function),
+                        scoped_borrow_return: target.scoped_resource.is_some(),
                     },
                     effect,
                 )

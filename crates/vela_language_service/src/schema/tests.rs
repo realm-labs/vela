@@ -42,6 +42,14 @@ fn sample_facts() -> RegistryFacts {
         TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
     );
     facts.insert_method_docs("Player", "grant_exp", "Grant player experience.");
+    facts.insert_method_scoped_resource(
+        "Player",
+        "grant_exp",
+        ScopedResourceReturnDef {
+            kind: ScopedResourceKindDef::MutView,
+            parent: ScopedResourceParentDef::Receiver,
+        },
+    );
     facts.insert_method_effect("Player", "grant_exp", RegistryEffectFact::host_write());
     facts.insert_method_access(RegistryMethodAccessFact {
         owner: "Player".to_owned(),
@@ -59,6 +67,13 @@ fn sample_facts() -> RegistryFacts {
         ),
     );
     facts.insert_function_docs("game::reward::grant", "Grant reward.");
+    facts.insert_function_scoped_resource(
+        "game::reward::grant",
+        ScopedResourceReturnDef {
+            kind: ScopedResourceKindDef::View,
+            parent: ScopedResourceParentDef::Parameter(0),
+        },
+    );
     facts.insert_function_effect("game::reward::grant", RegistryEffectFact::host_write());
     facts.insert_variant(
         "QuestState",
@@ -147,6 +162,12 @@ fn schema_export_round_trips_registry_facts() {
             && json.contains(r#""constructorIds": ["#),
         "schema artifact should expose TypeBinding constructors, views, and protocols: {json}"
     );
+    assert!(
+        json.contains(r#""scoped_resource""#)
+            && json.contains(r#""kind": "mut_view""#)
+            && json.contains(r#""source": "parameter""#),
+        "schema artifact should preserve scoped resource kind and parent: {json}"
+    );
     let parsed = SchemaArtifact::from_json(&json).expect("schema artifact should decode from JSON");
     assert_eq!(parsed.service_set(), Some(&service_set));
     let round_tripped = parsed.to_registry_facts();
@@ -198,6 +219,14 @@ fn schema_export_round_trips_registry_facts() {
             TypeFact::I64,
             CollectionViewMutation::Fixed,
         ))
+    );
+    assert_eq!(
+        round_tripped.method_scoped_resource("Player", "grant_exp"),
+        facts.method_scoped_resource("Player", "grant_exp")
+    );
+    assert_eq!(
+        round_tripped.function_scoped_resource("game::reward::grant"),
+        facts.function_scoped_resource("game::reward::grant")
     );
 }
 

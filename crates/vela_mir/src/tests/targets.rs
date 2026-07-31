@@ -559,7 +559,7 @@ fn mir_model_target_access_is_complete_and_registry_independent() {
         runtime: vela_common::HostMethodId::new(345),
         signature,
         access: method_access,
-        scoped_borrow_return: false,
+        scoped_resource_return: None,
     };
     assert!(host_field.access.readable);
     assert!(!host_field.access.writable);

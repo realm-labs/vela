@@ -3,7 +3,12 @@ use crate::{
     DocumentId, LanguageServiceDatabases, LineIndex, SourceFileSnapshot, Workspace,
     WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
 };
-use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
+use vela_analysis::{
+    registry::{
+        RegistryFacts, ScopedResourceKindDef, ScopedResourceParentDef, ScopedResourceReturnDef,
+    },
+    type_fact::TypeFact,
+};
 
 #[test]
 fn member_completion_includes_source_impl_and_trait_methods() {
@@ -84,6 +89,34 @@ fn member_completion_uses_schema_function_return_receiver_facts() {
     assert_completion(&completions, "grant", CompletionKind::Method);
     assert_no_completion(&completions, "current_player");
     assert_no_completion(&completions, "global_grant");
+}
+
+#[test]
+fn member_completion_marks_scoped_resource_producers() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(player: Player) { player.it }";
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Item", TypeFact::host("Item"));
+    schema.insert_method(
+        "Player",
+        "item_mut",
+        TypeFact::function(Vec::new(), TypeFact::host("Item")),
+    );
+    schema.insert_method_scoped_resource(
+        "Player",
+        "item_mut",
+        ScopedResourceReturnDef {
+            kind: ScopedResourceKindDef::MutView,
+            parent: ScopedResourceParentDef::Receiver,
+        },
+    );
+
+    let completions = completions_for_with_schema(document, text, "player.it", schema);
+    let item = completion(&completions, "item_mut");
+
+    assert!(item.detail().contains("MutView<Item>"));
+    assert!(item.detail().contains("explicit release"));
 }
 
 #[test]

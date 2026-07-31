@@ -211,14 +211,13 @@ fn signature_label(
     asyncness: vela_common::CallableAsyncness,
     name: &str,
     parameters: &[SignatureParameter],
-    returns: &TypeFact,
+    returns: &str,
 ) -> String {
-    let returns = returns.display_name();
     DisplayParts::callable_signature_with_asyncness(
         asyncness,
         name,
         parameters.iter().map(|param| param.label_parts.clone()),
-        Some(returns.as_str()),
+        Some(returns),
     )
     .render()
 }
@@ -247,7 +246,7 @@ fn callable_signature_information(callable: &CallableFacts) -> SignatureInformat
             callable.asyncness(),
             callable.name(),
             &parameters,
-            callable.returns(),
+            &callable.return_display_name(),
         ),
         parameters,
     }
@@ -266,7 +265,10 @@ fn callable_signatures_by_origin(
 
 #[cfg(test)]
 mod tests {
-    use vela_analysis::registry::{CallableSignatureFact, RegistryFacts};
+    use vela_analysis::registry::{
+        CallableSignatureFact, RegistryFacts, ScopedResourceKindDef, ScopedResourceParentDef,
+        ScopedResourceReturnDef,
+    };
     use vela_common::CallableAsyncness;
 
     use super::*;
@@ -374,6 +376,55 @@ mod tests {
         assert_eq!(
             help.signatures()[0].label(),
             "async load(value: i64) -> String"
+        );
+    }
+
+    #[test]
+    fn signature_help_displays_scoped_resource_return() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "fn main(player: Player) { let item = inventory::item_mut(player); }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        let mut schema = RegistryFacts::default();
+        schema.insert_type("Player", TypeFact::host("Player"));
+        schema.insert_function(
+            "inventory::item_mut",
+            TypeFact::function(vec![TypeFact::host("Player")], TypeFact::host("Item")),
+        );
+        schema.insert_function_signature(
+            "inventory::item_mut",
+            CallableSignatureFact::new(
+                [vela_analysis::registry::CallableParameterFact::new(
+                    "player",
+                    TypeFact::host("Player"),
+                    vela_analysis::registry::CallableParameterRequirementFact::Required,
+                )],
+                TypeFact::host("Item"),
+            ),
+        );
+        schema.insert_function_scoped_resource(
+            "inventory::item_mut",
+            ScopedResourceReturnDef {
+                kind: ScopedResourceKindDef::MutView,
+                parent: ScopedResourceParentDef::Parameter(0),
+            },
+        );
+        databases.set_schema_facts(schema);
+        databases.update(&project);
+
+        let position = LineIndex::new(text).position(
+            text.find("player);")
+                .expect("schema call argument should exist"),
+        );
+        let help = databases
+            .signature_help(&document, position)
+            .expect("signature help should resolve scoped function");
+
+        assert_eq!(
+            help.signatures()[0].label(),
+            "inventory::item_mut(player: Player) -> MutView<Item>"
         );
     }
 

@@ -5,6 +5,7 @@ use vela_reflect::modules::{DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleD
 use vela_reflect::registry::{MethodDesc, MethodParamDesc, TypeDesc, TypeKey, TypeRegistry};
 
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
+use crate::interop::{BorrowedReturnOrigin, ReturnMode, ScopedHostAccess};
 use crate::method::{AsyncNativeMethodEntry, NativeMethodDesc, NativeMethodEntry};
 use crate::native::{
     AsyncContextHostNativeFunctionEntry, AsyncHostNativeFunctionEntry, AsyncNativeFunctionEntry,
@@ -47,6 +48,11 @@ pub(crate) fn inject_host_method_metadata(
         }
         for (name, value) in desc.attrs.iter() {
             method = method.attr(name, value);
+        }
+        if let Some((kind, parent)) = scoped_resource_attrs(desc.callable_contract.as_ref()) {
+            method = method
+                .attr("vela.scoped_resource.kind", kind)
+                .attr("vela.scoped_resource.parent", parent);
         }
         if let Some(source_span) = desc.source_span {
             method = method.source_span(source_span);
@@ -164,10 +170,37 @@ fn reflect_function(desc: &NativeFunctionDesc) -> FunctionDesc {
     for (name, value) in desc.attrs.iter() {
         reflected = reflected.attr(name, value);
     }
+    if let Some((kind, parent)) = scoped_resource_attrs(desc.callable_contract.as_ref()) {
+        reflected = reflected
+            .attr("vela.scoped_resource.kind", kind)
+            .attr("vela.scoped_resource.parent", parent);
+    }
     if let Some(source_span) = desc.source_span {
         reflected = reflected.source_span(source_span);
     }
     reflected
+}
+
+fn scoped_resource_attrs(
+    contract: Option<&crate::interop::CallableContract>,
+) -> Option<(&'static str, String)> {
+    let ReturnMode::ScopedHost {
+        origin,
+        child_access,
+        ..
+    } = contract?.returns.mode
+    else {
+        return None;
+    };
+    let kind = match child_access {
+        ScopedHostAccess::Shared => "view",
+        ScopedHostAccess::Exclusive => "mut_view",
+    };
+    let parent = match origin {
+        BorrowedReturnOrigin::Receiver => "receiver".to_owned(),
+        BorrowedReturnOrigin::Parameter(index) => format!("parameter:{index}"),
+    };
+    Some((kind, parent))
 }
 
 fn native_function_module(name: &str) -> Option<String> {

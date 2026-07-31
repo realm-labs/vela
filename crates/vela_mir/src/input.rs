@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, btree_map::Entry};
+use std::collections::{BTreeMap, btree_map::Entry};
 use std::error::Error;
 use std::fmt;
 
@@ -155,7 +155,6 @@ pub struct CompileTargetSnapshot {
     evaluated_schema_defaults: BTreeMap<HirBodyId, MirEvaluatedConstant>,
     targets: MirTargetTable,
     guards: BTreeMap<CompileGuardKey, CompileGuardTarget>,
-    scoped_borrow_functions: BTreeSet<FunctionId>,
     origins: CompileTargetOrigins,
 }
 
@@ -202,11 +201,6 @@ impl CompileTargetSnapshot {
     }
 
     #[must_use]
-    pub fn is_scoped_borrow_function(&self, function: FunctionId) -> bool {
-        self.scoped_borrow_functions.contains(&function)
-    }
-
-    #[must_use]
     pub fn method_descriptor(
         &self,
         owner: TypeId,
@@ -242,10 +236,6 @@ pub struct CompileTargetSnapshotBuilder {
 }
 
 impl CompileTargetSnapshotBuilder {
-    pub fn mark_scoped_borrow_function(&mut self, function: FunctionId) {
-        self.snapshot.scoped_borrow_functions.insert(function);
-    }
-
     pub fn insert_function(
         &mut self,
         body: HirBodyId,

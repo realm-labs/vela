@@ -126,6 +126,22 @@ impl CompileError {
                 format!("extern state `{state}` requires a registered host type, found `{actual}`"),
             )
             .with_code("compiler::invalid_extern_state_contract"),
+            CompileErrorKind::DiscardedScopedResource { kind, parent } => Diagnostic::error(
+                format!(
+                    "discarded scoped {} result retains {}; bind it to a local and release it explicitly",
+                    scoped_resource_kind(*kind),
+                    scoped_resource_parent(*parent)
+                ),
+            )
+            .with_code("compiler::discarded_scoped_resource"),
+            CompileErrorKind::UnnameableScopedResource { kind, parent } => Diagnostic::error(
+                format!(
+                    "scoped {} result retaining {} is used through an unnamed receiver; bind it to a local, then release it explicitly",
+                    scoped_resource_kind(*kind),
+                    scoped_resource_parent(*parent)
+                ),
+            )
+            .with_code("compiler::unnameable_scoped_resource"),
         };
         Some(match self.span {
             Some(span) => diagnostic.with_span(span),
@@ -140,10 +156,18 @@ pub enum CompileErrorKind {
     InvalidCompilationRequest(CompilationRequestError),
     SemanticDiagnostics(Vec<Diagnostic>),
     UnknownLocal(String),
-    InvalidIntLiteral { literal: String, error: String },
-    InvalidFloatLiteral { literal: String, error: String },
+    InvalidIntLiteral {
+        literal: String,
+        error: String,
+    },
+    InvalidFloatLiteral {
+        literal: String,
+        error: String,
+    },
     RegisterOverflow,
-    InvalidMirRootCount { count: usize },
+    InvalidMirRootCount {
+        count: usize,
+    },
     BytecodeVerification(VerificationError),
     MirVerification(Box<vela_mir::MirVerifyError>),
     MirBackendHandoff(vela_mir::MirBackendHandoffError),
@@ -153,8 +177,39 @@ pub enum CompileErrorKind {
     MirInput(Box<vela_mir::MirBuildError>),
     RegistrySnapshot(String),
     ServiceCall(String),
-    InvalidStateInitializer { state: String, reason: String },
-    InvalidExternStateContract { state: String, actual: String },
+    InvalidStateInitializer {
+        state: String,
+        reason: String,
+    },
+    InvalidExternStateContract {
+        state: String,
+        actual: String,
+    },
+    DiscardedScopedResource {
+        kind: vela_registry::ScopedResourceKindDef,
+        parent: vela_registry::ScopedResourceParentDef,
+    },
+    UnnameableScopedResource {
+        kind: vela_registry::ScopedResourceKindDef,
+        parent: vela_registry::ScopedResourceParentDef,
+    },
+}
+
+fn scoped_resource_kind(kind: vela_registry::ScopedResourceKindDef) -> &'static str {
+    match kind {
+        vela_registry::ScopedResourceKindDef::View => "View",
+        vela_registry::ScopedResourceKindDef::MutView => "MutView",
+        vela_registry::ScopedResourceKindDef::Iterator => "ScopedIterator",
+    }
+}
+
+fn scoped_resource_parent(parent: vela_registry::ScopedResourceParentDef) -> String {
+    match parent {
+        vela_registry::ScopedResourceParentDef::Receiver => "the receiver".to_owned(),
+        vela_registry::ScopedResourceParentDef::Parameter(index) => {
+            format!("host parameter #{}", usize::from(index) + 1)
+        }
+    }
 }
 
 pub type CompileResult<T> = Result<T, CompileError>;

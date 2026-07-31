@@ -202,83 +202,91 @@ impl GenerationBuilder<'_, '_> {
         placement: &CallArgumentPlacementFact,
         origin: MirSourceOrigin,
     ) -> CompileResult<CompileCallTarget> {
-        match placement.mode {
-            CallPlacementModeFact::ExternalPositional => {
-                let values = source_values(placement, origin)?;
-                for (index, (value, parameter)) in values.iter().zip(params).enumerate() {
-                    self.push_external_boundary(
-                        executable,
-                        debug_function,
-                        parameter,
-                        index,
-                        *value,
-                        origin,
-                    )?;
+        let scoped_resource = match &callee {
+            CompileCalleeTarget::NativeFunction { function, .. } => self
+                .catalog
+                .function(*function)
+                .and_then(|definition| definition.scoped_resource_return),
+            CompileCalleeTarget::HostMethod(target) => target.scoped_resource_return,
+            _ => None,
+        };
+        let target =
+            match placement.mode {
+                CallPlacementModeFact::ExternalPositional => {
+                    let values = source_values(placement, origin)?;
+                    for (index, (value, parameter)) in values.iter().zip(params).enumerate() {
+                        self.push_external_boundary(
+                            executable,
+                            debug_function,
+                            parameter,
+                            index,
+                            *value,
+                            origin,
+                        )?;
+                    }
+                    Ok(CompileCallTarget::positional(callee, values))
                 }
-                Ok(CompileCallTarget::positional(callee, values))
-            }
-            CallPlacementModeFact::ExternalNamed => {
-                let slots = parameter_slots(placement, params.len(), origin)?;
-                let mut parameter_slots = Vec::with_capacity(slots.len());
-                for (index, (slot, parameter)) in slots.iter().zip(params).enumerate() {
-                    require_slot_identity(
-                        slot.parameter_index,
-                        &slot.name,
-                        index,
-                        &parameter.name,
-                        origin,
-                    )?;
-                    match &slot.value {
-                        CallParameterSlotValueFact::Explicit {
-                            source_index,
-                            value,
-                        } => {
-                            let value =
-                                checked_slot_value(placement, *source_index, *value, origin)?;
-                            self.push_external_boundary(
-                                executable,
-                                debug_function,
-                                parameter,
-                                index,
+                CallPlacementModeFact::ExternalNamed => {
+                    let slots = parameter_slots(placement, params.len(), origin)?;
+                    let mut parameter_slots = Vec::with_capacity(slots.len());
+                    for (index, (slot, parameter)) in slots.iter().zip(params).enumerate() {
+                        require_slot_identity(
+                            slot.parameter_index,
+                            &slot.name,
+                            index,
+                            &parameter.name,
+                            origin,
+                        )?;
+                        match &slot.value {
+                            CallParameterSlotValueFact::Explicit {
+                                source_index,
                                 value,
-                                origin,
-                            )?;
-                            parameter_slots.push(CompilePlacedCallArgument::placed(
-                                checked_u32(index, origin, "external call parameter")?,
-                                checked_u32(
-                                    *source_index,
+                            } => {
+                                let value =
+                                    checked_slot_value(placement, *source_index, *value, origin)?;
+                                self.push_external_boundary(
+                                    executable,
+                                    debug_function,
+                                    parameter,
+                                    index,
+                                    value,
                                     origin,
-                                    "external call source argument",
-                                )?,
-                                value,
-                            ));
-                        }
-                        CallParameterSlotValueFact::MissingDefault if parameter.has_default => {
-                            parameter_slots.push(CompilePlacedCallArgument::missing(checked_u32(
-                                index,
-                                origin,
-                                "external call parameter",
-                            )?));
-                        }
-                        CallParameterSlotValueFact::MissingDefault => {
-                            return Err(placement_error(
-                                origin,
-                                "analysis omitted a required external parameter",
-                            ));
+                                )?;
+                                parameter_slots.push(CompilePlacedCallArgument::placed(
+                                    checked_u32(index, origin, "external call parameter")?,
+                                    checked_u32(
+                                        *source_index,
+                                        origin,
+                                        "external call source argument",
+                                    )?,
+                                    value,
+                                ));
+                            }
+                            CallParameterSlotValueFact::MissingDefault if parameter.has_default => {
+                                parameter_slots.push(CompilePlacedCallArgument::missing(
+                                    checked_u32(index, origin, "external call parameter")?,
+                                ));
+                            }
+                            CallParameterSlotValueFact::MissingDefault => {
+                                return Err(placement_error(
+                                    origin,
+                                    "analysis omitted a required external parameter",
+                                ));
+                            }
                         }
                     }
+                    Ok(CompileCallTarget::external_named(
+                        callee,
+                        source_values(placement, origin)?,
+                        parameter_slots,
+                    ))
                 }
-                Ok(CompileCallTarget::external_named(
-                    callee,
-                    source_values(placement, origin)?,
-                    parameter_slots,
-                ))
-            }
-            _ => Err(placement_error(
-                origin,
-                "analysis call placement mode does not match an external call",
-            )),
-        }
+                _ => Err(placement_error(
+                    origin,
+                    "analysis call placement mode does not match an external call",
+                )),
+            }?;
+        Ok(target.with_scoped_resource(scoped_resource))
     }
 
     pub(super) fn set_from_array_call_target(

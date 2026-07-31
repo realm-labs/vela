@@ -296,11 +296,6 @@ impl<'a> CompileFunctionTargets<'a> {
     }
 
     #[must_use]
-    pub fn is_scoped_borrow_function(self, function: FunctionId) -> bool {
-        self.snapshot.is_scoped_borrow_function(function)
-    }
-
-    #[must_use]
     pub fn method_descriptor(
         self,
         owner: TypeId,

@@ -5,6 +5,7 @@ use vela_common::SourceId;
 use vela_hir::{
     binding::LocalBindingKind,
     body::{HirBody, HirCall, HirExprKind, HirPathKind, HirPathOwner},
+    ids::HirExprId,
 };
 
 use crate::callable_context::{
@@ -120,6 +121,7 @@ impl LanguageServiceDatabases {
         self.collect_hir_type_hints(
             document_id,
             source.source_id(),
+            source.text(),
             &line_index,
             range_offsets,
             &mut hints,
@@ -203,6 +205,7 @@ impl LanguageServiceDatabases {
         &self,
         document_id: &DocumentId,
         source: SourceId,
+        source_text: &str,
         line_index: &LineIndex,
         range: DiagnosticRangeOffsets,
         hints: &mut Vec<InlayHint>,
@@ -251,6 +254,25 @@ impl LanguageServiceDatabases {
         }
 
         for body in graph.bodies().filter(|body| body.origin.source == source) {
+            let scoped_locals = body
+                .statements
+                .values()
+                .filter_map(|statement| {
+                    let vela_hir::body::HirStmtKind::Let {
+                        pattern: Some(pattern),
+                        initializer: Some(initializer),
+                        ..
+                    } = statement.kind
+                    else {
+                        return None;
+                    };
+                    let local = body.patterns.get(&pattern)?.local()?;
+                    let expression = transparent_call_expression(body, initializer)?;
+                    let call = body.call(expression)?;
+                    let callable = hir_callable_for_call(self, body, call, source_text, facts)?;
+                    Some((local, callable.scoped_resource()?))
+                })
+                .collect::<BTreeMap<_, _>>();
             for local in &body.locals {
                 let Some(binding) = graph.local_binding(*local) else {
                     continue;
@@ -262,9 +284,15 @@ impl LanguageServiceDatabases {
                 let Some(fact) = fact else {
                     continue;
                 };
-                let Some(label) = type_hint_label(fact) else {
-                    continue;
-                };
+                let label = scoped_locals.get(local).map_or_else(
+                    || type_hint_label(fact),
+                    |resource| {
+                        Some(DisplayParts::type_annotation(
+                            &crate::callable_context::scoped_resource_display_name(fact, *resource),
+                        ))
+                    },
+                );
+                let Some(label) = label else { continue };
                 let offset = binding.span.end as usize;
                 if !range.contains(offset) {
                     continue;
@@ -305,6 +333,50 @@ impl LanguageServiceDatabases {
                 });
             }
         }
+    }
+}
+
+pub(crate) fn transparent_call_expression(
+    body: &HirBody,
+    expression: HirExprId,
+) -> Option<HirExprId> {
+    match &body.expression(expression)?.kind {
+        HirExprKind::Call(_) => Some(expression),
+        HirExprKind::Paren {
+            expression: Some(inner),
+        }
+        | HirExprKind::Try {
+            expression: Some(inner),
+        } => transparent_call_expression(body, *inner),
+        _ => None,
+    }
+}
+
+pub(crate) fn hir_callable_for_call(
+    databases: &LanguageServiceDatabases,
+    body: &HirBody,
+    call: &HirCall,
+    source_text: &str,
+    facts: &vela_analysis::facts::AnalysisFacts,
+) -> Option<crate::callable_context::CallableFacts> {
+    let args_prefix = hir_args_prefix(body, call, source_text);
+    if let Some(field) = body.field(call.callee) {
+        let receiver = facts.expression(field.receiver)?;
+        member_callable_facts_for_type(databases, receiver, &field.name, &args_prefix)
+            .into_iter()
+            .next()
+    } else {
+        body.paths
+            .iter()
+            .find(|path| {
+                path.owner == HirPathOwner::Expression(call.callee)
+                    && path.kind == HirPathKind::Callee
+            })
+            .and_then(|path| {
+                callable_facts(databases, &path.path.join("::"))
+                    .into_iter()
+                    .next()
+            })
     }
 }
 

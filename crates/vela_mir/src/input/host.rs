@@ -23,7 +23,7 @@ pub struct HostMethodTarget {
     pub signature: CompileSignature,
     /// Immutable policy snapshot; MIR and its backends do not query a registry.
     pub access: CompileMethodAccess,
-    pub scoped_borrow_return: bool,
+    pub scoped_resource_return: Option<vela_analysis::registry::ScopedResourceReturnDef>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

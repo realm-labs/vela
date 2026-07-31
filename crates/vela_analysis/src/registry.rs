@@ -10,6 +10,7 @@ use vela_reflect::access::{FunctionAccess, MethodAccess};
 use vela_reflect::modules::{DeclOrigin, ModuleDesc};
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKind, TypeRegistry};
 use vela_registry::TypeHintDef;
+pub use vela_registry::{ScopedResourceKindDef, ScopedResourceParentDef, ScopedResourceReturnDef};
 
 use crate::type_fact::TypeFact;
 
@@ -414,6 +415,7 @@ pub struct RegistryFacts {
     methods: BTreeMap<(String, String), TypeFact>,
     method_signatures: BTreeMap<(String, String), CallableSignatureFact>,
     method_docs: BTreeMap<(String, String), String>,
+    method_scoped_resources: BTreeMap<(String, String), ScopedResourceReturnDef>,
     trait_methods: BTreeMap<(String, String), TypeFact>,
     trait_method_signatures: BTreeMap<(String, String), CallableSignatureFact>,
     trait_method_docs: BTreeMap<(String, String), String>,
@@ -422,6 +424,7 @@ pub struct RegistryFacts {
     function_signatures: BTreeMap<String, CallableSignatureFact>,
     function_origins: BTreeMap<String, DeclOrigin>,
     function_docs: BTreeMap<String, String>,
+    function_scoped_resources: BTreeMap<String, ScopedResourceReturnDef>,
     function_access: BTreeMap<String, RegistryFunctionAccessFact>,
     index_capabilities: BTreeMap<String, RegistryIndexCapabilityFact>,
     method_effects: BTreeMap<(String, String), RegistryEffectFact>,
@@ -768,6 +771,17 @@ impl RegistryFacts {
     }
 
     #[must_use]
+    pub fn method_scoped_resource(
+        &self,
+        owner: &str,
+        method: &str,
+    ) -> Option<ScopedResourceReturnDef> {
+        self.method_scoped_resources
+            .get(&(owner.to_owned(), method.to_owned()))
+            .copied()
+    }
+
+    #[must_use]
     pub fn method_effect_fact(&self, owner: &str, method: &str) -> Option<&RegistryEffectFact> {
         self.method_effects
             .get(&(owner.to_owned(), method.to_owned()))
@@ -836,6 +850,11 @@ impl RegistryFacts {
     #[must_use]
     pub fn function_signature_fact(&self, name: &str) -> Option<&CallableSignatureFact> {
         self.function_signatures.get(name)
+    }
+
+    #[must_use]
+    pub fn function_scoped_resource(&self, name: &str) -> Option<ScopedResourceReturnDef> {
+        self.function_scoped_resources.get(name).copied()
     }
 
     #[must_use]
@@ -1046,6 +1065,16 @@ impl RegistryFacts {
             .insert((owner.into(), name.into()), docs.into());
     }
 
+    pub fn insert_method_scoped_resource(
+        &mut self,
+        owner: impl Into<String>,
+        name: impl Into<String>,
+        resource: ScopedResourceReturnDef,
+    ) {
+        self.method_scoped_resources
+            .insert((owner.into(), name.into()), resource);
+    }
+
     pub fn insert_method_effect(
         &mut self,
         owner: impl Into<String>,
@@ -1122,6 +1151,14 @@ impl RegistryFacts {
 
     pub fn insert_function_docs(&mut self, name: impl Into<String>, docs: impl Into<String>) {
         self.function_docs.insert(name.into(), docs.into());
+    }
+
+    pub fn insert_function_scoped_resource(
+        &mut self,
+        name: impl Into<String>,
+        resource: ScopedResourceReturnDef,
+    ) {
+        self.function_scoped_resources.insert(name.into(), resource);
     }
 
     pub fn insert_function_effect(&mut self, name: impl Into<String>, effect: RegistryEffectFact) {

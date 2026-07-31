@@ -1,9 +1,11 @@
 use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::hints::type_fact_from_hint;
-use vela_analysis::registry::RegistryFacts;
+use vela_analysis::registry::{
+    RegistryFacts, ScopedResourceKindDef, ScopedResourceParentDef, ScopedResourceReturnDef,
+};
 use vela_analysis::stdlib::{
-    LambdaFact, StdlibFunctionFact, StdlibMethodFact, stdlib_function_completion_facts,
-    stdlib_method_fact_with_lambda_arity,
+    LambdaFact, StdlibFunctionFact, StdlibMethodFact, scoped_iterator_resource,
+    stdlib_function_completion_facts, stdlib_method_fact_with_lambda_arity,
 };
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{CallableAsyncness, SourceId};
@@ -38,6 +40,7 @@ pub struct CallableFacts {
     name: String,
     params: Vec<CallableParameterFacts>,
     returns: TypeFact,
+    scoped_resource: Option<ScopedResourceReturnDef>,
     asyncness: CallableAsyncness,
     origin: CallableOrigin,
     symbol: SymbolRef,
@@ -57,6 +60,16 @@ impl CallableFacts {
     #[must_use]
     pub const fn returns(&self) -> &TypeFact {
         &self.returns
+    }
+
+    #[must_use]
+    pub const fn scoped_resource(&self) -> Option<ScopedResourceReturnDef> {
+        self.scoped_resource
+    }
+
+    #[must_use]
+    pub fn return_display_name(&self) -> String {
+        scoped_return_display_name(&self.returns, self.scoped_resource)
     }
 
     #[must_use]
@@ -188,6 +201,7 @@ fn source_callable_facts_for_declaration(
         name: declaration.name.clone(),
         params,
         returns,
+        scoped_resource: None,
         asyncness: signature.asyncness,
         origin: CallableOrigin::Source,
         symbol: source_symbol_for_declaration(graph, declaration),
@@ -416,6 +430,7 @@ fn schema_method_callable_facts(
             || returns.as_ref().clone(),
             |signature| signature.returns.clone(),
         ),
+        scoped_resource: schema.method_scoped_resource(&owner, method),
         asyncness: signature.map_or(CallableAsyncness::Sync, |signature| signature.asyncness),
         origin: CallableOrigin::SchemaMethod,
         symbol: schema_member_symbol(&owner, method),
@@ -433,7 +448,8 @@ fn stdlib_method_callable_facts(
     else {
         return Vec::new();
     };
-    vec![stdlib_method_callable_fact(fact)]
+    let resource = scoped_iterator_resource(receiver, method);
+    vec![stdlib_method_callable_fact(fact, resource)]
 }
 
 fn source_variant_callable_facts(
@@ -477,6 +493,7 @@ fn source_variant_callable_facts(
                     name: format!("{owner}::{}", variant.name),
                     params,
                     returns: TypeFact::enum_type(&owner, Some(&variant.name)),
+                    scoped_resource: None,
                     asyncness: CallableAsyncness::Sync,
                     origin: CallableOrigin::SourceVariant,
                     symbol: source_enum_variant_symbol(graph, declaration.id, &variant.name)?,
@@ -502,6 +519,7 @@ fn schema_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<CallableFa
                     registry_callable_parameters,
                 ),
                 returns: signature.map_or_else(|| *returns, |signature| signature.returns.clone()),
+                scoped_resource: schema.function_scoped_resource(&function.name),
                 asyncness: signature
                     .map_or(CallableAsyncness::Sync, |signature| signature.asyncness),
                 origin: CallableOrigin::Schema,
@@ -527,6 +545,7 @@ fn schema_variant_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<Ca
                 name: owner.clone(),
                 params,
                 returns: variant.fact,
+                scoped_resource: None,
                 asyncness: CallableAsyncness::Sync,
                 origin: CallableOrigin::SchemaVariant,
                 symbol: schema_variant_symbol(&variant.owner, &variant.name),
@@ -591,13 +610,17 @@ fn stdlib_callable_fact(fact: StdlibFunctionFact) -> CallableFacts {
         name: fact.name.to_owned(),
         params: indexed_callable_parameters(fact.params),
         returns: fact.returns,
+        scoped_resource: None,
         asyncness: CallableAsyncness::Sync,
         origin: CallableOrigin::Stdlib,
         symbol: builtin_symbol(fact.name),
     }
 }
 
-fn stdlib_method_callable_fact(fact: StdlibMethodFact) -> CallableFacts {
+fn stdlib_method_callable_fact(
+    fact: StdlibMethodFact,
+    scoped_resource: Option<ScopedResourceReturnDef>,
+) -> CallableFacts {
     let params = fact
         .params
         .iter()
@@ -616,6 +639,7 @@ fn stdlib_method_callable_fact(fact: StdlibMethodFact) -> CallableFacts {
         name: format!("{}.{}", fact.receiver.display_name(), fact.method),
         params,
         returns: fact.returns,
+        scoped_resource,
         asyncness: CallableAsyncness::Sync,
         origin: CallableOrigin::StdlibMethod,
         symbol: builtin_member_symbol(&fact.receiver.display_name(), fact.method),
@@ -654,9 +678,47 @@ fn callable_facts_from_signature(
         name,
         params,
         returns,
+        scoped_resource: None,
         asyncness: signature.asyncness,
         origin,
     }
+}
+
+fn scoped_return_display_name(
+    returns: &TypeFact,
+    resource: Option<ScopedResourceReturnDef>,
+) -> String {
+    let Some(resource) = resource else {
+        return returns.display_name();
+    };
+    let wrapper = match resource.kind {
+        ScopedResourceKindDef::View => "View",
+        ScopedResourceKindDef::MutView => "MutView",
+        ScopedResourceKindDef::Iterator => "ScopedIterator",
+    };
+    format!("{wrapper}<{}>", returns.display_name())
+}
+
+pub(crate) fn scoped_resource_display_name(
+    returns: &TypeFact,
+    resource: ScopedResourceReturnDef,
+) -> String {
+    scoped_return_display_name(returns, Some(resource))
+}
+
+pub(crate) fn scoped_resource_detail(resource: ScopedResourceReturnDef) -> String {
+    let kind = match resource.kind {
+        ScopedResourceKindDef::View => "View",
+        ScopedResourceKindDef::MutView => "MutView",
+        ScopedResourceKindDef::Iterator => "ScopedIterator",
+    };
+    let parent = match resource.parent {
+        ScopedResourceParentDef::Receiver => "receiver".to_owned(),
+        ScopedResourceParentDef::Parameter(index) => {
+            format!("parameter #{}", usize::from(index) + 1)
+        }
+    };
+    format!("scoped {kind}; parent: {parent}; explicit release")
 }
 
 fn indexed_callable_parameters(params: Vec<TypeFact>) -> Vec<CallableParameterFacts> {

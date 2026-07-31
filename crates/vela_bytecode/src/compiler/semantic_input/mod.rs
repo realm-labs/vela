@@ -300,11 +300,65 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
             )));
         }
         let graph = self.request.graph;
-        let analysis = self.executable_analysis;
         let targets = self.targets.build().map_err(input_error)?;
+        Self::reject_discarded_scoped_resources(graph, &targets)?;
+        let analysis = self.executable_analysis;
         let prepared = PreparedSemanticInput { analysis, targets };
         drop(prepared.lowering_inputs(graph, MirLoweringConfig::default())?);
         Ok(prepared)
+    }
+
+    fn reject_discarded_scoped_resources(
+        graph: &ModuleGraph,
+        targets: &CompileTargetSnapshot,
+    ) -> CompileResult<()> {
+        for (function, root) in targets.compilation_roots() {
+            let Some(body) = graph.body(root.body) else {
+                continue;
+            };
+            for (expression, target) in body.calls().filter_map(|(expression, _)| {
+                targets.call(function, expression).and_then(|target| {
+                    target
+                        .scoped_resource
+                        .map(|resource| (expression, resource))
+                })
+            }) {
+                if scoped_call_is_unnamed_receiver(body, expression) {
+                    let span = body
+                        .expression(expression)
+                        .map_or(body.origin.span, |record| record.origin.span);
+                    return Err(
+                        CompileError::new(CompileErrorKind::UnnameableScopedResource {
+                            kind: target.kind,
+                            parent: target.parent,
+                        })
+                        .with_span(span),
+                    );
+                }
+            }
+            for statement in body.statements.values() {
+                let vela_hir::body::HirStmtKind::Expr {
+                    expression: Some(expression),
+                    ..
+                } = statement.kind
+                else {
+                    continue;
+                };
+                let Some((resource, span)) =
+                    discarded_scoped_call(body, targets, function, expression)
+                else {
+                    continue;
+                };
+                return Err(
+                    CompileError::new(CompileErrorKind::DiscardedScopedResource {
+                        kind: resource.kind,
+                        parent: resource.parent,
+                    })
+                    .with_span(span),
+                );
+            }
+        }
+        Ok(())
     }
 
     fn body_for_expression(&self, expression: HirExprId) -> Option<&HirBody> {
@@ -685,6 +739,57 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
                 type_id.get()
             ),
         }))
+    }
+}
+
+fn scoped_call_is_unnamed_receiver(body: &HirBody, scoped_call: HirExprId) -> bool {
+    body.fields()
+        .any(|(_, field)| transparent_expression_contains(body, field.receiver, scoped_call))
+        || body.expressions.values().any(|expression| {
+            let vela_hir::body::HirExprKind::Index(index) = &expression.kind else {
+                return false;
+            };
+            transparent_expression_contains(body, index.receiver, scoped_call)
+        })
+}
+
+fn transparent_expression_contains(
+    body: &HirBody,
+    expression: HirExprId,
+    target: HirExprId,
+) -> bool {
+    if expression == target {
+        return true;
+    }
+    match body.expression(expression).map(|record| &record.kind) {
+        Some(
+            vela_hir::body::HirExprKind::Paren {
+                expression: Some(inner),
+            }
+            | vela_hir::body::HirExprKind::Try {
+                expression: Some(inner),
+            },
+        ) => transparent_expression_contains(body, *inner, target),
+        _ => false,
+    }
+}
+
+fn discarded_scoped_call(
+    body: &HirBody,
+    targets: &CompileTargetSnapshot,
+    function: FunctionId,
+    expression: HirExprId,
+) -> Option<(vela_registry::ScopedResourceReturnDef, vela_common::Span)> {
+    let record = body.expression(expression)?;
+    match &record.kind {
+        vela_hir::body::HirExprKind::Call(_) => targets
+            .call(function, expression)?
+            .scoped_resource
+            .map(|resource| (resource, record.origin.span)),
+        vela_hir::body::HirExprKind::Paren {
+            expression: Some(inner),
+        } => discarded_scoped_call(body, targets, function, *inner),
+        _ => None,
     }
 }
 

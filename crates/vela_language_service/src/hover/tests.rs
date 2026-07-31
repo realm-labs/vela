@@ -1,4 +1,7 @@
-use vela_analysis::registry::{CallableSignatureFact, RegistryEffectFact, RegistryFacts};
+use vela_analysis::registry::{
+    CallableSignatureFact, RegistryEffectFact, RegistryFacts, ScopedResourceKindDef,
+    ScopedResourceParentDef, ScopedResourceReturnDef,
+};
 use vela_common::CallableAsyncness;
 
 use super::*;
@@ -80,6 +83,37 @@ fn hover_displays_schema_callable_asyncness() {
 
     assert_eq!(hover.kind(), HoverKind::Function);
     assert!(hover.detail().starts_with("async Function() -> String"));
+}
+
+#[test]
+fn hover_displays_scoped_resource_origin_and_release_contract() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "fn main(player: Player) { return inventory::item(player); }";
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_function(
+        "inventory::item",
+        TypeFact::function(vec![TypeFact::host("Player")], TypeFact::host("Item")),
+    );
+    schema.insert_function_scoped_resource(
+        "inventory::item",
+        ScopedResourceReturnDef {
+            kind: ScopedResourceKindDef::View,
+            parent: ScopedResourceParentDef::Parameter(0),
+        },
+    );
+    let databases = databases_for(&document, text, schema);
+
+    let hover = databases
+        .hover(
+            &document,
+            Position::new(0, text.find("item(player").expect("schema function") + 1),
+        )
+        .expect("hover should resolve scoped schema function");
+
+    assert!(hover.detail().contains("scoped resource: View"));
+    assert!(hover.detail().contains("parent: parameter #1"));
+    assert!(hover.detail().contains("release: explicit"));
 }
 
 #[test]

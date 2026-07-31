@@ -1,5 +1,6 @@
 use vela_analysis::completion::CompletionItem as AnalysisCompletionItem;
 use vela_analysis::registry::RegistryFacts;
+use vela_analysis::type_fact::TypeFact;
 
 use crate::{TextRange, symbol_ref::schema_symbol};
 
@@ -59,7 +60,19 @@ fn enrich_analysis_completion_item(
             item.with_symbol(schema_symbol(label))
         }
         CompletionKind::Function if schema.function_fact(&label).is_some() => {
-            item.with_symbol(schema_symbol(label))
+            let mut item = item.with_symbol(schema_symbol(label.clone()));
+            if let (Some(resource), Some(TypeFact::Function { returns, .. })) = (
+                schema.function_scoped_resource(&label),
+                schema.function_fact(&label),
+            ) {
+                let detail =
+                    crate::callable_context::scoped_resource_display_name(returns, resource);
+                item = item.with_detail_parts(crate::DisplayParts::plain(format!(
+                    "{detail}; {}",
+                    crate::callable_context::scoped_resource_detail(resource)
+                )));
+            }
+            item
         }
         _ => item,
     }

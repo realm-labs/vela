@@ -8,6 +8,7 @@ use super::{CompileHostPathTarget, DynamicMethodTarget, HostMethodTarget, Method
 pub struct CompileCallTarget {
     pub callee: CompileCalleeTarget,
     pub arguments: CompileCallArguments,
+    pub scoped_resource: Option<vela_analysis::registry::ScopedResourceReturnDef>,
 }
 
 impl CompileCallTarget {
@@ -23,6 +24,7 @@ impl CompileCallTarget {
                 evaluation_order,
                 parameter_slots,
             },
+            scoped_resource: None,
         }
     }
 
@@ -31,6 +33,7 @@ impl CompileCallTarget {
         Self {
             callee,
             arguments: CompileCallArguments::Positional(arguments),
+            scoped_resource: None,
         }
     }
 
@@ -46,6 +49,7 @@ impl CompileCallTarget {
                 evaluation_order,
                 parameter_slots,
             },
+            scoped_resource: None,
         }
     }
 
@@ -57,7 +61,17 @@ impl CompileCallTarget {
         Self {
             callee,
             arguments: CompileCallArguments::Dynamic(arguments),
+            scoped_resource: None,
         }
+    }
+
+    #[must_use]
+    pub const fn with_scoped_resource(
+        mut self,
+        resource: Option<vela_analysis::registry::ScopedResourceReturnDef>,
+    ) -> Self {
+        self.scoped_resource = resource;
+        self
     }
 }
 

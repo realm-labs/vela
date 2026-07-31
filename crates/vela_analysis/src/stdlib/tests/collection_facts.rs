@@ -735,3 +735,21 @@ fn bytes_methods_expose_binary_api_facts() {
     assert_eq!(values.params, Vec::<TypeFact>::new());
     assert_eq!(values.returns, TypeFact::iterator(TypeFact::U8));
 }
+
+#[test]
+fn host_collection_views_classify_lazy_iterators_as_scoped_resources() {
+    let view = TypeFact::array_view(TypeFact::host("Item"));
+    let resource = scoped_iterator_resource(&view, "iter")
+        .expect("Host collection view iterator should retain scoped authority");
+    assert_eq!(
+        resource.kind,
+        vela_registry::ScopedResourceKindDef::Iterator
+    );
+    assert_eq!(
+        resource.parent,
+        vela_registry::ScopedResourceParentDef::Receiver
+    );
+
+    assert!(scoped_iterator_resource(&TypeFact::array(TypeFact::I64), "iter").is_none());
+    assert!(scoped_iterator_resource(&view, "len").is_none());
+}

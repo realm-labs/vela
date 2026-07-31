@@ -17,8 +17,9 @@ use vela_def::{
 pub use declaration_slots::{RegistryDeclarationSlotError, RegistryDeclarationSlots};
 pub use defs::{
     Def, EffectSet, FieldAccessDef, FieldDef, FunctionAccessDef, FunctionDef, FunctionSignature,
-    IndexCapabilityDef, MethodAccessDef, MethodDef, ParamDef, SemanticKey, TraitDef,
-    TypeBindingDef, TypeDef, TypeHintDef, TypeKindDef, VariantDef,
+    IndexCapabilityDef, MethodAccessDef, MethodDef, ParamDef, ScopedResourceKindDef,
+    ScopedResourceParentDef, ScopedResourceReturnDef, SemanticKey, TraitDef, TypeBindingDef,
+    TypeDef, TypeHintDef, TypeKindDef, VariantDef,
 };
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]

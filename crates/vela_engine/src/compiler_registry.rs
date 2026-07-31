@@ -6,8 +6,8 @@ use vela_reflect::registry::{
 use vela_registry::{
     DefinitionRegistry, EffectSet as DefinitionEffectSet, FieldAccessDef, FieldDef,
     FunctionAccessDef, FunctionDef, FunctionSignature, IndexCapabilityDef, MethodAccessDef,
-    MethodDef, ParamDef, RegistryError, TypeBindingDef, TypeDef, TypeHintDef, TypeKindDef,
-    VariantDef,
+    MethodDef, ParamDef, RegistryError, ScopedResourceKindDef, ScopedResourceParentDef,
+    ScopedResourceReturnDef, TypeBindingDef, TypeDef, TypeHintDef, TypeKindDef, VariantDef,
 };
 
 use crate::native::{
@@ -204,7 +204,7 @@ fn method_def(desc: &TypeDesc, owner: vela_def::TypeId, method: &MethodDesc) -> 
             None => hint,
         }
     });
-    MethodDef::new(
+    let mut definition = MethodDef::new(
         source_method_path("host", &desc.key.name, &method.name),
         owner,
         FunctionSignature::new(method.params.iter().map(method_param_def), return_type)
@@ -213,7 +213,11 @@ fn method_def(desc: &TypeDesc, owner: vela_def::TypeId, method: &MethodDesc) -> 
     .host_runtime_id(method.id.get())
     .effects(method_effects(&method.effects))
     .receiver(method.receiver)
-    .access(method_access(&method.access))
+    .access(method_access(&method.access));
+    if let Some(resource) = scoped_resource_return_from_attrs(&method.attrs) {
+        definition = definition.scoped_resource_return(resource);
+    }
+    definition
 }
 
 fn method_param_def(param: &MethodParamDesc) -> ParamDef {
@@ -230,7 +234,7 @@ fn native_function_def(desc: &NativeFunctionDesc) -> FunctionDef {
     } else {
         "host"
     };
-    FunctionDef::new(
+    let mut definition = FunctionDef::new(
         source_function_path(package, &desc.name),
         FunctionSignature::new(
             desc.params
@@ -242,7 +246,53 @@ fn native_function_def(desc: &NativeFunctionDesc) -> FunctionDef {
     )
     .with_id(desc.id)
     .effects(native_function_effects(&desc.effects))
-    .access(function_access(&desc.access))
+    .access(function_access(&desc.access));
+    if let Some(resource) = scoped_resource_return_from_contract(desc.callable_contract.as_ref()) {
+        definition = definition.scoped_resource_return(resource);
+    }
+    definition
+}
+
+fn scoped_resource_return_from_contract(
+    contract: Option<&crate::interop::CallableContract>,
+) -> Option<ScopedResourceReturnDef> {
+    let crate::interop::ReturnMode::ScopedHost {
+        origin,
+        child_access,
+        ..
+    } = contract?.returns.mode
+    else {
+        return None;
+    };
+    let kind = match child_access {
+        crate::interop::ScopedHostAccess::Shared => ScopedResourceKindDef::View,
+        crate::interop::ScopedHostAccess::Exclusive => ScopedResourceKindDef::MutView,
+    };
+    let parent = match origin {
+        crate::interop::BorrowedReturnOrigin::Receiver => ScopedResourceParentDef::Receiver,
+        crate::interop::BorrowedReturnOrigin::Parameter(index) => {
+            ScopedResourceParentDef::Parameter(index)
+        }
+    };
+    Some(ScopedResourceReturnDef::new(kind, parent))
+}
+
+fn scoped_resource_return_from_attrs(
+    attrs: &vela_reflect::registry::AttrMap,
+) -> Option<ScopedResourceReturnDef> {
+    let kind = match attrs.get("vela.scoped_resource.kind")? {
+        "view" => ScopedResourceKindDef::View,
+        "mut_view" => ScopedResourceKindDef::MutView,
+        "iterator" => ScopedResourceKindDef::Iterator,
+        _ => return None,
+    };
+    let parent = match attrs.get("vela.scoped_resource.parent")? {
+        "receiver" => ScopedResourceParentDef::Receiver,
+        value => {
+            ScopedResourceParentDef::Parameter(value.strip_prefix("parameter:")?.parse().ok()?)
+        }
+    };
+    Some(ScopedResourceReturnDef::new(kind, parent))
 }
 
 fn source_function_path(package: &str, name: &str) -> DefPath {

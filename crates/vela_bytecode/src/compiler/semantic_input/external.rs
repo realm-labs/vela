@@ -283,10 +283,6 @@ impl GenerationBuilder<'_, '_> {
             origin,
         )?;
         self.remember_signature_contracts(&signature, origin);
-        let scoped_borrow_return = self
-            .request
-            .options
-            .is_scoped_borrow_function(definition.id);
         let descriptor = CompileFunctionDescriptor {
             id: definition.id,
             class: if definition.path.package == "std" {
@@ -305,9 +301,6 @@ impl GenerationBuilder<'_, '_> {
                 definition.access.reflect_callable,
             ),
         };
-        if scoped_borrow_return {
-            self.targets.mark_scoped_borrow_function(definition.id);
-        }
         self.targets
             .insert_function_descriptor(descriptor, origin)
             .map_err(input_error)

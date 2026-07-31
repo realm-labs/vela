@@ -42,6 +42,34 @@ pub enum TypeKindDef {
     ScriptEnum,
 }
 
+/// Explicit-lifetime resource returned by a host callable.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum ScopedResourceKindDef {
+    View,
+    MutView,
+    Iterator,
+}
+
+/// Host input whose lease remains frozen by a scoped return.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum ScopedResourceParentDef {
+    Receiver,
+    Parameter(u16),
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ScopedResourceReturnDef {
+    pub kind: ScopedResourceKindDef,
+    pub parent: ScopedResourceParentDef,
+}
+
+impl ScopedResourceReturnDef {
+    #[must_use]
+    pub const fn new(kind: ScopedResourceKindDef, parent: ScopedResourceParentDef) -> Self {
+        Self { kind, parent }
+    }
+}
+
 impl TypeKindDef {
     #[must_use]
     pub const fn from_primitive(primitive: PrimitiveTag) -> Self {
@@ -749,6 +777,7 @@ pub struct FunctionDef {
     pub signature: FunctionSignature,
     pub effects: EffectSet,
     pub access: FunctionAccessDef,
+    pub scoped_resource_return: Option<ScopedResourceReturnDef>,
 }
 
 impl FunctionDef {
@@ -763,6 +792,7 @@ impl FunctionDef {
             signature,
             effects: EffectSet::default(),
             access: FunctionAccessDef::default(),
+            scoped_resource_return: None,
         }
     }
 
@@ -783,6 +813,12 @@ impl FunctionDef {
         self.access = access;
         self
     }
+
+    #[must_use]
+    pub const fn scoped_resource_return(mut self, resource: ScopedResourceReturnDef) -> Self {
+        self.scoped_resource_return = Some(resource);
+        self
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -796,6 +832,7 @@ pub struct MethodDef {
     pub access: MethodAccessDef,
     pub receiver: ReceiverCapability,
     pub host_runtime_id: Option<u128>,
+    pub scoped_resource_return: Option<ScopedResourceReturnDef>,
 }
 
 impl MethodDef {
@@ -813,12 +850,19 @@ impl MethodDef {
             access: MethodAccessDef::default(),
             receiver: ReceiverCapability::Shared,
             host_runtime_id: None,
+            scoped_resource_return: None,
         }
     }
 
     #[must_use]
     pub fn with_id(mut self, id: MethodId) -> Self {
         self.id = id;
+        self
+    }
+
+    #[must_use]
+    pub const fn scoped_resource_return(mut self, resource: ScopedResourceReturnDef) -> Self {
+        self.scoped_resource_return = Some(resource);
         self
     }
 

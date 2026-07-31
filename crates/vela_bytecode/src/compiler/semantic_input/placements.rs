@@ -474,7 +474,7 @@ impl GenerationBuilder<'_, '_> {
                     definition.access.reflect_callable,
                     definition.access.required_permissions().to_vec(),
                 ),
-                scoped_borrow_return: self.request.options.is_scoped_borrow_method(runtime),
+                scoped_resource_return: definition.scoped_resource_return,
             }),
             name,
             &definition.signature.params,
@@ -576,18 +576,22 @@ impl GenerationBuilder<'_, '_> {
             }
         };
         self.ensure_external_method(method.id, origin)?;
-        let target = self.external_call_target(
-            executable,
-            CompileCalleeTarget::ValueMethod {
-                owner: method.owner,
-                method: method.id,
-                debug_name: name.to_owned(),
-            },
-            name,
-            &method.signature.params,
-            placement,
-            origin,
-        )?;
+        let target = self
+            .external_call_target(
+                executable,
+                CompileCalleeTarget::ValueMethod {
+                    owner: method.owner,
+                    method: method.id,
+                    debug_name: name.to_owned(),
+                },
+                name,
+                &method.signature.params,
+                placement,
+                origin,
+            )?
+            .with_scoped_resource(receiver_fact.as_ref().and_then(|receiver| {
+                vela_analysis::stdlib::scoped_iterator_resource(receiver, name)
+            }));
         self.insert_typed_container_mutation_contracts(
             executable,
             receiver_fact.as_ref(),

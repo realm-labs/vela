@@ -155,6 +155,9 @@ impl<'registry> CompileViewFacts<'registry> {
                         &method.path.name,
                         self.callable_signature_fact(&method.signature),
                     );
+                    if let Some(resource) = method.scoped_resource_return {
+                        facts.insert_method_scoped_resource(owner, &method.path.name, resource);
+                    }
                     facts.insert_method_effect(
                         owner,
                         &method.path.name,
@@ -176,6 +179,9 @@ impl<'registry> CompileViewFacts<'registry> {
                         &name,
                         self.callable_signature_fact(&function.signature),
                     );
+                    if let Some(resource) = function.scoped_resource_return {
+                        facts.insert_function_scoped_resource(&name, resource);
+                    }
                     facts.insert_function_effect(&name, definition_effect_fact(function.effects));
                     facts.insert_function_access(RegistryFunctionAccessFact {
                         name: name.clone(),

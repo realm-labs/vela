@@ -1,4 +1,5 @@
 use vela_bytecode::UnlinkedInstructionKind;
+use vela_bytecode::compiler::error::CompileErrorKind;
 use vela_engine::args::FromScriptArg;
 use vela_engine::context::NativeCallContext;
 use vela_engine::engine::Engine;
@@ -6,6 +7,7 @@ use vela_engine::interop::{BoundaryMode, CallableKind, VelaValueBoundary};
 use vela_engine::native::{EffectSet, TypeHint};
 use vela_engine::permission::Capability;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
+use vela_engine::source::EngineSourceErrorKind;
 use vela_macros::{
     ScriptHost, export, export_external_trait_impl, export_module, external_host,
     external_value_enum, methods, trait_export,
@@ -952,6 +954,78 @@ fn host_try_release_is_idempotent_but_preserves_strict_errors() {
         );
     }
     assert_eq!(service.touches, 3);
+}
+
+#[test]
+fn discarded_scoped_producer_results_fail_before_execution() {
+    let engine = Engine::builder()
+        .capability(Capability::HostRead)
+        .capability(Capability::HostWrite)
+        .register_type::<Player>()
+        .register_type::<PlayerService>()
+        .register_exports(Player::vela_inherent_exports())
+        .register_exports(PlayerService::vela_inherent_exports())
+        .register_exports(vela_export_bundle_service_player_mut())
+        .build()
+        .expect("scoped producer fixture should register");
+
+    for source in [
+        "fn main(service: PlayerService) { service.player_mut(); }",
+        "fn main(service: PlayerService) { game::service_player_mut(service); }",
+    ] {
+        let error = engine
+            .compile_source(source)
+            .expect_err("discarded scoped results must fail during compilation");
+        assert!(matches!(
+            error.kind,
+            EngineSourceErrorKind::Backend(ref error)
+                if matches!(
+                    error.kind,
+                    CompileErrorKind::DiscardedScopedResource { .. }
+                ) && error
+                    .to_diagnostic()
+                    .is_some_and(|diagnostic| diagnostic.code.as_deref()
+                        == Some("compiler::discarded_scoped_resource"))
+        ));
+    }
+}
+
+#[test]
+fn unnamed_scoped_receiver_chains_fail_before_execution() {
+    let engine = Engine::builder()
+        .capability(Capability::HostRead)
+        .capability(Capability::HostWrite)
+        .register_type::<Player>()
+        .register_type::<PlayerService>()
+        .register_exports(Player::vela_inherent_exports())
+        .register_exports(PlayerService::vela_inherent_exports())
+        .build()
+        .expect("scoped producer fixture should register");
+
+    let error = engine
+        .compile_source(
+            "fn main(service: PlayerService) { return service.player_mut().current_level(); }",
+        )
+        .expect_err("unnamed scoped receivers must fail during compilation");
+    let diagnostic = match &error.kind {
+        EngineSourceErrorKind::Backend(error) => error
+            .to_diagnostic()
+            .expect("scoped resource error should be diagnostic"),
+        other => panic!("expected backend diagnostic, found {other:?}"),
+    };
+    assert!(diagnostic.message.contains("MutView"));
+    assert!(diagnostic.message.contains("receiver"));
+    assert!(matches!(
+        error.kind,
+        EngineSourceErrorKind::Backend(ref error)
+            if matches!(
+                error.kind,
+                CompileErrorKind::UnnameableScopedResource { .. }
+            ) && error
+                .to_diagnostic()
+                .is_some_and(|diagnostic| diagnostic.code.as_deref()
+                    == Some("compiler::unnameable_scoped_resource"))
+    ));
 }
 
 #[test]

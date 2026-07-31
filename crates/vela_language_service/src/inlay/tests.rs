@@ -3,7 +3,10 @@ use crate::{
     DisplayPartKind, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
     assemble_project_sources,
 };
-use vela_analysis::registry::{RegistryFacts, RegistryIndexCapabilityFact};
+use vela_analysis::registry::{
+    RegistryFacts, RegistryIndexCapabilityFact, ScopedResourceKindDef, ScopedResourceParentDef,
+    ScopedResourceReturnDef,
+};
 use vela_analysis::type_fact::TypeFact;
 
 fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
@@ -526,6 +529,41 @@ fn inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
             Some(SymbolRef::Schema("Inventory.slots".to_owned())),
             Some(SymbolRef::Schema("Inventory.slots".to_owned()))
         ]
+    );
+}
+
+#[test]
+fn inlay_hints_distinguish_scoped_resource_locals() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(player: Player) { let item = player.item_mut(); host::release(item); }";
+    let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Item", TypeFact::host("Item"));
+    schema.insert_method(
+        "Player",
+        "item_mut",
+        TypeFact::function(Vec::new(), TypeFact::host("Item")),
+    );
+    schema.insert_method_scoped_resource(
+        "Player",
+        "item_mut",
+        ScopedResourceReturnDef {
+            kind: ScopedResourceKindDef::MutView,
+            parent: ScopedResourceParentDef::Receiver,
+        },
+    );
+    databases.set_schema_facts(schema);
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(0, text.len())),
+    );
+
+    assert!(
+        hint_labels(&hints)
+            .iter()
+            .any(|(_, label)| label == ": MutView<Item>")
     );
 }
 
