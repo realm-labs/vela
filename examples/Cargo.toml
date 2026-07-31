@@ -30,6 +30,19 @@ vela_macros = { path = "../crates/vela_macros" }
 vela_reflect = { path = "../crates/vela_reflect" }
 vela_vm = { path = "../crates/vela_vm" }
 
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+
+[profile.dev-debug]
+inherits = "dev"
+debug = "full"
+
+[profile.dev-debug.package."*"]
+debug = "full"
+
 [lints.rust]
 unsafe_code = "deny"
 

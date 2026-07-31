@@ -80,12 +80,15 @@ wasm-bindgen = "0.2"
 [profile.dev]
 debug = "line-tables-only"
 
-[profile.test]
-debug = "line-tables-only"
+[profile.dev.package."*"]
+debug = false
 
 [profile.dev-debug]
 inherits = "dev"
-debug = 2
+debug = "full"
+
+[profile.dev-debug.package."*"]
+debug = "full"
 
 [workspace.lints.rust]
 unsafe_code = "deny"
