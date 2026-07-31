@@ -17,13 +17,14 @@ use super::{
 
 impl<'state, 'host> ExecutionHost<'state, 'host> {
     pub(super) fn retain_scoped_host(&mut self, returned: ScopedHostReturn<'host>) -> HostRef {
-        self.retain_scoped_host_with_parent_activity(returned, None)
+        self.retain_scoped_host_with_parent_activity(returned, None, None)
     }
 
     pub(super) fn retain_scoped_host_with_parent_activity(
         &mut self,
         returned: ScopedHostReturn<'host>,
         parent_activity: Option<Arc<()>>,
+        parent: Option<HostRef>,
     ) -> HostRef {
         let type_id = returned.object.host_type_id();
         let handle = self.scoped_hosts.insert_with(|handle| ScopedHostBinding {
@@ -35,6 +36,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             )))),
             activity: Arc::new(()),
             _parent_activity: parent_activity,
+            parent,
         });
         Self::scoped_root(handle, type_id)
     }
@@ -43,13 +45,14 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
         &mut self,
         returned: ScopedHostReturnGroup<'host>,
     ) -> HostResult<Vec<HostRef>> {
-        self.retain_scoped_host_group_with_parent_activity(returned, None)
+        self.retain_scoped_host_group_with_parent_activity(returned, None, None)
     }
 
     pub(super) fn retain_scoped_host_group_with_parent_activity(
         &mut self,
         returned: ScopedHostReturnGroup<'host>,
         parent_activity: Option<Arc<()>>,
+        parent: Option<HostRef>,
     ) -> HostResult<Vec<HostRef>> {
         if returned.object.len() != returned.accesses.len() || returned.object.is_empty() {
             return Err(HostError {
@@ -78,6 +81,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
                 },
                 activity: Arc::new(()),
                 _parent_activity: parent_activity.clone(),
+                parent,
             });
             roots.push(Self::scoped_root(handle, type_id));
         }

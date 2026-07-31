@@ -424,10 +424,16 @@ fn nested_standard_collection_views_keep_exact_identity_and_release_order() {
     let await_error = host
         .validate_scoped_resources_before_await()
         .expect_err("the complete active table must block await");
-    let HostErrorKind::UnreleasedScopedResourcesAtAwait { paths } = await_error.kind else {
+    let HostErrorKind::UnreleasedScopedResourcesAtAwait { resources } = await_error.kind else {
         panic!("await should report every active scoped resource");
     };
-    assert_eq!(paths.len(), 2);
+    assert_eq!(resources.len(), 2);
+    assert_eq!(resources[0].path.root, inner);
+    assert_eq!(
+        resources[0].parent.as_ref().map(|path| path.root),
+        Some(outer)
+    );
+    assert_eq!(resources[1].path.root, outer);
 
     let error = host
         .try_release_scoped_host(outer)
@@ -464,7 +470,7 @@ fn nested_standard_collection_views_keep_exact_identity_and_release_order() {
         .expect_err("the remaining outer resource must still block await");
     assert!(matches!(
         await_error.kind,
-        HostErrorKind::UnreleasedScopedResourcesAtAwait { ref paths } if paths.len() == 1
+        HostErrorKind::UnreleasedScopedResourcesAtAwait { ref resources } if resources.len() == 1
     ));
     assert_eq!(
         host.try_release_scoped_host(outer),
@@ -509,6 +515,7 @@ fn scoped_hosts_use_dense_generation_checked_identity() {
         object: ScopedHostObjectBinding::Single(object),
         activity: Arc::new(()),
         _parent_activity: None,
+        parent: None,
     });
     let root = ExecutionHost::scoped_root(dense_handle, type_id);
     let alias = root;
@@ -561,6 +568,7 @@ fn scoped_hosts_use_dense_generation_checked_identity() {
         object: ScopedHostObjectBinding::Single(replacement),
         activity: Arc::new(()),
         _parent_activity: None,
+        parent: None,
     });
     let replacement_root = ExecutionHost::scoped_root(replacement_handle, type_id);
     let replacement_borrow_lease_id = host

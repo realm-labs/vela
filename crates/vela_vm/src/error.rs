@@ -334,11 +334,24 @@ impl VmErrorKind {
                 format!("exported Rust callable `{callable}` panicked")
             }
             Self::Host(vela_host::error::HostErrorKind::UnreleasedScopedResourcesAtAwait {
-                paths,
-            }) => format!(
-                "{} scoped Host resource(s) block await: {paths:?}; release each child before its parent with `host::release(value)` or `host::try_release(value)`",
-                paths.len()
-            ),
+                resources,
+            }) => {
+                let blockers = resources
+                    .iter()
+                    .map(|resource| match &resource.parent {
+                        Some(parent) => format!(
+                            "{:?} {:?} (borrows {parent:?})",
+                            resource.kind, resource.path
+                        ),
+                        None => format!("{:?} {:?}", resource.kind, resource.path),
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!(
+                    "{} scoped Host resource(s) block await, in required release order: {blockers}; release each value with `host::release(value)` or `host::try_release(value)`",
+                    resources.len()
+                )
+            }
             Self::Host(kind) => format!("host error: {kind:?}"),
             Self::Reflect(kind) => kind.message(),
             Self::UnknownRecordField { type_name, field } => {

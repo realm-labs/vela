@@ -121,12 +121,26 @@ pub enum HostErrorKind {
         path: HostPath,
     },
     UnreleasedScopedResourcesAtAwait {
-        paths: Vec<HostPath>,
+        resources: Vec<UnreleasedScopedResource>,
     },
     BorrowedHostRefEscape {
         path: HostPath,
         boundary: HostRefLifetimeBoundary,
     },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ScopedResourceKind {
+    View,
+    MutView,
+    Iterator,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct UnreleasedScopedResource {
+    pub path: HostPath,
+    pub kind: ScopedResourceKind,
+    pub parent: Option<HostPath>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

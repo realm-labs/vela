@@ -7,7 +7,10 @@ use vela_host::adapter::{
     ScriptStateAdapter,
 };
 use vela_host::call_value::HostCallValue;
-use vela_host::error::{HostError, HostErrorKind, HostRefLifetimeBoundary, HostResult};
+use vela_host::error::{
+    HostError, HostErrorKind, HostRefLifetimeBoundary, HostResult, ScopedResourceKind,
+    UnreleasedScopedResource,
+};
 use vela_host::lease::{
     BorrowLeaseId, ErasedHostLease, ErasedHostLeaseSet, HostLeaseKind, ScopedBorrowedHostGroupCell,
     ScopedHostLeaseSlot, host_lease_unsupported, host_object_busy,
@@ -67,6 +70,7 @@ struct ScopedHostBinding<'host> {
     object: ScopedHostObjectBinding<'host>,
     activity: Arc<()>,
     _parent_activity: Option<Arc<()>>,
+    parent: Option<HostRef>,
 }
 
 enum ScopedHostObjectBinding<'host> {
@@ -904,18 +908,36 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
     }
 
     fn validate_scoped_resources_before_await(&self) -> HostResult<()> {
-        let paths = self
+        let mut resources = self
             .scoped_hosts
             .iter()
             .map(|(handle, binding)| {
-                vela_host::path::HostPath::new(Self::scoped_root(handle, binding.type_id))
+                let path =
+                    vela_host::path::HostPath::new(Self::scoped_root(handle, binding.type_id));
+                let (kind, parent) = match &binding.object {
+                    ScopedHostObjectBinding::IteratorLease { source, .. } => (
+                        ScopedResourceKind::Iterator,
+                        Some(vela_host::path::HostPath::new(*source)),
+                    ),
+                    ScopedHostObjectBinding::Single(_) | ScopedHostObjectBinding::Group { .. } => (
+                        match binding.access {
+                            HostLeaseKind::Shared => ScopedResourceKind::View,
+                            HostLeaseKind::Exclusive => ScopedResourceKind::MutView,
+                        },
+                        binding.parent.map(vela_host::path::HostPath::new),
+                    ),
+                };
+                UnreleasedScopedResource { path, kind, parent }
             })
             .collect::<Vec<_>>();
-        if paths.is_empty() {
+        if resources.is_empty() {
             Ok(())
         } else {
+            // Scoped children are retained after their parents. Report them in
+            // release order so the first suggested action is executable.
+            resources.reverse();
             Err(HostError {
-                kind: HostErrorKind::UnreleasedScopedResourcesAtAwait { paths },
+                kind: HostErrorKind::UnreleasedScopedResourcesAtAwait { resources },
                 source_span: None,
             })
         }
@@ -943,6 +965,7 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             },
             activity: Arc::new(()),
             _parent_activity: None,
+            parent: Some(root),
         });
         Ok(Self::scoped_root(handle, type_id))
     }
