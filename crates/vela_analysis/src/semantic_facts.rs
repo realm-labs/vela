@@ -902,7 +902,7 @@ impl HirSemanticFacts {
         if let Some(field) = body.field(call.callee) {
             let receiver = self.fact(field.receiver);
             if let Some(method) = self.contextual_stdlib_method_fact(graph, body, call) {
-                return method.returns;
+                return scoped_iterator_return(&receiver, &field.name, method.returns);
             }
             let direct = call_return_fact(self.fact(call.callee));
             if !matches!(direct, TypeFact::Unknown) {
@@ -912,7 +912,7 @@ impl HirSemanticFacts {
                 return method.returns;
             }
             if let Some(method) = stdlib_method_fact(&receiver, &field.name, None) {
-                return method.returns;
+                return scoped_iterator_return(&receiver, &field.name, method.returns);
             }
             if type_owner(&receiver).is_some()
                 && let Some(method) =
@@ -1102,6 +1102,17 @@ fn infer_match_locals(
     }
 }
 
+fn scoped_iterator_return(receiver: &TypeFact, method: &str, returns: TypeFact) -> TypeFact {
+    if crate::stdlib::scoped_iterator_resource(receiver, method).is_some() {
+        match returns {
+            TypeFact::Iterator { item } => TypeFact::ScopedIterator { item },
+            returns => returns,
+        }
+    } else {
+        returns
+    }
+}
+
 fn iterable_item_fact(fact: &TypeFact) -> TypeFact {
     match fact {
         TypeFact::Array { element }
@@ -1110,7 +1121,8 @@ fn iterable_item_fact(fact: &TypeFact) -> TypeFact {
         | TypeFact::Set { element }
         | TypeFact::SetView { element }
         | TypeFact::SetMut { element, .. }
-        | TypeFact::Iterator { item: element } => (**element).clone(),
+        | TypeFact::Iterator { item: element }
+        | TypeFact::ScopedIterator { item: element } => (**element).clone(),
         TypeFact::Range => TypeFact::I64,
         TypeFact::Primitive(PrimitiveTag::String) => TypeFact::CHAR,
         TypeFact::Primitive(PrimitiveTag::Bytes) => TypeFact::U8,

@@ -2346,7 +2346,12 @@ impl Vm {
                         })
                         .with_source_span(instruction.span)
                     })?;
-                    let reference = host.resolve_host_ref(root)?;
+                    let reference = match root {
+                        crate::heap_values::BorrowedReleaseTarget::Interned(root) => {
+                            host.resolve_host_ref(root)?
+                        }
+                        crate::heap_values::BorrowedReleaseTarget::ScopedIterator(root) => root,
+                    };
                     host.adapter.release_scoped_host(reference)?;
                     frame.write(*dst, Value::Unit)?;
                 }
@@ -2366,7 +2371,12 @@ impl Vm {
                         })
                         .with_source_span(instruction.span)
                     })?;
-                    let reference = host.resolve_host_ref(root)?;
+                    let reference = match root {
+                        crate::heap_values::BorrowedReleaseTarget::Interned(root) => {
+                            host.resolve_host_ref(root)?
+                        }
+                        crate::heap_values::BorrowedReleaseTarget::ScopedIterator(root) => root,
+                    };
                     let released = host.adapter.try_release_scoped_host(reference)?;
                     frame.write(*dst, Value::Bool(released))?;
                 }

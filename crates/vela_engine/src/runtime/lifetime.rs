@@ -1,4 +1,4 @@
-use vela_host::error::HostRefLifetimeBoundary;
+use vela_host::{adapter::ScriptStateAdapter, error::HostRefLifetimeBoundary};
 use vela_vm::error::VmResult;
 use vela_vm::heap::ScriptHeap;
 use vela_vm::owned_value::OwnedValue;
@@ -20,6 +20,7 @@ pub(super) fn validate_async_suspend(
     heap: &ScriptHeap,
     host: &ExecutionHost<'_, '_>,
 ) -> VmResult<()> {
+    host.validate_scoped_resources_before_await()?;
     session.validate_host_ref_lifetime(heap, host, HostRefLifetimeBoundary::AsyncSuspend)
 }
 

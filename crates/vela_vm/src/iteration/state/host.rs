@@ -11,6 +11,19 @@ use crate::iteration::host_map::{HostMapCursor, HostMapCursorKind};
 use crate::iteration::host_set::HostSetCursor;
 
 impl IteratorState {
+    pub(crate) fn scoped_host_root(&self) -> Option<HostRef> {
+        match &self.cursor {
+            IteratorCursor::HostArray(cursor) => Some(cursor.root()),
+            IteratorCursor::HostMap(cursor) => Some(cursor.root()),
+            IteratorCursor::HostSet(cursor) => Some(cursor.root()),
+            IteratorCursor::Map { source, .. }
+            | IteratorCursor::Filter { source, .. }
+            | IteratorCursor::Take { source, .. }
+            | IteratorCursor::Skip { source, .. } => source.scoped_host_root(),
+            _ => None,
+        }
+    }
+
     pub(crate) fn next_host_map_entry_with_runtime(
         &mut self,
         runtime: &mut MethodRuntime<'_, '_, '_>,

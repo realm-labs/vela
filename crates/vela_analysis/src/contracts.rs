@@ -497,9 +497,12 @@ fn contract_relation(actual: &TypeFact, expected: &TypeFact) -> ContractRelation
         | (TypeFact::ArrayView { element: actual }, TypeFact::ArrayView { element: expected })
         | (TypeFact::Set { element: actual }, TypeFact::Set { element: expected })
         | (TypeFact::SetView { element: actual }, TypeFact::SetView { element: expected })
-        | (TypeFact::Iterator { item: actual }, TypeFact::Iterator { item: expected }) => {
-            contract_relation(actual, expected)
-        }
+        | (TypeFact::Iterator { item: actual }, TypeFact::Iterator { item: expected })
+        | (TypeFact::ScopedIterator { item: actual }, TypeFact::Iterator { item: expected })
+        | (
+            TypeFact::ScopedIterator { item: actual },
+            TypeFact::ScopedIterator { item: expected },
+        ) => contract_relation(actual, expected),
         (
             TypeFact::ArrayMut {
                 element: actual,
@@ -690,6 +693,12 @@ fn contract_type_display(contract: &TypeFact) -> String {
         ),
         TypeFact::Iterator { item } if contract_is_erased(item) => "Iterator".to_owned(),
         TypeFact::Iterator { item } => format!("Iterator<{}>", contract_type_display(item)),
+        TypeFact::ScopedIterator { item } if contract_is_erased(item) => {
+            "ScopedIterator".to_owned()
+        }
+        TypeFact::ScopedIterator { item } => {
+            format!("ScopedIterator<{}>", contract_type_display(item))
+        }
         TypeFact::Tuple { elements } => format!(
             "({})",
             elements

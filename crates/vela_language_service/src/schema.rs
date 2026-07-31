@@ -1164,7 +1164,7 @@ impl SchemaTypeFact {
                 element: Box::new(Self::from_type_fact(element)),
                 mutation: (*mutation).into(),
             },
-            TypeFact::Iterator { item } => Self::Iterator {
+            TypeFact::Iterator { item } | TypeFact::ScopedIterator { item } => Self::Iterator {
                 item: Box::new(Self::from_type_fact(item)),
             },
             TypeFact::Option { some } => Self::Option {

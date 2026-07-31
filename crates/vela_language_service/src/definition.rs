@@ -315,6 +315,7 @@ impl LanguageServiceDatabases {
             | TypeFact::SetView { .. }
             | TypeFact::SetMut { .. }
             | TypeFact::Iterator { .. }
+            | TypeFact::ScopedIterator { .. }
             | TypeFact::Option { .. }
             | TypeFact::OptionSome { .. }
             | TypeFact::OptionNone

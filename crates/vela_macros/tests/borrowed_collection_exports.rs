@@ -785,7 +785,7 @@ fn borrowed_collection_lookup_methods_use_host_paths_without_materializing() {
 #[test]
 fn growable_borrowed_collection_methods_write_through_host_paths() {
     let mut runtime = runtime(
-        "fn array_remove(owner: CollectionOwner) { let values = owner.values_mut(); return values.remove_at(1).unwrap_or(0); } fn array_missing(owner: CollectionOwner) { return owner.values_mut().remove_at(9).unwrap_or(4); } fn array_push(owner: CollectionOwner) { let values = owner.values_mut(); values.push(13); return values.last().unwrap_or(0); } fn array_pop(owner: CollectionOwner) { let values = owner.values_mut(); return values.pop().unwrap_or(4); } fn array_insert(owner: CollectionOwner) { let values = owner.values_mut(); values.insert(1, 7); values.insert(values.len(), 17); return values.len(); } fn array_insert_missing(owner: CollectionOwner) { owner.values_mut().insert(9, 23); } fn map_set(scores: MapMut<i32, i64>) { scores.set(7i32, 12); scores.set(9i32, 6); scores[10i32] = 8; if !scores.contains_key(9i32) || scores.contains_key(8i32) { return 0; } return scores.remove(7i32).unwrap_or(0) + scores.remove(8i32).unwrap_or(4) + scores[9i32] + scores[10i32]; } fn set_mutate(values: SetMut<i32>) { return values.insert(9i32) && values.contains(9i32) && !values.contains(8i32) && !values.insert(7i32) && values.remove(7i32) && !values.remove(8i32); }",
+        "fn array_remove(owner: CollectionOwner) { let values = owner.values_mut(); let result = values.remove_at(1).unwrap_or(0); host::release(values); return result; } fn array_missing(owner: CollectionOwner) { let values = owner.values_mut(); let result = values.remove_at(9).unwrap_or(4); host::release(values); return result; } fn array_push(owner: CollectionOwner) { let values = owner.values_mut(); values.push(13); let result = values.last().unwrap_or(0); host::release(values); return result; } fn array_pop(owner: CollectionOwner) { let values = owner.values_mut(); let result = values.pop().unwrap_or(4); host::release(values); return result; } fn array_insert(owner: CollectionOwner) { let values = owner.values_mut(); values.insert(1, 7); values.insert(values.len(), 17); let result = values.len(); host::release(values); return result; } fn array_insert_missing(owner: CollectionOwner) { let values = owner.values_mut(); values.insert(9, 23); host::release(values); } fn map_set(scores: MapMut<i32, i64>) { scores.set(7i32, 12); scores.set(9i32, 6); scores[10i32] = 8; if !scores.contains_key(9i32) || scores.contains_key(8i32) { return 0; } return scores.remove(7i32).unwrap_or(0) + scores.remove(8i32).unwrap_or(4) + scores[9i32] + scores[10i32]; } fn set_mutate(values: SetMut<i32>) { return values.insert(9i32) && values.contains(9i32) && !values.contains(8i32) && !values.insert(7i32) && values.remove(7i32) && !values.remove(8i32); }",
     );
 
     let mut owner = CollectionOwner {
@@ -895,7 +895,9 @@ fn growable_borrowed_collection_methods_write_through_host_paths() {
 
 #[test]
 fn borrowed_array_push_charges_before_mutation() {
-    let mut runtime = runtime("fn push(owner: CollectionOwner) { owner.values_mut().push(13); }");
+    let mut runtime = runtime(
+        "fn push(owner: CollectionOwner) { let values = owner.values_mut(); values.push(13); host::release(values); }",
+    );
     let minimum = minimum_owner_call_limit(&mut runtime, "push");
 
     let mut owner = CollectionOwner {
@@ -907,10 +909,10 @@ fn borrowed_array_push_charges_before_mutation() {
             .call(
                 "push",
                 CallArgs::new().with_host_mut("owner", &mut owner),
-                CallOptions::new(minimum - 1, usize::MAX, usize::MAX),
+                CallOptions::new(minimum - 2, usize::MAX, usize::MAX),
             )
             .is_err(),
-        "one fewer execution unit must reject the push"
+        "the budget before mutation and explicit release must reject the push"
     );
     assert_eq!(
         owner.values,
@@ -930,8 +932,9 @@ fn borrowed_array_push_charges_before_mutation() {
 
 #[test]
 fn borrowed_array_insert_charges_before_mutation() {
-    let mut runtime =
-        runtime("fn insert(owner: CollectionOwner) { owner.values_mut().insert(0, 13); }");
+    let mut runtime = runtime(
+        "fn insert(owner: CollectionOwner) { let values = owner.values_mut(); values.insert(0, 13); host::release(values); }",
+    );
     let minimum = minimum_owner_call_limit(&mut runtime, "insert");
     let mut owner = CollectionOwner {
         values: vec![5],
@@ -943,10 +946,10 @@ fn borrowed_array_insert_charges_before_mutation() {
             .call(
                 "insert",
                 CallArgs::new().with_host_mut("owner", &mut owner),
-                CallOptions::new(minimum - 1, usize::MAX, usize::MAX),
+                CallOptions::new(minimum - 2, usize::MAX, usize::MAX),
             )
             .is_err(),
-        "one fewer execution unit must reject the insertion"
+        "the budget before insertion and explicit release must reject the insertion"
     );
     assert_eq!(
         owner.values,
@@ -965,7 +968,7 @@ fn borrowed_array_insert_charges_before_mutation() {
 }
 
 fn minimum_owner_call_limit(runtime: &mut Runtime, function: &str) -> u64 {
-    (1..64)
+    (2..128)
         .find(|limit| {
             let mut owner = CollectionOwner {
                 values: vec![5],

@@ -170,6 +170,10 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
                 .try_read()
                 .ok_or_else(|| host_object_busy(root))
                 .and_then(|object| inspect(&**object)),
+            ScopedHostObjectBinding::IteratorLease(object) => object
+                .try_lock()
+                .ok_or_else(|| host_object_busy(root))
+                .and_then(|lease| inspect(lease.object())),
             ScopedHostObjectBinding::Group { object, index } => {
                 object.with_dependent(|_, objects| {
                     objects
@@ -194,6 +198,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
                 .try_write()
                 .ok_or_else(|| host_object_busy(root))
                 .and_then(|mut object| mutate(&mut **object)),
+            ScopedHostObjectBinding::IteratorLease(_) => Err(host_object_busy(root)),
             ScopedHostObjectBinding::Group { object, index } => {
                 object.with_dependent(|_, objects| {
                     objects

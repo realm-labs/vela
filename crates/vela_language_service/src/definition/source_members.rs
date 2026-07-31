@@ -231,6 +231,7 @@ fn collect_record_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::SetView { .. }
         | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
+        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone
@@ -277,6 +278,7 @@ fn collect_trait_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::SetView { .. }
         | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
+        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone

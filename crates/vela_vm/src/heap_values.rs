@@ -274,13 +274,25 @@ pub(crate) fn validate_value_host_refs(
     Ok(())
 }
 
+pub(crate) enum BorrowedReleaseTarget {
+    Interned(vela_host::path::HostSlotRef),
+    ScopedIterator(vela_host::path::HostRef),
+}
+
 pub(crate) fn optional_borrowed_host_ref(
     value: Value,
     heap: Option<&ScriptHeap>,
-) -> VmResult<Option<vela_host::path::HostSlotRef>> {
+) -> VmResult<Option<BorrowedReleaseTarget>> {
     match value {
-        Value::HostRef(reference) => Ok(Some(reference)),
+        Value::HostRef(reference) => Ok(Some(BorrowedReleaseTarget::Interned(reference))),
         Value::HeapRef(reference) => {
+            if let Some(HeapValue::Iterator(iterator)) = heap.and_then(|heap| heap.get(reference)) {
+                return iterator
+                    .scoped_host_root()
+                    .map(BorrowedReleaseTarget::ScopedIterator)
+                    .map(Some)
+                    .ok_or_else(|| type_error("release borrowed host lease"));
+            }
             let Some(HeapValue::Enum {
                 identity: Some(identity),
                 fields,
@@ -301,7 +313,9 @@ pub(crate) fn optional_borrowed_host_ref(
                     crate::option_result::StdEnumKind::Option,
                     crate::option_result::StdEnumVariant::Some,
                 ) => match fields.get_slot(0, "0").map(crate::stored_runtime_value) {
-                    Some(Value::HostRef(reference)) => Ok(Some(reference)),
+                    Some(Value::HostRef(reference)) => {
+                        Ok(Some(BorrowedReleaseTarget::Interned(reference)))
+                    }
                     _ => Err(type_error("release borrowed host lease")),
                 },
                 _ => Err(type_error("release borrowed host lease")),

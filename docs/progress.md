@@ -17,10 +17,6 @@ foundation. E1 has removed every MIR/bytecode automatic-release producer and
 implemented the authored `host::try_release(value) -> bool` operation. The
 remaining gaps that prevent the final model from being total are:
 
-- scoped producer results are not yet rejected uniformly when discarded or
-  otherwise made unnameable; and
-- await validation does not yet derive from one complete active
-  scoped-resource table; and
 - an admitted non-`'static` call-scoped Host Service can still reach a generated
   runtime `base` placeholder instead of an executable typed Rust default; and
 - Service patches still reserve the common contextual names `base` and
@@ -52,6 +48,13 @@ Phase status:
   release scheduling is deleted. Authored strict `host::release` and narrowly
   idempotent `host::try_release -> bool` lower to distinct dedicated
   MIR/bytecode operations; root teardown remains unchanged.
+- E2 accepted: sealed callable facts identify View, MutView, and lazy Host
+  iterator resources, including resource transfer through iterator adapters.
+  Discarded and unnamed producers fail before execution, and tooling exposes
+  both authored release operations without liveness inference.
+- E3 accepted: every await checks the complete active scoped-resource table
+  before polling ready or pending targets. Dead locals still block; explicit
+  release permits suspension; root Host futures and teardown remain RAII.
 - S0 accepted: the migration inventory, executable fixture, and boundary
   baselines are frozen.
 - S1 accepted: the callable-level replacement model is deleted without aliases
@@ -303,9 +306,9 @@ The Service boundary is not yet fully total: a non-`'static` call-scoped Host
 parameter can be admitted while its Vela patch's current contextual `base` call
 reaches a runtime placeholder. E4 replaces that branch with a generated
 root-local typed thunk and replaces both contextual receivers with
-`service::base::*` / `service::pinned::*`. E2-E3 make scoped-resource facts
-complete and make every await inspect the complete active scoped-resource
-table. The target contract and gates are in the
+  `service::base::*` / `service::pinned::*`. E2-E3 now provide complete
+  scoped-resource facts and deterministic await validation. The target
+  contract and gates are in the
 [final interop plan](rust-vela-interop-final-shape-hard-switch-plan.md).
 
 Shared custom service parameters now use one storage-directed boundary:
@@ -396,16 +399,13 @@ changes.
 
 ## Next Up
 
-1. Execute E1-E3 of the interop hard switch: delete compiler-driven release,
-   add `host::try_release`, make scoped producer facts explicit, and check the
-   complete active resource table at await.
-2. Execute E4-E5: generate total typed `service::base` thunks, reject old
+1. Execute E4-E5: generate total typed `service::base` thunks, reject old
    artifacts, and rerun the focused and repository-wide acceptance matrices.
-3. Continue M20.5 with incremental HIR re-lowering, which unblocks per-module
+2. Continue M20.5 with incremental HIR re-lowering, which unblocks per-module
    fact reuse and is the last superlinear term in a keystroke.
-4. Audit the parameterized container and value-keyed Map/Set plans against
+3. Audit the parameterized container and value-keyed Map/Set plans against
    their explicit acceptance matrices.
-5. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
+4. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
    post-S2 optimization follow-up.
 
 ## Update Rules

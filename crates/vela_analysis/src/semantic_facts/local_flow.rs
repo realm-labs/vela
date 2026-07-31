@@ -382,6 +382,9 @@ pub(super) fn refine_local_fact(declared: &TypeFact, inferred: TypeFact) -> Type
         (TypeFact::Iterator { item }, TypeFact::Iterator { item: inferred }) => {
             TypeFact::iterator(refine_local_fact(item, *inferred))
         }
+        (TypeFact::ScopedIterator { item }, TypeFact::ScopedIterator { item: inferred }) => {
+            TypeFact::scoped_iterator(refine_local_fact(item, *inferred))
+        }
         (TypeFact::Tuple { elements }, TypeFact::Tuple { elements: inferred })
             if elements.len() == inferred.len() =>
         {

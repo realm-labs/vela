@@ -752,4 +752,30 @@ fn host_collection_views_classify_lazy_iterators_as_scoped_resources() {
 
     assert!(scoped_iterator_resource(&TypeFact::array(TypeFact::I64), "iter").is_none());
     assert!(scoped_iterator_resource(&view, "len").is_none());
+
+    for (receiver, methods) in [
+        (view, &["iter", "values"][..]),
+        (
+            TypeFact::map_view(TypeFact::I32, TypeFact::I64),
+            &["iter", "entries", "values"][..],
+        ),
+        (TypeFact::set_view(TypeFact::I32), &["iter", "values"][..]),
+    ] {
+        for method in methods {
+            assert!(
+                scoped_iterator_resource(&receiver, method).is_some(),
+                "{method} must retain Host authority for {}",
+                receiver.display_name()
+            );
+        }
+    }
+
+    let scoped = TypeFact::scoped_iterator(TypeFact::I64);
+    for method in ["map", "filter", "take", "skip"] {
+        assert!(
+            scoped_iterator_resource(&scoped, method).is_some(),
+            "{method} must transfer scoped iterator authority"
+        );
+    }
+    assert!(scoped_iterator_resource(&scoped, "count").is_none());
 }

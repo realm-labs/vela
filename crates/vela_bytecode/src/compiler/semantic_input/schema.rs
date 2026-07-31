@@ -915,7 +915,9 @@ fn structural_contract(
         TypeFact::MapView { .. } | TypeFact::MapMut { .. } => MirTypeContract::Any,
         TypeFact::Set { element } => MirTypeContract::Set(contract_box(element, definition)),
         TypeFact::SetView { .. } | TypeFact::SetMut { .. } => MirTypeContract::Any,
-        TypeFact::Iterator { item } => MirTypeContract::Iterator(contract_box(item, definition)),
+        TypeFact::Iterator { item } | TypeFact::ScopedIterator { item } => {
+            MirTypeContract::Iterator(contract_box(item, definition))
+        }
         TypeFact::Tuple { elements } => MirTypeContract::Tuple(
             elements
                 .iter()

@@ -762,6 +762,7 @@ fn schema_type_symbol_kind(fact: &TypeFact) -> DocumentSymbolKind {
         | TypeFact::SetView { .. }
         | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
+        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone

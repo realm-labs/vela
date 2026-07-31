@@ -241,7 +241,7 @@ pub(super) fn type_owner_name_standard(fact: &TypeFact) -> Option<&'static str> 
         }
         TypeFact::Map { .. } | TypeFact::MapView { .. } | TypeFact::MapMut { .. } => Some("Map"),
         TypeFact::Set { .. } | TypeFact::SetView { .. } | TypeFact::SetMut { .. } => Some("Set"),
-        TypeFact::Iterator { .. } => Some("Iterator"),
+        TypeFact::Iterator { .. } | TypeFact::ScopedIterator { .. } => Some("Iterator"),
         TypeFact::Range => Some("Range"),
         TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone => {
             Some("Option")

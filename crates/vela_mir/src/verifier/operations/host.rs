@@ -52,13 +52,16 @@ pub(super) fn verify_host(
     | MirHostOperation::TryReleaseBorrowLease { root } = operation
     {
         let root_type = verifier.operand_type(root, block, Some(statement), origin)?;
-        if !matches!(root_type, MirValueType::Dynamic | MirValueType::Host(_)) {
+        if !matches!(
+            root_type,
+            MirValueType::Dynamic | MirValueType::Host(_) | MirValueType::Iterator
+        ) {
             return Err(host_error(
                 verifier,
                 block,
                 statement,
                 origin,
-                "borrow lease release requires a host operand",
+                "scoped resource release requires a host or iterator operand",
             ));
         }
         let result_type = if matches!(operation, MirHostOperation::TryReleaseBorrowLease { .. }) {

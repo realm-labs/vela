@@ -58,6 +58,7 @@ pub(crate) fn prepare_callback_receiver(
                 crate::host_collection_projection::prepare_host_root_array_iterator(
                     &mut runtime,
                     receiver,
+                    crate::host_collection_projection::HostIteratorLifetime::CallLocal,
                 )?
             }
             StandardMethodReceiver::Map => {
@@ -66,6 +67,7 @@ pub(crate) fn prepare_callback_receiver(
                     receiver,
                     crate::std_method_ids::HostMapIteration::Entries,
                     cache_site,
+                    crate::host_collection_projection::HostIteratorLifetime::CallLocal,
                 )?
             }
             StandardMethodReceiver::Set => {
@@ -73,6 +75,7 @@ pub(crate) fn prepare_callback_receiver(
                     &mut runtime,
                     receiver,
                     cache_site,
+                    crate::host_collection_projection::HostIteratorLifetime::CallLocal,
                 )?
             }
             _ => unreachable!("only collection receivers support live host callbacks"),

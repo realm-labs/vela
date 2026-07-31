@@ -234,7 +234,7 @@ pub(super) fn method_fact(
                 set_method_fact((**element).clone(), method, lambda_return),
             ),
         ),
-        TypeFact::Iterator { item } => {
+        TypeFact::Iterator { item } | TypeFact::ScopedIterator { item } => {
             iterator_method_fact((**item).clone(), method, lambda_return, arguments)
         }
         TypeFact::Primitive(PrimitiveTag::String) => string_method_fact(method),
@@ -311,7 +311,7 @@ fn method_names(receiver: &TypeFact) -> &'static [&'static str] {
         TypeFact::Set { .. } | TypeFact::SetView { .. } | TypeFact::SetMut { .. } => {
             SET_METHOD_NAMES
         }
-        TypeFact::Iterator { .. } => ITERATOR_METHOD_NAMES,
+        TypeFact::Iterator { .. } | TypeFact::ScopedIterator { .. } => ITERATOR_METHOD_NAMES,
         TypeFact::Primitive(PrimitiveTag::String) => STRING_METHOD_NAMES,
         TypeFact::Primitive(PrimitiveTag::Bytes) => BYTES_METHOD_NAMES,
         TypeFact::Primitive(PrimitiveTag::Char) => CHAR_METHOD_NAMES,

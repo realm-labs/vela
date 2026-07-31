@@ -3232,16 +3232,22 @@ access can differ between calls for the same concrete Rust type, these
 StandardValue targets are not stored in the ordinary dynamic-method inline
 cache.
 
-Borrowed collection traversal uses prepared call-scoped host iterators rather
-than Rust iterator objects or serialized containers. Construction freezes the
-Array extent or deterministic Map/Set key order; HashMap/HashSet order follows
-`ScriptHostKey`. Each poll performs one prepared HostAccess read against the
-live collection, preserving exact scalar/String/Bytes/HostRef tags and
-revalidating root generation and lease authority. Later replacement of an
-unread value is visible, structural growth is outside the frozen traversal,
-and removal of a pending item fails. Array, Map, and Set read-only callbacks,
-including Array and Map `group_by`, consume the same resumable states and
-charge only items actually read. Map grouping returns
+Borrowed collection traversal uses prepared host iterators rather than Rust
+iterator objects or serialized containers. A lazy iterator returned to Vela is
+an explicit scoped child: construction freezes the Array extent or
+deterministic Map/Set key order, retains exact Host authority, and freezes
+parent reads or writes that conflict with that lease until authored release.
+Its `ScopedIterator` analysis fact transfers through `map`, `filter`, `take`,
+and `skip`; the destination must remain named and must be released. Adapter
+implementations that cannot create a releasable child identity fail closed.
+Each poll performs one prepared HostAccess read, preserving exact
+scalar/String/Bytes/HostRef tags and revalidating generation and lease
+authority. Release invalidates the iterator immediately.
+
+Array, Map, and Set callback methods instead consume a call-local prepared
+iterator that cannot escape the method. This preserves resumable live callback
+semantics, including controlled replacement or removal between callback
+resumes, without adding a script-visible scoped result. Map grouping returns
 `Map<GroupKey, Map<Key, Value>>`, preserving each original entry and the
 deterministic traversal order inside its group. Host-backed iterators are
 call-scoped and fail on escape.
@@ -3591,6 +3597,13 @@ and root success/error/panic/cancellation/future-drop cleanup remain RAII
 boundaries because Vela never owns those references. Every await validates the
 complete active scoped-resource table before polling; a dead but unreleased
 Vela local still blocks suspension.
+
+Lazy Host collection iterators participate in the same table. Their analysis
+identity is distinct from an ordinary owned `Iterator`, adapter transformations
+transfer rather than duplicate the resource, terminal consumption does not
+release it, and child-before-parent order is mandatory. `host::try_release`
+may converge control flow after transfer; it is not an implicit terminal
+cleanup operation.
 
 Service admission includes executable typed Rust `service::base::method(...)`
 dispatch for every accepted Host parameter shape. Non-`'static` call-scoped

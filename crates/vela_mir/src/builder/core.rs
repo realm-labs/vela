@@ -921,7 +921,7 @@ pub(super) fn value_type(fact: Option<&TypeFact>) -> MirValueType {
         Some(TypeFact::Primitive(vela_common::PrimitiveTag::Unit)) => MirValueType::Unit,
         Some(TypeFact::Primitive(primitive)) => MirValueType::Primitive(*primitive),
         Some(TypeFact::Range) => MirValueType::Range,
-        Some(TypeFact::Iterator { .. }) => MirValueType::Iterator,
+        Some(TypeFact::Iterator { .. } | TypeFact::ScopedIterator { .. }) => MirValueType::Iterator,
         Some(TypeFact::Tuple { elements }) => {
             MirValueType::Tuple(u32::try_from(elements.len()).unwrap_or(u32::MAX))
         }

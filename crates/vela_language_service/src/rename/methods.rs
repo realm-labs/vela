@@ -412,6 +412,7 @@ fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::SetView { .. }
         | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
+        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone

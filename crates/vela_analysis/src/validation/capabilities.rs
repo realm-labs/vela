@@ -260,6 +260,7 @@ fn identity_capability(
             | TypeFact::SetView { .. }
             | TypeFact::SetMut { .. }
             | TypeFact::Iterator { .. }
+            | TypeFact::ScopedIterator { .. }
             | TypeFact::Tuple { .. }
             | TypeFact::Option { .. }
             | TypeFact::OptionSome { .. }
@@ -328,6 +329,7 @@ fn comparison_capability(
             | TypeFact::SetView { .. }
             | TypeFact::SetMut { .. }
             | TypeFact::Iterator { .. }
+            | TypeFact::ScopedIterator { .. }
             | TypeFact::Tuple { .. }
             | TypeFact::Option { .. }
             | TypeFact::OptionSome { .. }
@@ -458,6 +460,7 @@ fn ord_capability_for_fact(capabilities: &CapabilityIndex, fact: &TypeFact) -> C
         | TypeFact::SetView { .. }
         | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
+        | TypeFact::ScopedIterator { .. }
         | TypeFact::Tuple { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }

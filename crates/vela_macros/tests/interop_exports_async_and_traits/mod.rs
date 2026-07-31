@@ -96,11 +96,14 @@ fn borrowed_return_requires_explicit_release_before_await() {
     drop(future);
     assert!(matches!(
         error.kind(),
-        VmErrorKind::Host(vela_host::error::HostErrorKind::BorrowedHostRefEscape {
-            boundary: vela_host::error::HostRefLifetimeBoundary::AsyncSuspend,
-            ..
-        })
+        VmErrorKind::Host(vela_host::error::HostErrorKind::UnreleasedScopedResourcesAtAwait { .. })
     ));
+    assert!(
+        error
+            .to_diagnostic()
+            .message
+            .contains("host::release(value)")
+    );
 
     let mut future = Box::pin(runtime.call_async(
         "explicit",
@@ -155,14 +158,66 @@ fn borrowed_return_cannot_cross_async_suspend() {
 
     assert!(matches!(
         error.kind(),
-        VmErrorKind::Host(vela_host::error::HostErrorKind::BorrowedHostRefEscape {
-            boundary: vela_host::error::HostRefLifetimeBoundary::AsyncSuspend,
-            ..
-        })
+        VmErrorKind::Host(vela_host::error::HostErrorKind::UnreleasedScopedResourcesAtAwait { .. })
     ));
     assert_eq!(service.player.level, 5);
     assert_eq!(other.level, 3);
     assert_eq!(service.touches, 0);
+}
+
+#[test]
+fn dead_scoped_locals_and_ready_or_pending_targets_obey_the_same_await_gate() {
+    let mut runtime = host_export_runtime(
+        "async fn dead(service: PlayerService) { { let player = service.player_mut(); player.increment(1); } game::double_async(1).await; } \
+         async fn pending(service: PlayerService, other: Player) { let player = service.player_mut(); player.increment(1); game::hold_player_async(other).await; }",
+    );
+    let waker = std::task::Waker::noop();
+    let mut context = std::task::Context::from_waker(waker);
+
+    let mut service = PlayerService {
+        player: Player { level: 5 },
+        touches: 0,
+    };
+    let mut dead = Box::pin(runtime.call_async(
+        "dead",
+        CallArgs::new().with_host_mut("service", &mut service),
+        CallOptions::unbounded(),
+    ));
+    let dead_error = match std::future::Future::poll(dead.as_mut(), &mut context) {
+        std::task::Poll::Ready(value) => {
+            value.expect_err("a dead local must remain in the active resource table")
+        }
+        std::task::Poll::Pending => panic!("await gate must run before polling a ready target"),
+    };
+    drop(dead);
+    assert!(matches!(
+        dead_error.kind(),
+        VmErrorKind::Host(vela_host::error::HostErrorKind::UnreleasedScopedResourcesAtAwait { .. })
+    ));
+
+    let mut other = Player { level: 3 };
+    let mut pending = Box::pin(
+        runtime.call_async(
+            "pending",
+            CallArgs::new()
+                .with_host_mut("service", &mut service)
+                .with_host_mut("other", &mut other),
+            CallOptions::unbounded(),
+        ),
+    );
+    let pending_error = match std::future::Future::poll(pending.as_mut(), &mut context) {
+        std::task::Poll::Ready(value) => {
+            value.expect_err("the await gate must reject before polling a pending target")
+        }
+        std::task::Poll::Pending => panic!("pending target must not start with a live resource"),
+    };
+    drop(pending);
+    assert!(matches!(
+        pending_error.kind(),
+        VmErrorKind::Host(vela_host::error::HostErrorKind::UnreleasedScopedResourcesAtAwait { .. })
+    ));
+    assert_eq!(service.player.level, 7);
+    assert_eq!(other.level, 3);
 }
 
 #[test]

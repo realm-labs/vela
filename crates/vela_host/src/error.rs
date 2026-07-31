@@ -120,6 +120,9 @@ pub enum HostErrorKind {
     BorrowStillInUse {
         path: HostPath,
     },
+    UnreleasedScopedResourcesAtAwait {
+        paths: Vec<HostPath>,
+    },
     BorrowedHostRefEscape {
         path: HostPath,
         boundary: HostRefLifetimeBoundary,

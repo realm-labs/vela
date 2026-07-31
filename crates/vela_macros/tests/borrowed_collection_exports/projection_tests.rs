@@ -102,8 +102,8 @@ fn borrowed_array_get_uses_one_live_index_read() {
     let mut runtime = runtime(concat!(
         "fn direct(values: ArrayView<i64>) { ",
         "return values.get(1).unwrap_or(0) + values.get(9).unwrap_or(4); }\n",
-        "fn retained(owner: CollectionOwner) { ",
-        "return owner.values().get(2).unwrap_or(0); }\n",
+        "fn retained(owner: CollectionOwner) { let values = owner.values(); ",
+        "let result = values.get(2).unwrap_or(0); host::release(values); return result; }\n",
         "fn mutable(values: ArrayMut<i64>) { return values.get(1).unwrap_or(0); }\n",
         "fn dynamic(values) { return values.get(0).unwrap_or(0); }\n",
         "fn invalid(values: ArrayView<i64>) { return values.get(-1); }",
@@ -721,7 +721,7 @@ fn borrowed_array_transforms_use_one_bounded_projection() {
 #[test]
 fn borrowed_collection_projections_feed_iterator_pipelines() {
     let mut runtime = runtime(
-        "fn array_iter(values: ArrayView<i64>) { return values.iter().filter(|value| value >= 6).count() + values.values().count(); } fn map_iter(scores: MapView<i32, i64>) { return scores.keys().count() + scores.entries().count() + scores.values().filter(|value| value >= 6).count(); } fn set_iter(values: SetView<i32>) { return values.iter().filter(|value| value >= 7i32).count() + values.values().count(); }",
+        "fn array_iter(values: ArrayView<i64>) { let source = values.iter(); let selected = source.filter(|value| value >= 6); let count = selected.count(); host::release(selected); let all = values.values(); let all_count = all.count(); host::release(all); return count + all_count; } fn map_iter(scores: MapView<i32, i64>) { let source = scores.values(); let selected = source.filter(|value| value >= 6); let selected_count = selected.count(); host::release(selected); let entries = scores.entries(); let entry_count = entries.count(); host::release(entries); return scores.keys().count() + entry_count + selected_count; } fn set_iter(values: SetView<i32>) { let source = values.iter(); let selected = source.filter(|value| value >= 7i32); let selected_count = selected.count(); host::release(selected); let all = values.values(); let all_count = all.count(); host::release(all); return selected_count + all_count; }",
     );
 
     let array = vec![4_i64, 6_i64, 11_i64];
@@ -752,9 +752,9 @@ fn borrowed_collection_projections_feed_iterator_pipelines() {
 }
 
 #[test]
-fn borrowed_array_iterators_read_live_values_with_a_frozen_extent() {
+fn scoped_array_iterators_freeze_parent_access_until_release() {
     let mut runtime = runtime(
-        "fn next_values(owner: CollectionOwner) { let values = owner.values_mut(); let cursor = values.iter(); values[0] = 10; let first = cursor.next().unwrap_or(0); values[1] = 20; values.push(30); return first + cursor.next().unwrap_or(0) + cursor.next().unwrap_or(7); } fn pipeline(values: ArrayMut<i64>) { let cursor = values.values(); values[0] = 11; values[1] = 13; return cursor.map(|value| value).collect_array().sum(); } fn shrink(owner: CollectionOwner) { let values = owner.values_mut(); let cursor = values.iter(); cursor.next(); values.pop(); return cursor.next(); }",
+        "fn read_then_mutate(owner: CollectionOwner) { let values = owner.values_mut(); let cursor = values.iter(); let first = cursor.next().unwrap_or(0); let second = cursor.next().unwrap_or(0); host::release(cursor); values[0] = 10; values.push(30); host::release(values); return first + second; } fn mutate_while_live(values: ArrayMut<i64>) { let cursor = values.iter(); values[0] = 11; host::release(cursor); } fn shrink_while_live(owner: CollectionOwner) { let values = owner.values_mut(); let cursor = values.iter(); cursor.next(); values.pop(); host::release(cursor); host::release(values); }",
     );
 
     let mut owner = CollectionOwner {
@@ -763,24 +763,22 @@ fn borrowed_array_iterators_read_live_values_with_a_frozen_extent() {
     };
     let result = runtime
         .call(
-            "next_values",
+            "read_then_mutate",
             CallArgs::new().with_host_mut("owner", &mut owner),
             CallOptions::unbounded(),
         )
-        .expect("borrowed Array iterator should read each live value on demand");
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(37)));
+        .expect("explicit iterator release should restore parent mutation access");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(5)));
     drop(result);
-    assert_eq!(owner.values, vec![10, 20, 30]);
+    assert_eq!(owner.values, vec![10, 3, 30]);
 
     let mut values = vec![5_i64, 7_i64];
     let mut args = CallArgs::new();
     args.push_collection_mut("values", &mut values);
-    let result = runtime
-        .call("pipeline", args, CallOptions::unbounded())
-        .expect("live host iterator should survive resumable callback pipelines");
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(24)));
-    drop(result);
-    assert_eq!(values, vec![11, 13]);
+    let _error = runtime
+        .call("mutate_while_live", args, CallOptions::unbounded())
+        .expect_err("a live scoped iterator must freeze parent mutation");
+    assert_eq!(values, vec![5, 7]);
 
     let mut owner = CollectionOwner {
         values: vec![2_i64, 3_i64],
@@ -788,19 +786,20 @@ fn borrowed_array_iterators_read_live_values_with_a_frozen_extent() {
     };
     runtime
         .call(
-            "shrink",
+            "shrink_while_live",
             CallArgs::new().with_host_mut("owner", &mut owner),
             CallOptions::unbounded(),
         )
-        .expect_err("removing an unvisited fixed-extent element should fail its live read");
-    assert_eq!(owner.values, vec![2]);
+        .expect_err("structural mutation must fail while the scoped iterator is live");
+    assert_eq!(owner.values, vec![2, 3]);
 }
 
 #[test]
 fn borrowed_array_iterators_do_not_escape_the_host_call() {
     let mut runtime = runtime(concat!(
-        "fn direct(values) { return values.iter(); }\n",
-        "fn pipeline(values) { return values.iter().map(|value| value).take(1); }",
+        "fn direct(values: ArrayView<i64>) { let cursor = values.iter(); return cursor; }\n",
+        "fn pipeline(values: ArrayView<i64>) { let source = values.iter(); ",
+        "let mapped = source.map(|value| value); let taken = mapped.take(1); return taken; }",
     ));
     let values = vec![2_i64, 3, 5];
     for function in ["direct", "pipeline"] {
@@ -823,8 +822,10 @@ fn borrowed_array_iterators_do_not_escape_the_host_call() {
 #[test]
 fn borrowed_array_iterator_creation_does_not_charge_for_all_elements() {
     let mut runtime = runtime(concat!(
-        "fn create(values) { return values.iter().take(0).count(); }\n",
-        "fn count(values) { return values.iter().count(); }",
+        "fn create(values: ArrayView<i64>) { let source = values.iter(); ",
+        "let empty = source.take(0); let count = empty.count(); host::release(empty); return count; }\n",
+        "fn count(values: ArrayView<i64>) { let cursor = values.iter(); ",
+        "let count = cursor.count(); host::release(cursor); return count; }",
     ));
 
     let minimum_limit = |runtime: &mut Runtime, function: &str, values: &Vec<i64>| {

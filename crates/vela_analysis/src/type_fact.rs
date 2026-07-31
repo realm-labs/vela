@@ -47,6 +47,9 @@ pub enum TypeFact {
     Iterator {
         item: Box<TypeFact>,
     },
+    ScopedIterator {
+        item: Box<TypeFact>,
+    },
     Tuple {
         elements: Vec<TypeFact>,
     },
@@ -175,6 +178,12 @@ impl TypeFact {
 
     pub fn iterator(item: TypeFact) -> Self {
         Self::Iterator {
+            item: Box::new(item),
+        }
+    }
+
+    pub fn scoped_iterator(item: TypeFact) -> Self {
+        Self::ScopedIterator {
             item: Box::new(item),
         }
     }
@@ -351,6 +360,7 @@ impl TypeFact {
                 format!("SetMut({}, {})", element.display_name(), mutation.as_str())
             }
             Self::Iterator { .. } => "Iterator".to_owned(),
+            Self::ScopedIterator { .. } => "ScopedIterator".to_owned(),
             Self::Tuple { elements } => {
                 let elements = elements
                     .iter()

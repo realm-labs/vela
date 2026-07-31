@@ -24,6 +24,10 @@ pub(super) struct HostMapCursor {
 }
 
 impl HostMapCursor {
+    pub(super) const fn root(&self) -> HostRef {
+        self.root
+    }
+
     pub(super) fn new(
         root: HostRef,
         target: HostTargetPlan,

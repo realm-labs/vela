@@ -17,6 +17,10 @@ pub(super) struct HostArrayCursor {
 }
 
 impl HostArrayCursor {
+    pub(super) const fn root(&self) -> HostRef {
+        self.root
+    }
+
     pub(super) fn new(
         root: HostRef,
         target: HostTargetPlan,

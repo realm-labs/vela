@@ -325,7 +325,9 @@ fn diagnose_tuple_for_pattern(
 
 fn iterable_item_fact(fact: &TypeFact) -> Option<&TypeFact> {
     match fact {
-        TypeFact::Array { element } | TypeFact::Iterator { item: element } => Some(element),
+        TypeFact::Array { element }
+        | TypeFact::Iterator { item: element }
+        | TypeFact::ScopedIterator { item: element } => Some(element),
         _ => None,
     }
 }
@@ -741,6 +743,7 @@ fn is_precise_receiver(facts: &RegistryFacts, receiver: &TypeFact) -> bool {
         | TypeFact::Map { .. }
         | TypeFact::Set { .. }
         | TypeFact::Iterator { .. }
+        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone

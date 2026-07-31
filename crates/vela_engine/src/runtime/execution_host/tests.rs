@@ -421,6 +421,14 @@ fn nested_standard_collection_views_keep_exact_identity_and_release_order() {
     };
     assert_eq!(inner.type_id, inner_type);
 
+    let await_error = host
+        .validate_scoped_resources_before_await()
+        .expect_err("the complete active table must block await");
+    let HostErrorKind::UnreleasedScopedResourcesAtAwait { paths } = await_error.kind else {
+        panic!("await should report every active scoped resource");
+    };
+    assert_eq!(paths.len(), 2);
+
     let error = host
         .try_release_scoped_host(outer)
         .expect_err("a parent view cannot release while its child is live");
@@ -451,11 +459,20 @@ fn nested_standard_collection_views_keep_exact_identity_and_release_order() {
         Ok(false),
         "known expiry should be the only idempotent no-op"
     );
+    let await_error = host
+        .validate_scoped_resources_before_await()
+        .expect_err("the remaining outer resource must still block await");
+    assert!(matches!(
+        await_error.kind,
+        HostErrorKind::UnreleasedScopedResourcesAtAwait { ref paths } if paths.len() == 1
+    ));
     assert_eq!(
         host.try_release_scoped_host(outer),
         Ok(true),
         "outer view should release after its child"
     );
+    host.validate_scoped_resources_before_await()
+        .expect("explicit child-to-parent release must permit await");
 
     let inner_error = access
         .read_resolved_scoped(&mut host, scalar_write, scalar_target, None)

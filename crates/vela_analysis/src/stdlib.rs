@@ -108,11 +108,16 @@ pub fn scoped_iterator_resource(
     method: &str,
 ) -> Option<vela_registry::ScopedResourceReturnDef> {
     let produces_iterator = match receiver {
-        TypeFact::ArrayView { .. } | TypeFact::ArrayMut { .. } => method == "iter",
-        TypeFact::MapView { .. } | TypeFact::MapMut { .. } => {
-            matches!(method, "iter" | "keys" | "values")
+        TypeFact::ArrayView { .. } | TypeFact::ArrayMut { .. } => {
+            matches!(method, "iter" | "values")
         }
-        TypeFact::SetView { .. } | TypeFact::SetMut { .. } => method == "iter",
+        TypeFact::MapView { .. } | TypeFact::MapMut { .. } => {
+            matches!(method, "iter" | "entries" | "values")
+        }
+        TypeFact::SetView { .. } | TypeFact::SetMut { .. } => {
+            matches!(method, "iter" | "values")
+        }
+        TypeFact::ScopedIterator { .. } => matches!(method, "map" | "filter" | "take" | "skip"),
         _ => false,
     };
     produces_iterator.then_some(vela_registry::ScopedResourceReturnDef {

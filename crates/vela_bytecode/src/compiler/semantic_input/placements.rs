@@ -536,10 +536,15 @@ impl GenerationBuilder<'_, '_> {
                 .expression(field.receiver)
                 .cloned(),
         };
-        if matches!(receiver_fact, Some(TypeFact::Iterator { .. }))
-            && matches!(name, "map" | "filter" | "take" | "skip")
+        if matches!(
+            receiver_fact,
+            Some(TypeFact::Iterator { .. } | TypeFact::ScopedIterator { .. })
+        ) && matches!(name, "map" | "filter" | "take" | "skip")
         {
             let arguments = self.dynamic_argument_values_from_source(placement, origin)?;
+            let scoped_resource = receiver_fact.as_ref().and_then(|receiver| {
+                vela_analysis::stdlib::scoped_iterator_resource(receiver, name)
+            });
             return Ok(CompileCallTarget::dynamic(
                 CompileCalleeTarget::DynamicMethod(DynamicMethodTarget::method(
                     name,
@@ -559,7 +564,8 @@ impl GenerationBuilder<'_, '_> {
                         .collect(),
                 )),
                 arguments,
-            ));
+            )
+            .with_scoped_resource(scoped_resource));
         }
         let method = match self.catalog.method_by_owner_name(owner, name).cloned() {
             Some(method) => method,

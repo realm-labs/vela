@@ -70,6 +70,7 @@ struct ScopedHostBinding<'host> {
 
 enum ScopedHostObjectBinding<'host> {
     Single(ScopedHostLeaseSlot<'host>),
+    IteratorLease(Arc<parking_lot::Mutex<ErasedHostLease<'host>>>),
     Group {
         object: Arc<ScopedBorrowedHostGroupCell<'host>>,
         index: usize,
@@ -187,6 +188,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             .expect("validated scoped host handle remains present");
         let in_use = match &binding.object {
             ScopedHostObjectBinding::Single(object) => Arc::strong_count(object) != 1,
+            ScopedHostObjectBinding::IteratorLease(object) => Arc::strong_count(object) != 1,
             ScopedHostObjectBinding::Group { .. } => Arc::strong_count(&binding.activity) != 1,
         };
         if in_use {
@@ -594,6 +596,14 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
         self.parent.try_release_scoped_host(root)
     }
 
+    fn validate_scoped_resources_before_await(&self) -> HostResult<()> {
+        self.parent.validate_scoped_resources_before_await()
+    }
+
+    fn retain_scoped_iterator_host(&mut self, root: HostRef) -> HostResult<HostRef> {
+        self.parent.retain_scoped_iterator_host(root)
+    }
+
     fn validate_host_ref_lifetime(
         &self,
         root: HostRef,
@@ -871,6 +881,47 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
 
     fn try_release_scoped_host(&mut self, root: HostRef) -> HostResult<bool> {
         self.release_scoped_host_impl(root, true)
+    }
+
+    fn validate_scoped_resources_before_await(&self) -> HostResult<()> {
+        let paths = self
+            .scoped_hosts
+            .iter()
+            .map(|(handle, binding)| {
+                vela_host::path::HostPath::new(Self::scoped_root(handle, binding.type_id))
+            })
+            .collect::<Vec<_>>();
+        if paths.is_empty() {
+            Ok(())
+        } else {
+            Err(HostError {
+                kind: HostErrorKind::UnreleasedScopedResourcesAtAwait { paths },
+                source_span: None,
+            })
+        }
+    }
+
+    fn retain_scoped_iterator_host(&mut self, root: HostRef) -> HostResult<HostRef> {
+        if self.extern_states.binding(root).is_some()
+            || (!self.host_arena.contains(root)
+                && self.scoped_binding(root).is_none()
+                && self.args.direct_binding(root).is_none())
+        {
+            return Err(vela_host::lease::host_lease_unsupported(root));
+        }
+        let parent_access = self.host_receiver_access(root);
+        let lease = Arc::new(parking_lot::Mutex::new(
+            self.take_execution_host_lease(root, parent_access)?,
+        ));
+        let type_id = root.type_id;
+        let handle = self.scoped_hosts.insert_with(|handle| ScopedHostBinding {
+            borrow_lease_id: Self::borrow_lease_id(handle),
+            type_id,
+            access: HostLeaseKind::Shared,
+            object: ScopedHostObjectBinding::IteratorLease(lease),
+            activity: Arc::new(()),
+        });
+        Ok(Self::scoped_root(handle, type_id))
     }
 
     fn validate_host_ref_lifetime(

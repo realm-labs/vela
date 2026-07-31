@@ -428,6 +428,7 @@ fn is_stable_type_fact(fact: &TypeFact) -> bool {
         | TypeFact::SetView { element }
         | TypeFact::SetMut { element, .. }
         | TypeFact::Iterator { item: element }
+        | TypeFact::ScopedIterator { item: element }
         | TypeFact::Option { some: element }
         | TypeFact::OptionSome { some: element }
         | TypeFact::ResultOk { ok: element }

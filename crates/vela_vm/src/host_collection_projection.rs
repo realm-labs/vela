@@ -15,6 +15,12 @@ use crate::{
     std_method_ids::{HostArrayTransform, HostMapIteration},
 };
 
+#[derive(Clone, Copy)]
+pub(crate) enum HostIteratorLifetime {
+    Scoped,
+    CallLocal,
+}
+
 pub(crate) fn execute_host_root_array_iteration(
     mut runtime: HostAccessRuntime<'_, '_, '_>,
     receiver: Register,
@@ -27,7 +33,8 @@ pub(crate) fn execute_host_root_array_iteration(
             actual: args.len(),
         }));
     }
-    let iterator = prepare_host_root_array_iterator(&mut runtime, receiver)?;
+    let iterator =
+        prepare_host_root_array_iterator(&mut runtime, receiver, HostIteratorLifetime::Scoped)?;
     let Some(heap) = runtime.heap.as_deref_mut() else {
         return Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "host array iterator heap",
@@ -43,6 +50,7 @@ pub(crate) fn execute_host_root_array_iteration(
 pub(crate) fn prepare_host_root_array_iterator(
     runtime: &mut HostAccessRuntime<'_, '_, '_>,
     receiver: Register,
+    lifetime: HostIteratorLifetime,
 ) -> VmResult<crate::iteration::IteratorState> {
     let root = expect_host_ref(
         &runtime.frame.read(receiver)?,
@@ -89,6 +97,7 @@ pub(crate) fn prepare_host_root_array_iterator(
         .adapter
         .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &element_target))
         .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    let root = retain_iterator_root(runtime, root, lifetime)?;
     Ok(crate::iteration::IteratorState::from_host_array(
         root,
         element_target,
@@ -111,7 +120,13 @@ pub(crate) fn execute_host_root_map_iteration(
             actual: args.len(),
         }));
     }
-    let iterator = prepare_host_root_map_iterator(&mut runtime, receiver, iteration, cache_site)?;
+    let iterator = prepare_host_root_map_iterator(
+        &mut runtime,
+        receiver,
+        iteration,
+        cache_site,
+        HostIteratorLifetime::Scoped,
+    )?;
     let heap = runtime
         .heap
         .as_deref_mut()
@@ -128,6 +143,7 @@ pub(crate) fn prepare_host_root_map_iterator(
     receiver: Register,
     iteration: HostMapIteration,
     cache_site: Option<CacheSiteId>,
+    lifetime: HostIteratorLifetime,
 ) -> VmResult<crate::iteration::IteratorState> {
     let root = expect_host_ref(
         &runtime.frame.read(receiver)?,
@@ -151,6 +167,7 @@ pub(crate) fn prepare_host_root_map_iterator(
         .adapter
         .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &target))
         .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    let root = retain_iterator_root(runtime, root, lifetime)?;
     Ok(match iteration {
         HostMapIteration::Values => {
             crate::iteration::IteratorState::from_host_map_values(root, target, access, keys)
@@ -174,7 +191,12 @@ pub(crate) fn execute_host_root_set_iteration(
             actual: args.len(),
         }));
     }
-    let iterator = prepare_host_root_set_iterator(&mut runtime, receiver, cache_site)?;
+    let iterator = prepare_host_root_set_iterator(
+        &mut runtime,
+        receiver,
+        cache_site,
+        HostIteratorLifetime::Scoped,
+    )?;
     let heap = runtime
         .heap
         .as_deref_mut()
@@ -190,6 +212,7 @@ pub(crate) fn prepare_host_root_set_iterator(
     runtime: &mut HostAccessRuntime<'_, '_, '_>,
     receiver: Register,
     cache_site: Option<CacheSiteId>,
+    lifetime: HostIteratorLifetime,
 ) -> VmResult<crate::iteration::IteratorState> {
     let root = expect_host_ref(
         &runtime.frame.read(receiver)?,
@@ -213,9 +236,27 @@ pub(crate) fn prepare_host_root_set_iterator(
         .adapter
         .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &target))
         .map_err(|error| error.with_source_span_if_absent(runtime.source_span))?;
+    let root = retain_iterator_root(runtime, root, lifetime)?;
     Ok(crate::iteration::IteratorState::from_host_set(
         root, target, access, values,
     ))
+}
+
+fn retain_iterator_root(
+    runtime: &mut HostAccessRuntime<'_, '_, '_>,
+    root: vela_host::path::HostRef,
+    lifetime: HostIteratorLifetime,
+) -> VmResult<vela_host::path::HostRef> {
+    if matches!(lifetime, HostIteratorLifetime::CallLocal) {
+        return Ok(root);
+    }
+    let host = runtime
+        .host
+        .as_deref_mut()
+        .ok_or_else(missing_host_context)?;
+    host.adapter
+        .retain_scoped_iterator_host(root)
+        .map_err(|error| error.with_source_span_if_absent(runtime.source_span).into())
 }
 
 pub(crate) fn execute_host_root_collection_projection(

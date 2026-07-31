@@ -641,6 +641,7 @@ pub(super) fn typed_container_mutation_arg_fact(
         | TypeFact::SetView { .. }
         | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
+        | TypeFact::ScopedIterator { .. }
         | TypeFact::Tuple { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
@@ -696,6 +697,9 @@ fn project_mutation_contract_fact(fact: &TypeFact) -> Option<TypeFact> {
             TypeFact::set_mut(project_mutation_contract_fact(element)?, *mutation)
         }
         TypeFact::Iterator { item } => TypeFact::iterator(project_mutation_contract_fact(item)?),
+        TypeFact::ScopedIterator { item } => {
+            TypeFact::scoped_iterator(project_mutation_contract_fact(item)?)
+        }
         TypeFact::Tuple { elements } => TypeFact::tuple(
             elements
                 .iter()

@@ -17,6 +17,10 @@ pub(super) struct HostSetCursor {
 }
 
 impl HostSetCursor {
+    pub(super) const fn root(&self) -> HostRef {
+        self.root
+    }
+
     pub(super) fn new(
         root: HostRef,
         target: HostTargetPlan,
