@@ -74,20 +74,20 @@ fn same_generation_base_decodes_read_only_value_slice_for_rust_default() {
 impl TotalPatch {
     fn sum(context, values) {
         let transformed = values.map(|value| value);
-        return base.sum(context, transformed) + transformed.len();
+        return service::base::sum(context, transformed) + transformed.len();
     }
 
     fn one(context, value) {
-        return base.one(context, value) + 2;
+        return service::base::one(context, value) + 2;
     }
 
     fn owned(context, values) {
         let transformed = values.map(|value| value);
-        return base.owned(context, transformed) + transformed.len();
+        return service::base::owned(context, transformed) + transformed.len();
     }
 
     fn mutate(context, values) {
-        return base.mutate(context, values);
+        return service::base::mutate(context, values);
     }
 }
 "#;
@@ -141,20 +141,20 @@ impl TotalPatch {
 #[service_impl(slice_service::totals)]
 impl InvalidCopyBack {
     fn sum(context, values) {
-        return base.sum(context, values);
+        return service::base::sum(context, values);
     }
 
     fn one(context, value) {
-        return base.one(context, value);
+        return service::base::one(context, value);
     }
 
     fn owned(context, values) {
-        return base.owned(context, values);
+        return service::base::owned(context, values);
     }
 
     fn mutate(context, values) {
         let transformed = values.map(|value| value);
-        return base.mutate(context, transformed);
+        return service::base::mutate(context, transformed);
     }
 }
 "#;

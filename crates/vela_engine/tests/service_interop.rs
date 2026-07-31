@@ -290,36 +290,36 @@ impl InventoryPatch {
             delta: command.delta + 1,
             label: "inventory-base",
         };
-        let base_sum = base.apply(context, values, base_command);
+        let base_sum = service::base::apply(context, values, base_command);
         let base_write = values[values.len() - 1];
         values.push(base_write + 2);
         let audit_command = interop::PatchCommand {
             delta: base_write + 4,
             label: "audit-rust",
         };
-        let audit_len = services.audit.record(context, values, audit_command);
+        let audit_len = service::pinned::audit::record(context, values, audit_command);
         return base_sum + base_write + audit_len + values[values.len() - 1];
     }
 
     fn conflict(context, values) {
-        return services.audit.combine(context, values, values);
+        return service::pinned::audit::combine(context, values, values);
     }
 
     fn borrowed_chain(context) {
-        services.inventory.identity(context);
+        service::pinned::inventory::identity(context);
         return 15;
     }
 
     fn identity(context) {
-        return base.identity(context);
+        return service::base::identity(context);
     }
 
     fn optional(context, present) {
-        return base.optional(context, present);
+        return service::base::optional(context, present);
     }
 
     fn checked(context, allowed) {
-        return base.checked(context, allowed);
+        return service::base::checked(context, allowed);
     }
 }
 "#;
@@ -383,18 +383,18 @@ impl InventoryPatch {
 impl AuditPatch {
     fn record(context, values, command) {
         values.push(command.delta + 10);
-        let rust_len = base.record(context, values, command);
+        let rust_len = service::base::record(context, values, command);
         return rust_len + values.len();
     }
 
     fn inspect(context, observed) {
-        return base.inspect(context, observed) + 3;
+        return service::base::inspect(context, observed) + 3;
     }
 
     fn constructed(context) {
         let scratch = ScratchState::new(11);
-        let before = base.read_scratch(scratch);
-        let after = base.write_scratch(scratch);
+        let before = service::base::read_scratch(scratch);
+        let after = service::base::write_scratch(scratch);
         return before * 100 + after;
     }
 }

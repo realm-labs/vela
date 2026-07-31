@@ -15,7 +15,7 @@ const ASYNC_PATCH_SOURCE: &str = r#"
 impl CalculatorPatch {
     async fn apply(context: RequestContext, input: Input) -> i64 {
         context.counter += 10;
-        let adjusted = base.apply(context, input).await;
+        let adjusted = service::base::apply(context, input).await;
         return adjusted + 20;
     }
 }

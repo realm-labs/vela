@@ -1,8 +1,8 @@
 #[service_impl(coverage::apply)]
 impl ApplyDelta {
     fn apply(context, row, score) {
-        base.apply(context, row, score)?;
-        services.audit.record(context, score + 100);
+        service::base::apply(context, row, score)?;
+        service::pinned::audit::record(context, score + 100);
         return Result::Ok(());
     }
 }
@@ -15,21 +15,21 @@ impl TransformDelta {
             .map(|value| coverage::ValueRow {
                 amount: value.amount + 1,
             });
-        let shared = base.inspect(context, transformed);
-        let owned = base.consume(context, transformed);
+        let shared = service::base::inspect(context, transformed);
+        let owned = service::base::consume(context, transformed);
         return owned * 100 + shared;
     }
 
     fn buffer(context) {
         let buffer = PatchBuffer::new(7);
-        let shared = base.inspect_buffer(context, buffer);
-        base.update_buffer(context, buffer, 5);
-        let updated = base.inspect_buffer(context, buffer);
+        let shared = service::base::inspect_buffer(context, buffer);
+        service::base::update_buffer(context, buffer, 5);
+        let updated = service::base::inspect_buffer(context, buffer);
         return shared * 100 + updated;
     }
 
     fn copyback(context, values) {
         let transformed = values.map(|value| value);
-        return base.copyback(context, transformed);
+        return service::base::copyback(context, transformed);
     }
 }

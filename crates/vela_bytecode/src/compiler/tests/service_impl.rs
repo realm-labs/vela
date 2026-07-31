@@ -95,8 +95,8 @@ fn compiler_lowers_base_and_pinned_service_calls_to_stable_dispatch_targets() {
 #[service_impl(game::inventory::InventoryService)]
 impl InventoryHotfix {
     fn grant(value: i64) -> i64 {
-        let default = base.grant(value);
-        return services.audit.record(default);
+        let default = service::base::grant(value);
+        return service::pinned::audit::record(default);
     }
 }
 "#,
@@ -152,7 +152,7 @@ fn compiler_rejects_unknown_or_malformed_service_calls() {
 #[service_impl(game::inventory::InventoryService)]
 impl InventoryHotfix {
     fn grant(value: i64) -> i64 {
-        return services.missing.record(value);
+        return service::pinned::missing::record(value);
     }
 }
 "#,
@@ -168,7 +168,7 @@ impl InventoryHotfix {
 #[service_impl(game::inventory::InventoryService)]
 impl InventoryHotfix {
     fn grant(value: i64) -> i64 {
-        return base.grant(value, value);
+        return service::base::grant(value, value);
     }
 }
 "#,
@@ -189,7 +189,7 @@ fn compiler_requires_a_sealed_schema_for_lexical_service_calls() {
 #[service_impl(game::inventory::InventoryService)]
 impl InventoryHotfix {
     fn grant(value: i64) -> i64 {
-        return base.grant(value);
+        return service::base::grant(value);
     }
 }
 "#,
@@ -211,7 +211,7 @@ fn compiler_keeps_service_dispatch_capabilities_lexical_and_non_first_class() {
 #[service_impl(game::inventory::InventoryService)]
 impl InventoryHotfix {
     fn grant(value: i64) -> i64 {
-        let target = services.audit.record;
+        let target = service::pinned::audit::record;
         return target(value);
     }
 }
@@ -220,7 +220,7 @@ impl InventoryHotfix {
 #[service_impl(game::inventory::InventoryService)]
 impl InventoryHotfix {
     fn grant(value: i64) -> i64 {
-        return reflect::call(services.audit, "record", value);
+        return reflect::call(service::pinned::audit, "record", value);
     }
 }
 "#,
@@ -229,7 +229,7 @@ impl InventoryHotfix {
             .expect_err("service capabilities must not become dynamic or reflection values");
         assert!(error.diagnostics().iter().any(|diagnostic| {
             diagnostic.code.as_deref() == Some("hir::invalid_service_capability_use")
-                && diagnostic.message.contains("scoped service capability")
+                && diagnostic.message.contains("service dispatch namespaces")
         }));
     }
 }

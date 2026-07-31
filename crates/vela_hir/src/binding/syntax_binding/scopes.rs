@@ -37,15 +37,6 @@ impl SyntaxBindingLowerer<'_> {
         span: Span,
         scope_span: Option<Span>,
     ) -> HirLocalId {
-        if self.service_capabilities_enabled && matches!(name.as_str(), "base" | "services") {
-            self.diagnostics.push(
-                Diagnostic::error(format!(
-                    "`{name}` is reserved inside #[service_impl] methods"
-                ))
-                .with_code("hir::reserved_service_capability")
-                .with_span(span),
-            );
-        }
         let id = self.next_local();
         self.scopes
             .last_mut()

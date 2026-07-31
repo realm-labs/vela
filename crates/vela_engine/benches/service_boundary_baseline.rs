@@ -64,7 +64,7 @@ const SERVICE_SOURCE: &str = r#"
 #[service_impl(bench::boundary_default)]
 impl BoundaryPatch {
     fn apply(host) {
-        return base.apply(host);
+        return service::base::apply(host);
     }
 }
 "#;

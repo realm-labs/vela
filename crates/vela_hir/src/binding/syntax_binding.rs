@@ -639,6 +639,11 @@ impl<'a> SyntaxBindingLowerer<'a> {
     }
 
     fn bind_path(&mut self, id: HirExprId, path: &[String], span: Span, usage: PathUsage) {
+        if let Some(capability) = service_lexical_capability(path) {
+            self.bind_service_path(id, path, span, usage, capability);
+            return;
+        }
+
         if path.len() > 1
             && matches!(usage, PathUsage::Callee)
             && let Some(resolution) = self.resolve_constructor_path(path)
@@ -668,44 +673,25 @@ impl<'a> SyntaxBindingLowerer<'a> {
             return;
         }
 
-        if let Some(capability) = service_lexical_capability(name) {
-            if !self.service_capabilities_enabled {
-                self.diagnostics.push(
-                    Diagnostic::error(format!(
-                        "`{name}` is only available inside #[service_impl] methods"
-                    ))
-                    .with_code("hir::service_capability_outside_impl")
-                    .with_span(span),
-                );
-                return;
-            }
-            self.service_capabilities.insert(id, capability);
-            if self.current_body() != self.root_body {
-                self.diagnostics.push(
-                    Diagnostic::error(format!("`{name}` cannot be captured by a nested function"))
-                        .with_code("hir::service_capability_capture")
-                        .with_span(span),
-                );
-                return;
-            }
-            let expected_depth = match capability {
-                ServiceLexicalCapability::Base => 1,
-                ServiceLexicalCapability::Services => 2,
-            };
-            if usage != PathUsage::CalleeFieldBase(expected_depth) {
-                let expected = match capability {
-                    ServiceLexicalCapability::Base => "base.method(...)",
-                    ServiceLexicalCapability::Services => "services.service.method(...)",
-                };
-                self.diagnostics.push(
-                    Diagnostic::error(format!(
-                        "`{name}` is a scoped service capability and cannot be used as a value"
-                    ))
-                    .with_code("hir::invalid_service_capability_use")
-                    .with_span(span)
-                    .with_label(span, format!("call it directly as `{expected}`")),
-                );
-            }
+        if self.service_capabilities_enabled
+            && matches!(name.as_str(), "base" | "services")
+            && matches!(usage, PathUsage::CalleeFieldBase(_))
+        {
+            self.diagnostics.push(
+                Diagnostic::error(format!(
+                    "contextual `{name}` service calls are no longer supported"
+                ))
+                .with_code("hir::obsolete_service_call_syntax")
+                .with_span(span)
+                .with_label(
+                    span,
+                    if name == "base" {
+                        "use `service::base::method(...)`"
+                    } else {
+                        "use `service::pinned::service_name::method(...)`"
+                    },
+                ),
+            );
             return;
         }
 
@@ -719,6 +705,51 @@ impl<'a> SyntaxBindingLowerer<'a> {
         if matches!(usage, PathUsage::Value | PathUsage::AssignmentTarget) {
             self.diagnostics
                 .push(self.unresolved_name_diagnostic(name, span));
+        }
+    }
+
+    fn bind_service_path(
+        &mut self,
+        id: HirExprId,
+        path: &[String],
+        span: Span,
+        usage: PathUsage,
+        capability: ServiceLexicalCapability,
+    ) {
+        if !self.service_capabilities_enabled {
+            self.diagnostics.push(
+                Diagnostic::error(
+                    "service dispatch paths are only available inside #[service_impl] methods",
+                )
+                .with_code("hir::service_capability_outside_impl")
+                .with_span(span),
+            );
+            return;
+        }
+        self.service_capabilities.insert(id, capability);
+        if self.current_body() != self.root_body {
+            self.diagnostics.push(
+                Diagnostic::error("service dispatch paths cannot be captured by a nested function")
+                    .with_code("hir::service_capability_capture")
+                    .with_span(span),
+            );
+            return;
+        }
+        let valid_shape = match capability {
+            ServiceLexicalCapability::Base => path.len() == 3,
+            ServiceLexicalCapability::Pinned => path.len() == 4,
+        };
+        if usage != PathUsage::Callee || !valid_shape {
+            let expected = match capability {
+                ServiceLexicalCapability::Base => "service::base::method(...)",
+                ServiceLexicalCapability::Pinned => "service::pinned::service_name::method(...)",
+            };
+            self.diagnostics.push(
+                Diagnostic::error("service dispatch namespaces cannot be used as values")
+                    .with_code("hir::invalid_service_capability_use")
+                    .with_span(span)
+                    .with_label(span, format!("call it directly as `{expected}`")),
+            );
         }
     }
 
@@ -770,10 +801,14 @@ impl<'a> SyntaxBindingLowerer<'a> {
     }
 }
 
-fn service_lexical_capability(name: &str) -> Option<ServiceLexicalCapability> {
-    match name {
-        "base" => Some(ServiceLexicalCapability::Base),
-        "services" => Some(ServiceLexicalCapability::Services),
+fn service_lexical_capability(path: &[String]) -> Option<ServiceLexicalCapability> {
+    match path {
+        [service, namespace, ..] if service == "service" && namespace == "base" => {
+            Some(ServiceLexicalCapability::Base)
+        }
+        [service, namespace, ..] if service == "service" && namespace == "pinned" => {
+            Some(ServiceLexicalCapability::Pinned)
+        }
         _ => None,
     }
 }

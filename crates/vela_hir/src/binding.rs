@@ -45,7 +45,7 @@ pub enum BindingResolution {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ServiceLexicalCapability {
     Base,
-    Services,
+    Pinned,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

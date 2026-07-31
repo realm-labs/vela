@@ -1,6 +1,6 @@
 use vela_common::ServiceCallMode;
 use vela_def::FunctionId;
-use vela_hir::body::{HirBody, HirCall};
+use vela_hir::body::{HirBody, HirCall, HirExprKind};
 use vela_mir::{CompileCallTarget, CompileCalleeTarget, MirSourceOrigin};
 
 use super::GenerationBuilder;
@@ -20,46 +20,40 @@ impl GenerationBuilder<'_, '_> {
             .graph
             .bindings_for_body(body.id)
             .ok_or_else(registry_input_error)?;
-        let Some(callee) = body.field(call.callee) else {
+        let Some(capability) = bindings.service_capability(call.callee) else {
             return Ok(None);
         };
-
-        let target = if let Some(capability) = bindings.service_capability(callee.receiver) {
-            match capability {
-                vela_hir::binding::ServiceLexicalCapability::Base => {
-                    let current = self.current_service_path(executable).ok_or_else(|| {
-                        service_call_error(
-                            "base call is not owned by a compiled service method",
-                            origin,
-                        )
-                    })?;
-                    Some((
-                        ServiceCallMode::Base,
-                        current,
-                        callee.name.as_str().to_owned(),
-                    ))
-                }
-                vela_hir::binding::ServiceLexicalCapability::Services => {
-                    return Err(service_call_error(
-                        "`services` calls require `services.service.method(...)`",
+        let Some(expression) = body.expression(call.callee) else {
+            return Err(service_call_error(
+                "service call has no callee expression",
+                origin,
+            ));
+        };
+        let HirExprKind::Path(path_id) = expression.kind else {
+            return Err(service_call_error(
+                "service call target is not a path",
+                origin,
+            ));
+        };
+        let path = body
+            .paths
+            .get(&path_id)
+            .ok_or_else(|| service_call_error("service call path is missing", origin))?;
+        let (mode, service_name, method_name) = match capability {
+            vela_hir::binding::ServiceLexicalCapability::Base => {
+                let current = self.current_service_path(executable).ok_or_else(|| {
+                    service_call_error(
+                        "base call is not owned by a compiled service method",
                         origin,
-                    ));
-                }
+                    )
+                })?;
+                (ServiceCallMode::Base, current, path.path[2].clone())
             }
-        } else if let Some(service_member) = body.field(callee.receiver)
-            && bindings.service_capability(service_member.receiver)
-                == Some(vela_hir::binding::ServiceLexicalCapability::Services)
-        {
-            Some((
+            vela_hir::binding::ServiceLexicalCapability::Pinned => (
                 ServiceCallMode::Pinned,
-                service_member.name.as_str().to_owned(),
-                callee.name.as_str().to_owned(),
-            ))
-        } else {
-            None
-        };
-        let Some((mode, service_name, method_name)) = target else {
-            return Ok(None);
+                path.path[2].clone(),
+                path.path[3].clone(),
+            ),
         };
         let schema = self.request.service_schema.ok_or_else(|| {
             service_call_error(

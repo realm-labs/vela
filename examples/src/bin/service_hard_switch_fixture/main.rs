@@ -25,7 +25,7 @@ const RULE_SOURCE: &str = r#"
 #[service_impl(fixture::grant_rule)]
 impl GrantRulePatch {
     fn normalize_count(turn, count, multiplier) {
-        let normalized = base.normalize_count(turn, count, multiplier)?;
+        let normalized = service::base::normalize_count(turn, count, multiplier)?;
         return Result::Ok(normalized + 1i32);
     }
 }
@@ -35,7 +35,7 @@ const REWARD_SOURCE: &str = r#"
 #[service_impl(fixture::reward)]
 impl RewardPatch {
     fn apply(turn, grouped, labels) {
-        let result = base.apply(turn, grouped, labels);
+        let result = service::base::apply(turn, grouped, labels);
         let adjustment = fixture::PatchAdjustment::new(2i32, "reward-delta");
         let classes = grouped.group_by(|key, value|
             if value >= 5i32 { "large" } else { "small" });
@@ -55,10 +55,10 @@ impl InventoryPatch {
         let groups = items.group_by(|item| item.template_id);
         let first = items[0];
         let multiplier = multipliers.get(first.template_id).unwrap_or(1i32);
-        let preview = services.rule.normalize_count(turn, first.count, multiplier)?;
-        let granted = base.grant(turn, items, multipliers)?;
+        let preview = service::pinned::rule::normalize_count(turn, first.count, multiplier)?;
+        let granted = service::base::grant(turn, items, multipliers)?;
         turn.record_preview(preview, groups.len());
-        services.events.record(turn, groups.len())?;
+        service::pinned::events::record(turn, groups.len())?;
         return Result::Ok(granted);
     }
 }

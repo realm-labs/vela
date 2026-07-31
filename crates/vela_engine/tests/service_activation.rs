@@ -506,8 +506,8 @@ fn lexical_base_and_pinned_cross_service_calls_keep_one_generation() {
 #[service_impl(test::calculator)]
 impl CalculatorHotfix {
     fn adjust(context, value) {
-        let original = base.adjust(context, value);
-        return services.audit.record(context, original);
+        let original = service::base::adjust(context, value);
+        return service::pinned::audit::record(context, original);
     }
 }
 "#;
@@ -535,8 +535,8 @@ impl CalculatorHotfix {
 #[service_impl(test::calculator)]
 impl CalculatorHotfix {
     fn adjust(context, value) {
-        let original = base.adjust(context, value);
-        return services.audit.record(context, original);
+        let original = service::base::adjust(context, value);
+        return service::pinned::audit::record(context, original);
     }
 }
 

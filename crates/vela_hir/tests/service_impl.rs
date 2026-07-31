@@ -69,8 +69,8 @@ fn binds_service_capabilities_only_as_direct_call_receivers() {
 #[service_impl(game::inventory::InventoryService)]
 impl InventoryHotfix {
     fn grant(value) {
-        let granted = base.grant(value);
-        return services.audit.record(granted);
+        let granted = service::base::grant(value);
+        return service::pinned::audit::record(granted);
     }
 }
 "#,
@@ -96,18 +96,18 @@ impl InventoryHotfix {
         capabilities,
         [
             ServiceLexicalCapability::Base,
-            ServiceLexicalCapability::Services
+            ServiceLexicalCapability::Pinned
         ]
     );
 }
 
 #[test]
-fn rejects_service_capabilities_outside_their_non_escaping_call_shapes() {
+fn rejects_service_namespaces_outside_their_non_escaping_call_shapes() {
     let cases = [
         (
             r#"
 fn grant(value) {
-    return base.grant(value);
+    return service::base::grant(value);
 }
 "#,
             "hir::service_capability_outside_impl",
@@ -117,7 +117,7 @@ fn grant(value) {
 #[service_impl(game::inventory::InventoryService)]
 impl InventoryHotfix {
     fn grant(value) {
-        let callable = base.grant;
+        let callable = service::base::grant;
         return callable(value);
     }
 }
@@ -129,7 +129,7 @@ impl InventoryHotfix {
 #[service_impl(game::inventory::InventoryService)]
 impl InventoryHotfix {
     fn grant(value) {
-        let deferred = || base.grant(value);
+        let deferred = || service::base::grant(value);
         return deferred();
     }
 }
@@ -140,12 +140,12 @@ impl InventoryHotfix {
             r#"
 #[service_impl(game::inventory::InventoryService)]
 impl InventoryHotfix {
-    fn grant(base) {
-        return base;
+    fn grant(value) {
+        return base.grant(value);
     }
 }
 "#,
-            "hir::reserved_service_capability",
+            "hir::obsolete_service_call_syntax",
         ),
     ];
 
@@ -161,6 +161,23 @@ impl InventoryHotfix {
             error.diagnostics()
         );
     }
+}
+
+#[test]
+fn base_and_services_remain_ordinary_local_names_inside_service_impls() {
+    build_single_source(
+        SourceId::new(5),
+        r#"
+#[service_impl(game::inventory::InventoryService)]
+impl InventoryHotfix {
+    fn grant(base, services) {
+        let combined = base + services;
+        return service::base::grant(combined);
+    }
+}
+"#,
+    )
+    .expect("service namespace must not reserve ordinary local names");
 }
 
 #[test]
