@@ -3,6 +3,7 @@ name = "vela_analysis"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+autotests = false
 
 [dependencies]
 vela_common = { workspace = true }
@@ -16,6 +17,10 @@ vela_syntax = { workspace = true }
 
 [dev-dependencies]
 vela_stdlib = { workspace = true }
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
 
 [lints]
 workspace = true

@@ -3,6 +3,7 @@ name = "vela_engine"
 edition.workspace = true
 license.workspace = true
 version.workspace = true
+autotests = false
 
 [dependencies]
 arc-swap = { workspace = true }
@@ -37,6 +38,14 @@ stats_alloc = "0.1"
 vela_bytecode = { workspace = true, features = ["test-support"] }
 vela_macros = { workspace = true }
 vela_language_service = { workspace = true }
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
+
+[[test]]
+name = "service_rust_default"
+path = "tests/service_rust_default.rs"
 
 [[bench]]
 name = "hot_reload"

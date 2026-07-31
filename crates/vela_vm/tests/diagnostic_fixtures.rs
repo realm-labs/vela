@@ -1,10 +1,6 @@
 use std::sync::Arc;
 
-#[path = "../src/test_support.rs"]
-#[allow(dead_code)]
-mod test_compile_support;
-
-use test_compile_support::{compile_test_program, compile_test_program_with_registry};
+use crate::test_compile_support::{compile_test_program, compile_test_program_with_registry};
 use vela_bytecode::{
     CacheSiteKind, Constant, InstructionOffset, Linker, Register, UnlinkedCodeObject,
     UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,

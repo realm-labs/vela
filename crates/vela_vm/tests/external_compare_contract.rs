@@ -10,11 +10,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use mlua::{Function, Lua};
 use rhai::{Engine, Scope};
-#[path = "../src/test_support.rs"]
-#[allow(dead_code)]
-mod test_compile_support;
 
-use test_compile_support::compile_test_program_with_registry;
+use crate::test_compile_support::compile_test_program_with_registry;
 use vela_bytecode::linked::InstructionKind;
 use vela_bytecode::{BinaryLiteralOp, BinaryLiteralSide};
 use vela_bytecode::{Linker, UnlinkedProgram};

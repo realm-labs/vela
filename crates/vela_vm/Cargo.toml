@@ -3,6 +3,7 @@ name = "vela_vm"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+autotests = false
 
 [dependencies]
 hashbrown = { workspace = true }
@@ -28,6 +29,18 @@ serde_json = { workspace = true }
 vela_hir = { workspace = true }
 vela_package = { workspace = true }
 vela_registry = { workspace = true }
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
+
+[[test]]
+name = "conformance"
+path = "tests/conformance.rs"
+
+[[test]]
+name = "baseline_workload_contract"
+path = "tests/baseline_workload_contract.rs"
 
 [[bench]]
 name = "baseline"

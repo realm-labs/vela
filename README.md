@@ -123,8 +123,12 @@ Run focused validation while developing:
 ```bash
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo test-fast
 ```
+
+`cargo test-fast` runs the workspace suite except the macro UI compile tests,
+the workspace-wide unsafe-source audit, and the VM conformance fixtures. Run
+the full workspace command before a verified checkpoint.
 
 Run standalone examples:
 

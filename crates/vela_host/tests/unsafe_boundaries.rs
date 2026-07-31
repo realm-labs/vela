@@ -39,6 +39,9 @@ fn unsafe_rust_is_confined_to_reviewed_boundary_files() {
             .to_string_lossy()
             .replace('\\', "/");
         let source = fs::read_to_string(&path).expect("Rust source must be readable");
+        if !source.contains("unsafe") {
+            continue;
+        }
         let syntax = syn::parse_file(&source).expect("Rust source must parse for the unsafe audit");
         let approved = REVIEWED_UNSAFE_BOUNDARIES.contains(&relative.as_str());
         let mut audit = UnsafeAudit::default();

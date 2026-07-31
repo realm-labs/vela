@@ -3,6 +3,7 @@ name = "vela_macros"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+autotests = false
 
 [lib]
 proc-macro = true
@@ -25,6 +26,22 @@ vela_common = { workspace = true }
 
 vela_def = { workspace = true }
 vela_reflect = { workspace = true }
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
+
+[[test]]
+name = "ui"
+path = "tests/ui.rs"
+
+[[test]]
+name = "borrowed_collection_exports"
+path = "tests/borrowed_collection_exports.rs"
+
+[[test]]
+name = "interop_exports"
+path = "tests/interop_exports.rs"
 
 [lints]
 workspace = true

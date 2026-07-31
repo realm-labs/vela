@@ -1,0 +1,22 @@
+[alias]
+test-fast = [
+    "test",
+    "--workspace",
+    "--",
+    "--skip",
+    "unsafe_rust_is_confined_to_reviewed_boundary_files",
+    "--skip",
+    "unified_interop_export_signature_ui",
+    "--skip",
+    "service_contract_signature_ui",
+    "--skip",
+    "core_language_fixture_executes",
+    "--skip",
+    "primitive_contract_fixture_executes",
+    "--skip",
+    "primitive_negative_fixtures_fail_in_expected_phase",
+    "--skip",
+    "dynamic_method_dispatch_fixture_executes_final_semantics",
+    "--skip",
+    "dynamic_method_dispatch_negative_entries_are_runtime_errors",
+]

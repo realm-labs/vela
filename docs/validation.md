@@ -1,5 +1,15 @@
 # Validation
 
+Use the fast workspace lane during ordinary edit/test cycles:
+
+```bash
+cargo test-fast
+```
+
+This skips the macro UI compile tests, the workspace-wide unsafe-source audit,
+and the VM conformance fixtures. It does not replace the complete checkpoint
+commands below.
+
 Run these commands before committing normal implementation checkpoints:
 
 ```bash
