@@ -77,6 +77,16 @@ vela_syntax = { path = "crates/vela_syntax" }
 vela_vm = { path = "crates/vela_vm" }
 wasm-bindgen = "0.2"
 
+[profile.dev]
+debug = 0
+
+[profile.test]
+debug = 0
+
+[profile.dev-debug]
+inherits = "dev"
+debug = 2
+
 [workspace.lints.rust]
 unsafe_code = "deny"
 
