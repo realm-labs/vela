@@ -1,6 +1,6 @@
 # Rust/Vela Interop
 
-> **Active hard switch — 2026-07-31:** retained scoped Host capabilities move
+> **Accepted hard switch — 2026-07-31:** retained scoped Host capabilities move
 > to authored strict `host::release` or idempotent `host::try_release`, and every
 > admitted generated Service gains a complete typed Rust
 > `service::base::method(...)` path. Pinned cross-Service calls use
@@ -8,6 +8,8 @@
 > receivers are removed. The final behavior, supported shapes, and rejected
 > shapes are defined in the
 > [final interop contract](rust-vela-interop-final-shape-hard-switch-plan.md).
+> Repository proof is in the
+> [acceptance report](archive/rust-vela-interop-hard-switch-acceptance-2026-07-31.md).
 
 > **Active direction — 2026-07-23:** ordinary export/binding and
 > HostRef/re-entry remain the general Rust/Vela call model. The sole Rust

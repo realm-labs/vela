@@ -199,6 +199,42 @@ Rust adapter state is updated immediately
 hot reload replaces function CodeObject values
 ```
 
+## Rust/Vela Interop Contract
+
+Vela-held scoped Host capabilities are explicit resources. The compiler never
+inserts a release from last-use, lexical-scope, branch-edge, register-reuse, or
+pre-await analysis. Authors close a live group with strict
+`host::release(value)` or narrowly idempotent
+`host::try_release(value) -> bool`; generated terminal Service transfer and
+unconditional root teardown are the only non-authored closures. Children must
+release before parents, aliases expire as one group, and every await rejects
+the complete set of still-active scoped resources, including dead locals and
+lazy Host iterators.
+
+Service compiler capabilities use only static namespace paths:
+`service::base::method(...)` calls the current method's registered Rust
+default, and `service::pinned::service_name::method(...)` calls through the
+root-pinned generation. Neither namespace path is a value. The deleted
+`base.method(...)` and `services.service.method(...)` contextual spellings have
+no aliases, leaving `base` and `services` available as ordinary local names.
+Every admitted Service signature has complete direct-Rust, Vela-selected,
+same-generation nested, typed Rust-base, async, and return-restoration paths;
+unsupported signatures fail during macro expansion or schema sealing.
+
+Non-`'static` Host parameters reach Rust defaults through generated root-local
+typed thunks. One reviewed unsafe erased-reborrow boundary runs only after
+stable type, root generation, alias, capability, and lease validation; real
+Rust references never enter Vela values, reflection, GC state, persistent
+state, or artifacts. Controlled HostAccess adapters remain a valid ordinary
+Host representation: generated synchronous methods use their registered
+adapter vtable only when the receiver itself cannot provide a typed lease,
+without retrying other lease, permission, or invocation failures.
+
+Portable program, Service bundle, and detached Service metadata format version
+2 encode this explicit-release contract. Version 1 artifacts are rejected at
+decode/load boundaries before staging or activation; there is no legacy
+interpreter or compatibility mode.
+
 
 ## Detailed Contracts
 

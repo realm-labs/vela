@@ -10,18 +10,17 @@ Completed execution plans and acceptance reports live under
 
 ## Current Focus
 
-The Rust/Vela interop checkpoint is reopened under the
+The Rust/Vela interop checkpoint is complete under the
 [final interop and explicit-release hard switch](rust-vela-interop-final-shape-hard-switch-plan.md).
-The accepted S0-S7 generation model and P0-P7 boundary work remain the
-foundation. E1-E4 have removed every MIR/bytecode automatic-release producer,
-implemented authored `host::try_release(value) -> bool`, made scoped resources
-and await validation explicit, and completed typed Rust Service dispatch. The
-remaining work is E5 artifact, fixture, benchmark, documentation, and
-repository acceptance.
+E0-E5 removed compiler-driven Host release, added authored
+`host::try_release(value) -> bool`, made await validate the complete active
+resource table, completed typed `service::base`/`service::pinned` dispatch,
+rejected old artifacts, and passed the repository acceptance matrix. The
+[acceptance report](archive/rust-vela-interop-hard-switch-acceptance-2026-07-31.md)
+owns the detailed proof. There is no compatibility release mode, legacy
+artifact loader, contextual Service alias, or second Service dispatch path.
 
-E0 froze the replacement contract and E1-E4 completed the behavioral hard
-switch. E5 rejects old artifacts and reruns the repository acceptance gate.
-There is no compatibility mode or second dispatch path.
+The active implementation focus returns to M20.5 incremental HIR re-lowering.
 
 Rust embedding now has one public registration vocabulary: every derived or
 generated Value/Host uses `register_type::<T>()`, callable bundles use
@@ -54,6 +53,10 @@ Phase status:
   typed thunks invoke non-`'static`, non-`Sync` Host defaults through one
   reviewed root reborrow boundary; pinned Rust/Vela chaining, target base,
   old-root isolation, cancellation, and panic cleanup are executable.
+- E5 accepted: portable program, Service bundle, and detached deployment
+  metadata format version 2 reject version 1 before activation; representative
+  ordinary/Service fixtures, release/base benchmark rows, structural audits,
+  and the complete repository validation matrix pass.
 - S0 accepted: the migration inventory, executable fixture, and boundary
   baselines are frozen.
 - S1 accepted: the callable-level replacement model is deleted without aliases
@@ -100,8 +103,9 @@ Phase status:
   service calls retain atomic alias preflight and async leases; old roots keep
   their pinned generation; scoped children cannot escape through state, root
   returns, closures, async suspension, dynamic calls, or reflection; and
-  `base`/`services` are compiler-owned lexical capabilities that cannot become
-  dynamic or reflected callable values.
+  `service::base`/`service::pinned` are compiler-owned static namespace paths
+  that cannot become dynamic or reflected callable values; `base` and
+  `services` remain ordinary local names.
 - P6 accepted for runnable coverage: `service_hotfix_coverage` drives one
   unchanged async Rust caller through RustDefault, a sparse Snapshot, two
   exact-base Deltas, old-root isolation, rejected stale/ABI-incompatible
@@ -217,7 +221,7 @@ Host-backed and mutable collections retain HostRef identity and leases.
 | M19.5 | Complete enough | Cache-ready IDs, linked bytecode, profile ownership, and prepared host paths are validated. |
 | M20 | Complete enough | Actor Runtime/cache ownership, lifetime, reload, and concurrency gates are accepted. |
 | M20.5 | In progress | Per-keystroke latency is fixed for requests and diagnostics; the HIR rebuild is still whole-workspace. |
-| Rust/Vela service interop | In progress | S0-S7 and P0-P7 are accepted foundations; E0-E5 replace implicit release and complete typed `base` totality. |
+| Rust/Vela service interop | Complete | S0-S7, P0-P7, and E0-E5 are accepted; explicit release, typed Service namespaces, artifact v2 rejection, and repository proof are complete. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, and debugger contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation, and performance targets. |
@@ -289,7 +293,7 @@ Host-backed and mutable collections retain HostRef identity and leases.
   [performance.md](performance.md); detailed measurements live under
   [archive](archive/).
 
-## Active Gaps
+## Accepted Interop Baseline
 
 ### Service Patchability Totality
 
@@ -303,9 +307,9 @@ The admitted Service boundary is now total: non-`'static` call-scoped Host
 parameters reach sync and async Rust defaults through generated typed thunks,
 and pinned calls may select Rust or Vela before a target patch calls its own
 base. The contextual receiver spellings are rejected; only
-`service::base::*` / `service::pinned::*` are compiler-owned paths. E5 still
-owns artifact rejection and the final repository-wide acceptance report. The
-target contract and gates are in the
+`service::base::*` / `service::pinned::*` are compiler-owned paths. Portable
+format version 2 rejects artifacts compiled under implicit release semantics
+before activation. The accepted contract and gates are in the
 [final interop plan](rust-vela-interop-final-shape-hard-switch-plan.md).
 
 Shared custom service parameters now use one storage-directed boundary:
@@ -336,6 +340,8 @@ nested borrowed containers remain outside that plan.
 The intended final Rust, Vela, and deployment authoring form is consolidated
 in the
 [service patchability usage guide](rust-vela-service-patchability-usage.md).
+
+## Active Gaps
 
 ### Parameterized Container Contracts
 
@@ -396,13 +402,11 @@ changes.
 
 ## Next Up
 
-1. Execute E5: reject old artifacts, finish representative fixtures and
-   benchmark rows, and rerun the focused and repository-wide acceptance matrices.
-2. Continue M20.5 with incremental HIR re-lowering, which unblocks per-module
+1. Continue M20.5 with incremental HIR re-lowering, which unblocks per-module
    fact reuse and is the last superlinear term in a keystroke.
-3. Audit the parameterized container and value-keyed Map/Set plans against
+2. Audit the parameterized container and value-keyed Map/Set plans against
    their explicit acceptance matrices.
-4. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
+3. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
    post-S2 optimization follow-up.
 
 ## Update Rules

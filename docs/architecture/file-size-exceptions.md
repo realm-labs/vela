@@ -23,6 +23,8 @@ clear; they are not permission for unrelated growth.
 | `vela_bytecode/src/verification/linked.rs` | Exhaustive linked instruction verifier; every linked opcode must remain in the same match audit. |
 | `vela_mir/src/verifier/operations.rs` | Exhaustive MIR statement, terminator, place, and state-operation verifier kept together so every executable operation participates in one invariant audit. |
 | `vela_analysis/src/registry.rs` | Declarative registry-to-analysis projection for the complete metadata surface. |
+| `vela_analysis/src/semantic_facts.rs` | Exhaustive expression and statement fact dispatcher. Callback, control-flow, local-flow, lookup, pattern, script-type, and target responsibilities are already split into focused modules; this exception does not cover moving those helpers back. |
+| `vela_registry/src/defs.rs` | Declarative registry definition taxonomy and its canonical identity/ABI accessors, reviewed as one schema contract. |
 | `vela_syntax/src/ast/items.rs` | Declarative CST-backed AST wrappers for the complete module-item surface; declaration accessors share one casting and contextual-keyword contract. |
 | `vela_lsp_server/src/tests.rs` | Dense typed-protocol fixtures. |
 | `vela_lsp_server/src/tests/signature.rs` | Dense signature-help fixture matrix. |
@@ -33,6 +35,11 @@ clear; they are not permission for unrelated growth.
 | `vela_hot_reload/src/tests/runtime_reports.rs` | Dense runtime staging, acceptance, rejection, and diagnostic-report fixture matrix. |
 | `vela_language_service/src/semantic_tokens/tests.rs` | Dense semantic-token classification fixture matrix covering the complete editor-neutral taxonomy and contextual declaration cases. |
 | `vela_language_service/src/rename/tests.rs` | Dense rename prepare/apply/rejection fixture matrix across declaration and reference categories. |
+| `vela_language_service/src/hover/tests.rs` | Dense hover fixture matrix across source, registry, scoped-resource, and service-schema facts. |
+| `vela_language_service/src/schema.rs` | Exhaustive schema artifact model, stable hash input, and registry conversion table. Service and type-binding validation are already split into focused modules. |
+| `vela_language_service/src/signature.rs` | Compact signature-help implementation followed by its dense source, registry, scoped-resource, service, and stdlib fixture matrix. |
 | `vela_engine/src/tests/source_reload/runtime_safe_points.rs` | Dense runtime safe-point, staged update, async ownership, and rollback fixture matrix. |
+| `vela_engine/src/runtime/execution_host.rs` | Execution-scoped host boundary state machine and its adapter/reentry implementations. Scoped access, projection, and fallback responsibilities are already split into focused modules; this exception does not cover adding their implementations back. |
+| `vela_macros/tests/borrowed_collection_exports.rs` | Dense end-to-end export and fixture matrix for borrowed arrays, maps, sets, slices, views, iterators, async leases, and explicit scoped-resource release. Projection-specific groups are already split into child modules. |
 | `vela_macros/tests/interop_exports.rs` | Dense end-to-end fixture matrix for free functions, methods, leases, borrowed returns, reflection, and centralized external Host bindings. |
 | `vela_mir/src/tests/model.rs` | Dense MIR model invariant fixtures. |

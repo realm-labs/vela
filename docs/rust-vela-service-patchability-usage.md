@@ -1,7 +1,7 @@
 # Rust/Vela Service Patchability — Final Usage Shape
 
-> Status: accepted foundation; explicit-release and typed-`base` hard switch
-> active.
+> Status: accepted final usage contract after the explicit-release and typed
+> Service namespace hard switch.
 >
 > The generation/deployment model, direct/optional/fallible borrowed service
 > returns to ordinary Rust callers, explicit call-scoped Host construction,
@@ -12,6 +12,8 @@
 > [archived plan](archive/rust-vela-service-patchability-completion-plan.md)
 > and
 > [acceptance report](archive/rust-vela-service-patchability-acceptance-2026-07-25.md).
+> E0-E5 interop acceptance is recorded in the
+> [hard-switch report](archive/rust-vela-interop-hard-switch-acceptance-2026-07-31.md).
 > The [final interop contract](rust-vela-interop-final-shape-hard-switch-plan.md)
 > supersedes the former compiler-driven early-release rule and the incomplete
 > non-`'static` Host `base` path.
@@ -27,8 +29,9 @@ selected by Vela and called through its authored Rust signature.
 
 The same Rust caller works before and after a Vela patch. Vela may:
 
-- call the current method's Rust default through `base`;
-- call other methods from the same pinned generation through `services`;
+- call the current method's Rust default through `service::base`;
+- call other methods from the same pinned generation through
+  `service::pinned`;
 - construct registered Value and permitted Host types;
 - receive injected `&T` and `&mut T` parameters;
 - pass shared/exclusive HostRefs to later Rust or Vela services;
@@ -48,13 +51,11 @@ The same Rust caller works before and after a Vela patch. Vela may:
 Vela never receives a real Rust reference, owns Rust Host state, or silently
 gains a capability that was not registered.
 
-One safe-erasure restriction applies to non-`'static` Host parameter types:
-the Vela override may use the Host contract normally, but a nested Vela
-`base(...)` call cannot reconstruct the original concrete Rust reference from
-the erased HostRef. The ordinary unpatched Rust default remains callable.
-Supporting that nested case would require a generated typed outer-call thunk;
-Vela deliberately does not use `Any`, a forged `TypeId`, or an unsafe
-downcast.
+Non-`'static` Host parameter types use a generated root-local typed thunk for
+nested `service::base` and `service::pinned` Rust calls. The reviewed erased
+reborrow is invocation-scoped and runs only after exact type, generation,
+alias, capability, and lease validation. Vela still receives only HostRefs;
+it never receives a real Rust reference or uses `Any` to recover one.
 
 Erased Host-contract methods use the detached `HostCallValue` vocabulary.
 Besides scalar `HostValue` data and HostRefs, it preserves tuples, arrays,
@@ -655,7 +656,7 @@ impl HandlerPatch {
 
 The example exercises:
 
-- async Rust `base`;
+- async Rust `service::base`;
 - a call-scoped constructed Host;
 - exclusive and shared Rust calls on that Host;
 - a direct borrowed collection view;
@@ -793,6 +794,11 @@ let portable = engine.compile_portable_service_patch(
 let bytes = portable.encode()?;
 ```
 
+Portable program, Service bundle, and detached Service metadata format version
+2 are the first formats with explicit scoped-resource release semantics.
+Version 1 input is rejected before staging or activation; there is no legacy
+loader or compatibility interpretation.
+
 The receiving Actor decodes and validates the portable bundle, loads it
 against its sealed Engine/schema, and stages it through the same facade:
 
@@ -823,8 +829,8 @@ Semantics:
 - Explicit `RustDefault` removes an inherited Vela method.
 - Old roots continue on their old complete generation.
 - New roots enter the newly published generation.
-- `base` always means the registered Rust default.
-- `services` always means the current root's pinned generation.
+- `service::base` always means the registered Rust default.
+- `service::pinned` always means the current root's pinned generation.
 - stale base, ABI, type, effect, or artifact mismatch changes no live state.
 - rollback republishes a prior generation and never retries or reverses Host
   effects.
@@ -842,8 +848,9 @@ Accepted Deltas may later be folded into an equivalent Snapshot.
   automatically rolled back.
 - A Vela method cannot exceed the Rust service method's effect ceiling.
 - Runtime capabilities and allowlists remain deployment policy.
-- Static, dynamic, reflected, generated, `base`, and `services` calls use the
-  same type, capability, generation, provenance, and escape validators.
+- Static, dynamic, reflected, generated, `service::base`, and
+  `service::pinned` calls use the same type, capability, generation,
+  provenance, and escape validators.
 - Reflection may inspect metadata and perform controlled calls; it cannot
   mutate the service or TypeBinding schema.
 - CLI schema, analysis, hover, completion, signature help, and generated Rust
@@ -860,8 +867,8 @@ effects.
 | Rust caller | one generated service API, unchanged across patch selection |
 | Rust default | direct path with no VM entry or HostRef conversion |
 | Sparse patch | implement only faulty methods |
-| `base` | call current service's registered Rust default |
-| `services` | call Rust/Vela methods from one pinned generation |
+| `service::base` | call current service's registered Rust default |
+| `service::pinned` | call Rust/Vela methods from one pinned generation |
 | Ordinary Rust export | typed free function callable from Vela |
 | Ordinary Host method | typed receiver call with receiver provenance |
 | Generated Rust binding | typed call to public non-service Vela declaration |
@@ -925,7 +932,7 @@ answer yes to all of these:
 1. Can every hotfixable Rust call site be shown to cross the generated service
    contract rather than a concrete implementation?
 2. Can a Vela patch express the Rust default's control flow using the same
-   inputs, registered constructors, `base`, and `services`?
+   inputs, registered constructors, `service::base`, and `service::pinned`?
 3. Does every required Host parameter have an Injected, Constructible, or
    ProducedBorrow origin?
 4. Can the patch create scratch mutable Rust objects without retaining them

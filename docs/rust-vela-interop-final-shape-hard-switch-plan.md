@@ -1,6 +1,7 @@
 # Rust/Vela Interop Final Shape And Explicit Release Hard Switch
 
-Status: active normative target and implementation plan.
+Status: accepted normative contract. E0-E5 closed on 2026-07-31; see the
+[acceptance report](archive/rust-vela-interop-hard-switch-acceptance-2026-07-31.md).
 
 This document defines the final Rust/Vela interaction model for ordinary Vela
 calls and generated Services. It supersedes two previously accepted behaviors:

@@ -1,6 +1,7 @@
 # Rust/Vela Interop Hard-Switch Implementation
 
-Status: active execution plan.
+Status: accepted. E0-E5 closed on 2026-07-31; see the
+[acceptance report](archive/rust-vela-interop-hard-switch-acceptance-2026-07-31.md).
 
 This document implements the
 [final Rust/Vela interop contract](rust-vela-interop-final-shape-hard-switch-plan.md).

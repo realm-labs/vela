@@ -3652,6 +3652,26 @@ original errors. It never recursively releases children. Strict
 `host::release` remains available so ordinary straight-line double release is
 diagnosed.
 
+### Explicit-Release Artifacts Start At Format Version 2
+
+Portable bytecode, portable Service bundles, and detached Service deployment
+metadata use format version 2 after the explicit-release hard switch. Version
+1 may encode programs compiled with implicit last-use or scope release, so it
+is rejected before linking, staging, or activation. The loader does not infer,
+rewrite, or emulate old release behavior, and a rejected bundle cannot change
+the active Service generation.
+
+### Generated Sync Host Methods Preserve Both Sealed Representations
+
+A generated synchronous Host method invokes its typed Rust body when the
+receiver supplies an exact execution-local lease. If the receiver itself is a
+controlled HostAccess adapter handle and reports `HostLeaseUnsupported`, the
+same registered method ID is invoked through that adapter's method vtable.
+This is representation dispatch, not error recovery: parameter lease errors,
+alias conflicts, permission denial, and authored invocation errors remain
+terminal and are never retried. Borrowed-return methods still require a typed
+lease because an adapter cannot fabricate invocation-scoped Rust references.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:
