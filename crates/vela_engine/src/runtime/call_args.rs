@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 use vela_bytecode::LinkedProgram;
 use vela_host::adapter::ScriptStateAdapter;
@@ -207,10 +206,7 @@ impl<'a> CallArgs<'a> {
             host_ref: None,
             identity: None,
             type_id: value.host_type_id(),
-            binding: HostArgBinding::Shared {
-                object: value,
-                leases: Arc::new(AtomicUsize::new(0)),
-            },
+            binding: HostArgBinding::Shared { object: value },
         });
         self
     }
@@ -227,10 +223,7 @@ impl<'a> CallArgs<'a> {
             host_ref: None,
             identity: None,
             type_id: crate::standard::standard_collection_host_type_id::<T>(),
-            binding: HostArgBinding::Shared {
-                object: value,
-                leases: Arc::new(AtomicUsize::new(0)),
-            },
+            binding: HostArgBinding::Shared { object: value },
         });
         self
     }
@@ -271,10 +264,7 @@ impl<'a> CallArgs<'a> {
             host_ref: None,
             identity: None,
             type_id: value.host_type_id(),
-            binding: HostArgBinding::Shared {
-                object: value,
-                leases: Arc::new(AtomicUsize::new(0)),
-            },
+            binding: HostArgBinding::Shared { object: value },
         });
         self
     }
@@ -288,10 +278,7 @@ impl<'a> CallArgs<'a> {
             host_ref: None,
             identity: None,
             type_id: crate::standard::standard_collection_host_type_id::<T>(),
-            binding: HostArgBinding::Shared {
-                object: value,
-                leases: Arc::new(AtomicUsize::new(0)),
-            },
+            binding: HostArgBinding::Shared { object: value },
         });
         self
     }
@@ -328,10 +315,7 @@ impl<'a> CallArgs<'a> {
     {
         self.push_tracked_positional_binding(
             value.host_type_id(),
-            HostArgBinding::Shared {
-                object: value,
-                leases: Arc::new(AtomicUsize::new(0)),
-            },
+            HostArgBinding::Shared { object: value },
         )
     }
 
@@ -342,10 +326,7 @@ impl<'a> CallArgs<'a> {
     {
         self.push_tracked_positional_binding(
             crate::standard::standard_collection_host_type_id::<T>(),
-            HostArgBinding::Shared {
-                object: value,
-                leases: Arc::new(AtomicUsize::new(0)),
-            },
+            HostArgBinding::Shared { object: value },
         )
     }
 
@@ -575,10 +556,7 @@ impl<'a> CallArgs<'a> {
             host_ref: Some(host_ref),
             identity: None,
             type_id: value.host_type_id(),
-            binding: HostArgBinding::Shared {
-                object: value,
-                leases: Arc::new(AtomicUsize::new(0)),
-            },
+            binding: HostArgBinding::Shared { object: value },
         });
         self
     }
@@ -932,12 +910,8 @@ impl<'a> CallArgs<'a> {
             return Err(host_lease_unsupported(root));
         };
         match (binding, kind) {
-            (HostArgBinding::Shared { object, leases }, HostLeaseKind::Shared) => {
-                leases.fetch_add(1, Ordering::AcqRel);
-                Ok(ErasedHostLease::SharedBorrowed {
-                    object: *object,
-                    leases: Arc::clone(leases),
-                })
+            (HostArgBinding::Shared { object }, HostLeaseKind::Shared) => {
+                Ok(ErasedHostLease::SharedBorrowed { object: *object })
             }
             (HostArgBinding::Shared { .. }, HostLeaseKind::Exclusive) => {
                 Err(host_object_busy(root))
@@ -1074,7 +1048,6 @@ impl CallArg<'_> {
 pub(super) enum HostArgBinding<'a> {
     Shared {
         object: &'a (dyn ScriptHostObject + Sync),
-        leases: Arc<AtomicUsize>,
     },
     Mutable {
         object: MutableHostLeaseSlot<'a>,

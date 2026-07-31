@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 use parking_lot::{
     ArcMutexGuard, ArcRwLockReadGuard, ArcRwLockWriteGuard, Mutex, RawMutex, RawRwLock, RwLock,
@@ -38,7 +37,6 @@ impl BorrowLeaseId {
     }
 }
 
-pub type SharedHostLeaseCount = Arc<AtomicUsize>;
 pub type MutableHostLeaseObject<'host> = &'host mut (dyn ScriptHostObject + Send);
 pub type MutableHostLeaseSlot<'host> = Arc<Mutex<MutableHostLeaseObject<'host>>>;
 pub type ExclusiveHostLease<'host> = ArcMutexGuard<RawMutex, MutableHostLeaseObject<'host>>;
@@ -56,7 +54,6 @@ pub enum ErasedHostLease<'host> {
     Vacant,
     SharedBorrowed {
         object: &'host (dyn ScriptHostObject + Sync),
-        leases: SharedHostLeaseCount,
     },
     Exclusive {
         object: ExclusiveHostLease<'host>,
@@ -84,7 +81,7 @@ impl ErasedHostLease<'_> {
     pub fn object(&self) -> &dyn ScriptHostObject {
         match self {
             Self::Vacant => panic!("vacant host lease has no object"),
-            Self::SharedBorrowed { object, .. } => *object,
+            Self::SharedBorrowed { object } => *object,
             Self::Exclusive { object } => &***object,
             Self::ScopedShared { object } => &***object,
             Self::ScopedExclusive { object } => &***object,
@@ -109,7 +106,7 @@ impl ErasedHostLease<'_> {
     #[must_use]
     pub fn object_sync(&self) -> Option<&(dyn ScriptHostObject + Sync)> {
         match self {
-            Self::SharedBorrowed { object, .. } => Some(*object),
+            Self::SharedBorrowed { object } => Some(*object),
             Self::ScopedShared { object } => Some(&***object),
             Self::ScopedExclusive { object } => Some(&***object),
             Self::OwnedShared { object } => Some(&***object),
@@ -631,15 +628,6 @@ impl ScriptHostObject for ScopedBorrowedHostCell<'_> {
         args: &[HostCallValue],
     ) -> crate::error::HostResult<HostCallValue> {
         self.with_dependent_mut(|_, object| object.call_resolved_host(access, target, method, args))
-    }
-}
-
-impl Drop for ErasedHostLease<'_> {
-    fn drop(&mut self) {
-        if let Self::SharedBorrowed { leases, .. } = self {
-            let previous = leases.fetch_sub(1, Ordering::AcqRel);
-            debug_assert!(previous > 0, "shared host lease count underflow");
-        }
     }
 }
 

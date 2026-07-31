@@ -79,6 +79,7 @@ fn throughput(iterations: usize) -> Result<(), Box<dyn Error>> {
     )?;
     let mut counter = Counter { value: 0 };
     let mut shared_counter = Counter { value: 42 };
+    let direct_shared_counter = Counter { value: 42 };
     let mut provider = provider::ProviderBench::new()?;
 
     report("sync_entry", iterations, || sync_call(&mut sync))?;
@@ -101,10 +102,18 @@ fn throughput(iterations: usize) -> Result<(), Box<dyn Error>> {
         ))?;
         owned_i64(&mut method, &output)
     })?;
-    report("ready_async_shared_lease", iterations, || {
+    report("ready_async_mut_origin_shared_receiver", iterations, || {
         let output = poll_to_completion(shared_method.call_async(
             "main",
             CallArgs::new().with_host_mut("counter", &mut shared_counter),
+            CallOptions::unbounded(),
+        ))?;
+        owned_i64(&mut shared_method, &output)
+    })?;
+    report("ready_async_shared_lease", iterations, || {
+        let output = poll_to_completion(shared_method.call_async(
+            "main",
+            CallArgs::new().with_host_ref("counter", &direct_shared_counter),
             CallOptions::unbounded(),
         ))?;
         owned_i64(&mut shared_method, &output)

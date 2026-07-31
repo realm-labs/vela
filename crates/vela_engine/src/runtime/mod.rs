@@ -381,9 +381,7 @@ where
         T: RuntimeCallTarget + Send + 'call,
         'args: 'call,
     {
-        RuntimeCallFuture::new(
-            async move { self.call_impl_async(entry, args, options, None).await },
-        )
+        RuntimeCallFuture::new(self.call_impl_async(entry, args, options, None))
     }
 
     async fn call_impl_async<'call, 'args, T>(
