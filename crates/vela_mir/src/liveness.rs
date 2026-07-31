@@ -99,7 +99,6 @@ pub(crate) fn sealed_analyses(function: &MirFunction) -> crate::MirFunctionAnaly
     let debug_availability = lexical_debug_availability(function);
     crate::MirFunctionAnalyses {
         value_liveness: analysis.liveness,
-        borrow_releases: crate::MirBorrowReleaseSchedule::default(),
         root_liveness: crate::MirRootLiveness {
             live_before_safepoint,
         },

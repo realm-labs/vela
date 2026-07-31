@@ -732,24 +732,38 @@ fn shared_borrowed_return_rejects_owner_write_and_cleans_up_at_root_end() {
 }
 
 #[test]
-fn exclusive_borrowed_return_releases_after_proven_last_use() {
+fn exclusive_borrowed_return_requires_explicit_release_after_last_use() {
     let mut runtime = host_export_runtime(
-        "fn blocked(service: PlayerService) { let player = game::service_player_mut(service); player.increment(2); return game::touch_service(service); } fn via_method(service: PlayerService) { let player = service.player_mut(); player.increment(3); return player.current_level(); }",
+        "fn blocked(service: PlayerService) { let player = game::service_player_mut(service); player.increment(2); return game::touch_service(service); } fn explicit(service: PlayerService) { let player = game::service_player_mut(service); player.increment(2); host::release(player); return game::touch_service(service); } fn via_method(service: PlayerService) { let player = service.player_mut(); player.increment(3); return player.current_level(); }",
     );
     let mut service = PlayerService {
         player: Player { level: 5 },
         touches: 0,
     };
 
-    let result = runtime
+    let error = runtime
         .call(
             "blocked",
             CallArgs::new().with_host_mut("service", &mut service),
             CallOptions::unbounded(),
         )
-        .expect("the compiler should release the child after its proven last use");
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(1)));
+        .expect_err("proven last use must not release a scoped child");
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::Host(vela_host::error::HostErrorKind::HostObjectBusy { .. })
+    ));
     assert_eq!(service.player.level, 7);
+    assert_eq!(service.touches, 0);
+
+    let result = runtime
+        .call(
+            "explicit",
+            CallArgs::new().with_host_mut("service", &mut service),
+            CallOptions::unbounded(),
+        )
+        .expect("authored release should unfreeze the owner");
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(1)));
+    assert_eq!(service.player.level, 9);
     assert_eq!(service.touches, 1);
 
     let result = runtime
@@ -759,8 +773,8 @@ fn exclusive_borrowed_return_releases_after_proven_last_use() {
             CallOptions::unbounded(),
         )
         .expect("borrowed-return methods should use the same scoped adapter");
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(10)));
-    assert_eq!(service.player.level, 10);
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(12)));
+    assert_eq!(service.player.level, 12);
 }
 
 #[test]
@@ -779,7 +793,7 @@ fn aliased_borrowed_return_remains_frozen_without_explicit_release() {
             CallArgs::new().with_host_mut("service", &mut service),
             CallOptions::unbounded(),
         )
-        .expect_err("an observable alias must suppress automatic release");
+        .expect_err("an unreleased alias group must keep the owner frozen");
     assert!(matches!(
         error.kind(),
         VmErrorKind::Host(vela_host::error::HostErrorKind::HostObjectBusy { .. })
@@ -788,7 +802,7 @@ fn aliased_borrowed_return_remains_frozen_without_explicit_release() {
 }
 
 #[test]
-fn borrowed_return_releases_at_lexical_and_every_branch_end() {
+fn borrowed_return_remains_frozen_after_scope_and_branch_end() {
     let mut runtime = host_export_runtime(
         "fn lexical(service: PlayerService) { { let player = service.player_mut(); player.increment(1); } return game::touch_service(service); } fn branch(service: PlayerService, flag: bool) { let player = service.player_mut(); if flag { player.increment(2); } else { player.increment(3); } return game::touch_service(service); } fn one_branch(service: PlayerService, flag: bool) { let player = service.player_mut(); if flag { player.increment(4); } return game::touch_service(service); }",
     );
@@ -808,17 +822,17 @@ fn borrowed_return_releases_at_lexical_and_every_branch_end() {
         if let Some(flag) = flag {
             args = args.with_value("flag", flag);
         }
-        let result = runtime
+        let error = runtime
             .call(function, args, CallOptions::unbounded())
-            .expect("all outgoing paths should end the proven scoped borrow");
-        assert_eq!(
-            runtime.value_to_owned(&result),
-            Ok(OwnedValue::i64(service.touches))
-        );
+            .expect_err("scope and branch convergence must not release scoped borrows");
+        assert!(matches!(
+            error.kind(),
+            VmErrorKind::Host(vela_host::error::HostErrorKind::HostObjectBusy { .. })
+        ));
     }
 
     assert_eq!(service.player.level, 15);
-    assert_eq!(service.touches, 5);
+    assert_eq!(service.touches, 0);
 }
 
 #[test]
@@ -866,7 +880,7 @@ fn host_release_invalidates_alias_group_and_unfreezes_owner() {
 }
 
 #[test]
-fn explicit_and_automatic_release_compile_to_dedicated_instruction() {
+fn only_explicit_release_compiles_to_dedicated_instruction() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
@@ -878,25 +892,32 @@ fn explicit_and_automatic_release_compile_to_dedicated_instruction() {
         .expect("release instruction fixture should register");
     let program = engine
         .compile_source(
-            "fn explicit(service: PlayerService) { let player = service.player_mut(); host::release(player); } fn automatic(service: PlayerService) { let player = service.player_mut(); player.increment(1); }",
+            "fn explicit(service: PlayerService) { let player = service.player_mut(); host::release(player); } fn implicit(service: PlayerService) { let player = service.player_mut(); player.increment(1); }",
         )
         .expect("release instruction fixture should compile");
 
-    for function in ["explicit", "automatic"] {
-        let code = program
-            .bytecode()
-            .function(function)
-            .expect("compiled function should exist");
-        assert!(code.instructions.iter().any(|instruction| matches!(
-            instruction.kind,
-            UnlinkedInstructionKind::ReleaseBorrowLease { .. }
-        )));
-        assert!(!code.instructions.iter().any(|instruction| matches!(
-            instruction.kind,
-            UnlinkedInstructionKind::CallNative { native, .. }
-                if native == vela_def::host_release_function_id()
-        )));
-    }
+    let explicit = program
+        .bytecode()
+        .function("explicit")
+        .expect("explicit function should exist");
+    assert!(explicit.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::ReleaseBorrowLease { .. }
+    )));
+    assert!(!explicit.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::CallNative { native, .. }
+            if native == vela_def::host_release_function_id()
+    )));
+
+    let implicit = program
+        .bytecode()
+        .function("implicit")
+        .expect("implicit function should exist");
+    assert!(!implicit.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::ReleaseBorrowLease { .. }
+    )));
 }
 
 #[test]

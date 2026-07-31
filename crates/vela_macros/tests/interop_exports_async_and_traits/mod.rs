@@ -69,25 +69,48 @@ fn value_only_async_export_uses_ordinary_await_syntax() {
 }
 
 #[test]
-fn borrowed_return_releases_before_await_when_dead() {
+fn borrowed_return_requires_explicit_release_before_await() {
     let mut runtime = host_export_runtime(
-        "async fn main(service: PlayerService) { let player = service.player_mut(); player.increment(2); game::double_async(3).await; return game::touch_service(service); }",
+        "async fn implicit(service: PlayerService) { let player = service.player_mut(); player.increment(2); game::double_async(3).await; return game::touch_service(service); } \
+         async fn explicit(service: PlayerService) { let player = service.player_mut(); player.increment(2); host::release(player); game::double_async(3).await; return game::touch_service(service); }",
     );
     let mut service = PlayerService {
         player: Player { level: 5 },
         touches: 0,
     };
     let mut future = Box::pin(runtime.call_async(
-        "main",
+        "implicit",
         CallArgs::new().with_host_mut("service", &mut service),
         CallOptions::unbounded(),
     ));
     let waker = std::task::Waker::noop();
     let mut context = std::task::Context::from_waker(waker);
+    let error = loop {
+        match std::future::Future::poll(future.as_mut(), &mut context) {
+            std::task::Poll::Ready(value) => {
+                break value.expect_err("an unreleased child must block suspension");
+            }
+            std::task::Poll::Pending => continue,
+        }
+    };
+    drop(future);
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::Host(vela_host::error::HostErrorKind::BorrowedHostRefEscape {
+            boundary: vela_host::error::HostRefLifetimeBoundary::AsyncSuspend,
+            ..
+        })
+    ));
+
+    let mut future = Box::pin(runtime.call_async(
+        "explicit",
+        CallArgs::new().with_host_mut("service", &mut service),
+        CallOptions::unbounded(),
+    ));
     let value = loop {
         match std::future::Future::poll(future.as_mut(), &mut context) {
             std::task::Poll::Ready(value) => {
-                break value.expect("the dead child should be released before suspension");
+                break value.expect("explicit release should permit suspension");
             }
             std::task::Poll::Pending => continue,
         }
@@ -95,7 +118,7 @@ fn borrowed_return_releases_before_await_when_dead() {
     drop(future);
 
     assert_eq!(runtime.value_to_owned(&value), Ok(OwnedValue::i64(1)));
-    assert_eq!(service.player.level, 7);
+    assert_eq!(service.player.level, 9);
     assert_eq!(service.touches, 1);
 }
 

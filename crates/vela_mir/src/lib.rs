@@ -7,7 +7,6 @@
 //! serialization identities.
 
 mod arena;
-mod borrow_release;
 mod budget;
 mod builder;
 mod cfg;
@@ -29,7 +28,6 @@ mod verifier;
 #[cfg(test)]
 mod tests;
 
-pub use borrow_release::MirBorrowReleaseSchedule;
 pub use budget::{MirBudgetClass, MirBudgetPoint, MirBudgetSchedule, MirBudgetSite};
 pub use builder::build_mir;
 pub use cfg::{

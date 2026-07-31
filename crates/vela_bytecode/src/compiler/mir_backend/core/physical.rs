@@ -41,28 +41,6 @@ impl<'a> FunctionBackend<'a> {
         }
     }
 
-    pub(super) fn live_value(&self, value: vela_mir::MirLiveValue) -> Register {
-        match value {
-            vela_mir::MirLiveValue::Local(local) => self.locals[&local],
-            vela_mir::MirLiveValue::Temp(temp) => self.temps[&temp],
-        }
-    }
-
-    pub(super) fn emit_automatic_release(
-        &mut self,
-        value: vela_mir::MirLiveValue,
-        span: vela_common::Span,
-    ) {
-        let register = self.live_value(value);
-        self.code.push_instruction(
-            UnlinkedInstruction::new(UnlinkedInstructionKind::ReleaseBorrowLease {
-                dst: register,
-                src: register,
-            })
-            .with_span(span),
-        );
-    }
-
     pub(super) fn missing_test_value(&self, condition: &MirOperand) -> Option<MirOperand> {
         let MirOperand::Temp(temp) = condition else {
             return None;
@@ -306,29 +284,23 @@ impl<'a> FunctionBackend<'a> {
                 .get(&block)
                 .ok_or(MirBackendError::MissingBlock(block))?;
             let point = self.budget.edge(from, block);
-            let releases = self.borrow_releases.edge(from, block).to_vec();
-            if point.is_some() || !releases.is_empty() {
+            if let Some(point) = point {
                 let stub = InstructionOffset(self.code.instructions.len());
-                let edge_site = point
-                    .is_some()
-                    .then_some(vela_mir::MirBudgetSite::Edge { from, to: block });
-                if let Some(point) = point {
-                    let site = edge_site.expect("budgeted edge has a MIR site");
-                    self.code.push_instruction(
-                        UnlinkedInstruction::new(UnlinkedInstructionKind::ChargeExecutionUnits {
+                let site = vela_mir::MirBudgetSite::Edge { from, to: block };
+                self.code.push_instruction(
+                    UnlinkedInstruction::new(UnlinkedInstructionKind::ChargeExecutionUnits {
+                        units: point.units,
+                    })
+                    .with_span(point.origin.span)
+                    .with_mir_metadata(
+                        Some(site),
+                        vec![crate::MirBudgetCharge {
+                            site,
+                            class: point.class,
                             units: point.units,
-                        })
-                        .with_span(point.origin.span)
-                        .with_mir_metadata(
-                            Some(site),
-                            vec![crate::MirBudgetCharge {
-                                site,
-                                class: point.class,
-                                units: point.units,
-                            }],
-                        ),
-                    );
-                }
+                        }],
+                    ),
+                );
                 let release_span = self
                     .function
                     .block(from)
@@ -336,14 +308,9 @@ impl<'a> FunctionBackend<'a> {
                     .map_or(self.function.origin().span, |terminator| {
                         terminator.origin.span
                     });
-                for value in releases {
-                    self.emit_automatic_release(value, release_span);
-                }
-                let mut jump = UnlinkedInstruction::new(UnlinkedInstructionKind::Jump { target })
-                    .with_span(release_span);
-                if let Some(site) = edge_site {
-                    jump = jump.with_mir_metadata(Some(site), Vec::new());
-                }
+                let jump = UnlinkedInstruction::new(UnlinkedInstructionKind::Jump { target })
+                    .with_span(release_span)
+                    .with_mir_metadata(Some(site), Vec::new());
                 self.code.push_instruction(jump);
                 target = stub;
             }

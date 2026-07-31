@@ -211,10 +211,13 @@ fn optional_borrow_contract_preserves_container_type_and_provenance() {
         .bytecode()
         .function("main")
         .expect("compiled function should exist");
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        instruction.kind,
-        UnlinkedInstructionKind::ReleaseBorrowLease { .. }
-    )));
+    assert!(
+        !code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::ReleaseBorrowLease { .. }
+        )),
+        "borrowed Option use must not trigger implicit release"
+    );
 }
 
 #[test]
@@ -383,7 +386,7 @@ fn live_optional_child_cannot_cross_async_suspend() {
     assert_eq!(
         call_async(&mut runtime, "released", &mut table),
         Ok(OwnedValue::i64(22)),
-        "a proven-dead child should release before suspension"
+        "an explicitly released child should permit suspension"
     );
 }
 
