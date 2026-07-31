@@ -17,6 +17,14 @@ use super::{
 
 impl<'state, 'host> ExecutionHost<'state, 'host> {
     pub(super) fn retain_scoped_host(&mut self, returned: ScopedHostReturn<'host>) -> HostRef {
+        self.retain_scoped_host_with_parent_activity(returned, None)
+    }
+
+    pub(super) fn retain_scoped_host_with_parent_activity(
+        &mut self,
+        returned: ScopedHostReturn<'host>,
+        parent_activity: Option<Arc<()>>,
+    ) -> HostRef {
         let type_id = returned.object.host_type_id();
         let handle = self.scoped_hosts.insert_with(|handle| ScopedHostBinding {
             borrow_lease_id: Self::borrow_lease_id(handle),
@@ -26,6 +34,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
                 returned.object,
             )))),
             activity: Arc::new(()),
+            _parent_activity: parent_activity,
         });
         Self::scoped_root(handle, type_id)
     }
@@ -33,6 +42,14 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
     pub(super) fn retain_scoped_host_group(
         &mut self,
         returned: ScopedHostReturnGroup<'host>,
+    ) -> HostResult<Vec<HostRef>> {
+        self.retain_scoped_host_group_with_parent_activity(returned, None)
+    }
+
+    pub(super) fn retain_scoped_host_group_with_parent_activity(
+        &mut self,
+        returned: ScopedHostReturnGroup<'host>,
+        parent_activity: Option<Arc<()>>,
     ) -> HostResult<Vec<HostRef>> {
         if returned.object.len() != returned.accesses.len() || returned.object.is_empty() {
             return Err(HostError {
@@ -60,10 +77,16 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
                     index,
                 },
                 activity: Arc::new(()),
+                _parent_activity: parent_activity.clone(),
             });
             roots.push(Self::scoped_root(handle, type_id));
         }
         Ok(roots)
+    }
+
+    pub(super) fn scoped_activity(&self, root: HostRef) -> Option<Arc<()>> {
+        self.scoped_binding(root)
+            .map(|binding| Arc::clone(&binding.activity))
     }
 
     pub(super) fn with_group_host_leases(
@@ -170,7 +193,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
                 .try_read()
                 .ok_or_else(|| host_object_busy(root))
                 .and_then(|object| inspect(&**object)),
-            ScopedHostObjectBinding::IteratorLease(object) => object
+            ScopedHostObjectBinding::IteratorLease { lease, .. } => lease
                 .try_lock()
                 .ok_or_else(|| host_object_busy(root))
                 .and_then(|lease| inspect(lease.object())),
@@ -198,7 +221,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
                 .try_write()
                 .ok_or_else(|| host_object_busy(root))
                 .and_then(|mut object| mutate(&mut **object)),
-            ScopedHostObjectBinding::IteratorLease(_) => Err(host_object_busy(root)),
+            ScopedHostObjectBinding::IteratorLease { .. } => Err(host_object_busy(root)),
             ScopedHostObjectBinding::Group { object, index } => {
                 object.with_dependent(|_, objects| {
                     objects

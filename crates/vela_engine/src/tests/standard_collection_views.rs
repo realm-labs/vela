@@ -495,7 +495,21 @@ fn borrowed_map_iterator_fold_uses_live_complex_child_views() {
     let program = engine
         .compile_source(
             "fn fold(values) { \
-                 return values.values().fold(10, |total, value| total + value.len()); \
+                 let cursor = values.values(); \
+                 let first = cursor.next()?; \
+                 let first_length = first.len(); \
+                 host::release(first); \
+                 let second = cursor.next()?; \
+                 let second_length = second.len(); \
+                 host::release(second); \
+                 host::release(cursor); \
+                 return 10 + first_length + second_length; \
+             } \
+             fn wrong_order(values) { \
+                 let cursor = values.values(); \
+                 let child = cursor.next()?; \
+                 host::release(cursor); \
+                 host::release(child); \
              }",
         )
         .expect("borrowed Map iterator fold fixture should compile");
@@ -509,11 +523,21 @@ fn borrowed_map_iterator_fold_uses_live_complex_child_views() {
 
     let result = runtime
         .call("fold", args, CallOptions::unbounded())
-        .expect("fold should consume live complex child HostRefs");
+        .expect("fold should explicitly release live complex child HostRefs");
 
     assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(13)));
     assert_eq!(values["alpha"], vec![1, 2]);
     assert_eq!(values["beta"], vec![3]);
+
+    let mut args = CallArgs::new();
+    args.push_collection_ref("values", &values);
+    let error = runtime
+        .call("wrong_order", args, CallOptions::unbounded())
+        .expect_err("a complex iterator child must release before its cursor parent");
+    assert!(matches!(
+        error.kind(),
+        vela_vm::error::VmErrorKind::Host(vela_host::error::HostErrorKind::BorrowStillInUse { .. })
+    ));
 
     let baseline = (0..160)
         .find(|limit| {

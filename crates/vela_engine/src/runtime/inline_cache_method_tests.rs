@@ -451,7 +451,15 @@ fn child_len(value) {
 }
 
 fn total(values) {
-    return values.values().fold(0, |sum, value| sum + child_len(value));
+    let cursor = values.values();
+    let first = cursor.next()?;
+    let first_length = child_len(first);
+    host::release(first);
+    let second = cursor.next()?;
+    let second_length = child_len(second);
+    host::release(second);
+    host::release(cursor);
+    return first_length + second_length;
 }
 "#,
         )
@@ -509,7 +517,15 @@ fn child_len(value: ArrayView<i64>) -> i64 {
 }
 
 fn total(values: ArrayView<ArrayView<i64>>) -> i64 {
-    return values.values().fold(0, |sum, value| sum + child_len(value));
+    let cursor = values.values();
+    let first = cursor.next()?;
+    let first_length = child_len(first);
+    host::release(first);
+    let second = cursor.next()?;
+    let second_length = child_len(second);
+    host::release(second);
+    host::release(cursor);
+    return first_length + second_length;
 }
 "#,
         )

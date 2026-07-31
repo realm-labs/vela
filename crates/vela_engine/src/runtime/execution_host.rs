@@ -66,11 +66,15 @@ struct ScopedHostBinding<'host> {
     access: HostLeaseKind,
     object: ScopedHostObjectBinding<'host>,
     activity: Arc<()>,
+    _parent_activity: Option<Arc<()>>,
 }
 
 enum ScopedHostObjectBinding<'host> {
     Single(ScopedHostLeaseSlot<'host>),
-    IteratorLease(Arc<parking_lot::Mutex<ErasedHostLease<'host>>>),
+    IteratorLease {
+        source: HostRef,
+        lease: Arc<parking_lot::Mutex<ErasedHostLease<'host>>>,
+    },
     Group {
         object: Arc<ScopedBorrowedHostGroupCell<'host>>,
         index: usize,
@@ -186,11 +190,14 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             .scoped_hosts
             .get(handle)
             .expect("validated scoped host handle remains present");
-        let in_use = match &binding.object {
-            ScopedHostObjectBinding::Single(object) => Arc::strong_count(object) != 1,
-            ScopedHostObjectBinding::IteratorLease(object) => Arc::strong_count(object) != 1,
-            ScopedHostObjectBinding::Group { .. } => Arc::strong_count(&binding.activity) != 1,
-        };
+        let in_use = Arc::strong_count(&binding.activity) != 1
+            || match &binding.object {
+                ScopedHostObjectBinding::Single(object) => Arc::strong_count(object) != 1,
+                ScopedHostObjectBinding::IteratorLease { lease, .. } => {
+                    Arc::strong_count(lease) != 1
+                }
+                ScopedHostObjectBinding::Group { .. } => false,
+            };
         if in_use {
             return Err(HostError {
                 kind: HostErrorKind::BorrowStillInUse {
@@ -247,20 +254,33 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             });
         }
         if let Some(binding) = self.scoped_binding(root) {
-            let ScopedHostObjectBinding::Single(object) = &binding.object else {
-                return Err(host_lease_unsupported(root));
-            };
-            return match (binding.access, kind) {
-                (HostLeaseKind::Shared, HostLeaseKind::Exclusive) => Err(host_object_busy(root)),
-                (_, HostLeaseKind::Shared) => object
-                    .try_read_arc()
-                    .map(|object| ErasedHostLease::ScopedShared { object })
-                    .ok_or_else(|| host_object_busy(root)),
-                (HostLeaseKind::Exclusive, HostLeaseKind::Exclusive) => object
-                    .try_write_arc()
-                    .map(|object| ErasedHostLease::ScopedExclusive { object })
-                    .ok_or_else(|| host_object_busy(root)),
-            };
+            match &binding.object {
+                ScopedHostObjectBinding::Single(object) => {
+                    return match (binding.access, kind) {
+                        (HostLeaseKind::Shared, HostLeaseKind::Exclusive) => {
+                            Err(host_object_busy(root))
+                        }
+                        (_, HostLeaseKind::Shared) => object
+                            .try_read_arc()
+                            .map(|object| ErasedHostLease::ScopedShared { object })
+                            .ok_or_else(|| host_object_busy(root)),
+                        (HostLeaseKind::Exclusive, HostLeaseKind::Exclusive) => object
+                            .try_write_arc()
+                            .map(|object| ErasedHostLease::ScopedExclusive { object })
+                            .ok_or_else(|| host_object_busy(root)),
+                    };
+                }
+                ScopedHostObjectBinding::IteratorLease { source, .. } => {
+                    let source = *source;
+                    if kind == HostLeaseKind::Exclusive || source == root {
+                        return Err(host_object_busy(root));
+                    }
+                    return self.take_execution_host_lease(source, HostLeaseKind::Shared);
+                }
+                ScopedHostObjectBinding::Group { .. } => {
+                    return Err(host_lease_unsupported(root));
+                }
+            }
         }
         self.take_host_lease(root, kind)
     }
@@ -909,17 +929,20 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         {
             return Err(vela_host::lease::host_lease_unsupported(root));
         }
-        let parent_access = self.host_receiver_access(root);
         let lease = Arc::new(parking_lot::Mutex::new(
-            self.take_execution_host_lease(root, parent_access)?,
+            self.take_execution_host_lease(root, HostLeaseKind::Shared)?,
         ));
         let type_id = root.type_id;
         let handle = self.scoped_hosts.insert_with(|handle| ScopedHostBinding {
             borrow_lease_id: Self::borrow_lease_id(handle),
             type_id,
             access: HostLeaseKind::Shared,
-            object: ScopedHostObjectBinding::IteratorLease(lease),
+            object: ScopedHostObjectBinding::IteratorLease {
+                source: root,
+                lease,
+            },
             activity: Arc::new(()),
+            _parent_activity: None,
         });
         Ok(Self::scoped_root(handle, type_id))
     }

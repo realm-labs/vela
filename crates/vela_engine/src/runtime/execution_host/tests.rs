@@ -508,6 +508,7 @@ fn scoped_hosts_use_dense_generation_checked_identity() {
         access: HostLeaseKind::Shared,
         object: ScopedHostObjectBinding::Single(object),
         activity: Arc::new(()),
+        _parent_activity: None,
     });
     let root = ExecutionHost::scoped_root(dense_handle, type_id);
     let alias = root;
@@ -559,6 +560,7 @@ fn scoped_hosts_use_dense_generation_checked_identity() {
         access: HostLeaseKind::Shared,
         object: ScopedHostObjectBinding::Single(replacement),
         activity: Arc::new(()),
+        _parent_activity: None,
     });
     let replacement_root = ExecutionHost::scoped_root(replacement_handle, type_id);
     let replacement_borrow_lease_id = host

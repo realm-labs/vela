@@ -42,6 +42,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
         {
             return Ok(None);
         }
+        let parent_activity = self.scoped_activity(target.root);
         let kind = self.host_receiver_access(target.root);
         let parent = self.take_execution_host_lease(target.root, kind)?;
         let cell = try_scoped_host_cell(parent, |lease| {
@@ -57,10 +58,13 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             child.ok_or(ScopedProjectionError::Missing)
         });
         match cell {
-            Ok(object) => Ok(Some(self.retain_scoped_host(ScopedHostReturn {
-                object,
-                access: kind,
-            }))),
+            Ok(object) => Ok(Some(self.retain_scoped_host_with_parent_activity(
+                ScopedHostReturn {
+                    object,
+                    access: kind,
+                },
+                parent_activity,
+            ))),
             Err(ScopedProjectionError::Missing) => Ok(None),
             Err(ScopedProjectionError::Host(error)) => Err(error),
         }
@@ -80,6 +84,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
         {
             return Ok(None);
         }
+        let parent_activity = self.scoped_activity(target.root);
         let kind = self.host_receiver_access(target.root);
         let parent = self.take_execution_host_lease(target.root, kind)?;
         let shape = RefCell::new(None);
@@ -125,7 +130,10 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             ));
         }
         let accesses = vec![kind; object.len()];
-        let roots = self.retain_scoped_host_group(ScopedHostReturnGroup { object, accesses })?;
+        let roots = self.retain_scoped_host_group_with_parent_activity(
+            ScopedHostReturnGroup { object, accesses },
+            parent_activity,
+        )?;
         let snapshot = match shape
             .into_inner()
             .expect("a scoped collection projection records its output shape")
