@@ -28,6 +28,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let MethodsOptions {
         owner_path,
         public_only,
+        explicit_only,
     } = parse_options(attr, &item)?;
     let trait_path = item.trait_.as_ref().map(|(_, path, _)| path);
     let mut generated = Vec::new();
@@ -39,6 +40,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         };
         let method_attrs = take_method_attrs(method)?;
         if method_attrs.skip {
+            continue;
+        }
+        if explicit_only && !method_attrs.explicit {
             continue;
         }
         if public_only && !matches!(method.vis, Visibility::Public(_)) {
@@ -230,11 +234,13 @@ pub(crate) fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAt
 struct MethodsOptions {
     owner_path: String,
     public_only: bool,
+    explicit_only: bool,
 }
 
 fn parse_options(attr: TokenStream, item: &ItemImpl) -> Result<MethodsOptions> {
     let mut configured = None;
     let mut public_only = false;
+    let mut explicit_only = false;
     let parser = syn::meta::parser(|meta| {
         if meta.path.is_ident("path") {
             configured = Some(parse_qualified_name(
@@ -247,6 +253,10 @@ fn parse_options(attr: TokenStream, item: &ItemImpl) -> Result<MethodsOptions> {
             public_only = true;
             return Ok(());
         }
+        if meta.path.is_ident("explicit_only") {
+            explicit_only = true;
+            return Ok(());
+        }
         Err(meta.error("unsupported methods attribute"))
     });
     parser.parse2(attr)?;
@@ -254,6 +264,7 @@ fn parse_options(attr: TokenStream, item: &ItemImpl) -> Result<MethodsOptions> {
         return Ok(MethodsOptions {
             owner_path: configured,
             public_only,
+            explicit_only,
         });
     }
     let syn::Type::Path(path) = item.self_ty.as_ref() else {
@@ -265,6 +276,7 @@ fn parse_options(attr: TokenStream, item: &ItemImpl) -> Result<MethodsOptions> {
     Ok(MethodsOptions {
         owner_path: path.path.to_token_stream().to_string().replace(' ', ""),
         public_only,
+        explicit_only,
     })
 }
 
@@ -312,6 +324,27 @@ mod tests {
 
         assert!(output.contains("vela_callable_contract_level"));
         assert!(!output.contains("vela_callable_contract_load"));
+    }
+
+    #[test]
+    fn methods_explicit_only_exports_annotated_methods() {
+        let expanded = expand_result(
+            quote! { path = "game::Player", explicit_only },
+            quote! {
+                impl Player {
+                    #[vela]
+                    pub fn level(&self) -> i64 { self.level }
+                    pub fn unsupported_shape(&self) -> impl Iterator<Item = i64> {
+                        std::iter::once(self.level)
+                    }
+                }
+            },
+        )
+        .expect("explicit-only method group classifies");
+        let output = expanded.to_string();
+
+        assert!(output.contains("vela_callable_contract_level"));
+        assert!(!output.contains("vela_callable_contract_unsupported_shape"));
     }
 
     #[test]
