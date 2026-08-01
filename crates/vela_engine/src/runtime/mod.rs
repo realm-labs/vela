@@ -539,11 +539,11 @@ where
             let current = hot_reload.current();
             self.image
                 .engine()
-                .into_vm_for_program_image_with_abi(self.image.program_image(), current.abi())
+                .vm_for_artifact_with_abi(current.linked_artifact(), current.abi())
         } else {
             self.image
                 .engine()
-                .into_vm_for_program_image(self.image.program_image())
+                .vm_for_artifact(self.image.linked_artifact())
         };
         if use_persistent_heap {
             vm.run_linked_program_host_call(LinkedProgramHostCall {
@@ -636,11 +636,11 @@ where
             let current = hot_reload.current();
             self.image
                 .engine()
-                .into_vm_for_program_image_with_abi(self.image.program_image(), current.abi())
+                .vm_for_artifact_with_abi(current.linked_artifact(), current.abi())
         } else {
             self.image
                 .engine()
-                .into_vm_for_program_image(self.image.program_image())
+                .vm_for_artifact(self.image.linked_artifact())
         };
         let value = {
             let mut host = HostExecution {
@@ -689,7 +689,7 @@ where
             ),
         )?;
         let mut access = HostAccess::new();
-        let vm = runtime_vm(call.engine, call.registry_image, call.hot_reload);
+        let vm = runtime_vm(call.engine, call.artifact, call.hot_reload);
         let roots = call.vm_states.roots();
         let retained_values = std::sync::Arc::clone(&call.vm_states.retained_values);
         let vm_state_values = &mut call.vm_states.values;
@@ -843,7 +843,7 @@ where
             ),
         )?;
         let mut access = HostAccess::new();
-        let vm = runtime_vm(call.engine, call.registry_image, call.hot_reload);
+        let vm = runtime_vm(call.engine, call.artifact, call.hot_reload);
         let roots = call.vm_states.roots();
         let retained_values = std::sync::Arc::clone(&call.vm_states.retained_values);
         let vm_state_values = &mut call.vm_states.values;

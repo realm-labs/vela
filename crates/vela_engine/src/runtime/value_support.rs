@@ -1,4 +1,3 @@
-use vela_bytecode::ProgramImage;
 use vela_hot_reload::runtime::HotReloadRuntime;
 use vela_vm::error::{VmError, VmErrorKind};
 use vela_vm::heap::{HeapValue, ScriptHeap};
@@ -8,14 +7,14 @@ use crate::engine::Engine;
 
 pub(super) fn runtime_vm(
     engine: &Engine,
-    image: &ProgramImage,
+    artifact: &std::sync::Arc<vela_bytecode::LinkedArtifact>,
     hot_reload: Option<&HotReloadRuntime>,
 ) -> vela_vm::Vm {
     if let Some(hot_reload) = hot_reload {
         let current = hot_reload.current();
-        engine.into_vm_for_program_image_with_abi(image, current.abi())
+        engine.vm_for_artifact_with_abi(current.linked_artifact(), current.abi())
     } else {
-        engine.into_vm_for_program_image(image)
+        engine.vm_for_artifact(artifact)
     }
 }
 

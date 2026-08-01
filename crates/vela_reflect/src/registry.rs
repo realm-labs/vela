@@ -6,7 +6,7 @@ use lookup::{find_field, find_method, stable_trait_id};
 
 use crate::access::{FieldAccess, MethodAccess, MethodEffectSet};
 use crate::error::{ReflectError, ReflectErrorKind, ReflectResult};
-use crate::modules::{DeclOrigin, FunctionDesc, ModuleDesc, StateDesc};
+use crate::modules::{DeclOrigin, DetachedTargetDesc, FunctionDesc, ModuleDesc, StateDesc};
 use crate::type_binding::{TypeBindingDesc, TypeBindingSnapshot};
 use vela_common::{CollectionViewMutation, HostMethodId, HostTypeId, Span};
 use vela_common::{InteropTypeId, TypeBindingRegistryChecksum};
@@ -782,6 +782,23 @@ impl TypeRegistry {
             module_desc.export_function(desc.name.clone(), desc.id);
         }
         self.functions_by_id.insert(desc.id, desc);
+    }
+
+    /// Attaches sealed linked-artifact facts to an already registered script
+    /// function. This is metadata-only and does not add a reflective call path.
+    pub fn register_detached_target(
+        &mut self,
+        function: FunctionId,
+        target: DetachedTargetDesc,
+    ) -> bool {
+        let Some(desc) = self.functions_by_id.get_mut(&function) else {
+            return false;
+        };
+        if let Some(existing) = &desc.detached_target {
+            debug_assert_eq!(existing, &target);
+        }
+        desc.detached_target = Some(target);
+        true
     }
 
     pub fn register_state(&mut self, desc: StateDesc) {

@@ -4,8 +4,8 @@ mod records;
 mod script;
 
 pub use descriptors::{
-    DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, ModuleExportDesc, ModuleExportKind,
-    StateDesc, StateStorage,
+    DeclOrigin, DetachedTargetDesc, DetachedValueMode, FunctionDesc, FunctionParamDesc, ModuleDesc,
+    ModuleExportDesc, ModuleExportKind, StateDesc, StateStorage,
 };
 pub use queries::{
     callable_function_id_with_policy, exports, exports_for_target, exports_for_target_with_policy,

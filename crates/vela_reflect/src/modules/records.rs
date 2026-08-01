@@ -32,6 +32,7 @@ pub(super) fn module_record_with_exports(
 }
 
 pub(super) fn function_record(desc: &FunctionDesc) -> ReflectValue {
+    let detached = desc.detached_target.as_ref();
     record(
         "ReflectFunction",
         BTreeMap::from([
@@ -48,6 +49,45 @@ pub(super) fn function_record(desc: &FunctionDesc) -> ReflectValue {
             ("public".to_owned(), bool_value(desc.public)),
             ("is_async".to_owned(), bool_value(desc.asyncness.is_async())),
             ("effects".to_owned(), function_effects_record(desc)),
+            ("detached_target".to_owned(), bool_value(detached.is_some())),
+            (
+                "detached_parameter_contracts".to_owned(),
+                array(
+                    detached
+                        .into_iter()
+                        .flat_map(|target| target.parameter_contracts.iter().cloned())
+                        .map(string),
+                ),
+            ),
+            (
+                "detached_parameter_modes".to_owned(),
+                array(
+                    detached
+                        .into_iter()
+                        .flat_map(|target| target.parameter_modes.iter())
+                        .map(|mode| string(mode.as_str())),
+                ),
+            ),
+            (
+                "detached_result_contract".to_owned(),
+                optional_string(detached.map(|target| target.result_contract.as_str())),
+            ),
+            (
+                "detached_result_mode".to_owned(),
+                optional_string(detached.map(|target| target.result_mode.as_str())),
+            ),
+            (
+                "detached_effects".to_owned(),
+                function_effect_set_record(
+                    detached
+                        .map(|target| &target.effects)
+                        .unwrap_or(&crate::access::FunctionEffectSet::default()),
+                ),
+            ),
+            (
+                "detached_requires_service_generation".to_owned(),
+                bool_value(detached.is_some_and(|target| target.requires_service_generation)),
+            ),
             ("access".to_owned(), function_access_record(desc)),
             ("origin".to_owned(), origin_value(desc.origin)),
             (
@@ -109,41 +149,33 @@ fn origin_value(origin: DeclOrigin) -> ReflectValue {
 }
 
 fn function_effects_record(desc: &FunctionDesc) -> ReflectValue {
+    function_effect_set_record(&desc.effects)
+}
+
+fn function_effect_set_record(effects: &crate::access::FunctionEffectSet) -> ReflectValue {
     record(
         "ReflectEffectSet",
         BTreeMap::from([
-            ("reads_host".to_owned(), bool_value(desc.effects.reads_host)),
-            (
-                "writes_host".to_owned(),
-                bool_value(desc.effects.writes_host),
-            ),
-            (
-                "emits_events".to_owned(),
-                bool_value(desc.effects.emits_events),
-            ),
-            ("reads_time".to_owned(), bool_value(desc.effects.reads_time)),
-            (
-                "uses_random".to_owned(),
-                bool_value(desc.effects.uses_random),
-            ),
-            ("reads_io".to_owned(), bool_value(desc.effects.reads_io)),
-            ("writes_io".to_owned(), bool_value(desc.effects.writes_io)),
+            ("reads_host".to_owned(), bool_value(effects.reads_host)),
+            ("writes_host".to_owned(), bool_value(effects.writes_host)),
+            ("emits_events".to_owned(), bool_value(effects.emits_events)),
+            ("reads_time".to_owned(), bool_value(effects.reads_time)),
+            ("uses_random".to_owned(), bool_value(effects.uses_random)),
+            ("reads_io".to_owned(), bool_value(effects.reads_io)),
+            ("writes_io".to_owned(), bool_value(effects.writes_io)),
             (
                 "reads_reflection".to_owned(),
-                bool_value(desc.effects.reads_reflection),
+                bool_value(effects.reads_reflection),
             ),
             (
                 "writes_reflection".to_owned(),
-                bool_value(desc.effects.writes_reflection),
+                bool_value(effects.writes_reflection),
             ),
             (
                 "calls_reflection".to_owned(),
-                bool_value(desc.effects.calls_reflection),
+                bool_value(effects.calls_reflection),
             ),
-            (
-                "spawns_tasks".to_owned(),
-                bool_value(desc.effects.spawns_tasks),
-            ),
+            ("spawns_tasks".to_owned(), bool_value(effects.spawns_tasks)),
         ]),
     )
 }

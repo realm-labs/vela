@@ -33,6 +33,7 @@ use crate::type_binding::TypeBindingRegistry;
 mod metadata;
 mod service_dispatch;
 mod support;
+mod task_reflection;
 
 use service_dispatch::service_dispatch_natives;
 pub(crate) use support::check_capabilities;
@@ -1119,6 +1120,16 @@ impl Engine {
         vm
     }
 
+    pub(crate) fn vm_for_artifact(&self, artifact: &LinkedArtifact) -> Vm {
+        let mut vm = Vm::new();
+        let registry = task_reflection::registry_for_artifact(
+            self.registry_for_program_image(artifact.image()),
+            artifact,
+        );
+        self.install_with_registry(&mut vm, registry);
+        vm
+    }
+
     #[must_use]
     pub fn into_vm_for_program_with_abi(
         &self,
@@ -1138,6 +1149,20 @@ impl Engine {
     ) -> Vm {
         let mut vm = Vm::new();
         self.install_with_registry_and_abi(&mut vm, self.registry_for_program_image(image), abi);
+        vm
+    }
+
+    pub(crate) fn vm_for_artifact_with_abi(
+        &self,
+        artifact: &LinkedArtifact,
+        abi: &HotReloadAbi,
+    ) -> Vm {
+        let mut vm = Vm::new();
+        let registry = task_reflection::registry_for_artifact(
+            self.registry_for_program_image(artifact.image()),
+            artifact,
+        );
+        self.install_with_registry_and_abi(&mut vm, registry, abi);
         vm
     }
 }

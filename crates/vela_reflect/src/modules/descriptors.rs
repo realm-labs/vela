@@ -29,6 +29,32 @@ pub struct FunctionParamDesc {
     pub has_default: bool,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DetachedValueMode {
+    Detachable,
+    RuntimeChecked,
+}
+
+impl DetachedValueMode {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Detachable => "detachable",
+            Self::RuntimeChecked => "runtime_checked",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DetachedTargetDesc {
+    pub parameter_contracts: Vec<String>,
+    pub parameter_modes: Vec<DetachedValueMode>,
+    pub result_contract: String,
+    pub result_mode: DetachedValueMode,
+    pub effects: FunctionEffectSet,
+    pub requires_service_generation: bool,
+}
+
 impl FunctionParamDesc {
     #[must_use]
     pub fn new(name: impl Into<String>) -> Self {
@@ -62,6 +88,7 @@ pub struct FunctionDesc {
     pub asyncness: CallableAsyncness,
     pub public: bool,
     pub effects: FunctionEffectSet,
+    pub detached_target: Option<DetachedTargetDesc>,
     pub access: FunctionAccess,
     pub origin: DeclOrigin,
     pub docs: Option<String>,
@@ -169,6 +196,7 @@ impl FunctionDesc {
             asyncness: CallableAsyncness::Sync,
             public: true,
             effects: FunctionEffectSet::default(),
+            detached_target: None,
             access: FunctionAccess::default(),
             origin: DeclOrigin::Host,
             docs: None,

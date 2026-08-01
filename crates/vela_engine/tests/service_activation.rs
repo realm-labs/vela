@@ -706,10 +706,7 @@ impl AuditPortableHotfix {
         task_target.operation,
         vela_bytecode::ArtifactTaskOperation::SpawnScoped
     );
-    assert_eq!(
-        task_target.worker_debug_name,
-        "calculator::portable_worker"
-    );
+    assert_eq!(task_target.worker_debug_name, "calculator::portable_worker");
     assert_eq!(
         task_target.service_requirement,
         vela_bytecode::ArtifactTaskServiceRequirement::InheritOriginatingGeneration

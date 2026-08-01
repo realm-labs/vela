@@ -3830,6 +3830,15 @@ verified MIR call targets, not the provisional signatures used before MIR
 lowering. This keeps nested async IO/Host/Service calls inside the same Engine,
 scope-policy, artifact, and Service ceilings.
 
+### Detached Reflection Is Artifact Metadata, Not Invocation Authority
+
+Runtime reflection augments ordinary script function descriptors from the
+exact linked artifact's sealed task-target table. It reports detached argument
+and result contracts, detachability modes, transitive effects, and originating
+Service-generation requirements. Loading those facts does not change the
+function's reflective call permission and creates no dynamic task-start path;
+task admission remains available only through compiler-owned static forms.
+
 ### Generated Sync Host Methods Preserve Both Sealed Representations
 
 A generated synchronous Host method invokes its typed Rust body when the

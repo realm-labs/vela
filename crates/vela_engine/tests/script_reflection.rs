@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use vela_engine::engine::Engine;
+use vela_engine::permission::Capability;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
@@ -80,6 +81,7 @@ fn main() {
 
     return 0;
 }
+
 "#;
 
     let engine = Engine::builder()
@@ -101,6 +103,59 @@ fn main() {
             &mut tx,
         ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
+    );
+}
+
+#[test]
+fn runtime_reflection_reports_detached_targets_without_making_them_callable() {
+    let source = r#"
+async fn worker(value: Any) -> Any {
+    let _started_at = time::now();
+    return value;
+}
+
+fn schedule(value: Any) {
+    task::spawn_scoped(worker(value));
+}
+
+fn inspect() {
+    let target = reflect::function("worker");
+    if !target.detached_target { return 10; }
+    if target.detached_parameter_contracts[0] != "Any" { return 20; }
+    if target.detached_parameter_modes[0] != "runtime_checked" { return 30; }
+    if target.detached_result_contract.unwrap_or("") != "Any" { return 40; }
+    if target.detached_result_mode.unwrap_or("") != "runtime_checked" { return 50; }
+    if !target.detached_requires_service_generation { return 60; }
+    if target.access.reflect_callable { return 70; }
+    if !target.detached_effects.reads_time { return 80; }
+    return 1;
+}
+"#;
+
+    let engine = Engine::builder()
+        .capability(Capability::TaskSpawn)
+        .capability(Capability::Time)
+        .with_time_clock(1_700_000_000, 42)
+        .reflection_policy(ReflectPolicy::all())
+        .build()
+        .expect("build engine");
+    let program = engine
+        .compile_source(source)
+        .expect("compile task metadata");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+    let mut adapter = MockStateAdapter::new();
+    let mut tx = HostAccess::new();
+
+    assert_eq!(
+        call_raw(
+            &mut runtime,
+            "inspect",
+            &[],
+            CallOptions::unbounded(),
+            &mut adapter,
+            &mut tx,
+        ),
+        Ok(OwnedValue::i64(1))
     );
 }
 
