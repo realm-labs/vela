@@ -659,6 +659,19 @@ pub trait HostValueFrom: Sized {
     fn from_host_value(value: &HostValue) -> HostResult<Self>;
 }
 
+/// A Rust value copied structurally across a Host field boundary.
+///
+/// Implementations must encode and decode the complete value. This keeps
+/// copied records, enums, and nullable values distinct from identity-bearing
+/// [`crate::path::HostRef`] objects.
+pub trait DetachedHostValue: Sized {
+    fn detached_host_type_shape() -> String;
+
+    fn encode_detached_host_value(&self) -> HostResult<HostCallValue>;
+
+    fn decode_detached_host_value(value: &HostCallValue) -> HostResult<Self>;
+}
+
 pub trait ScriptHostKey: Clone + Eq + Ord {
     #[doc(hidden)]
     fn script_host_key_shape() -> Option<&'static str> {
@@ -923,6 +936,29 @@ impl_scalar_host_value!(
     f64 => F64,
 );
 
+macro_rules! impl_scalar_detached_host_value {
+    ($($ty:ty),* $(,)?) => {
+        $(
+            impl DetachedHostValue for $ty {
+                fn detached_host_type_shape() -> String {
+                    stringify!($ty).to_owned()
+                }
+
+                fn encode_detached_host_value(&self) -> HostResult<HostCallValue> {
+                    Ok(HostCallValue::from_host_value((*self).into_host_value()?))
+                }
+
+                fn decode_detached_host_value(value: &HostCallValue) -> HostResult<Self> {
+                    let value = value.to_host_value().ok_or_else(|| invalid_arg(stringify!($ty)))?;
+                    <Self as HostValueFrom>::from_host_value(&value)
+                }
+            }
+        )*
+    };
+}
+
+impl_scalar_detached_host_value!(i8, i16, i32, i64, u8, u16, u32, u64, f32, f64);
+
 impl HostValueInto for bool {
     fn into_host_value(self) -> HostResult<HostValue> {
         Ok(HostValue::Bool(self))
@@ -979,6 +1015,23 @@ impl ScriptHostFieldAccess for bool {
 }
 
 impl_script_host_object_via_field!(bool);
+
+impl DetachedHostValue for bool {
+    fn detached_host_type_shape() -> String {
+        "bool".to_owned()
+    }
+
+    fn encode_detached_host_value(&self) -> HostResult<HostCallValue> {
+        Ok(HostCallValue::Bool(*self))
+    }
+
+    fn decode_detached_host_value(value: &HostCallValue) -> HostResult<Self> {
+        match value {
+            HostCallValue::Bool(value) => Ok(*value),
+            _ => Err(invalid_arg("bool")),
+        }
+    }
+}
 
 impl HostValueInto for String {
     fn into_host_value(self) -> HostResult<HostValue> {
@@ -1063,6 +1116,116 @@ impl ScriptHostFieldAccess for String {
 }
 
 impl_script_host_object_via_field!(String);
+
+impl DetachedHostValue for String {
+    fn detached_host_type_shape() -> String {
+        "String".to_owned()
+    }
+
+    fn encode_detached_host_value(&self) -> HostResult<HostCallValue> {
+        Ok(HostCallValue::String(self.clone()))
+    }
+
+    fn decode_detached_host_value(value: &HostCallValue) -> HostResult<Self> {
+        match value {
+            HostCallValue::String(value) => Ok(value.clone()),
+            _ => Err(invalid_arg("String")),
+        }
+    }
+}
+
+impl<T> ScriptHostFieldAccess for Option<T>
+where
+    T: DetachedHostValue,
+{
+    fn script_host_type_id(&self) -> HostTypeId {
+        HostTypeId::new(0)
+    }
+
+    fn script_host_type_shape() -> Option<String> {
+        Some(format!("Option<{}>", T::detached_host_type_shape()))
+    }
+
+    fn from_host_collection_value(value: HostValue) -> HostResult<Self> {
+        match value {
+            HostValue::Detached(value) => Self::decode_detached_host_value(&value),
+            value => Self::decode_detached_host_value(&HostCallValue::from_host_value(value)),
+        }
+    }
+
+    fn read_host_target_from(
+        &self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+    ) -> HostResult<HostValue> {
+        if target_is_leaf(target, offset) {
+            Ok(HostValue::Detached(Box::new(
+                self.encode_detached_host_value()?,
+            )))
+        } else {
+            Err(missing_target(target))
+        }
+    }
+
+    fn write_host_target_from(
+        &mut self,
+        target: HostTargetInstance<'_>,
+        offset: usize,
+        value: HostValue,
+    ) -> HostResult<()> {
+        if !target_is_leaf(target, offset) {
+            return Err(missing_target(target));
+        }
+        *self = Self::from_host_collection_value(value)?;
+        Ok(())
+    }
+}
+
+impl<T> DetachedHostValue for Option<T>
+where
+    T: DetachedHostValue,
+{
+    fn detached_host_type_shape() -> String {
+        format!("Option<{}>", T::detached_host_type_shape())
+    }
+
+    fn encode_detached_host_value(&self) -> HostResult<HostCallValue> {
+        Ok(match self {
+            Some(value) => HostCallValue::enum_variant(
+                "Option",
+                "Some",
+                [("0", value.encode_detached_host_value()?)],
+            ),
+            None => HostCallValue::enum_variant(
+                "Option",
+                "None",
+                std::iter::empty::<(&'static str, HostCallValue)>(),
+            ),
+        })
+    }
+
+    fn decode_detached_host_value(value: &HostCallValue) -> HostResult<Self> {
+        match value {
+            HostCallValue::Enum {
+                enum_name,
+                variant,
+                fields,
+            } if enum_name == "Option" && variant == "Some" => {
+                let value = fields
+                    .iter()
+                    .find(|field| field.name == "0")
+                    .ok_or_else(|| invalid_arg("Option::Some"))?;
+                T::decode_detached_host_value(&value.value).map(Some)
+            }
+            HostCallValue::Enum {
+                enum_name, variant, ..
+            } if enum_name == "Option" && variant == "None" => Ok(None),
+            _ => Err(invalid_arg("Option")),
+        }
+    }
+}
+
+impl_script_host_object_via_field!(<T> Option<T> where T: DetachedHostValue + Send + Sync + 'static);
 
 impl HostValueInto for () {
     fn into_host_value(self) -> HostResult<HostValue> {

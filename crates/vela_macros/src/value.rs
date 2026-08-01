@@ -6,6 +6,7 @@ use syn::{Data, DataEnum, DataStruct, DeriveInput, Fields, Result, Type, parse2}
 
 use crate::attrs::{ScriptAttrs, error, inferred_type_hint, parse_script_attrs, spanned_error};
 use crate::hash::StableHasher;
+use crate::host_object::base_script_host_object_impl_tokens;
 use crate::script_host::{TypeIdentity, type_identity};
 
 struct ValueField {
@@ -156,6 +157,7 @@ fn expand_struct(
             let builder = <#rust_type as ::vela_engine::type_registration::RustValueType>::register_value_type_closure(builder);
         }
     });
+    let detached_host_impl = detached_host_impl_tokens(ident, &qualified_type_name);
 
     Ok(quote! {
         impl #ident {
@@ -295,6 +297,8 @@ fn expand_struct(
                 Ok(Self { #(#decode_fields),* })
             }
         }
+
+        #detached_host_impl
     })
 }
 
@@ -434,6 +438,7 @@ fn expand_enum(
                 let builder = <#rust_type as ::vela_engine::type_registration::RustValueType>::register_value_type_closure(builder);
             }
         });
+    let detached_host_impl = detached_host_impl_tokens(ident, &qualified_type_name);
 
     Ok(quote! {
         impl #ident {
@@ -582,7 +587,94 @@ fn expand_enum(
                 }
             }
         }
+
+        #detached_host_impl
     })
+}
+
+fn detached_host_impl_tokens(ident: &Ident, qualified_type_name: &str) -> TokenStream {
+    let self_ty: Type = syn::parse_quote!(#ident);
+    let host_object_impl = base_script_host_object_impl_tokens(&self_ty);
+    quote! {
+        impl ::vela_host::object::DetachedHostValue for #ident {
+            fn detached_host_type_shape() -> ::std::string::String {
+                #qualified_type_name.to_owned()
+            }
+
+            fn encode_detached_host_value(
+                &self,
+            ) -> ::vela_host::error::HostResult<::vela_host::call_value::HostCallValue> {
+                ::vela_engine::host_call::encode_detached_host_value(self)
+            }
+
+            fn decode_detached_host_value(
+                value: &::vela_host::call_value::HostCallValue,
+            ) -> ::vela_host::error::HostResult<Self> {
+                ::vela_engine::host_call::decode_detached_host_value(value)
+            }
+        }
+
+        impl ::vela_host::object::ScriptHostFieldAccess for #ident {
+            fn script_host_type_id(&self) -> ::vela_common::HostTypeId {
+                ::vela_common::HostTypeId::new(0)
+            }
+
+            fn script_host_type_shape() -> Option<::std::string::String> {
+                Some(#qualified_type_name.to_owned())
+            }
+
+            fn from_host_collection_value(
+                value: ::vela_host::value::HostValue,
+            ) -> ::vela_host::error::HostResult<Self> {
+                let value = match value {
+                    ::vela_host::value::HostValue::Detached(value) => *value,
+                    value => ::vela_host::call_value::HostCallValue::from_host_value(value),
+                };
+                <Self as ::vela_host::object::DetachedHostValue>::decode_detached_host_value(
+                    &value,
+                )
+            }
+
+            fn read_host_target_from(
+                &self,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                offset: usize,
+            ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
+                if offset >= target.plan.parts.len() {
+                    let value = <Self as ::vela_host::object::DetachedHostValue>::
+                        encode_detached_host_value(self)?;
+                    return Ok(::vela_host::value::HostValue::Detached(Box::new(value)));
+                }
+                Err(::vela_host::error::HostError {
+                    kind: ::vela_host::error::HostErrorKind::MissingPath {
+                        path: target.to_diagnostic_path().to_host_path(),
+                    },
+                    source_span: None,
+                })
+            }
+
+            fn write_host_target_from(
+                &mut self,
+                target: ::vela_host::target::HostTargetInstance<'_>,
+                offset: usize,
+                value: ::vela_host::value::HostValue,
+            ) -> ::vela_host::error::HostResult<()> {
+                if offset < target.plan.parts.len() {
+                    return Err(::vela_host::error::HostError {
+                        kind: ::vela_host::error::HostErrorKind::MissingPath {
+                            path: target.to_diagnostic_path().to_host_path(),
+                        },
+                        source_span: None,
+                    });
+                }
+                *self = <Self as ::vela_host::object::ScriptHostFieldAccess>::
+                    from_host_collection_value(value)?;
+                Ok(())
+            }
+        }
+
+        #host_object_impl
+    }
 }
 
 fn collect_fields(fields: &syn::FieldsNamed, stable_type_path: &str) -> Result<Vec<ValueField>> {

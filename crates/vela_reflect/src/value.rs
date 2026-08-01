@@ -96,6 +96,15 @@ fn type_of_host_value<'a>(registry: &'a TypeRegistry, value: &HostValue) -> Opti
         HostValue::Scalar(value) => registry.type_by_name(value.type_name()),
         HostValue::String(_) => registry.type_by_name("string"),
         HostValue::Bytes(_) => registry.type_by_name("bytes"),
+        HostValue::Detached(value) => match value.as_ref() {
+            vela_host::call_value::HostCallValue::Record { type_name, .. } => {
+                registry.type_by_name(type_name)
+            }
+            vela_host::call_value::HostCallValue::Enum { enum_name, .. } => {
+                registry.type_by_name(enum_name)
+            }
+            _ => None,
+        },
         HostValue::HostRef(host_ref) => registry.type_of_host(*host_ref),
     }
 }

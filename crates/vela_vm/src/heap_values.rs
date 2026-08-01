@@ -843,6 +843,12 @@ pub(crate) fn host_to_value(
         HostValue::Scalar(value) => Ok(Value::from_scalar(value)),
         HostValue::String(value) => allocate_heap_value(HeapValue::String(value), heap, budget),
         HostValue::Bytes(value) => allocate_heap_value(HeapValue::Bytes(value), heap, budget),
+        HostValue::Detached(value) => owned_to_value(
+            crate::host_call_values::host_call_to_owned_value(*value),
+            heap,
+            budget,
+            Some(&mut *host.adapter),
+        ),
         HostValue::HostRef(value) => Ok(Value::HostRef(host.intern_host_ref(value)?)),
     }
 }
@@ -875,7 +881,11 @@ pub(crate) fn value_to_host(
                 | HeapValue::Set(_)
                 | HeapValue::Record { .. }
                 | HeapValue::Enum { .. },
-            ) => Err(type_error(operation)),
+            ) => {
+                let owned = value_to_owned(value, heap, host.map(|host| &*host.adapter))?;
+                let detached = crate::host_call_values::owned_to_host_call_value(&owned)?;
+                Ok(HostValue::Detached(Box::new(detached)))
+            }
             _ => Err(type_error(operation)),
         },
         Value::Missing => Err(type_error(operation)),

@@ -231,7 +231,9 @@ fn host_value_to_collection_key(
         HostValue::String(value) => HostCollectionKey::String(value),
         HostValue::Bytes(value) => HostCollectionKey::Bytes(value),
         HostValue::HostRef(value) => HostCollectionKey::HostRef(value),
-        HostValue::Unit | HostValue::Scalar(ScalarValue::F32(_) | ScalarValue::F64(_)) => {
+        HostValue::Unit
+        | HostValue::Detached(_)
+        | HostValue::Scalar(ScalarValue::F32(_) | ScalarValue::F64(_)) => {
             return extension_type_error(operation);
         }
     })

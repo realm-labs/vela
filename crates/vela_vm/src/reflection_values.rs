@@ -249,8 +249,10 @@ fn owned_to_host(value: &OwnedValue, operation: &'static str) -> VmResult<HostVa
         | OwnedValue::Map(_)
         | OwnedValue::Set(_)
         | OwnedValue::Record { .. }
-        | OwnedValue::Enum { .. }
-        | OwnedValue::Closure(_)
+        | OwnedValue::Enum { .. } => Ok(HostValue::Detached(Box::new(
+            crate::host_call_values::owned_to_host_call_value(value)?,
+        ))),
+        OwnedValue::Closure(_)
         | OwnedValue::Range(_)
         | OwnedValue::PathProxy(_)
         | OwnedValue::Iterator(_) => Err(type_error(operation)),
@@ -265,6 +267,7 @@ fn host_to_owned(value: HostValue) -> OwnedValue {
         HostValue::Scalar(value) => OwnedValue::Scalar(value),
         HostValue::String(value) => OwnedValue::String(value),
         HostValue::Bytes(value) => OwnedValue::Bytes(value),
+        HostValue::Detached(value) => crate::host_call_values::host_call_to_owned_value(*value),
         HostValue::HostRef(value) => OwnedValue::HostRef(value),
     }
 }

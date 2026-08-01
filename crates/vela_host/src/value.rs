@@ -1,5 +1,6 @@
 use vela_common::ScalarValue;
 
+use crate::call_value::HostCallValue;
 use crate::path::HostRef;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -10,6 +11,12 @@ pub enum HostValue {
     Scalar(ScalarValue),
     String(String),
     Bytes(Vec<u8>),
+    /// One owned structural value copied across the Host field boundary.
+    ///
+    /// Unlike [`HostValue::HostRef`], this value has no identity in Rust and
+    /// cannot retain a host lease. A write decodes the complete replacement
+    /// value before updating the host field.
+    Detached(Box<HostCallValue>),
     HostRef(HostRef),
 }
 

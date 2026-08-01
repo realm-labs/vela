@@ -191,6 +191,30 @@ struct ActorState {
     player: PlayerState,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, vela_macros::Value)]
+#[vela(path = "game::script::BusinessId")]
+struct BusinessId {
+    value: i64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, vela_macros::Value)]
+#[vela(path = "game::script::BusinessMode")]
+enum BusinessMode {
+    Active,
+    Paused { reason: i64 },
+}
+
+#[derive(Debug, ScriptHost)]
+#[vela(path = "game::script::DetachedFieldState", fields)]
+struct DetachedFieldState {
+    #[vela(hint = "game::script::BusinessId")]
+    player_id: BusinessId,
+    #[vela(hint = "Option<game::script::BusinessId>")]
+    maybe_id: Option<BusinessId>,
+    #[vela(hint = "game::script::BusinessMode")]
+    mode: BusinessMode,
+}
+
 #[test]
 fn script_host_derive_generates_type_metadata() {
     let desc = Player::vela_host_type_desc();
@@ -372,6 +396,63 @@ fn upgrade(actor: ActorState) {
         actor.player.equipment.mutation_count > 0,
         "write-through must pass through DerefMut so persistence wrappers observe mutation",
     );
+}
+
+#[test]
+fn derived_values_and_options_are_writable_host_fields() {
+    let engine = Engine::builder()
+        .capability(Capability::HostRead)
+        .capability(Capability::HostWrite)
+        .register_type::<DetachedFieldState>()
+        .build()
+        .expect("detached host field graph should seal");
+    assert!(
+        engine
+            .registry()
+            .type_by_name("game::script::BusinessId")
+            .is_some()
+    );
+    assert!(
+        engine
+            .registry()
+            .type_by_name("game::script::BusinessMode")
+            .is_some()
+    );
+    let program = engine
+        .compile_source(
+            r#"
+fn replace(state: DetachedFieldState) {
+    state.player_id = game::script::BusinessId { value: 42 };
+    state.maybe_id = Option::Some(game::script::BusinessId { value: 99 });
+    state.mode = game::script::BusinessMode::Paused { reason: 7 };
+    let maybe_value = match state.maybe_id {
+        Option::Some(value) => value.value,
+        Option::None => 0,
+    };
+    return state.player_id.value + maybe_value;
+}
+"#,
+        )
+        .expect("derived Value and Option fields should compile");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+    let mut state = DetachedFieldState {
+        player_id: BusinessId { value: 1 },
+        maybe_id: None,
+        mode: BusinessMode::Active,
+    };
+
+    let result = runtime
+        .call(
+            "replace",
+            CallArgs::new().with_host_mut("state", &mut state),
+            CallOptions::unbounded(),
+        )
+        .expect("detached field replacement should execute");
+
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(141)));
+    assert_eq!(state.player_id, BusinessId { value: 42 });
+    assert_eq!(state.maybe_id, Some(BusinessId { value: 99 }));
+    assert_eq!(state.mode, BusinessMode::Paused { reason: 7 });
 }
 
 #[test]

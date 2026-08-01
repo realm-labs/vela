@@ -81,7 +81,7 @@ impl HostCallValue {
         }
     }
 
-    /// Converts the scalar Host field vocabulary into the method vocabulary.
+    /// Converts the Host field vocabulary into the method vocabulary.
     #[must_use]
     pub fn from_host_value(value: HostValue) -> Self {
         match value {
@@ -91,11 +91,12 @@ impl HostCallValue {
             HostValue::Scalar(value) => Self::Scalar(value),
             HostValue::String(value) => Self::String(value),
             HostValue::Bytes(value) => Self::Bytes(value),
+            HostValue::Detached(value) => *value,
             HostValue::HostRef(value) => Self::HostRef(value),
         }
     }
 
-    /// Attempts to narrow a method value to the Host field vocabulary.
+    /// Converts a method value to the Host field vocabulary.
     #[must_use]
     pub fn to_host_value(&self) -> Option<HostValue> {
         match self {
@@ -111,7 +112,7 @@ impl HostCallValue {
             | Self::Map(_)
             | Self::Set(_)
             | Self::Record { .. }
-            | Self::Enum { .. } => None,
+            | Self::Enum { .. } => Some(HostValue::Detached(Box::new(self.clone()))),
         }
     }
 }

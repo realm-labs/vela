@@ -10,7 +10,7 @@ pub(crate) fn value_from_host(value: HostValue, host: &mut HostExecution<'_>) ->
         HostValue::Char(value) => Value::Char(value),
         HostValue::Scalar(value) => Value::from_scalar(value),
         HostValue::HostRef(value) => Value::HostRef(host.intern_host_ref(value)?),
-        HostValue::String(_) | HostValue::Bytes(_) => Value::Missing,
+        HostValue::String(_) | HostValue::Bytes(_) | HostValue::Detached(_) => Value::Missing,
     })
 }
 
@@ -41,7 +41,15 @@ pub(crate) fn value_to_host(
                 | HeapValue::Set(_)
                 | HeapValue::Record { .. }
                 | HeapValue::Enum { .. },
-            ) => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+            ) => {
+                let owned = crate::heap_values::value_to_owned(
+                    value,
+                    heap,
+                    host.map(|host| &*host.adapter),
+                )?;
+                let detached = crate::host_call_values::owned_to_host_call_value(&owned)?;
+                Ok(HostValue::Detached(Box::new(detached)))
+            }
             _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
         },
         Value::Missing => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),

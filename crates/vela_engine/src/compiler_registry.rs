@@ -153,7 +153,7 @@ fn field_def(
     .defaulted(field.has_default)
     .access(field_access(&field.access))
     .type_hint(field.type_hint.as_deref().map(raw_type_hint_def));
-    if field.attrs.get("vela_external_property").is_none() {
+    if desc.host_type_id.is_some() && field.attrs.get("vela_external_property").is_none() {
         definition = definition.host_runtime_id(field.id.get());
     }
     definition
@@ -180,7 +180,7 @@ fn variant_field_def(
     field: &FieldDesc,
     declaration_order: u32,
 ) -> FieldDef {
-    FieldDef::new(
+    let definition = FieldDef::new(
         source_field_path(
             "host",
             &format!("{}::{variant}", desc.key.name),
@@ -188,12 +188,16 @@ fn variant_field_def(
         ),
         owner,
     )
-    .host_runtime_id(field.id.get())
     .variant_owner(variant_id)
     .declaration_order(declaration_order)
     .defaulted(field.has_default)
     .access(field_access(&field.access))
-    .type_hint(field.type_hint.as_deref().map(raw_type_hint_def))
+    .type_hint(field.type_hint.as_deref().map(raw_type_hint_def));
+    if desc.host_type_id.is_some() {
+        definition.host_runtime_id(field.id.get())
+    } else {
+        definition
+    }
 }
 
 fn method_def(desc: &TypeDesc, owner: vela_def::TypeId, method: &MethodDesc) -> MethodDef {

@@ -1,108 +1,11 @@
-//! Detached values passed across erased Host method calls.
-//!
-//! This module connects the VM's owned Value representation to the
-//! lifetime-neutral [`HostCallValue`] representation used by
-//! [`vela_host::object::ScriptHostObject`]. Generated and handwritten Host
-//! adapters can use the typed helpers to retain the same Rust `Value`
-//! conversion experience as statically registered native methods.
+//! Conversions between VM-owned values and detached Host boundary values.
 
 use vela_host::call_value::{HostCallField, HostCallMapEntry, HostCallValue};
-use vela_host::error::{HostError, HostErrorKind, HostResult};
-use vela_host::path::HostPath;
-use vela_host::resolved::{HostAccessOp, HostAccessSpec};
-use vela_host::target::{HostTargetInstance, HostTargetPlan};
-use vela_vm::HostExecution;
-use vela_vm::error::{VmError, VmErrorKind, VmResult};
-use vela_vm::owned_value::{OwnedMapEntry, OwnedValue};
 
-use crate::args::{FromScriptArg, IntoScriptArg};
+use crate::error::{VmError, VmErrorKind, VmResult};
+use crate::owned_value::{OwnedMapEntry, OwnedValue};
 
-/// Decodes one detached Host method argument into its Rust Value type.
-pub fn decode_host_call_arg<T>(value: &HostCallValue) -> HostResult<T>
-where
-    T: FromScriptArg,
-{
-    let value = host_call_to_owned_value(value.clone());
-    T::from_script_arg(&value).map_err(|_| invalid_argument(T::TYPE_NAME))
-}
-
-/// Encodes a Rust Value type as a detached Host method return value.
-pub fn encode_host_call_return<T>(value: T) -> HostResult<HostCallValue>
-where
-    T: IntoScriptArg,
-{
-    owned_to_host_call_value(&value.into_script_arg())
-        .map_err(|_| invalid_argument("detached Host method return value"))
-}
-
-/// Encodes a borrowed Rust Value type as a detached Host boundary value.
-#[doc(hidden)]
-pub fn encode_detached_host_value<T>(value: &T) -> HostResult<HostCallValue>
-where
-    T: crate::args::ToScriptValueRef,
-{
-    owned_to_host_call_value(&value.to_script_value_ref())
-        .map_err(|_| invalid_argument("detached Host field value"))
-}
-
-/// Decodes a detached Host boundary value into a Rust Value type.
-#[doc(hidden)]
-pub fn decode_detached_host_value<T>(value: &HostCallValue) -> HostResult<T>
-where
-    T: FromScriptArg,
-{
-    decode_host_call_arg(value)
-}
-
-/// Invokes the controlled adapter method vtable when a registered receiver is
-/// represented by a HostAccess path rather than a directly leased Rust object.
-///
-/// Generated method adapters call this only after proving that the receiver
-/// itself cannot supply a typed lease. Other lease, permission, and invocation
-/// errors remain terminal.
-#[doc(hidden)]
-pub fn call_registered_host_method_through_adapter(
-    receiver: &HostPath,
-    args: &[OwnedValue],
-    method: vela_common::HostMethodId,
-    host: &mut HostExecution<'_>,
-) -> VmResult<OwnedValue> {
-    let plan = HostTargetPlan::from(receiver);
-    let target = HostTargetInstance::new(receiver.root, &plan, &[]);
-    let access = host
-        .adapter
-        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Call(method), &plan))?;
-    let args = args
-        .iter()
-        .map(owned_to_host_call_value)
-        .collect::<VmResult<Vec<_>>>()?;
-    let result = host.adapter.call_host(access, target, method, &args)?;
-    Ok(host_call_to_owned_value(result))
-}
-
-/// Retains a nested Host path as a scoped receiver for a registered Rust
-/// method adapter.
-///
-/// Top-level arguments can be leased directly. A receiver reached through
-/// fields or collection elements first needs a child Host identity that keeps
-/// its parent borrow alive for the duration of the method call.
-#[doc(hidden)]
-pub fn retain_registered_host_method_receiver(
-    receiver: &HostPath,
-    host: &mut HostExecution<'_>,
-) -> VmResult<Option<vela_host::path::HostRef>> {
-    if receiver.segments.is_empty() {
-        return Ok(None);
-    }
-    let plan = HostTargetPlan::from(receiver);
-    let target = HostTargetInstance::new(receiver.root, &plan, &[]);
-    let access = host
-        .adapter
-        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &plan))?;
-    Ok(host.adapter.read_scoped_host(access, target)?)
-}
-
-pub(crate) fn owned_to_host_call_value(value: &OwnedValue) -> VmResult<HostCallValue> {
+pub fn owned_to_host_call_value(value: &OwnedValue) -> VmResult<HostCallValue> {
     match value {
         OwnedValue::Unit => Ok(HostCallValue::Unit),
         OwnedValue::Bool(value) => Ok(HostCallValue::Bool(*value)),
@@ -159,12 +62,13 @@ pub(crate) fn owned_to_host_call_value(value: &OwnedValue) -> VmResult<HostCallV
         | OwnedValue::Range(_)
         | OwnedValue::PathProxy(_)
         | OwnedValue::Iterator(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "non-detached Host method boundary value",
+            operation: "non-detached Host boundary value",
         })),
     }
 }
 
-pub(crate) fn host_call_to_owned_value(value: HostCallValue) -> OwnedValue {
+#[must_use]
+pub fn host_call_to_owned_value(value: HostCallValue) -> OwnedValue {
     match value {
         HostCallValue::Unit => OwnedValue::Unit,
         HostCallValue::Bool(value) => OwnedValue::Bool(value),
@@ -210,12 +114,5 @@ pub(crate) fn host_call_to_owned_value(value: HostCallValue) -> OwnedValue {
                 .map(|field| (field.name, host_call_to_owned_value(field.value))),
         ),
         HostCallValue::HostRef(value) => OwnedValue::HostRef(value),
-    }
-}
-
-fn invalid_argument(expected: &'static str) -> HostError {
-    HostError {
-        kind: HostErrorKind::InvalidArgument { expected },
-        source_span: None,
     }
 }
