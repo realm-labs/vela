@@ -1,7 +1,14 @@
 # Typed Scalar Bytecode Optimization Plan
 
 > **Track:** M20/post-M19 interpreter performance, scalar hot path  
-> **Document status:** architecture + Codex execution plan  
+> **Document status:** superseded execution plan; historical prerequisite
+> **Superseded by:**
+> [Verified-MIR Superinstruction And Basic-Block Interpreter Plan](verified-mir-superinstruction-basic-block-interpreter-plan.md).
+> The typed i64, linked-operand, hook-specialization, and measurement foundation
+> described here has landed. Do not execute this document's Phase 6 or Codex
+> Goal Prompt; larger execution units must now be selected from verified MIR
+> with explicit coverage, budget, safepoint, source-point, and artifact
+> contracts.
 > **Compatibility policy:** breaking internal bytecode/compiler/runtime changes are allowed. Preserve language semantics, hot-reload ABI checks, host-boundary safety, and runtime diagnostics. Do not keep old internal bytecode shapes only for compatibility.  
 > **Initial scope:** optimize proven `i64` scalar loops first, using `scalar_branch_loop` as the lead benchmark. Do not implement the full numeric matrix in the first pass.
 
@@ -566,9 +573,10 @@ This track is complete enough when:
 
 ---
 
-## 10. Codex Goal Prompt
+## 10. Superseded Codex Goal Prompt
 
-Use this as the focused goal when starting the implementation:
+Historical only. Do not start this prompt; use the persistent goal in
+[verified-mir-superinstruction-basic-block-interpreter-plan.md](verified-mir-superinstruction-basic-block-interpreter-plan.md).
 
 ```text
 /goal Implement the typed scalar bytecode optimization plan in
