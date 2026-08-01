@@ -194,6 +194,19 @@ fn import_task_result(image: &vela_vm::DetachedValueImage) -> Vec<Value> {
         .expect("host can import detached outcome")
 }
 
+fn import_task_owned_result(image: &vela_vm::DetachedValueImage) -> OwnedValue {
+    let mut heap = vela_vm::heap::ScriptHeap::new();
+    let mut budget = vela_vm::budget::ExecutionBudget::new(100, 4096, 8);
+    let roots = image
+        .import_into(&mut heap, &mut budget)
+        .expect("host can import detached outcome");
+    vela_vm::persistent_value_to_owned(
+        roots.first().expect("task result image has one root"),
+        &mut heap,
+    )
+    .expect("acyclic task fixture result converts to owned value")
+}
+
 impl crate::task::ScopedTaskHost for RecordingTaskHost {
     fn admit(&self, task: crate::task::ScopedTask) -> Result<(), crate::task::TaskAdmissionError> {
         self.admitted.lock().expect("task host lock").push(task);
@@ -352,7 +365,10 @@ fn pending_task_fixture(
     let program = engine
         .compile_source(
             r#"
-async fn repair() -> i64 { return test::pending_task().await; }
+async fn repair() -> Array {
+    let value = test::pending_task().await;
+    return [value, [value + 1]];
+}
 fn main() { task::spawn_scoped(repair()); }
 "#,
         )
@@ -392,7 +408,13 @@ fn scoped_task_worker_uses_existing_pending_async_driver() {
     else {
         panic!("second poll should finish pending-once native");
     };
-    assert_eq!(import_task_result(&image), [Value::i64(9)]);
+    assert_eq!(
+        import_task_owned_result(&image),
+        OwnedValue::Array(vec![
+            OwnedValue::i64(9),
+            OwnedValue::Array(vec![OwnedValue::i64(10)]),
+        ])
+    );
 }
 
 #[test]
