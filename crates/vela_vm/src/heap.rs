@@ -351,6 +351,34 @@ impl ScriptHeap {
         Ok(self.allocate_object(value, size_bytes))
     }
 
+    /// Allocates an enum value whose payload may already refer to this heap.
+    ///
+    /// This is the narrow host boundary used when an embedding imports an
+    /// owned graph and must wrap one of its roots without flattening aliases
+    /// or cycles through `OwnedValue`.
+    #[doc(hidden)]
+    pub fn allocate_enum_with_budget(
+        &mut self,
+        enum_name: impl Into<String>,
+        variant: impl Into<String>,
+        fields: impl IntoIterator<Item = (String, Value)>,
+        budget: &mut ExecutionBudget,
+    ) -> VmResult<GcRef> {
+        let enum_name = enum_name.into();
+        let variant = variant.into();
+        let owner = crate::heap_values::enum_variant_owner(&enum_name, &variant);
+        let identity = crate::option_result::std_enum_identity_for_names(&enum_name, &variant);
+        self.allocate_with_budget(
+            HeapValue::Enum {
+                enum_name,
+                variant,
+                identity,
+                fields: crate::script_object::ScriptFields::from_pairs(&owner, fields),
+            },
+            budget,
+        )
+    }
+
     #[must_use]
     pub fn get(&self, reference: GcRef) -> Option<&HeapValue> {
         self.entry(reference)
@@ -1168,24 +1196,5 @@ mod tests {
         assert!(heap.contains(third));
     }
 
-    #[test]
-    fn gc_config_tracks_next_collection_threshold() {
-        let mut heap = ScriptHeap::new();
-        heap.set_gc_config(GcConfig {
-            max_pause_micros: 200,
-            heap_growth_factor: 1.0,
-        });
-        let live = heap.allocate(HeapValue::String("live".into()));
-
-        let stats = heap.collect_full(&[live]);
-
-        assert_eq!(stats.swept, 0);
-        assert_eq!(heap.gc_config().max_pause_micros, 200);
-        assert_eq!(heap.next_gc_at_bytes(), heap.allocated_bytes() + 1);
-        assert!(!heap.should_collect());
-
-        let _extra = heap.allocate(HeapValue::String("extra".into()));
-
-        assert!(heap.should_collect());
-    }
+    mod config;
 }

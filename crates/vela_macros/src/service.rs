@@ -991,7 +991,7 @@ mod tests {
         assert!(output.contains("RustTraitMethod"));
         assert!(output.contains("ServiceTypeRequirement"));
         assert!(output.contains("__vela_compose_service_RewardService"));
-        assert!(output.contains("ServiceRuntimeBinding"));
+        assert!(output.contains("PinnedServiceExecution"));
         assert!(!output.contains("HostRef"));
         assert!(!output.contains("__vela_runtime : :: vela_engine :: runtime :: Runtime"));
     }

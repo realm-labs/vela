@@ -257,6 +257,7 @@ impl LinkContext<'_, '_> {
         match plan {
             UnlinkedTypeGuardPlan::Primitive(tag) => Ok(TypeGuardPlan::Primitive(tag)),
             UnlinkedTypeGuardPlan::Standard(guard) => Ok(TypeGuardPlan::Standard(guard)),
+            UnlinkedTypeGuardPlan::TaskError => Ok(TypeGuardPlan::TaskError),
             UnlinkedTypeGuardPlan::Callable {
                 accepts_direct_function,
                 accepts_closure,

@@ -754,6 +754,8 @@ impl UnlinkedTypeGuard {
 pub enum UnlinkedTypeGuardPlan {
     Primitive(PrimitiveTag),
     Standard(StandardTypeGuard),
+    /// Engine-owned structured failure used only by detached task outcomes.
+    TaskError,
     Callable {
         accepts_direct_function: bool,
         accepts_closure: bool,

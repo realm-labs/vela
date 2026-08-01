@@ -121,4 +121,26 @@ impl CallOptions {
         .with_collection_limits(self.collection_limits)
         .with_host_call_limit(self.host_call_budget)
     }
+
+    pub(super) fn narrow_to_task_policy(mut self, policy: &crate::task::TaskPolicy) -> Self {
+        let limits = policy.child_execution_limits();
+        self.execution_unit_budget = self.execution_unit_budget.min(limits.execution_unit_limit);
+        self.memory_budget = self.memory_budget.min(limits.memory_limit_bytes);
+        self.call_depth = self.call_depth.min(limits.max_call_depth);
+        self.collection_limits.max_array_len = self
+            .collection_limits
+            .max_array_len
+            .min(limits.collection_limits.max_array_len);
+        self.collection_limits.max_map_entries = self
+            .collection_limits
+            .max_map_entries
+            .min(limits.collection_limits.max_map_entries);
+        self.collection_limits.max_set_len = self
+            .collection_limits
+            .max_set_len
+            .min(limits.collection_limits.max_set_len);
+        self.host_call_budget = self.host_call_budget.min(policy.max_host_calls().get());
+        self.managed_heap = true;
+        self
+    }
 }

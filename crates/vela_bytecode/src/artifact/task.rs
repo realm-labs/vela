@@ -1,5 +1,7 @@
 //! Sealed linked and portable metadata for host-scoped task targets.
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use super::{LinkedArtifact, MirExecutableLayout};
 
 #[cfg_attr(
@@ -159,6 +161,7 @@ pub(super) fn collect_task_targets(
             })
     }
 
+    let effects = sealed_transitive_effects(bundle, layouts)?;
     let mut targets = Vec::new();
     for layout in layouts {
         let owner = bundle
@@ -186,7 +189,10 @@ pub(super) fn collect_task_targets(
                         debug_name: continuation.debug_name.clone(),
                         outcome_contract: continuation.outcome_contract.clone(),
                         resume_parameters: parameters(&continuation.resume_parameters),
-                        effects: continuation.signature.effect,
+                        effects: effects
+                            .get(&continuation.function)
+                            .copied()
+                            .unwrap_or(continuation.signature.effect),
                     })
                 })
                 .transpose()?;
@@ -211,7 +217,10 @@ pub(super) fn collect_task_targets(
                         .into_boxed_slice(),
                     return_contract: task.worker_signature.return_contract.clone(),
                     result_detachability: task.detachability.result,
-                    effects: task.worker_signature.effect,
+                    effects: effects
+                        .get(&task.worker)
+                        .copied()
+                        .unwrap_or(task.worker_signature.effect),
                 },
                 continuation,
                 service_requirement: ArtifactTaskServiceRequirement::InheritOriginatingGeneration,
@@ -219,6 +228,90 @@ pub(super) fn collect_task_targets(
         }
     }
     Ok(targets.into_boxed_slice())
+}
+
+fn sealed_transitive_effects(
+    bundle: &vela_mir::OwnedVerifiedMirBundle,
+    layouts: &[MirExecutableLayout],
+) -> Result<BTreeMap<vela_def::FunctionId, vela_mir::MirEffect>, crate::linker::LinkError> {
+    let mut effects = BTreeMap::new();
+    let mut callees = BTreeMap::<_, BTreeSet<_>>::new();
+    for layout in layouts {
+        let owner = bundle
+            .root(layout.root)
+            .ok_or(crate::linker::LinkError::MissingMirRoot { root: layout.root })?;
+        let function = owner.program().function(layout.function).ok_or(
+            crate::linker::LinkError::MissingMirFunction {
+                root: layout.root,
+                function: layout.function,
+            },
+        )?;
+        let mut direct = vela_mir::MirEffect::PURE;
+        let mut targets = BTreeSet::new();
+        for (_, statement) in function.statements() {
+            direct = direct.union(statement.effect);
+            collect_statement_callees(&statement.kind, &mut targets);
+        }
+        for (_, block) in function.blocks() {
+            if let Some(terminator) = block.terminator() {
+                direct = direct.union(terminator.effect);
+                if let vela_mir::MirTerminatorKind::AwaitCall { operation, .. } = &terminator.kind
+                    && let vela_mir::MirAwaitOperation::Call(call) = operation.as_ref()
+                {
+                    collect_call_callee(call, &mut targets);
+                }
+            }
+        }
+        effects.insert(layout.root, direct);
+        callees.insert(layout.root, targets);
+    }
+
+    loop {
+        let mut changed = false;
+        for (function, targets) in &callees {
+            let mut effect = effects[function];
+            for target in targets {
+                if let Some(callee) = effects.get(target) {
+                    effect = effect.union(*callee);
+                }
+            }
+            if effect != effects[function] {
+                effects.insert(*function, effect);
+                changed = true;
+            }
+        }
+        if !changed {
+            return Ok(effects);
+        }
+    }
+}
+
+fn collect_statement_callees(
+    statement: &vela_mir::MirStatementKind,
+    targets: &mut BTreeSet<vela_def::FunctionId>,
+) {
+    match statement {
+        vela_mir::MirStatementKind::Call(call) => collect_call_callee(call, targets),
+        vela_mir::MirStatementKind::Task(task) => {
+            targets.insert(task.worker);
+            if let Some(continuation) = &task.continuation {
+                targets.insert(continuation.function);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn collect_call_callee(call: &vela_mir::MirCall, targets: &mut BTreeSet<vela_def::FunctionId>) {
+    match call {
+        vela_mir::MirCall::ScriptFunction { function, .. } => {
+            targets.insert(*function);
+        }
+        vela_mir::MirCall::ScriptMethod { target, .. } => {
+            targets.insert(target.function);
+        }
+        _ => {}
+    }
 }
 
 #[cfg(feature = "artifact-codec")]

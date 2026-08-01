@@ -919,6 +919,7 @@ fn verify_linked_type_guard(
     match guard.plan {
         TypeGuardPlan::Primitive(_)
         | TypeGuardPlan::Standard(_)
+        | TypeGuardPlan::TaskError
         | TypeGuardPlan::Callable { .. } => Ok(()),
         TypeGuardPlan::Array { ref element } | TypeGuardPlan::Set { ref element } => {
             if let Some(element) = element {
@@ -988,6 +989,7 @@ fn verify_linked_type_guard_plan(
     match guard.plan {
         TypeGuardPlan::Primitive(_)
         | TypeGuardPlan::Standard(_)
+        | TypeGuardPlan::TaskError
         | TypeGuardPlan::Callable { .. } => Ok(()),
         TypeGuardPlan::Array { ref element } | TypeGuardPlan::Set { ref element } => {
             if let Some(element) = element {

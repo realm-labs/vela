@@ -47,6 +47,9 @@ mod reload_api;
 mod service_egress;
 mod state;
 mod state_api;
+mod task_continuation;
+#[cfg(test)]
+mod task_tests;
 #[cfg(test)]
 mod tests;
 mod value_support;
@@ -80,6 +83,7 @@ use handles::{
 use host_arena::RuntimeHostArena;
 use reentry::{ActiveNativeReentry, invoke_prepared_async, invoke_prepared_context};
 use state::RuntimeState;
+pub(crate) use task_continuation::resume_task_continuation;
 use value_support::{runtime_vm, unknown_function, unknown_method, value_type_id};
 use vm_states::RuntimeValueRoots;
 

@@ -20,5 +20,9 @@ fn main() {
     )
     .build()
     .unwrap();
-    __vela_service_schema_RewardService(&engine.type_bindings()).unwrap();
+    __vela_service_schema_RewardService(
+        &engine.type_bindings(),
+        vela_engine::native::EffectSet::task_spawn(),
+    )
+    .unwrap();
 }

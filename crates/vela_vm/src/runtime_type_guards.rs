@@ -83,6 +83,7 @@ pub(crate) fn execute_linked_guard(
         TypeGuardPlan::Standard(expected) => {
             execute_standard_guard(value, expected, heap, debug_name)
         }
+        TypeGuardPlan::TaskError => execute_task_error_guard(value, heap, debug_name),
         TypeGuardPlan::Callable {
             accepts_direct_function,
             accepts_closure,
@@ -909,6 +910,7 @@ fn execute_linked_guard_plan(
         TypeGuardPlan::Standard(expected) => {
             execute_standard_guard(value, *expected, heap, debug_name)
         }
+        TypeGuardPlan::TaskError => execute_task_error_guard(value, heap, debug_name),
         TypeGuardPlan::Callable {
             accepts_direct_function,
             accepts_closure,
@@ -1055,6 +1057,17 @@ fn runtime_unidentified_script_type_name<'a>(
     }
 }
 
+fn execute_task_error_guard(
+    value: &Value,
+    heap: Option<&HeapExecution<'_>>,
+    debug_name: &str,
+) -> VmResult<()> {
+    if runtime_unidentified_script_type_name(value, heap) == Some("task::Error") {
+        return Ok(());
+    }
+    Err(type_contract_error(value, "task::Error", heap, debug_name))
+}
+
 fn execute_variant_id_guard(
     value: &Value,
     expected: vela_def::VariantId,
@@ -1166,6 +1179,7 @@ fn linked_plan_type_name(plan: &TypeGuardPlan) -> &'static str {
     match plan {
         TypeGuardPlan::Primitive(tag) => primitive_type_name(*tag),
         TypeGuardPlan::Standard(guard) => standard_type_name(*guard),
+        TypeGuardPlan::TaskError => "task::Error",
         TypeGuardPlan::Callable { .. } => "callable",
         TypeGuardPlan::Array { .. } => "Array",
         TypeGuardPlan::Map { .. } => "Map",

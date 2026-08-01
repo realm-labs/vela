@@ -20,13 +20,13 @@ rejected old artifacts, and passed the repository acceptance matrix. The
 owns the detailed proof. There is no compatibility release mode, legacy
 artifact loader, contextual Service alias, or second Service dispatch path.
 
-The active implementation focus is M20.75 Batch D safe-point continuation and
-host lifecycle delivery. M20.5 incremental HIR re-lowering remains its prior in-progress
+The active implementation focus is M20.75 Batch E hardening, tooling, and
+portability. M20.5 incremental HIR re-lowering remains its prior in-progress
 checkpoint and resumes after the active product goal or at an explicit focus
 change.
 
-M20.75 host-scoped detached async execution is fully designed; Batches A-C
-are accepted, and Batch D is in progress. Its
+M20.75 host-scoped detached async execution is fully designed; Batches A-D
+are accepted, and Batch E is in progress. Its
 [execution plan](host-scoped-detached-async-execution-plan.md) hard-switches
 Vela and generated Service applications to a domain-neutral bounded host task
 scope. It permits synchronous ordinary functions and Service patches to admit
@@ -52,6 +52,19 @@ be the exact owned `Result<WorkerReturn, task::Error>`, while trailing
 parameters are preserved separately as fresh host safe-point resume inputs.
 Semantic analysis treats only the statically owned worker-call position as
 detached; ordinary async calls still require `await`.
+
+Batch D adds an owned `ScopedTaskCompletion` and bounded host completion-queue
+protocol. A worker publishes only after its isolated Runtime is dropped; the
+completion retains the exact ordinary or complete Service generation until a
+host safe point consumes or cancels it. `resume` creates a new synchronous root,
+prepends an owned `Result<T, task::Error>` without flattening aliases or cycles,
+and accepts only freshly constructed trailing `CallArgs`. Cancellation is
+one-way and makes later resume a no-op. The generic actor-style example and
+request-lifecycle race adapter keep framework vocabulary outside Vela core.
+Verified MIR call-graph closure, rather than provisional callable descriptors,
+now seals worker and continuation effects into artifact metadata, so nested
+database/IO/Host work cannot bypass Engine, policy, or Service ceilings. No new
+unsafe boundary was required.
 
 Rust embedding now has one public registration vocabulary: every derived or
 generated Value/Host uses `register_type::<T>()`, callable bundles use
@@ -114,7 +127,7 @@ Phase status:
   async caller; registered constructors/methods, nested views and grouping,
   business Result, old/new in-flight roots, publication-only rollback, stable
   boundary measurements, and the final repository gate are complete.
-- M20.75 Batches A-C accepted; Batch D in progress: the complete language, ownership, effect, Service-generation,
+- M20.75 Batches A-D accepted; Batch E in progress: the complete language, ownership, effect, Service-generation,
   continuation, host-lifecycle, unsafe-audit, and acceptance contract is frozen
   in the host-scoped detached async execution plan. Static HIR task shapes and
   target asyncness are implemented, and `TaskSpawn` now propagates through the
@@ -160,6 +173,11 @@ Phase status:
   options, and generation identity. The executable proof suspends on host I/O,
   reloads, then observes 106 through the old Rust-pinned generation and 1006
   through the new Vela-pinned generation without changing a Rust trait ABI.
+  Batch D delivers owned completion records, bounded host completion queues,
+  fresh-root safe-point continuation delivery, one-way cancellation, and
+  generation pinning until delivery or cancellation. Continuations receive an
+  owned `Result<T, task::Error>` plus fresh trailing host arguments, never run
+  on the worker context, and retain no parent Runtime or borrow.
 - P0-P3 accepted for service return totality: recursive macro diagnostics now
   reject nested, exclusive-envelope, projected-child, and otherwise
   non-executable borrowed returns. Exact direct parameters, direct borrowed
@@ -327,8 +345,9 @@ Host-backed and mutable collections retain HostRef identity and leases.
 - Ordinary detached child admission now gives every child an isolated Runtime,
   owned transferable graph, finite host lifecycle policy, exact linked
   artifact, contained panic/error outcome, and no parent borrow. Exact
-  whole-Service-generation execution and safe-point continuations remain the
-  active M20.75 work.
+  whole-Service-generation execution and fresh-root safe-point continuations
+  are accepted; portability, tooling, stress, and benchmark hardening remain
+  the active M20.75 work.
 
 ### Host Boundary And Embedding
 
@@ -490,8 +509,8 @@ changes.
 
 ## Next Up
 
-1. Continue M20.75 Batch D with bounded completion queues, fresh host resume
-   contexts, new-turn continuation entry, and cancellation race ownership.
+1. Continue M20.75 Batch E with portability corruption tests, tooling
+   diagnostics, structural audits, and benchmark coverage.
 2. Resume M20.5 incremental HIR re-lowering after the active detached-async
    goal or an explicit focus change.
 3. Audit the parameterized container and value-keyed Map/Set plans against

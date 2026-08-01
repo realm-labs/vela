@@ -24,6 +24,10 @@ use crate::engine::Engine;
 /// Future transferred to the host lifecycle after successful admission.
 pub type ScopedTaskFuture = Pin<Box<dyn Future<Output = ScopedTaskOutcome> + Send + 'static>>;
 
+/// Host-polled future that retains exact-generation authority in its result.
+pub type ScopedTaskCompletionFuture =
+    Pin<Box<dyn Future<Output = ScopedTaskCompletion> + Send + 'static>>;
+
 pub(crate) type ScopedWorkerFuture = Pin<
     Box<dyn Future<Output = Result<DetachedValueImage, (TaskErrorKind, String)>> + Send + 'static>,
 >;
@@ -372,6 +376,7 @@ impl fmt::Debug for TaskExecutionCapsule {
 pub struct TaskContinuation {
     pub function: FunctionId,
     pub debug_name: String,
+    pub resume_parameters: Box<[vela_bytecode::ArtifactTaskParameter]>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -429,9 +434,45 @@ impl ScopedTask {
         (self.metadata, self.capsule, self.future)
     }
 
+    /// Converts the admitted work into a completion future that pins its exact
+    /// executable and Service generation until delivery or cancellation.
+    #[must_use]
+    pub fn into_completion_future(self) -> ScopedTaskCompletionFuture {
+        let Self {
+            metadata,
+            capsule,
+            future,
+        } = self;
+        Box::pin(async move {
+            let outcome = future.await;
+            ScopedTaskCompletion {
+                metadata,
+                capsule,
+                outcome,
+                continuation_eligible: true,
+            }
+        })
+    }
+
     /// Polls host-owned work without exposing any handle to Vela code.
     pub fn poll(&mut self, context: &mut Context<'_>) -> Poll<ScopedTaskOutcome> {
         self.future.as_mut().poll(context)
+    }
+
+    /// Polls work while retaining the task in a host-owned lifecycle slot.
+    /// A ready result clones only immutable metadata and the capsule `Arc`;
+    /// dropping the slot immediately afterwards leaves the returned completion
+    /// as the sole generation pin.
+    pub fn poll_completion(&mut self, context: &mut Context<'_>) -> Poll<ScopedTaskCompletion> {
+        match self.future.as_mut().poll(context) {
+            Poll::Pending => Poll::Pending,
+            Poll::Ready(outcome) => Poll::Ready(ScopedTaskCompletion {
+                metadata: self.metadata.clone(),
+                capsule: Arc::clone(&self.capsule),
+                outcome,
+                continuation_eligible: true,
+            }),
+        }
     }
 
     /// Cancels host-owned work while preserving a structured lifecycle result.
@@ -452,6 +493,24 @@ impl ScopedTask {
             detail: format!("host lifecycle cancelled task: {reason:?}"),
         })
     }
+
+    /// Cancels work and returns an observable completion that cannot re-enter
+    /// Vela. The capsule remains pinned until the host drops the completion.
+    #[must_use]
+    pub fn cancel_completion(self, reason: TaskCancellationReason) -> ScopedTaskCompletion {
+        let Self {
+            metadata,
+            capsule,
+            future,
+        } = self;
+        drop(future);
+        ScopedTaskCompletion {
+            outcome: cancelled_outcome(&metadata, reason),
+            metadata,
+            capsule,
+            continuation_eligible: false,
+        }
+    }
 }
 
 impl fmt::Debug for ScopedTask {
@@ -468,6 +527,105 @@ impl fmt::Debug for ScopedTask {
 pub enum ScopedTaskOutcome {
     Completed(DetachedValueImage),
     Failed(TaskError),
+}
+
+/// Terminal worker result plus the authority required for optional safe-point
+/// continuation delivery.
+pub struct ScopedTaskCompletion {
+    metadata: TaskMetadata,
+    capsule: Arc<TaskExecutionCapsule>,
+    outcome: ScopedTaskOutcome,
+    continuation_eligible: bool,
+}
+
+impl ScopedTaskCompletion {
+    #[must_use]
+    pub const fn metadata(&self) -> &TaskMetadata {
+        &self.metadata
+    }
+
+    #[must_use]
+    pub const fn capsule(&self) -> &Arc<TaskExecutionCapsule> {
+        &self.capsule
+    }
+
+    #[must_use]
+    pub const fn outcome(&self) -> &ScopedTaskOutcome {
+        &self.outcome
+    }
+
+    /// Marks a queued completion cancelled. Consuming it at a later safe point
+    /// becomes a no-op, so shutdown cannot cause script re-entry.
+    #[must_use]
+    pub fn cancel(mut self, reason: TaskCancellationReason) -> Self {
+        self.outcome = cancelled_outcome(&self.metadata, reason);
+        self.continuation_eligible = false;
+        self
+    }
+
+    /// Runs the sealed continuation as one fresh synchronous root turn.
+    ///
+    /// `args` contains only the freshly acquired trailing resume context. The
+    /// detached `Result` outcome is inserted as parameter zero by the engine.
+    #[must_use]
+    pub fn resume<'host>(
+        self,
+        args: crate::runtime::CallArgs<'host>,
+        options: crate::runtime::CallOptions,
+    ) -> TaskContinuationOutcome {
+        if !self.continuation_eligible || self.metadata.continuation.is_none() {
+            return TaskContinuationOutcome::NotRequested;
+        }
+        let metadata = self.metadata.clone();
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            crate::runtime::resume_task_continuation(self, args, options)
+        })) {
+            Ok(Ok(())) => TaskContinuationOutcome::Completed,
+            Ok(Err((kind, detail))) => TaskContinuationOutcome::Failed(Box::new(TaskError {
+                kind,
+                metadata,
+                detail,
+            })),
+            Err(payload) => TaskContinuationOutcome::Failed(Box::new(TaskError {
+                kind: TaskErrorKind::ContinuationPanicked,
+                metadata,
+                detail: panic_detail(payload.as_ref()),
+            })),
+        }
+    }
+
+    pub(crate) fn into_resume_parts(
+        self,
+    ) -> (TaskMetadata, Arc<TaskExecutionCapsule>, ScopedTaskOutcome) {
+        (self.metadata, self.capsule, self.outcome)
+    }
+}
+
+impl fmt::Debug for ScopedTaskCompletion {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ScopedTaskCompletion")
+            .field("metadata", &self.metadata)
+            .field("capsule", &self.capsule)
+            .field("outcome", &self.outcome)
+            .field("continuation_eligible", &self.continuation_eligible)
+            .finish()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum TaskContinuationOutcome {
+    NotRequested,
+    Completed,
+    Failed(Box<TaskError>),
+}
+
+fn cancelled_outcome(metadata: &TaskMetadata, reason: TaskCancellationReason) -> ScopedTaskOutcome {
+    ScopedTaskOutcome::Failed(TaskError {
+        kind: TaskErrorKind::Cancelled(reason),
+        metadata: metadata.clone(),
+        detail: format!("host lifecycle cancelled task: {reason:?}"),
+    })
 }
 
 struct ContainedTaskFuture {
@@ -541,6 +699,7 @@ pub enum TaskCancellationReason {
     ScopeClosed,
     Deadline,
     HostShutdown,
+    CompletionQueueFull,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

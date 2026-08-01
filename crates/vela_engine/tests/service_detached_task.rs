@@ -6,9 +6,11 @@ use vela_common::CapabilitySet;
 use vela_def::FunctionId;
 use vela_engine::engine::Engine;
 use vela_engine::native::{EffectSet, FunctionAccess, NativeFunctionDesc, TypeHint};
+use vela_engine::runtime::{CallArgs, CallOptions};
 use vela_engine::service::{Service, ServicePatch};
 use vela_engine::task::{
-    ScopedTask, ScopedTaskHost, ScopedTaskOutcome, TaskAdmissionError, TaskGeneration, TaskScope,
+    ScopedTask, ScopedTaskCompletion, ScopedTaskHost, ScopedTaskOutcome, TaskAdmissionError,
+    TaskContinuationOutcome, TaskGeneration, TaskScope,
 };
 use vela_macros::{service, service_domain};
 use vela_vm::owned_value::OwnedValue;
@@ -22,7 +24,12 @@ async fn repair(value: i64) -> i64 {
 }
 
 fn admit_repair(value: i64) {
-    task::spawn_scoped(repair(value));
+    task::spawn_scoped_then(repair(value), finish_repair);
+}
+
+fn finish_repair(outcome: Result<i64, task::Error>, turn: i64) {
+    let value = outcome.unwrap_or(-1);
+    test_io::observe(service::pinned::audit::record(value), turn);
 }
 
 #[service_impl(detached_test::inventory)]
@@ -42,7 +49,12 @@ async fn repair(value: i64) -> i64 {
 }
 
 fn admit_repair(value: i64) {
-    task::spawn_scoped(repair(value));
+    task::spawn_scoped_then(repair(value), finish_repair);
+}
+
+fn finish_repair(outcome: Result<i64, task::Error>, turn: i64) {
+    let value = outcome.unwrap_or(-1);
+    test_io::observe(service::pinned::audit::record(value), turn);
 }
 
 #[service_impl(detached_test::inventory)]
@@ -124,7 +136,10 @@ impl std::future::Future for PendingValue {
     }
 }
 
-fn app(host: Arc<RecordingTaskHost>) -> DetachedServicesApp {
+fn app(
+    host: Arc<RecordingTaskHost>,
+    observations: Arc<Mutex<Vec<Vec<OwnedValue>>>>,
+) -> DetachedServicesApp {
     DetachedServices::builder(
         Engine::builder()
             .capabilities(CapabilitySet::all())
@@ -140,6 +155,21 @@ fn app(host: Arc<RecordingTaskHost>) -> DetachedServicesApp {
                         yielded: false,
                     })
                 },
+            )
+            .register_native_fn(
+                NativeFunctionDesc::new("test_io::observe", FunctionId::new(0xD37A_0002))
+                    .param("value", TypeHint::i64())
+                    .param("turn", TypeHint::i64())
+                    .returns(TypeHint::unit())
+                    .effects(EffectSet::host_write())
+                    .access(FunctionAccess::public()),
+                move |args| {
+                    observations
+                        .lock()
+                        .expect("continuation observation lock")
+                        .push(args.to_vec());
+                    Ok(OwnedValue::Unit)
+                },
             ),
     )
     .task_scope(TaskScope::new(host, crate::support::task_policy()))
@@ -154,10 +184,17 @@ fn take_task(host: &RecordingTaskHost) -> ScopedTask {
     host.tasks.lock().expect("task host lock").remove(0)
 }
 
-fn completed_i64(task: &mut ScopedTask) -> i64 {
+fn complete(task: &mut ScopedTask) -> ScopedTaskCompletion {
     let mut context = Context::from_waker(std::task::Waker::noop());
-    let Poll::Ready(ScopedTaskOutcome::Completed(image)) = task.poll(&mut context) else {
+    let Poll::Ready(completion) = task.poll_completion(&mut context) else {
         panic!("detached worker should complete on its second poll");
+    };
+    completion
+}
+
+fn completed_i64(completion: &ScopedTaskCompletion) -> i64 {
+    let ScopedTaskOutcome::Completed(image) = completion.outcome() else {
+        panic!("detached worker should succeed: {:?}", completion.outcome());
     };
     let mut heap = vela_vm::heap::ScriptHeap::new();
     let mut budget = vela_vm::budget::ExecutionBudget::new(1000, 64 * 1024, 16);
@@ -173,7 +210,8 @@ fn completed_i64(task: &mut ScopedTask) -> i64 {
 #[test]
 fn detached_service_worker_pins_origin_generation_across_reload() {
     let host = Arc::new(RecordingTaskHost::default());
-    let app = app(Arc::clone(&host));
+    let observations = Arc::new(Mutex::new(Vec::new()));
+    let app = app(Arc::clone(&host), Arc::clone(&observations));
     let revision = app.patches().revision().expect("initial patch revision");
     app.patches()
         .apply(ServicePatch::against(&revision).put("repair.vela", OLD_SOURCE))
@@ -199,9 +237,37 @@ fn detached_service_worker_pins_origin_generation_across_reload() {
     let new = app.domain().pin();
     assert_ne!(new.generation_id(), old.generation_id());
 
-    assert_eq!(completed_i64(&mut old_task), 106);
+    let old_completion = complete(&mut old_task);
+    assert_eq!(completed_i64(&old_completion), 106);
+    drop(old_task);
+    assert!(matches!(
+        old_completion.resume(
+            CallArgs::new().with_value("turn", 7_i64),
+            CallOptions::unbounded(),
+        ),
+        TaskContinuationOutcome::Completed
+    ));
     assert_eq!(new.inventory().grant(5), 100);
     let mut new_task = take_task(&host);
     assert!(new_task.poll(&mut context).is_pending());
-    assert_eq!(completed_i64(&mut new_task), 1006);
+    let new_completion = complete(&mut new_task);
+    assert_eq!(completed_i64(&new_completion), 1006);
+    drop(new_task);
+    assert!(matches!(
+        new_completion.resume(
+            CallArgs::new().with_value("turn", 8_i64),
+            CallOptions::unbounded(),
+        ),
+        TaskContinuationOutcome::Completed
+    ));
+    assert_eq!(
+        observations
+            .lock()
+            .expect("continuation observation lock")
+            .as_slice(),
+        [
+            vec![OwnedValue::i64(206), OwnedValue::i64(7)],
+            vec![OwnedValue::i64(2006), OwnedValue::i64(8)],
+        ]
+    );
 }

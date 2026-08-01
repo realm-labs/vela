@@ -450,6 +450,8 @@ pub enum GuardKind {
 pub enum TypeGuardPlan {
     Primitive(PrimitiveTag),
     Standard(crate::StandardTypeGuard),
+    /// Engine-owned structured failure used only by detached task outcomes.
+    TaskError,
     Callable {
         accepts_direct_function: bool,
         accepts_closure: bool,

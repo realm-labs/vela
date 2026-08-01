@@ -72,11 +72,18 @@ pub(super) fn admit(
             .map(|continuation| TaskContinuation {
                 function: continuation.function,
                 debug_name: continuation.debug_name.clone(),
+                resume_parameters: continuation.resume_parameters.clone(),
             }),
         source_span: prepared.source_span(),
         generation,
     };
-    let required = required_capabilities(target.worker_signature.effects);
+    let detached_effects = target
+        .continuation
+        .as_ref()
+        .map_or(target.worker_signature.effects, |continuation| {
+            target.worker_signature.effects.union(continuation.effects)
+        });
+    let required = required_capabilities(detached_effects);
     let artifact_ceiling = required.with(Capability::TaskSpawn);
     let capsule = Arc::new(match pinned_service {
         Some(service) => TaskExecutionCapsule::for_service_generation(
@@ -182,7 +189,7 @@ fn worker_failure(error: VmError) -> (TaskErrorKind, String) {
 fn required_capabilities(effect: vela_mir::MirEffect) -> CapabilitySet {
     let mut required = CapabilitySet::new();
     for (active, capability) in [
-        (effect.host_read, Capability::HostRead),
+        (effect.host_read && !effect.host_write, Capability::HostRead),
         (effect.host_write || effect.host_call, Capability::HostWrite),
         (effect.reflection_read, Capability::ReflectionRead),
         (effect.reflection_write, Capability::ReflectionWrite),

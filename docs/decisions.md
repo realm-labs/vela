@@ -3811,6 +3811,25 @@ there is no inferred or unscoped default. Static ordinary helper/worker call
 graphs may inherit one unique Service origin. A `service::base` call with no
 origin or multiple origins is rejected before bytecode generation.
 
+### Detached Completions Resume Only As Fresh Root Turns
+
+Worker completion produces an owned `ScopedTaskCompletion`; it never invokes
+Vela on the worker executor. The completion pins the exact linked artifact and
+complete originating Service generation until the host either cancels it or
+consumes it at a safe point. Resume creates a new Runtime root, prepends the
+owned `Result<T, task::Error>` outcome, and resolves only the trailing
+call-scoped `CallArgs` freshly supplied by the embedding. The worker Runtime,
+parent Runtime, host context, and borrowed argument storage are never retained.
+
+Cancellation permanently disables continuation delivery. Bounded completion
+queues, active-task ownership, shutdown ordering, and executor wakeups remain
+host-adapter responsibilities expressed through the domain-neutral task API;
+actor, request, UI, and framework concepts do not enter Vela core. Worker and
+continuation authority comes from a fixed-point effect closure over sealed,
+verified MIR call targets, not the provisional signatures used before MIR
+lowering. This keeps nested async IO/Host/Service calls inside the same Engine,
+scope-policy, artifact, and Service ceilings.
+
 ### Generated Sync Host Methods Preserve Both Sealed Representations
 
 A generated synchronous Host method invokes its typed Rust body when the
