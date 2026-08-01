@@ -3769,6 +3769,31 @@ thread-local executor lookup and no task identity or handle in the script
 language. Ordinary execution may omit this capability; a task operation in
 that execution fails with `TaskScopeUnavailable`.
 
+### Detached Values Cross As One Budgeted Graph Image
+
+All arguments at one task site export together into one private
+`DetachedValueImage` heap. Import into the isolated child remaps the complete
+root set at once, so aliases across arguments and cycles within the graph are
+preserved. The image is an opaque execution boundary rather than an
+`OwnedValue` tree, persistence format, artifact payload, or cross-generation
+coercion mechanism. A successful worker result exports through the same image
+before child teardown.
+
+Scope and effect admission checks precede export. Runtime traversal remains
+mandatory even for statically detachable contracts and reports the first
+rejected nested HostRef, PathProxy, callable, or iterator path. Export and
+import preflight execution, memory, and collection limits on cloned counters;
+a failed budget check commits neither counters nor a task. Each child also
+receives a finite registered-host-call budget, charged before invoking the
+native boundary.
+
+The host owns the contained task future. Deadline expiry, explicit lifecycle
+cancellation, or direct future drop tears down the child Runtime and pending
+native future through RAII. Poll-time Rust unwind is contained at the task
+boundary and becomes `WorkerPanicked`; it never unwinds through the host
+executor. This is host lifecycle control and does not create a script-visible
+task handle or cancellation API.
+
 ### Generated Sync Host Methods Preserve Both Sealed Representations
 
 A generated synchronous Host method invokes its typed Rust body when the

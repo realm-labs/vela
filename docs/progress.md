@@ -20,13 +20,13 @@ rejected old artifacts, and passed the repository acceptance matrix. The
 owns the detailed proof. There is no compatibility release mode, legacy
 artifact loader, contextual Service alias, or second Service dispatch path.
 
-The active implementation focus is M20.75 Batch A host-scoped detached async
-contracts. M20.5 incremental HIR re-lowering remains its prior in-progress
+The active implementation focus is M20.75 Batch C whole-Service-generation
+integration. M20.5 incremental HIR re-lowering remains its prior in-progress
 checkpoint and resumes after the active product goal or at an explicit focus
 change.
 
-M20.75 host-scoped detached async execution is fully designed and Batch A has
-started. Its
+M20.75 host-scoped detached async execution is fully designed; Batches A and B
+are accepted, and Batch C is in progress. Its
 [execution plan](host-scoped-detached-async-execution-plan.md) hard-switches
 Vela and generated Service applications to a domain-neutral bounded host task
 scope. It permits synchronous ordinary functions and Service patches to admit
@@ -114,7 +114,7 @@ Phase status:
   async caller; registered constructors/methods, nested views and grouping,
   business Result, old/new in-flight roots, publication-only rollback, stable
   boundary measurements, and the final repository gate are complete.
-- M20.75 Batch A accepted; Batch B in progress: the complete language, ownership, effect, Service-generation,
+- M20.75 Batches A and B accepted; Batch C in progress: the complete language, ownership, effect, Service-generation,
   continuation, host-lifecycle, unsafe-audit, and acceptance contract is frozen
   in the host-scoped detached async execution plan. Static HIR task shapes and
   target asyncness are implemented, and `TaskSpawn` now propagates through the
@@ -132,7 +132,7 @@ Phase status:
   version 3; linked and portable artifacts seal and validate task feature bits,
   static target slots, callable ABI/asyncness, detachability, transitive
   effects, continuation ABI, and originating-Service requirements. Versions 1
-  and 2 reject before linking or activation. Batch B starts with the task
+  and 2 reject before linking or activation. Batch B completed the task
   bytecode operation, owned graph transfer, scope installation, and an ordinary
   fresh-Runtime vertical slice. Dedicated unlinked/linked task bytecode now
   preserves static worker/continuation handles and owned argument preparation,
@@ -141,11 +141,18 @@ Phase status:
   reports `TaskScopeUnavailable`. `CallOptions` can now install one explicit
   owned `TaskScope`; a synchronous caller admits the prepared operation through
   `ScopedTaskHost`, returns immediately, and the admitted future constructs a
-  fresh Runtime from the exact artifact. The focused isolation proof leaves
-  parent VM state at 100 while the child observes its independent initial state
-  and returns 2. Transferable cyclic/aliased graphs, deliberately pending
-  native work, cancellation/capacity/error paths, and panic containment remain
-  before Batch B acceptance.
+  fresh Runtime from the exact artifact. One runtime-independent
+  `DetachedValueImage` transfers all roots together, preserves cross-argument
+  aliases and cycles, rejects hidden HostRef/callable/iterator/proxy values with
+  nested paths, and transactionally charges export/import budgets. The focused
+  isolation proof leaves parent VM state at 100 while the child observes its
+  independent initial state. A deliberately pending native worker returns a
+  nested owned result through the same async session driver. Scope absence,
+  capacity refusal, host-call limits, deadline, explicit cancellation, direct
+  future drop, worker error, and Rust panic are executable; all cleanup drops
+  the pending child Runtime/native future before publishing a terminal result.
+  Batch C now integrates this capsule with exact generated Service generations
+  and the Rust-default versus patch-ceiling hard switch.
 - P0-P3 accepted for service return totality: recursive macro diagnostics now
   reject nested, exclusive-envelope, projected-child, and otherwise
   non-executable borrowed returns. Exact direct parameters, direct borrowed
@@ -284,7 +291,7 @@ Host-backed and mutable collections retain HostRef identity and leases.
 | M19.5 | Complete enough | Cache-ready IDs, linked bytecode, profile ownership, and prepared host paths are validated. |
 | M20 | Complete enough | Actor Runtime/cache ownership, lifetime, reload, and concurrency gates are accepted. |
 | M20.5 | In progress | Per-keystroke latency is fixed for requests and diagnostics; the HIR rebuild is still whole-workspace. |
-| M20.75 | In progress | Batch A static HIR validation, stable worker/continuation compile targets, and the cross-layer `TaskSpawn` capability/effect contract are implemented; dedicated MIR task operations, detachability, authority, and artifact work remain. |
+| M20.75 | In progress | Batches A-B are accepted: static task contracts, v3 artifacts, isolated ordinary child Runtimes, transferable graphs, finite lifecycle/error paths, and pending native execution are validated. Batch C Service-generation integration is active. |
 | Rust/Vela service interop | Complete | S0-S7, P0-P7, and E0-E5 are accepted; explicit release, typed Service namespaces, artifact v2 rejection, and repository proof are complete. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, and debugger contracts stabilize. |
@@ -299,7 +306,8 @@ Host-backed and mutable collections retain HostRef identity and leases.
 - Functions, closures, records, enums, traits, pattern matching, loops,
   iterators, parameterized collections, Option/Result, and controlled
   reflection have executable coverage.
-- Execution, memory, call-depth, and collection-growth budgets are enforced.
+- Execution, memory, call-depth, collection-growth, and registered host-call
+  budgets are enforced.
   Script objects use non-moving managed storage; Rust host state stays outside
   the script GC.
 - `LinkedArtifact` is the sole production executable generation. Sync and async
@@ -309,10 +317,11 @@ Host-backed and mutable collections retain HostRef identity and leases.
   deadline. Hosts can observe running/pending/terminal state and poll count;
   cancellation wakes the task and drops execution through existing RAII
   cleanup without rolling back completed effects.
-- Detached child admission is not implemented yet. The planned M20.75 model
-  gives every child an isolated Runtime, owned transferable values, bounded
-  host lifecycle scope, and exact linked/Service generation rather than
-  extending the current borrowed root session across a background task.
+- Ordinary detached child admission now gives every child an isolated Runtime,
+  owned transferable graph, finite host lifecycle policy, exact linked
+  artifact, contained panic/error outcome, and no parent borrow. Exact
+  whole-Service-generation execution and safe-point continuations remain the
+  active M20.75 work.
 
 ### Host Boundary And Embedding
 
@@ -474,8 +483,9 @@ changes.
 
 ## Next Up
 
-1. Continue M20.75 Batch A with host-scope/capsule authority types and portable
-   artifact v3. Runtime detached-value graph transfer begins in Batch B.
+1. Continue M20.75 Batch C with generated Service scope ownership, exact
+   Service-generation dispatch, and the RustDefaultEffects/PatchEffectCeiling
+   hard switch.
 2. Resume M20.5 incremental HIR re-lowering after the active detached-async
    goal or an explicit focus change.
 3. Audit the parameterized container and value-keyed Map/Set plans against
