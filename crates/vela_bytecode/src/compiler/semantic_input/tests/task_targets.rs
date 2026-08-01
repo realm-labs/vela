@@ -1,4 +1,4 @@
-use vela_common::CallableAsyncness;
+use vela_common::{CallableAsyncness, Detachability, NonDetachableValueKind};
 use vela_mir::{CompileCalleeTarget, CompileTaskOperation, MirStatementKind};
 
 use super::{FixtureRoots, prepare_source};
@@ -40,6 +40,8 @@ fn main() {
         .expect("spawn_scoped target");
     assert_eq!(first.operation, CompileTaskOperation::SpawnScoped);
     assert!(first.continuation.is_none());
+    assert_eq!(first.detachability.parameters, [Detachability::Detachable]);
+    assert_eq!(first.detachability.result, Detachability::Detachable);
 
     let second = function_targets
         .task(task_expressions[1])
@@ -121,4 +123,80 @@ fn main() {
     assert!(effective.task_spawn);
     assert!(effective.state_read);
     assert!(effective.state_write);
+}
+
+#[test]
+fn scoped_task_rejects_statically_known_callable_arguments_and_results() {
+    for (source, path) in [
+        (
+            r#"
+async fn worker(callback: Closure) {}
+fn main() { task::spawn_scoped(worker(|value| value)); }
+"#,
+            "parameter `callback`",
+        ),
+        (
+            r#"
+async fn worker() -> Closure { |value| value }
+fn main() { task::spawn_scoped(worker()); }
+"#,
+            "return value",
+        ),
+    ] {
+        let error = prepare_source(source, FixtureRoots::Program)
+            .expect_err("callable task transfer must be rejected");
+        assert_eq!(
+            error.to_diagnostic().and_then(|diagnostic| diagnostic.code),
+            Some("compiler::task_value_not_detachable".to_owned())
+        );
+        let crate::compiler::error::CompileErrorKind::TaskValueNotDetachable {
+            target,
+            path: actual_path,
+            kind,
+        } = error.kind
+        else {
+            panic!("unexpected task detachment error: {error:?}");
+        };
+        assert_eq!(target, "worker");
+        assert_eq!(actual_path, path);
+        assert_eq!(kind, NonDetachableValueKind::Callable);
+    }
+}
+
+#[test]
+fn erased_task_values_preserve_mandatory_runtime_detachment_checks() {
+    let fixture = prepare_source(
+        r#"
+async fn worker(value: Any) -> Any { value }
+fn main(value: Any) { task::spawn_scoped(worker(value)); }
+"#,
+        FixtureRoots::Program,
+    )
+    .expect("erased values remain valid with runtime checks");
+    let root = fixture
+        .declarations
+        .get("main")
+        .and_then(|declaration| {
+            fixture
+                .input
+                .targets()
+                .function_for_declaration(*declaration)
+        })
+        .expect("main function identity");
+    let targets = fixture
+        .input
+        .targets()
+        .function_targets(root)
+        .expect("main targets");
+    let task = fixture
+        .expression_sources
+        .iter()
+        .find_map(|(_, expression, _)| targets.task(*expression))
+        .expect("task target");
+
+    assert_eq!(
+        task.detachability.parameters,
+        [Detachability::RuntimeChecked]
+    );
+    assert_eq!(task.detachability.result, Detachability::RuntimeChecked);
 }

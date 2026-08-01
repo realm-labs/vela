@@ -502,6 +502,7 @@ impl FunctionBuilder<'_> {
                     worker_signature: descriptor.signature,
                     arguments,
                     parameter_guards,
+                    detachability: target.detachability,
                     continuation,
                 }),
                 MirEffect::task_spawn(),

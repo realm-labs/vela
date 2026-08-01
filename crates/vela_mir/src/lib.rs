@@ -11,6 +11,7 @@ mod budget;
 mod builder;
 mod cfg;
 mod contract;
+mod detachability;
 mod dump;
 mod effects;
 mod facts;
@@ -35,6 +36,7 @@ pub use cfg::{
     MirTerminatorKind, MirTryContinue,
 };
 pub use contract::{HostTypeTarget, MirCallableKind, MirCallableKindSet, MirTypeContract};
+pub use detachability::{MirDetachabilityReport, contract_detachability};
 pub use effects::{
     MirEffect, MirGuard, MirGuardAssumption, MirGuardContext, MirGuardKind, MirGuardLocation,
     MirLiveValue, MirSafepoint,
@@ -61,9 +63,10 @@ pub use input::{
     CompileParameterDefault, CompilePatternConstructorTarget, CompilePlacedCallArgument,
     CompilePlacedCallValue, CompilePositionalPolicy, CompileReflectionCall, CompileSignature,
     CompileStateTarget, CompileTargetKind, CompileTargetSnapshot, CompileTargetSnapshotBuilder,
-    CompileTaskContinuationTarget, CompileTaskOperation, CompileTaskTarget, CompileTryFamily,
-    CompileTryLayoutTarget, CompileTryTarget, DynamicMethodTarget, HostFieldTarget,
-    HostMethodTarget, MethodExecutableTarget, MirBuildError, MirLoweringConfig, MirLoweringInput,
+    CompileTaskContinuationTarget, CompileTaskDetachability, CompileTaskOperation,
+    CompileTaskTarget, CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget,
+    DynamicMethodTarget, HostFieldTarget, HostMethodTarget, MethodExecutableTarget, MirBuildError,
+    MirLoweringConfig, MirLoweringInput,
 };
 pub use jit::{MirJitEligibility, MirJitIneligibility, restricted_jit_eligibility};
 pub use operations::{

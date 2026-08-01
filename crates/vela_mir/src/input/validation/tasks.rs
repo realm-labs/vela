@@ -1,4 +1,4 @@
-use vela_common::CallableAsyncness;
+use vela_common::{CallableAsyncness, Detachability};
 
 use crate::{CompileCalleeTarget, CompileTaskOperation, MirBuildError};
 
@@ -12,6 +12,49 @@ pub(super) fn validate(validator: &SnapshotValidator<'_>) -> Result<(), MirBuild
         let worker = validator.require_script_function(task.worker, origin, "task worker")?;
         if worker.signature.asyncness != CallableAsyncness::Async {
             return Err(validator.error(origin, "task worker descriptor must be asynchronous"));
+        }
+        if task.detachability.parameters.len() != worker.signature.parameters.len() {
+            return Err(validator.error(
+                origin,
+                "task detachability parameters must match the worker signature",
+            ));
+        }
+        for (parameter, fact) in worker
+            .signature
+            .parameters
+            .iter()
+            .zip(&task.detachability.parameters)
+        {
+            if fact.rejection().is_some() {
+                return Err(validator.error(
+                    origin,
+                    "task parameter detachability cannot contain a static rejection",
+                ));
+            }
+            let expected = crate::contract_detachability(
+                validator.snapshot.target_table(),
+                parameter.contract.as_ref(),
+            )
+            .fact;
+            if expected.rejection().is_some() || expected.union(*fact) != *fact {
+                return Err(validator.error(
+                    origin,
+                    "task parameter detachability is weaker than its worker contract",
+                ));
+            }
+        }
+        let expected_result = crate::contract_detachability(
+            validator.snapshot.target_table(),
+            worker.signature.return_contract.as_ref(),
+        )
+        .fact;
+        if task.detachability.result != expected_result
+            || matches!(expected_result, Detachability::NonDetachable(_))
+        {
+            return Err(validator.error(
+                origin,
+                "task result detachability disagrees with its worker contract",
+            ));
         }
         let worker_call = validator
             .snapshot

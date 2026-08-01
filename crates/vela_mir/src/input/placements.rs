@@ -402,6 +402,11 @@ impl CompileTargetSnapshot {
 }
 
 impl CompileTargetSnapshotBuilder {
+    #[must_use]
+    pub const fn target_table(&self) -> &MirTargetTable {
+        self.snapshot.target_table()
+    }
+
     pub fn insert_call(
         &mut self,
         function: FunctionId,

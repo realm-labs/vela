@@ -76,6 +76,13 @@ at the spawn site and intersected with Engine, artifact, Service, and host-scope
 ceilings at admission. A missing scope or failed owned-value transfer rejects
 before the worker becomes visible.
 
+The compiler, artifact, and admission boundary share one three-state
+`Detachability` fact: `Detachable`, `RuntimeChecked`, or `NonDetachable(kind)`.
+Owned structural contracts recurse through sealed nominal fields; known Host
+references, borrowed views, iterators, callables, and runtime capabilities are
+compile-time rejections. `Any` and opaque registered storage remain explicitly
+runtime-checked, so erasure cannot turn a scoped capability into a static proof.
+
 Service metadata separates truthful `RustDefaultEffects` from the ABI-level
 `PatchEffectCeiling`. The generated domain builder requires one explicit
 emergency patch ceiling for every hotfixable method, optionally narrowed per

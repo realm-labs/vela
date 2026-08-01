@@ -5,9 +5,10 @@ use vela_analysis::semantic_facts::{
 };
 use vela_analysis::type_fact::TypeFact;
 use vela_analysis::validation::{
-    CallPlacementModeFact, HostAccessUseFact, HostAccessUseKind, HostIndexCapabilityResolutionFact,
+    CallParameterSlotValueFact, CallPlacementModeFact, HostAccessUseFact, HostAccessUseKind,
+    HostIndexCapabilityResolutionFact,
 };
-use vela_common::{PrimitiveTag, ScalarValue};
+use vela_common::{Detachability, PrimitiveTag, ScalarValue};
 use vela_def::{FieldId, FunctionId, TypeId};
 use vela_hir::binding::{BindingResolution, TaskLexicalCapability};
 use vela_hir::body::{
@@ -21,8 +22,9 @@ use vela_mir::{
     CompileConstructorTarget, CompileConstructorValue, CompileDynamicConstructorField,
     CompileFieldTarget, CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget,
     CompileMemberTarget, CompilePatternConstructorTarget, CompilePlacedCallValue,
-    CompileReflectionCall, CompileTaskContinuationTarget, CompileTaskOperation, CompileTaskTarget,
-    DynamicMethodTarget, HostFieldTarget, HostMethodTarget, MirBuildError, MirSourceOrigin,
+    CompileReflectionCall, CompileTaskContinuationTarget, CompileTaskDetachability,
+    CompileTaskOperation, CompileTaskTarget, DynamicMethodTarget, HostFieldTarget,
+    HostMethodTarget, MirBuildError, MirSourceOrigin,
 };
 
 use super::contracts::{
@@ -406,6 +408,88 @@ impl GenerationBuilder<'_, '_> {
         ) {
             return Err(registry_input_error());
         }
+        let worker_origin = self
+            .expression_origin(worker_call)
+            .ok_or_else(registry_input_error)?;
+        let placement = self.checked_call_placement(executable, worker, worker_origin)?;
+        let signature = self
+            .request
+            .graph
+            .function_signature(worker_declaration)
+            .cloned()
+            .ok_or_else(registry_input_error)?;
+        let slots = self.strict_parameter_slots(&placement, &signature.params, worker_origin)?;
+        let descriptor = self
+            .targets
+            .target_table()
+            .function(worker_function)
+            .cloned()
+            .ok_or_else(registry_input_error)?;
+        if descriptor.signature.parameters.len() != slots.len() {
+            return Err(registry_input_error());
+        }
+        let analysis = self.executable_analysis(executable)?;
+        let mut parameter_detachability = Vec::with_capacity(slots.len());
+        for (index, (slot, parameter)) in slots
+            .iter()
+            .zip(&descriptor.signature.parameters)
+            .enumerate()
+        {
+            let expected = vela_mir::contract_detachability(
+                self.targets.target_table(),
+                parameter.contract.as_ref(),
+            );
+            if let Some(kind) = expected.fact.rejection() {
+                let suffix = expected.rejection_path.concat();
+                return Err(CompileError::new(CompileErrorKind::TaskValueNotDetachable {
+                    target: descriptor.debug_name.clone(),
+                    path: format!("parameter `{}`{suffix}", parameter.name),
+                    kind,
+                })
+                .with_span(parameter.origin.unwrap_or(worker_origin).span));
+            }
+            let explicit_value = match &slot.value {
+                CallParameterSlotValueFact::Explicit { value, .. } => {
+                    Some(value.ok_or_else(registry_input_error)?)
+                }
+                CallParameterSlotValueFact::MissingDefault => None,
+            };
+            let actual = explicit_value.map_or(Detachability::Detachable, |value| {
+                analysis
+                    .expression(value)
+                    .map(TypeFact::detachability)
+                    .unwrap_or(Detachability::RuntimeChecked)
+            });
+            if let Some(kind) = actual.rejection() {
+                let span = match explicit_value {
+                    Some(value) => self
+                        .expression_origin(value)
+                        .map_or(worker_origin.span, |origin| origin.span),
+                    None => worker_origin.span,
+                };
+                return Err(CompileError::new(CompileErrorKind::TaskValueNotDetachable {
+                    target: descriptor.debug_name.clone(),
+                    path: format!("argument for parameter `{}`", parameter.name),
+                    kind,
+                })
+                .with_span(span));
+            }
+            debug_assert_eq!(slot.parameter_index, index);
+            parameter_detachability.push(expected.fact.union(actual));
+        }
+        let result = vela_mir::contract_detachability(
+            self.targets.target_table(),
+            descriptor.signature.return_contract.as_ref(),
+        );
+        if let Some(kind) = result.fact.rejection() {
+            let suffix = result.rejection_path.concat();
+            return Err(CompileError::new(CompileErrorKind::TaskValueNotDetachable {
+                target: descriptor.debug_name.clone(),
+                path: format!("return value{suffix}"),
+                kind,
+            })
+            .with_span(worker_origin.span));
+        }
         let continuation = if capability == TaskLexicalCapability::SpawnScopedThen {
             let expression = call
                 .arguments
@@ -436,6 +520,10 @@ impl GenerationBuilder<'_, '_> {
             worker_call,
             worker: worker_function,
             worker_debug_name: self.request.script_function_symbols[&worker_declaration].clone(),
+            detachability: CompileTaskDetachability {
+                parameters: parameter_detachability,
+                result: result.fact,
+            },
             continuation,
         };
         self.targets

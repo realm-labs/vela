@@ -42,10 +42,13 @@ Dedicated MIR task operations now preserve the worker arguments and stable
 worker/continuation identities without executing the worker in the parent
 Runtime. They require a safepoint, charge the call budget, and contribute the
 worker/continuation effect closure to the spawning root. Later Batch A work
-adds detachability and authority contracts, then hard-switches portable
-artifacts from current version 2 to version 3. Semantic analysis treats only
-the statically owned worker-call position as detached; ordinary async calls
-still require `await`.
+adds the frozen continuation ABI and authority contracts, then hard-switches
+portable artifacts from current version 2 to version 3. One shared
+`Detachability` fact now classifies recursively owned values, statically
+rejects known Host references, borrowed views, iterators, and callables with a
+nested contract path, and preserves mandatory runtime checking for `Any` and
+opaque storage. Semantic analysis treats only the statically owned worker-call
+position as detached; ordinary async calls still require `await`.
 
 Rust embedding now has one public registration vocabulary: every derived or
 generated Value/Host uses `register_type::<T>()`, callable bundles use
@@ -115,8 +118,10 @@ Phase status:
   compiler/host effect and capability model. Static compile targets also retain
   exact worker/continuation identity. Dedicated MIR task operations capture
   arguments in the parent turn, carry a safepoint and call-budget charge, and
-  close effective effects over both static targets. Detachability, authority
-  types, and artifact v3 remain in Batch A.
+  close effective effects over both static targets. Static detachability and
+  runtime-check requirements are sealed into each task target and reverified
+  in MIR. The continuation ABI, authority types, runtime value transfer, and
+  artifact v3 remain in Batch A.
 - P0-P3 accepted for service return totality: recursive macro diagnostics now
   reject nested, exclusive-envelope, projected-child, and otherwise
   non-executable borrowed returns. Exact direct parameters, direct borrowed
@@ -445,8 +450,9 @@ changes.
 
 ## Next Up
 
-1. Continue M20.75 Batch A with authoritative detachability facts and the
-   frozen continuation ABI, then add authority types and portable artifact v3.
+1. Continue M20.75 Batch A with the frozen continuation ABI, then add authority
+   types and portable artifact v3. Runtime detached-value graph transfer begins
+   in Batch B.
 2. Resume M20.5 incremental HIR re-lowering after the active detached-async
    goal or an explicit focus change.
 3. Audit the parameterized container and value-keyed Map/Set plans against

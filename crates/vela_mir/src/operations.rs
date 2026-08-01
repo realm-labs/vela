@@ -408,6 +408,7 @@ pub struct MirTaskOperation {
     pub worker_signature: CompileSignature,
     pub arguments: Vec<MirScriptArgument>,
     pub parameter_guards: MirScriptParameterGuardMode,
+    pub detachability: crate::CompileTaskDetachability,
     pub continuation: Option<MirTaskContinuation>,
 }
 

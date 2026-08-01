@@ -1,6 +1,8 @@
 use vela_def::FunctionId;
 use vela_hir::ids::HirExprId;
 
+use vela_common::Detachability;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CompileTaskOperation {
     SpawnScoped,
@@ -13,7 +15,15 @@ pub struct CompileTaskTarget {
     pub worker_call: HirExprId,
     pub worker: FunctionId,
     pub worker_debug_name: String,
+    pub detachability: CompileTaskDetachability,
     pub continuation: Option<CompileTaskContinuationTarget>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompileTaskDetachability {
+    /// Worker parameter order, including slots filled by child-side defaults.
+    pub parameters: Vec<Detachability>,
+    pub result: Detachability,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

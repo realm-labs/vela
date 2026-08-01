@@ -42,7 +42,10 @@ pub use placements::{
     CompileDynamicConstructorField, CompileFieldTarget, CompileFunctionTargets, CompileGuardKey,
     CompileGuardTarget, CompileMemberTarget, CompilePatternConstructorTarget, CompileTargetKind,
 };
-pub use tasks::{CompileTaskContinuationTarget, CompileTaskOperation, CompileTaskTarget};
+pub use tasks::{
+    CompileTaskContinuationTarget, CompileTaskDetachability, CompileTaskOperation,
+    CompileTaskTarget,
+};
 pub use try_targets::{CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget};
 
 #[derive(Clone, Debug, Eq, PartialEq)]

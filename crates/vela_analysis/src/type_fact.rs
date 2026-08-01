@@ -1,6 +1,6 @@
 use std::fmt;
 
-use vela_common::{CollectionViewMutation, PrimitiveTag};
+use vela_common::{CollectionViewMutation, Detachability, NonDetachableValueKind, PrimitiveTag};
 
 use crate::logical_records::LogicalRecordFact;
 
@@ -406,6 +406,59 @@ impl TypeFact {
                 .join(" | "),
         }
     }
+
+    /// Classifies whether this fact can cross into an isolated detached
+    /// Runtime. Nominal and erased values stay runtime-checked until the
+    /// sealed MIR/type-binding contract proves their complete storage graph.
+    #[must_use]
+    pub fn detachability(&self) -> Detachability {
+        match self {
+            Self::Never | Self::Primitive(_) | Self::Range | Self::OptionNone => {
+                Detachability::Detachable
+            }
+            Self::Unknown
+            | Self::Any
+            | Self::Record { .. }
+            | Self::LogicalRecord(_)
+            | Self::Enum { .. } => Detachability::RuntimeChecked,
+            Self::Array { element }
+            | Self::Set { element }
+            | Self::Option { some: element }
+            | Self::OptionSome { some: element }
+            | Self::ResultOk { ok: element }
+            | Self::ResultErr { err: element } => element.detachability(),
+            Self::Map { key, value }
+            | Self::Result {
+                ok: key,
+                err: value,
+            } => key.detachability().union(value.detachability()),
+            Self::Tuple { elements } | Self::Union(elements) => elements
+                .iter()
+                .fold(Detachability::Detachable, |fact, element| {
+                    fact.union(element.detachability())
+                }),
+            Self::Host { .. } => {
+                Detachability::NonDetachable(NonDetachableValueKind::HostReference)
+            }
+            Self::ArrayView { .. }
+            | Self::ArrayMut { .. }
+            | Self::MapView { .. }
+            | Self::MapMut { .. }
+            | Self::SetView { .. }
+            | Self::SetMut { .. } => {
+                Detachability::NonDetachable(NonDetachableValueKind::BorrowedView)
+            }
+            Self::Iterator { .. } | Self::ScopedIterator { .. } => {
+                Detachability::NonDetachable(NonDetachableValueKind::Iterator)
+            }
+            Self::Function { .. } | Self::Closure => {
+                Detachability::NonDetachable(NonDetachableValueKind::Callable)
+            }
+            Self::Trait { .. } | Self::Module { .. } => {
+                Detachability::NonDetachable(NonDetachableValueKind::RuntimeCapability)
+            }
+        }
+    }
 }
 
 fn push_unique_fact(facts: &mut Vec<TypeFact>, fact: TypeFact, saw_never: &mut bool) {
@@ -427,6 +480,26 @@ impl fmt::Display for TypeFact {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn detachability_recurses_owned_values_and_rejects_scoped_capabilities() {
+        assert_eq!(
+            TypeFact::array(TypeFact::option(TypeFact::STRING)).detachability(),
+            Detachability::Detachable
+        );
+        assert_eq!(
+            TypeFact::map(TypeFact::STRING, TypeFact::host("Context")).detachability(),
+            Detachability::NonDetachable(NonDetachableValueKind::HostReference)
+        );
+        assert_eq!(
+            TypeFact::array(TypeFact::Any).detachability(),
+            Detachability::RuntimeChecked
+        );
+        assert_eq!(
+            TypeFact::array_view(TypeFact::I64).detachability(),
+            Detachability::NonDetachable(NonDetachableValueKind::BorrowedView)
+        );
+    }
 
     #[test]
     fn display_names_avoid_script_generic_syntax() {

@@ -645,10 +645,11 @@ fn write_call(formatter: &mut fmt::Formatter<'_>, call: &MirCall) -> fmt::Result
 fn write_task(formatter: &mut fmt::Formatter<'_>, task: &MirTaskOperation) -> fmt::Result {
     write!(
         formatter,
-        "task.spawn worker#{} name={:?} parameter_guards={:?} signature={:?}(",
+        "task.spawn worker#{} name={:?} parameter_guards={:?} detachability={:?} signature={:?}(",
         task.worker.get(),
         task.worker_debug_name,
         task.parameter_guards,
+        task.detachability,
         task.worker_signature,
     )?;
     write_script_arguments(formatter, &task.arguments)?;

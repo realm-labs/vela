@@ -3,11 +3,13 @@
 //! Shared foundations for Vela crates.
 
 pub mod capability;
+pub mod detachability;
 pub mod diagnostic_render;
 pub mod interop_type;
 pub mod primitive;
 
 pub use capability::{Capability, CapabilitySet};
+pub use detachability::{Detachability, NonDetachableValueKind};
 pub use interop_type::{
     CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation,
     HostConstructionLifetime, HostConstructorBinding, InteropBindingContract,

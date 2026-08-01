@@ -142,6 +142,13 @@ impl CompileError {
                 ),
             )
             .with_code("compiler::unnameable_scoped_resource"),
+            CompileErrorKind::TaskValueNotDetachable { target, path, kind } => Diagnostic::error(
+                format!(
+                    "detached target `{target}` cannot transfer `{path}` because it contains a {}",
+                    kind.as_str()
+                ),
+            )
+            .with_code("compiler::task_value_not_detachable"),
         };
         Some(match self.span {
             Some(span) => diagnostic.with_span(span),
@@ -192,6 +199,11 @@ pub enum CompileErrorKind {
     UnnameableScopedResource {
         kind: vela_registry::ScopedResourceKindDef,
         parent: vela_registry::ScopedResourceParentDef,
+    },
+    TaskValueNotDetachable {
+        target: String,
+        path: String,
+        kind: vela_common::NonDetachableValueKind,
     },
 }
 

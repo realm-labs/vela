@@ -1242,6 +1242,51 @@ fn verify_task(
         parameter_guards: task.parameter_guards,
     };
     verify_call_argument_contracts(verifier, block, statement, origin, &worker_call)?;
+    if task.detachability.parameters.len() != task.worker_signature.parameters.len()
+        || task
+            .detachability
+            .parameters
+            .iter()
+            .any(|fact| fact.rejection().is_some())
+    {
+        return Err(bad_target(
+            verifier,
+            origin,
+            MirVerifyTarget::Function(task.worker),
+            "task parameter detachability is invalid",
+        ));
+    }
+    for (parameter, fact) in task
+        .worker_signature
+        .parameters
+        .iter()
+        .zip(&task.detachability.parameters)
+    {
+        let expected =
+            crate::contract_detachability(verifier.program.targets(), parameter.contract.as_ref())
+                .fact;
+        if expected.rejection().is_some() || expected.union(*fact) != *fact {
+            return Err(bad_target(
+                verifier,
+                origin,
+                MirVerifyTarget::Function(task.worker),
+                "task parameter detachability is weaker than the worker contract",
+            ));
+        }
+    }
+    let expected_result = crate::contract_detachability(
+        verifier.program.targets(),
+        task.worker_signature.return_contract.as_ref(),
+    )
+    .fact;
+    if task.detachability.result != expected_result || expected_result.rejection().is_some() {
+        return Err(bad_target(
+            verifier,
+            origin,
+            MirVerifyTarget::Function(task.worker),
+            "task result detachability disagrees with the worker contract",
+        ));
+    }
     if let Some(continuation) = &task.continuation {
         function_call_target(
             verifier,
