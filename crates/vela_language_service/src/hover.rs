@@ -1120,6 +1120,14 @@ fn span_text_range(span: Span) -> Option<TextRange> {
 }
 
 fn stdlib_function_detail_parts(function: &StdlibFunctionFact) -> DisplayParts {
+    if function.name == "task::spawn_scoped" {
+        return DisplayParts::type_name("task::spawn_scoped(invocation: static async call) -> ()");
+    }
+    if function.name == "task::spawn_scoped_then" {
+        return DisplayParts::type_name(
+            "task::spawn_scoped_then(invocation: static async call, continuation: static sync function) -> ()",
+        );
+    }
     DisplayParts::type_name(
         TypeFact::function(function.params.clone(), function.returns.clone()).display_name(),
     )

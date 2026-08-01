@@ -474,6 +474,28 @@ fn module_path_completion_uses_stdlib_function_segments() {
 }
 
 #[test]
+fn task_module_completion_exposes_only_the_static_scoped_forms() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main() { task:: }";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(0, text.find(" }").expect("completion point")),
+    );
+
+    assert_completion(&completions, "spawn_scoped", CompletionKind::Function);
+    assert_completion(&completions, "spawn_scoped_then", CompletionKind::Function);
+    assert_no_completion(&completions, "spawn");
+    assert_no_completion(&completions, "join");
+    assert_no_completion(&completions, "cancel");
+}
+
+#[test]
 fn module_path_completion_suggests_source_enum_variants() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub enum QuestState { Started, Completed }\npub fn main() { QuestState::Co }";

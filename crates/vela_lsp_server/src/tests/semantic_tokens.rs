@@ -1,5 +1,7 @@
 use super::{TestServer, notification_value, notify, request, response_value};
 
+mod tasks;
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 struct DecodedToken {
     line: u64,

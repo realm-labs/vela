@@ -608,7 +608,16 @@ fn stdlib_callable_facts(callee: &str) -> Vec<CallableFacts> {
 fn stdlib_callable_fact(fact: StdlibFunctionFact) -> CallableFacts {
     CallableFacts {
         name: fact.name.to_owned(),
-        params: indexed_callable_parameters(fact.params),
+        params: fact
+            .params
+            .into_iter()
+            .zip(fact.param_names)
+            .map(|(type_fact, name)| CallableParameterFacts {
+                name: name.to_owned(),
+                type_fact,
+                defaulted: false,
+            })
+            .collect(),
         returns: fact.returns,
         scoped_resource: None,
         asyncness: CallableAsyncness::Sync,

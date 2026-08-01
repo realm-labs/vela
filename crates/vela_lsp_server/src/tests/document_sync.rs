@@ -86,6 +86,46 @@ fn lsp_did_open_publishes_diagnostics() {
     };
     assert!(repair_hints.is_empty());
 }
+
+#[test]
+fn lsp_did_open_publishes_detached_value_and_continuation_diagnostics() {
+    let mut server = TestServer::new();
+    initialize_server(&mut server);
+    let notification = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+        &mut server,
+        serde_json::json!({
+            "textDocument": {
+                "uri": "file:///workspace/main.vela",
+                "languageId": "vela",
+                "version": 1,
+                "text": "async fn worker(callback: Closure) -> Array<Closure> { return [callback]; } fn done(result: Any) {} fn main() { task::spawn_scoped_then(worker(|value| value), done); }"
+            }
+        }),
+    ));
+    let diagnostics = notification["params"]["diagnostics"]
+        .as_array()
+        .expect("publishDiagnostics array");
+    let codes = diagnostics
+        .iter()
+        .filter_map(|diagnostic| diagnostic["code"].as_str())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        codes,
+        [
+            "analysis::task_value_not_detachable",
+            "analysis::task_value_not_detachable",
+            "analysis::task_value_not_detachable",
+            "analysis::task_continuation_invalid",
+        ]
+    );
+    assert!(diagnostics.iter().all(|diagnostic| {
+        diagnostic["range"]["end"]["character"]
+            .as_u64()
+            .zip(diagnostic["range"]["start"]["character"].as_u64())
+            .is_some_and(|(end, start)| end > start)
+    }));
+}
 #[test]
 fn lsp_did_change_replaces_document_text() {
     let mut server = TestServer::new();

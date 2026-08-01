@@ -156,6 +156,27 @@ pub(super) fn source_diagnostics(
             })
             .cloned(),
     );
+    let task_validation = ExecutableValidationFacts::for_bodies(
+        graph,
+        Some(facts),
+        analysis.schema_backed,
+        graph
+            .bodies()
+            .filter(|body| body.origin.span.source == source)
+            .map(|body| body.id),
+    );
+    diagnostics.extend(
+        task_validation
+            .diagnostics()
+            .iter()
+            .filter(|diagnostic| {
+                diagnostic
+                    .code
+                    .as_deref()
+                    .is_some_and(|code| code.starts_with("analysis::task_"))
+            })
+            .cloned(),
+    );
     diagnostics
 }
 

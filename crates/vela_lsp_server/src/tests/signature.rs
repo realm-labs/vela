@@ -8,6 +8,7 @@ use super::{TestServer, notification_value, notify, request, response_value};
 mod dynamic;
 mod fixtures;
 mod schema_method_return_receivers;
+mod tasks;
 
 use fixtures::{line, schema_with_rewardable_function_and_trait_method};
 

@@ -652,6 +652,31 @@ fn hover_reports_stdlib_function_fact() {
 }
 
 #[test]
+fn hover_reports_static_scoped_task_shape() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "async fn worker() {} fn main() { task::spawn_scoped(worker()); }";
+    let databases = databases_for(&document, text, RegistryFacts::default());
+
+    let hover = databases
+        .hover(
+            &document,
+            Position::new(0, text.find("spawn_scoped").expect("task form")),
+        )
+        .expect("hover should resolve task form");
+
+    assert_eq!(hover.kind(), HoverKind::Function);
+    assert_eq!(hover.label(), "task::spawn_scoped");
+    assert_eq!(
+        hover.detail(),
+        "task::spawn_scoped(invocation: static async call) -> ()"
+    );
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::Builtin("task::spawn_scoped".to_owned()))
+    );
+}
+
+#[test]
 fn hover_reports_stdlib_method_fact() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(scores: Array<i64>) { scores.filter(|score| score > 0) }";

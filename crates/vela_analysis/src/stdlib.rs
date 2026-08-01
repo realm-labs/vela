@@ -69,17 +69,34 @@ impl StdlibMethodFact {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct StdlibFunctionFact {
     pub name: &'static str,
+    pub param_names: Vec<&'static str>,
     pub params: Vec<TypeFact>,
     pub returns: TypeFact,
 }
 
 impl StdlibFunctionFact {
     fn new(name: &'static str, params: Vec<TypeFact>, returns: TypeFact) -> Self {
+        let param_names = (0..params.len())
+            .map(|index| match index {
+                0 => "arg0",
+                1 => "arg1",
+                2 => "arg2",
+                3 => "arg3",
+                4 => "arg4",
+                _ => "arg",
+            })
+            .collect();
         Self {
             name,
+            param_names,
             params,
             returns,
         }
+    }
+
+    fn with_param_names(mut self, names: impl IntoIterator<Item = &'static str>) -> Self {
+        self.param_names = names.into_iter().collect();
+        self
     }
 }
 

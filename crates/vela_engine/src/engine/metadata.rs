@@ -22,7 +22,10 @@ impl Engine {
         &self,
     ) -> Result<vela_analysis::registry::RegistryFacts, vela_registry::RegistryDeclarationSlotError>
     {
-        vela_analysis::registry::RegistryFacts::from_compile_view(self.compiler_registry())
+        let mut facts =
+            vela_analysis::registry::RegistryFacts::from_compile_view(self.compiler_registry())?;
+        facts.set_execution_effect_ceiling(capability_effect_ceiling(self.capabilities()));
+        Ok(facts)
     }
 
     /// Projects this engine's sealed compiler registry and service set into the
@@ -43,6 +46,27 @@ impl Engine {
             Some(schema) => artifact.with_service_set(service_set_fact(schema, self)),
             None => artifact,
         })
+    }
+}
+
+fn capability_effect_ceiling(
+    capabilities: vela_common::CapabilitySet,
+) -> vela_analysis::registry::RegistryEffectFact {
+    use vela_common::Capability;
+
+    vela_analysis::registry::RegistryEffectFact {
+        reads_host: capabilities.contains(Capability::HostRead)
+            || capabilities.contains(Capability::HostWrite),
+        writes_host: capabilities.contains(Capability::HostWrite),
+        emits_events: capabilities.contains(Capability::EventEmit),
+        reads_time: capabilities.contains(Capability::Time),
+        uses_random: capabilities.contains(Capability::Random),
+        reads_io: capabilities.contains(Capability::IoRead),
+        writes_io: capabilities.contains(Capability::IoWrite),
+        reads_reflection: capabilities.contains(Capability::ReflectionRead),
+        writes_reflection: capabilities.contains(Capability::ReflectionWrite),
+        calls_reflection: capabilities.contains(Capability::ReflectionCall),
+        spawns_tasks: capabilities.contains(Capability::TaskSpawn),
     }
 }
 
@@ -250,6 +274,34 @@ fn type_hint(hint: &TypeHint) -> String {
         TypeHint::Record(key) | TypeHint::Enum(key) | TypeHint::Host(key) => key.name.clone(),
         TypeHint::Trait(path) => path.clone(),
         TypeHint::Function => "Function".to_owned(),
+    }
+}
+
+#[cfg(all(test, feature = "schema-artifact"))]
+mod tests {
+    use crate::engine::Engine;
+    use crate::permission::Capability;
+
+    #[test]
+    fn tooling_schema_round_trips_the_engine_execution_effect_ceiling() {
+        let engine = Engine::builder()
+            .capability(Capability::TaskSpawn)
+            .capability(Capability::IoRead)
+            .build()
+            .expect("engine");
+        let artifact = engine.tooling_schema_artifact().expect("tooling schema");
+        let json = artifact.to_json().expect("encode tooling schema");
+        assert!(json.contains("executionEffectCeiling"));
+        let decoded =
+            vela_language_service::SchemaArtifact::from_json(&json).expect("decode tooling schema");
+        let facts = decoded.to_registry_facts();
+        let ceiling = facts
+            .execution_effect_ceiling()
+            .expect("execution effect ceiling");
+
+        assert!(ceiling.spawns_tasks);
+        assert!(ceiling.reads_io);
+        assert!(!ceiling.writes_io);
     }
 }
 

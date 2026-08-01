@@ -275,6 +275,8 @@ impl SchemaSourceLocations {
 #[derive(Debug, Clone, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SchemaArtifactFacts {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    execution_effect_ceiling: Option<SchemaEffectFact>,
     #[serde(default)]
     types: Vec<SchemaNamedFact>,
     #[serde(default)]
@@ -313,6 +315,10 @@ impl SchemaArtifactFacts {
     #[must_use]
     pub fn from_registry_facts(facts: &RegistryFacts) -> Self {
         Self {
+            execution_effect_ceiling: facts
+                .execution_effect_ceiling()
+                .cloned()
+                .map(SchemaEffectFact::from),
             types: facts
                 .types()
                 .map(|(name, fact)| SchemaNamedFact::new(name, fact, facts.type_docs(name)))
@@ -395,6 +401,9 @@ impl SchemaArtifactFacts {
 
     fn to_registry_facts(&self) -> RegistryFacts {
         let mut facts = RegistryFacts::default();
+        if let Some(ceiling) = &self.execution_effect_ceiling {
+            facts.set_execution_effect_ceiling(ceiling.to_registry_fact());
+        }
         for entry in &self.types {
             facts.insert_type(entry.name.clone(), entry.fact.to_type_fact());
             if let Some(docs) = &entry.docs {

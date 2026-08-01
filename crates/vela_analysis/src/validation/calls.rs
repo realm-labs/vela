@@ -254,7 +254,7 @@ fn registry_variant_signature(
     Some(CallableSignatureFact::new(parameters, target.fact))
 }
 
-fn source_function_signature(
+pub(super) fn source_function_signature(
     graph: &ModuleGraph,
     declaration: HirDeclId,
 ) -> Option<CallableSignatureFact> {

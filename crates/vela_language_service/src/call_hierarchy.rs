@@ -1,6 +1,6 @@
 use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
-use vela_hir::binding::{BindingMap, BindingResolution};
+use vela_hir::binding::{BindingMap, BindingResolution, TaskLexicalCapability};
 use vela_hir::ids::{HirDeclId, HirNodeId};
 use vela_hir::module_graph::{Declaration, DeclarationKind, Import, ImportResolution, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
@@ -289,7 +289,40 @@ impl LanguageServiceDatabases {
             .collect::<Vec<_>>();
 
         calls.extend(self.resolved_method_call_ranges(scope_span));
+        calls.extend(self.resolved_task_continuation_ranges(bindings));
         calls
+    }
+
+    fn resolved_task_continuation_ranges(
+        &self,
+        bindings: &BindingMap,
+    ) -> Vec<(CallHierarchyTarget, DiagnosticRange)> {
+        let graph = self.hir_db().graph();
+        let Some(body) = graph.body(bindings.body()) else {
+            return Vec::new();
+        };
+        let Some(source) = self.source_record_for_call_hierarchy(body.origin.span.source) else {
+            return Vec::new();
+        };
+        bindings
+            .task_capabilities()
+            .filter(|(_, capability)| *capability == TaskLexicalCapability::SpawnScopedThen)
+            .filter_map(|(task_callee, _)| {
+                let (_, task_call) = body.calls().find(|(_, call)| call.callee == task_callee)?;
+                let continuation = task_call.arguments.get(1)?.value?;
+                let BindingResolution::Declaration(target) = bindings.resolution(continuation)?
+                else {
+                    return None;
+                };
+                let target = self.call_hierarchy_function_target(*target)?;
+                let span = graph.expression_span(continuation)?;
+                let range = span_text_range(span)?;
+                Some((
+                    CallHierarchyTarget::Function(target),
+                    diagnostic_range(source.text(), range),
+                ))
+            })
+            .collect()
     }
 
     fn call_range_for_expression(&self, span: Span) -> Option<DiagnosticRange> {

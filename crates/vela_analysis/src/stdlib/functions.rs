@@ -5,6 +5,14 @@ use vela_common::PrimitiveTag;
 pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
     let number = number_fact();
     let mut facts = vec![
+        StdlibFunctionFact::new("task::spawn_scoped", vec![TypeFact::Any], TypeFact::UNIT)
+            .with_param_names(["invocation"]),
+        StdlibFunctionFact::new(
+            "task::spawn_scoped_then",
+            vec![TypeFact::Any, TypeFact::Any],
+            TypeFact::UNIT,
+        )
+        .with_param_names(["invocation", "continuation"]),
         StdlibFunctionFact::new(
             "option::some",
             vec![TypeFact::Any],
@@ -254,6 +262,12 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
 pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunctionFact> {
     if let Some(fact) = super::reflect::function_fact(name, args) {
         return Some(fact);
+    }
+
+    if matches!(name, "task::spawn_scoped" | "task::spawn_scoped_then") {
+        return completion_facts()
+            .into_iter()
+            .find(|fact| fact.name == name && fact.params.len() == args.len());
     }
 
     match name {

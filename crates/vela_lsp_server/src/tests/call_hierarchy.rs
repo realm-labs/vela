@@ -10,6 +10,7 @@ mod cross_file;
 mod returned_receivers;
 mod schema_method_return_receivers;
 mod source_method_return_receivers;
+mod tasks;
 mod values;
 
 #[test]

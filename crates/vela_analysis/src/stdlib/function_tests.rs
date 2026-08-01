@@ -189,6 +189,19 @@ fn function_completion_facts_enumerate_global_api_surface() {
     let facts = stdlib_function_completion_facts();
 
     assert!(facts.iter().any(|fact| {
+        fact.name == "task::spawn_scoped"
+            && fact.param_names == ["invocation"]
+            && fact.params == [TypeFact::Any]
+            && fact.returns == TypeFact::UNIT
+    }));
+    assert!(facts.iter().any(|fact| {
+        fact.name == "task::spawn_scoped_then"
+            && fact.param_names == ["invocation", "continuation"]
+            && fact.params == [TypeFact::Any, TypeFact::Any]
+            && fact.returns == TypeFact::UNIT
+    }));
+
+    assert!(facts.iter().any(|fact| {
         fact.name == "option::unwrap_or"
             && fact.params == vec![TypeFact::option(TypeFact::Any), TypeFact::Any]
             && fact.returns == TypeFact::Any

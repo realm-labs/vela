@@ -3839,6 +3839,16 @@ Service-generation requirements. Loading those facts does not change the
 function's reflective call permission and creates no dynamic task-start path;
 task admission remains available only through compiler-owned static forms.
 
+### Detached Task Tooling Uses The Sealed Host Schema Ceiling
+
+Language tooling recognizes only the two compiler-owned static task forms. It
+uses source/HIR identities for navigation and call edges, and the Engine's
+tooling schema for registered callable effects plus the active execution
+capability ceiling. A schema-backed diagnostic closes worker and continuation
+effects transitively and reports denied capabilities before execution; if no
+host schema ceiling is supplied, tooling does not invent one. MIR/link-time
+effect closure remains authoritative for executable artifacts.
+
 ### Generated Sync Host Methods Preserve Both Sealed Representations
 
 A generated synchronous Host method invokes its typed Rust body when the

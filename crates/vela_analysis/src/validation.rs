@@ -22,6 +22,7 @@ mod constructors;
 mod diagnostics;
 mod host_access;
 mod state_assignments;
+mod tasks;
 
 #[cfg(test)]
 mod call_tests;
@@ -29,6 +30,8 @@ mod call_tests;
 mod constructor_tests;
 #[cfg(test)]
 mod host_access_tests;
+#[cfg(test)]
+mod task_tests;
 #[cfg(test)]
 mod tests;
 
@@ -284,6 +287,7 @@ impl ExecutableValidationFacts {
         for body in bodies.iter().filter_map(|body| graph.body(*body)) {
             capabilities::record_body(&mut validation, &capabilities, graph, facts, body);
             calls::record_body(&mut validation, graph, schema, facts, body);
+            tasks::record_body(&mut validation, graph, schema, facts, body);
             constructors::record_body(&mut validation, graph, schema, facts, body);
             host_access::record_body(&mut validation, schema, facts, body);
             state_assignments::record_body(&mut validation, graph, body);

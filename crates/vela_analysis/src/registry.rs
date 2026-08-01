@@ -1,21 +1,25 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{
-    CollectionViewCapabilities, CollectionViewMutation, HostConstructorBinding, HostTypeId,
-    InteropTypeId, PrimitiveTag, ReceiverCapabilities, ReceiverCapability, Span, StoragePolicy,
-    TypeAbiFingerprint, TypeBindingRegistryChecksum,
+    CollectionViewCapabilities, HostConstructorBinding, HostTypeId, InteropTypeId,
+    ReceiverCapabilities, ReceiverCapability, Span, StoragePolicy, TypeAbiFingerprint,
+    TypeBindingRegistryChecksum,
 };
 use vela_def::{FieldId, FunctionId, TypeId};
 use vela_reflect::access::{FunctionAccess, MethodAccess};
 use vela_reflect::modules::{DeclOrigin, ModuleDesc};
-use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKind, TypeRegistry};
-use vela_registry::TypeHintDef;
+use vela_reflect::registry::{FieldDesc, TypeRegistry};
 pub use vela_registry::{ScopedResourceKindDef, ScopedResourceParentDef, ScopedResourceReturnDef};
 
 use crate::type_fact::TypeFact;
 
 mod compile_view;
+mod effect;
+mod hint_fact;
 mod reflect_view;
+
+pub use effect::RegistryEffectFact;
+use hint_fact::{registry_hint_fact, type_desc_fact};
 
 pub use crate::callable::{
     CallableParameterFact, CallableParameterRequirementFact, CallableSignatureFact,
@@ -278,131 +282,8 @@ impl RegistryModuleFact {
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct RegistryEffectFact {
-    pub reads_host: bool,
-    pub writes_host: bool,
-    pub emits_events: bool,
-    pub reads_time: bool,
-    pub uses_random: bool,
-    pub reads_io: bool,
-    pub writes_io: bool,
-    pub reads_reflection: bool,
-    pub writes_reflection: bool,
-    pub calls_reflection: bool,
-    pub spawns_tasks: bool,
-}
-
-impl RegistryEffectFact {
-    #[must_use]
-    pub const fn pure() -> Self {
-        Self {
-            reads_host: false,
-            writes_host: false,
-            emits_events: false,
-            reads_time: false,
-            uses_random: false,
-            reads_io: false,
-            writes_io: false,
-            reads_reflection: false,
-            writes_reflection: false,
-            calls_reflection: false,
-            spawns_tasks: false,
-        }
-    }
-
-    #[must_use]
-    pub const fn host_read() -> Self {
-        Self {
-            reads_host: true,
-            writes_host: false,
-            emits_events: false,
-            reads_time: false,
-            uses_random: false,
-            reads_io: false,
-            writes_io: false,
-            reads_reflection: false,
-            writes_reflection: false,
-            calls_reflection: false,
-            spawns_tasks: false,
-        }
-    }
-
-    #[must_use]
-    pub const fn host_write() -> Self {
-        Self {
-            reads_host: true,
-            writes_host: true,
-            emits_events: false,
-            reads_time: false,
-            uses_random: false,
-            reads_io: false,
-            writes_io: false,
-            reads_reflection: false,
-            writes_reflection: false,
-            calls_reflection: false,
-            spawns_tasks: false,
-        }
-    }
-
-    #[must_use]
-    pub const fn event_emit() -> Self {
-        Self {
-            reads_host: false,
-            writes_host: false,
-            emits_events: true,
-            reads_time: false,
-            uses_random: false,
-            reads_io: false,
-            writes_io: false,
-            reads_reflection: false,
-            writes_reflection: false,
-            calls_reflection: false,
-            spawns_tasks: false,
-        }
-    }
-
-    #[must_use]
-    pub fn denied_by(&self, allowed: &Self) -> Vec<&'static str> {
-        self.effect_flags()
-            .into_iter()
-            .zip(allowed.effect_flags())
-            .filter_map(|((name, required), (_, allowed))| (required && !allowed).then_some(name))
-            .collect()
-    }
-
-    #[must_use]
-    pub fn display_name(&self) -> String {
-        let effects = self
-            .effect_flags()
-            .into_iter()
-            .filter_map(|(name, enabled)| enabled.then_some(name))
-            .collect::<Vec<_>>();
-        if effects.is_empty() {
-            "pure".to_owned()
-        } else {
-            effects.join(", ")
-        }
-    }
-
-    fn effect_flags(&self) -> [(&'static str, bool); 11] {
-        [
-            ("reads_host", self.reads_host && !self.writes_host),
-            ("writes_host", self.writes_host),
-            ("emits_events", self.emits_events),
-            ("reads_time", self.reads_time),
-            ("uses_random", self.uses_random),
-            ("reads_io", self.reads_io),
-            ("writes_io", self.writes_io),
-            ("reads_reflection", self.reads_reflection),
-            ("writes_reflection", self.writes_reflection),
-            ("calls_reflection", self.calls_reflection),
-            ("spawns_tasks", self.spawns_tasks),
-        ]
-    }
-}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct RegistryFacts {
+    execution_effect_ceiling: Option<RegistryEffectFact>,
     types: BTreeMap<String, TypeFact>,
     type_targets: BTreeMap<String, RegistryTypeTargetFact>,
     type_bindings: BTreeMap<String, RegistryTypeBindingFact>,
@@ -440,6 +321,15 @@ pub struct RegistryFacts {
 }
 
 impl RegistryFacts {
+    #[must_use]
+    pub const fn execution_effect_ceiling(&self) -> Option<&RegistryEffectFact> {
+        self.execution_effect_ceiling.as_ref()
+    }
+
+    pub fn set_execution_effect_ceiling(&mut self, ceiling: RegistryEffectFact) {
+        self.execution_effect_ceiling = Some(ceiling);
+    }
+
     #[must_use]
     pub fn type_fact(&self, name: &str) -> Option<&TypeFact> {
         self.types.get(name)
@@ -1211,157 +1101,6 @@ impl RegistryFacts {
                 .or_default()
                 .insert((owner.to_owned(), name.to_owned()));
         }
-    }
-}
-
-fn type_desc_fact(registry: &TypeRegistry, desc: &TypeDesc) -> TypeFact {
-    if let Some(tag) = PrimitiveTag::from_name(&desc.key.name) {
-        return TypeFact::primitive(tag);
-    }
-
-    match desc.kind {
-        TypeKind::Unit => TypeFact::UNIT,
-        TypeKind::Bool => TypeFact::BOOL,
-        TypeKind::I8 => TypeFact::I8,
-        TypeKind::I16 => TypeFact::I16,
-        TypeKind::I32 => TypeFact::I32,
-        TypeKind::I64 => TypeFact::I64,
-        TypeKind::U8 => TypeFact::U8,
-        TypeKind::U16 => TypeFact::U16,
-        TypeKind::U32 => TypeFact::U32,
-        TypeKind::U64 => TypeFact::U64,
-        TypeKind::F32 => TypeFact::F32,
-        TypeKind::F64 => TypeFact::F64,
-        TypeKind::Char => TypeFact::CHAR,
-        TypeKind::String => TypeFact::STRING,
-        TypeKind::Bytes => TypeFact::BYTES,
-        TypeKind::Tuple => TypeFact::tuple(
-            desc.tuple_elements
-                .iter()
-                .map(|element| registry_hint_fact(registry, element)),
-        ),
-        TypeKind::Array => TypeFact::array(TypeFact::Any),
-        TypeKind::Map => TypeFact::map(TypeFact::Any, TypeFact::Any),
-        TypeKind::Set => TypeFact::set(TypeFact::Any),
-        TypeKind::Range => TypeFact::Range,
-        TypeKind::Function => TypeFact::function(Vec::new(), TypeFact::Any),
-        TypeKind::Closure => TypeFact::Closure,
-        TypeKind::Host => TypeFact::host(&desc.key.name),
-        TypeKind::ScriptStruct => TypeFact::record(&desc.key.name),
-        TypeKind::ScriptEnum => TypeFact::enum_type(&desc.key.name, None::<String>),
-    }
-}
-
-fn registry_hint_fact(registry: &TypeRegistry, hint: &str) -> TypeFact {
-    TypeHintDef::parse(hint).map_or_else(
-        || raw_registry_hint_fact(registry, hint),
-        |hint| type_hint_def_fact(registry, &hint),
-    )
-}
-
-fn type_hint_def_fact(registry: &TypeRegistry, hint: &TypeHintDef) -> TypeFact {
-    let path = hint.path.join("::");
-    match (path.as_str(), hint.args.as_slice()) {
-        ("()", []) => TypeFact::UNIT,
-        ("()", elements) if elements.len() >= 2 => TypeFact::tuple(
-            elements
-                .iter()
-                .map(|element| type_hint_def_fact(registry, element)),
-        ),
-        ("Any", []) => TypeFact::Any,
-        ("String", []) => TypeFact::STRING,
-        ("Bytes", []) => TypeFact::BYTES,
-        ("Array", []) => TypeFact::array(TypeFact::Unknown),
-        ("Array", [element]) => TypeFact::array(type_hint_def_fact(registry, element)),
-        ("ArrayView", [element]) => TypeFact::array_view(type_hint_def_fact(registry, element)),
-        ("ArrayMut", [element]) => TypeFact::array_mut(
-            type_hint_def_fact(registry, element),
-            hint.collection_mutation
-                .unwrap_or(CollectionViewMutation::Fixed),
-        ),
-        ("Map", []) => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
-        ("Map", [key, value]) => TypeFact::map(
-            type_hint_def_fact(registry, key),
-            type_hint_def_fact(registry, value),
-        ),
-        ("MapView", [key, value]) => TypeFact::map_view(
-            type_hint_def_fact(registry, key),
-            type_hint_def_fact(registry, value),
-        ),
-        ("MapMut", [key, value]) => TypeFact::map_mut(
-            type_hint_def_fact(registry, key),
-            type_hint_def_fact(registry, value),
-            hint.collection_mutation
-                .unwrap_or(CollectionViewMutation::Growable),
-        ),
-        ("Set", []) => TypeFact::set(TypeFact::Unknown),
-        ("Set", [element]) => TypeFact::set(type_hint_def_fact(registry, element)),
-        ("SetView", [element]) => TypeFact::set_view(type_hint_def_fact(registry, element)),
-        ("SetMut", [element]) => TypeFact::set_mut(
-            type_hint_def_fact(registry, element),
-            hint.collection_mutation
-                .unwrap_or(CollectionViewMutation::Growable),
-        ),
-        ("Iterator", []) => TypeFact::iterator(TypeFact::Unknown),
-        ("Iterator", [item]) => TypeFact::iterator(type_hint_def_fact(registry, item)),
-        ("Function", []) => TypeFact::function(Vec::new(), TypeFact::Unknown),
-        ("Closure", []) => TypeFact::Closure,
-        ("Option", []) => TypeFact::option(TypeFact::Unknown),
-        ("Option", [some]) => TypeFact::option(type_hint_def_fact(registry, some)),
-        ("Result", []) => TypeFact::result(TypeFact::Unknown, TypeFact::Unknown),
-        ("Result", [ok, err]) => TypeFact::result(
-            type_hint_def_fact(registry, ok),
-            type_hint_def_fact(registry, err),
-        ),
-        (name, []) => raw_registry_hint_fact(registry, name),
-        _ => TypeFact::Unknown,
-    }
-}
-
-fn raw_registry_hint_fact(registry: &TypeRegistry, hint: &str) -> TypeFact {
-    if let Some(tag) = PrimitiveTag::from_name(hint) {
-        return TypeFact::primitive(tag);
-    }
-
-    match hint {
-        "Any" => TypeFact::Any,
-        "String" => TypeFact::STRING,
-        "Bytes" => TypeFact::BYTES,
-        "Array" => TypeFact::array(TypeFact::Unknown),
-        "ArrayView" => TypeFact::array_view(TypeFact::Unknown),
-        "ArrayMut" => TypeFact::array_mut(TypeFact::Unknown, CollectionViewMutation::Fixed),
-        "Map" => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
-        "MapView" => TypeFact::map_view(TypeFact::Unknown, TypeFact::Unknown),
-        "MapMut" => TypeFact::map_mut(
-            TypeFact::Unknown,
-            TypeFact::Unknown,
-            CollectionViewMutation::Growable,
-        ),
-        "Set" => TypeFact::set(TypeFact::Unknown),
-        "SetView" => TypeFact::set_view(TypeFact::Unknown),
-        "SetMut" => TypeFact::set_mut(TypeFact::Unknown, CollectionViewMutation::Growable),
-        "Iterator" => TypeFact::iterator(TypeFact::Unknown),
-        "Function" => TypeFact::function(Vec::new(), TypeFact::Unknown),
-        "Closure" => TypeFact::Closure,
-        "Option" => TypeFact::option(TypeFact::Unknown),
-        "Result" => TypeFact::result(TypeFact::Unknown, TypeFact::Unknown),
-        name => registry.type_by_name(name).map_or_else(
-            || trait_or_unknown(registry, name),
-            |desc| type_desc_fact(registry, desc),
-        ),
-    }
-}
-
-fn trait_or_unknown(registry: &TypeRegistry, name: &str) -> TypeFact {
-    if registry.trait_by_name(name).is_some()
-        || registry
-            .types()
-            .flat_map(|type_desc| type_desc.traits.iter())
-            .any(|trait_desc| trait_desc.name == name)
-    {
-        TypeFact::trait_type(name)
-    } else {
-        TypeFact::Unknown
     }
 }
 
