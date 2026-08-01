@@ -1,4 +1,4 @@
-use vela_common::{CallableAsyncness, Detachability, NonDetachableValueKind};
+use vela_common::{CallableAsyncness, Detachability};
 use vela_mir::{CompileCalleeTarget, CompileTaskOperation, MirStatementKind};
 
 use super::{FixtureRoots, prepare_source};
@@ -157,21 +157,17 @@ fn main() { task::spawn_scoped(worker()); }
     ] {
         let error = prepare_source(source, FixtureRoots::Program)
             .expect_err("callable task transfer must be rejected");
-        assert_eq!(
-            error.to_diagnostic().and_then(|diagnostic| diagnostic.code),
-            Some("compiler::task_value_not_detachable".to_owned())
-        );
-        let crate::compiler::error::CompileErrorKind::TaskValueNotDetachable {
-            target,
-            path: actual_path,
-            kind,
-        } = error.kind
+        let crate::compiler::error::CompileErrorKind::SemanticDiagnostics(diagnostics) =
+            &error.kind
         else {
             panic!("unexpected task detachment error: {error:?}");
         };
-        assert_eq!(target, "worker");
-        assert_eq!(actual_path, path);
-        assert_eq!(kind, NonDetachableValueKind::Callable);
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code.as_deref() == Some("analysis::task_value_not_detachable")
+                && diagnostic.message.contains("target `worker`")
+                && diagnostic.message.contains(path)
+                && diagnostic.message.contains("callable")
+        }));
     }
 }
 
@@ -232,11 +228,14 @@ fn main() {{ task::spawn_scoped_then(worker(), continuation); }}
         );
         let error = prepare_source(&source, FixtureRoots::Program)
             .expect_err("continuation outcome ABI mismatch must be rejected");
-        let diagnostic = error.to_diagnostic().expect("continuation diagnostic");
-        assert_eq!(
-            diagnostic.code.as_deref(),
-            Some("compiler::task_continuation_invalid")
-        );
-        assert!(diagnostic.message.contains(expected));
+        let crate::compiler::error::CompileErrorKind::SemanticDiagnostics(diagnostics) =
+            &error.kind
+        else {
+            panic!("unexpected task continuation error: {error:?}");
+        };
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code.as_deref() == Some("analysis::task_continuation_invalid")
+                && diagnostic.message.contains(expected)
+        }));
     }
 }
