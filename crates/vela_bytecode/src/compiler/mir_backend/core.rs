@@ -537,6 +537,9 @@ impl<'a> FunctionBackend<'a> {
             MirStatementKind::Call(call) => {
                 self.call(dst.ok_or(MirBackendError::MissingDestination)?, call, span)?
             }
+            MirStatementKind::Task(_) => {
+                return Err(MirBackendError::MissingTarget("task instruction"));
+            }
             MirStatementKind::Host(operation) => self.host(dst, operation, span)?,
             MirStatementKind::Reflect(operation) => self.reflect(
                 dst.ok_or(MirBackendError::MissingDestination)?,

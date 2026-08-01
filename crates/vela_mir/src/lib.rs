@@ -72,7 +72,7 @@ pub use operations::{
     MirHostMutation, MirHostOperation, MirHostPath, MirHostPathSegment, MirIdentityOp, MirIndexKey,
     MirIndexOperation, MirIteratorOperation, MirLiteralSide, MirReflectionOperation,
     MirScriptArgument, MirScriptParameterGuardMode, MirStateOperation, MirStatement,
-    MirStatementKind,
+    MirStatementKind, MirTaskContinuation, MirTaskOperation,
 };
 pub use origin::{MirSourceNode, MirSourceOrigin};
 pub use targets::{

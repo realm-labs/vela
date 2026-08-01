@@ -29,6 +29,7 @@ pub(super) enum FixtureRoots<'a> {
 #[derive(Debug)]
 pub(super) struct SemanticFixture {
     pub(super) input: PreparedSemanticInput,
+    pub(super) graph: vela_hir::module_graph::ModuleGraph,
     pub(super) declarations: BTreeMap<String, HirDeclId>,
     pub(super) schema_default_bodies: Vec<HirBodyId>,
     pub(super) call_expressions: Vec<(HirBodyId, HirExprId)>,
@@ -190,6 +191,7 @@ fn prepare_source_inner(
     })?;
     Ok(SemanticFixture {
         input,
+        graph: semantic.graph().clone(),
         declarations,
         schema_default_bodies,
         call_expressions,

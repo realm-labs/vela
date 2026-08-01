@@ -395,6 +395,23 @@ pub enum MirFormatPart {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct MirTaskContinuation {
+    pub function: FunctionId,
+    pub debug_name: String,
+    pub signature: CompileSignature,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct MirTaskOperation {
+    pub worker: FunctionId,
+    pub worker_debug_name: String,
+    pub worker_signature: CompileSignature,
+    pub arguments: Vec<MirScriptArgument>,
+    pub parameter_guards: MirScriptParameterGuardMode,
+    pub continuation: Option<MirTaskContinuation>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum MirStatementKind {
     Assign(MirRvalue),
     Unary {
@@ -452,6 +469,7 @@ pub enum MirStatementKind {
         inclusive: bool,
     },
     Call(MirCall),
+    Task(MirTaskOperation),
     Host(MirHostOperation),
     Reflect(MirReflectionOperation),
     GuardTrap {
@@ -506,6 +524,11 @@ impl MirStatementKind {
     pub(crate) fn has_valid_call_contract(&self) -> bool {
         match self {
             Self::Call(call) => call.has_valid_contract(),
+            Self::Task(task) => script_arguments_match(
+                &task.worker_signature,
+                &task.arguments,
+                Some(task.parameter_guards),
+            ),
             Self::Host(MirHostOperation::Call {
                 target, arguments, ..
             }) => external_arguments_match(&target.signature, arguments.len()),
@@ -554,6 +577,7 @@ impl MirStatementKind {
             }
             Self::MakeRange { .. } => MirEffect::may_trap(),
             Self::Call(call) => call.minimum_effect(),
+            Self::Task(_) => MirEffect::task_spawn(),
             Self::Host(operation) => match operation {
                 MirHostOperation::ReleaseBorrowLease { .. }
                 | MirHostOperation::TryReleaseBorrowLease { .. } => MirEffect::PURE,
@@ -593,6 +617,7 @@ impl MirStatementKind {
             | Self::MaterializeConstant(_)
             | Self::MakeRange { .. }
             | Self::Call(_)
+            | Self::Task(_)
             | Self::Host(
                 MirHostOperation::ReleaseBorrowLease { .. }
                 | MirHostOperation::TryReleaseBorrowLease { .. }
@@ -622,6 +647,7 @@ impl MirStatementKind {
             self,
             Self::Allocate(_)
                 | Self::Call(_)
+                | Self::Task(_)
                 | Self::Host(MirHostOperation::Call { .. })
                 | Self::Reflect(MirReflectionOperation::Call { .. })
         )

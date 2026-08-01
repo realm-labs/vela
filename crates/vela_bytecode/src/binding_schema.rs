@@ -1115,10 +1115,19 @@ pub(crate) fn effective_effects(
         for (_, function) in root.program().functions() {
             for (_, statement) in function.statements() {
                 effect = effect.union(statement.effect);
-                if let MirStatementKind::Call(call) = &statement.kind
-                    && let Some(callee) = script_callee(call)
-                {
-                    called.insert(callee);
+                match &statement.kind {
+                    MirStatementKind::Call(call) => {
+                        if let Some(callee) = script_callee(call) {
+                            called.insert(callee);
+                        }
+                    }
+                    MirStatementKind::Task(task) => {
+                        called.insert(task.worker);
+                        if let Some(continuation) = &task.continuation {
+                            called.insert(continuation.function);
+                        }
+                    }
+                    _ => {}
                 }
             }
             for (_, block) in function.blocks() {

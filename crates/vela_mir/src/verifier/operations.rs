@@ -26,7 +26,7 @@ use crate::{
     MirCall, MirConstantProvenance, MirContextualBinaryOp, MirDynamicBinaryOp, MirEffect,
     MirGuardAssumption, MirIteratorOperation, MirOperand, MirPlace, MirReflectionOperation,
     MirRvalue, MirSourceNode, MirSourceOrigin, MirStateOperation, MirStatementId, MirStatementKind,
-    MirTerminatorKind, MirTypeContract, MirUnaryOp, MirValueType,
+    MirTaskOperation, MirTerminatorKind, MirTypeContract, MirUnaryOp, MirValueType,
 };
 
 use super::cfg::FunctionGraph;
@@ -688,6 +688,9 @@ fn verify_statement_kind(
             )?;
             verify_call(verifier, block, id, statement.origin, call, destination)?
         }
+        MirStatementKind::Task(task) => {
+            verify_task(verifier, block, id, statement.origin, task, destination)?
+        }
         MirStatementKind::Host(operation) => {
             if let crate::MirHostOperation::Call { target, .. } = operation {
                 reject_known_async_call(
@@ -1204,5 +1207,65 @@ fn verify_reflection(
         origin,
         destination,
         descriptor.signature.return_contract.as_ref(),
+    )
+}
+
+fn verify_task(
+    verifier: &FunctionVerifier<'_>,
+    block: crate::MirBlockId,
+    statement: crate::MirStatementId,
+    origin: MirSourceOrigin,
+    task: &MirTaskOperation,
+    destination: Option<MirValueType>,
+) -> Result<(), MirVerifyError> {
+    function_call_target(
+        verifier,
+        origin,
+        task.worker,
+        &task.worker_debug_name,
+        &task.worker_signature,
+        CompileFunctionClass::Script,
+    )?;
+    if task.worker_signature.asyncness != CallableAsyncness::Async {
+        return Err(bad_target(
+            verifier,
+            origin,
+            MirVerifyTarget::Function(task.worker),
+            "task worker must be asynchronous",
+        ));
+    }
+    let worker_call = MirCall::ScriptFunction {
+        function: task.worker,
+        debug_name: task.worker_debug_name.clone(),
+        signature: task.worker_signature.clone(),
+        arguments: task.arguments.clone(),
+        parameter_guards: task.parameter_guards,
+    };
+    verify_call_argument_contracts(verifier, block, statement, origin, &worker_call)?;
+    if let Some(continuation) = &task.continuation {
+        function_call_target(
+            verifier,
+            origin,
+            continuation.function,
+            &continuation.debug_name,
+            &continuation.signature,
+            CompileFunctionClass::Script,
+        )?;
+        if continuation.signature.asyncness != CallableAsyncness::Sync {
+            return Err(bad_target(
+                verifier,
+                origin,
+                MirVerifyTarget::Function(continuation.function),
+                "task continuation must be synchronous",
+            ));
+        }
+    }
+    destination_accepts(
+        verifier,
+        block,
+        statement,
+        origin,
+        destination,
+        MirValueType::Unit,
     )
 }

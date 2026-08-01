@@ -5,7 +5,8 @@ use crate::{
     MirFormatPart, MirFunction, MirFunctionOwner, MirHostOperation, MirImmediate,
     MirIndexOperation, MirIteratorOperation, MirOperand, MirPatternPredicate, MirProgram,
     MirReflectionOperation, MirRvalue, MirScriptArgument, MirSourceNode, MirSourceOrigin,
-    MirStateOperation, MirStatement, MirStatementKind, MirTerminator, MirTerminatorKind,
+    MirStateOperation, MirStatement, MirStatementKind, MirTaskOperation, MirTerminator,
+    MirTerminatorKind,
 };
 
 impl MirProgram {
@@ -312,6 +313,7 @@ fn write_statement(formatter: &mut fmt::Formatter<'_>, statement: &MirStatement)
             operand_text(end)
         )?,
         MirStatementKind::Call(call) => write_call(formatter, call)?,
+        MirStatementKind::Task(task) => write_task(formatter, task)?,
         MirStatementKind::Host(operation) => write_host(formatter, operation)?,
         MirStatementKind::Reflect(operation) => write_reflection(formatter, operation)?,
         MirStatementKind::GuardTrap { value, guard } => {
@@ -638,6 +640,29 @@ fn write_call(formatter: &mut fmt::Formatter<'_>, call: &MirCall) -> fmt::Result
         }
     }
     formatter.write_char(')')
+}
+
+fn write_task(formatter: &mut fmt::Formatter<'_>, task: &MirTaskOperation) -> fmt::Result {
+    write!(
+        formatter,
+        "task.spawn worker#{} name={:?} parameter_guards={:?} signature={:?}(",
+        task.worker.get(),
+        task.worker_debug_name,
+        task.parameter_guards,
+        task.worker_signature,
+    )?;
+    write_script_arguments(formatter, &task.arguments)?;
+    formatter.write_char(')')?;
+    if let Some(continuation) = &task.continuation {
+        write!(
+            formatter,
+            " then continuation#{} name={:?} signature={:?}",
+            continuation.function.get(),
+            continuation.debug_name,
+            continuation.signature,
+        )?;
+    }
+    Ok(())
 }
 
 fn write_operand_values(

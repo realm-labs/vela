@@ -62,6 +62,10 @@ pub fn restricted_jit_eligibility(
             crate::MirStatementKind::Call(_) => {
                 reasons.insert(MirJitIneligibility::Call);
             }
+            crate::MirStatementKind::Task(_) => {
+                reasons.insert(MirJitIneligibility::Call);
+                reasons.insert(MirJitIneligibility::Async);
+            }
             crate::MirStatementKind::DynamicUnary { .. }
             | crate::MirStatementKind::DynamicBinary { .. }
             | crate::MirStatementKind::Index(_) => {

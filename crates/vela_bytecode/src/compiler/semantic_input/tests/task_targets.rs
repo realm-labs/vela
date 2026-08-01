@@ -1,5 +1,5 @@
 use vela_common::CallableAsyncness;
-use vela_mir::{CompileCalleeTarget, CompileTaskOperation};
+use vela_mir::{CompileCalleeTarget, CompileTaskOperation, MirStatementKind};
 
 use super::{FixtureRoots, prepare_source};
 
@@ -8,11 +8,13 @@ fn scoped_task_targets_preserve_static_worker_and_continuation_identity() {
     let fixture = prepare_source(
         r#"
 async fn repair(value: i64) -> i64 { value }
-fn complete(result: Any) {}
+state current: i64 = 0;
+async fn repair_with_state(value: i64) -> i64 { current + value }
+fn complete(result: Any) { current = 1; }
 
 fn main() {
     task::spawn_scoped(repair(1));
-    task::spawn_scoped_then(repair(2), complete);
+    task::spawn_scoped_then(repair_with_state(2), complete);
 }
 "#,
         FixtureRoots::Program,
@@ -56,7 +58,7 @@ fn main() {
     assert!(matches!(
         &worker_call.callee,
         CompileCalleeTarget::ScriptFunction { function, debug_name }
-            if *function == second.worker && debug_name == "repair"
+            if *function == second.worker && debug_name == "repair_with_state"
     ));
     assert_eq!(
         function_targets
@@ -66,4 +68,57 @@ fn main() {
             .asyncness,
         CallableAsyncness::Async
     );
+
+    let programs = fixture
+        .input
+        .lowering_inputs(&fixture.graph, vela_mir::MirLoweringConfig::default())
+        .expect("task lowering inputs")
+        .into_iter()
+        .map(|input| vela_mir::build_mir(input).expect("task MIR builds"))
+        .collect::<Vec<_>>();
+    let main_program = programs
+        .iter()
+        .find(|program| {
+            program.functions().any(|(_, function)| {
+                matches!(function.owner(), vela_mir::MirFunctionOwner::Function(id) if *id == root)
+            })
+        })
+        .expect("main MIR program");
+    let tasks = main_program
+        .functions()
+        .flat_map(|(_, function)| function.statements())
+        .filter_map(|(_, statement)| match &statement.kind {
+            MirStatementKind::Task(task) => Some((task, statement)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(tasks.len(), 2);
+    assert!(
+        tasks
+            .iter()
+            .all(|(_, statement)| { statement.effect.task_spawn && statement.safepoint.is_some() })
+    );
+    assert!(tasks[0].0.continuation.is_none());
+    assert_eq!(
+        tasks[1]
+            .0
+            .continuation
+            .as_ref()
+            .map(|continuation| continuation.debug_name.as_str()),
+        Some("complete")
+    );
+    vela_mir::verify_owned_mir(main_program.clone()).expect("task MIR verifies");
+
+    let bundle = vela_mir::OwnedVerifiedMirBundle::new(
+        programs
+            .into_iter()
+            .map(|program| vela_mir::verify_owned_mir(program).expect("task MIR root verifies")),
+    );
+    let effective = crate::binding_schema::effective_effects(&bundle)
+        .get(&root)
+        .copied()
+        .expect("main effective effects");
+    assert!(effective.task_spawn);
+    assert!(effective.state_read);
+    assert!(effective.state_write);
 }

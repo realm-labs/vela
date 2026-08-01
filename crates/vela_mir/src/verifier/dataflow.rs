@@ -462,6 +462,13 @@ pub(crate) fn visit_statement_operands(
             visitor(end)?;
         }
         MirStatementKind::Call(call) => visit_call(call, &mut visitor)?,
+        MirStatementKind::Task(task) => {
+            for argument in &task.arguments {
+                if let Some(value) = &argument.value {
+                    visitor(value)?;
+                }
+            }
+        }
         MirStatementKind::Host(operation) => visit_host(operation, &mut visitor)?,
         MirStatementKind::Reflect(operation) => match operation {
             MirReflectionOperation::Read { target, member, .. } => {

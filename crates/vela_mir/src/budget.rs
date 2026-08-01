@@ -144,7 +144,7 @@ fn statement_budget_class(kind: &MirStatementKind) -> Option<MirBudgetClass> {
     match kind {
         MirStatementKind::Host(_) => Some(MirBudgetClass::HostAccess),
         MirStatementKind::Reflect(_) => Some(MirBudgetClass::Reflection),
-        MirStatementKind::Call(_) => Some(MirBudgetClass::Call),
+        MirStatementKind::Call(_) | MirStatementKind::Task(_) => Some(MirBudgetClass::Call),
         MirStatementKind::Allocate(_) | MirStatementKind::FormatString { .. } => {
             Some(MirBudgetClass::Allocation)
         }
