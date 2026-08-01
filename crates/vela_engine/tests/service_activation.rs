@@ -64,7 +64,11 @@ pub struct TestServices {
 fn service_app() -> TestServicesApp {
     TestServices::builder(
         Engine::builder()
-            .capabilities(CapabilitySet::new().with(Capability::HostWrite))
+            .capabilities(
+                CapabilitySet::new()
+                    .with(Capability::HostWrite)
+                    .with(Capability::TaskSpawn),
+            )
             .register_type::<RequestContext>(),
     )
     .task_scope(crate::support::dropping_task_scope())
@@ -615,9 +619,14 @@ fn portable_service_bundle_round_trips_binds_and_executes_without_source_compila
     let (engine, services) = service_app().into_parts();
     let base = services.pin();
     let source = r#"
+async fn portable_worker(value: i64) -> i64 {
+    return value + 1;
+}
+
 #[service_impl(test::calculator)]
 impl CalculatorPortableHotfix {
     fn adjust(context: RequestContext, value: i64) -> i64 {
+        task::spawn_scoped(portable_worker(value));
         context.counter += 5;
         return value + 30;
     }
@@ -690,6 +699,21 @@ impl AuditPortableHotfix {
     let loaded = decoded
         .load(&engine, services.schema(), host_schema_hash)
         .expect("bind portable service bundle");
+    let [task_target] = loaded.artifact().task_targets() else {
+        panic!("portable Service artifact should preserve one task target");
+    };
+    assert_eq!(
+        task_target.operation,
+        vela_bytecode::ArtifactTaskOperation::SpawnScoped
+    );
+    assert_eq!(
+        task_target.worker_debug_name,
+        "calculator::portable_worker"
+    );
+    assert_eq!(
+        task_target.service_requirement,
+        vela_bytecode::ArtifactTaskServiceRequirement::InheritOriginatingGeneration
+    );
     let report = services.dry_run_bundle(&base, &loaded);
     assert!(report.accepted());
     let candidate = services
@@ -831,4 +855,5 @@ impl UntypedPortableHotfix {
 
 fn call_options() -> CallOptions {
     CallOptions::new(100_000, 1024 * 1024, 64)
+        .with_task_scope(crate::support::dropping_task_scope())
 }

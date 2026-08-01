@@ -373,6 +373,30 @@ mod tests {
 
     use super::*;
 
+    fn portable_task_artifact() -> PortableProgramArtifact {
+        let compiled = crate::compiler::compile_test_program(
+            SourceId::new(3),
+            r#"
+state current: i64 = 0;
+
+async fn worker(value: Any) -> Any {
+    let snapshot = current;
+    return value;
+}
+
+fn continuation(result: Result<Any, task::Error>, turn: i64 = 7) {
+    current = turn;
+}
+
+fn main(value: Any) {
+    task::spawn_scoped_then(worker(value), continuation);
+}
+"#,
+        )
+        .expect("compile real task program");
+        PortableProgramArtifact::from_compiled(compiled).expect("portable task artifact")
+    }
+
     #[test]
     fn portable_program_is_deterministic_and_links_without_source_compilation() {
         let compiled =
@@ -400,38 +424,38 @@ mod tests {
 
     #[test]
     fn portable_v3_round_trips_sealed_task_metadata_and_feature_bits() {
-        let compiled = crate::compiler::compile_test_program(
-            SourceId::new(3),
-            "async fn worker() { return 42; }",
-        )
-        .expect("compile program");
-        let mut artifact =
-            PortableProgramArtifact::from_compiled(compiled).expect("portable artifact");
-        let worker =
-            vela_def::script_function_id(vela_package::PackageId::anonymous().as_str(), "worker");
-        artifact.payload.required_features = crate::ArtifactFeatureSet::host_scoped_tasks();
-        artifact.payload.task_targets = vec![crate::ArtifactTaskTarget {
-            operation: crate::ArtifactTaskOperation::SpawnScoped,
-            caller: worker,
-            caller_target: 0,
-            worker,
-            worker_target: 0,
-            worker_debug_name: "worker".to_owned(),
-            worker_signature: crate::ArtifactTaskSignature {
-                asyncness: vela_common::CallableAsyncness::Async,
-                parameters: Box::new([]),
-                parameter_detachability: Box::new([]),
-                return_contract: Some(vela_mir::MirTypeContract::Primitive(
-                    vela_common::PrimitiveTag::I64,
-                )),
-                result_detachability: vela_common::Detachability::Detachable,
-                effects: vela_mir::MirEffect::PURE,
-            },
-            continuation: None,
-            service_requirement:
-                crate::ArtifactTaskServiceRequirement::InheritOriginatingGeneration,
-        }]
-        .into_boxed_slice();
+        let artifact = portable_task_artifact();
+        let [target] = artifact.payload.task_targets.as_ref() else {
+            panic!("real task program should seal one target");
+        };
+        assert_eq!(
+            target.operation,
+            crate::ArtifactTaskOperation::SpawnScopedThen
+        );
+        assert_eq!(target.worker_debug_name, "worker");
+        assert_eq!(
+            target.worker_signature.parameter_detachability.as_ref(),
+            [vela_common::Detachability::RuntimeChecked]
+        );
+        assert_eq!(
+            target.worker_signature.result_detachability,
+            vela_common::Detachability::RuntimeChecked
+        );
+        assert!(target.worker_signature.effects.state_read);
+        let continuation = target
+            .continuation
+            .as_ref()
+            .expect("spawn_scoped_then continuation");
+        assert_eq!(continuation.debug_name, "continuation");
+        assert_eq!(continuation.resume_parameters.len(), 1);
+        assert_eq!(
+            continuation.resume_parameters[0].contract,
+            Some(vela_mir::MirTypeContract::Primitive(
+                vela_common::PrimitiveTag::I64,
+            ))
+        );
+        assert!(continuation.resume_parameters[0].has_default);
+        assert!(continuation.effects.state_write);
 
         let encoded = artifact.encode().expect("encode v3 task metadata");
         let decoded = PortableProgramArtifact::decode(&encoded).expect("decode v3 task metadata");
@@ -453,10 +477,53 @@ mod tests {
             artifact.payload.task_targets.as_ref()
         );
 
+        let mut artifact = artifact;
         artifact.payload.required_features = crate::ArtifactFeatureSet::from_bits(1 << 63);
         assert!(matches!(
             artifact.encode(),
             Err(PortableArtifactError::UnsupportedFeatures { .. })
+        ));
+    }
+
+    #[test]
+    fn portable_v3_rejects_corrupted_task_slots_and_continuation_shape() {
+        fn assert_link_rejects(
+            mut artifact: PortableProgramArtifact,
+            corrupt: impl FnOnce(&mut crate::ArtifactTaskTarget),
+        ) {
+            corrupt(&mut artifact.payload.task_targets[0]);
+            let encoded = artifact
+                .encode()
+                .expect("structurally encodable corrupted task artifact");
+            let decoded = PortableProgramArtifact::decode(&encoded)
+                .expect("checksum-valid corrupted task artifact");
+            assert!(matches!(
+                crate::Linker::new().link_portable_program(decoded.into_compiled()),
+                Err(crate::LinkError::InvalidTaskMetadata(_))
+            ));
+        }
+
+        assert_link_rejects(portable_task_artifact(), |target| {
+            target.caller_target = u32::MAX;
+        });
+        assert_link_rejects(portable_task_artifact(), |target| {
+            target.worker_target = u32::MAX;
+        });
+        assert_link_rejects(portable_task_artifact(), |target| {
+            target.operation = crate::ArtifactTaskOperation::SpawnScoped;
+        });
+        assert_link_rejects(portable_task_artifact(), |target| {
+            target.continuation.as_mut().expect("continuation").target = u32::MAX;
+        });
+        assert_link_rejects(portable_task_artifact(), |target| {
+            target.worker_signature.asyncness = vela_common::CallableAsyncness::Sync;
+        });
+
+        let mut feature_mismatch = portable_task_artifact();
+        feature_mismatch.payload.required_features = crate::ArtifactFeatureSet::empty();
+        assert!(matches!(
+            feature_mismatch.encode(),
+            Err(PortableArtifactError::TaskMetadata(_))
         ));
     }
 
