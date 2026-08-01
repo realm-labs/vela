@@ -10,6 +10,8 @@ use crate::signature::type_generic_args;
 pub(crate) struct ScriptAttrs {
     pub(crate) has_script_attr: bool,
     pub(crate) skip: bool,
+    pub(crate) fields: bool,
+    pub(crate) deref: bool,
     pub(crate) name: Option<String>,
     pub(crate) path: Option<String>,
     pub(crate) alias: Option<String>,
@@ -49,6 +51,14 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
         attr.parse_nested_meta(|meta| {
             if path_name(&meta.path, "skip") {
                 parsed.skip = true;
+                return Ok(());
+            }
+            if path_name(&meta.path, "fields") {
+                parsed.fields = true;
+                return Ok(());
+            }
+            if path_name(&meta.path, "deref") {
+                parsed.deref = true;
                 return Ok(());
             }
             if path_name(&meta.path, "get") {

@@ -1082,12 +1082,12 @@ impl<T: HostValueInto> HostValueInto for HostResult<T> {
     }
 }
 
-impl_script_host_object_via_field!(<K, V> BTreeMap<K, V> where K: ScriptHostKey + 'static, V: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static);
+impl_script_host_object_via_field!(<K, V> BTreeMap<K, V> where K: ScriptHostKey + Send + Sync + 'static, V: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static);
 
-impl_script_host_object_via_field!(<K, V> HashMap<K, V> where K: ScriptHostKey + Hash + 'static, V: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static);
+impl_script_host_object_via_field!(<K, V> HashMap<K, V> where K: ScriptHostKey + Hash + Send + Sync + 'static, V: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static);
 
 impl_script_host_object_via_field!(<T> Vec<T> where T: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static);
 impl_script_host_object_via_field!(<T, const N: usize> [T; N] where T: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static);
 
-impl_script_host_object_via_field!(<K> BTreeSet<K> where K: ScriptHostKey + 'static);
-impl_script_host_object_via_field!(<K> HashSet<K> where K: ScriptHostKey + Hash + 'static);
+impl_script_host_object_via_field!(<K> BTreeSet<K> where K: ScriptHostKey + Send + Sync + 'static);
+impl_script_host_object_via_field!(<K> HashSet<K> where K: ScriptHostKey + Hash + Send + Sync + 'static);

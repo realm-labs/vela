@@ -246,8 +246,9 @@ its nested `service::base` and `service::pinned` calls cannot mix releases.
 HostRef, PathProxy, scoped leases, closures, live iterators, and host contexts
 cannot cross admission. Vela exposes no TaskHandle, Future value, join, script
 cancellation, manual resume, unscoped spawn, or framework-specific task API.
-M20.75 hard-switches all portable program, Service bundle, and detached
-deployment metadata to format version 3; versions 1 and 2 are rejected rather
+Portable program, Service bundle, and detached deployment metadata now use
+format version 4. It retains the M20.75 detached-task contract and adds static
+HostRef collection iteration shape; versions 1 through 3 are rejected rather
 than upgraded or interpreted through a compatibility path.
 
 

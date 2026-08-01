@@ -34,13 +34,19 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         let ImplItem::Fn(method) = impl_item else {
             continue;
         };
-        if trait_path.is_none() && !matches!(method.vis, Visibility::Public(_)) {
+        let method_attrs = take_method_attrs(method)?;
+        if method_attrs.skip {
+            continue;
+        }
+        if trait_path.is_none()
+            && matches!(method.vis, Visibility::Inherited)
+            && !method_attrs.explicit
+        {
             continue;
         }
         reject_generic_signature(&method.sig.generics, "#[vela_macros::methods]")?;
         reject_unsafe_signature(&method.sig, "#[vela_macros::methods]")?;
         reject_extern_signature(&method.sig, "#[vela_macros::methods]")?;
-        let method_attrs = take_method_attrs(method)?;
         let signature = if method_attrs.host_collection {
             classify_method_with_host_collection_returns(&method.sig, &method_attrs.effects)?
         } else {
@@ -132,6 +138,8 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
 
 #[derive(Default)]
 pub(crate) struct MethodAttrs {
+    pub(crate) explicit: bool,
+    pub(crate) skip: bool,
     pub(crate) name: Option<String>,
     pub(crate) reflect_callable: bool,
     pub(crate) host_collection: bool,
@@ -147,7 +155,15 @@ pub(crate) fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAt
             retained.push(attr);
             continue;
         }
+        parsed.explicit = true;
+        if matches!(attr.meta, syn::Meta::Path(_)) {
+            continue;
+        }
         attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("skip") {
+                parsed.skip = true;
+                return Ok(());
+            }
             if meta.path.is_ident("reflect") || meta.path.is_ident("reflect_callable") {
                 parsed.reflect_callable = meta.value()?.parse::<LitBool>()?.value;
                 return Ok(());
@@ -196,7 +212,7 @@ pub(crate) fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAt
                 });
             }
             Err(meta.error(
-                "#[methods] supports only name, reflect, host_collection, attr, and effects(...) on #[vela]",
+                "#[methods] supports only skip, name, reflect, host_collection, attr, and effects(...) on #[vela]",
             ))
         })?;
     }
@@ -256,6 +272,33 @@ mod tests {
         assert!(!output.contains("vela_callable_contract_helper"));
         assert!(output.contains("host_read"));
         assert!(output.contains("host_write"));
+    }
+
+    #[test]
+    fn methods_export_crate_visible_and_explicit_private_methods() {
+        let expanded = expand_result(
+            quote! { path = "game::Player" },
+            quote! {
+                impl Player {
+                    pub(crate) fn crate_visible(&self) -> i64 { 1 }
+
+                    #[vela]
+                    fn explicitly_exposed(&self) -> i64 { 2 }
+
+                    #[vela(skip)]
+                    pub fn hidden(&self) -> i64 { 3 }
+
+                    fn helper(&self) -> i64 { 4 }
+                }
+            },
+        )
+        .expect("method visibility policy should classify");
+        let output = expanded.to_string();
+
+        assert!(output.contains("vela_callable_contract_crate_visible"));
+        assert!(output.contains("vela_callable_contract_explicitly_exposed"));
+        assert!(!output.contains("vela_callable_contract_hidden"));
+        assert!(!output.contains("vela_callable_contract_helper"));
     }
 
     #[test]

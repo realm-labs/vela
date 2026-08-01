@@ -323,7 +323,7 @@ fn transfer_statement(
                     MirShapeFact::Record(_) | MirShapeFact::Variant(_) => None,
                 })
         }
-        MirStatementKind::Iterator(crate::MirIteratorOperation::Create { iterable }) => {
+        MirStatementKind::Iterator(crate::MirIteratorOperation::Create { iterable, .. }) => {
             let item =
                 operand_fact(state, iterable).and_then(|fact| match (fact.shape, fact.family) {
                     (Some(MirShapeFact::Array(item)), _) => item,

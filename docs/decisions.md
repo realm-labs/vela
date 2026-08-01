@@ -99,9 +99,10 @@ patch cannot widen that ceiling, and Engine plus host-scope policy still narrows
 actual execution.
 
 Portable program, Service bundle, and detached deployment metadata move
-together to format version 3. Version 3 carries static worker/continuation
-targets, detachability, transitive effects, continuation ABI, and Service
-execution requirements. Versions 1 and 2 reject before link, stage, or
+together to format version 4. Version 4 carries static worker/continuation
+targets, detachability, transitive effects, continuation ABI, Service
+execution requirements, and HostRef collection iteration shape. Versions 1
+through 3 reject before link, stage, or
 activation; there is no metadata inference, bytecode rewrite, or compatibility
 loader.
 
@@ -3144,6 +3145,11 @@ host protocol rather than an owned collection guard. `HostCollectionQuery`
 establishes this boundary for `len` and `is_empty`. Ordinary index bytecode now
 also recognizes a HostRef receiver and performs Array positional or typed Map
 reads/writes through HostAccess; retained borrowed children use the same route.
+Direct host collection fields are retained as scoped live views instead of
+being copied. `for value in host_array` and `for value in host_set` traverse
+values; `for entry in host_map` yields the ordinary
+`MapEntry { key, value }` record. Complex elements remain scoped HostRefs, and
+an exclusive root keeps those element references writable for the loop body.
 `HostCollectionKey` is the operational dynamic-key representation: it
 preserves exact integer width/signedness plus bool, char, String, Bytes, and
 HostRef identity. It is deliberately separate from string-only diagnostic
@@ -3742,16 +3748,15 @@ original errors. It never recursively releases children. Strict
 `host::release` remains available so ordinary straight-line double release is
 diagnosed.
 
-### Detached-Task Artifacts Start At Format Version 3
+### Portable Artifacts Use Format Version 4
 
 Portable bytecode, portable Service bundles, and detached Service deployment
-metadata use format version 3 after the host-scoped task hard switch. Version
-3 seals required feature bits, static worker and continuation slots, exact
-callable ABI and asyncness, detachability contracts, transitive effects, and
-the originating-Service generation requirement. Versions 1 and 2 are rejected
-before linking, staging, or activation; the loader does not infer missing task
-metadata or rewrite old bytecode. A rejected bundle cannot change the active
-Service generation.
+metadata use format version 4. It retains the version 3 detached-task metadata
+and additionally seals the HostRef collection shape carried by `IterInit`, so
+direct `for` lowering cannot depend on runtime collection guessing. Versions 1
+through 3 are rejected before linking, staging, or activation; the loader does
+not infer missing metadata or rewrite old bytecode. A rejected bundle cannot
+change the active Service generation.
 
 ### Detached Task Authority Is An Owned Host Capability
 
@@ -3875,6 +3880,24 @@ This is representation dispatch, not error recovery: parameter lease errors,
 alias conflicts, permission denial, and authored invocation errors remain
 terminal and are never retried. Borrowed-return methods still require a typed
 lease because an adapter cannot fabricate invocation-scoped Rust references.
+
+### Host State Graph Exposure Is Complete And Wrapper-Aware
+
+`#[derive(ScriptHost)]` supports a type-level `fields` mode that exposes every
+named field by default. A field-level `deref` projection exposes a
+single-argument storage wrapper as its `Deref::Target`; nested writes must pass
+through `DerefMut`, while replacing the wrapper is rejected. This preserves
+dirty tracking for persistence wrappers without teaching Vela their storage
+API. One `register_type::<Root>()` recursively installs every exposed nested
+Host type after peeling standard collection and deref wrappers. Traversal is
+cycle-safe by Rust `TypeId`, but an incompatible pre-existing binding remains a
+sealing error.
+
+`#[vela_macros::methods]` is the explicit group boundary. Non-private Rust
+visibility is exported automatically; private methods require an explicit
+`#[vela(...)]`, and `#[vela(skip)]` always excludes a method. This keeps
+crate-local business APIs available to patches without making unrelated
+private helpers ambient script surface.
 
 ## Validation Rules
 

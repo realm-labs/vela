@@ -4,8 +4,10 @@ use syn::Ident;
 
 use super::schema::{FieldMeta, VariantMeta};
 
+mod access;
 mod scoped_borrow;
 
+use access::{exclusive_field_access_tokens, shared_field_access_tokens};
 use scoped_borrow::{
     prepared_field_borrow_exclusive_arm_tokens, prepared_field_borrow_shared_arm_tokens,
     prepared_field_collection_borrow_exclusive_arm_tokens,
@@ -830,10 +832,10 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
 
 fn direct_field_read_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
     let slot = u32::try_from(slot).expect("host field slot index fits u32");
-    let rust_name = format_ident!("{}", field.rust_name);
+    let field_access = shared_field_access_tokens(field);
     quote! {
         #slot => ::vela_host::object::ScriptHostFieldAccess::read_host_target_from(
-            &self.#rust_name,
+            #field_access,
             target,
             target.offset + 1,
         ),
@@ -843,7 +845,7 @@ fn direct_field_read_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStre
 fn direct_field_write_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
     let slot = u32::try_from(slot).expect("host field slot index fits u32");
     let writable = field.writable;
-    let rust_name = format_ident!("{}", field.rust_name);
+    let field_access = exclusive_field_access_tokens(field);
     quote! {
         #slot => {
             if !#writable {
@@ -856,7 +858,7 @@ fn direct_field_write_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStr
                 });
             }
             ::vela_host::object::ScriptHostFieldAccess::write_host_target_from(
-                &mut self.#rust_name,
+                #field_access,
                 target,
                 target.offset + 1,
                 value,
@@ -868,7 +870,7 @@ fn direct_field_write_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStr
 fn field_resolve_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
     let id = u128::from(field.id);
     let slot = u32::try_from(slot).expect("host field slot index fits u32");
-    let rust_name = format_ident!("{}", field.rust_name);
+    let field_access = shared_field_access_tokens(field);
     quote! {
         Some(::vela_host::target::HostPathPart::Field(field))
             if *field == ::vela_def::FieldId::new(#id) =>
@@ -886,14 +888,14 @@ fn field_resolve_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
             ) {
                 let __vela_child_access =
                     ::vela_host::object::ScriptHostObject::resolve_host_target(
-                    &self.#rust_name,
+                    #field_access,
                     spec.at_offset(offset + 1),
                 )?;
                 Ok(__vela_child_access.prepend_prepared_field(#slot))
             } else {
                 let __vela_child_access =
                     ::vela_host::object::ScriptHostFieldAccess::resolve_host_target_from(
-                    &self.#rust_name,
+                    #field_access,
                     spec,
                     offset + 1,
                 )?;
@@ -937,13 +939,13 @@ fn field_static_resolve_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenS
 
 fn field_read_arm_tokens(field: &FieldMeta) -> TokenStream {
     let id = u128::from(field.id);
-    let rust_name = format_ident!("{}", field.rust_name);
+    let field_access = shared_field_access_tokens(field);
     quote! {
         Some(::vela_host::target::HostPathPart::Field(field))
             if *field == ::vela_def::FieldId::new(#id) =>
         {
             ::vela_host::object::ScriptHostFieldAccess::read_host_target_from(
-                &self.#rust_name,
+                #field_access,
                 target,
                 offset + 1,
             )
@@ -954,7 +956,7 @@ fn field_read_arm_tokens(field: &FieldMeta) -> TokenStream {
 fn field_write_arm_tokens(field: &FieldMeta) -> TokenStream {
     let id = u128::from(field.id);
     let writable = field.writable;
-    let rust_name = format_ident!("{}", field.rust_name);
+    let field_access = exclusive_field_access_tokens(field);
     quote! {
         Some(::vela_host::target::HostPathPart::Field(field))
             if *field == ::vela_def::FieldId::new(#id) =>
@@ -969,7 +971,7 @@ fn field_write_arm_tokens(field: &FieldMeta) -> TokenStream {
                 });
             }
             ::vela_host::object::ScriptHostFieldAccess::write_host_target_from(
-                &mut self.#rust_name,
+                #field_access,
                 target,
                 offset + 1,
                 value,
@@ -980,13 +982,13 @@ fn field_write_arm_tokens(field: &FieldMeta) -> TokenStream {
 
 fn field_query_arm_tokens(field: &FieldMeta) -> TokenStream {
     let id = u128::from(field.id);
-    let rust_name = format_ident!("{}", field.rust_name);
+    let field_access = shared_field_access_tokens(field);
     quote! {
         Some(::vela_host::target::HostPathPart::Field(field))
             if *field == ::vela_def::FieldId::new(#id) =>
         {
             ::vela_host::object::ScriptHostFieldAccess::query_collection_host_target_from(
-                &self.#rust_name,
+                #field_access,
                 target,
                 offset + 1,
                 query,
@@ -997,13 +999,13 @@ fn field_query_arm_tokens(field: &FieldMeta) -> TokenStream {
 
 fn field_snapshot_arm_tokens(field: &FieldMeta) -> TokenStream {
     let id = u128::from(field.id);
-    let rust_name = format_ident!("{}", field.rust_name);
+    let field_access = shared_field_access_tokens(field);
     quote! {
         Some(::vela_host::target::HostPathPart::Field(field))
             if *field == ::vela_def::FieldId::new(#id) =>
         {
             ::vela_host::object::ScriptHostFieldAccess::snapshot_collection_host_target_from(
-                &self.#rust_name,
+                #field_access,
                 target,
                 offset + 1,
                 projection,
@@ -1014,13 +1016,13 @@ fn field_snapshot_arm_tokens(field: &FieldMeta) -> TokenStream {
 
 fn field_collection_mutation_arm_tokens(field: &FieldMeta) -> TokenStream {
     let id = u128::from(field.id);
-    let rust_name = format_ident!("{}", field.rust_name);
+    let field_access = exclusive_field_access_tokens(field);
     quote! {
         Some(::vela_host::target::HostPathPart::Field(field))
             if *field == ::vela_def::FieldId::new(#id) =>
         {
             ::vela_host::object::ScriptHostFieldAccess::mutate_collection_host_target_from(
-                &mut self.#rust_name,
+                #field_access,
                 target,
                 offset + 1,
                 mutation,
@@ -1031,13 +1033,13 @@ fn field_collection_mutation_arm_tokens(field: &FieldMeta) -> TokenStream {
 
 fn field_remove_arm_tokens(field: &FieldMeta) -> TokenStream {
     let id = u128::from(field.id);
-    let rust_name = format_ident!("{}", field.rust_name);
+    let field_access = exclusive_field_access_tokens(field);
     quote! {
         Some(::vela_host::target::HostPathPart::Field(field))
             if *field == ::vela_def::FieldId::new(#id) =>
         {
             ::vela_host::object::ScriptHostFieldAccess::remove_host_target_from(
-                &mut self.#rust_name,
+                #field_access,
                 target,
                 offset + 1,
             )
@@ -1047,7 +1049,8 @@ fn field_remove_arm_tokens(field: &FieldMeta) -> TokenStream {
 
 fn field_call_arm_tokens(field: &FieldMeta) -> TokenStream {
     let id = u128::from(field.id);
-    let rust_name = format_ident!("{}", field.rust_name);
+    let shared_field_access = shared_field_access_tokens(field);
+    let exclusive_field_access = exclusive_field_access_tokens(field);
     quote! {
         Some(::vela_host::target::HostPathPart::Field(field))
             if *field == ::vela_def::FieldId::new(#id) =>
@@ -1059,11 +1062,11 @@ fn field_call_arm_tokens(field: &FieldMeta) -> TokenStream {
             .at_offset(offset + 1);
             let __vela_child_access =
                 ::vela_host::object::ScriptHostObject::resolve_host_target(
-                    &self.#rust_name,
+                    #shared_field_access,
                     __vela_child_spec,
                 )?;
             ::vela_host::object::ScriptHostObject::call_resolved_host(
-                &mut self.#rust_name,
+                #exclusive_field_access,
                 __vela_child_access,
                 target.at_offset(offset + 1),
                 method,
@@ -1075,10 +1078,10 @@ fn field_call_arm_tokens(field: &FieldMeta) -> TokenStream {
 
 fn prepared_field_call_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
     let slot = u32::try_from(slot).expect("host field slot index fits u32");
-    let rust_name = format_ident!("{}", field.rust_name);
+    let field_access = exclusive_field_access_tokens(field);
     quote! {
         #slot => ::vela_host::object::ScriptHostObject::call_resolved_host(
-            &mut self.#rust_name,
+            #field_access,
             access,
             target.at_offset(target.offset + 1),
             method,
@@ -1089,10 +1092,10 @@ fn prepared_field_call_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenSt
 
 fn prepared_field_read_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
     let slot = u32::try_from(slot).expect("host field slot index fits u32");
-    let rust_name = format_ident!("{}", field.rust_name);
+    let field_access = shared_field_access_tokens(field);
     quote! {
         #slot => ::vela_host::object::ScriptHostObject::read_resolved_host(
-            &self.#rust_name,
+            #field_access,
             access,
             target.at_offset(target.offset + 1),
         ),
@@ -1101,10 +1104,10 @@ fn prepared_field_read_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenSt
 
 fn prepared_field_write_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
     let slot = u32::try_from(slot).expect("host field slot index fits u32");
-    let rust_name = format_ident!("{}", field.rust_name);
+    let field_access = exclusive_field_access_tokens(field);
     quote! {
         #slot => ::vela_host::object::ScriptHostObject::write_resolved_host(
-            &mut self.#rust_name,
+            #field_access,
             access,
             target.at_offset(target.offset + 1),
             value,
@@ -1114,10 +1117,10 @@ fn prepared_field_write_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenS
 
 fn prepared_field_mutate_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
     let slot = u32::try_from(slot).expect("host field slot index fits u32");
-    let rust_name = format_ident!("{}", field.rust_name);
+    let field_access = exclusive_field_access_tokens(field);
     quote! {
         #slot => ::vela_host::object::ScriptHostObject::mutate_resolved_host(
-            &mut self.#rust_name,
+            #field_access,
             access,
             target.at_offset(target.offset + 1),
             op,
@@ -1128,10 +1131,10 @@ fn prepared_field_mutate_arm_tokens((slot, field): (usize, &FieldMeta)) -> Token
 
 fn prepared_field_query_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
     let slot = u32::try_from(slot).expect("host field slot index fits u32");
-    let rust_name = format_ident!("{}", field.rust_name);
+    let field_access = shared_field_access_tokens(field);
     quote! {
         #slot => ::vela_host::object::ScriptHostObject::query_collection_resolved_host(
-            &self.#rust_name,
+            #field_access,
             access,
             target.at_offset(target.offset + 1),
             query,
@@ -1141,10 +1144,10 @@ fn prepared_field_query_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenS
 
 fn prepared_field_snapshot_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
     let slot = u32::try_from(slot).expect("host field slot index fits u32");
-    let rust_name = format_ident!("{}", field.rust_name);
+    let field_access = shared_field_access_tokens(field);
     quote! {
         #slot => ::vela_host::object::ScriptHostObject::snapshot_collection_resolved_host(
-            &self.#rust_name,
+            #field_access,
             access,
             target.at_offset(target.offset + 1),
             projection,
@@ -1156,10 +1159,10 @@ fn prepared_field_collection_mutation_arm_tokens(
     (slot, field): (usize, &FieldMeta),
 ) -> TokenStream {
     let slot = u32::try_from(slot).expect("host field slot index fits u32");
-    let rust_name = format_ident!("{}", field.rust_name);
+    let field_access = exclusive_field_access_tokens(field);
     quote! {
         #slot => ::vela_host::object::ScriptHostObject::mutate_collection_resolved_host(
-            &mut self.#rust_name,
+            #field_access,
             access,
             target.at_offset(target.offset + 1),
             mutation,

@@ -1106,6 +1106,7 @@ pub enum InstructionKind {
     IterInit {
         dst: Register,
         iterable: Register,
+        host_collection: Option<vela_common::HostCollectionIteration>,
     },
     IterNext {
         iterator: Register,

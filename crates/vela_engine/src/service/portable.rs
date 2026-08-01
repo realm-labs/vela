@@ -20,7 +20,7 @@ use crate::native::TypeHint;
 const MAGIC: &[u8; 8] = b"VELASVC\0";
 // Versions 1 and 2 do not seal the complete host-scoped task contract. Reject
 // them at the transport boundary instead of inferring task metadata.
-const FORMAT_VERSION: u32 = 3;
+const FORMAT_VERSION: u32 = 4;
 const HEADER_LEN: usize = MAGIC.len() + size_of::<u32>() + size_of::<u64>() + 32;
 const MAX_PAYLOAD_BYTES: u64 = 128 * 1024 * 1024;
 

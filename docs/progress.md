@@ -101,7 +101,8 @@ Phase status:
 - E5 accepted and superseded by M20.75 portability: its format version 2
   explicit-release gate passed the representative ordinary/Service fixtures,
   release/base benchmark rows, structural audits, and repository matrix. The
-  active artifact contract is now version 3.
+  active artifact contract is now version 4; version 4 adds static HostRef
+  collection iteration shape to the accepted version 3 task contract.
 - S0 accepted: the migration inventory, executable fixture, and boundary
   baselines are frozen.
 - S1 accepted: the callable-level replacement model is deleted without aliases
@@ -429,8 +430,9 @@ parameters reach sync and async Rust defaults through generated typed thunks,
 and pinned calls may select Rust or Vela before a target patch calls its own
 base. The contextual receiver spellings are rejected; only
 `service::base::*` / `service::pinned::*` are compiler-owned paths. Portable
-format version 3 rejects both pre-explicit-release and pre-task-metadata
-artifacts before activation. The accepted contract and gates are in the
+format version 4 rejects versions 1 through 3 before activation; it includes
+the explicit-release/task metadata and HostRef iteration-shape hard switches.
+The accepted contract and gates are in the
 [final interop plan](rust-vela-interop-final-shape-hard-switch-plan.md).
 
 Shared custom service parameters now use one storage-directed boundary:

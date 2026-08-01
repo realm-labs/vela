@@ -1,6 +1,6 @@
 use vela_bytecode::Register;
 use vela_host::protocol::{HostCollectionKey, HostCollectionKeyRef};
-use vela_host::target::{HostPathArg, HostTargetPlan};
+use vela_host::target::{HostPathArg, HostPathPart, HostTargetPlan};
 
 use crate::heap::HeapValue;
 use crate::{CallFrame, HeapExecution, HostExecution, Value, VmError, VmErrorKind, VmResult};
@@ -77,6 +77,7 @@ impl<'a> MaterializedHostArgs<'a> {
 
 pub(crate) fn materialize_host_args<'a>(
     frame: &CallFrame,
+    target: &HostTargetPlan,
     registers: &[Register],
     heap: Option<&'a HeapExecution<'a>>,
     operation: &'static str,
@@ -86,7 +87,13 @@ pub(crate) fn materialize_host_args<'a>(
     }
     registers
         .iter()
-        .map(|register| host_arg_from_value(&frame.read(*register)?, heap, operation))
+        .enumerate()
+        .map(|(argument, register)| {
+            let is_key = target.parts.as_slice().iter().any(|part| {
+                matches!(part, HostPathPart::DynKey { arg } if usize::from(*arg) == argument)
+            });
+            host_arg_from_value(&frame.read(*register)?, heap, operation, is_key)
+        })
         .collect::<VmResult<Vec<_>>>()
         .map(MaterializedHostArgs::Values)
 }
@@ -95,7 +102,31 @@ fn host_arg_from_value<'a>(
     value: &Value,
     heap: Option<&'a HeapExecution<'a>>,
     operation: &'static str,
+    is_key: bool,
 ) -> VmResult<HostPathArg<'a>> {
+    if is_key {
+        let key = match value {
+            Value::Bool(value) => HostCollectionKeyRef::Bool(*value),
+            Value::Char(value) => HostCollectionKeyRef::Char(*value),
+            Value::I8(value) => HostCollectionKeyRef::I8(*value),
+            Value::I16(value) => HostCollectionKeyRef::I16(*value),
+            Value::I32(value) => HostCollectionKeyRef::I32(*value),
+            Value::I64(value) => HostCollectionKeyRef::I64(*value),
+            Value::U8(value) => HostCollectionKeyRef::U8(*value),
+            Value::U16(value) => HostCollectionKeyRef::U16(*value),
+            Value::U32(value) => HostCollectionKeyRef::U32(*value),
+            Value::U64(value) => HostCollectionKeyRef::U64(*value),
+            Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
+                Some(HeapValue::String(value)) => HostCollectionKeyRef::String(value.as_str()),
+                Some(HeapValue::Bytes(value)) => HostCollectionKeyRef::Bytes(value.as_slice()),
+                _ => return Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+            },
+            Value::HostRef(_) | Value::Missing | Value::Unit | Value::F32(_) | Value::F64(_) => {
+                return Err(VmError::new(VmErrorKind::TypeMismatch { operation }));
+            }
+        };
+        return Ok(HostPathArg::Key(key));
+    }
     match value {
         Value::I64(index) => {
             let index = u32::try_from(*index).map_err(|_| {

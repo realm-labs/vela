@@ -19,12 +19,39 @@ use crate::{
 pub(crate) enum HostIteratorLifetime {
     Scoped,
     CallLocal,
+    ForLoop,
 }
 
 pub(crate) fn execute_host_root_array_iteration(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    args: &[Value],
+) -> VmResult<Value> {
+    execute_host_root_array_iteration_with_lifetime(
+        runtime,
+        receiver,
+        args,
+        HostIteratorLifetime::Scoped,
+    )
+}
+
+pub(crate) fn execute_host_root_array_for_loop(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+) -> VmResult<Value> {
+    execute_host_root_array_iteration_with_lifetime(
+        runtime,
+        receiver,
+        &[],
+        HostIteratorLifetime::ForLoop,
+    )
+}
+
+fn execute_host_root_array_iteration_with_lifetime(
     mut runtime: HostAccessRuntime<'_, '_, '_>,
     receiver: Register,
     args: &[Value],
+    lifetime: HostIteratorLifetime,
 ) -> VmResult<Value> {
     if !args.is_empty() {
         return Err(VmError::new(VmErrorKind::ArityMismatch {
@@ -33,8 +60,7 @@ pub(crate) fn execute_host_root_array_iteration(
             actual: args.len(),
         }));
     }
-    let iterator =
-        prepare_host_root_array_iterator(&mut runtime, receiver, HostIteratorLifetime::Scoped)?;
+    let iterator = prepare_host_root_array_iterator(&mut runtime, receiver, lifetime)?;
     let Some(heap) = runtime.heap.as_deref_mut() else {
         return Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "host array iterator heap",
@@ -57,6 +83,23 @@ pub(crate) fn prepare_host_root_array_iterator(
         runtime.host.as_deref(),
         "host array iteration",
     )?;
+    if matches!(lifetime, HostIteratorLifetime::ForLoop) {
+        let complex_snapshot =
+            snapshot_host_collection_root(runtime, root, HostCollectionProjection::Values, None)?;
+        let has_live_host_values = matches!(
+            &complex_snapshot,
+            HostCollectionSnapshot::Items(items)
+                if items
+                    .iter()
+                    .any(|item| matches!(item, vela_host::value::HostValue::HostRef(_)))
+        );
+        if has_live_host_values {
+            charge_projection(&complex_snapshot, runtime.budget.as_deref_mut())?;
+            return Ok(crate::iteration::IteratorState::from_values(
+                snapshot_values(complex_snapshot, runtime)?,
+            ));
+        }
+    }
     let root_target = HostTargetPlan::new(root.type_id);
     let root_instance = HostTargetInstance::new(root, &root_target, &[]);
     let element_target = HostTargetPlan::new(root.type_id).dyn_index(0);
@@ -107,11 +150,44 @@ pub(crate) fn prepare_host_root_array_iterator(
 }
 
 pub(crate) fn execute_host_root_map_iteration(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    iteration: HostMapIteration,
+    args: &[Value],
+    cache_site: Option<CacheSiteId>,
+) -> VmResult<Value> {
+    execute_host_root_map_iteration_with_lifetime(
+        runtime,
+        receiver,
+        iteration,
+        args,
+        cache_site,
+        HostIteratorLifetime::Scoped,
+    )
+}
+
+pub(crate) fn execute_host_root_map_for_loop(
+    runtime: HostAccessRuntime<'_, '_, '_>,
+    receiver: Register,
+    iteration: HostMapIteration,
+) -> VmResult<Value> {
+    execute_host_root_map_iteration_with_lifetime(
+        runtime,
+        receiver,
+        iteration,
+        &[],
+        None,
+        HostIteratorLifetime::ForLoop,
+    )
+}
+
+fn execute_host_root_map_iteration_with_lifetime(
     mut runtime: HostAccessRuntime<'_, '_, '_>,
     receiver: Register,
     iteration: HostMapIteration,
     args: &[Value],
     cache_site: Option<CacheSiteId>,
+    lifetime: HostIteratorLifetime,
 ) -> VmResult<Value> {
     if !args.is_empty() {
         return Err(VmError::new(VmErrorKind::ArityMismatch {
@@ -120,13 +196,8 @@ pub(crate) fn execute_host_root_map_iteration(
             actual: args.len(),
         }));
     }
-    let iterator = prepare_host_root_map_iterator(
-        &mut runtime,
-        receiver,
-        iteration,
-        cache_site,
-        HostIteratorLifetime::Scoped,
-    )?;
+    let iterator =
+        prepare_host_root_map_iterator(&mut runtime, receiver, iteration, cache_site, lifetime)?;
     let heap = runtime
         .heap
         .as_deref_mut()
@@ -150,6 +221,28 @@ pub(crate) fn prepare_host_root_map_iterator(
         runtime.host.as_deref(),
         "host map iteration",
     )?;
+    if matches!(lifetime, HostIteratorLifetime::ForLoop) {
+        let complex_projection = match iteration {
+            HostMapIteration::Values => HostCollectionProjection::Values,
+            HostMapIteration::Entries => HostCollectionProjection::Entries,
+        };
+        let complex_snapshot =
+            snapshot_host_collection_root(runtime, root, complex_projection, cache_site)?;
+        let has_live_host_values = match &complex_snapshot {
+            HostCollectionSnapshot::Items(items) => items
+                .iter()
+                .any(|item| matches!(item, vela_host::value::HostValue::HostRef(_))),
+            HostCollectionSnapshot::Entries(entries) => entries
+                .iter()
+                .any(|(_, value)| matches!(value, vela_host::value::HostValue::HostRef(_))),
+        };
+        if has_live_host_values {
+            charge_projection(&complex_snapshot, runtime.budget.as_deref_mut())?;
+            return Ok(crate::iteration::IteratorState::from_values(
+                snapshot_values(complex_snapshot, runtime)?,
+            ));
+        }
+    }
     let snapshot =
         snapshot_host_collection_root(runtime, root, HostCollectionProjection::Keys, cache_site)?;
     charge_projection(&snapshot, runtime.budget.as_deref_mut())?;
@@ -247,7 +340,10 @@ fn retain_iterator_root(
     root: vela_host::path::HostRef,
     lifetime: HostIteratorLifetime,
 ) -> VmResult<vela_host::path::HostRef> {
-    if matches!(lifetime, HostIteratorLifetime::CallLocal) {
+    if matches!(
+        lifetime,
+        HostIteratorLifetime::CallLocal | HostIteratorLifetime::ForLoop
+    ) {
         return Ok(root);
     }
     let host = runtime

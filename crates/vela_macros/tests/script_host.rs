@@ -1,7 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet};
+use std::ops::{Deref, DerefMut};
 
 use vela_common::{HostObjectId, StoragePolicy, stable_id};
 use vela_def::{FieldId, TypeId};
+use vela_engine::engine::Engine;
+use vela_engine::permission::Capability;
+use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_host::path::{HostPath, HostRef};
 use vela_host::proxy::PathProxy;
 use vela_host::resolved::{HostAccessOp, HostAccessSpec, ResolvedHostAccessKind};
@@ -10,6 +14,7 @@ use vela_host::value::HostValue;
 use vela_macros::{ScriptHost, ScriptReflect};
 use vela_reflect::access::FieldAccess;
 use vela_reflect::registry::{FieldDesc, TraitDesc, TypeDesc, TypeKey, TypeKind, VariantDesc};
+use vela_vm::owned_value::OwnedValue;
 
 #[allow(dead_code)]
 #[derive(ScriptHost, ScriptReflect)]
@@ -121,6 +126,62 @@ struct ContainerHints {
     explicit_rewards: Vec<i64>,
 }
 
+#[derive(Debug)]
+struct Tracked<T> {
+    value: T,
+    mutation_count: u32,
+}
+
+impl<T> Tracked<T> {
+    fn new(value: T) -> Self {
+        Self {
+            value,
+            mutation_count: 0,
+        }
+    }
+}
+
+impl<T> Deref for Tracked<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl<T> DerefMut for Tracked<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.mutation_count += 1;
+        &mut self.value
+    }
+}
+
+#[derive(Debug, ScriptHost)]
+#[vela(path = "game::script::EquipmentRecord", fields)]
+struct EquipmentRecord {
+    quality: i64,
+    slot: i64,
+}
+
+#[derive(Debug, ScriptHost)]
+#[vela(path = "game::script::EquipmentState", fields)]
+struct EquipmentState {
+    equipment: BTreeMap<i64, EquipmentRecord>,
+}
+
+#[derive(Debug, ScriptHost)]
+#[vela(path = "game::script::PlayerState", fields)]
+struct PlayerState {
+    #[vela(deref)]
+    equipment: Tracked<EquipmentState>,
+}
+
+#[derive(Debug, ScriptHost)]
+#[vela(path = "game::script::ActorState", fields)]
+struct ActorState {
+    player: PlayerState,
+}
+
 #[test]
 fn script_host_derive_generates_type_metadata() {
     let desc = Player::vela_host_type_desc();
@@ -199,6 +260,107 @@ fn script_host_derive_generates_unified_type_binding() {
 
     assert_eq!(binding.storage, StoragePolicy::Host);
     assert_eq!(binding.key, Player::vela_host_type_desc().key);
+}
+
+#[test]
+fn script_host_fields_and_deref_projection_register_the_complete_host_graph() {
+    let engine = Engine::builder()
+        .register_type::<ActorState>()
+        .build()
+        .expect("one root registration should install the complete host graph");
+    let registry = engine.registry();
+
+    for type_name in [
+        "ActorState",
+        "PlayerState",
+        "EquipmentState",
+        "EquipmentRecord",
+    ] {
+        assert!(
+            registry.type_by_name(type_name).is_some(),
+            "missing recursively registered host type {type_name}",
+        );
+    }
+
+    let player = registry
+        .type_by_name("PlayerState")
+        .expect("player schema should be registered");
+    let equipment = &player.fields[0];
+    assert_eq!(equipment.name, "equipment");
+    assert_eq!(equipment.type_hint.as_deref(), Some("EquipmentState"));
+    assert!(equipment.access.readable);
+    assert!(!equipment.access.writable);
+
+    let record = registry
+        .type_by_name("EquipmentRecord")
+        .expect("record schema should be registered");
+    assert_eq!(record.fields.len(), 2);
+    assert!(record.fields.iter().all(|field| field.access.readable));
+    assert!(record.fields.iter().all(|field| field.access.writable));
+}
+
+#[test]
+fn script_host_deref_projection_supports_live_iteration_and_write_through() {
+    let engine = Engine::builder()
+        .capability(Capability::HostRead)
+        .capability(Capability::HostWrite)
+        .register_type::<ActorState>()
+        .build()
+        .expect("projected host graph should seal");
+    let program = engine
+        .compile_source(
+            r#"
+fn upgrade(actor: ActorState) {
+    actor.player.equipment.equipment[7i64].quality += 1;
+    for pair in actor.player.equipment.equipment {
+        let entry = pair.value;
+        entry.quality += 1;
+        host::release(entry);
+    }
+    return 0;
+}
+"#,
+        )
+        .expect("Rust-shaped projected field traversal should compile");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+    let mut actor = ActorState {
+        player: PlayerState {
+            equipment: Tracked::new(EquipmentState {
+                equipment: BTreeMap::from([
+                    (
+                        7,
+                        EquipmentRecord {
+                            quality: 3,
+                            slot: 1,
+                        },
+                    ),
+                    (
+                        9,
+                        EquipmentRecord {
+                            quality: 5,
+                            slot: 2,
+                        },
+                    ),
+                ]),
+            }),
+        },
+    };
+
+    let result = runtime
+        .call(
+            "upgrade",
+            CallArgs::new().with_host_mut("actor", &mut actor),
+            CallOptions::unbounded(),
+        )
+        .expect("projected mutation should execute");
+
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(0)));
+    assert_eq!(actor.player.equipment.value.equipment[&7].quality, 5);
+    assert_eq!(actor.player.equipment.value.equipment[&9].quality, 6);
+    assert!(
+        actor.player.equipment.mutation_count > 0,
+        "write-through must pass through DerefMut so persistence wrappers observe mutation",
+    );
 }
 
 #[test]

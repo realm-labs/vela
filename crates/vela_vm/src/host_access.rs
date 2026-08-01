@@ -144,6 +144,7 @@ pub(crate) fn execute_host_read(
     )?;
     let args = materialize_host_args(
         runtime.frame,
+        target,
         dynamic_args,
         runtime.heap.as_deref(),
         "host_read",
@@ -210,6 +211,7 @@ pub(crate) fn execute_host_write(
     )?;
     let args = materialize_host_args(
         runtime.frame,
+        target,
         dynamic_args,
         runtime.heap.as_deref(),
         "host_write",
@@ -275,6 +277,7 @@ pub(crate) fn execute_host_mutate(
     )?;
     let args = materialize_host_args(
         runtime.frame,
+        mutation.target,
         mutation.dynamic_args,
         runtime.heap.as_deref(),
         "host_mutate",
@@ -359,6 +362,7 @@ pub(crate) fn execute_host_remove(
     )?;
     let args = materialize_host_args(
         runtime.frame,
+        target,
         dynamic_args,
         runtime.heap.as_deref(),
         "host_remove",
@@ -448,6 +452,7 @@ pub(crate) fn execute_host_call(
     )?;
     let dynamic_args = materialize_host_args(
         runtime.frame,
+        call.target,
         call.dynamic_args,
         runtime.heap.as_deref(),
         "host_call",
@@ -564,7 +569,7 @@ pub(crate) fn prepare_async_host_method_args(
 ) -> VmResult<PreparedAsyncHostMethodArgs> {
     let root = expect_host_ref(&frame.read(root)?, host, "host_call")?;
     let plan = code_host_target(target.targets, target.target_id, source_span)?;
-    let dynamic_args = materialize_host_args(frame, target.dynamic_args, heap, "host_call")?;
+    let dynamic_args = materialize_host_args(frame, plan, target.dynamic_args, heap, "host_call")?;
     let receiver = HostTargetInstance::new(root, plan, dynamic_args.as_slice())
         .to_diagnostic_path()
         .to_host_path();

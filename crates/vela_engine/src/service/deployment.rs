@@ -15,7 +15,7 @@ use super::{
 
 // Versions 1 and 2 predate the complete host-scoped task contract and are
 // deliberately not loadable.
-const SERVICE_BUNDLE_FORMAT_VERSION: u32 = 3;
+const SERVICE_BUNDLE_FORMAT_VERSION: u32 = 4;
 
 /// Checksum used for service manifests, sparse operations, and package metadata.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -621,17 +621,17 @@ mod tests {
     };
 
     #[test]
-    fn detached_service_metadata_rejects_v1_and_v2() {
-        assert_eq!(SERVICE_BUNDLE_FORMAT_VERSION, 3);
-        for actual in [1_u32, 2] {
+    fn detached_service_metadata_rejects_legacy_formats() {
+        assert_eq!(SERVICE_BUNDLE_FORMAT_VERSION, 4);
+        for actual in [1_u32, 2, 3] {
             assert_eq!(
                 validate_service_bundle_format(actual),
                 Err(ServiceBundleError::UnsupportedFormat {
-                    expected: 3,
+                    expected: 4,
                     actual,
                 })
             );
         }
-        assert_eq!(validate_service_bundle_format(3), Ok(()));
+        assert_eq!(validate_service_bundle_format(4), Ok(()));
     }
 }

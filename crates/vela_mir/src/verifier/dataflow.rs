@@ -492,7 +492,9 @@ pub(crate) fn visit_statement_operands(
                 }
             }
         },
-        MirStatementKind::Iterator(MirIteratorOperation::Create { iterable }) => visitor(iterable)?,
+        MirStatementKind::Iterator(MirIteratorOperation::Create { iterable, .. }) => {
+            visitor(iterable)?
+        }
     }
     Ok(())
 }

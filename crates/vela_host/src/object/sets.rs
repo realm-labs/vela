@@ -26,7 +26,7 @@ use super::{
 
 impl<K> ScriptHostFieldAccess for BTreeSet<K>
 where
-    K: ScriptHostKey,
+    K: ScriptHostKey + Send + Sync + 'static,
 {
     fn script_host_type_id(&self) -> HostTypeId {
         K::script_host_key_shape().map_or(HostTypeId::new(0), |element| {
@@ -49,6 +49,34 @@ where
             }
             Some(_) => ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
         })
+    }
+
+    fn borrow_resolved_host_shared(
+        &self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        if !target_is_leaf(target, target.offset) {
+            return Ok(None);
+        }
+        let type_id = self.script_host_type_id();
+        Ok(Some(Box::new(
+            crate::lease::SharedScopedHost::with_type_id(self, type_id),
+        )))
+    }
+
+    fn borrow_resolved_host_exclusive(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        if !target_is_leaf(target, target.offset) {
+            return Ok(None);
+        }
+        let type_id = self.script_host_type_id();
+        Ok(Some(Box::new(
+            crate::lease::ExclusiveScopedHost::with_type_id(self, type_id),
+        )))
     }
 
     fn read_host_target_from(
@@ -122,7 +150,7 @@ where
 
 impl<K> ScriptHostFieldAccess for HashSet<K>
 where
-    K: ScriptHostKey + Hash,
+    K: ScriptHostKey + Hash + Send + Sync + 'static,
 {
     fn script_host_type_id(&self) -> HostTypeId {
         K::script_host_key_shape().map_or(HostTypeId::new(0), |element| {
@@ -145,6 +173,34 @@ where
             }
             Some(_) => ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
         })
+    }
+
+    fn borrow_resolved_host_shared(
+        &self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        if !target_is_leaf(target, target.offset) {
+            return Ok(None);
+        }
+        let type_id = self.script_host_type_id();
+        Ok(Some(Box::new(
+            crate::lease::SharedScopedHost::with_type_id(self, type_id),
+        )))
+    }
+
+    fn borrow_resolved_host_exclusive(
+        &mut self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        if !target_is_leaf(target, target.offset) {
+            return Ok(None);
+        }
+        let type_id = self.script_host_type_id();
+        Ok(Some(Box::new(
+            crate::lease::ExclusiveScopedHost::with_type_id(self, type_id),
+        )))
     }
 
     fn read_host_target_from(

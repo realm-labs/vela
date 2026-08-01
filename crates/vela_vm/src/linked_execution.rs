@@ -2247,17 +2247,74 @@ impl Vm {
                         *src,
                     )?;
                 }
-                InstructionKind::IterInit { dst, iterable } => {
-                    iteration::dispatch_iter_init(
-                        iteration::IterRuntime {
-                            frame,
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                        },
-                        *dst,
-                        *iterable,
-                    )
-                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                InstructionKind::IterInit {
+                    dst,
+                    iterable,
+                    host_collection,
+                } => {
+                    let host_iterator = if matches!(frame.read(*iterable)?, Value::HostRef(_)) {
+                        match host_collection {
+                            Some(vela_common::HostCollectionIteration::ArrayValues) => Some(
+                                crate::host_collection_projection::execute_host_root_array_for_loop(
+                                    host_access::HostAccessRuntime {
+                                        frame,
+                                        heap: heap.as_deref_mut(),
+                                        budget: budget.as_deref_mut(),
+                                        host: host.as_deref_mut(),
+                                        inline_caches: call.inline_caches,
+                                        source_span: instruction.span,
+                                    },
+                                    *iterable,
+                                )?,
+                            ),
+                            Some(vela_common::HostCollectionIteration::MapEntries) => Some(
+                                crate::host_collection_projection::execute_host_root_map_for_loop(
+                                    host_access::HostAccessRuntime {
+                                        frame,
+                                        heap: heap.as_deref_mut(),
+                                        budget: budget.as_deref_mut(),
+                                        host: host.as_deref_mut(),
+                                        inline_caches: call.inline_caches,
+                                        source_span: instruction.span,
+                                    },
+                                    *iterable,
+                                    crate::std_method_ids::HostMapIteration::Entries,
+                                )?,
+                            ),
+                            Some(vela_common::HostCollectionIteration::SetValues) => Some(
+                                crate::host_collection_projection::execute_host_root_set_iteration(
+                                    host_access::HostAccessRuntime {
+                                        frame,
+                                        heap: heap.as_deref_mut(),
+                                        budget: budget.as_deref_mut(),
+                                        host: host.as_deref_mut(),
+                                        inline_caches: call.inline_caches,
+                                        source_span: instruction.span,
+                                    },
+                                    *iterable,
+                                    &[],
+                                    None,
+                                )?,
+                            ),
+                            None => None,
+                        }
+                    } else {
+                        None
+                    };
+                    if let Some(iterator) = host_iterator {
+                        frame.write(*dst, iterator)?;
+                    } else {
+                        iteration::dispatch_iter_init(
+                            iteration::IterRuntime {
+                                frame,
+                                heap: heap.as_deref_mut(),
+                                budget: budget.as_deref_mut(),
+                            },
+                            *dst,
+                            *iterable,
+                        )
+                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
+                    }
                 }
                 InstructionKind::IterNext {
                     iterator,

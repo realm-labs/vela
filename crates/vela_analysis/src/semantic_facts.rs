@@ -41,7 +41,9 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 
 use crate::facts::AnalysisFacts;
 use crate::logical_records::LogicalRecordKind;
-use crate::registry::{RegistryEffectFact, RegistryFacts};
+use crate::registry::{
+    RegistryEffectFact, RegistryFacts, RegistryIndexCapabilityFact, RegistryTypeTargetFact,
+};
 use crate::stdlib::{stdlib_function_fact, stdlib_method_fact};
 use crate::type_fact::TypeFact;
 
@@ -1009,13 +1011,20 @@ impl HirSemanticFacts {
             HirExprKind::Index(index) => {
                 let mut path = self.host_path_for(body, index.receiver, schema)?;
                 let receiver = self.fact(index.receiver);
-                let owner_name = type_owner(&receiver)?;
-                let owner = schema?.type_target_fact(owner_name)?.clone();
-                let capability = schema?.index_capability_fact(owner_name)?.clone();
-                let kind = if capability.key == TypeFact::I64 {
-                    HostPathIndexKindFact::Index
+                let (owner, capability, kind) = if let Some(owner_name) = type_owner(&receiver) {
+                    let capability = schema?.index_capability_fact(owner_name)?.clone();
+                    let kind = if capability.key == TypeFact::I64 {
+                        HostPathIndexKindFact::Index
+                    } else {
+                        HostPathIndexKindFact::Key
+                    };
+                    (
+                        schema?.type_target_fact(owner_name)?.clone(),
+                        capability,
+                        kind,
+                    )
                 } else {
-                    HostPathIndexKindFact::Key
+                    host_collection_index_capability(&receiver, &path, schema?)?
                 };
                 path.segments.push(HostPathSegmentFact::Index {
                     expression: index.index,
@@ -1113,6 +1122,60 @@ fn scoped_iterator_return(receiver: &TypeFact, method: &str, returns: TypeFact) 
     }
 }
 
+fn host_collection_index_capability(
+    receiver: &TypeFact,
+    path: &HostPathTargetFact,
+    schema: &RegistryFacts,
+) -> Option<(
+    RegistryTypeTargetFact,
+    RegistryIndexCapabilityFact,
+    HostPathIndexKindFact,
+)> {
+    let (key, value, kind) = match receiver {
+        TypeFact::Array { element }
+        | TypeFact::ArrayView { element }
+        | TypeFact::ArrayMut { element, .. } => (
+            TypeFact::I64,
+            (**element).clone(),
+            HostPathIndexKindFact::Index,
+        ),
+        TypeFact::Map { key, value }
+        | TypeFact::MapView { key, value }
+        | TypeFact::MapMut { key, value, .. } => (
+            (**key).clone(),
+            (**value).clone(),
+            HostPathIndexKindFact::Key,
+        ),
+        _ => return None,
+    };
+    let (owner, readable, writable, removable) = match path.segments.last()? {
+        HostPathSegmentFact::Field(field) => (
+            schema.type_target_fact(&field.owner_name)?.clone(),
+            field.access.readable,
+            field.access.writable,
+            field.access.writable,
+        ),
+        HostPathSegmentFact::Index {
+            owner, capability, ..
+        } => (
+            owner.clone(),
+            capability.readable,
+            capability.writable,
+            capability.removable,
+        ),
+    };
+    let capability = RegistryIndexCapabilityFact {
+        owner: owner.name.clone(),
+        readable,
+        writable,
+        addable: writable,
+        removable,
+        key,
+        value,
+    };
+    Some((owner, capability, kind))
+}
+
 fn iterable_item_fact(fact: &TypeFact) -> TypeFact {
     match fact {
         TypeFact::Array { element }
@@ -1123,6 +1186,14 @@ fn iterable_item_fact(fact: &TypeFact) -> TypeFact {
         | TypeFact::SetMut { element, .. }
         | TypeFact::Iterator { item: element }
         | TypeFact::ScopedIterator { item: element } => (**element).clone(),
+        TypeFact::Map { key, value }
+        | TypeFact::MapView { key, value }
+        | TypeFact::MapMut { key, value, .. } => {
+            TypeFact::LogicalRecord(crate::logical_records::LogicalRecordFact::map_entry(
+                (**key).clone(),
+                (**value).clone(),
+            ))
+        }
         TypeFact::Range => TypeFact::I64,
         TypeFact::Primitive(PrimitiveTag::String) => TypeFact::CHAR,
         TypeFact::Primitive(PrimitiveTag::Bytes) => TypeFact::U8,

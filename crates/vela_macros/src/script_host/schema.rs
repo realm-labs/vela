@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::{Data, DeriveInput, Fields, Result};
+use syn::{Data, DeriveInput, Fields, GenericArgument, PathArguments, Result, Type};
 
 use crate::attrs::{error, inferred_type_hint, parse_script_attrs, spanned_error};
 use crate::hash::StableHasher;
@@ -11,6 +11,7 @@ use crate::hash::StableHasher;
 pub(super) struct FieldMeta {
     pub(super) rust_name: String,
     pub(super) rust_type: TokenStream,
+    pub(super) deref: bool,
     pub(super) script_name: String,
     pub(super) stable_name: String,
     pub(super) id: u64,
@@ -35,6 +36,7 @@ pub(super) struct VariantMeta {
 pub(super) fn collect_fields(
     input: &DeriveInput,
     type_stable_path: &str,
+    expose_all: bool,
 ) -> Result<Vec<FieldMeta>> {
     let Data::Struct(data) = &input.data else {
         return Err(spanned_error(input, "ScriptHost only supports structs"));
@@ -52,7 +54,7 @@ pub(super) fn collect_fields(
     let mut result = Vec::new();
     for field in &fields.named {
         let attrs = parse_script_attrs(&field.attrs)?;
-        if attrs.skip || !attrs.has_script_attr {
+        if attrs.skip || (!expose_all && !attrs.has_script_attr) {
             continue;
         }
         let ident = field
@@ -75,15 +77,36 @@ pub(super) fn collect_fields(
         if !seen_ids.insert(id) {
             return Err(error(ident.span(), "duplicate generated script field id"));
         }
+        if attrs.deref && attrs.set {
+            return Err(error(
+                ident.span(),
+                "deref-projected host fields cannot replace their storage wrapper; mutate the projected child instead",
+            ));
+        }
+        let rust_type = if attrs.deref {
+            deref_target_type(&field.ty)?.to_token_stream()
+        } else {
+            field.ty.to_token_stream()
+        };
+        let default_access = expose_all && !attrs.get && !attrs.set;
         result.push(FieldMeta {
             script_name,
             stable_name,
             rust_name,
-            rust_type: field.ty.to_token_stream(),
+            rust_type,
+            deref: attrs.deref,
             id,
-            readable: attrs.get,
-            writable: attrs.set,
-            type_hint: attrs.type_hint.or_else(|| inferred_type_hint(&field.ty)),
+            readable: attrs.get || default_access,
+            writable: attrs.set || default_access && !attrs.deref,
+            type_hint: attrs.type_hint.or_else(|| {
+                if attrs.deref {
+                    deref_target_type(&field.ty)
+                        .ok()
+                        .and_then(inferred_type_hint)
+                } else {
+                    inferred_type_hint(&field.ty)
+                }
+            }),
             docs: attrs.docs,
             attrs: attrs.attrs,
             permissions: attrs.permissions,
@@ -91,6 +114,103 @@ pub(super) fn collect_fields(
     }
 
     Ok(result)
+}
+
+pub(super) fn registration_types(fields: &[FieldMeta]) -> Vec<TokenStream> {
+    let mut seen = BTreeSet::new();
+    let mut dependencies = Vec::new();
+    for field in fields {
+        collect_registration_types(&field.rust_type, &mut seen, &mut dependencies);
+    }
+    dependencies
+}
+
+fn collect_registration_types(
+    ty: &TokenStream,
+    seen: &mut BTreeSet<String>,
+    dependencies: &mut Vec<TokenStream>,
+) {
+    let Ok(ty) = syn::parse2::<Type>(ty.clone()) else {
+        return;
+    };
+    collect_type_dependencies(&ty, seen, dependencies);
+}
+
+fn collect_type_dependencies(
+    ty: &Type,
+    seen: &mut BTreeSet<String>,
+    dependencies: &mut Vec<TokenStream>,
+) {
+    match ty {
+        Type::Array(array) => collect_type_dependencies(&array.elem, seen, dependencies),
+        Type::Tuple(tuple) => {
+            for element in &tuple.elems {
+                collect_type_dependencies(element, seen, dependencies);
+            }
+        }
+        Type::Path(path) => {
+            let Some(segment) = path.path.segments.last() else {
+                return;
+            };
+            let container = matches!(
+                segment.ident.to_string().as_str(),
+                "Vec" | "Option" | "Result" | "BTreeMap" | "HashMap" | "BTreeSet" | "HashSet"
+            );
+            if container {
+                if let PathArguments::AngleBracketed(arguments) = &segment.arguments {
+                    for argument in &arguments.args {
+                        if let GenericArgument::Type(ty) = argument {
+                            collect_type_dependencies(ty, seen, dependencies);
+                        }
+                    }
+                }
+                return;
+            }
+            let rendered = ty.to_token_stream().to_string();
+            if seen.insert(rendered) {
+                dependencies.push(ty.to_token_stream());
+            }
+        }
+        _ => {}
+    }
+}
+
+fn deref_target_type(ty: &Type) -> Result<&Type> {
+    let Type::Path(path) = ty else {
+        return Err(spanned_error(
+            ty,
+            "#[vela(deref)] requires a wrapper type with one type argument",
+        ));
+    };
+    let Some(segment) = path.path.segments.last() else {
+        return Err(spanned_error(
+            ty,
+            "#[vela(deref)] requires a wrapper type with one type argument",
+        ));
+    };
+    let PathArguments::AngleBracketed(arguments) = &segment.arguments else {
+        return Err(spanned_error(
+            ty,
+            "#[vela(deref)] requires a wrapper type with one type argument",
+        ));
+    };
+    let mut types = arguments.args.iter().filter_map(|argument| match argument {
+        GenericArgument::Type(ty) => Some(ty),
+        _ => None,
+    });
+    let Some(target) = types.next() else {
+        return Err(spanned_error(
+            ty,
+            "#[vela(deref)] requires a wrapper type with one type argument",
+        ));
+    };
+    if types.next().is_some() {
+        return Err(spanned_error(
+            ty,
+            "#[vela(deref)] requires exactly one type argument",
+        ));
+    }
+    Ok(target)
 }
 
 pub(super) fn collect_variants(
@@ -201,6 +321,7 @@ fn collect_variant_fields(
                     stable_name,
                     rust_name,
                     rust_type: field.ty.to_token_stream(),
+                    deref: false,
                     id,
                     readable: attrs.get,
                     writable: attrs.set,

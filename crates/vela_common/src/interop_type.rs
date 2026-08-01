@@ -102,6 +102,15 @@ pub enum CollectionViewKind {
     Set,
 }
 
+/// Static collection shape used when `for` receives a HostRef-backed view.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum HostCollectionIteration {
+    ArrayValues,
+    MapEntries,
+    SetValues,
+}
+
 impl CollectionViewKind {
     #[must_use]
     pub const fn as_str(self) -> &'static str {

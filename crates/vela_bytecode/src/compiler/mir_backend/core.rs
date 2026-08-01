@@ -580,12 +580,16 @@ impl<'a> FunctionBackend<'a> {
                     }
                 }
             }
-            MirStatementKind::Iterator(MirIteratorOperation::Create { iterable }) => {
+            MirStatementKind::Iterator(MirIteratorOperation::Create {
+                iterable,
+                host_collection,
+            }) => {
                 let iterable = self.operand(iterable, span)?;
                 self.emit(
                     UnlinkedInstructionKind::IterInit {
                         dst: dst.ok_or(MirBackendError::MissingDestination)?,
                         iterable,
+                        host_collection: *host_collection,
                     },
                     span,
                 );

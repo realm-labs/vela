@@ -24,7 +24,7 @@ use super::{
 
 impl<K, V> ScriptHostFieldAccess for BTreeMap<K, V>
 where
-    K: ScriptHostKey,
+    K: ScriptHostKey + Send + Sync + 'static,
     V: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static,
 {
     fn script_host_type_id(&self) -> HostTypeId {
@@ -82,6 +82,12 @@ where
         _access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
     ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        if target_is_leaf(target, target.offset) {
+            let type_id = self.script_host_type_id();
+            return Ok(Some(Box::new(
+                crate::lease::SharedScopedHost::with_type_id(self, type_id),
+            )));
+        }
         borrow_map_value_shared(self, target)
     }
 
@@ -90,6 +96,12 @@ where
         _access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
     ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        if target_is_leaf(target, target.offset) {
+            let type_id = self.script_host_type_id();
+            return Ok(Some(Box::new(
+                crate::lease::ExclusiveScopedHost::with_type_id(self, type_id),
+            )));
+        }
         borrow_map_value_exclusive(self, target)
     }
 
@@ -291,7 +303,7 @@ where
 
 impl<K, V> ScriptHostFieldAccess for HashMap<K, V>
 where
-    K: ScriptHostKey + Hash,
+    K: ScriptHostKey + Hash + Send + Sync + 'static,
     V: ScriptHostFieldAccess + ScriptHostObject + Send + Sync + 'static,
 {
     fn script_host_type_id(&self) -> HostTypeId {
@@ -349,6 +361,12 @@ where
         _access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
     ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        if target_is_leaf(target, target.offset) {
+            let type_id = self.script_host_type_id();
+            return Ok(Some(Box::new(
+                crate::lease::SharedScopedHost::with_type_id(self, type_id),
+            )));
+        }
         borrow_map_value_shared(self, target)
     }
 
@@ -357,6 +375,12 @@ where
         _access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
     ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        if target_is_leaf(target, target.offset) {
+            let type_id = self.script_host_type_id();
+            return Ok(Some(Box::new(
+                crate::lease::ExclusiveScopedHost::with_type_id(self, type_id),
+            )));
+        }
         borrow_map_value_exclusive(self, target)
     }
 

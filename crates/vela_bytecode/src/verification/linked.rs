@@ -541,7 +541,7 @@ fn verify_linked_instruction(
             verify_linked_string_constant(function, instruction_index, code, *key)?;
             verify_linked_register(function, instruction_index, code, *src)
         }
-        InstructionKind::IterInit { dst, iterable } => {
+        InstructionKind::IterInit { dst, iterable, .. } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_register(function, instruction_index, code, *iterable)
         }

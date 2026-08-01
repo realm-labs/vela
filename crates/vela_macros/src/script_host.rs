@@ -42,7 +42,12 @@ impl GeneratedMethod {
         }
     }
 
-    fn trait_impl_tokens(self, ident: &Ident, method: &Ident) -> TokenStream {
+    fn trait_impl_tokens(
+        self,
+        ident: &Ident,
+        method: &Ident,
+        registration_types: &[TokenStream],
+    ) -> TokenStream {
         match self {
             Self::Host => quote! {
                 impl ::vela_engine::schema::ScriptHostSchema for #ident {
@@ -55,10 +60,14 @@ impl GeneratedMethod {
                     fn register(
                         builder: ::vela_engine::builder::EngineBuilder,
                     ) -> ::vela_engine::builder::EngineBuilder {
-                        builder.register_type_binding::<Self>(
+                        let builder = builder.register_generated_type_binding::<Self>(
                             <Self as ::vela_engine::schema::ScriptHostSchema>::
                                 script_host_binding(),
-                        )
+                        );
+                        #(
+                            let builder = builder.register_type_dependency::<#registration_types>();
+                        )*
+                        builder
                     }
                 }
             },
@@ -116,6 +125,7 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
     let docs = attrs.docs;
     let type_attrs = attrs.attrs;
     let trait_names = attrs.traits;
+    let expose_all_fields = attrs.fields;
     if matches!(input.data, Data::Enum(_)) {
         return expand_enum_result(EnumExpansion {
             input,
@@ -130,7 +140,7 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
             trait_names,
         });
     }
-    let fields = schema::collect_fields(&input, &stable_path)?;
+    let fields = schema::collect_fields(&input, &stable_path, expose_all_fields)?;
     let schema_hash = schema::schema_hash(
         &type_name,
         Some(&module_name),
@@ -141,7 +151,8 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
 
     let ident = input.ident;
     let method = generated_method.ident();
-    let trait_impl = generated_method.trait_impl_tokens(&ident, &method);
+    let registration_types = schema::registration_types(&fields);
+    let trait_impl = generated_method.trait_impl_tokens(&ident, &method, &registration_types);
     let module_tokens = quote! { .attr("module", #module_name) };
     let docs_tokens = docs.map(|docs| quote! { .docs(#docs) });
     let type_attr_tokens = type_attrs.iter().map(|(name, value)| {
@@ -255,7 +266,7 @@ fn expand_enum_result(expansion: EnumExpansion) -> Result<TokenStream> {
         );
         let ident = input.ident;
         let method = generated_method.ident();
-        let trait_impl = generated_method.trait_impl_tokens(&ident, &method);
+        let trait_impl = generated_method.trait_impl_tokens(&ident, &method, &[]);
         let module_tokens = quote! { .attr("module", #module_name) };
         let docs_tokens = docs.map(|docs| quote! { .docs(#docs) });
         let type_attr_tokens = type_attrs.iter().map(|(name, value)| {
@@ -329,7 +340,7 @@ fn expand_enum_result(expansion: EnumExpansion) -> Result<TokenStream> {
 
     let ident = input.ident;
     let method = generated_method.ident();
-    let trait_impl = generated_method.trait_impl_tokens(&ident, &method);
+    let trait_impl = generated_method.trait_impl_tokens(&ident, &method, &[]);
     let module_tokens = quote! { .attr("module", #module_name) };
     let docs_tokens = docs.map(|docs| quote! { .docs(#docs) });
     let type_attr_tokens = type_attrs.iter().map(|(name, value)| {
@@ -450,6 +461,50 @@ mod tests {
     use quote::quote;
 
     use super::{GeneratedMethod, expand_result};
+
+    #[test]
+    fn fields_mode_projects_deref_wrappers_and_registers_dependencies() {
+        let expanded = expand_result(
+            quote! {
+                #[vela(path = "game::Actor", fields)]
+                struct Actor {
+                    player: Player,
+                    #[vela(deref)]
+                    equipment: Tracked<Equipment>,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect("fields mode should expand");
+        let output = expanded.to_string();
+
+        assert!(output.contains("register_type_dependency :: < Player >"));
+        assert!(output.contains("register_type_dependency :: < Equipment >"));
+        assert!(output.contains("Deref :: deref"));
+        assert!(output.contains("DerefMut :: deref_mut"));
+        assert!(output.contains("type_hint (\"Equipment\")"));
+    }
+
+    #[test]
+    fn deref_projection_rejects_replacing_the_storage_wrapper() {
+        let error = expand_result(
+            quote! {
+                #[vela(path = "game::Actor", fields)]
+                struct Actor {
+                    #[vela(deref, set)]
+                    equipment: Tracked<Equipment>,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect_err("deref wrapper replacement should fail macro expansion");
+
+        assert!(
+            error
+                .to_string()
+                .contains("deref-projected host fields cannot replace their storage wrapper")
+        );
+    }
 
     #[test]
     fn rejects_duplicate_field_aliases() {

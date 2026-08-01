@@ -732,7 +732,7 @@ fn verify_instruction(
             }
             Ok(())
         }
-        UnlinkedInstructionKind::IterInit { dst, iterable } => {
+        UnlinkedInstructionKind::IterInit { dst, iterable, .. } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *iterable)
         }

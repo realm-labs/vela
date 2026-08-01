@@ -1,5 +1,5 @@
 use std::any::TypeId as RustTypeId;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use vela_common::TypeAbiFingerprint;
 use vela_hot_reload::policy::HotReloadPolicy;
@@ -36,6 +36,7 @@ pub struct EngineBuilder {
     types: Vec<TypeDesc>,
     type_bindings: Vec<TypeBindingRegistration>,
     rust_type_bindings: HashMap<RustTypeId, (TypeKey, TypeAbiFingerprint)>,
+    type_dependency_closure: HashSet<RustTypeId>,
     modules: Vec<ModuleDesc>,
     native_functions: Vec<NativeFunctionEntry>,
     async_native_functions: Vec<AsyncNativeFunctionEntry>,
@@ -161,6 +162,21 @@ impl EngineBuilder {
             return self;
         }
         self.push_rust_type::<T>(binding)
+    }
+
+    /// Installs one generated dependency once per recursive registration
+    /// closure. Existing bindings are still visited so a conflicting manual
+    /// binding reaches Engine sealing instead of being silently accepted.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn register_type_dependency<T>(mut self) -> Self
+    where
+        T: crate::type_registration::VelaType,
+    {
+        if !self.type_dependency_closure.insert(RustTypeId::of::<T>()) {
+            return self;
+        }
+        T::register(self)
     }
 
     #[doc(hidden)]

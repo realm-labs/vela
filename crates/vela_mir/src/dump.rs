@@ -801,8 +801,15 @@ fn write_iterator(
     operation: &MirIteratorOperation,
 ) -> fmt::Result {
     match operation {
-        MirIteratorOperation::Create { iterable } => {
-            write!(formatter, "iterator.create {}", operand_text(iterable))
+        MirIteratorOperation::Create {
+            iterable,
+            host_collection,
+        } => {
+            write!(formatter, "iterator.create {}", operand_text(iterable))?;
+            if let Some(host_collection) = host_collection {
+                write!(formatter, " host={host_collection:?}")?;
+            }
+            Ok(())
         }
     }
 }

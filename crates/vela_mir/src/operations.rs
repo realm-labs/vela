@@ -385,7 +385,10 @@ pub enum MirIndexKey {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum MirIteratorOperation {
-    Create { iterable: MirOperand },
+    Create {
+        iterable: MirOperand,
+        host_collection: Option<vela_common::HostCollectionIteration>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]

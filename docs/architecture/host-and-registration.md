@@ -499,25 +499,31 @@ instrumentation.
 
 ```rust
 #[derive(ScriptHost, ScriptReflect)]
-#[vela(path = "billing::account::Account")]
+#[vela(path = "billing::account::Account", fields)]
 pub struct Account {
-    #[vela(get, set)]
     pub balance: i64,
 
-    #[vela(get, set)]
     pub status: String,
 
-    #[vela(get, set)]
     pub owner: String,
 
     #[vela(get)]
     pub ledger: Ledger,
+
+    #[vela(deref)]
+    pub inventory: Tracked<Inventory>,
 }
 ```
 
 The public macro contract is the script-facing stable path plus optional
 `alias` values for compatible Rust or script-facing renames. Numeric IDs remain
 runtime handles, but host authors do not choose them in derive/function macros.
+`#[vela(fields)]` exposes every named field with read/write access by default;
+field-level `get`, `set`, `skip`, naming, permission, and metadata attributes
+override that default. `#[vela(deref)]` exposes a one-argument storage wrapper
+as its `Deref::Target`: reads call `Deref::deref`, nested writes call
+`DerefMut::deref_mut`, and replacing the wrapper itself is forbidden. This is
+the persistence-wrapper contract used by `Tracked<T>`-style actor state.
 
 ### Method Exposure
 
@@ -742,7 +748,9 @@ macro-specific registry.
 `VelaType` is the single public registration contract for both owned Values and
 Rust-owned Hosts. `EngineBuilder::register_type::<T>()` recursively installs
 the exact concrete standard containers and derived Value field/variant types
-reachable from `T`, then installs `T` itself. Shared dependencies are
+reachable from `T`. Derived Hosts likewise register every exposed nested Host
+type, peeling standard container wrappers and deref projections, so registering
+an actor root installs its complete script-visible state graph. Shared dependencies are
 idempotent only when their Rust `TypeId`, stable binding key, and complete
 pending ABI fingerprint agree; a different manual binding for the same Rust
 type remains a sealing error. This is Rust-side monomorphized registration of
@@ -804,6 +812,11 @@ An inherent `#[vela_macros::methods]` item may attach audited, non-ABI metadata 
 sealed `NativeMethodDesc` retain the same entry; duplicate keys are rejected.
 These attributes support inventory and integration discovery only and never
 grant effects, capabilities, or reflection access.
+
+Applying `#[vela_macros::methods]` is the method-group opt-in. Its `pub`,
+`pub(crate)`, and `pub(super)` methods are exported automatically. A private
+method is exported only when it carries `#[vela(...)]`; `#[vela(skip)]` keeps
+any method Rust-only.
 
 ### Rust Signature Mapping
 

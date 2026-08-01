@@ -13,9 +13,9 @@ use crate::{
 use vela_def::FunctionId;
 
 const MAGIC: &[u8; 8] = b"VELAPRG\0";
-// Versions 1 and 2 do not seal host-scoped task target metadata. The v3 hard
-// switch intentionally has no compatibility loader or metadata inference.
-const FORMAT_VERSION: u32 = 3;
+// Version 4 adds static HostRef collection iteration shape to IterInit. The
+// hard switch intentionally has no compatibility loader or bytecode rewrite.
+const FORMAT_VERSION: u32 = 4;
 const HEADER_LEN: usize = MAGIC.len() + size_of::<u32>() + size_of::<u64>() + 32;
 const MAX_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
 
@@ -48,7 +48,7 @@ impl fmt::Display for PortableArtifactChecksum {
 ///
 /// Loading still binds stable native/type identities against the receiving
 /// Engine and runs the bytecode verifier. MIR and process-local executable
-/// generations are deliberately not portable in format version 3.
+/// generations are deliberately not portable in format version 4.
 #[derive(Debug)]
 pub struct PortableCompiledProgram {
     pub(crate) bytecode: UnlinkedProgram,
@@ -423,7 +423,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v3_round_trips_sealed_task_metadata_and_feature_bits() {
+    fn portable_v4_round_trips_sealed_task_metadata_and_feature_bits() {
         let artifact = portable_task_artifact();
         let [target] = artifact.payload.task_targets.as_ref() else {
             panic!("real task program should seal one target");
@@ -457,8 +457,8 @@ fn main(value: Any) {
         assert!(continuation.resume_parameters[0].has_default);
         assert!(continuation.effects.state_write);
 
-        let encoded = artifact.encode().expect("encode v3 task metadata");
-        let decoded = PortableProgramArtifact::decode(&encoded).expect("decode v3 task metadata");
+        let encoded = artifact.encode().expect("encode v4 task metadata");
+        let decoded = PortableProgramArtifact::decode(&encoded).expect("decode v4 task metadata");
         assert_eq!(
             decoded.payload.required_features,
             artifact.payload.required_features
@@ -466,7 +466,7 @@ fn main(value: Any) {
         assert_eq!(decoded.payload.task_targets, artifact.payload.task_targets);
         let linked = crate::Linker::new()
             .link_portable_program(decoded.into_compiled())
-            .expect("link v3 task metadata");
+            .expect("link v4 task metadata");
         assert!(
             linked
                 .required_features()
@@ -486,7 +486,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v3_rejects_corrupted_task_slots_and_continuation_shape() {
+    fn portable_v4_rejects_corrupted_task_slots_and_continuation_shape() {
         fn assert_link_rejects(
             mut artifact: PortableProgramArtifact,
             corrupt: impl FnOnce(&mut crate::ArtifactTaskTarget),
@@ -541,7 +541,7 @@ fn main(value: Any) {
             Err(PortableArtifactError::ChecksumMismatch)
         );
 
-        for old_version in [1_u32, 2] {
+        for old_version in [1_u32, 2, 3] {
             let mut old = artifact.encode().expect("encode artifact");
             old[MAGIC.len()..MAGIC.len() + size_of::<u32>()]
                 .copy_from_slice(&old_version.to_le_bytes());

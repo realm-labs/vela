@@ -12,9 +12,9 @@ pub use capability::{Capability, CapabilitySet};
 pub use detachability::{Detachability, NonDetachableValueKind};
 pub use interop_type::{
     CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation,
-    HostConstructionLifetime, HostConstructorBinding, InteropBindingContract,
-    InteropRepresentation, InteropTypeId, ReceiverCapabilities, ReceiverCapability, StoragePolicy,
-    TypeAbiFingerprint, TypeBindingRegistryChecksum,
+    HostCollectionIteration, HostConstructionLifetime, HostConstructorBinding,
+    InteropBindingContract, InteropRepresentation, InteropTypeId, ReceiverCapabilities,
+    ReceiverCapability, StoragePolicy, TypeAbiFingerprint, TypeBindingRegistryChecksum,
 };
 pub use primitive::{NumericTag, PrimitiveTag, ScalarValue};
 pub use vela_def::stable_id;

@@ -106,6 +106,12 @@ where
         _access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
     ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        if target_is_leaf(target, target.offset) && TypeId::of::<T>() != TypeId::of::<u8>() {
+            let type_id = self.script_host_type_id();
+            return Ok(Some(Box::new(
+                crate::lease::SharedScopedHost::with_type_id(self, type_id),
+            )));
+        }
         if target.offset + 1 != target.plan.parts.len() {
             return Ok(None);
         }
@@ -122,6 +128,12 @@ where
         _access: ResolvedHostAccess,
         target: HostTargetInstance<'_>,
     ) -> HostResult<Option<crate::lease::ScopedHostDependent<'_>>> {
+        if target_is_leaf(target, target.offset) && TypeId::of::<T>() != TypeId::of::<u8>() {
+            let type_id = self.script_host_type_id();
+            return Ok(Some(Box::new(
+                crate::lease::ExclusiveScopedHost::with_type_id(self, type_id),
+            )));
+        }
         if target.offset + 1 != target.plan.parts.len() {
             return Ok(None);
         }
