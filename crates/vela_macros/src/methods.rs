@@ -25,7 +25,10 @@ pub(crate) fn expand(attr: TokenStream, input: TokenStream) -> TokenStream {
 fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let mut item = parse2::<ItemImpl>(input)?;
     reject_generic_signature(&item.generics, "#[vela_macros::methods]")?;
-    let owner_path = parse_owner_path(attr, &item)?;
+    let MethodsOptions {
+        owner_path,
+        public_only,
+    } = parse_options(attr, &item)?;
     let trait_path = item.trait_.as_ref().map(|(_, path, _)| path);
     let mut generated = Vec::new();
     let mut contract_functions = Vec::new();
@@ -36,6 +39,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         };
         let method_attrs = take_method_attrs(method)?;
         if method_attrs.skip {
+            continue;
+        }
+        if public_only && !matches!(method.vis, Visibility::Public(_)) {
             continue;
         }
         if trait_path.is_none()
@@ -221,8 +227,14 @@ pub(crate) fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAt
     Ok(parsed)
 }
 
-fn parse_owner_path(attr: TokenStream, item: &ItemImpl) -> Result<String> {
+struct MethodsOptions {
+    owner_path: String,
+    public_only: bool,
+}
+
+fn parse_options(attr: TokenStream, item: &ItemImpl) -> Result<MethodsOptions> {
     let mut configured = None;
+    let mut public_only = false;
     let parser = syn::meta::parser(|meta| {
         if meta.path.is_ident("path") {
             configured = Some(parse_qualified_name(
@@ -231,11 +243,18 @@ fn parse_owner_path(attr: TokenStream, item: &ItemImpl) -> Result<String> {
             )?);
             return Ok(());
         }
+        if meta.path.is_ident("public_only") {
+            public_only = true;
+            return Ok(());
+        }
         Err(meta.error("unsupported methods attribute"))
     });
     parser.parse2(attr)?;
     if let Some(configured) = configured {
-        return Ok(configured);
+        return Ok(MethodsOptions {
+            owner_path: configured,
+            public_only,
+        });
     }
     let syn::Type::Path(path) = item.self_ty.as_ref() else {
         return Err(syn::Error::new_spanned(
@@ -243,7 +262,10 @@ fn parse_owner_path(attr: TokenStream, item: &ItemImpl) -> Result<String> {
             "methods owner must have a stable named type path",
         ));
     };
-    Ok(path.path.to_token_stream().to_string().replace(' ', ""))
+    Ok(MethodsOptions {
+        owner_path: path.path.to_token_stream().to_string().replace(' ', ""),
+        public_only,
+    })
 }
 
 #[cfg(test)]
@@ -272,6 +294,24 @@ mod tests {
         assert!(!output.contains("vela_callable_contract_helper"));
         assert!(output.contains("host_read"));
         assert!(output.contains("host_write"));
+    }
+
+    #[test]
+    fn methods_public_only_excludes_crate_visible_helpers() {
+        let expanded = expand_result(
+            quote! { path = "game::Player", public_only },
+            quote! {
+                impl Player {
+                    pub fn level(&self) -> i64 { self.level }
+                    pub(crate) fn load(&mut self) {}
+                }
+            },
+        )
+        .expect("public-only method group classifies");
+        let output = expanded.to_string();
+
+        assert!(output.contains("vela_callable_contract_level"));
+        assert!(!output.contains("vela_callable_contract_load"));
     }
 
     #[test]
