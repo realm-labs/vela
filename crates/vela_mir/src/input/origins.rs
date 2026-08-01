@@ -22,6 +22,7 @@ pub(super) struct CompileTargetOrigins {
     pub(super) state_bindings: BTreeMap<HirDeclId, MirSourceOrigin>,
     pub(super) state_descriptors: BTreeMap<StateId, MirSourceOrigin>,
     pub(super) calls: BTreeMap<(FunctionId, HirExprId), MirSourceOrigin>,
+    pub(super) tasks: BTreeMap<(FunctionId, HirExprId), MirSourceOrigin>,
     pub(super) members: BTreeMap<(FunctionId, HirExprId), MirSourceOrigin>,
     pub(super) constructors: BTreeMap<(FunctionId, HirExprId), MirSourceOrigin>,
     pub(super) pattern_constructors: BTreeMap<(FunctionId, HirPatternId), MirSourceOrigin>,

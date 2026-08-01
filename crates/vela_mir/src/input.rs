@@ -22,6 +22,7 @@ mod identity;
 mod lambdas;
 mod origins;
 mod placements;
+mod tasks;
 mod try_targets;
 mod validation;
 
@@ -41,6 +42,7 @@ pub use placements::{
     CompileDynamicConstructorField, CompileFieldTarget, CompileFunctionTargets, CompileGuardKey,
     CompileGuardTarget, CompileMemberTarget, CompilePatternConstructorTarget, CompileTargetKind,
 };
+pub use tasks::{CompileTaskContinuationTarget, CompileTaskOperation, CompileTaskTarget};
 pub use try_targets::{CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -145,6 +147,7 @@ pub struct CompileTargetSnapshot {
     types_by_declaration: BTreeMap<HirDeclId, TypeId>,
     types_by_name: BTreeMap<String, TypeId>,
     calls: BTreeMap<(FunctionId, HirExprId), CompileCallTarget>,
+    tasks: BTreeMap<(FunctionId, HirExprId), CompileTaskTarget>,
     members: BTreeMap<(FunctionId, HirExprId), CompileMemberTarget>,
     constructors: BTreeMap<(FunctionId, HirExprId), CompileConstructorTarget>,
     pattern_constructors: BTreeMap<(FunctionId, HirPatternId), CompilePatternConstructorTarget>,

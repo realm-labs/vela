@@ -402,6 +402,38 @@ async fn main(dynamic: Any) {
 }
 
 #[test]
+fn scoped_task_worker_is_the_only_async_call_that_does_not_require_await() {
+    let source = SourceId::new(114);
+    let text = r#"
+async fn fetch() -> i64 { 1 }
+
+fn main() {
+    task::spawn_scoped(fetch());
+    fetch();
+}
+"#;
+    let (graph, main) = graph(source, text);
+    let function = FunctionId::new(11_401);
+    let generation = generation(&graph, None, main, function);
+    let view = generation.view(function).expect("main view");
+    let diagnostics = view.validation_diagnostics();
+
+    assert_eq!(diagnostics.len(), 1);
+    assert_eq!(
+        diagnostics[0].code.as_deref(),
+        Some("analysis::async_call_requires_await")
+    );
+    assert_eq!(
+        span_text(text, diagnostics[0].span.expect("async call span")),
+        "fetch()"
+    );
+    assert_eq!(
+        diagnostics[0].span.expect("async call span").start,
+        u32::try_from(text.rfind("fetch()").expect("ordinary call")).expect("test source offset")
+    );
+}
+
+#[test]
 fn registry_async_calls_require_await() {
     let source = SourceId::new(113);
     let text = r#"

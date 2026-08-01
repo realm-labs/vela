@@ -3,6 +3,7 @@ mod descriptors;
 mod host;
 mod lambdas;
 mod placements;
+mod tasks;
 mod try_targets;
 
 use std::collections::BTreeMap;
@@ -35,6 +36,7 @@ impl<'a> SnapshotValidator<'a> {
         descriptors::validate(self)?;
         lambdas::validate(self)?;
         placements::validate(self)?;
+        tasks::validate(self)?;
         try_targets::validate(self)
     }
 

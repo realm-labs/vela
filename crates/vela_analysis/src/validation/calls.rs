@@ -35,6 +35,21 @@ pub(super) fn record_body(
             _ => None,
         })
         .collect::<BTreeSet<_>>();
+    let detached_worker_calls = graph
+        .bindings_for_body(body.id)
+        .map(|bindings| {
+            bindings
+                .task_capabilities()
+                .filter_map(|(task_callee, _)| {
+                    body.calls()
+                        .find(|(_, call)| call.callee == task_callee)
+                        .and_then(|(_, call)| call.arguments.first())
+                        .and_then(|argument| argument.value)
+                        .filter(|expression| body.call(*expression).is_some())
+                })
+                .collect::<BTreeSet<_>>()
+        })
+        .unwrap_or_default();
     for (expression, call) in body.calls() {
         let Some(target) = facts.call_target(expression) else {
             continue;
@@ -45,7 +60,10 @@ pub(super) fn record_body(
             .expression(expression)
             .map_or(body.origin.span, |expression| expression.origin.span);
         let mut call_diagnostics = Vec::new();
-        if policy.asyncness().is_async() && !awaited_calls.contains(&expression) {
+        if policy.asyncness().is_async()
+            && !awaited_calls.contains(&expression)
+            && !detached_worker_calls.contains(&expression)
+        {
             call_diagnostics.push(async_call_requires_await_diagnostic(call_span));
         }
         let (mode, parameter_slots) = match policy {

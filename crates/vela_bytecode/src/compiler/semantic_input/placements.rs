@@ -9,6 +9,7 @@ use vela_analysis::validation::{
 };
 use vela_common::{PrimitiveTag, ScalarValue};
 use vela_def::{FieldId, FunctionId, TypeId};
+use vela_hir::binding::{BindingResolution, TaskLexicalCapability};
 use vela_hir::body::{
     HirAssignOp, HirBody, HirBodyOwner, HirExprKind, HirLiteral, HirPathKind, HirPathOwner,
     HirPatternKind,
@@ -20,8 +21,8 @@ use vela_mir::{
     CompileConstructorTarget, CompileConstructorValue, CompileDynamicConstructorField,
     CompileFieldTarget, CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget,
     CompileMemberTarget, CompilePatternConstructorTarget, CompilePlacedCallValue,
-    CompileReflectionCall, DynamicMethodTarget, HostFieldTarget, HostMethodTarget, MirBuildError,
-    MirSourceOrigin,
+    CompileReflectionCall, CompileTaskContinuationTarget, CompileTaskOperation, CompileTaskTarget,
+    DynamicMethodTarget, HostFieldTarget, HostMethodTarget, MirBuildError, MirSourceOrigin,
 };
 
 use super::contracts::{
@@ -168,6 +169,9 @@ impl GenerationBuilder<'_, '_> {
         let origin = self
             .expression_origin(expression)
             .ok_or_else(registry_input_error)?;
+        if self.insert_task_call(executable, body, expression, call, origin)? {
+            return Ok(());
+        }
         if let Some(target) = self.service_call_target(executable, body, call, origin)? {
             self.targets
                 .insert_call(executable, expression, target, origin)
@@ -362,6 +366,82 @@ impl GenerationBuilder<'_, '_> {
         self.targets
             .insert_call(executable, expression, placed, origin)
             .map_err(input_error)
+    }
+
+    fn insert_task_call(
+        &mut self,
+        executable: FunctionId,
+        body: &HirBody,
+        expression: HirExprId,
+        call: &vela_hir::body::HirCall,
+        origin: MirSourceOrigin,
+    ) -> CompileResult<bool> {
+        let Some(bindings) = self.request.graph.bindings_for_body(body.id) else {
+            return Ok(false);
+        };
+        let Some(capability) = bindings.task_capability(call.callee) else {
+            return Ok(false);
+        };
+        let worker_call = call
+            .arguments
+            .first()
+            .and_then(|argument| argument.value)
+            .ok_or_else(registry_input_error)?;
+        let worker = body.call(worker_call).ok_or_else(registry_input_error)?;
+        let worker_declaration = match self
+            .executable_analysis(executable)?
+            .call_target(worker_call)
+        {
+            Some(CallTargetFact::Declaration(declaration)) => *declaration,
+            _ => return Err(registry_input_error()),
+        };
+        let worker_function = self
+            .function_ids
+            .get(&worker_declaration)
+            .copied()
+            .ok_or_else(registry_input_error)?;
+        if !matches!(
+            bindings.resolution(worker.callee),
+            Some(BindingResolution::Declaration(declaration)) if *declaration == worker_declaration
+        ) {
+            return Err(registry_input_error());
+        }
+        let continuation = if capability == TaskLexicalCapability::SpawnScopedThen {
+            let expression = call
+                .arguments
+                .get(1)
+                .and_then(|argument| argument.value)
+                .ok_or_else(registry_input_error)?;
+            let Some(BindingResolution::Declaration(declaration)) = bindings.resolution(expression)
+            else {
+                return Err(registry_input_error());
+            };
+            let function = self
+                .function_ids
+                .get(declaration)
+                .copied()
+                .ok_or_else(registry_input_error)?;
+            Some(CompileTaskContinuationTarget {
+                function,
+                debug_name: self.request.script_function_symbols[declaration].clone(),
+            })
+        } else {
+            None
+        };
+        let task = CompileTaskTarget {
+            operation: match capability {
+                TaskLexicalCapability::SpawnScoped => CompileTaskOperation::SpawnScoped,
+                TaskLexicalCapability::SpawnScopedThen => CompileTaskOperation::SpawnScopedThen,
+            },
+            worker_call,
+            worker: worker_function,
+            worker_debug_name: self.request.script_function_symbols[&worker_declaration].clone(),
+            continuation,
+        };
+        self.targets
+            .insert_task(executable, expression, task, origin)
+            .map_err(input_error)?;
+        Ok(true)
     }
 
     fn external_function_call(

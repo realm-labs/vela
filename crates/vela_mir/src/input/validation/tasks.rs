@@ -1,0 +1,61 @@
+use vela_common::CallableAsyncness;
+
+use crate::{CompileCalleeTarget, CompileTaskOperation, MirBuildError};
+
+use super::SnapshotValidator;
+
+pub(super) fn validate(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildError> {
+    for ((root, expression), task) in &validator.snapshot.tasks {
+        let origin =
+            validator.retained_origin(&validator.snapshot.origins.tasks, &(*root, *expression));
+        validator.require_root(*root, origin, "task placement")?;
+        let worker = validator.require_script_function(task.worker, origin, "task worker")?;
+        if worker.signature.asyncness != CallableAsyncness::Async {
+            return Err(validator.error(origin, "task worker descriptor must be asynchronous"));
+        }
+        let worker_call = validator
+            .snapshot
+            .call(*root, task.worker_call)
+            .ok_or_else(|| validator.error(origin, "task worker call has no call placement"))?;
+        if !matches!(
+            &worker_call.callee,
+            CompileCalleeTarget::ScriptFunction { function, debug_name }
+                if *function == task.worker && *debug_name == task.worker_debug_name
+        ) {
+            return Err(validator.error(
+                origin,
+                "task worker identity disagrees with its call placement",
+            ));
+        }
+        match (task.operation, &task.continuation) {
+            (CompileTaskOperation::SpawnScoped, None) => {}
+            (CompileTaskOperation::SpawnScopedThen, Some(continuation)) => {
+                let descriptor = validator.require_script_function(
+                    continuation.function,
+                    origin,
+                    "task continuation",
+                )?;
+                if descriptor.signature.asyncness != CallableAsyncness::Sync {
+                    return Err(
+                        validator.error(origin, "task continuation descriptor must be synchronous")
+                    );
+                }
+                if descriptor.debug_name != continuation.debug_name
+                    && descriptor.canonical_symbol != continuation.debug_name
+                {
+                    return Err(validator.error(
+                        origin,
+                        "task continuation identity disagrees with its descriptor",
+                    ));
+                }
+            }
+            (CompileTaskOperation::SpawnScoped, Some(_)) => {
+                return Err(validator.error(origin, "spawn_scoped cannot carry a continuation"));
+            }
+            (CompileTaskOperation::SpawnScopedThen, None) => {
+                return Err(validator.error(origin, "spawn_scoped_then requires a continuation"));
+            }
+        }
+    }
+    Ok(())
+}

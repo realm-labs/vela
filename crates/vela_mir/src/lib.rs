@@ -61,9 +61,9 @@ pub use input::{
     CompileParameterDefault, CompilePatternConstructorTarget, CompilePlacedCallArgument,
     CompilePlacedCallValue, CompilePositionalPolicy, CompileReflectionCall, CompileSignature,
     CompileStateTarget, CompileTargetKind, CompileTargetSnapshot, CompileTargetSnapshotBuilder,
-    CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget, DynamicMethodTarget,
-    HostFieldTarget, HostMethodTarget, MethodExecutableTarget, MirBuildError, MirLoweringConfig,
-    MirLoweringInput,
+    CompileTaskContinuationTarget, CompileTaskOperation, CompileTaskTarget, CompileTryFamily,
+    CompileTryLayoutTarget, CompileTryTarget, DynamicMethodTarget, HostFieldTarget,
+    HostMethodTarget, MethodExecutableTarget, MirBuildError, MirLoweringConfig, MirLoweringInput,
 };
 pub use jit::{MirJitEligibility, MirJitIneligibility, restricted_jit_eligibility};
 pub use operations::{

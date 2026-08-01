@@ -6,6 +6,7 @@ mod logical_records;
 mod roots_schema;
 mod script_methods;
 mod target_placements;
+mod task_targets;
 
 use std::collections::BTreeMap;
 
