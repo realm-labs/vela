@@ -212,6 +212,9 @@ pub enum VmErrorKind {
     CallCancelled,
     DeadlineExceeded,
     TaskScopeUnavailable,
+    TaskAdmissionDenied {
+        reason: String,
+    },
     CollectionLimitExceeded {
         collection: &'static str,
         limit: usize,
@@ -264,6 +267,7 @@ impl VmErrorKind {
             Self::CallCancelled => "vm::call_cancelled",
             Self::DeadlineExceeded => "vm::deadline_exceeded",
             Self::TaskScopeUnavailable => "vm::task_scope_unavailable",
+            Self::TaskAdmissionDenied { .. } => "vm::task_admission_denied",
             Self::CollectionLimitExceeded { .. } => "vm::collection_limit_exceeded",
             Self::CollectionChangedDuringCallback { .. } => {
                 "vm::collection_changed_during_callback"
@@ -381,6 +385,9 @@ impl VmErrorKind {
             Self::DeadlineExceeded => "runtime call deadline was exceeded".to_owned(),
             Self::TaskScopeUnavailable => {
                 "host-scoped task execution requires an installed task scope".to_owned()
+            }
+            Self::TaskAdmissionDenied { reason } => {
+                format!("host-scoped task admission was denied: {reason}")
             }
             Self::CollectionLimitExceeded { collection, limit } => {
                 format!("{collection} length exceeds collection limit {limit}")

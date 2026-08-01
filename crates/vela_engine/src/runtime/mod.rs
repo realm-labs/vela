@@ -26,6 +26,7 @@ mod bytecode_profile_tests;
 mod call_args;
 mod call_future;
 mod control;
+mod detached_task;
 pub(crate) mod execution_data;
 mod execution_host;
 mod extern_state_bindings;
@@ -345,6 +346,7 @@ where
     where
         T: RuntimeCallTarget,
     {
+        let task_scope = options.task_scope().cloned();
         let mut budget = options.budget();
         let target = handles::call_target_sealed::Sealed::into_call_target(entry);
         let target = self.resolve_call_target(target, &mut budget)?;
@@ -370,6 +372,7 @@ where
             budget: &mut budget,
             service_dispatcher,
             service_scoped_return,
+            task_scope,
         })
     }
 
@@ -398,6 +401,7 @@ where
         T: RuntimeCallTarget + Send + 'call,
         'args: 'call,
     {
+        let task_scope = options.task_scope().cloned();
         let mut budget = options.budget();
         let target = handles::call_target_sealed::Sealed::into_call_target(entry);
         let target = self.resolve_call_target(target, &mut budget)?;
@@ -418,6 +422,7 @@ where
             budget: &mut budget,
             service_dispatcher,
             service_scoped_return: None,
+            task_scope,
         })
         .await
     }
@@ -735,8 +740,8 @@ where
                         name: prepared.name().to_owned(),
                     }));
                 }
-                LinkedDriveOutcome::TaskBoundary(_) => {
-                    return Err(VmError::new(VmErrorKind::TaskScopeUnavailable));
+                LinkedDriveOutcome::TaskBoundary(prepared) => {
+                    detached_task::admit(call.engine, call.task_scope.as_ref(), prepared)?;
                 }
                 LinkedDriveOutcome::ContextBoundary(prepared) => {
                     let result = {
@@ -897,8 +902,8 @@ where
                         Some(budget),
                     )?;
                 }
-                LinkedDriveOutcome::TaskBoundary(_) => {
-                    return Err(VmError::new(VmErrorKind::TaskScopeUnavailable));
+                LinkedDriveOutcome::TaskBoundary(prepared) => {
+                    detached_task::admit(call.engine, call.task_scope.as_ref(), prepared)?;
                 }
                 LinkedDriveOutcome::ContextBoundary(prepared) => {
                     let result = {

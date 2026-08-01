@@ -138,7 +138,14 @@ Phase status:
   preserves static worker/continuation handles and owned argument preparation,
   participates in verification and call budgeting, and reaches an explicit VM
   task boundary. An ordinary Runtime without installed scope deterministically
-  reports `TaskScopeUnavailable`; admission and child execution are next.
+  reports `TaskScopeUnavailable`. `CallOptions` can now install one explicit
+  owned `TaskScope`; a synchronous caller admits the prepared operation through
+  `ScopedTaskHost`, returns immediately, and the admitted future constructs a
+  fresh Runtime from the exact artifact. The focused isolation proof leaves
+  parent VM state at 100 while the child observes its independent initial state
+  and returns 2. Transferable cyclic/aliased graphs, deliberately pending
+  native work, cancellation/capacity/error paths, and panic containment remain
+  before Batch B acceptance.
 - P0-P3 accepted for service return totality: recursive macro diagnostics now
   reject nested, exclusive-envelope, projected-child, and otherwise
   non-executable borrowed returns. Exact direct parameters, direct borrowed

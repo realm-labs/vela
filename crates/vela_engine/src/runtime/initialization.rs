@@ -249,6 +249,7 @@ where
                 budget,
                 service_dispatcher: None,
                 service_scoped_return: None,
+                task_scope: None,
             })
             .map_err(|error| RuntimeBuildError::Initializer {
                 state: state.qualified_name.clone(),

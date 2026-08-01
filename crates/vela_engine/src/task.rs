@@ -32,6 +32,47 @@ pub trait ScopedTaskHost: Send + Sync {
     fn admit(&self, task: ScopedTask) -> Result<(), TaskAdmissionError>;
 }
 
+/// Explicit task authority installed for one Runtime root call.
+#[derive(Clone)]
+pub struct TaskScope {
+    host: Arc<dyn ScopedTaskHost>,
+    policy: TaskPolicy,
+}
+
+impl TaskScope {
+    #[must_use]
+    pub fn new(host: Arc<dyn ScopedTaskHost>, policy: TaskPolicy) -> Self {
+        Self { host, policy }
+    }
+
+    #[must_use]
+    pub const fn host(&self) -> &Arc<dyn ScopedTaskHost> {
+        &self.host
+    }
+
+    #[must_use]
+    pub const fn policy(&self) -> &TaskPolicy {
+        &self.policy
+    }
+}
+
+impl fmt::Debug for TaskScope {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("TaskScope")
+            .field("policy", &self.policy)
+            .finish_non_exhaustive()
+    }
+}
+
+impl PartialEq for TaskScope {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.host, &other.host) && self.policy == other.policy
+    }
+}
+
+impl Eq for TaskScope {}
+
 /// Finite limits and capability ceiling imposed by one host lifecycle scope.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TaskPolicy {

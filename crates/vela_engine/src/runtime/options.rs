@@ -8,8 +8,10 @@ pub struct CallOptions {
     pub memory_budget: usize,
     pub call_depth: usize,
     pub managed_heap: bool,
+    collection_limits: vela_vm::budget::CollectionLimits,
     deadline: Option<std::time::Instant>,
     control: Option<CallControl>,
+    task_scope: Option<crate::task::TaskScope>,
 }
 
 impl PartialEq for CallOptions {
@@ -18,8 +20,10 @@ impl PartialEq for CallOptions {
             && self.memory_budget == other.memory_budget
             && self.call_depth == other.call_depth
             && self.managed_heap == other.managed_heap
+            && self.collection_limits == other.collection_limits
             && self.deadline == other.deadline
             && self.control == other.control
+            && self.task_scope == other.task_scope
     }
 }
 
@@ -33,8 +37,10 @@ impl CallOptions {
             memory_budget,
             call_depth,
             managed_heap: true,
+            collection_limits: vela_vm::budget::CollectionLimits::unbounded(),
             deadline: None,
             control: None,
+            task_scope: None,
         }
     }
 
@@ -46,6 +52,15 @@ impl CallOptions {
     #[must_use]
     pub const fn with_managed_heap(mut self, managed_heap: bool) -> Self {
         self.managed_heap = managed_heap;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_collection_limits(
+        mut self,
+        limits: vela_vm::budget::CollectionLimits,
+    ) -> Self {
+        self.collection_limits = limits;
         self
     }
 
@@ -71,6 +86,16 @@ impl CallOptions {
         self
     }
 
+    #[must_use]
+    pub fn with_task_scope(mut self, task_scope: crate::task::TaskScope) -> Self {
+        self.task_scope = Some(task_scope);
+        self
+    }
+
+    pub(super) const fn task_scope(&self) -> Option<&crate::task::TaskScope> {
+        self.task_scope.as_ref()
+    }
+
     pub(super) fn call_policy(&self) -> Option<CallPolicy> {
         (self.deadline.is_some() || self.control.is_some()).then(|| CallPolicy {
             deadline: self.deadline,
@@ -84,5 +109,6 @@ impl CallOptions {
             self.memory_budget,
             self.call_depth,
         )
+        .with_collection_limits(self.collection_limits)
     }
 }

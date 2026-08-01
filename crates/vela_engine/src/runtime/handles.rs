@@ -382,6 +382,7 @@ pub(super) struct RuntimeCallExecution<'program, 'state, 'host, 'budget> {
     pub(super) budget: &'budget mut vela_vm::budget::ExecutionBudget,
     pub(super) service_dispatcher: Option<Arc<dyn crate::service::ServiceCallDispatcher>>,
     pub(super) service_scoped_return: Option<super::ServiceScopedReturnEgress>,
+    pub(super) task_scope: Option<crate::task::TaskScope>,
 }
 
 fn linked_function_by_name<'program>(

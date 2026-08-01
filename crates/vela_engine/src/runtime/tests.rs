@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use vela_bytecode::CacheSiteKind;
 use vela_host::access::HostAccess;
@@ -9,6 +10,7 @@ use vela_vm::value::Value;
 
 use crate::engine::Engine;
 use vela_common::SourceId;
+use vela_vm::budget::{CollectionLimits, ExecutionLimits};
 
 use super::{
     CallArgs, CallOptions, OwnedImage, Runtime, RuntimeBuildError, RuntimeImage, RuntimeImpl,
@@ -66,6 +68,84 @@ fn main() { task::spawn_scoped(repair(41)); }
     assert_eq!(
         error.kind(),
         vela_vm::error::VmErrorKind::TaskScopeUnavailable
+    );
+}
+
+#[derive(Default)]
+struct RecordingTaskHost {
+    admitted: Mutex<Vec<crate::task::ScopedTask>>,
+}
+
+impl crate::task::ScopedTaskHost for RecordingTaskHost {
+    fn admit(&self, task: crate::task::ScopedTask) -> Result<(), crate::task::TaskAdmissionError> {
+        self.admitted.lock().expect("task host lock").push(task);
+        Ok(())
+    }
+}
+
+#[test]
+fn scoped_task_admission_runs_worker_in_fresh_runtime() {
+    let engine = Engine::builder()
+        .capability(vela_common::Capability::TaskSpawn)
+        .build()
+        .expect("engine should build");
+    let program = engine
+        .compile_source(
+            r#"
+state counter: i64 = 0;
+async fn repair(value: i64) -> i64 {
+    counter += value;
+    return counter;
+}
+fn main() {
+    counter = 100;
+    task::spawn_scoped(repair(2));
+    return counter;
+}
+"#,
+        )
+        .expect("task fixture compiles");
+    let mut runtime = Runtime::new_compiled(engine, program).expect("runtime builds");
+    let host = Arc::new(RecordingTaskHost::default());
+    let limits =
+        ExecutionLimits::new(10_000, 1 << 20, 64).with_collection_limits(CollectionLimits {
+            max_array_len: 1_024,
+            max_map_entries: 1_024,
+            max_set_len: 1_024,
+        });
+    let policy = crate::task::TaskPolicy::new(
+        std::num::NonZeroUsize::new(4).expect("non-zero"),
+        std::num::NonZeroUsize::new(4).expect("non-zero"),
+        limits,
+        std::num::NonZeroU64::new(16).expect("non-zero"),
+        std::time::Duration::from_secs(1),
+        vela_common::CapabilitySet::new().with(vela_common::Capability::TaskSpawn),
+    )
+    .expect("finite task policy");
+    let scope = crate::task::TaskScope::new(host.clone(), policy);
+
+    let parent = runtime
+        .call(
+            "main",
+            CallArgs::new(),
+            CallOptions::unbounded().with_task_scope(scope),
+        )
+        .expect("caller admits detached worker");
+    assert_eq!(runtime.value_to_owned(&parent), Ok(OwnedValue::i64(100)));
+    let task = host
+        .admitted
+        .lock()
+        .expect("task host lock")
+        .pop()
+        .expect("one admitted task");
+    let (_, _, mut future) = task.into_parts();
+    let waker = std::task::Waker::noop();
+    let mut context = std::task::Context::from_waker(waker);
+    assert_eq!(
+        future.as_mut().poll(&mut context),
+        std::task::Poll::Ready(crate::task::ScopedTaskOutcome::Completed(OwnedValue::i64(
+            2
+        )))
     );
 }
 
