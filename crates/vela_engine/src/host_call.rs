@@ -61,6 +61,28 @@ pub fn call_registered_host_method_through_adapter(
     Ok(host_call_to_owned_value(result))
 }
 
+/// Retains a nested Host path as a scoped receiver for a registered Rust
+/// method adapter.
+///
+/// Top-level arguments can be leased directly. A receiver reached through
+/// fields or collection elements first needs a child Host identity that keeps
+/// its parent borrow alive for the duration of the method call.
+#[doc(hidden)]
+pub fn retain_registered_host_method_receiver(
+    receiver: &HostPath,
+    host: &mut HostExecution<'_>,
+) -> VmResult<Option<vela_host::path::HostRef>> {
+    if receiver.segments.is_empty() {
+        return Ok(None);
+    }
+    let plan = HostTargetPlan::from(receiver);
+    let target = HostTargetInstance::new(receiver.root, &plan, &[]);
+    let access = host
+        .adapter
+        .resolve_host_access(HostAccessSpec::new(HostAccessOp::Read, &plan))?;
+    Ok(host.adapter.read_scoped_host(access, target)?)
+}
+
 pub(crate) fn owned_to_host_call_value(value: &OwnedValue) -> VmResult<HostCallValue> {
     match value {
         OwnedValue::Unit => Ok(HostCallValue::Unit),

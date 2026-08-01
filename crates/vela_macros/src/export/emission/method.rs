@@ -307,7 +307,12 @@ pub(crate) fn method_adapter(
                 ],
             );
             builder.register_native_method_fn(__vela_desc, move |receiver, args, host| {
-                if !receiver.segments.is_empty() {
+                let __vela_scoped_receiver =
+                    ::vela_engine::host_call::retain_registered_host_method_receiver(
+                        receiver,
+                        host,
+                    )?;
+                if !receiver.segments.is_empty() && __vela_scoped_receiver.is_none() {
                     return ::vela_engine::host_call::call_registered_host_method_through_adapter(
                         receiver,
                         args,
@@ -315,46 +320,63 @@ pub(crate) fn method_adapter(
                         host,
                     );
                 }
-                let __vela_lease_requests = __vela_plan.prepare_method(receiver.root, args)?;
-                let mut __vela_result = None;
-                let __vela_lease_result = host.adapter.with_host_leases(
-                    &__vela_lease_requests,
-                    &mut |__vela_erased_leases, _leased_adapter| {
-                        __vela_result = Some((|| -> ::vela_vm::error::VmResult<
-                            ::vela_vm::owned_value::OwnedValue
-                        > {
-                            let mut __vela_leases = __vela_erased_leases.iter_mut();
-                            #receiver_binding
-                            #(#argument_bindings)*
-                            ::vela_engine::interop::catch_export_panic(
-                                &__vela_callable,
-                                || ::vela_engine::typed::IntoNativeReturn::into_native_return(
-                                    #call_target(
-                                        __vela_receiver,
-                                        #(#argument_names),*
-                                    )
-                                ),
-                            )
-                        })());
-                        Ok(())
-                    },
-                );
-                if let Err(__vela_error) = __vela_lease_result {
-                    if matches!(
-                        &__vela_error.kind,
-                        ::vela_host::error::HostErrorKind::HostLeaseUnsupported { path }
-                            if path.root == receiver.root
-                    ) {
-                        return ::vela_engine::host_call::call_registered_host_method_through_adapter(
-                            receiver,
-                            args,
-                            __vela_method_id,
-                            host,
-                        );
+                let __vela_receiver_root =
+                    __vela_scoped_receiver.unwrap_or(receiver.root);
+                let __vela_call_result = (|| -> ::vela_vm::error::VmResult<
+                    ::vela_vm::owned_value::OwnedValue
+                > {
+                    let __vela_lease_requests =
+                        __vela_plan.prepare_method(__vela_receiver_root, args)?;
+                    let mut __vela_result = None;
+                    let __vela_lease_result = host.adapter.with_host_leases(
+                        &__vela_lease_requests,
+                        &mut |__vela_erased_leases, _leased_adapter| {
+                            __vela_result = Some((|| -> ::vela_vm::error::VmResult<
+                                ::vela_vm::owned_value::OwnedValue
+                            > {
+                                let mut __vela_leases = __vela_erased_leases.iter_mut();
+                                #receiver_binding
+                                #(#argument_bindings)*
+                                ::vela_engine::interop::catch_export_panic(
+                                    &__vela_callable,
+                                    || ::vela_engine::typed::IntoNativeReturn::into_native_return(
+                                        #call_target(
+                                            __vela_receiver,
+                                            #(#argument_names),*
+                                        )
+                                    ),
+                                )
+                            })());
+                            Ok(())
+                        },
+                    );
+                    if let Err(__vela_error) = __vela_lease_result {
+                        if __vela_scoped_receiver.is_none() && matches!(
+                            &__vela_error.kind,
+                            ::vela_host::error::HostErrorKind::HostLeaseUnsupported { path }
+                                if path.root == receiver.root
+                        ) {
+                            return ::vela_engine::host_call::call_registered_host_method_through_adapter(
+                                receiver,
+                                args,
+                                __vela_method_id,
+                                host,
+                            );
+                        }
+                        return Err(__vela_error.into());
                     }
-                    return Err(__vela_error.into());
+                    __vela_result.expect("host lease callback must run exactly once")
+                })();
+                if let Some(__vela_scoped_receiver) = __vela_scoped_receiver {
+                    if let Err(__vela_release_error) =
+                        host.adapter.release_scoped_host(__vela_scoped_receiver)
+                    {
+                        if __vela_call_result.is_ok() {
+                            return Err(__vela_release_error.into());
+                        }
+                    }
                 }
-                __vela_result.expect("host lease callback must run exactly once")
+                __vela_call_result
             })
         }
     })

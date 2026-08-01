@@ -303,6 +303,9 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
             ) -> ::vela_host::error::HostResult<
                 Option<::vela_host::lease::ScopedHostDependent<'_>>
             > {
+                if target.offset >= target.plan.parts.len() {
+                    return Ok(Some(::vela_host::lease::shared_scoped_host(self)));
+                }
                 if let Some((
                     ::vela_host::resolved::PreparedHostStep::Field(slot),
                     child_access,
@@ -328,6 +331,9 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
             ) -> ::vela_host::error::HostResult<
                 Option<::vela_host::lease::ScopedHostDependent<'_>>
             > {
+                if target.offset >= target.plan.parts.len() {
+                    return Ok(Some(::vela_host::lease::exclusive_scoped_host(self)));
+                }
                 if let Some((
                     ::vela_host::resolved::PreparedHostStep::Field(slot),
                     child_access,

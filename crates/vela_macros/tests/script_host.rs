@@ -169,6 +169,15 @@ struct EquipmentState {
     equipment: BTreeMap<i64, EquipmentRecord>,
 }
 
+#[vela_macros::methods(path = "game::script::EquipmentState")]
+impl EquipmentState {
+    pub fn mark_all_legendary(&mut self) {
+        for equipment in self.equipment.values_mut() {
+            equipment.quality = 100;
+        }
+    }
+}
+
 #[derive(Debug, ScriptHost)]
 #[vela(path = "game::script::PlayerState", fields)]
 struct PlayerState {
@@ -305,12 +314,14 @@ fn script_host_deref_projection_supports_live_iteration_and_write_through() {
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
         .register_type::<ActorState>()
+        .register_exports(EquipmentState::vela_inherent_exports())
         .build()
         .expect("projected host graph should seal");
     let program = engine
         .compile_source(
             r#"
 fn upgrade(actor: ActorState) {
+    actor.player.equipment.mark_all_legendary();
     actor.player.equipment.equipment[7i64].quality += 1;
     for pair in actor.player.equipment.equipment {
         let entry = pair.value;
@@ -355,8 +366,8 @@ fn upgrade(actor: ActorState) {
         .expect("projected mutation should execute");
 
     assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(0)));
-    assert_eq!(actor.player.equipment.value.equipment[&7].quality, 5);
-    assert_eq!(actor.player.equipment.value.equipment[&9].quality, 6);
+    assert_eq!(actor.player.equipment.value.equipment[&7].quality, 102);
+    assert_eq!(actor.player.equipment.value.equipment[&9].quality, 101);
     assert!(
         actor.player.equipment.mutation_count > 0,
         "write-through must pass through DerefMut so persistence wrappers observe mutation",
