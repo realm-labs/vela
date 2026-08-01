@@ -3830,6 +3830,22 @@ verified MIR call targets, not the provisional signatures used before MIR
 lowering. This keeps nested async IO/Host/Service calls inside the same Engine,
 scope-policy, artifact, and Service ceilings.
 
+### Detached Runtime Reuse Pools Only Cleared Isolated State
+
+Each host `TaskScope` owns a bounded idle Runtime cache keyed by the exact
+linked-artifact allocation and Engine deployment. Returning a child drops its
+heap, VM state, Host slots, leases, generation-local owners, and root identity
+without running script code. Checkout reruns state initialization before any
+worker or continuation entry. An initialization failure discards the cached
+shell, and cache misses construct an ordinary fresh Runtime; correctness and
+generation isolation never depend on reuse.
+
+The same scope allocates monotonically increasing task IDs used only in host
+events and exposes saturating admission, terminal, continuation, and pool
+metrics. An optional observer receives structured lifecycle events, and its
+panic is contained. No ID, metrics object, observer, Runtime lease, or task
+handle enters the Vela value model.
+
 ### Detached Reflection Is Artifact Metadata, Not Invocation Authority
 
 Runtime reflection augments ordinary script function descriptors from the

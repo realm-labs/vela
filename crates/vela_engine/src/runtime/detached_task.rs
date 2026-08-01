@@ -6,7 +6,7 @@ use vela_common::{Capability, CapabilitySet};
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::{DetachedValueImage, PreparedTaskCall};
 
-use super::{CallArgs, CallOptions, Runtime, handles};
+use super::{CallArgs, CallOptions, handles};
 use crate::engine::Engine;
 use crate::task::{
     ScopedTask, TaskAuthorityCeilings, TaskCancellationReason, TaskContinuation, TaskErrorKind,
@@ -62,7 +62,14 @@ pub(super) fn admit(
         })
         .with_source_span(prepared.source_span()));
     }
+    let task_id = scope.allocate_task_id().ok_or_else(|| {
+        VmError::new(VmErrorKind::TaskAdmissionDenied {
+            reason: "task scope diagnostic identifier space is exhausted".to_owned(),
+        })
+        .with_source_span(prepared.source_span())
+    })?;
     let metadata = TaskMetadata {
+        task_id,
         caller: target.caller,
         worker: target.worker,
         worker_debug_name: target.worker_debug_name.clone(),
@@ -85,7 +92,7 @@ pub(super) fn admit(
         });
     let required = required_capabilities(detached_effects);
     let artifact_ceiling = required.with(Capability::TaskSpawn);
-    let capsule = Arc::new(match pinned_service {
+    let capsule = match pinned_service {
         Some(service) => TaskExecutionCapsule::for_service_generation(
             engine.clone(),
             Arc::clone(service.artifact()),
@@ -100,7 +107,9 @@ pub(super) fn admit(
             TaskAuthorityCeilings::ordinary(engine.capabilities(), artifact_ceiling),
             scope.policy().clone(),
         ),
-    });
+    }
+    .with_runtime_pool(scope.runtime_pool());
+    let capsule = Arc::new(capsule);
     let available = capsule.effective_capabilities();
     if !available.contains(Capability::TaskSpawn) || !available.contains_all(required) {
         let denied = required.with(Capability::TaskSpawn).difference(available);
@@ -126,15 +135,25 @@ pub(super) fn admit(
         worker_name,
         args,
     ));
-    scope
-        .host()
-        .admit(ScopedTask::new(metadata, capsule, future))
-        .map_err(|error| {
-            VmError::new(VmErrorKind::TaskAdmissionDenied {
+    let telemetry = scope.begin_task(&metadata);
+    match scope.host().admit(ScopedTask::new(
+        metadata,
+        capsule,
+        future,
+        telemetry.clone(),
+    )) {
+        Ok(()) => {
+            telemetry.admitted();
+            Ok(())
+        }
+        Err(error) => {
+            telemetry.rejected(error.clone());
+            Err(VmError::new(VmErrorKind::TaskAdmissionDenied {
                 reason: error.to_string(),
             })
-            .with_source_span(source_span)
-        })
+            .with_source_span(source_span))
+        }
+    }
 }
 
 async fn run_child(
@@ -144,9 +163,10 @@ async fn run_child(
     worker_name: String,
     args: DetachedValueImage,
 ) -> Result<DetachedValueImage, (TaskErrorKind, String)> {
-    let mut runtime =
-        Runtime::from_linked_artifact(capsule.engine().clone(), Arc::clone(capsule.artifact()))
-            .map_err(|error| (TaskErrorKind::GenerationUnavailable, error.to_string()))?;
+    let mut runtime_lease = capsule
+        .lease_runtime()
+        .map_err(|error| (TaskErrorKind::GenerationUnavailable, error.to_string()))?;
+    let runtime = runtime_lease.runtime();
     let limits = capsule.policy().child_execution_limits();
     let options = CallOptions::new(
         limits.execution_unit_limit,

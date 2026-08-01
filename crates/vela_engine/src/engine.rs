@@ -104,6 +104,10 @@ pub(crate) struct EngineParts {
 }
 
 impl Engine {
+    pub(crate) fn same_deployment(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.execution_data, &other.execution_data)
+    }
+
     #[cfg(test)]
     pub(crate) fn link_test_program(
         &self,

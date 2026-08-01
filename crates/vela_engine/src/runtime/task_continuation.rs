@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use super::{CallArgs, CallOptions, Runtime, RuntimeServiceCall, handles};
+use super::{CallArgs, CallOptions, RuntimeServiceCall, handles};
 use crate::task::{ScopedTaskCompletion, TaskErrorKind};
 
 pub(crate) fn resume_task_continuation<'host>(
@@ -17,9 +17,10 @@ pub(crate) fn resume_task_continuation<'host>(
             "completion has no sealed continuation".to_owned(),
         )
     })?;
-    let mut runtime =
-        Runtime::from_linked_artifact(capsule.engine().clone(), Arc::clone(capsule.artifact()))
-            .map_err(|error| (TaskErrorKind::GenerationUnavailable, error.to_string()))?;
+    let mut runtime_lease = capsule
+        .lease_runtime()
+        .map_err(|error| (TaskErrorKind::GenerationUnavailable, error.to_string()))?;
+    let runtime = runtime_lease.runtime();
     let service = match capsule.pinned_service().cloned() {
         Some(execution) => RuntimeServiceCall {
             dispatcher: Some(Arc::clone(execution.dispatcher())),

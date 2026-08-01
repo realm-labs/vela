@@ -134,6 +134,17 @@ impl RuntimeImpl<OwnedImage> {
         Self::builder_from_linked_artifact(engine, artifact).build()
     }
 
+    /// Drops every execution-local owner without running script code. A pooled
+    /// detached Runtime must call `initialize_detached_pool_state` before reuse.
+    pub(crate) fn clear_detached_pool_state(&mut self) {
+        debug_assert!(self.hot_reload.is_none());
+        self.state = RuntimeState::for_image(&self.image);
+    }
+
+    pub(crate) fn initialize_detached_pool_state(&mut self) -> Result<(), RuntimeBuildError> {
+        self.initialize_vm_states(RuntimeInitializationLimits::default())
+    }
+
     pub fn builder(
         engine: Engine,
         program: vela_bytecode::compiler::CompiledProgram,

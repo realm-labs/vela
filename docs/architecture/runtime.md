@@ -386,6 +386,15 @@ registered Host/Value arguments; it never receives the worker Runtime or a
 borrow held by the worker. The complete contract is
 [host-scoped detached async execution](../host-scoped-detached-async-execution-plan.md).
 
+A scope may keep a bounded idle Runtime cache keyed by exact Engine deployment
+and linked-artifact identity. Returning a Runtime clears all mutable VM, heap,
+root, HostRef, lease, extern, budget, cancellation, and tracing state; checkout
+reruns artifact initialization before executing user code. A failed reset or
+initialization discards the entry. Scope-local task IDs, structured lifecycle
+events, and saturating metrics are host observability only: observer failure is
+contained, every admitted task has one terminal worker outcome, and no ID or
+control handle becomes a Vela value.
+
 ### Execution Budget
 
 The VM charges backend-neutral execution units at explicit MIR semantic points:

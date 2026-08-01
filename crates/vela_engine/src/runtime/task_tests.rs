@@ -11,6 +11,8 @@ use crate::engine::Engine;
 
 use super::{CallArgs, CallOptions, Runtime};
 
+mod observability;
+
 #[test]
 fn scoped_task_without_host_scope_fails_deterministically() {
     let engine = Engine::builder()

@@ -21,6 +21,12 @@ use vela_vm::budget::ExecutionLimits;
 
 use crate::engine::Engine;
 
+mod observability;
+mod runtime_pool;
+
+pub(crate) use observability::TaskTelemetry;
+pub use observability::{TaskEvent, TaskEventKind, TaskId, TaskMetricsSnapshot, TaskObserver};
+
 /// Future transferred to the host lifecycle after successful admission.
 pub type ScopedTaskFuture = Pin<Box<dyn Future<Output = ScopedTaskOutcome> + Send + 'static>>;
 
@@ -46,12 +52,27 @@ pub trait ScopedTaskHost: Send + Sync {
 pub struct TaskScope {
     host: Arc<dyn ScopedTaskHost>,
     policy: TaskPolicy,
+    observability: Arc<observability::TaskObservability>,
+    runtime_pool: runtime_pool::DetachedRuntimePool,
 }
 
 impl TaskScope {
     #[must_use]
     pub fn new(host: Arc<dyn ScopedTaskHost>, policy: TaskPolicy) -> Self {
-        Self { host, policy }
+        let runtime_pool = runtime_pool::DetachedRuntimePool::new(policy.max_active_tasks.get());
+        Self {
+            host,
+            policy,
+            observability: Arc::new(observability::TaskObservability::default()),
+            runtime_pool,
+        }
+    }
+
+    /// Installs a host-owned sink for structured detached-task lifecycle events.
+    #[must_use]
+    pub fn with_observer(mut self, observer: Arc<dyn TaskObserver>) -> Self {
+        self.observability = Arc::new(observability::TaskObservability::new(Some(observer)));
+        self
     }
 
     #[must_use]
@@ -63,6 +84,30 @@ impl TaskScope {
     pub const fn policy(&self) -> &TaskPolicy {
         &self.policy
     }
+
+    /// Returns one saturating, lock-free metrics snapshot for this scope.
+    #[must_use]
+    pub fn metrics(&self) -> TaskMetricsSnapshot {
+        let mut metrics = self.observability.metrics();
+        let pool = self.runtime_pool.metrics();
+        metrics.runtime_pool_hits = pool.hits;
+        metrics.runtime_pool_misses = pool.misses;
+        metrics.runtime_pool_returns = pool.returns;
+        metrics.runtime_pool_discards = pool.discards;
+        metrics
+    }
+
+    pub(crate) fn allocate_task_id(&self) -> Option<TaskId> {
+        self.observability.allocate_task_id()
+    }
+
+    pub(crate) fn begin_task(&self, metadata: &TaskMetadata) -> TaskTelemetry {
+        self.observability.begin_task(metadata)
+    }
+
+    pub(crate) fn runtime_pool(&self) -> runtime_pool::DetachedRuntimePool {
+        self.runtime_pool.clone()
+    }
 }
 
 impl fmt::Debug for TaskScope {
@@ -70,13 +115,16 @@ impl fmt::Debug for TaskScope {
         formatter
             .debug_struct("TaskScope")
             .field("policy", &self.policy)
+            .field("metrics", &self.metrics())
             .finish_non_exhaustive()
     }
 }
 
 impl PartialEq for TaskScope {
     fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.host, &other.host) && self.policy == other.policy
+        Arc::ptr_eq(&self.host, &other.host)
+            && self.policy == other.policy
+            && Arc::ptr_eq(&self.observability, &other.observability)
     }
 }
 
@@ -259,6 +307,7 @@ pub struct TaskExecutionCapsule {
     generation: TaskGeneration,
     effective_capabilities: CapabilitySet,
     pinned_service: Option<crate::service::PinnedServiceExecution>,
+    runtime_pool: runtime_pool::DetachedRuntimePool,
 }
 
 impl TaskExecutionCapsule {
@@ -319,6 +368,7 @@ impl TaskExecutionCapsule {
     ) -> Self {
         let effective_capabilities =
             ceilings.effective(engine.capabilities(), policy.capabilities());
+        let runtime_pool = runtime_pool::DetachedRuntimePool::new(policy.max_active_tasks().get());
         Self {
             engine,
             artifact,
@@ -326,7 +376,22 @@ impl TaskExecutionCapsule {
             generation,
             effective_capabilities,
             pinned_service,
+            runtime_pool,
         }
+    }
+
+    pub(crate) fn with_runtime_pool(
+        mut self,
+        runtime_pool: runtime_pool::DetachedRuntimePool,
+    ) -> Self {
+        self.runtime_pool = runtime_pool;
+        self
+    }
+
+    pub(crate) fn lease_runtime(
+        &self,
+    ) -> Result<runtime_pool::DetachedRuntimeLease, crate::runtime::RuntimeBuildError> {
+        self.runtime_pool.lease(&self.engine, &self.artifact)
     }
 
     #[must_use]
@@ -381,6 +446,7 @@ pub struct TaskContinuation {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TaskMetadata {
+    pub task_id: TaskId,
     pub caller: FunctionId,
     pub worker: FunctionId,
     pub worker_debug_name: String,
@@ -394,6 +460,7 @@ pub struct ScopedTask {
     metadata: TaskMetadata,
     capsule: Arc<TaskExecutionCapsule>,
     future: ScopedTaskFuture,
+    telemetry: TaskTelemetry,
 }
 
 impl ScopedTask {
@@ -402,6 +469,7 @@ impl ScopedTask {
         metadata: TaskMetadata,
         capsule: Arc<TaskExecutionCapsule>,
         worker: ScopedWorkerFuture,
+        telemetry: TaskTelemetry,
     ) -> Self {
         assert_eq!(metadata.generation, capsule.generation());
         let deadline = Instant::now()
@@ -411,11 +479,14 @@ impl ScopedTask {
             worker: Some(worker),
             metadata: metadata.clone(),
             deadline,
+            telemetry: telemetry.clone(),
+            terminal_reported: false,
         });
         Self {
             metadata,
             capsule,
             future,
+            telemetry,
         }
     }
 
@@ -442,6 +513,7 @@ impl ScopedTask {
             metadata,
             capsule,
             future,
+            telemetry,
         } = self;
         Box::pin(async move {
             let outcome = future.await;
@@ -450,6 +522,7 @@ impl ScopedTask {
                 capsule,
                 outcome,
                 continuation_eligible: true,
+                telemetry,
             }
         })
     }
@@ -471,6 +544,7 @@ impl ScopedTask {
                 capsule: Arc::clone(&self.capsule),
                 outcome,
                 continuation_eligible: true,
+                telemetry: self.telemetry.clone(),
             }),
         }
     }
@@ -484,7 +558,9 @@ impl ScopedTask {
             metadata,
             capsule,
             future,
+            telemetry,
         } = self;
+        telemetry.worker_cancelled(reason);
         drop(future);
         drop(capsule);
         ScopedTaskOutcome::Failed(TaskError {
@@ -502,13 +578,16 @@ impl ScopedTask {
             metadata,
             capsule,
             future,
+            telemetry,
         } = self;
+        telemetry.worker_cancelled(reason);
         drop(future);
         ScopedTaskCompletion {
             outcome: cancelled_outcome(&metadata, reason),
             metadata,
             capsule,
             continuation_eligible: false,
+            telemetry,
         }
     }
 }
@@ -536,6 +615,7 @@ pub struct ScopedTaskCompletion {
     capsule: Arc<TaskExecutionCapsule>,
     outcome: ScopedTaskOutcome,
     continuation_eligible: bool,
+    telemetry: TaskTelemetry,
 }
 
 impl ScopedTaskCompletion {
@@ -560,6 +640,7 @@ impl ScopedTaskCompletion {
     pub fn cancel(mut self, reason: TaskCancellationReason) -> Self {
         self.outcome = cancelled_outcome(&self.metadata, reason);
         self.continuation_eligible = false;
+        self.telemetry.continuation_suppressed();
         self
     }
 
@@ -574,23 +655,36 @@ impl ScopedTaskCompletion {
         options: crate::runtime::CallOptions,
     ) -> TaskContinuationOutcome {
         if !self.continuation_eligible || self.metadata.continuation.is_none() {
+            if self.metadata.continuation.is_some() {
+                self.telemetry.continuation_suppressed();
+            }
             return TaskContinuationOutcome::NotRequested;
         }
         let metadata = self.metadata.clone();
+        let telemetry = self.telemetry.clone();
         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             crate::runtime::resume_task_continuation(self, args, options)
         })) {
-            Ok(Ok(())) => TaskContinuationOutcome::Completed,
-            Ok(Err((kind, detail))) => TaskContinuationOutcome::Failed(Box::new(TaskError {
-                kind,
-                metadata,
-                detail,
-            })),
-            Err(payload) => TaskContinuationOutcome::Failed(Box::new(TaskError {
-                kind: TaskErrorKind::ContinuationPanicked,
-                metadata,
-                detail: panic_detail(payload.as_ref()),
-            })),
+            Ok(Ok(())) => {
+                telemetry.continuation_completed();
+                TaskContinuationOutcome::Completed
+            }
+            Ok(Err((kind, detail))) => {
+                telemetry.continuation_failed(kind.clone());
+                TaskContinuationOutcome::Failed(Box::new(TaskError {
+                    kind,
+                    metadata,
+                    detail,
+                }))
+            }
+            Err(payload) => {
+                telemetry.continuation_failed(TaskErrorKind::ContinuationPanicked);
+                TaskContinuationOutcome::Failed(Box::new(TaskError {
+                    kind: TaskErrorKind::ContinuationPanicked,
+                    metadata,
+                    detail: panic_detail(payload.as_ref()),
+                }))
+            }
         }
     }
 
@@ -632,6 +726,8 @@ struct ContainedTaskFuture {
     worker: Option<ScopedWorkerFuture>,
     metadata: TaskMetadata,
     deadline: Instant,
+    telemetry: TaskTelemetry,
+    terminal_reported: bool,
 }
 
 impl Future for ContainedTaskFuture {
@@ -641,6 +737,9 @@ impl Future for ContainedTaskFuture {
         let this = self.get_mut();
         if Instant::now() >= this.deadline {
             this.worker.take();
+            this.terminal_reported = true;
+            this.telemetry
+                .worker_failed(TaskErrorKind::DeadlineExceeded);
             return Poll::Ready(ScopedTaskOutcome::Failed(TaskError {
                 kind: TaskErrorKind::DeadlineExceeded,
                 metadata: this.metadata.clone(),
@@ -648,6 +747,8 @@ impl Future for ContainedTaskFuture {
             }));
         }
         let Some(worker) = this.worker.as_mut() else {
+            this.terminal_reported = true;
+            this.telemetry.worker_failed(TaskErrorKind::WorkerTrap);
             return Poll::Ready(ScopedTaskOutcome::Failed(TaskError {
                 kind: TaskErrorKind::WorkerTrap,
                 metadata: this.metadata.clone(),
@@ -657,13 +758,20 @@ impl Future for ContainedTaskFuture {
         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             worker.as_mut().poll(context)
         })) {
-            Ok(Poll::Pending) => Poll::Pending,
+            Ok(Poll::Pending) => {
+                this.telemetry.worker_pending();
+                Poll::Pending
+            }
             Ok(Poll::Ready(Ok(image))) => {
                 this.worker.take();
+                this.terminal_reported = true;
+                this.telemetry.worker_completed();
                 Poll::Ready(ScopedTaskOutcome::Completed(image))
             }
             Ok(Poll::Ready(Err((kind, detail)))) => {
                 this.worker.take();
+                this.terminal_reported = true;
+                this.telemetry.worker_failed(kind.clone());
                 Poll::Ready(ScopedTaskOutcome::Failed(TaskError {
                     kind,
                     metadata: this.metadata.clone(),
@@ -672,12 +780,24 @@ impl Future for ContainedTaskFuture {
             }
             Err(payload) => {
                 this.worker.take();
+                this.terminal_reported = true;
+                this.telemetry.worker_failed(TaskErrorKind::WorkerPanicked);
                 Poll::Ready(ScopedTaskOutcome::Failed(TaskError {
                     kind: TaskErrorKind::WorkerPanicked,
                     metadata: this.metadata.clone(),
                     detail: panic_detail(payload.as_ref()),
                 }))
             }
+        }
+    }
+}
+
+impl Drop for ContainedTaskFuture {
+    fn drop(&mut self) {
+        if !self.terminal_reported {
+            self.telemetry.worker_dropped();
+            self.worker.take();
+            self.terminal_reported = true;
         }
     }
 }
