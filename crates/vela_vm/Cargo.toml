@@ -23,7 +23,7 @@ serde = ["dep:serde"]
 
 [dev-dependencies]
 vela_bytecode = { workspace = true, features = ["test-support"] }
-mlua = { version = "0.11.4", features = ["lua54", "vendored"] }
+mlua = { version = "0.12.0", features = ["lua54", "vendored"] }
 rhai = "1.25.1"
 serde_json = { workspace = true }
 vela_hir = { workspace = true }
