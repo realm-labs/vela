@@ -159,14 +159,25 @@ impl InventoryHotfix {
 }
 
 #[test]
-fn source_manifest_rejects_compiled_effects_above_the_rust_ceiling() {
+fn source_manifest_rejects_compiled_effects_above_the_patch_ceiling() {
     let app = TestServices::builder(
         vela_engine::engine::Engine::builder().with_time_clock(1_700_000_000, 42),
     )
+    .task_scope(crate::support::dropping_task_scope())
+    .emergency_patch_effect_ceiling(vela_engine::native::EffectSet::task_spawn())
     .inventory(RustInventoryService)
     .build()
     .expect("service domain with time capability");
     let schema = app.domain().schema().clone();
+    let method = &schema.services()[0].methods()[0];
+    assert_eq!(
+        method.callable.effects,
+        vela_engine::native::EffectSet::pure()
+    );
+    assert_eq!(
+        method.patch_effect_ceiling,
+        vela_engine::native::EffectSet::task_spawn()
+    );
     let engine = app.engine();
     let text = r#"
 #[service_impl(test::inventory)]
@@ -189,7 +200,7 @@ impl InventoryHotfix {
     assert!(matches!(
         manifest
             .validate_artifact(&artifact)
-            .expect_err("time effect must exceed the pure Rust method ceiling")
+            .expect_err("time effect must exceed the explicit patch ceiling")
             .kind(),
         ServiceSourceErrorKind::EffectCeilingExceeded { .. }
     ));
@@ -313,6 +324,8 @@ fn engine() -> vela_engine::engine::Engine {
 
 fn service_app(builder: vela_engine::builder::EngineBuilder) -> TestServicesApp {
     TestServices::builder(builder)
+        .task_scope(crate::support::dropping_task_scope())
+        .emergency_patch_effect_ceiling(crate::support::emergency_patch_effect_ceiling())
         .inventory(RustInventoryService)
         .build()
         .expect("generated service domain")

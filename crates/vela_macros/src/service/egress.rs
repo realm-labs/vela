@@ -55,7 +55,7 @@ pub(super) fn emit_scoped_adapter_method(
             let Some(__vela_target) = self.#target_ident.as_ref() else {
                 return #default_call;
             };
-            let __vela_result = match self.__vela_runtime.lease(
+            let __vela_result = match self.__vela_execution.runtime().lease(
                 __vela_target.artifact(),
             ) {
                 Ok(mut __vela_runtime_lease) => {
@@ -65,8 +65,8 @@ pub(super) fn emit_scoped_adapter_method(
                     __vela_target.method().call_scoped_with_dispatcher(
                         __vela_runtime,
                         __vela_args,
-                        self.__vela_options.clone(),
-                        ::std::sync::Arc::clone(&self.__vela_dispatcher),
+                        self.__vela_execution.call_options().clone(),
+                        self.__vela_execution.clone(),
                         ::vela_engine::runtime::ServiceScopedReturnEgress::new(
                             &__vela_return_origin_identity,
                             #envelope_token,

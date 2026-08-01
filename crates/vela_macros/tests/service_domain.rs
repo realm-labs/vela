@@ -64,6 +64,8 @@ pub struct AsyncGameLogic {
 #[test]
 fn generated_domain_builds_engine_and_instance_defaults_together() {
     let app = GameLogic::builder(vela_engine::engine::Engine::builder())
+        .task_scope(crate::support::task_scope())
+        .emergency_patch_effect_ceiling(crate::support::patch_ceiling())
         .reward(RustRewardService { offset: 4 })
         .inventory(RustInventoryService { capacity: 23 })
         .build()
@@ -85,6 +87,8 @@ fn generated_domain_builds_engine_and_instance_defaults_together() {
 #[test]
 fn generated_domain_requires_every_default_instance() {
     let error = match GameLogic::builder(vela_engine::engine::Engine::builder())
+        .task_scope(crate::support::task_scope())
+        .emergency_patch_effect_ceiling(crate::support::patch_ceiling())
         .reward(RustRewardService { offset: 1 })
         .build()
     {
@@ -102,8 +106,50 @@ fn generated_domain_requires_every_default_instance() {
 }
 
 #[test]
+fn generated_domain_requires_explicit_task_scope_and_patch_ceiling() {
+    let missing_scope = GameLogic::builder(vela_engine::engine::Engine::builder())
+        .emergency_patch_effect_ceiling(crate::support::patch_ceiling())
+        .reward(RustRewardService { offset: 1 })
+        .inventory(RustInventoryService { capacity: 2 })
+        .build()
+        .err()
+        .expect("scope is a required Service application authority");
+    assert!(matches!(
+        missing_scope,
+        vela_engine::service::ServiceDomainBuildError::MissingTaskScope { .. }
+    ));
+
+    let missing_ceiling = GameLogic::builder(vela_engine::engine::Engine::builder())
+        .task_scope(crate::support::task_scope())
+        .reward(RustRewardService { offset: 1 })
+        .inventory(RustInventoryService { capacity: 2 })
+        .build()
+        .err()
+        .expect("patch ceiling is a required Service schema authority");
+    assert!(matches!(
+        missing_ceiling,
+        vela_engine::service::ServiceDomainBuildError::MissingPatchEffectCeiling { .. }
+    ));
+
+    let missing_spawn = GameLogic::builder(vela_engine::engine::Engine::builder())
+        .task_scope(crate::support::task_scope())
+        .emergency_patch_effect_ceiling(vela_engine::native::EffectSet::host_write())
+        .reward(RustRewardService { offset: 1 })
+        .inventory(RustInventoryService { capacity: 2 })
+        .build()
+        .err()
+        .expect("every emergency Service ceiling includes TaskSpawn");
+    assert!(matches!(
+        missing_spawn,
+        vela_engine::service::ServiceDomainBuildError::PatchEffectCeilingMissingTaskSpawn { .. }
+    ));
+}
+
+#[test]
 fn generated_async_default_uses_object_safe_send_dispatch() {
     let app = AsyncGameLogic::builder(vela_engine::engine::Engine::builder())
+        .task_scope(crate::support::task_scope())
+        .emergency_patch_effect_ceiling(crate::support::patch_ceiling())
         .reward(RustAsyncRewardService { offset: 2 })
         .build()
         .expect("async service domain");

@@ -86,6 +86,13 @@ use vm_states::RuntimeValueRoots;
 pub type Runtime = RuntimeImpl<OwnedImage>;
 pub type SharedRuntime = RuntimeImpl<SharedImage>;
 
+#[derive(Default)]
+struct RuntimeServiceCall {
+    dispatcher: Option<std::sync::Arc<dyn crate::service::ServiceCallDispatcher>>,
+    pinned: Option<crate::service::PinnedServiceExecution>,
+    scoped_return: Option<ServiceScopedReturnEgress>,
+}
+
 pub struct RuntimeImpl<I = OwnedImage>
 where
     I: RuntimeImageStorage,
@@ -329,8 +336,10 @@ where
             args,
             options,
             allow_async_entry,
-            service_dispatcher,
-            None,
+            RuntimeServiceCall {
+                dispatcher: service_dispatcher,
+                ..RuntimeServiceCall::default()
+            },
         )
     }
 
@@ -340,8 +349,7 @@ where
         args: CallArgs<'host>,
         options: CallOptions,
         allow_async_entry: bool,
-        service_dispatcher: Option<std::sync::Arc<dyn crate::service::ServiceCallDispatcher>>,
-        service_scoped_return: Option<ServiceScopedReturnEgress>,
+        service: RuntimeServiceCall,
     ) -> VmResult<VelaValue>
     where
         T: RuntimeCallTarget,
@@ -370,8 +378,9 @@ where
             target,
             args,
             budget: &mut budget,
-            service_dispatcher,
-            service_scoped_return,
+            service_dispatcher: service.dispatcher,
+            pinned_service: service.pinned,
+            service_scoped_return: service.scoped_return,
             task_scope,
         })
     }
@@ -395,13 +404,13 @@ where
         entry: T,
         args: CallArgs<'args>,
         options: CallOptions,
-        service_dispatcher: Option<std::sync::Arc<dyn crate::service::ServiceCallDispatcher>>,
+        pinned_service: Option<crate::service::PinnedServiceExecution>,
     ) -> VmResult<VelaValue>
     where
         T: RuntimeCallTarget + Send + 'call,
         'args: 'call,
     {
-        self.call_impl_async_with_budget(entry, args, options, service_dispatcher)
+        self.call_impl_async_with_budget(entry, args, options, pinned_service)
             .await
             .map(|(value, _)| value)
     }
@@ -411,13 +420,16 @@ where
         entry: T,
         args: CallArgs<'args>,
         options: CallOptions,
-        service_dispatcher: Option<std::sync::Arc<dyn crate::service::ServiceCallDispatcher>>,
+        pinned_service: Option<crate::service::PinnedServiceExecution>,
     ) -> VmResult<(VelaValue, ExecutionBudget)>
     where
         T: RuntimeCallTarget + Send + 'call,
         'args: 'call,
     {
         let task_scope = options.task_scope().cloned();
+        let service_dispatcher = pinned_service
+            .as_ref()
+            .map(|execution| std::sync::Arc::clone(execution.dispatcher()));
         let mut budget = options.budget();
         let target = handles::call_target_sealed::Sealed::into_call_target(entry);
         let target = self.resolve_call_target(target, &mut budget)?;
@@ -437,6 +449,7 @@ where
             args,
             budget: &mut budget,
             service_dispatcher,
+            pinned_service,
             service_scoped_return: None,
             task_scope,
         })
@@ -761,6 +774,7 @@ where
                     detached_task::admit(
                         call.engine,
                         call.task_scope.as_ref(),
+                        call.pinned_service.as_ref(),
                         prepared,
                         heap.heap,
                         budget,
@@ -929,6 +943,7 @@ where
                     detached_task::admit(
                         call.engine,
                         call.task_scope.as_ref(),
+                        call.pinned_service.as_ref(),
                         prepared,
                         heap.heap,
                         budget,

@@ -436,12 +436,17 @@ fn main() -> Result<(), Box<dyn Error>> {
             .capabilities(
                 CapabilitySet::new()
                     .with(Capability::HostRead)
-                    .with(Capability::HostWrite),
+                    .with(Capability::HostWrite)
+                    .with(Capability::TaskSpawn),
             )
             .register_type::<Row>()
             .register_type::<Table>()
             .register_type::<RequestState>()
             .register_type_binding::<PatchBuffer>(patch_buffer_binding()),
+    )
+    .task_scope(vela_examples::service_tasks::scope())
+    .emergency_patch_effect_ceiling(
+        vela_examples::service_tasks::emergency_patch_effect_ceiling(),
     )
     .lookup(RustLookupService)
     .policy(RustPolicyService)

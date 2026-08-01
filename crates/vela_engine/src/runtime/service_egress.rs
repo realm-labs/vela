@@ -4,8 +4,8 @@ use vela_vm::error::{VmError, VmErrorKind, VmResult};
 
 use super::image::RuntimeImageStorage;
 use super::{
-    CallArgs, CallOptions, DirectHostIdentity, RuntimeCallFuture, RuntimeImpl, ServiceScopedReturn,
-    ServiceScopedReturnEnvelope, VelaValue, handles,
+    CallArgs, CallOptions, DirectHostIdentity, RuntimeCallFuture, RuntimeImpl, RuntimeServiceCall,
+    ServiceScopedReturn, ServiceScopedReturnEnvelope, VelaValue, handles,
 };
 
 #[doc(hidden)]
@@ -38,9 +38,9 @@ where
         diagnostic_name: impl Into<String>,
         args: CallArgs<'host>,
         options: CallOptions,
-        dispatcher: Arc<dyn crate::service::ServiceCallDispatcher>,
+        execution: crate::service::PinnedServiceExecution,
     ) -> VmResult<VelaValue> {
-        self.call_impl_with_service_dispatcher(
+        self.call_impl_with_service_egress(
             handles::StableVelaFunction {
                 function,
                 diagnostic_name: diagnostic_name.into(),
@@ -48,7 +48,11 @@ where
             args,
             options,
             false,
-            Some(dispatcher),
+            RuntimeServiceCall {
+                dispatcher: Some(Arc::clone(execution.dispatcher())),
+                pinned: Some(execution),
+                scoped_return: None,
+            },
         )
     }
 
@@ -59,7 +63,7 @@ where
         diagnostic_name: impl Into<String>,
         args: CallArgs<'host>,
         options: CallOptions,
-        dispatcher: Arc<dyn crate::service::ServiceCallDispatcher>,
+        execution: crate::service::PinnedServiceExecution,
         egress: ServiceScopedReturnEgress,
     ) -> VmResult<ServiceScopedReturn> {
         egress.identity.prepare_scoped_return();
@@ -72,8 +76,11 @@ where
             args,
             options,
             false,
-            Some(dispatcher),
-            Some(egress),
+            RuntimeServiceCall {
+                dispatcher: Some(Arc::clone(execution.dispatcher())),
+                pinned: Some(execution),
+                scoped_return: Some(egress),
+            },
         )?;
         identity.take_scoped_return().ok_or_else(|| {
             VmError::new(VmErrorKind::TypeMismatch {
@@ -88,7 +95,7 @@ where
         diagnostic_name: impl Into<String>,
         args: CallArgs<'args>,
         options: CallOptions,
-        dispatcher: Arc<dyn crate::service::ServiceCallDispatcher>,
+        execution: crate::service::PinnedServiceExecution,
     ) -> RuntimeCallFuture<'call>
     where
         'args: 'call,
@@ -104,7 +111,7 @@ where
                     },
                     args,
                     options,
-                    Some(dispatcher),
+                    Some(execution),
                 )
                 .await
             },

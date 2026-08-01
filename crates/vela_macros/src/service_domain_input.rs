@@ -28,6 +28,19 @@ pub(super) fn validate_struct(item: &ItemStruct) -> Result<()> {
     Ok(())
 }
 
+pub(super) fn validate_services_not_empty(
+    item: &ItemStruct,
+    services: &[ServiceField],
+) -> Result<()> {
+    if services.is_empty() {
+        return Err(syn::Error::new_spanned(
+            item,
+            "#[vela_macros::service_domain] requires at least one service field",
+        ));
+    }
+    Ok(())
+}
+
 pub(super) fn parse_context(attr: TokenStream) -> Result<Type> {
     let mut context = None;
     let parser = syn::meta::parser(|meta| {

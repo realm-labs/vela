@@ -762,16 +762,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
         usage: PathUsage,
         capability: ServiceLexicalCapability,
     ) {
-        if !self.service_capabilities_enabled {
-            self.diagnostics.push(
-                Diagnostic::error(
-                    "service dispatch paths are only available inside #[service_impl] methods",
-                )
-                .with_code("hir::service_capability_outside_impl")
-                .with_span(span),
-            );
-            return;
-        }
         self.service_capabilities.insert(id, capability);
         if self.current_body() != self.root_body {
             self.diagnostics.push(

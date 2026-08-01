@@ -23,8 +23,10 @@ use validation::{
 };
 
 #[doc(hidden)]
-pub type ServiceSetSchemaFactory =
-    fn(&TypeBindingRegistry) -> Result<ServiceSetSchema, ServiceSchemaError>;
+pub type ServiceSetSchemaFactory = fn(
+    &TypeBindingRegistry,
+    crate::native::EffectSet,
+) -> Result<ServiceSetSchema, ServiceSchemaError>;
 
 /// One generated service method and its complete boundary type closure.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -32,6 +34,7 @@ pub struct ServiceMethodDescriptor {
     pub id: ServiceMethodId,
     pub path: String,
     pub callable: CallableContract,
+    pub patch_effect_ceiling: crate::native::EffectSet,
     pub type_closure: Vec<ServiceTypeRequirement>,
 }
 
@@ -41,12 +44,14 @@ impl ServiceMethodDescriptor {
         id: ServiceMethodId,
         path: impl Into<String>,
         callable: CallableContract,
+        patch_effect_ceiling: crate::native::EffectSet,
         type_closure: Vec<ServiceTypeRequirement>,
     ) -> Self {
         Self {
             id,
             path: path.into(),
             callable,
+            patch_effect_ceiling,
             type_closure,
         }
     }
@@ -150,6 +155,7 @@ pub struct ServiceSetSchema {
     services: Vec<ServiceSchema>,
     abi_fingerprint: ServiceSetAbiFingerprint,
     type_binding_checksum: TypeBindingRegistryChecksum,
+    patch_effect_ceiling: crate::native::EffectSet,
 }
 
 impl ServiceSetSchema {
@@ -158,6 +164,7 @@ impl ServiceSetSchema {
         path: impl Into<String>,
         services: Vec<ServiceSchema>,
         registry: &TypeBindingRegistry,
+        patch_effect_ceiling: crate::native::EffectSet,
     ) -> Result<Self, ServiceSchemaError> {
         let named = services
             .into_iter()
@@ -171,7 +178,7 @@ impl ServiceSetSchema {
                 (name, service)
             })
             .collect();
-        Self::new_named(id, path, named, registry)
+        Self::new_named(id, path, named, registry, patch_effect_ceiling)
     }
 
     pub fn new_named(
@@ -179,6 +186,7 @@ impl ServiceSetSchema {
         path: impl Into<String>,
         named_services: Vec<(String, ServiceSchema)>,
         registry: &TypeBindingRegistry,
+        patch_effect_ceiling: crate::native::EffectSet,
     ) -> Result<Self, ServiceSchemaError> {
         let path = path.into();
         validate_qualified_path(&path, ServicePathKind::ServiceSet)?;
@@ -224,6 +232,7 @@ impl ServiceSetSchema {
             services,
             abi_fingerprint,
             type_binding_checksum: registry.checksum(),
+            patch_effect_ceiling,
         })
     }
 
@@ -265,6 +274,11 @@ impl ServiceSetSchema {
         self.type_binding_checksum
     }
 
+    #[must_use]
+    pub const fn patch_effect_ceiling(&self) -> crate::native::EffectSet {
+        self.patch_effect_ceiling
+    }
+
     #[doc(hidden)]
     #[must_use]
     pub fn compilation_schema(
@@ -293,6 +307,7 @@ impl ServiceSetSchema {
                                 .expect("sealed service arity fits u32"),
                             method.callable.asyncness,
                             service_compile_effect(method.callable.effects),
+                            service_compile_effect(method.patch_effect_ceiling),
                         )
                     }),
                 )
@@ -886,9 +901,10 @@ fn service_abi_fingerprint(
                 .collect::<Vec<_>>();
             closure.sort_unstable();
             format!(
-                "{:032x}:{:016x}:{}",
+                "{:032x}:{:016x}:{:04x}:{}",
                 method.id.get(),
                 method.callable.abi_fingerprint().get(),
+                method.patch_effect_ceiling.bits(),
                 closure.join(",")
             )
         })
@@ -995,6 +1011,7 @@ mod tests {
                     source_span: None,
                 },
             },
+            EffectSet::task_spawn(),
             vec![amount, returns],
         )
     }
@@ -1014,6 +1031,7 @@ mod tests {
             "game::services",
             vec![schema.clone()],
             &registry,
+            EffectSet::task_spawn(),
         )
         .expect("complete service set");
 
@@ -1042,6 +1060,7 @@ mod tests {
                 ("reward".to_owned(), schema.clone()),
             ],
             &registry,
+            EffectSet::task_spawn(),
         )
         .expect_err("duplicate member names must fail");
         assert!(matches!(
@@ -1055,6 +1074,7 @@ mod tests {
             "game::services",
             vec![("bad-name".to_owned(), schema)],
             &registry,
+            EffectSet::task_spawn(),
         )
         .expect_err("invalid member names must fail");
         assert!(matches!(

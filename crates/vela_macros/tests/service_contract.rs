@@ -23,8 +23,11 @@ fn generated_service_contract_seals_against_its_registration_bundle() {
     let engine = __vela_register_service_RewardService(vela_engine::engine::Engine::builder())
         .build()
         .expect("generated service type closure should seal");
-    let schema = __vela_service_schema_RewardService(&engine.type_bindings())
-        .expect("generated schema should match the sealed registry");
+    let schema = __vela_service_schema_RewardService(
+        &engine.type_bindings(),
+        vela_engine::native::EffectSet::task_spawn(),
+    )
+    .expect("generated schema should match the sealed registry");
 
     assert_eq!(schema.path(), "game::reward");
     assert_eq!(schema.methods().len(), 2);

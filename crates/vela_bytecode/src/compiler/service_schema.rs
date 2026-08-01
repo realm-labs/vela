@@ -81,7 +81,8 @@ pub struct ServiceCompilationMethod {
     pub name: String,
     pub parameter_count: u32,
     pub asyncness: CallableAsyncness,
-    pub effect: MirEffect,
+    pub rust_default_effect: MirEffect,
+    pub patch_effect_ceiling: MirEffect,
 }
 
 impl ServiceCompilationMethod {
@@ -91,14 +92,16 @@ impl ServiceCompilationMethod {
         name: impl Into<String>,
         parameter_count: u32,
         asyncness: CallableAsyncness,
-        effect: MirEffect,
+        rust_default_effect: MirEffect,
+        patch_effect_ceiling: MirEffect,
     ) -> Self {
         Self {
             id,
             name: name.into(),
             parameter_count,
             asyncness,
-            effect,
+            rust_default_effect,
+            patch_effect_ceiling,
         }
     }
 }

@@ -2,7 +2,9 @@ use std::alloc::System;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::hint::black_box;
-use std::time::Instant;
+use std::num::{NonZeroU64, NonZeroUsize};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use stats_alloc::{INSTRUMENTED_SYSTEM, Region, StatsAlloc};
 use vela_common::{HostObjectId, SourceId};
@@ -16,10 +18,12 @@ use vela_engine::interop::{
 use vela_engine::permission::Capability;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_engine::service::{Service, ServiceRuntimeBinding, ServiceSourceManifest};
+use vela_engine::task::{ScopedTask, ScopedTaskHost, TaskAdmissionError, TaskPolicy, TaskScope};
 use vela_hir::source_ingestion::build_single_source;
 use vela_host::lease::HostLeaseKind;
 use vela_host::path::HostRef;
 use vela_macros::{ScriptHost, ScriptReflect, export, methods, service, service_domain};
+use vela_vm::budget::{CollectionLimits, ExecutionLimits};
 use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
@@ -171,6 +175,39 @@ pub struct BoundaryServices {
     pub boundary: Service<dyn BoundaryDefaultService>,
 }
 
+struct DroppingTaskHost;
+
+impl ScopedTaskHost for DroppingTaskHost {
+    fn admit(&self, task: ScopedTask) -> Result<(), TaskAdmissionError> {
+        drop(task);
+        Ok(())
+    }
+}
+
+fn task_scope() -> TaskScope {
+    let limits = ExecutionLimits {
+        execution_unit_limit: 100_000,
+        memory_limit_bytes: 1024 * 1024,
+        max_call_depth: 64,
+        collection_limits: CollectionLimits {
+            max_array_len: 4096,
+            max_map_entries: 4096,
+            max_set_len: 4096,
+        },
+        host_call_limit: 128,
+    };
+    let policy = TaskPolicy::new(
+        NonZeroUsize::new(4).expect("non-zero"),
+        NonZeroUsize::new(4).expect("non-zero"),
+        limits,
+        NonZeroU64::new(128).expect("non-zero"),
+        Duration::from_secs(5),
+        vela_common::CapabilitySet::all(),
+    )
+    .expect("finite benchmark task policy");
+    TaskScope::new(Arc::new(DroppingTaskHost), policy)
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let iterations = if std::env::args().any(|argument| argument == "--stable") {
         STABLE_ITERATIONS
@@ -183,7 +220,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let app = BoundaryServices::builder(
         Engine::builder()
             .capability(Capability::HostWrite)
+            .capability(Capability::TaskSpawn)
             .register_type::<BoundaryHost>(),
+    )
+    .task_scope(task_scope())
+    .emergency_patch_effect_ceiling(
+        vela_engine::native::EffectSet::task_spawn()
+            .union(vela_engine::native::EffectSet::host_write()),
     )
     .boundary(RustBoundaryDefaultService)
     .build()?;

@@ -2,13 +2,12 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Fields, ItemStruct, Result, parse2};
 
-use crate::service_domain_input::{parse_context, parse_service_field, validate_struct};
+use crate::service_domain_input::{
+    parse_context, parse_service_field, validate_services_not_empty, validate_struct,
+};
 
 pub(crate) fn expand(attr: TokenStream, input: TokenStream) -> TokenStream {
-    match expand_result(attr, input) {
-        Ok(tokens) => tokens,
-        Err(error) => error.to_compile_error(),
-    }
+    expand_result(attr, input).unwrap_or_else(|error| error.to_compile_error())
 }
 
 fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
@@ -23,12 +22,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         .iter()
         .map(parse_service_field)
         .collect::<Result<Vec<_>>>()?;
-    if services.is_empty() {
-        return Err(syn::Error::new_spanned(
-            &item,
-            "#[vela_macros::service_domain] requires at least one service field",
-        ));
-    }
+    validate_services_not_empty(&item, &services)?;
 
     let set_ident = &item.ident;
     let generation_ident = format_ident!("__{set_ident}Generation");
@@ -42,31 +36,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let candidate_ident = format_ident!("{set_ident}Candidate");
     let rollback_ident = format_ident!("{set_ident}Rollback");
     let dispatcher_ident = format_ident!("__VelaServiceDispatcher{set_ident}");
-    let marker_uses = services.iter().map(|service| {
-        let marker = &service.marker;
-        quote! {
-            const _: usize = ::core::mem::size_of::<#marker<()>>();
-        }
-    });
-    let register_calls = services.iter().map(|service| {
-        let function = service.registration_path();
-        quote! {
-            let builder = #function(builder);
-        }
-    });
-    let schema_calls = services
-        .iter()
-        .map(|service| {
-            let field = &service.field;
-            let function = service.schema_path();
-            quote! {
-                (
-                    ::std::stringify!(#field).to_owned(),
-                    #function(registry)?,
-                )
-            }
-        })
-        .collect::<Vec<_>>();
+    let marker_uses = crate::service_domain_emission::marker_uses(&services);
+    let register_calls = crate::service_domain_emission::register_calls(&services);
+    let schema_calls = crate::service_domain_emission::schema_calls(&services);
     let generation_fields = services.iter().map(|service| {
         let field = &service.field;
         let trait_path = service.dispatch_trait_path();
@@ -88,12 +60,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             #field: ::std::option::Option<::std::sync::Arc<dyn #trait_path>>
         }
     });
-    let empty_builder_fields = services.iter().map(|service| {
-        let field = &service.field;
-        quote! {
-            #field: None
-        }
-    });
+    let empty_builder_fields = crate::service_domain_emission::empty_builder_fields(&services);
     let builder_setters = services.iter().map(|service| {
         let field = &service.field;
         let trait_path = &service.trait_path;
@@ -132,12 +99,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             #field
         }
     });
-    let initial_generation_fields = services.iter().map(|service| {
-        let field = &service.field;
-        quote! {
-            #field: ::std::sync::Arc::clone(&defaults.#field)
-        }
-    });
+    let initial_generation_fields =
+        crate::service_domain_emission::default_generation_fields(&services);
+    let rust_snapshot_fields = crate::service_domain_emission::default_generation_fields(&services);
     let dispatcher_fields = services.iter().map(|service| {
         let field = &service.field;
         let trait_path = service.dispatch_trait_path();
@@ -188,9 +152,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         quote! {
             let #field: ::std::sync::Arc<dyn #trait_path> = #composition(
                 ::std::sync::Arc::clone(&defaults.#field),
-                runtime.clone(),
-                options.clone(),
-                ::std::sync::Arc::clone(&__vela_dispatcher),
+                __vela_execution.clone(),
                 &selections,
             );
         }
@@ -228,6 +190,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         #[doc(hidden)]
         fn #schema_factory_ident(
             registry: &::vela_engine::type_binding::TypeBindingRegistry,
+            patch_effect_ceiling: ::vela_engine::native::EffectSet,
         ) -> ::std::result::Result<
             ::vela_engine::service::ServiceSetSchema,
             ::vela_engine::service::ServiceSchemaError,
@@ -245,6 +208,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 path,
                 vec![#(#schema_calls),*],
                 registry,
+                patch_effect_ceiling,
             )
         }
 
@@ -262,6 +226,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             artifact: ::std::option::Option<
                 ::std::sync::Arc<::vela_engine::service::LinkedArtifact>
             >,
+            execution: ::std::option::Option<
+                ::vela_engine::service::PinnedServiceExecution
+            >,
         }
 
         impl #generation_ident {
@@ -270,6 +237,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     #(#initial_generation_fields,)*
                     selections: None,
                     artifact: None,
+                    execution: None,
                 }
             }
 
@@ -283,18 +251,40 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 artifact: ::std::option::Option<
                     ::std::sync::Arc<::vela_engine::service::LinkedArtifact>
                 >,
+                identity: ::vela_engine::service::ServiceExecutionIdentity,
             ) -> Self {
+                if artifact.is_none() {
+                    return Self {
+                        #(#rust_snapshot_fields,)*
+                        selections: Some(selections),
+                        artifact: None,
+                        execution: None,
+                    };
+                }
                 let __vela_dispatcher: ::std::sync::Arc<
                     dyn ::vela_engine::service::ServiceCallDispatcher
                 > = ::std::sync::Arc::new(#dispatcher_ident {
                     #(#dispatcher_initializers,)*
                     selections: selections.clone(),
                 });
+                let __vela_execution =
+                    ::vela_engine::service::PinnedServiceExecution::new(
+                        identity,
+                        ::std::sync::Arc::clone(&__vela_dispatcher),
+                        ::std::sync::Arc::clone(
+                            artifact.as_ref().expect(
+                                "a composed Vela Service generation owns its linked artifact"
+                            ),
+                        ),
+                        runtime,
+                        options,
+                    );
                 #(#composed_services)*
                 Self {
                     #(#generation_initializers,)*
                     selections: Some(selections),
                     artifact,
+                    execution: Some(__vela_execution),
                 }
             }
 
@@ -323,6 +313,15 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 &::std::sync::Arc<::vela_engine::service::LinkedArtifact>
             > {
                 self.artifact.as_ref()
+            }
+
+            #[must_use]
+            pub fn execution(
+                &self,
+            ) -> ::std::option::Option<
+                &::vela_engine::service::PinnedServiceExecution
+            > {
+                self.execution.as_ref()
             }
 
             #(#generation_accessors)*
@@ -532,6 +531,8 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                         16 * 1024 * 1024,
                         256,
                     ),
+                    task_scope: None,
+                    emergency_patch_effect_ceiling: None,
                     #(#empty_builder_fields,)*
                 }
             }
@@ -561,15 +562,19 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             > {
                 let artifact = update.artifact().cloned();
                 let selections = update.into_snapshot(&self.schema)?;
-                let generation = #generation_ident::__vela_composed(
-                    &self.defaults,
-                    runtime,
-                    options,
-                    selections,
-                    artifact,
-                );
                 self.controller
-                    .stage(&base.root, generation)
+                    .stage(&base.root, |generation| #generation_ident::__vela_composed(
+                        &self.defaults,
+                        runtime,
+                        options,
+                        selections,
+                        artifact,
+                        ::vela_engine::service::ServiceExecutionIdentity::new(
+                            self.schema.id(),
+                            generation,
+                            self.schema.patch_effect_ceiling().required_capability_set(),
+                        ),
+                    ))
                     .map(|candidate| #candidate_ident { candidate })
                     .map_err(::vela_engine::service::ServiceStagingError::from)
             }
@@ -605,15 +610,19 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     base.generation_id(),
                     &base_selections,
                 )?;
-                let generation = #generation_ident::__vela_composed(
-                    &self.defaults,
-                    runtime,
-                    options,
-                    selections,
-                    artifact,
-                );
                 self.controller
-                    .stage(&base.root, generation)
+                    .stage(&base.root, |generation| #generation_ident::__vela_composed(
+                        &self.defaults,
+                        runtime,
+                        options,
+                        selections,
+                        artifact,
+                        ::vela_engine::service::ServiceExecutionIdentity::new(
+                            self.schema.id(),
+                            generation,
+                            self.schema.patch_effect_ceiling().required_capability_set(),
+                        ),
+                    ))
                     .map(|candidate| #candidate_ident { candidate })
                     .map_err(::vela_engine::service::ServiceStagingError::from)
             }
@@ -671,15 +680,19 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                     base.artifact_checksum(),
                     &base_selections,
                 )?;
-                let generation = #generation_ident::__vela_composed(
-                    &self.defaults,
-                    runtime,
-                    options,
-                    selections,
-                    Some(artifact),
-                );
                 self.controller
-                    .stage(&base.root, generation)
+                    .stage(&base.root, |generation| #generation_ident::__vela_composed(
+                        &self.defaults,
+                        runtime,
+                        options,
+                        selections,
+                        Some(artifact),
+                        ::vela_engine::service::ServiceExecutionIdentity::new(
+                            self.schema.id(),
+                            generation,
+                            self.schema.patch_effect_ceiling().required_capability_set(),
+                        ),
+                    ))
                     .map(|candidate| #candidate_ident { candidate })
                     .map_err(::vela_engine::service::ServiceStagingError::from)
             }
@@ -718,6 +731,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         #vis struct #builder_ident {
             engine: ::vela_engine::builder::EngineBuilder,
             call_options: ::vela_engine::runtime::CallOptions,
+            task_scope: ::std::option::Option<::vela_engine::task::TaskScope>,
+            emergency_patch_effect_ceiling:
+                ::std::option::Option<::vela_engine::native::EffectSet>,
             #(#builder_fields,)*
         }
 
@@ -731,6 +747,21 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 self
             }
 
+            #[must_use]
+            pub fn task_scope(mut self, scope: ::vela_engine::task::TaskScope) -> Self {
+                self.task_scope = Some(scope);
+                self
+            }
+
+            #[must_use]
+            pub fn emergency_patch_effect_ceiling(
+                mut self,
+                ceiling: ::vela_engine::native::EffectSet,
+            ) -> Self {
+                self.emergency_patch_effect_ceiling = Some(ceiling);
+                self
+            }
+
             #(#builder_setters)*
 
             pub fn build(
@@ -740,19 +771,46 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 ::vela_engine::service::ServiceDomainBuildError,
             > {
                 #(#required_defaults)*
-                let engine = self.engine.build()?;
+                let task_scope = self.task_scope.ok_or(
+                    ::vela_engine::service::ServiceDomainBuildError::MissingTaskScope {
+                        domain: ::std::stringify!(#set_ident),
+                    },
+                )?;
+                let emergency_patch_effect_ceiling =
+                    self.emergency_patch_effect_ceiling.ok_or(
+                        ::vela_engine::service::ServiceDomainBuildError::MissingPatchEffectCeiling {
+                            domain: ::std::stringify!(#set_ident),
+                        },
+                    )?;
+                if !emergency_patch_effect_ceiling
+                    .contains_all(::vela_engine::native::EffectSet::task_spawn())
+                {
+                    return Err(
+                        ::vela_engine::service::ServiceDomainBuildError::PatchEffectCeilingMissingTaskSpawn {
+                            domain: ::std::stringify!(#set_ident),
+                        },
+                    );
+                }
+                let engine = self.engine
+                    .service_patch_effect_ceiling(emergency_patch_effect_ceiling)
+                    .build()?;
                 let runtime =
                     ::vela_engine::service::ServiceRuntimeBinding::for_engine(
                         engine.clone()
                     );
-                let schema = #schema_factory_ident(engine.type_bindings().as_ref())?;
+                let schema = #schema_factory_ident(
+                    engine.type_bindings().as_ref(),
+                    emergency_patch_effect_ceiling,
+                )?;
                 let id = schema.id();
                 let defaults = #defaults_ident {
                     #(#defaults_initializers,)*
                 };
-                let initial = #generation_ident::from_defaults(&defaults);
                 let domain = #set_ident {
-                    controller: ::vela_engine::service::ServiceController::new(id, initial),
+                    controller: ::vela_engine::service::ServiceController::new(
+                        id,
+                        |_| #generation_ident::from_defaults(&defaults),
+                    ),
                     schema,
                     defaults,
                     _context: ::std::marker::PhantomData,
@@ -760,7 +818,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 Ok(#app_ident {
                     engine,
                     domain,
-                    call_options: self.call_options,
+                    call_options: self.call_options.with_task_scope(task_scope),
                     runtime,
                     patch_state: ::vela_engine::service::ServicePatchState::new(
                         ::vela_common::ServiceGenerationId::new(1),
@@ -1077,6 +1135,16 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 &::std::sync::Arc<::vela_engine::service::LinkedArtifact>
             > {
                 self.root.services().artifact()
+            }
+
+            #[doc(hidden)]
+            #[must_use]
+            pub fn pinned_execution(
+                &self,
+            ) -> ::std::option::Option<
+                &::vela_engine::service::PinnedServiceExecution
+            > {
+                self.root.services().execution()
             }
 
             #(#root_accessors)*

@@ -57,6 +57,7 @@ pub struct EngineBuilder {
     stdio: bool,
     fs_io: bool,
     service_set_factories: Vec<crate::service::ServiceSetSchemaFactory>,
+    service_patch_effect_ceiling: Option<crate::native::EffectSet>,
 }
 
 impl EngineBuilder {
@@ -169,6 +170,13 @@ impl EngineBuilder {
         factory: crate::service::ServiceSetSchemaFactory,
     ) -> Self {
         self.service_set_factories.push(factory);
+        self
+    }
+
+    #[doc(hidden)]
+    #[must_use]
+    pub fn service_patch_effect_ceiling(mut self, ceiling: crate::native::EffectSet) -> Self {
+        self.service_patch_effect_ceiling = Some(ceiling);
         self
     }
 
@@ -703,11 +711,20 @@ impl EngineBuilder {
         let type_bindings = TypeBindingRegistry::seal(self.type_bindings, &types)?;
         let service_set_schema = match self.service_set_factories.as_slice() {
             [] => None,
-            [factory] => Some(factory(&type_bindings).map_err(|error| {
-                EngineError::new(EngineErrorKind::ServiceSchema {
-                    message: error.to_string(),
-                })
-            })?),
+            [factory] => {
+                let ceiling = self.service_patch_effect_ceiling.ok_or_else(|| {
+                    EngineError::new(EngineErrorKind::ServiceSchema {
+                        message:
+                            "generated Service domain requires an explicit patch effect ceiling"
+                                .to_owned(),
+                    })
+                })?;
+                Some(factory(&type_bindings, ceiling).map_err(|error| {
+                    EngineError::new(EngineErrorKind::ServiceSchema {
+                        message: error.to_string(),
+                    })
+                })?)
+            }
             factories => {
                 return Err(EngineError::new(EngineErrorKind::MultipleServiceSets {
                     count: factories.len(),

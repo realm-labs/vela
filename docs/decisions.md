@@ -3794,6 +3794,23 @@ boundary and becomes `WorkerPanicked`; it never unwinds through the host
 executor. This is host lifecycle control and does not create a script-visible
 task handle or cancellation API.
 
+### Service Detached Authority Is Owned Once Per Generation
+
+Every generated Vela-selected Service generation owns one
+`PinnedServiceExecution`. It contains the exact Service-set and generation IDs,
+linked artifact, dispatcher, Runtime binding, call options/task scope, and
+patch-effect ceiling. Generated Service adapters clone only this capsule; they
+do not own independent dispatcher, Runtime, or policy state. A detached child
+restores the capsule in its fresh Runtime, so publication during suspension
+cannot change `service::base` or `service::pinned` resolution.
+
+The schema represents Rust body effects and Vela replacement authority as
+separate `RustDefaultEffects` and `PatchEffectCeiling` facts. Generated domain
+construction requires an explicit emergency ceiling containing `TaskSpawn`;
+there is no inferred or unscoped default. Static ordinary helper/worker call
+graphs may inherit one unique Service origin. A `service::base` call with no
+origin or multiple origins is rejected before bytecode generation.
+
 ### Generated Sync Host Methods Preserve Both Sealed Representations
 
 A generated synchronous Host method invokes its typed Rust body when the

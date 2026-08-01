@@ -28,6 +28,10 @@ fn service_schema() -> ServiceCompilationSchema {
                     1,
                     CallableAsyncness::Sync,
                     MirEffect::PURE,
+                    MirEffect {
+                        task_spawn: true,
+                        ..MirEffect::PURE
+                    },
                 )],
             ),
             ServiceCompilationService::new(
@@ -40,10 +44,63 @@ fn service_schema() -> ServiceCompilationSchema {
                     1,
                     CallableAsyncness::Sync,
                     MirEffect::PURE,
+                    MirEffect::PURE,
                 )],
             ),
         ],
     )
+}
+
+#[test]
+fn detached_helpers_inherit_the_unique_originating_service_for_base_calls() {
+    let program = compile_service_program(
+        r#"
+async fn repair(value: i64) -> i64 {
+    let default = service::base::grant(value);
+    return service::pinned::audit::record(default);
+}
+
+fn admit_repair(value: i64) {
+    task::spawn_scoped(repair(value));
+}
+
+#[service_impl(game::inventory::InventoryService)]
+impl InventoryHotfix {
+    fn grant(value: i64) -> i64 {
+        admit_repair(value);
+        return value;
+    }
+}
+"#,
+    )
+    .expect("ordinary helpers and workers should inherit one Service origin");
+    let worker = program
+        .function("repair")
+        .expect("detached ordinary worker remains a static function");
+    let dispatches = worker
+        .instructions
+        .iter()
+        .filter_map(|instruction| match &instruction.kind {
+            UnlinkedInstructionKind::CallNative { native, .. } => Some(*native),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        dispatches,
+        [
+            FunctionId::new(service_dispatch_stable_id(
+                ServiceCallMode::Base,
+                INVENTORY_SERVICE,
+                INVENTORY_GRANT,
+            )),
+            FunctionId::new(service_dispatch_stable_id(
+                ServiceCallMode::Pinned,
+                AUDIT_SERVICE,
+                AUDIT_RECORD,
+            )),
+        ]
+    );
 }
 
 fn compile_service_program(source: &str) -> Result<CompiledProgram, CompileError> {

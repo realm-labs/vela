@@ -493,11 +493,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     let app = GameServices::builder(
         Engine::builder()
             .capability(Capability::HostWrite)
+            .capability(Capability::TaskSpawn)
             .register_type::<HostActor>()
             .register_type::<HostTurn>()
             .register_exports(HostActor::vela_inherent_exports())
             .register_exports(HostTurn::vela_inherent_exports())
             .register_type_binding::<PatchAdjustment>(patch_adjustment_binding()),
+    )
+    .task_scope(vela_examples::service_tasks::scope())
+    .emergency_patch_effect_ceiling(
+        vela_examples::service_tasks::emergency_patch_effect_ceiling(),
     )
     .inventory(RustInventoryService)
     .reward(RustRewardService)

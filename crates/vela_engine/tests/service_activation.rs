@@ -67,6 +67,8 @@ fn service_app() -> TestServicesApp {
             .capabilities(CapabilitySet::new().with(Capability::HostWrite))
             .register_type::<RequestContext>(),
     )
+    .task_scope(crate::support::dropping_task_scope())
+    .emergency_patch_effect_ceiling(crate::support::emergency_patch_effect_ceiling())
     .calculator(RustCalculatorService)
     .audit(RustAuditService)
     .build()

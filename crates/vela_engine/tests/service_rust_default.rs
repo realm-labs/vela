@@ -31,6 +31,8 @@ pub struct TestServices {
 #[test]
 fn pinned_rust_default_dispatch_allocates_nothing_and_stays_in_rust() {
     let app = TestServices::builder(vela_engine::engine::Engine::builder())
+        .task_scope(crate::support::dropping_task_scope())
+        .emergency_patch_effect_ceiling(crate::support::emergency_patch_effect_ceiling())
         .scalar(RustScalarService)
         .build()
         .expect("generated service domain");
@@ -47,3 +49,4 @@ fn pinned_rust_default_dispatch_allocates_nothing_and_stays_in_rust() {
     assert_eq!(allocation.bytes_allocated, 0);
     assert_eq!(checksum, 149_995_000);
 }
+mod support;

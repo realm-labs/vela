@@ -156,6 +156,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         #[allow(non_snake_case)]
         pub fn #schema_ident(
             registry: &::vela_engine::type_binding::TypeBindingRegistry,
+            patch_effect_ceiling: ::vela_engine::native::EffectSet,
         ) -> ::std::result::Result<
             ::vela_engine::service::ServiceSchema,
             ::vela_engine::service::ServiceSchemaError,
@@ -172,20 +173,14 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         #[doc(hidden)]
         pub fn #compose_ident(
             __vela_default: ::std::sync::Arc<dyn #dispatch_module_ident::Dispatch>,
-            __vela_runtime: ::vela_engine::service::ServiceRuntimeBinding,
-            __vela_options: ::vela_engine::runtime::CallOptions,
-            __vela_dispatcher: ::std::sync::Arc<
-                dyn ::vela_engine::service::ServiceCallDispatcher
-            >,
+            __vela_execution: ::vela_engine::service::PinnedServiceExecution,
             __vela_selections: &::vela_engine::service::ServiceSelectionTable<
                 ::vela_engine::service::LinkedVelaServiceMethod
             >,
         ) -> ::std::sync::Arc<dyn #dispatch_module_ident::Dispatch> {
             ::std::sync::Arc::new(#adapter_ident {
                 __vela_default,
-                __vela_runtime,
-                __vela_options,
-                __vela_dispatcher,
+                __vela_execution,
                 #(#adapter_initializers,)*
             })
         }
@@ -249,11 +244,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         #[doc(hidden)]
         struct #adapter_ident {
             __vela_default: ::std::sync::Arc<dyn #dispatch_module_ident::Dispatch>,
-            __vela_runtime: ::vela_engine::service::ServiceRuntimeBinding,
-            __vela_options: ::vela_engine::runtime::CallOptions,
-            __vela_dispatcher: ::std::sync::Arc<
-                dyn ::vela_engine::service::ServiceCallDispatcher
-            >,
+            __vela_execution: ::vela_engine::service::PinnedServiceExecution,
             #(#adapter_fields,)*
         }
 
@@ -594,6 +585,7 @@ fn emit_method(
                     source_span: None,
                 },
             },
+            patch_effect_ceiling,
             vec![#(#requirement_values),*],
         )
     }};
@@ -709,7 +701,7 @@ fn emit_adapter_method(
             let Some(__vela_target) = self.#target_ident.as_ref() else {
                 return #default_call;
             };
-            let __vela_result = self.__vela_runtime.invoke(
+            let __vela_result = self.__vela_execution.runtime().invoke(
                 __vela_target.artifact(),
                 |__vela_runtime| {
                     let mut __vela_args = ::vela_engine::runtime::CallArgs::new();
@@ -717,8 +709,8 @@ fn emit_adapter_method(
                     let __vela_value = __vela_target.method().call_with_dispatcher(
                         __vela_runtime,
                         __vela_args,
-                        self.__vela_options.clone(),
-                        ::std::sync::Arc::clone(&self.__vela_dispatcher),
+                        self.__vela_execution.call_options().clone(),
+                        self.__vela_execution.clone(),
                     )?;
                     __vela_runtime.value_to_owned(&__vela_value)
                 },
@@ -772,7 +764,7 @@ fn emit_async_adapter_method(
                 return #default_call;
             };
             ::std::boxed::Box::pin(async move {
-                let __vela_result = match self.__vela_runtime.lease(
+                let __vela_result = match self.__vela_execution.runtime().lease(
                     __vela_target.artifact(),
                 ) {
                     Ok(mut __vela_runtime_lease) => {
@@ -782,8 +774,8 @@ fn emit_async_adapter_method(
                         match __vela_target.method().call_async_with_dispatcher(
                             __vela_runtime,
                             __vela_args,
-                            self.__vela_options.clone(),
-                            ::std::sync::Arc::clone(&self.__vela_dispatcher),
+                            self.__vela_execution.call_options().clone(),
+                            self.__vela_execution.clone(),
                         ).await {
                             Ok(__vela_value) => __vela_runtime
                                 .value_to_owned(&__vela_value)

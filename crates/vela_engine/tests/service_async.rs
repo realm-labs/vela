@@ -88,6 +88,8 @@ fn service_app() -> AsyncServicesApp {
             .capabilities(CapabilitySet::new().with(Capability::HostWrite))
             .register_type::<RequestContext>(),
     )
+    .task_scope(crate::support::dropping_task_scope())
+    .emergency_patch_effect_ceiling(crate::support::emergency_patch_effect_ceiling())
     .calculator(RustAsyncCalculatorService)
     .build()
     .expect("async service domain")

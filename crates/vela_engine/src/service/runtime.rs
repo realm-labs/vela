@@ -6,7 +6,9 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use vela_bytecode::{ExecutableGenerationId, LinkedArtifact};
-use vela_common::{ServiceCallMode, ServiceId, ServiceMethodId};
+use vela_common::{
+    CapabilitySet, ServiceCallMode, ServiceGenerationId, ServiceId, ServiceMethodId, ServiceSetId,
+};
 use vela_vm::error::{VmError, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
@@ -56,6 +58,114 @@ pub trait ServiceCallDispatcher: Send + Sync {
     ) -> ServiceFuture<'call, VmResult<OwnedValue>>
     where
         'lease: 'call;
+}
+
+/// Owned, exact-generation Service authority inherited by detached work.
+///
+/// Immediate nested calls borrow the dispatcher from the active Runtime call.
+/// Detached admission clones this value so the child cannot observe a later
+/// publication and never needs to retain the caller Runtime or request root.
+#[doc(hidden)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ServiceExecutionIdentity {
+    service_set: ServiceSetId,
+    generation: ServiceGenerationId,
+    patch_effect_ceiling: CapabilitySet,
+}
+
+impl ServiceExecutionIdentity {
+    #[must_use]
+    pub const fn new(
+        service_set: ServiceSetId,
+        generation: ServiceGenerationId,
+        patch_effect_ceiling: CapabilitySet,
+    ) -> Self {
+        Self {
+            service_set,
+            generation,
+            patch_effect_ceiling,
+        }
+    }
+}
+
+#[doc(hidden)]
+#[derive(Clone)]
+pub struct PinnedServiceExecution {
+    service_set: ServiceSetId,
+    generation: ServiceGenerationId,
+    dispatcher: Arc<dyn ServiceCallDispatcher>,
+    artifact: Arc<LinkedArtifact>,
+    runtime: ServiceRuntimeBinding,
+    call_options: crate::runtime::CallOptions,
+    patch_effect_ceiling: CapabilitySet,
+}
+
+impl PinnedServiceExecution {
+    #[must_use]
+    pub fn new(
+        identity: ServiceExecutionIdentity,
+        dispatcher: Arc<dyn ServiceCallDispatcher>,
+        artifact: Arc<LinkedArtifact>,
+        runtime: ServiceRuntimeBinding,
+        call_options: crate::runtime::CallOptions,
+    ) -> Self {
+        Self {
+            service_set: identity.service_set,
+            generation: identity.generation,
+            dispatcher,
+            artifact,
+            runtime,
+            call_options,
+            patch_effect_ceiling: identity.patch_effect_ceiling,
+        }
+    }
+
+    #[must_use]
+    pub const fn service_set(&self) -> ServiceSetId {
+        self.service_set
+    }
+
+    #[must_use]
+    pub const fn generation(&self) -> ServiceGenerationId {
+        self.generation
+    }
+
+    #[must_use]
+    pub const fn dispatcher(&self) -> &Arc<dyn ServiceCallDispatcher> {
+        &self.dispatcher
+    }
+
+    #[must_use]
+    pub const fn artifact(&self) -> &Arc<LinkedArtifact> {
+        &self.artifact
+    }
+
+    #[must_use]
+    pub const fn runtime(&self) -> &ServiceRuntimeBinding {
+        &self.runtime
+    }
+
+    #[must_use]
+    pub const fn call_options(&self) -> &crate::runtime::CallOptions {
+        &self.call_options
+    }
+
+    #[must_use]
+    pub const fn patch_effect_ceiling(&self) -> CapabilitySet {
+        self.patch_effect_ceiling
+    }
+}
+
+impl fmt::Debug for PinnedServiceExecution {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("PinnedServiceExecution")
+            .field("service_set", &self.service_set)
+            .field("generation", &self.generation)
+            .field("artifact", &self.artifact.checksum())
+            .field("patch_effect_ceiling", &self.patch_effect_ceiling)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Shared Runtime authority owned by a generated service application.

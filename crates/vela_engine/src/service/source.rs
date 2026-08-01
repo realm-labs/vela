@@ -17,8 +17,8 @@ use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
 use super::{
-    ServiceCallDispatcher, ServiceMethodKey, ServiceMethodSelection, ServiceMethodUpdate,
-    ServiceSchema, ServiceSelectionError, ServiceSelectionTable, ServiceSetSchema,
+    ServiceMethodKey, ServiceMethodSelection, ServiceMethodUpdate, ServiceSchema,
+    ServiceSelectionError, ServiceSelectionTable, ServiceSetSchema,
 };
 use crate::context::NativeCallContext;
 use crate::native::EffectSet;
@@ -146,14 +146,14 @@ impl VelaServiceMethod {
         runtime: &mut Runtime,
         args: CallArgs<'host>,
         options: CallOptions,
-        dispatcher: Arc<dyn ServiceCallDispatcher>,
+        execution: crate::service::PinnedServiceExecution,
     ) -> VmResult<VelaValue> {
         runtime.call_service_stable_function(
             self.function,
             self.symbol.clone(),
             args,
             options,
-            dispatcher,
+            execution,
         )
     }
 
@@ -163,7 +163,7 @@ impl VelaServiceMethod {
         runtime: &mut Runtime,
         args: CallArgs<'host>,
         options: CallOptions,
-        dispatcher: Arc<dyn ServiceCallDispatcher>,
+        execution: crate::service::PinnedServiceExecution,
         egress: crate::runtime::ServiceScopedReturnEgress,
     ) -> VmResult<crate::runtime::ServiceScopedReturn> {
         runtime.call_service_stable_scoped_function(
@@ -171,7 +171,7 @@ impl VelaServiceMethod {
             self.symbol.clone(),
             args,
             options,
-            dispatcher,
+            execution,
             egress,
         )
     }
@@ -182,7 +182,7 @@ impl VelaServiceMethod {
         runtime: &'call mut Runtime,
         args: CallArgs<'args>,
         options: CallOptions,
-        dispatcher: Arc<dyn ServiceCallDispatcher>,
+        execution: crate::service::PinnedServiceExecution,
     ) -> crate::runtime::RuntimeCallFuture<'call>
     where
         'args: 'call,
@@ -192,7 +192,7 @@ impl VelaServiceMethod {
             self.symbol.clone(),
             args,
             options,
-            dispatcher,
+            execution,
         )
     }
 
@@ -363,7 +363,7 @@ impl ServiceSourceManifest {
                         body: method.body(),
                         module: method.module(),
                         signature: method.signature().clone(),
-                        effect_ceiling: descriptor.callable.effects,
+                        effect_ceiling: descriptor.patch_effect_ceiling,
                         function: script_function_id(package.as_str(), &symbol),
                         symbol,
                         span: method.origin().span,

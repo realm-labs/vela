@@ -234,6 +234,8 @@ fn delta_rejects_a_non_exact_base_without_changing_the_base() {
 
 fn schema() -> ServiceSetSchema {
     let app = TestServices::builder(vela_engine::engine::Engine::builder())
+        .task_scope(crate::support::dropping_task_scope())
+        .emergency_patch_effect_ceiling(crate::support::emergency_patch_effect_ceiling())
         .inventory(RustInventoryService)
         .reward(RustRewardService)
         .build()

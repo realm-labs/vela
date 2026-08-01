@@ -1,5 +1,8 @@
+use std::collections::BTreeSet;
 use vela_common::ServiceCallMode;
 use vela_def::FunctionId;
+
+use vela_analysis::semantic_facts::CallTargetFact;
 use vela_hir::body::{HirBody, HirCall, HirExprKind};
 use vela_mir::{CompileCallTarget, CompileCalleeTarget, MirSourceOrigin};
 
@@ -41,12 +44,14 @@ impl GenerationBuilder<'_, '_> {
             .ok_or_else(|| service_call_error("service call path is missing", origin))?;
         let (mode, service_name, method_name) = match capability {
             vela_hir::binding::ServiceLexicalCapability::Base => {
-                let current = self.current_service_path(executable).ok_or_else(|| {
-                    service_call_error(
-                        "base call is not owned by a compiled service method",
-                        origin,
-                    )
-                })?;
+                let current = self
+                    .current_service_path(executable, origin)?
+                    .ok_or_else(|| {
+                        service_call_error(
+                            "base call is not owned by a compiled service method",
+                            origin,
+                        )
+                    })?;
                 (ServiceCallMode::Base, current, path.path[2].clone())
             }
             vela_hir::binding::ServiceLexicalCapability::Pinned => (
@@ -119,7 +124,10 @@ impl GenerationBuilder<'_, '_> {
                 .collect(),
             positional: vela_mir::CompilePositionalPolicy::ExactOrTrailingDefaults,
             return_contract: None,
-            effect: method.effect,
+            effect: match mode {
+                ServiceCallMode::Base => method.rust_default_effect,
+                ServiceCallMode::Pinned => method.patch_effect_ceiling,
+            },
         };
         Ok(Some(CompileCallTarget::positional(
             CompileCalleeTarget::Service {
@@ -138,18 +146,71 @@ impl GenerationBuilder<'_, '_> {
         )))
     }
 
-    fn current_service_path(&self, executable: FunctionId) -> Option<String> {
-        self.request
-            .service_impls
-            .implementations()
-            .find_map(|implementation| {
-                implementation
-                    .methods()
-                    .any(|method| {
-                        self.targets.service_function_for_node(method.node()) == Some(executable)
-                    })
-                    .then(|| implementation.service_path_text())
-            })
+    fn current_service_path(
+        &self,
+        executable: FunctionId,
+        origin: MirSourceOrigin,
+    ) -> CompileResult<Option<String>> {
+        let mut origins = BTreeSet::new();
+        for implementation in self.request.service_impls.implementations() {
+            for method in implementation.methods() {
+                let Some(root) = self.targets.service_function_for_node(method.node()) else {
+                    continue;
+                };
+                if self.script_reaches(root, executable)? {
+                    origins.insert(implementation.service_path_text());
+                }
+            }
+        }
+        if origins.len() > 1 {
+            return Err(service_call_error(
+                format!(
+                    "base call is reachable from multiple Service origins: {}",
+                    origins.into_iter().collect::<Vec<_>>().join(", ")
+                ),
+                origin,
+            ));
+        }
+        Ok(origins.into_iter().next())
+    }
+
+    fn script_reaches(&self, start: FunctionId, target: FunctionId) -> CompileResult<bool> {
+        let mut pending = vec![start];
+        let mut visited = BTreeSet::new();
+        while let Some(function) = pending.pop() {
+            if function == target {
+                return Ok(true);
+            }
+            if !visited.insert(function) {
+                continue;
+            }
+            let Some((_, root)) = self
+                .selected_executable_roots()?
+                .into_iter()
+                .find(|(candidate, _)| *candidate == function)
+            else {
+                continue;
+            };
+            let analysis = self.executable_analysis(function)?;
+            for body_id in self.executable_body_ids(root) {
+                let body = self
+                    .request
+                    .graph
+                    .body(body_id)
+                    .ok_or_else(registry_input_error)?;
+                for expression in body.expressions.values() {
+                    let Some(CallTargetFact::Declaration(declaration)) =
+                        analysis.call_target(expression.id)
+                    else {
+                        continue;
+                    };
+                    if let Some(callee) = self.function_ids.get(declaration) {
+                        pending.push(*callee);
+                    }
+                }
+            }
+        }
+        Ok(false)
     }
 }
 

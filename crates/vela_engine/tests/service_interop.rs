@@ -276,6 +276,8 @@ fn mixed_service_chain_preserves_custom_values_collection_identity_and_alias_pre
                 ),
             ),
     )
+    .task_scope(crate::support::dropping_task_scope())
+    .emergency_patch_effect_ceiling(crate::support::emergency_patch_effect_ceiling())
     .inventory(RustInventoryService)
     .audit(RustAuditService)
     .build()

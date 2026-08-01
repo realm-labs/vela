@@ -312,6 +312,8 @@ fn async_service_accepts_send_non_sync_non_static_host_context() {
             .register_type::<Reply>()
             .register_host_type(context_type_spec()),
     )
+    .task_scope(crate::support::dropping_task_scope())
+    .emergency_patch_effect_ceiling(crate::support::emergency_patch_effect_ceiling())
     .handler(RustScopedHandler)
     .audit(RustScopedAudit)
     .build()

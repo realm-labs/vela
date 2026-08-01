@@ -106,14 +106,6 @@ fn rejects_service_namespaces_outside_their_non_escaping_call_shapes() {
     let cases = [
         (
             r#"
-fn grant(value) {
-    return service::base::grant(value);
-}
-"#,
-            "hir::service_capability_outside_impl",
-        ),
-        (
-            r#"
 #[service_impl(game::inventory::InventoryService)]
 impl InventoryHotfix {
     fn grant(value) {
@@ -161,6 +153,40 @@ impl InventoryHotfix {
             error.diagnostics()
         );
     }
+}
+
+#[test]
+fn ordinary_helpers_retain_static_service_capabilities_for_root_linking() {
+    let sources = build_single_source(
+        SourceId::new(17),
+        r#"
+async fn repair(value) {
+    let base = service::base::grant(value);
+    return service::pinned::audit::record(base);
+}
+"#,
+    )
+    .expect("Service origin validation belongs to whole-program compilation");
+    let declaration = sources
+        .graph()
+        .declarations()
+        .find(|declaration| declaration.name == "repair")
+        .expect("repair declaration");
+    let bindings = sources
+        .graph()
+        .function_body(declaration.id)
+        .and_then(|body| sources.graph().bindings_for_body(body.id))
+        .expect("ordinary helper bindings");
+    assert_eq!(
+        bindings
+            .service_capabilities()
+            .map(|(_, capability)| capability)
+            .collect::<Vec<_>>(),
+        [
+            ServiceLexicalCapability::Base,
+            ServiceLexicalCapability::Pinned,
+        ]
+    );
 }
 
 #[test]

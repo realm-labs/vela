@@ -19,8 +19,8 @@ pub use portable::{
     PortableServiceUpdateBundle,
 };
 pub use runtime::{
-    ServiceCallDispatcher, ServiceCallTarget, ServiceFuture, ServiceInvocationError,
-    ServiceRuntimeBinding, ServiceRuntimeLease,
+    PinnedServiceExecution, ServiceCallDispatcher, ServiceCallTarget, ServiceExecutionIdentity,
+    ServiceFuture, ServiceInvocationError, ServiceRuntimeBinding, ServiceRuntimeLease,
 };
 pub use schema::{
     ServiceMethodDescriptor, ServiceSchema, ServiceSchemaError, ServiceSetSchema,
@@ -63,6 +63,15 @@ pub enum ServiceDomainBuildError {
         domain: &'static str,
         service: &'static str,
     },
+    MissingTaskScope {
+        domain: &'static str,
+    },
+    MissingPatchEffectCeiling {
+        domain: &'static str,
+    },
+    PatchEffectCeilingMissingTaskSpawn {
+        domain: &'static str,
+    },
     Engine(crate::error::EngineError),
     Schema(ServiceSchemaError),
 }
@@ -76,6 +85,20 @@ impl fmt::Display for ServiceDomainBuildError {
                     "service domain `{domain}` is missing Rust default `{service}`"
                 )
             }
+            Self::MissingTaskScope { domain } => {
+                write!(
+                    formatter,
+                    "service domain `{domain}` is missing its host task scope"
+                )
+            }
+            Self::MissingPatchEffectCeiling { domain } => write!(
+                formatter,
+                "service domain `{domain}` is missing its emergency patch effect ceiling"
+            ),
+            Self::PatchEffectCeilingMissingTaskSpawn { domain } => write!(
+                formatter,
+                "service domain `{domain}` emergency patch ceiling must include TaskSpawn"
+            ),
             Self::Engine(error) => write!(formatter, "service domain engine failed: {error}"),
             Self::Schema(error) => write!(formatter, "service domain schema failed: {error}"),
         }
@@ -490,13 +513,14 @@ pub struct ServiceController<T> {
 
 impl<T> ServiceController<T> {
     #[must_use]
-    pub fn new(service_set_id: ServiceSetId, defaults: T) -> Self {
+    pub fn new(service_set_id: ServiceSetId, build: impl FnOnce(ServiceGenerationId) -> T) -> Self {
         let controller_id = ServiceControllerId::next();
+        let generation_id = ServiceGenerationId::new(1);
         let initial = Arc::new(ServiceGeneration {
             controller_id,
             service_set_id,
-            generation_id: ServiceGenerationId::new(1),
-            services: defaults,
+            generation_id,
+            services: build(generation_id),
         });
         Self {
             controller_id,
@@ -521,7 +545,7 @@ impl<T> ServiceController<T> {
     pub fn stage(
         &self,
         base: &ServiceRoot<T>,
-        services: T,
+        build: impl FnOnce(ServiceGenerationId) -> T,
     ) -> Result<ServiceGenerationCandidate<T>, ServicePublicationError> {
         self.validate_generation(base.generation())?;
         let generation_id = self.next_generation_id()?;
@@ -533,7 +557,7 @@ impl<T> ServiceController<T> {
                 controller_id: self.controller_id,
                 service_set_id: self.service_set_id,
                 generation_id,
-                services,
+                services: build(generation_id),
             }),
         })
     }
@@ -653,22 +677,16 @@ mod tests {
 
     #[test]
     fn roots_pin_one_complete_generation_across_activation_and_rollback() {
-        let controller = ServiceController::new(
-            SERVICE_SET,
-            Services {
-                inventory: 1,
-                reward: 10,
-            },
-        );
+        let controller = ServiceController::new(SERVICE_SET, |_| Services {
+            inventory: 1,
+            reward: 10,
+        });
         let old = controller.pin();
         let candidate = controller
-            .stage(
-                &old,
-                Services {
-                    inventory: 2,
-                    reward: 20,
-                },
-            )
+            .stage(&old, |_| Services {
+                inventory: 2,
+                reward: 20,
+            })
             .expect("candidate should stage");
         let rollback = controller
             .activate_if_current(candidate)
@@ -692,31 +710,22 @@ mod tests {
 
     #[test]
     fn stale_candidate_cannot_overwrite_a_newer_generation() {
-        let controller = ServiceController::new(
-            SERVICE_SET,
-            Services {
-                inventory: 1,
-                reward: 10,
-            },
-        );
+        let controller = ServiceController::new(SERVICE_SET, |_| Services {
+            inventory: 1,
+            reward: 10,
+        });
         let base = controller.pin();
         let first = controller
-            .stage(
-                &base,
-                Services {
-                    inventory: 2,
-                    reward: 20,
-                },
-            )
+            .stage(&base, |_| Services {
+                inventory: 2,
+                reward: 20,
+            })
             .expect("first candidate");
         let stale = controller
-            .stage(
-                &base,
-                Services {
-                    inventory: 3,
-                    reward: 30,
-                },
-            )
+            .stage(&base, |_| Services {
+                inventory: 3,
+                reward: 30,
+            })
             .expect("stale candidate");
         controller
             .activate_if_current(first)
@@ -734,33 +743,24 @@ mod tests {
 
     #[test]
     fn rollback_token_cannot_overwrite_a_later_activation() {
-        let controller = ServiceController::new(
-            SERVICE_SET,
-            Services {
-                inventory: 1,
-                reward: 10,
-            },
-        );
+        let controller = ServiceController::new(SERVICE_SET, |_| Services {
+            inventory: 1,
+            reward: 10,
+        });
         let base = controller.pin();
         let first = controller
-            .stage(
-                &base,
-                Services {
-                    inventory: 2,
-                    reward: 20,
-                },
-            )
+            .stage(&base, |_| Services {
+                inventory: 2,
+                reward: 20,
+            })
             .and_then(|candidate| controller.activate_if_current(candidate))
             .expect("first activation");
         let active = controller.pin();
         let second = controller
-            .stage(
-                &active,
-                Services {
-                    inventory: 3,
-                    reward: 30,
-                },
-            )
+            .stage(&active, |_| Services {
+                inventory: 3,
+                reward: 30,
+            })
             .and_then(|candidate| controller.activate_if_current(candidate))
             .expect("second activation");
 
@@ -779,28 +779,19 @@ mod tests {
 
     #[test]
     fn candidates_and_rollbacks_are_controller_bound() {
-        let first = ServiceController::new(
-            SERVICE_SET,
-            Services {
-                inventory: 1,
-                reward: 10,
-            },
-        );
-        let second = ServiceController::new(
-            SERVICE_SET,
-            Services {
-                inventory: 1,
-                reward: 10,
-            },
-        );
+        let first = ServiceController::new(SERVICE_SET, |_| Services {
+            inventory: 1,
+            reward: 10,
+        });
+        let second = ServiceController::new(SERVICE_SET, |_| Services {
+            inventory: 1,
+            reward: 10,
+        });
         let candidate = first
-            .stage(
-                &first.pin(),
-                Services {
-                    inventory: 2,
-                    reward: 20,
-                },
-            )
+            .stage(&first.pin(), |_| Services {
+                inventory: 2,
+                reward: 20,
+            })
             .expect("candidate");
         assert!(matches!(
             second.activate_if_current(candidate),

@@ -254,6 +254,7 @@ pub struct TaskExecutionCapsule {
     policy: TaskPolicy,
     generation: TaskGeneration,
     effective_capabilities: CapabilitySet,
+    pinned_service: Option<crate::service::PinnedServiceExecution>,
 }
 
 impl TaskExecutionCapsule {
@@ -267,7 +268,7 @@ impl TaskExecutionCapsule {
         let generation = TaskGeneration::Ordinary {
             executable: artifact.generation(),
         };
-        Self::new(engine, artifact, ceilings, policy, generation)
+        Self::new(engine, artifact, ceilings, policy, generation, None)
     }
 
     #[doc(hidden)]
@@ -275,17 +276,33 @@ impl TaskExecutionCapsule {
     pub fn for_service_generation(
         engine: Engine,
         artifact: Arc<LinkedArtifact>,
-        ceilings: TaskAuthorityCeilings,
+        caller_ceiling: CapabilitySet,
+        artifact_ceiling: CapabilitySet,
         policy: TaskPolicy,
-        service: ServiceTaskGeneration,
+        pinned_service: crate::service::PinnedServiceExecution,
     ) -> Self {
+        let service = ServiceTaskGeneration {
+            service_set: pinned_service.service_set(),
+            service_generation: pinned_service.generation(),
+        };
         let generation = TaskGeneration::Service {
             executable: artifact.generation(),
             service_set: service.service_set,
             service_generation: service.service_generation,
         };
-        debug_assert!(ceilings.service.is_some());
-        Self::new(engine, artifact, ceilings, policy, generation)
+        let ceilings = TaskAuthorityCeilings::service(
+            caller_ceiling,
+            artifact_ceiling,
+            pinned_service.patch_effect_ceiling(),
+        );
+        Self::new(
+            engine,
+            artifact,
+            ceilings,
+            policy,
+            generation,
+            Some(pinned_service),
+        )
     }
 
     fn new(
@@ -294,6 +311,7 @@ impl TaskExecutionCapsule {
         ceilings: TaskAuthorityCeilings,
         policy: TaskPolicy,
         generation: TaskGeneration,
+        pinned_service: Option<crate::service::PinnedServiceExecution>,
     ) -> Self {
         let effective_capabilities =
             ceilings.effective(engine.capabilities(), policy.capabilities());
@@ -303,6 +321,7 @@ impl TaskExecutionCapsule {
             policy,
             generation,
             effective_capabilities,
+            pinned_service,
         }
     }
 
@@ -329,6 +348,11 @@ impl TaskExecutionCapsule {
     #[must_use]
     pub const fn effective_capabilities(&self) -> CapabilitySet {
         self.effective_capabilities
+    }
+
+    #[must_use]
+    pub const fn pinned_service(&self) -> Option<&crate::service::PinnedServiceExecution> {
+        self.pinned_service.as_ref()
     }
 }
 

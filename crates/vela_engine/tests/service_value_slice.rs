@@ -64,6 +64,8 @@ fn same_generation_base_decodes_read_only_value_slice_for_rust_default() {
             .capability(Capability::HostWrite)
             .register_type::<RequestContext>(),
     )
+    .task_scope(crate::support::dropping_task_scope())
+    .emergency_patch_effect_ceiling(crate::support::emergency_patch_effect_ceiling())
     .totals(RustTotalService)
     .build()
     .expect("service domain");

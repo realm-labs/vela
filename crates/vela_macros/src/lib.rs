@@ -14,6 +14,8 @@ mod methods;
 mod script_host;
 mod service;
 mod service_domain;
+#[path = "service_domain/emission.rs"]
+mod service_domain_emission;
 mod service_domain_input;
 mod signature;
 mod trait_export;
