@@ -16,17 +16,21 @@ decision history lives in
   calls, but cannot mutate runtime type structure or implement monkey patching.
 - The MVP does not include JIT, hot migration of suspended async frames, moving
   GC, or a custom full IDE product. Executor-neutral `async fn` and `.await`
-  preserve sequential semantics and expose no task/coroutine handles or manual
-  resume. A full native LSP capability track is allowed before the MVP when it
-  stays analysis-only and does not change language or runtime semantics.
+  preserve sequential call semantics. M20.75 additionally permits only
+  statically linked, owned, host-scoped detached calls with isolated Runtimes;
+  Vela exposes no task/Future handles, join, script cancellation, task
+  enumeration, unscoped spawn, or manual resume. A full native LSP capability
+  track is allowed before the MVP when it stays analysis-only and does not
+  change language or runtime semantics.
 - Pre-release code should replace obsolete internal APIs instead of preserving
   compatibility shims. Product-level hot reload ABI and schema compatibility
   checks remain required.
 - `unsafe` Rust is denied workspace-wide rather than forbidden. A module may
   opt in with `#[allow(unsafe_code)]` when a reviewed invariant justifies it,
   the module documents that invariant, every block carries a `SAFETY:` comment
-  (`clippy::undocumented_unsafe_blocks`), and the file is enumerated in
-  `crates/vela_host/tests/unsafe_boundaries.rs`. An opt-in for performance
+  (`clippy::undocumented_unsafe_blocks`), and the file is enumerated by the
+  repository unsafe-boundary source audit (currently anchored by
+  `crates/vela_host/tests/unsafe_boundaries.rs`). An opt-in for performance
   additionally requires an interleaved before/after measurement showing a win;
   soundness alone does not justify it.
 - Ordinary active source files should stay under 1200 lines unless a clear
@@ -51,6 +55,69 @@ decision history lives in
   registers.
 
 ## Active Architecture Decisions
+
+### Host-Scoped Detached Calls Pin Owned Execution Generations
+
+M20.75 adds exactly two compiler-owned static call forms:
+`task::spawn_scoped` and `task::spawn_scoped_then`. Their worker is an ordinary
+statically resolved `async fn`; the second form also resolves one synchronous
+Vela continuation. Spawning returns synchronously and does not change the
+caller's or an authored Service method's sync/async ABI. The language exposes
+no TaskHandle, Future value, join, script cancellation, task enumeration,
+manual resume, unscoped spawn, dynamic target string, or framework-specific
+actor/request API.
+
+Every admitted child owns a fresh or provably clean leased Runtime, recursively
+detached arguments, independent finite budgets, narrowed capabilities, and its
+exact `LinkedArtifact`. It shares no stack, heap, VM state, HostRef table,
+lease, scoped resource, closure, live iterator, or host context with the
+parent. `TaskSpawn` plus the transitive worker/continuation effects are checked
+at the spawn site and intersected with Engine, artifact, Service, and host-scope
+ceilings at admission. A missing scope or failed owned-value transfer rejects
+before the worker becomes visible.
+
+Service metadata separates truthful `RustDefaultEffects` from the ABI-level
+`PatchEffectCeiling`. The generated domain builder requires one explicit
+emergency patch ceiling for every hotfixable method, optionally narrowed per
+method. It may reserve `TaskSpawn` and I/O even when a synchronous Rust default
+does not use them, so every Service can be repaired asynchronously. A live
+patch cannot widen that ceiling, and Engine plus host-scope policy still narrows
+actual execution.
+
+Portable program, Service bundle, and detached deployment metadata move
+together to format version 3. Version 3 carries static worker/continuation
+targets, detachability, transitive effects, continuation ABI, and Service
+execution requirements. Versions 1 and 2 reject before link, stage, or
+activation; there is no metadata inference, bytecode rewrite, or compatibility
+loader.
+
+A Service-rooted child additionally owns the exact complete Service execution
+capsule selected by the root: generation identity, linked artifact, immutable
+dispatcher, Runtime factory/binding, sealed registries, and policy. Nested
+`service::base` and `service::pinned` calls and an optional continuation remain
+on that originating generation across publication. Ordinary functions and
+Service selections stay in the same Snapshot/Delta and publish atomically; no
+task patch table or second hotfix path is permitted. The generated Service
+application hard-switches to one task-capable host lifecycle scope for every
+Service without adding task parameters or per-message wrappers to business
+traits.
+
+The host scope, not Vela core, owns executor admission, bounded concurrency,
+cancellation, deadlines, terminal observation, and continuation delivery. A
+continuation runs only as a fresh root at a host safe point with a newly
+acquired host context and an owned Result-like outcome; it never runs directly
+on the worker context. Completed effects are not rolled back.
+
+Safe Rust remains preferred. If a non-`'static` host lifecycle must be erased,
+one private audited boundary may use `unsafe` only while an owned lifetime
+token proves that backing storage outlives all child futures and queued
+continuations. Cancellation does not release that storage early. The boundary
+must document invariants, cover every drop/unwind/race path, carry local
+`SAFETY:` comments, and enter the repository unsafe source audit. Unsafe cannot
+substitute for owned value transfer or fabricate a `'static` borrow.
+
+The normative semantics, implementation batches, and acceptance matrix are in
+[host-scoped-detached-async-execution-plan.md](host-scoped-detached-async-execution-plan.md).
 
 ### Explicit Runtime State Ownership
 

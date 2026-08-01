@@ -235,6 +235,21 @@ Portable program, Service bundle, and detached Service metadata format version
 decode/load boundaries before staging or activation; there is no legacy
 interpreter or compatibility mode.
 
+Host-scoped detached async execution extends this model without sharing a
+Runtime or exposing an executor. `task::spawn_scoped` admits a statically linked
+ordinary async function into an explicit host lifecycle scope;
+`task::spawn_scoped_then` additionally requests a synchronous Vela
+continuation at a later host safe point. Every child owns transferable values,
+an isolated Runtime, finite budgets, and the originating linked artifact. A
+Service-rooted child also pins the complete originating Service generation, so
+its nested `service::base` and `service::pinned` calls cannot mix releases.
+HostRef, PathProxy, scoped leases, closures, live iterators, and host contexts
+cannot cross admission. Vela exposes no TaskHandle, Future value, join, script
+cancellation, manual resume, unscoped spawn, or framework-specific task API.
+M20.75 hard-switches all portable program, Service bundle, and detached
+deployment metadata to format version 3; versions 1 and 2 are rejected rather
+than upgraded or interpreted through a compatibility path.
+
 
 ## Detailed Contracts
 
@@ -259,6 +274,7 @@ contract before changing that subsystem:
 - [Rust/Vela interop authoring and deployment](rust-vela-interop.md)
 - [Clean identity refactor](architecture/clean-identity-refactor.md)
 - [Executor-neutral async execution plan](async-execution-model-plan.md)
+- [Host-scoped detached async execution plan](host-scoped-detached-async-execution-plan.md)
 - [State storage model execution plan](state-storage-model-plan.md)
 - [Actor-owned Runtime and cache model execution plan](archive/actor-runtime-cache-execution-plan.md)
 

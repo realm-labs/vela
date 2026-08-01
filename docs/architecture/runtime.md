@@ -359,6 +359,33 @@ receiver shape, parameter names, and defaults from the pinned
 receiver only after that shared resolution, so both paths report identical
 metadata and validation failures.
 
+### Host-Scoped Detached Roots
+
+M20.75 adds detached roots without changing `call`/`call_async`, awaited
+same-session reentry, or Runtime exclusivity. A task builtin prepares a
+statically linked async call, recursively detaches its arguments, reserves
+finite scope capacity, and gives an owned child future to the host-provided
+task scope. Each active child drives the existing execution session in a fresh
+or provably clean leased Runtime. Core crates still own no executor.
+
+The child shares only immutable Engine registry and `LinkedArtifact` authority.
+It owns separate VM state cells, extern bindings, heap, roots, HostRef table,
+leases, budgets, cancellation, and tracing state. HostRef, HostPath, PathProxy,
+HostAccess-backed views, scoped leases, closures/upvalues, live Host iterators,
+Runtime-bound `VelaValue`, and host contexts cannot cross admission. Owned
+managed graphs are copied into a budgeted transfer image with aliases and
+cycles preserved. That Runtime-independent `DetachedValueImage`, rather than a
+Runtime-bound `VelaValue`, is also the worker result and continuation input
+boundary.
+
+The host task scope owns bounded admission, executor polling, deadlines,
+cancellation, terminal observation, and optional continuation delivery. A
+continuation is a new synchronous Runtime root entered only when the host can
+reacquire its context at a safe point. It receives an owned outcome and fresh
+registered Host/Value arguments; it never receives the worker Runtime or a
+borrow held by the worker. The complete contract is
+[host-scoped detached async execution](../host-scoped-detached-async-execution-plan.md).
+
 ### Execution Budget
 
 The VM charges backend-neutral execution units at explicit MIR semantic points:
@@ -444,6 +471,9 @@ workers. Each actor invocation still observes a single-threaded VM boundary.
 Vela `async fn` and `.await` preserve sequential script semantics; suspension
 keeps the actor turn exclusively owned and does not make its Runtime
 concurrently callable or expose threads or shared memory to scripts.
+Host-scoped detached roots may execute concurrently only because each owns a
+different isolated Runtime and transferable values. They do not turn the
+parent actor Runtime or its VM state into shared memory.
 
 Allowed host-level concurrency models:
 
@@ -453,6 +483,7 @@ many actor Runtimes scheduled on one worker or execution lane
 an actor Runtime moved between workers only under exclusive actor ownership
 host async tasks that call into Vela only at explicit scheduling points
 background IO that returns copied data or HostRef handles to later script calls
+bounded host-scoped Vela child tasks, each with an isolated Runtime
 ```
 
 The shared deployment generation contains immutable code, metadata, schemas,

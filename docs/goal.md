@@ -16,7 +16,6 @@ not from builtin language or standard-library surface.
 ## Product Goals
 
 The language should provide:
-
 1. Better host-script expression than Lua: structs, enums, `match`, method calls, rich array/map APIs, and Option/Result-style error handling.
 2. Deep Rust host integration: scripts can naturally read and write host state
    with syntax such as `account.balance += 1`. Standard and user-defined Rust
@@ -32,7 +31,10 @@ The language should provide:
 6. Embeddability: Rust hosts can register types, native functions, capability profiles, execution budgets, state adapters, and hot reload policies.
 7. Executor-neutral async execution: scripts can declare `async fn`, await
    script/native/host/provider targets, and suspend through a scoped `Send`
-   Runtime future without putting an executor in core crates.
+   Runtime future without putting an executor in core crates. Any function may
+   also admit statically linked async work into an explicit host lifecycle
+   scope; each child owns an isolated Runtime and transferable values, exposes
+   no task handle, and resumes Vela only at a host safe point.
 8. Practical performance: the MVP should keep the bytecode VM, stable IDs,
    field slots, native standard library functions, and GC boundaries ready for
    optimization. After the MVP, the non-JIT interpreter should target
@@ -57,7 +59,10 @@ The first phase does not include:
 - Script-level threads or shared-memory concurrency.
 - Migration of suspended async frames, native futures, or host leases across
   hot-reload generations.
-- Script-visible task spawning, coroutine handles, or manual suspension/resume.
+- Unscoped task spawning; script-visible task/Future handles, join, cancellation,
+  task enumeration, or manual suspension/resume. M20.75's static scoped calls are the
+  bounded exception and do not expose task identity or shared-memory
+  concurrency.
 - A custom full IDE product beyond the native LSP server and thin editor
   integrations.
 - Performance that exceeds LuaJIT at the outset.
@@ -135,8 +140,10 @@ constraints in this roadmap: no general script-language generics beyond
 restricted builtin type hints, no Rust &mut exposed to scripts, all host
 mutation through HostRef, HostPath, PathProxy, and HostAccess,
 reflection without runtime type-structure mutation or monkey patching, and no
-MVP JIT, async-frame hot migration, script-visible task/coroutine handles,
-moving GC, or a custom full IDE product.
+MVP JIT, async-frame hot migration, script-visible task/Future handles, join,
+manual cancellation/resume, unscoped spawn, moving GC, or a custom full IDE
+product. Implement host-scoped detached async calls only through the bounded,
+owned, statically linked M20.75 model.
 Use the unified Rust/Vela service contract and whole-generation publication as
 the sole Rust hotfix model; do not restore callable replacement slots or add
 handler/rule/event-specific replacement paths.
@@ -182,9 +189,9 @@ integration rather than script-language syntax.
 These milestones start after the completed M0-M6 prototype. Current
 implementation status lives in [progress.md](progress.md), and detailed
 historical progress is archived under [archive](archive/). The plan below
-tracks the first complete non-JIT interpreter, the executor-neutral async
-execution extension, a full native LSP capability track before the MVP, plus
-post-MVP debugger, JIT, and release-hardening work.
+tracks the first complete non-JIT interpreter, executor-neutral async
+execution, host-scoped detached async calls, a full native LSP capability track
+before the MVP, plus post-MVP debugger, JIT, and release-hardening work.
 
 ### Milestone Checkpoint Rules
 
@@ -889,6 +896,57 @@ formatter fixtures prove idempotence and comment preservation
 docs/progress.md marks M20.5 complete enough only when advertised native LSP capabilities are covered
 ```
 
+### M20.75: Host-Scoped Detached Async Execution
+
+Goal: let any permitted ordinary function or hotfixed Service implementation
+start owned async work from a synchronous or asynchronous call without adding
+an executor, framework API, task handle, or shared Runtime to Vela core.
+
+The normative sequencing, ownership model, Service integration, unsafe audit,
+and acceptance matrix live in the
+[host-scoped detached async execution plan](host-scoped-detached-async-execution-plan.md).
+
+Scope:
+
+```text
+compiler-owned task::spawn_scoped and task::spawn_scoped_then static forms
+ordinary async fn workers and synchronous safe-point continuations
+host-provided bounded lifecycle scope with executor-neutral admission
+fresh isolated Runtime and recursively owned value transfer per active child
+TaskSpawn capability plus worker/continuation transitive effect enforcement
+separate truthful RustDefaultEffects and explicit emergency PatchEffectCeiling
+independent budgets, deadlines, cancellation, failure observation, and tracing
+exact linked-artifact and whole-Service-generation pinning
+generation-owned Service execution capsule and generated application hard switch
+same-generation service::base and service::pinned calls from detached workers
+portable artifact format v3, reflection, LSP, examples, benchmarks, and audits
+one focused audited unsafe lifetime boundary only if safe Rust is insufficient
+```
+
+Acceptance:
+
+```text
+a sync ordinary function and a sync Service patch can admit a pending async worker without changing their ABI
+the worker can await registered database/RPC-style fixtures and nested Vela or pinned Service calls
+the parent and child share no Runtime, heap, VM state, HostRef table, leases, or borrowed values
+HostRef, PathProxy, closures, live iterators, scoped views, and hidden non-detachable values reject before admission
+hot reload leaves pending workers and continuations on their originating complete generation while new roots use the new generation
+spawn cannot bypass Service, artifact, Engine, or host-scope effect ceilings
+every hotfixable Service can reserve bounded TaskSpawn/I/O patch effects independently of its Rust default effects
+scope shutdown, cancellation, timeout, errors, panics, future drop, and completion races produce one observed terminal outcome and complete RAII cleanup
+continuations run only as fresh host safe-point turns with owned outcomes and newly acquired host context
+no TaskHandle, Future value, join, script cancellation, manual resume, unscoped spawn, target string, per-message Rust wrapper, or second hotfix path exists
+```
+
+Checkpoint:
+
+```text
+the batch checkpoints and complete acceptance matrix in the execution plan pass
+portable v3 artifacts preserve the task contract and reject versions 1/2 without compatibility inference
+unsafe source audit and supported Miri/sanitizer lifecycle proof pass when unsafe is used
+full repository validation passes and docs/progress.md links the acceptance report
+```
+
 ### M21: Debugger Runtime And DAP Integration
 
 Goal: provide a comfortable IDE-style debugging experience through runtime
@@ -1018,8 +1076,10 @@ Control:
 
 ```text
 The first complete interpreter excludes script generics, JIT, script-visible
-task/coroutine handles, and script macros. Executor-neutral `async fn` and
-`.await` use the same sequential frame driver and do not expose concurrency.
+task/Future handles, join/manual cancellation, unscoped spawn, and script
+macros. Executor-neutral `async fn` and `.await` use the same sequential frame
+driver. M20.75 adds only statically linked, owned, host-scoped detached calls;
+each child uses an isolated Runtime and cannot create shared-memory concurrency.
 Rust host derive macros are allowed only to reduce embedding boilerplate.
 Every syntax feature must serve domain-neutral host scripting or the host access model.
 ```

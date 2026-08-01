@@ -6,6 +6,13 @@
 > release or requires typed `base` totality for non-`'static` Host parameters.
 > The remaining sections describe the accepted generation and boundary
 > foundation that the hard switch preserves.
+>
+> **Planned complete extension — M20.75:**
+> [host-scoped detached async execution](../host-scoped-detached-async-execution-plan.md)
+> adds generation-pinned detached child calls and replaces the generated
+> Service application entry shape without compatibility aliases. This document
+> defines the resulting Service ownership contract; the execution plan defines
+> batch order and acceptance.
 
 This document is the normative technical contract for Rust/Vela service
 authoring, immutable service generations, unified Rust type interop, generated
@@ -64,6 +71,14 @@ Activation affects only roots pinned afterward. Active sync calls, suspended
 async calls, nested service calls, closures, and borrowed-return lifetimes keep
 their old linked artifact and service generation. Rollback republishes a prior
 validated generation; it never retries or rewinds an in-flight call.
+
+A host-scoped detached worker is also an active root. Admission pins the exact
+generation selected at the spawning host safe point, transfers only owned
+values, and creates a distinct Runtime. The worker and its optional safe-point
+continuation remain on that generation until terminal teardown even if later
+roots observe a new publication. The host may translate completion into a new
+ordinary mailbox/request operation when it deliberately wants fresh-generation
+dispatch, but that is separate from the generation-pinned Vela continuation.
 
 ### 1.3 No per-callable interception
 
@@ -325,7 +340,8 @@ ordered ServiceMethodDescriptor[]
   InteropTypeId, representation capability, and TypeAbiFingerprint
   return/error family
   borrowed-return origin and freeze rules
-  normalized effect ceiling
+  normalized RustDefaultEffects
+  normalized PatchEffectCeiling
   derived capability requirements
   source origin and diagnostics metadata
 transitive boundary type closure
@@ -337,9 +353,14 @@ index enters macro input, source syntax, deployment manifests, or public APIs.
 
 Parameter names, docs, source positions, Runtime grants, allowlists, budgets,
 and active policy are not ABI. Parameter order/mode, supported type shape,
-return/error family, asyncness, borrowed-return provenance, and effect ceiling
-are ABI. A patch with a strict effect subset is valid; a patch exceeding the
-Rust contract is rejected before publication.
+return/error family, asyncness, borrowed-return provenance,
+`RustDefaultEffects`, and `PatchEffectCeiling` are ABI. The two effect facts are
+not aliases: the former truthfully describes the registered Rust body, while
+the latter may be an explicit strict superset reserved for emergency Vela
+repairs. A patch within `PatchEffectCeiling` is valid even when it performs
+effects the Rust default does not; a patch exceeding that ceiling is rejected
+before publication. Engine and call-scope capability policy may narrow actual
+execution but cannot widen the sealed patch ceiling.
 
 Changing the Rust trait schema requires a new server build unless an explicit
 future service-schema migration plan says otherwise. The initial model does not
@@ -365,6 +386,12 @@ ServiceUpdateBundle
   ServiceMethodId -> Replace(linked Vela callable) | RustDefault
   Vela state/schema reload facts
 ```
+
+M20.75 makes this portable contract format version 3 and adds static detached
+worker/continuation targets, detachability/effect summaries, continuation ABI,
+and Service execution requirements to the same candidate. Version 1 and 2
+programs, Service bundles, and detached deployment metadata reject before
+linking, staging, or activation; there is no compatibility conversion.
 
 The source-facing Snapshot API owns a complete virtual workspace rather than
 one concatenated string:
@@ -496,6 +523,50 @@ active `NativeCallContext` and pushes onto the same session. It inherits:
 
 There is no target-owned `Runtime`, Runtime mutex, reentrant global lock,
 thread-local Runtime, target-local default budget, or fresh nested session.
+
+#### 3.4.1 Detached child execution
+
+Detached work is the deliberate exception to same-session re-entry. It is not
+a nested call on the borrowed root Runtime. `task::spawn_scoped` and
+`task::spawn_scoped_then` prepare an owned child execution capsule and admit it
+to the host lifecycle scope. The child receives:
+
+- the exact root-pinned linked artifact and Service generation;
+- an owned `Arc<dyn ServiceCallDispatcher>` for that generation;
+- a clean Runtime created or leased from the generation's Runtime binding;
+- recursively detached arguments and no parent heap/HostRef identity;
+- a narrowed effect/capability ceiling and finite independent budgets; and
+- task metadata, cancellation, tracing, and completion channels owned by the
+  host scope.
+
+The immutable Service generation owns one shared execution capsule containing
+its generation identity, linked artifact, dispatcher, Runtime factory/binding,
+sealed registries, call policy, and diagnostics metadata. Generated composite
+Service adapters borrow this common capsule instead of independently retaining
+duplicated Runtime/options/dispatcher authority. The capsule owns no active
+mutable Runtime; concurrent children each lease a distinct clean Runtime.
+
+`service::base` and `service::pinned` inside the worker use the child's owned
+dispatcher and exact generation. They do not consult the currently published
+generation. Ordinary Vela helper calls use the same linked artifact. Worker
+and continuation targets therefore remain part of the same Snapshot/Delta as
+the Service selection that refers to them; publication cannot expose a task
+target independently from the complete generation.
+
+Only recursively owned detachable values cross into or out of the child.
+HostRef, HostPath, PathProxy, HostAccess-backed views, borrowed Rust values,
+scoped leases, live Host iterators, closures/upvalues, Runtime handles, and host
+contexts reject before admission. VM `state` is Runtime-local and is not
+shared. Business state shared with a detached child must be exposed through a
+registered concurrency-safe host API, extern state, database/RPC operation, or
+the later continuation turn.
+
+The host lifecycle scope supplies executor admission, finite capacity,
+cancellation, deadline, completion observation, and safe-point continuation
+delivery. It is propagated as an owned execution capability, never a global or
+thread-local. A Service call with no such scope fails deterministically if its
+executed Vela code reaches a task builtin. Authored Service trait methods gain
+no Runtime, task scope, or framework context parameter.
 
 ### 3.5 Successive Vela updates
 
@@ -916,12 +987,17 @@ The domain macro must:
 - require explicit `Service<dyn Trait>` schema markers;
 - validate unique service identities and one supplied Rust default instance per
   service;
+- require one explicit domain emergency `PatchEffectCeiling`, apply it to every
+  hotfixable method, and permit only explicit method-level narrowing;
 - combine service registration, Engine sealing, schema validation, default
   retention, and initial generation creation behind one builder terminal;
-- declare the Runtime authority carrier once;
-- generate the immutable service generation and controller;
+- declare the Runtime and host task-scope authority carriers once;
+- generate the immutable service generation, its shared detached execution
+  capsule, and controller;
 - generate the `ArcSwap` publication owner and safe-point pin handle;
-- generate an application-owned request scope that pins at `begin`;
+- generate an application-owned host lifecycle scope that pins at `begin`,
+  binds the executor-neutral task host, and can reacquire continuation context
+  at safe points;
 - provide a patch facade that retains a checksummed virtual multi-file
   `PatchRevision`, accepts `Put`/`Remove` or full replacement, and compiles the
   complete resulting Snapshot without exposing manifests, artifacts, Runtime
@@ -931,6 +1007,15 @@ The domain macro must:
 - provide same-generation access for Rust and Vela cross-service calls; and
 - generate framework adapters without exposing Runtime or lease internals to
   business callers.
+
+The M20.75 switch replaces the old generated request-entry signatures with one
+coherent task-capable scope model. It does not retain unscoped Service entry
+aliases, create a spawn method per Service/message, add a Runtime parameter to
+business traits, or branch between legacy and task-capable execution paths.
+Every Service in a domain shares the same explicit bounded detached-task policy
+and emergency patch ceiling. `RustDefaultEffects` remains separate and
+truthful. The staged patch's transitive effects, followed by the Engine and
+host-scope runtime ceilings, determine whether a spawn site is admitted.
 
 The removed `#[service_set]`, `ServiceSet::register`, `ServiceSet::new`,
 `#[vela(default = ...)]`, public generation constructors, `stage_rust`, and

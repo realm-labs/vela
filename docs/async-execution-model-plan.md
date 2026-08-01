@@ -1,5 +1,14 @@
 # Async Execution Model Architecture Plan
 
+> **M20.75 extension:** the original track deliberately excluded detached
+> work. The later
+> [host-scoped detached async execution plan](host-scoped-detached-async-execution-plan.md)
+> lifts only that exclusion through statically linked, owned, bounded host-scope
+> admission on an isolated Runtime. It preserves this plan's frame driver,
+> executor neutrality, awaited-call semantics, no task/Future handles, and no
+> shared Runtime. The repository's current audited-unsafe policy supersedes the
+> historical Batch E prompt's blanket unsafe wording.
+
 > **Track:** executor-neutral script suspension, Rust/Vela async interop,
 > scoped host leases, and same-execution reentry
 > **Document status:** ready for follow-up execution
