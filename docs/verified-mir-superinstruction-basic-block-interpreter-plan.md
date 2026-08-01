@@ -1114,7 +1114,7 @@ cargo test -p vela_bytecode --all-features
 cargo test -p vela_vm --all-features
 cargo test -p vela_hot_reload --all-features
 cargo test -p vela_engine --all-features
-cargo test -p vela_vm --test external_compare_contract
+cargo test -p vela_vm --test integration external_compare_contract
 cargo check --manifest-path fuzz/Cargo.toml --bins
 cargo bench -p vela_vm --bench baseline --no-run
 cargo bench -p vela_vm --bench external_compare --no-run
@@ -1184,7 +1184,7 @@ Expected behavior:
     are inventoried;
   - no compiler, artifact, or runtime semantics change.
 Tests:
-  - cargo test -p vela_vm --test external_compare_contract
+  - cargo test -p vela_vm --test integration external_compare_contract
   - cargo test -p vela_bytecode --all-features
   - focused tests for any new test-support inventory API
 Do not change:

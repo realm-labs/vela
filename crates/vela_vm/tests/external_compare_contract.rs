@@ -17,6 +17,10 @@ use vela_bytecode::{BinaryLiteralOp, BinaryLiteralSide};
 use vela_bytecode::{Linker, UnlinkedProgram};
 use vela_common::ScalarValue;
 use vela_common::SourceId;
+use vela_mir::{
+    MirBinaryOp, MirBudgetClass, MirFunction, MirFunctionAnalyses, MirPlace, MirStatementKind,
+    MirTerminatorKind,
+};
 use vela_vm::Vm;
 use vela_vm::owned_value::OwnedValue;
 
@@ -127,6 +131,55 @@ fn scalar_workloads_have_reproducible_opcode_count_reports() {
     assert_has_opcode(&float_math, "BinaryFloatLiteral::Add::Right");
     assert_has_opcode(&float_math, "Mul");
     assert_has_opcode(&float_math, "Div");
+}
+
+#[test]
+fn lead_workloads_have_reproducible_verified_mir_inventories() {
+    let vm = Vm::new().with_standard_natives();
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+
+    for (workload_name, expected) in [
+        (
+            "scalar_branch_loop",
+            "verified_mir_inventory workload=scalar_branch_loop functions=2 blocks=14 statements=37 terminators=14 cfg_edges=16 budget_sites=7 budget_classes={\"call\": 1, \"dynamic_work\": 1, \"iterator_step\": 2, \"loop_backedge\": 3} safepoints=1 trap_points=10 source_points=51 outer_dispatches=58 code_bytes=7424 candidate_sequences={\"bytecode:i64_cmp_imm+jump_if_false\": 2, \"mir:i64_compare_immediate+branch\": 2, \"mir:scalar_run_len_3\": 1, \"mir:scalar_run_len_5_plus\": 5} checksum=23880",
+        ),
+        (
+            "range_iteration",
+            "verified_mir_inventory workload=range_iteration functions=2 blocks=14 statements=35 terminators=14 cfg_edges=16 budget_sites=10 budget_classes={\"call\": 1, \"dynamic_work\": 1, \"iterator_step\": 4, \"loop_backedge\": 4} safepoints=1 trap_points=6 source_points=49 outer_dispatches=63 code_bytes=8064 candidate_sequences={\"mir:scalar_run_len_4\": 2, \"mir:scalar_run_len_5_plus\": 4} checksum=134080",
+        ),
+        (
+            "function_calls",
+            "verified_mir_inventory workload=function_calls functions=4 blocks=10 statements=29 terminators=10 cfg_edges=8 budget_sites=11 budget_classes={\"call\": 3, \"dynamic_work\": 4, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=3 trap_points=10 source_points=39 outer_dispatches=45 code_bytes=5760 candidate_sequences={\"mir:scalar_run_len_2\": 1, \"mir:scalar_run_len_3\": 1, \"mir:scalar_run_len_5_plus\": 2} checksum=233764",
+        ),
+        (
+            "recursive_countdown",
+            "verified_mir_inventory workload=recursive_countdown functions=3 blocks=12 statements=27 terminators=12 cfg_edges=11 budget_sites=10 budget_classes={\"call\": 3, \"dynamic_work\": 3, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=3 trap_points=8 source_points=39 outer_dispatches=44 code_bytes=5632 candidate_sequences={\"mir:scalar_run_len_2\": 2, \"mir:scalar_run_len_5_plus\": 2} checksum=3240",
+        ),
+        (
+            "float_math_loop",
+            "verified_mir_inventory workload=float_math_loop functions=2 blocks=8 statements=34 terminators=8 cfg_edges=8 budget_sites=7 budget_classes={\"call\": 2, \"dynamic_work\": 1, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=2 trap_points=9 source_points=42 outer_dispatches=48 code_bytes=6144 candidate_sequences={\"mir:scalar_run_len_5_plus\": 3} checksum=39210",
+        ),
+    ] {
+        let inventory = verified_mir_inventory(&vm, registry.compile_view(), workload_name);
+        assert!(inventory.functions > 0, "{workload_name}: {inventory:#?}");
+        assert!(inventory.blocks > 0, "{workload_name}: {inventory:#?}");
+        assert!(inventory.statements > 0, "{workload_name}: {inventory:#?}");
+        assert_eq!(
+            inventory.blocks, inventory.terminators,
+            "every verified block is terminated: {workload_name}: {inventory:#?}"
+        );
+        assert!(
+            inventory.outer_dispatches > 0,
+            "{workload_name}: {inventory:#?}"
+        );
+        assert!(
+            inventory.source_points > 0,
+            "{workload_name}: {inventory:#?}"
+        );
+        assert!(inventory.checksum > 0, "{workload_name}: {inventory:#?}");
+        assert_eq!(inventory.to_string(), expected);
+        eprintln!("{inventory}");
+    }
 }
 
 #[test]
@@ -306,6 +359,252 @@ fn opcode_count_report(
         }
     }
     counts
+}
+
+#[derive(Debug, Default, Eq, PartialEq)]
+struct VerifiedMirInventory {
+    workload: &'static str,
+    functions: usize,
+    blocks: usize,
+    statements: usize,
+    terminators: usize,
+    cfg_edges: usize,
+    budget_sites: usize,
+    budget_classes: BTreeMap<&'static str, usize>,
+    safepoints: usize,
+    trap_points: usize,
+    source_points: usize,
+    outer_dispatches: usize,
+    code_bytes: usize,
+    candidate_sequences: BTreeMap<&'static str, usize>,
+    checksum: i64,
+}
+
+impl std::fmt::Display for VerifiedMirInventory {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            formatter,
+            concat!(
+                "verified_mir_inventory workload={} functions={} blocks={} statements={} ",
+                "terminators={} cfg_edges={} budget_sites={} budget_classes={:?} ",
+                "safepoints={} trap_points={} source_points={} outer_dispatches={} ",
+                "code_bytes={} candidate_sequences={:?} checksum={}"
+            ),
+            self.workload,
+            self.functions,
+            self.blocks,
+            self.statements,
+            self.terminators,
+            self.cfg_edges,
+            self.budget_sites,
+            self.budget_classes,
+            self.safepoints,
+            self.trap_points,
+            self.source_points,
+            self.outer_dispatches,
+            self.code_bytes,
+            self.candidate_sequences,
+            self.checksum,
+        )
+    }
+}
+
+fn verified_mir_inventory(
+    vm: &Vm,
+    registry: vela_registry::RegistryCompileView<'_>,
+    workload_name: &'static str,
+) -> VerifiedMirInventory {
+    let workload = workloads::all_workloads()
+        .find(|workload| workload.name == workload_name)
+        .unwrap_or_else(|| panic!("{workload_name} workload should exist"));
+    let program = compile_test_program_with_registry(SourceId::new(1), workload.vela, registry)
+        .unwrap_or_else(|error| panic!("{workload_name} should compile: {error:?}"));
+    let linked = link_program_for_vm(vm, &program)
+        .unwrap_or_else(|error| panic!("{workload_name} should link: {error}"));
+    let checksum = run_vela_workload(vm, registry, workload, 2)
+        .unwrap_or_else(|error| panic!("{workload_name} should run: {error}"));
+    let mut inventory = VerifiedMirInventory {
+        workload: workload.name,
+        checksum,
+        ..VerifiedMirInventory::default()
+    };
+
+    for (_, owner) in program.verified_mir().roots() {
+        for (function_id, function) in owner.program().functions() {
+            inventory.functions += 1;
+            let analyses = owner
+                .analyses(function_id)
+                .expect("verified MIR function should have analyses");
+            inventory_function(function, analyses, &mut inventory);
+        }
+    }
+
+    for (_, function) in linked.functions() {
+        inventory.outer_dispatches += function.instructions.len();
+        inventory.code_bytes +=
+            function.instructions.len() * std::mem::size_of::<vela_bytecode::Instruction>();
+        for pair in function.instructions.windows(2) {
+            if matches!(pair[0].kind, InstructionKind::I64CmpImm { .. })
+                && matches!(pair[1].kind, InstructionKind::JumpIfFalse { .. })
+            {
+                *inventory
+                    .candidate_sequences
+                    .entry("bytecode:i64_cmp_imm+jump_if_false")
+                    .or_insert(0) += 1;
+            }
+        }
+    }
+    inventory
+}
+
+fn inventory_function(
+    function: &MirFunction,
+    analyses: &MirFunctionAnalyses,
+    inventory: &mut VerifiedMirInventory,
+) {
+    inventory.safepoints += function.safepoints().count();
+    for (_, point) in analyses.budget.points() {
+        inventory.budget_sites += 1;
+        *inventory
+            .budget_classes
+            .entry(budget_class_label(point.class))
+            .or_insert(0) += 1;
+    }
+
+    for (_, block) in function.blocks() {
+        inventory.blocks += 1;
+        inventory.statements += block.statements().len();
+        let mut scalar_run = 0;
+        for statement_id in block.statements() {
+            let statement = function
+                .statement(*statement_id)
+                .expect("block statement should exist");
+            inventory.source_points += 1;
+            inventory.trap_points += usize::from(statement.effect.may_trap);
+            if is_initial_scalar_statement(&statement.kind) {
+                scalar_run += 1;
+            } else {
+                record_scalar_run(scalar_run, inventory);
+                scalar_run = 0;
+            }
+        }
+        record_scalar_run(scalar_run, inventory);
+
+        let terminator = block
+            .terminator()
+            .expect("verified block should be terminated");
+        inventory.terminators += 1;
+        inventory.cfg_edges += terminator_successor_count(&terminator.kind);
+        inventory.source_points += 1;
+        inventory.trap_points += usize::from(terminator.effect.may_trap);
+
+        if mir_i64_compare_immediate_branch_candidate(function, analyses, block) {
+            *inventory
+                .candidate_sequences
+                .entry("mir:i64_compare_immediate+branch")
+                .or_insert(0) += 1;
+        }
+    }
+}
+
+fn record_scalar_run(length: usize, inventory: &mut VerifiedMirInventory) {
+    let label = match length {
+        2 => Some("mir:scalar_run_len_2"),
+        3 => Some("mir:scalar_run_len_3"),
+        4 => Some("mir:scalar_run_len_4"),
+        5.. => Some("mir:scalar_run_len_5_plus"),
+        _ => None,
+    };
+    if let Some(label) = label {
+        *inventory.candidate_sequences.entry(label).or_insert(0) += 1;
+    }
+}
+
+fn is_initial_scalar_statement(kind: &MirStatementKind) -> bool {
+    matches!(
+        kind,
+        MirStatementKind::Assign(_)
+            | MirStatementKind::Unary { .. }
+            | MirStatementKind::Binary { .. }
+            | MirStatementKind::ContextualNumericBinary { .. }
+            | MirStatementKind::IdentityCompare { .. }
+    )
+}
+
+fn mir_i64_compare_immediate_branch_candidate(
+    function: &MirFunction,
+    analyses: &MirFunctionAnalyses,
+    block: &vela_mir::MirBasicBlock,
+) -> bool {
+    let Some(last_statement_id) = block.statements().last().copied() else {
+        return false;
+    };
+    let Some(last_statement) = function.statement(last_statement_id) else {
+        return false;
+    };
+    let MirStatementKind::Binary {
+        operation:
+            MirBinaryOp::Compare {
+                kind: vela_common::PrimitiveTag::I64,
+                ..
+            },
+        left,
+        right,
+    } = &last_statement.kind
+    else {
+        return false;
+    };
+    let Some(MirPlace::Temp(destination)) = last_statement.destination else {
+        return false;
+    };
+    let Some(terminator) = block.terminator() else {
+        return false;
+    };
+    let MirTerminatorKind::Branch {
+        condition: vela_mir::MirOperand::Temp(condition),
+        ..
+    } = &terminator.kind
+    else {
+        return false;
+    };
+    if destination != *condition {
+        return false;
+    }
+    analyses
+        .facts
+        .operand_before(last_statement_id, left)
+        .is_some_and(|fact| fact.immediate.is_some())
+        || analyses
+            .facts
+            .operand_before(last_statement_id, right)
+            .is_some_and(|fact| fact.immediate.is_some())
+}
+
+fn terminator_successor_count(kind: &MirTerminatorKind) -> usize {
+    match kind {
+        MirTerminatorKind::Jump(_) | MirTerminatorKind::AwaitCall { .. } => 1,
+        MirTerminatorKind::Branch { .. }
+        | MirTerminatorKind::GuardBranch { .. }
+        | MirTerminatorKind::IteratorNext { .. }
+        | MirTerminatorKind::RangeNext { .. } => 2,
+        MirTerminatorKind::Switch { cases, .. } => cases.len() + 1,
+        MirTerminatorKind::TrySwitch { continuations, .. } => continuations.len() + 3,
+        MirTerminatorKind::Return(_)
+        | MirTerminatorKind::TryTypeMismatch { .. }
+        | MirTerminatorKind::Unreachable => 0,
+    }
+}
+
+fn budget_class_label(class: MirBudgetClass) -> &'static str {
+    match class {
+        MirBudgetClass::LoopBackedge => "loop_backedge",
+        MirBudgetClass::IteratorStep => "iterator_step",
+        MirBudgetClass::Call => "call",
+        MirBudgetClass::DynamicWork => "dynamic_work",
+        MirBudgetClass::Allocation => "allocation",
+        MirBudgetClass::HostAccess => "host_access",
+        MirBudgetClass::Reflection => "reflection",
+    }
 }
 
 fn assert_has_opcode(counts: &BTreeMap<&'static str, usize>, opcode: &'static str) {
