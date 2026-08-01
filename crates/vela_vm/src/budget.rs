@@ -5,6 +5,7 @@ pub enum ExecutionBudgetKind {
     ExecutionUnits,
     MemoryBytes,
     CallDepth,
+    HostCalls,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -31,6 +32,7 @@ pub struct ExecutionLimits {
     pub memory_limit_bytes: usize,
     pub max_call_depth: usize,
     pub collection_limits: CollectionLimits,
+    pub host_call_limit: u64,
 }
 
 impl ExecutionLimits {
@@ -45,6 +47,7 @@ impl ExecutionLimits {
             memory_limit_bytes,
             max_call_depth,
             collection_limits: CollectionLimits::unbounded(),
+            host_call_limit: u64::MAX,
         }
     }
 
@@ -58,6 +61,12 @@ impl ExecutionLimits {
         self.collection_limits = limits;
         self
     }
+
+    #[must_use]
+    pub const fn with_host_call_limit(mut self, limit: u64) -> Self {
+        self.host_call_limit = limit;
+        self
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -65,6 +74,7 @@ pub struct ExecutionCounters {
     execution_units_consumed: u64,
     memory_bytes_allocated: usize,
     current_call_depth: usize,
+    host_calls: u64,
 }
 
 impl ExecutionCounters {
@@ -82,6 +92,11 @@ impl ExecutionCounters {
     pub fn current_call_depth(self) -> usize {
         self.current_call_depth
     }
+
+    #[must_use]
+    pub fn host_calls(self) -> u64 {
+        self.host_calls
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -94,6 +109,7 @@ impl BudgetFlags {
     const MEMORY: u8 = 0b0010;
     const CALL_DEPTH: u8 = 0b0100;
     const COLLECTION_LIMITS: u8 = 0b1000;
+    const HOST_CALLS: u8 = 0b1_0000;
 
     #[must_use]
     const fn from_limits(limits: &ExecutionLimits) -> Self {
@@ -112,6 +128,9 @@ impl BudgetFlags {
             || limits.collection_limits.max_set_len != usize::MAX
         {
             bits |= Self::COLLECTION_LIMITS;
+        }
+        if limits.host_call_limit != u64::MAX {
+            bits |= Self::HOST_CALLS;
         }
         Self { bits }
     }
@@ -184,6 +203,11 @@ impl ExecutionBudget {
     }
 
     #[must_use]
+    pub fn host_calls(&self) -> u64 {
+        self.counters.host_calls()
+    }
+
+    #[must_use]
     pub fn collection_limits(&self) -> CollectionLimits {
         self.limits.collection_limits
     }
@@ -191,6 +215,13 @@ impl ExecutionBudget {
     #[must_use]
     pub fn with_collection_limits(mut self, limits: CollectionLimits) -> Self {
         self.limits = self.limits.with_collection_limits(limits);
+        self.flags = BudgetFlags::from_limits(&self.limits);
+        self
+    }
+
+    #[must_use]
+    pub fn with_host_call_limit(mut self, limit: u64) -> Self {
+        self.limits = self.limits.with_host_call_limit(limit);
         self.flags = BudgetFlags::from_limits(&self.limits);
         self
     }
@@ -207,6 +238,21 @@ impl ExecutionBudget {
             }));
         }
         self.counters.execution_units_consumed = next;
+        Ok(())
+    }
+
+    pub fn charge_host_call(&mut self) -> VmResult<()> {
+        if !self.limits_host_calls() {
+            return Ok(());
+        }
+        let next = self.counters.host_calls.saturating_add(1);
+        if next > self.limits.host_call_limit {
+            return Err(VmError::new(VmErrorKind::BudgetExceeded {
+                budget: ExecutionBudgetKind::HostCalls,
+                limit: self.limits.host_call_limit,
+            }));
+        }
+        self.counters.host_calls = next;
         Ok(())
     }
 
@@ -232,6 +278,12 @@ impl ExecutionBudget {
     #[inline(always)]
     pub(crate) fn limits_collections(&self) -> bool {
         self.flags.contains(BudgetFlags::COLLECTION_LIMITS)
+    }
+
+    #[must_use]
+    #[inline(always)]
+    pub(crate) fn limits_host_calls(&self) -> bool {
+        self.flags.contains(BudgetFlags::HOST_CALLS)
     }
 
     #[must_use]
@@ -299,16 +351,19 @@ mod tests {
         assert!(!budget.charges_memory());
         assert!(!budget.limits_call_depth());
         assert!(!budget.limits_collections());
+        assert!(!budget.limits_host_calls());
         assert!(!budget.tracks_collection_growth());
 
         budget.charge_execution_units(10).expect("unbounded charge");
         budget.charge_memory_bytes(128).expect("unbounded memory");
+        budget.charge_host_call().expect("unbounded host call");
         budget.enter_call().expect("unbounded call depth");
         budget.exit_call();
 
         assert_eq!(budget.execution_units_consumed(), 0);
         assert_eq!(budget.memory_bytes_allocated(), 0);
         assert_eq!(budget.current_call_depth(), 0);
+        assert_eq!(budget.host_calls(), 0);
     }
 
     #[test]
@@ -341,6 +396,25 @@ mod tests {
         assert!(budget.limits_collections());
         assert!(budget.tracks_collection_growth());
         assert_eq!(budget.memory_bytes_allocated(), 0);
+    }
+
+    #[test]
+    fn host_call_limit_is_independent_and_fails_before_increment() {
+        let mut budget = ExecutionBudget::unbounded().with_host_call_limit(1);
+
+        budget.charge_host_call().expect("first host call fits");
+        let error = budget
+            .charge_host_call()
+            .expect_err("second host call exceeds limit");
+
+        assert!(matches!(
+            error.kind(),
+            crate::VmErrorKind::BudgetExceeded {
+                budget: super::ExecutionBudgetKind::HostCalls,
+                limit: 1,
+            }
+        ));
+        assert_eq!(budget.host_calls(), 1);
     }
 
     #[test]

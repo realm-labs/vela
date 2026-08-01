@@ -88,7 +88,7 @@ pub struct PreparedTaskCall {
     worker: ScriptFunctionHandle,
     worker_name: String,
     mode: vela_bytecode::ScriptCallMode,
-    arguments: crate::DetachedValueImage,
+    arguments: Vec<Value>,
     continuation: Option<vela_bytecode::linked::TaskContinuation>,
     source_span: Option<Span>,
 }
@@ -115,13 +115,8 @@ impl PreparedTaskCall {
     }
 
     #[must_use]
-    pub const fn arguments(&self) -> &crate::DetachedValueImage {
+    pub fn arguments(&self) -> &[Value] {
         &self.arguments
-    }
-
-    #[must_use]
-    pub fn into_arguments(self) -> crate::DetachedValueImage {
-        self.arguments
     }
 
     #[must_use]
@@ -1375,13 +1370,7 @@ impl Vm {
                     let args = script_function_calls::script_call_args_from_call_arguments(
                         frame, &task.args,
                     )?;
-                    let mut unbounded = ExecutionBudget::unbounded();
-                    let task_budget = budget.as_deref_mut().unwrap_or(&mut unbounded);
-                    let arguments = crate::DetachedValueImage::export_arguments(
-                        args.as_slice(),
-                        heap.as_deref().map(|execution| &*execution.heap),
-                        task_budget,
-                    )?;
+                    let arguments = args.as_slice().to_vec();
                     frame.write(task.dst, Value::Unit)?;
                     frame_state.ip = InstructionOffset(ip);
                     return Ok(FrameDriveOutcome::Task(PreparedTaskCall {

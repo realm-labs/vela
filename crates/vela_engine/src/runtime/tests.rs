@@ -1,5 +1,7 @@
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::task::{Context, Poll, Waker};
 
 use vela_bytecode::CacheSiteKind;
 use vela_host::access::HostAccess;
@@ -11,6 +13,7 @@ use vela_vm::value::Value;
 use crate::engine::Engine;
 use vela_common::SourceId;
 use vela_vm::budget::{CollectionLimits, ExecutionLimits};
+use vela_vm::error::{VmError, VmErrorKind};
 
 use super::{
     CallArgs, CallOptions, OwnedImage, Runtime, RuntimeBuildError, RuntimeImage, RuntimeImpl,
@@ -71,9 +74,124 @@ fn main() { task::spawn_scoped(repair(41)); }
     );
 }
 
+#[test]
+fn scoped_task_scope_validation_precedes_runtime_value_detachment() {
+    let engine = Engine::builder()
+        .capability(vela_common::Capability::TaskSpawn)
+        .build()
+        .expect("engine should build");
+    let program = engine
+        .compile_source(
+            r#"
+async fn repair(value: Any) { return; }
+fn main(value: Any) { task::spawn_scoped(repair(value)); }
+"#,
+        )
+        .expect("runtime-checked task fixture compiles");
+    let mut runtime = Runtime::new_compiled(engine, program).expect("runtime builds");
+    let host_ref = vela_host::path::HostRef::new(
+        vela_common::HostTypeId::new(71),
+        vela_common::HostObjectId::new(8),
+        1,
+    );
+
+    let error = runtime
+        .call(
+            "main",
+            CallArgs::from_positional([OwnedValue::HostRef(host_ref)]),
+            CallOptions::unbounded(),
+        )
+        .expect_err("missing scope wins before runtime detachment validation");
+
+    assert_eq!(error.kind(), VmErrorKind::TaskScopeUnavailable);
+}
+
+#[test]
+fn scoped_task_runtime_check_rejects_host_ref_hidden_behind_any() {
+    let engine = Engine::builder()
+        .capability(vela_common::Capability::TaskSpawn)
+        .build()
+        .expect("engine should build");
+    let program = engine
+        .compile_source(
+            r#"
+async fn repair(value: Any) { return; }
+fn main(value: Any) { task::spawn_scoped(repair(value)); }
+"#,
+        )
+        .expect("runtime-checked task fixture compiles");
+    let mut runtime = Runtime::new_compiled(engine, program).expect("runtime builds");
+    let host = Arc::new(RecordingTaskHost::default());
+    let host_ref = vela_host::path::HostRef::new(
+        vela_common::HostTypeId::new(71),
+        vela_common::HostObjectId::new(8),
+        1,
+    );
+
+    let error = runtime
+        .call(
+            "main",
+            CallArgs::from_positional([OwnedValue::HostRef(host_ref)]),
+            CallOptions::unbounded().with_task_scope(crate::task::TaskScope::new(
+                host.clone(),
+                finite_task_policy(std::time::Duration::from_secs(1)),
+            )),
+        )
+        .expect_err("runtime check rejects hidden HostRef");
+
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::TaskValueNotDetachable { path, kind }
+            if path == "argument[0]"
+                && kind == vela_common::NonDetachableValueKind::HostReference
+    ));
+    assert!(host.admitted.lock().expect("task host lock").is_empty());
+}
+
 #[derive(Default)]
 struct RecordingTaskHost {
     admitted: Mutex<Vec<crate::task::ScopedTask>>,
+}
+
+fn finite_task_policy(timeout: std::time::Duration) -> crate::task::TaskPolicy {
+    finite_task_policy_with_host_calls(timeout, 16)
+}
+
+fn finite_task_policy_with_host_calls(
+    timeout: std::time::Duration,
+    max_host_calls: u64,
+) -> crate::task::TaskPolicy {
+    let limits =
+        ExecutionLimits::new(10_000, 1 << 20, 64).with_collection_limits(CollectionLimits {
+            max_array_len: 1_024,
+            max_map_entries: 1_024,
+            max_set_len: 1_024,
+        });
+    crate::task::TaskPolicy::new(
+        std::num::NonZeroUsize::new(4).expect("non-zero"),
+        std::num::NonZeroUsize::new(4).expect("non-zero"),
+        limits,
+        std::num::NonZeroU64::new(max_host_calls).expect("non-zero"),
+        timeout,
+        vela_common::CapabilitySet::new().with(vela_common::Capability::TaskSpawn),
+    )
+    .expect("finite task policy")
+}
+
+fn take_task(host: &RecordingTaskHost) -> crate::task::ScopedTask {
+    host.admitted
+        .lock()
+        .expect("task host lock")
+        .pop()
+        .expect("one admitted task")
+}
+
+fn import_task_result(image: &vela_vm::DetachedValueImage) -> Vec<Value> {
+    let mut heap = vela_vm::heap::ScriptHeap::new();
+    let mut budget = vela_vm::budget::ExecutionBudget::new(100, 4096, 8);
+    image
+        .import_into(&mut heap, &mut budget)
+        .expect("host can import detached outcome")
 }
 
 impl crate::task::ScopedTaskHost for RecordingTaskHost {
@@ -107,21 +225,7 @@ fn main() {
         .expect("task fixture compiles");
     let mut runtime = Runtime::new_compiled(engine, program).expect("runtime builds");
     let host = Arc::new(RecordingTaskHost::default());
-    let limits =
-        ExecutionLimits::new(10_000, 1 << 20, 64).with_collection_limits(CollectionLimits {
-            max_array_len: 1_024,
-            max_map_entries: 1_024,
-            max_set_len: 1_024,
-        });
-    let policy = crate::task::TaskPolicy::new(
-        std::num::NonZeroUsize::new(4).expect("non-zero"),
-        std::num::NonZeroUsize::new(4).expect("non-zero"),
-        limits,
-        std::num::NonZeroU64::new(16).expect("non-zero"),
-        std::time::Duration::from_secs(1),
-        vela_common::CapabilitySet::new().with(vela_common::Capability::TaskSpawn),
-    )
-    .expect("finite task policy");
+    let policy = finite_task_policy(std::time::Duration::from_secs(1));
     let scope = crate::task::TaskScope::new(host.clone(), policy);
 
     let parent = runtime
@@ -132,12 +236,7 @@ fn main() {
         )
         .expect("caller admits detached worker");
     assert_eq!(runtime.value_to_owned(&parent), Ok(OwnedValue::i64(100)));
-    let task = host
-        .admitted
-        .lock()
-        .expect("task host lock")
-        .pop()
-        .expect("one admitted task");
+    let task = take_task(&host);
     let (_, _, mut future) = task.into_parts();
     let waker = std::task::Waker::noop();
     let mut context = std::task::Context::from_waker(waker);
@@ -146,12 +245,7 @@ fn main() {
     else {
         panic!("detached worker should complete with an owned image");
     };
-    let mut result_heap = vela_vm::heap::ScriptHeap::new();
-    let mut result_budget = vela_vm::budget::ExecutionBudget::new(100, 4096, 8);
-    let roots = image
-        .import_into(&mut result_heap, &mut result_budget)
-        .expect("host can import detached outcome");
-    assert_eq!(roots, [Value::i64(2)]);
+    assert_eq!(import_task_result(&image), [Value::i64(2)]);
 }
 
 #[test]
@@ -179,21 +273,7 @@ fn main() {
         .expect("cyclic task fixture compiles");
     let mut runtime = Runtime::new_compiled(engine, program).expect("runtime builds");
     let host = Arc::new(RecordingTaskHost::default());
-    let limits =
-        ExecutionLimits::new(10_000, 1 << 20, 64).with_collection_limits(CollectionLimits {
-            max_array_len: 1_024,
-            max_map_entries: 1_024,
-            max_set_len: 1_024,
-        });
-    let policy = crate::task::TaskPolicy::new(
-        std::num::NonZeroUsize::new(4).expect("non-zero"),
-        std::num::NonZeroUsize::new(4).expect("non-zero"),
-        limits,
-        std::num::NonZeroU64::new(16).expect("non-zero"),
-        std::time::Duration::from_secs(1),
-        vela_common::CapabilitySet::new().with(vela_common::Capability::TaskSpawn),
-    )
-    .expect("finite task policy");
+    let policy = finite_task_policy(std::time::Duration::from_secs(1));
     let scope = crate::task::TaskScope::new(host.clone(), policy);
 
     runtime
@@ -203,12 +283,7 @@ fn main() {
             CallOptions::unbounded().with_task_scope(scope),
         )
         .expect("caller admits cyclic graph");
-    let task = host
-        .admitted
-        .lock()
-        .expect("task host lock")
-        .pop()
-        .expect("one admitted task");
+    let task = take_task(&host);
     let (_, _, mut future) = task.into_parts();
     let waker = std::task::Waker::noop();
     let mut context = std::task::Context::from_waker(waker);
@@ -217,12 +292,384 @@ fn main() {
     else {
         panic!("graph inspection worker should complete");
     };
-    let mut result_heap = vela_vm::heap::ScriptHeap::new();
-    let mut result_budget = vela_vm::budget::ExecutionBudget::new(100, 4096, 8);
-    let roots = image
-        .import_into(&mut result_heap, &mut result_budget)
-        .expect("host can import detached outcome");
-    assert_eq!(roots, [Value::Bool(true)]);
+    assert_eq!(import_task_result(&image), [Value::Bool(true)]);
+}
+
+struct PendingOnce {
+    polls: Arc<AtomicUsize>,
+}
+
+impl std::future::Future for PendingOnce {
+    type Output = vela_vm::error::VmResult<OwnedValue>;
+
+    fn poll(self: std::pin::Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {
+        if self.polls.fetch_add(1, Ordering::SeqCst) == 0 {
+            context.waker().wake_by_ref();
+            Poll::Pending
+        } else {
+            Poll::Ready(Ok(OwnedValue::i64(9)))
+        }
+    }
+}
+
+struct NeverReady {
+    dropped: Arc<AtomicBool>,
+}
+
+impl std::future::Future for NeverReady {
+    type Output = vela_vm::error::VmResult<OwnedValue>;
+
+    fn poll(self: std::pin::Pin<&mut Self>, _context: &mut Context<'_>) -> Poll<Self::Output> {
+        Poll::Pending
+    }
+}
+
+impl Drop for NeverReady {
+    fn drop(&mut self) {
+        self.dropped.store(true, Ordering::SeqCst);
+    }
+}
+
+fn pending_task_fixture(
+    function: impl for<'call> Fn(&'call [OwnedValue]) -> vela_vm::NativeCallFuture<'call>
+    + Send
+    + Sync
+    + 'static,
+) -> (Engine, vela_bytecode::compiler::CompiledProgram) {
+    let engine = Engine::builder()
+        .capability(vela_common::Capability::TaskSpawn)
+        .register_async_fn(
+            crate::native::NativeFunctionDesc::new(
+                "test::pending_task",
+                vela_def::FunctionId::new(0x7A51),
+            )
+            .returns(crate::native::TypeHint::i64())
+            .access(crate::native::FunctionAccess::public()),
+            function,
+        )
+        .build()
+        .expect("engine should build");
+    let program = engine
+        .compile_source(
+            r#"
+async fn repair() -> i64 { return test::pending_task().await; }
+fn main() { task::spawn_scoped(repair()); }
+"#,
+        )
+        .expect("pending task fixture compiles");
+    (engine, program)
+}
+
+#[test]
+fn scoped_task_worker_uses_existing_pending_async_driver() {
+    let polls = Arc::new(AtomicUsize::new(0));
+    let fixture_polls = Arc::clone(&polls);
+    let (engine, program) = pending_task_fixture(move |_args| {
+        Box::pin(PendingOnce {
+            polls: Arc::clone(&fixture_polls),
+        })
+    });
+    let mut runtime = Runtime::new_compiled(engine, program).expect("runtime builds");
+    let host = Arc::new(RecordingTaskHost::default());
+    runtime
+        .call(
+            "main",
+            CallArgs::new(),
+            CallOptions::unbounded().with_task_scope(crate::task::TaskScope::new(
+                host.clone(),
+                finite_task_policy(std::time::Duration::from_secs(1)),
+            )),
+        )
+        .expect("sync caller admits pending worker");
+    assert_eq!(polls.load(Ordering::SeqCst), 0);
+
+    let (_, _, mut future) = take_task(&host).into_parts();
+    let mut context = Context::from_waker(Waker::noop());
+    assert!(matches!(future.as_mut().poll(&mut context), Poll::Pending));
+    assert_eq!(polls.load(Ordering::SeqCst), 1);
+    let Poll::Ready(crate::task::ScopedTaskOutcome::Completed(image)) =
+        future.as_mut().poll(&mut context)
+    else {
+        panic!("second poll should finish pending-once native");
+    };
+    assert_eq!(import_task_result(&image), [Value::i64(9)]);
+}
+
+#[test]
+fn scoped_task_explicit_scope_close_cancels_after_cleanup() {
+    let dropped = Arc::new(AtomicBool::new(false));
+    let fixture_dropped = Arc::clone(&dropped);
+    let (engine, program) = pending_task_fixture(move |_args| {
+        Box::pin(NeverReady {
+            dropped: Arc::clone(&fixture_dropped),
+        })
+    });
+    let mut runtime = Runtime::new_compiled(engine, program).expect("runtime builds");
+    let host = Arc::new(RecordingTaskHost::default());
+    runtime
+        .call(
+            "main",
+            CallArgs::new(),
+            CallOptions::unbounded().with_task_scope(crate::task::TaskScope::new(
+                host.clone(),
+                finite_task_policy(std::time::Duration::from_secs(1)),
+            )),
+        )
+        .expect("sync caller admits pending worker");
+    let mut task = take_task(&host);
+    let mut context = Context::from_waker(Waker::noop());
+    assert!(matches!(task.poll(&mut context), Poll::Pending));
+    let outcome = task.cancel(crate::task::TaskCancellationReason::ScopeClosed);
+    assert!(dropped.load(Ordering::SeqCst));
+    assert!(matches!(
+        outcome,
+        crate::task::ScopedTaskOutcome::Failed(crate::task::TaskError {
+            kind: crate::task::TaskErrorKind::Cancelled(
+                crate::task::TaskCancellationReason::ScopeClosed
+            ),
+            ..
+        })
+    ));
+}
+
+#[test]
+fn scoped_task_dropped_future_cleans_up_pending_native() {
+    let dropped = Arc::new(AtomicBool::new(false));
+    let fixture_dropped = Arc::clone(&dropped);
+    let (engine, program) = pending_task_fixture(move |_args| {
+        Box::pin(NeverReady {
+            dropped: Arc::clone(&fixture_dropped),
+        })
+    });
+    let mut runtime = Runtime::new_compiled(engine, program).expect("runtime builds");
+    let host = Arc::new(RecordingTaskHost::default());
+    runtime
+        .call(
+            "main",
+            CallArgs::new(),
+            CallOptions::unbounded().with_task_scope(crate::task::TaskScope::new(
+                host.clone(),
+                finite_task_policy(std::time::Duration::from_secs(1)),
+            )),
+        )
+        .expect("sync caller admits pending worker");
+    let task = take_task(&host);
+    let (_, _, mut future) = task.into_parts();
+    let mut context = Context::from_waker(Waker::noop());
+    assert!(matches!(future.as_mut().poll(&mut context), Poll::Pending));
+    drop(future);
+    assert!(dropped.load(Ordering::SeqCst));
+}
+
+#[test]
+fn scoped_task_deadline_contains_pending_worker_and_cleans_up() {
+    let dropped = Arc::new(AtomicBool::new(false));
+    let fixture_dropped = Arc::clone(&dropped);
+    let (engine, program) = pending_task_fixture(move |_args| {
+        Box::pin(NeverReady {
+            dropped: Arc::clone(&fixture_dropped),
+        })
+    });
+    let mut runtime = Runtime::new_compiled(engine, program).expect("runtime builds");
+    let host = Arc::new(RecordingTaskHost::default());
+    runtime
+        .call(
+            "main",
+            CallArgs::new(),
+            CallOptions::unbounded().with_task_scope(crate::task::TaskScope::new(
+                host.clone(),
+                finite_task_policy(std::time::Duration::from_millis(1)),
+            )),
+        )
+        .expect("sync caller admits deadline-bound worker");
+    let mut task = take_task(&host);
+    let mut context = Context::from_waker(Waker::noop());
+    assert!(matches!(task.poll(&mut context), Poll::Pending));
+    std::thread::sleep(std::time::Duration::from_millis(5));
+
+    assert!(matches!(
+        task.poll(&mut context),
+        Poll::Ready(crate::task::ScopedTaskOutcome::Failed(
+            crate::task::TaskError {
+                kind: crate::task::TaskErrorKind::DeadlineExceeded,
+                ..
+            }
+        ))
+    ));
+    assert!(dropped.load(Ordering::SeqCst));
+}
+
+#[test]
+fn scoped_task_worker_error_becomes_structured_failure() {
+    let (engine, program) = pending_task_fixture(move |_args| {
+        Box::pin(async {
+            Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "detached worker fixture",
+            }))
+        })
+    });
+    let mut runtime = Runtime::new_compiled(engine, program).expect("runtime builds");
+    let host = Arc::new(RecordingTaskHost::default());
+    runtime
+        .call(
+            "main",
+            CallArgs::new(),
+            CallOptions::unbounded().with_task_scope(crate::task::TaskScope::new(
+                host.clone(),
+                finite_task_policy(std::time::Duration::from_secs(1)),
+            )),
+        )
+        .expect("sync caller admits failing worker");
+    let mut task = take_task(&host);
+    let mut context = Context::from_waker(Waker::noop());
+
+    assert!(matches!(
+        task.poll(&mut context),
+        Poll::Ready(crate::task::ScopedTaskOutcome::Failed(
+            crate::task::TaskError {
+                kind: crate::task::TaskErrorKind::WorkerError,
+                ..
+            }
+        ))
+    ));
+}
+
+struct PanicOnPoll;
+
+impl std::future::Future for PanicOnPoll {
+    type Output = vela_vm::error::VmResult<OwnedValue>;
+
+    fn poll(self: std::pin::Pin<&mut Self>, _context: &mut Context<'_>) -> Poll<Self::Output> {
+        panic!("detached native panic fixture");
+    }
+}
+
+#[test]
+fn scoped_task_worker_panic_is_contained() {
+    let (engine, program) = pending_task_fixture(move |_args| Box::pin(PanicOnPoll));
+    let mut runtime = Runtime::new_compiled(engine, program).expect("runtime builds");
+    let host = Arc::new(RecordingTaskHost::default());
+    runtime
+        .call(
+            "main",
+            CallArgs::new(),
+            CallOptions::unbounded().with_task_scope(crate::task::TaskScope::new(
+                host.clone(),
+                finite_task_policy(std::time::Duration::from_secs(1)),
+            )),
+        )
+        .expect("sync caller admits panicking worker");
+    let mut task = take_task(&host);
+    let mut context = Context::from_waker(Waker::noop());
+
+    let Poll::Ready(crate::task::ScopedTaskOutcome::Failed(error)) = task.poll(&mut context) else {
+        panic!("panic must become a task failure");
+    };
+    assert_eq!(error.kind, crate::task::TaskErrorKind::WorkerPanicked);
+    assert!(error.detail.contains("detached native panic fixture"));
+}
+
+struct RejectingTaskHost {
+    attempts: AtomicUsize,
+}
+
+impl crate::task::ScopedTaskHost for RejectingTaskHost {
+    fn admit(&self, _task: crate::task::ScopedTask) -> Result<(), crate::task::TaskAdmissionError> {
+        self.attempts.fetch_add(1, Ordering::SeqCst);
+        Err(crate::task::TaskAdmissionError::CapacityExceeded { maximum: 4 })
+    }
+}
+
+#[test]
+fn scoped_task_capacity_rejection_publishes_no_worker() {
+    let polls = Arc::new(AtomicUsize::new(0));
+    let fixture_polls = Arc::clone(&polls);
+    let (engine, program) = pending_task_fixture(move |_args| {
+        Box::pin(PendingOnce {
+            polls: Arc::clone(&fixture_polls),
+        })
+    });
+    let mut runtime = Runtime::new_compiled(engine, program).expect("runtime builds");
+    let host = Arc::new(RejectingTaskHost {
+        attempts: AtomicUsize::new(0),
+    });
+
+    let error = runtime
+        .call(
+            "main",
+            CallArgs::new(),
+            CallOptions::unbounded().with_task_scope(crate::task::TaskScope::new(
+                host.clone(),
+                finite_task_policy(std::time::Duration::from_secs(1)),
+            )),
+        )
+        .expect_err("host capacity refusal rejects admission");
+
+    assert!(matches!(
+        error.kind(),
+        VmErrorKind::TaskAdmissionDenied { reason } if reason.contains("capacity 4")
+    ));
+    assert_eq!(host.attempts.load(Ordering::SeqCst), 1);
+    assert_eq!(polls.load(Ordering::SeqCst), 0);
+}
+
+#[test]
+fn scoped_task_host_call_budget_stops_before_second_native_invocation() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let fixture_calls = Arc::clone(&calls);
+    let engine = Engine::builder()
+        .capability(vela_common::Capability::TaskSpawn)
+        .register_async_fn(
+            crate::native::NativeFunctionDesc::new(
+                "test::counted_task_call",
+                vela_def::FunctionId::new(0x7A52),
+            )
+            .returns(crate::native::TypeHint::i64())
+            .access(crate::native::FunctionAccess::public()),
+            move |_args| {
+                fixture_calls.fetch_add(1, Ordering::SeqCst);
+                Box::pin(async { Ok(OwnedValue::i64(1)) })
+            },
+        )
+        .build()
+        .expect("engine should build");
+    let program = engine
+        .compile_source(
+            r#"
+async fn repair() -> i64 {
+    let first = test::counted_task_call().await;
+    let second = test::counted_task_call().await;
+    return first + second;
+}
+fn main() { task::spawn_scoped(repair()); }
+"#,
+        )
+        .expect("host-call task fixture compiles");
+    let mut runtime = Runtime::new_compiled(engine, program).expect("runtime builds");
+    let host = Arc::new(RecordingTaskHost::default());
+    runtime
+        .call(
+            "main",
+            CallArgs::new(),
+            CallOptions::unbounded().with_task_scope(crate::task::TaskScope::new(
+                host.clone(),
+                finite_task_policy_with_host_calls(std::time::Duration::from_secs(1), 1),
+            )),
+        )
+        .expect("sync caller admits host-call-limited worker");
+    let mut task = take_task(&host);
+    let mut context = Context::from_waker(Waker::noop());
+
+    assert!(matches!(
+        task.poll(&mut context),
+        Poll::Ready(crate::task::ScopedTaskOutcome::Failed(
+            crate::task::TaskError {
+                kind: crate::task::TaskErrorKind::BudgetExceeded,
+                ..
+            }
+        ))
+    ));
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
 }
 
 #[test]

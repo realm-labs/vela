@@ -10,7 +10,8 @@ use std::future::Future;
 use std::num::{NonZeroU64, NonZeroUsize};
 use std::pin::Pin;
 use std::sync::Arc;
-use std::time::Duration;
+use std::task::{Context, Poll};
+use std::time::{Duration, Instant};
 
 use vela_bytecode::{ExecutableGenerationId, LinkedArtifact};
 use vela_common::{CapabilitySet, ServiceGenerationId, ServiceSetId, Span};
@@ -22,6 +23,10 @@ use crate::engine::Engine;
 
 /// Future transferred to the host lifecycle after successful admission.
 pub type ScopedTaskFuture = Pin<Box<dyn Future<Output = ScopedTaskOutcome> + Send + 'static>>;
+
+pub(crate) type ScopedWorkerFuture = Pin<
+    Box<dyn Future<Output = Result<DetachedValueImage, (TaskErrorKind, String)>> + Send + 'static>,
+>;
 
 /// Host-owned lifecycle boundary for detached work.
 ///
@@ -97,6 +102,7 @@ impl TaskPolicy {
             return Err(TaskPolicyError::ZeroTimeout);
         }
         if timeout == Duration::MAX
+            || Instant::now().checked_add(timeout).is_none()
             || child_execution_limits.execution_unit_limit == u64::MAX
             || child_execution_limits.memory_limit_bytes == usize::MAX
             || child_execution_limits.max_call_depth == usize::MAX
@@ -363,12 +369,20 @@ pub struct ScopedTask {
 
 impl ScopedTask {
     #[must_use]
-    pub fn new(
+    pub(crate) fn new(
         metadata: TaskMetadata,
         capsule: Arc<TaskExecutionCapsule>,
-        future: ScopedTaskFuture,
+        worker: ScopedWorkerFuture,
     ) -> Self {
         assert_eq!(metadata.generation, capsule.generation());
+        let deadline = Instant::now()
+            .checked_add(capsule.policy().timeout())
+            .expect("TaskPolicy rejected an unrepresentable deadline");
+        let future = Box::pin(ContainedTaskFuture {
+            worker: Some(worker),
+            metadata: metadata.clone(),
+            deadline,
+        });
         Self {
             metadata,
             capsule,
@@ -390,6 +404,30 @@ impl ScopedTask {
     pub fn into_parts(self) -> (TaskMetadata, Arc<TaskExecutionCapsule>, ScopedTaskFuture) {
         (self.metadata, self.capsule, self.future)
     }
+
+    /// Polls host-owned work without exposing any handle to Vela code.
+    pub fn poll(&mut self, context: &mut Context<'_>) -> Poll<ScopedTaskOutcome> {
+        self.future.as_mut().poll(context)
+    }
+
+    /// Cancels host-owned work while preserving a structured lifecycle result.
+    /// Dropping the worker first tears down its child Runtime and pending native
+    /// future before the cancellation can be observed by completion handling.
+    #[must_use]
+    pub fn cancel(self, reason: TaskCancellationReason) -> ScopedTaskOutcome {
+        let Self {
+            metadata,
+            capsule,
+            future,
+        } = self;
+        drop(future);
+        drop(capsule);
+        ScopedTaskOutcome::Failed(TaskError {
+            kind: TaskErrorKind::Cancelled(reason),
+            metadata,
+            detail: format!("host lifecycle cancelled task: {reason:?}"),
+        })
+    }
 }
 
 impl fmt::Debug for ScopedTask {
@@ -406,6 +444,72 @@ impl fmt::Debug for ScopedTask {
 pub enum ScopedTaskOutcome {
     Completed(DetachedValueImage),
     Failed(TaskError),
+}
+
+struct ContainedTaskFuture {
+    worker: Option<ScopedWorkerFuture>,
+    metadata: TaskMetadata,
+    deadline: Instant,
+}
+
+impl Future for ContainedTaskFuture {
+    type Output = ScopedTaskOutcome;
+
+    fn poll(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.get_mut();
+        if Instant::now() >= this.deadline {
+            this.worker.take();
+            return Poll::Ready(ScopedTaskOutcome::Failed(TaskError {
+                kind: TaskErrorKind::DeadlineExceeded,
+                metadata: this.metadata.clone(),
+                detail: "detached task deadline exceeded".to_owned(),
+            }));
+        }
+        let Some(worker) = this.worker.as_mut() else {
+            return Poll::Ready(ScopedTaskOutcome::Failed(TaskError {
+                kind: TaskErrorKind::WorkerTrap,
+                metadata: this.metadata.clone(),
+                detail: "detached worker was polled after completion".to_owned(),
+            }));
+        };
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            worker.as_mut().poll(context)
+        })) {
+            Ok(Poll::Pending) => Poll::Pending,
+            Ok(Poll::Ready(Ok(image))) => {
+                this.worker.take();
+                Poll::Ready(ScopedTaskOutcome::Completed(image))
+            }
+            Ok(Poll::Ready(Err((kind, detail)))) => {
+                this.worker.take();
+                Poll::Ready(ScopedTaskOutcome::Failed(TaskError {
+                    kind,
+                    metadata: this.metadata.clone(),
+                    detail,
+                }))
+            }
+            Err(payload) => {
+                this.worker.take();
+                Poll::Ready(ScopedTaskOutcome::Failed(TaskError {
+                    kind: TaskErrorKind::WorkerPanicked,
+                    metadata: this.metadata.clone(),
+                    detail: panic_detail(payload.as_ref()),
+                }))
+            }
+        }
+    }
+}
+
+fn panic_detail(payload: &(dyn std::any::Any + Send)) -> String {
+    payload
+        .downcast_ref::<String>()
+        .cloned()
+        .or_else(|| {
+            payload
+                .downcast_ref::<&str>()
+                .map(|value| (*value).to_owned())
+        })
+        .unwrap_or_else(|| "detached worker panicked with a non-string payload".to_owned())
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

@@ -9,14 +9,16 @@ use vela_vm::{DetachedValueImage, PreparedTaskCall};
 use super::{CallArgs, CallOptions, Runtime, handles};
 use crate::engine::Engine;
 use crate::task::{
-    ScopedTask, ScopedTaskOutcome, TaskAuthorityCeilings, TaskContinuation, TaskError,
-    TaskErrorKind, TaskExecutionCapsule, TaskMetadata, TaskScope,
+    ScopedTask, TaskAuthorityCeilings, TaskCancellationReason, TaskContinuation, TaskErrorKind,
+    TaskExecutionCapsule, TaskMetadata, TaskScope,
 };
 
 pub(super) fn admit(
     engine: &Engine,
     scope: Option<&TaskScope>,
     prepared: PreparedTaskCall,
+    parent_heap: &vela_vm::heap::ScriptHeap,
+    parent_budget: &mut vela_vm::budget::ExecutionBudget,
 ) -> VmResult<()> {
     let scope = scope.ok_or_else(|| {
         VmError::new(VmErrorKind::TaskScopeUnavailable).with_source_span(prepared.source_span())
@@ -73,21 +75,20 @@ pub(super) fn admit(
     let source_span = prepared.source_span();
     let worker = target.worker;
     let worker_name = target.worker_debug_name.clone();
-    let args = prepared.into_arguments();
+    let args = DetachedValueImage::export_arguments(
+        prepared.arguments(),
+        Some(parent_heap),
+        parent_budget,
+    )?;
     let child_capsule = Arc::clone(&capsule);
     let child_scope = scope.clone();
-    let outcome_metadata = metadata.clone();
-    let future = Box::pin(async move {
-        let result = run_child(child_capsule, child_scope, worker, worker_name, args).await;
-        match result {
-            Ok(value) => ScopedTaskOutcome::Completed(value),
-            Err((kind, detail)) => ScopedTaskOutcome::Failed(TaskError {
-                kind,
-                metadata: outcome_metadata,
-                detail,
-            }),
-        }
-    });
+    let future = Box::pin(run_child(
+        child_capsule,
+        child_scope,
+        worker,
+        worker_name,
+        args,
+    ));
     scope
         .host()
         .admit(ScopedTask::new(metadata, capsule, future))
@@ -116,7 +117,7 @@ async fn run_child(
         limits.max_call_depth,
     )
     .with_collection_limits(limits.collection_limits)
-    .with_timeout(capsule.policy().timeout())
+    .with_host_call_budget(capsule.policy().max_host_calls().get())
     .with_task_scope(scope);
     let (value, mut budget) = runtime
         .call_impl_async_with_budget(
@@ -129,9 +130,23 @@ async fn run_child(
             None,
         )
         .await
-        .map_err(|error| (TaskErrorKind::WorkerError, error.to_string()))?;
+        .map_err(worker_failure)?;
     DetachedValueImage::export_result(value.value(), &runtime.state.vm_states.heap, &mut budget)
-        .map_err(|error| (TaskErrorKind::WorkerError, error.to_string()))
+        .map_err(worker_failure)
+}
+
+fn worker_failure(error: VmError) -> (TaskErrorKind, String) {
+    let kind = match error.kind() {
+        VmErrorKind::TaskValueNotDetachable { .. } => TaskErrorKind::ValueNotDetachable,
+        VmErrorKind::BudgetExceeded { .. } | VmErrorKind::CollectionLimitExceeded { .. } => {
+            TaskErrorKind::BudgetExceeded
+        }
+        VmErrorKind::DeadlineExceeded => TaskErrorKind::DeadlineExceeded,
+        VmErrorKind::CallCancelled => TaskErrorKind::Cancelled(TaskCancellationReason::ScopeClosed),
+        VmErrorKind::UnsupportedLinkedInstruction { .. } => TaskErrorKind::WorkerTrap,
+        _ => TaskErrorKind::WorkerError,
+    };
+    (kind, error.to_string())
 }
 
 fn required_capabilities(effect: vela_mir::MirEffect) -> CapabilitySet {

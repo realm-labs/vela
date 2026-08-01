@@ -9,6 +9,7 @@ pub struct CallOptions {
     pub call_depth: usize,
     pub managed_heap: bool,
     collection_limits: vela_vm::budget::CollectionLimits,
+    host_call_budget: u64,
     deadline: Option<std::time::Instant>,
     control: Option<CallControl>,
     task_scope: Option<crate::task::TaskScope>,
@@ -21,6 +22,7 @@ impl PartialEq for CallOptions {
             && self.call_depth == other.call_depth
             && self.managed_heap == other.managed_heap
             && self.collection_limits == other.collection_limits
+            && self.host_call_budget == other.host_call_budget
             && self.deadline == other.deadline
             && self.control == other.control
             && self.task_scope == other.task_scope
@@ -38,6 +40,7 @@ impl CallOptions {
             call_depth,
             managed_heap: true,
             collection_limits: vela_vm::budget::CollectionLimits::unbounded(),
+            host_call_budget: u64::MAX,
             deadline: None,
             control: None,
             task_scope: None,
@@ -61,6 +64,12 @@ impl CallOptions {
         limits: vela_vm::budget::CollectionLimits,
     ) -> Self {
         self.collection_limits = limits;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_host_call_budget(mut self, limit: u64) -> Self {
+        self.host_call_budget = limit;
         self
     }
 
@@ -110,5 +119,6 @@ impl CallOptions {
             self.call_depth,
         )
         .with_collection_limits(self.collection_limits)
+        .with_host_call_limit(self.host_call_budget)
     }
 }

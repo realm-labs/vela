@@ -132,6 +132,11 @@ pub(crate) fn dispatch_linked_native_function_call(
         })
         .with_source_span_if_absent(call.call_site));
     };
+    if let Some(budget) = budget.as_deref_mut() {
+        budget
+            .charge_host_call()
+            .map_err(|error| error.with_source_span_if_absent(call.call_site))?;
+    }
     let async_function = match &target {
         NativeCallTarget::AsyncPure(function) => {
             Some(PreparedAsyncNativeFunction::Pure(Arc::clone(function)))

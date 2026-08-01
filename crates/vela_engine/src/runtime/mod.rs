@@ -758,7 +758,13 @@ where
                     }));
                 }
                 LinkedDriveOutcome::TaskBoundary(prepared) => {
-                    detached_task::admit(call.engine, call.task_scope.as_ref(), prepared)?;
+                    detached_task::admit(
+                        call.engine,
+                        call.task_scope.as_ref(),
+                        prepared,
+                        heap.heap,
+                        budget,
+                    )?;
                 }
                 LinkedDriveOutcome::ContextBoundary(prepared) => {
                     let result = {
@@ -920,7 +926,13 @@ where
                     )?;
                 }
                 LinkedDriveOutcome::TaskBoundary(prepared) => {
-                    detached_task::admit(call.engine, call.task_scope.as_ref(), prepared)?;
+                    detached_task::admit(
+                        call.engine,
+                        call.task_scope.as_ref(),
+                        prepared,
+                        heap.heap,
+                        budget,
+                    )?;
                 }
                 LinkedDriveOutcome::ContextBoundary(prepared) => {
                     let result = {
