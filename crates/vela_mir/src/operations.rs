@@ -4,12 +4,12 @@ use vela_common::{ServiceCallMode, ServiceId, ServiceMethodId};
 use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId, VariantId};
 
 use crate::input::{
-    CompileHostIndexCapability, CompileParameterDefault, CompilePositionalPolicy, CompileSignature,
-    DynamicMethodTarget, HostFieldTarget, HostMethodTarget,
+    CompileHostIndexCapability, CompileParameter, CompileParameterDefault, CompilePositionalPolicy,
+    CompileSignature, DynamicMethodTarget, HostFieldTarget, HostMethodTarget,
 };
 use crate::{
     HostTypeTarget, MirEffect, MirEvaluatedConstant, MirFunctionId, MirGuardId, MirOperand,
-    MirPlace, MirRvalue, MirSafepointId, MirSourceOrigin,
+    MirPlace, MirRvalue, MirSafepointId, MirSourceOrigin, MirTypeContract,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -399,6 +399,8 @@ pub struct MirTaskContinuation {
     pub function: FunctionId,
     pub debug_name: String,
     pub signature: CompileSignature,
+    pub outcome_contract: MirTypeContract,
+    pub resume_parameters: Vec<CompileParameter>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -470,7 +472,7 @@ pub enum MirStatementKind {
         inclusive: bool,
     },
     Call(MirCall),
-    Task(MirTaskOperation),
+    Task(Box<MirTaskOperation>),
     Host(MirHostOperation),
     Reflect(MirReflectionOperation),
     GuardTrap {

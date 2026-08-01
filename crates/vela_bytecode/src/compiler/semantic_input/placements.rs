@@ -21,10 +21,10 @@ use vela_mir::{
     CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileConstructorField,
     CompileConstructorTarget, CompileConstructorValue, CompileDynamicConstructorField,
     CompileFieldTarget, CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget,
-    CompileMemberTarget, CompilePatternConstructorTarget, CompilePlacedCallValue,
-    CompileReflectionCall, CompileTaskContinuationTarget, CompileTaskDetachability,
-    CompileTaskOperation, CompileTaskTarget, DynamicMethodTarget, HostFieldTarget,
-    HostMethodTarget, MirBuildError, MirSourceOrigin,
+    CompileMemberTarget, CompileParameterDefault, CompilePatternConstructorTarget,
+    CompilePlacedCallValue, CompileReflectionCall, CompileTaskContinuationTarget,
+    CompileTaskDetachability, CompileTaskOperation, CompileTaskTarget, DynamicMethodTarget,
+    HostFieldTarget, HostMethodTarget, MirBuildError, MirSourceOrigin,
 };
 
 use super::contracts::{
@@ -505,9 +505,53 @@ impl GenerationBuilder<'_, '_> {
                 .get(declaration)
                 .copied()
                 .ok_or_else(registry_input_error)?;
+            let continuation_descriptor = self
+                .targets
+                .target_table()
+                .function(function)
+                .cloned()
+                .ok_or_else(registry_input_error)?;
+            let outcome_contract = vela_mir::MirTypeContract::Result {
+                ok: descriptor.signature.return_contract.clone().map(Box::new),
+                err: Some(Box::new(vela_mir::MirTypeContract::TaskError)),
+            };
+            let continuation_origin = self
+                .expression_origin(expression)
+                .ok_or_else(registry_input_error)?;
+            let invalid = |reason: String| {
+                CompileError::new(CompileErrorKind::TaskContinuationInvalid {
+                    target: continuation_descriptor.debug_name.clone(),
+                    reason,
+                })
+                .with_span(continuation_origin.span)
+            };
+            let Some(outcome) = continuation_descriptor.signature.parameters.first() else {
+                return Err(invalid(format!(
+                    "first parameter must be `{}`",
+                    task_outcome_contract_name(&outcome_contract)
+                )));
+            };
+            if outcome.default != CompileParameterDefault::Required {
+                return Err(invalid(
+                    "the owned outcome parameter cannot have a default".to_owned(),
+                ));
+            }
+            if outcome.contract.as_ref() != Some(&outcome_contract) {
+                return Err(invalid(format!(
+                    "first parameter must be exactly `{}`",
+                    task_outcome_contract_name(&outcome_contract)
+                )));
+            }
             Some(CompileTaskContinuationTarget {
                 function,
                 debug_name: self.request.script_function_symbols[declaration].clone(),
+                outcome_contract,
+                resume_parameters: continuation_descriptor
+                    .signature
+                    .parameters
+                    .into_iter()
+                    .skip(1)
+                    .collect(),
             })
         } else {
             None
@@ -1343,6 +1387,37 @@ fn borrowed_collection_source(actual: &TypeFact, expected: &TypeFact) -> bool {
                 TypeFact::Set { .. }
             )
         )
+}
+
+fn task_outcome_contract_name(contract: &vela_mir::MirTypeContract) -> String {
+    let vela_mir::MirTypeContract::Result { ok, .. } = contract else {
+        unreachable!("task outcome contract is always Result")
+    };
+    let ok = ok
+        .as_deref()
+        .map_or_else(|| "Any".to_owned(), task_contract_name);
+    format!("Result<{ok}, task::Error>")
+}
+
+fn task_contract_name(contract: &vela_mir::MirTypeContract) -> String {
+    match contract {
+        vela_mir::MirTypeContract::Any => "Any".to_owned(),
+        vela_mir::MirTypeContract::TaskError => "task::Error".to_owned(),
+        vela_mir::MirTypeContract::Primitive(tag) => tag.name().to_owned(),
+        vela_mir::MirTypeContract::Definition(type_id)
+        | vela_mir::MirTypeContract::Shape { type_id, .. }
+        | vela_mir::MirTypeContract::Variant { type_id, .. } => format!("type#{}", type_id.get()),
+        vela_mir::MirTypeContract::Host(target) => format!("host#{}", target.semantic.get()),
+        vela_mir::MirTypeContract::Range => "Range".to_owned(),
+        vela_mir::MirTypeContract::Array(_) => "Array".to_owned(),
+        vela_mir::MirTypeContract::Map { .. } => "Map".to_owned(),
+        vela_mir::MirTypeContract::Set(_) => "Set".to_owned(),
+        vela_mir::MirTypeContract::Iterator(_) => "Iterator".to_owned(),
+        vela_mir::MirTypeContract::Tuple(_) => "Tuple".to_owned(),
+        vela_mir::MirTypeContract::Option(_) => "Option".to_owned(),
+        vela_mir::MirTypeContract::Result { .. } => "Result".to_owned(),
+        vela_mir::MirTypeContract::Callable { .. } => "Callable".to_owned(),
+    }
 }
 
 fn external_parameter_expression(

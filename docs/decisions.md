@@ -83,6 +83,13 @@ references, borrowed views, iterators, callables, and runtime capabilities are
 compile-time rejections. `Any` and opaque registered storage remain explicitly
 runtime-checked, so erasure cannot turn a scoped capability into a static proof.
 
+`task::Error` is a compiler-owned, non-constructible, owned value contract.
+For `spawn_scoped_then`, the continuation's first parameter is invariant and
+must be exactly `Result<WorkerReturn, task::Error>`; `Any`, a different success
+type, a defaulted outcome, or a missing outcome is rejected. Parameters after
+the outcome are not child arguments: they form the separately sealed resume
+contract that the host must freshly bind at a continuation safe point.
+
 Service metadata separates truthful `RustDefaultEffects` from the ABI-level
 `PatchEffectCeiling`. The generated domain builder requires one explicit
 emergency patch ceiling for every hotfixable method, optionally narrowed per

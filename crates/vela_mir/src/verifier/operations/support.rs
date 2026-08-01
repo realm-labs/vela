@@ -234,6 +234,7 @@ pub(super) fn verify_contract(
         }
         MirTypeContract::Host(target) => verify_host_type(verifier, origin, *target)?,
         MirTypeContract::Any
+        | MirTypeContract::TaskError
         | MirTypeContract::Primitive(_)
         | MirTypeContract::Range
         | MirTypeContract::Callable { .. } => {}
@@ -630,6 +631,7 @@ pub(super) fn satisfies_contract(value: MirValueType, contract: &MirTypeContract
             matches!(value, MirValueType::Enum(_))
         }
         MirTypeContract::Any
+        | MirTypeContract::TaskError
         | MirTypeContract::Array(_)
         | MirTypeContract::Map { .. }
         | MirTypeContract::Set(_) => false,

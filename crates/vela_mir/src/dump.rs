@@ -657,9 +657,11 @@ fn write_task(formatter: &mut fmt::Formatter<'_>, task: &MirTaskOperation) -> fm
     if let Some(continuation) = &task.continuation {
         write!(
             formatter,
-            " then continuation#{} name={:?} signature={:?}",
+            " then continuation#{} name={:?} outcome={:?} resume={:?} signature={:?}",
             continuation.function.get(),
             continuation.debug_name,
+            continuation.outcome_contract,
+            continuation.resume_parameters,
             continuation.signature,
         )?;
     }

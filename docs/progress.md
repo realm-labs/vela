@@ -47,8 +47,11 @@ portable artifacts from current version 2 to version 3. One shared
 `Detachability` fact now classifies recursively owned values, statically
 rejects known Host references, borrowed views, iterators, and callables with a
 nested contract path, and preserves mandatory runtime checking for `Any` and
-opaque storage. Semantic analysis treats only the statically owned worker-call
-position as detached; ordinary async calls still require `await`.
+opaque storage. The continuation ABI is also sealed: its first parameter must
+be the exact owned `Result<WorkerReturn, task::Error>`, while trailing
+parameters are preserved separately as fresh host safe-point resume inputs.
+Semantic analysis treats only the statically owned worker-call position as
+detached; ordinary async calls still require `await`.
 
 Rust embedding now has one public registration vocabulary: every derived or
 generated Value/Host uses `register_type::<T>()`, callable bundles use
@@ -120,8 +123,9 @@ Phase status:
   arguments in the parent turn, carry a safepoint and call-budget charge, and
   close effective effects over both static targets. Static detachability and
   runtime-check requirements are sealed into each task target and reverified
-  in MIR. The continuation ABI, authority types, runtime value transfer, and
-  artifact v3 remain in Batch A.
+  in MIR. The compiler-owned `task::Error` and exact continuation outcome plus
+  trailing resume contract are likewise sealed and reverified. Authority
+  types, runtime value transfer, and artifact v3 remain in Batch A.
 - P0-P3 accepted for service return totality: recursive macro diagnostics now
   reject nested, exclusive-envelope, projected-child, and otherwise
   non-executable borrowed returns. Exact direct parameters, direct borrowed
@@ -450,9 +454,8 @@ changes.
 
 ## Next Up
 
-1. Continue M20.75 Batch A with the frozen continuation ABI, then add authority
-   types and portable artifact v3. Runtime detached-value graph transfer begins
-   in Batch B.
+1. Continue M20.75 Batch A with host-scope/capsule authority types and portable
+   artifact v3. Runtime detached-value graph transfer begins in Batch B.
 2. Resume M20.5 incremental HIR re-lowering after the active detached-async
    goal or an explicit focus change.
 3. Audit the parameterized container and value-keyed Map/Set plans against

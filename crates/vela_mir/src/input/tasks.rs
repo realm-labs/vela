@@ -3,6 +3,8 @@ use vela_hir::ids::HirExprId;
 
 use vela_common::Detachability;
 
+use crate::{CompileParameter, MirTypeContract};
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CompileTaskOperation {
     SpawnScoped,
@@ -30,4 +32,8 @@ pub struct CompileTaskDetachability {
 pub struct CompileTaskContinuationTarget {
     pub function: FunctionId,
     pub debug_name: String,
+    /// Exact first-parameter ABI derived from the worker return contract.
+    pub outcome_contract: MirTypeContract,
+    /// Fresh host safe-point parameters after the owned outcome.
+    pub resume_parameters: Vec<CompileParameter>,
 }

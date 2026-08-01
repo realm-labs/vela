@@ -780,7 +780,9 @@ fn contract_fact(contract: &MirTypeContract) -> Option<(MirValueType, Option<Mir
         MirTypeContract::Host(target) => (MirValueType::Host(*target), None),
         MirTypeContract::Option(_) => (MirValueType::Dynamic, Some(MirFamilyFact::Option)),
         MirTypeContract::Result { .. } => (MirValueType::Dynamic, Some(MirFamilyFact::Result)),
-        MirTypeContract::Any | MirTypeContract::Definition(_) => return None,
+        MirTypeContract::Any | MirTypeContract::TaskError | MirTypeContract::Definition(_) => {
+            return None;
+        }
     };
     Some((value_type, family))
 }

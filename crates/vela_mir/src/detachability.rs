@@ -74,7 +74,7 @@ fn contract_detachability_inner(
 ) -> MirDetachabilityReport {
     match contract {
         MirTypeContract::Any => MirDetachabilityReport::runtime_checked(),
-        MirTypeContract::Primitive(_) | MirTypeContract::Range => {
+        MirTypeContract::TaskError | MirTypeContract::Primitive(_) | MirTypeContract::Range => {
             MirDetachabilityReport::detachable()
         }
         MirTypeContract::Array(element)

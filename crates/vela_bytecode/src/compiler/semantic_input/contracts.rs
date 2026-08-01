@@ -475,6 +475,7 @@ impl GenerationBuilder<'_, '_> {
     fn type_fact_for_contract(&self, contract: &MirTypeContract) -> CompileResult<TypeFact> {
         Ok(match contract {
             MirTypeContract::Any => TypeFact::Any,
+            MirTypeContract::TaskError => TypeFact::record("task::Error"),
             MirTypeContract::Primitive(primitive) => TypeFact::primitive(*primitive),
             MirTypeContract::Range => TypeFact::Range,
             MirTypeContract::Array(element) => TypeFact::array(

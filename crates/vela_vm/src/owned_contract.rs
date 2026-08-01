@@ -44,6 +44,15 @@ fn owned_value_matches_contract(
 ) -> bool {
     match contract {
         MirTypeContract::Any => unconstrained_value_is_well_formed(value, program),
+        MirTypeContract::TaskError => match value {
+            OwnedValue::Record { type_name, fields } => {
+                type_name == "task::Error"
+                    && fields
+                        .values()
+                        .all(|value| unconstrained_value_is_well_formed(value, program))
+            }
+            _ => false,
+        },
         MirTypeContract::Primitive(expected) => owned_primitive_tag(value) == Some(*expected),
         MirTypeContract::Range => matches!(value, OwnedValue::Range(_)),
         MirTypeContract::Array(element) => match value {
@@ -313,6 +322,7 @@ fn owned_primitive_tag(value: &OwnedValue) -> Option<PrimitiveTag> {
 fn contract_name(contract: &MirTypeContract, program: &LinkedProgram) -> String {
     match contract {
         MirTypeContract::Any => "Any".to_owned(),
+        MirTypeContract::TaskError => "task::Error".to_owned(),
         MirTypeContract::Primitive(value) => value.name().to_owned(),
         MirTypeContract::Range => "Range".to_owned(),
         MirTypeContract::Array(value) => parameterized_name("Array", value.as_deref(), program),

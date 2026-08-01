@@ -149,6 +149,10 @@ impl CompileError {
                 ),
             )
             .with_code("compiler::task_value_not_detachable"),
+            CompileErrorKind::TaskContinuationInvalid { target, reason } => {
+                Diagnostic::error(format!("task continuation `{target}` is invalid: {reason}"))
+                    .with_code("compiler::task_continuation_invalid")
+            }
         };
         Some(match self.span {
             Some(span) => diagnostic.with_span(span),
@@ -204,6 +208,10 @@ pub enum CompileErrorKind {
         target: String,
         path: String,
         kind: vela_common::NonDetachableValueKind,
+    },
+    TaskContinuationInvalid {
+        target: String,
+        reason: String,
     },
 }
 

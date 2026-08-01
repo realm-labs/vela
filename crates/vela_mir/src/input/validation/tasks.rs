@@ -91,6 +91,25 @@ pub(super) fn validate(validator: &SnapshotValidator<'_>) -> Result<(), MirBuild
                         "task continuation identity disagrees with its descriptor",
                     ));
                 }
+                let expected_outcome = crate::MirTypeContract::Result {
+                    ok: worker.signature.return_contract.clone().map(Box::new),
+                    err: Some(Box::new(crate::MirTypeContract::TaskError)),
+                };
+                if continuation.outcome_contract != expected_outcome
+                    || descriptor
+                        .signature
+                        .parameters
+                        .first()
+                        .and_then(|parameter| parameter.contract.as_ref())
+                        != Some(&expected_outcome)
+                    || descriptor.signature.parameters.get(1..)
+                        != Some(continuation.resume_parameters.as_slice())
+                {
+                    return Err(validator.error(
+                        origin,
+                        "task continuation ABI disagrees with worker outcome or resume parameters",
+                    ));
+                }
             }
             (CompileTaskOperation::SpawnScoped, Some(_)) => {
                 return Err(validator.error(origin, "spawn_scoped cannot carry a continuation"));

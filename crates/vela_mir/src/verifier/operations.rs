@@ -1304,6 +1304,27 @@ fn verify_task(
                 "task continuation must be synchronous",
             ));
         }
+        let expected_outcome = crate::MirTypeContract::Result {
+            ok: task.worker_signature.return_contract.clone().map(Box::new),
+            err: Some(Box::new(crate::MirTypeContract::TaskError)),
+        };
+        if continuation.outcome_contract != expected_outcome
+            || continuation
+                .signature
+                .parameters
+                .first()
+                .and_then(|parameter| parameter.contract.as_ref())
+                != Some(&expected_outcome)
+            || continuation.signature.parameters.get(1..)
+                != Some(continuation.resume_parameters.as_slice())
+        {
+            return Err(bad_target(
+                verifier,
+                origin,
+                MirVerifyTarget::Function(continuation.function),
+                "task continuation ABI disagrees with the worker outcome",
+            ));
+        }
     }
     destination_accepts(
         verifier,

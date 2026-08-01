@@ -214,6 +214,15 @@ fn compile_error_response(error: CompileError) -> PlaygroundResponse {
         CompileErrorKind::UnnameableScopedResource { kind, parent } => single_error_response(
             format!("unnamed scoped {kind:?} result retaining {parent:?}"),
         ),
+        CompileErrorKind::TaskValueNotDetachable { target, path, kind } => {
+            single_error_response(format!(
+                "detached target `{target}` cannot transfer `{path}` because it contains a {}",
+                kind.as_str()
+            ))
+        }
+        CompileErrorKind::TaskContinuationInvalid { target, reason } => {
+            single_error_response(format!("task continuation `{target}` is invalid: {reason}"))
+        }
     }
 }
 

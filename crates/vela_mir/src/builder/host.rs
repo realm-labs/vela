@@ -824,6 +824,7 @@ impl FunctionBuilder<'_> {
                 }
             }
             MirTypeContract::Any
+            | MirTypeContract::TaskError
             | MirTypeContract::Array(_)
             | MirTypeContract::Map { .. }
             | MirTypeContract::Set(_)

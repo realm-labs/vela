@@ -486,6 +486,8 @@ impl FunctionBuilder<'_> {
                     function: continuation.function,
                     debug_name: continuation.debug_name,
                     signature: descriptor.signature,
+                    outcome_contract: continuation.outcome_contract,
+                    resume_parameters: continuation.resume_parameters,
                 })
             })
             .transpose()?;
@@ -496,7 +498,7 @@ impl FunctionBuilder<'_> {
             MirStatement::new(
                 origin,
                 Some(MirPlace::temp(destination)),
-                MirStatementKind::Task(MirTaskOperation {
+                MirStatementKind::Task(Box::new(MirTaskOperation {
                     worker: function,
                     worker_debug_name: debug_name,
                     worker_signature: descriptor.signature,
@@ -504,7 +506,7 @@ impl FunctionBuilder<'_> {
                     parameter_guards,
                     detachability: target.detachability,
                     continuation,
-                }),
+                })),
                 MirEffect::task_spawn(),
                 Some(safepoint),
             ),

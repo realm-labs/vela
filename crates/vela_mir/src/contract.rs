@@ -64,6 +64,8 @@ impl MirCallableKindSet {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MirTypeContract {
     Any,
+    /// Sealed owned error payload delivered only by detached task outcomes.
+    TaskError,
     Primitive(PrimitiveTag),
     Range,
     Array(Option<Box<Self>>),

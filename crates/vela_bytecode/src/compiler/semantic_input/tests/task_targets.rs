@@ -10,7 +10,7 @@ fn scoped_task_targets_preserve_static_worker_and_continuation_identity() {
 async fn repair(value: i64) -> i64 { value }
 state current: i64 = 0;
 async fn repair_with_state(value: i64) -> i64 { current + value }
-fn complete(result: Any) { current = 1; }
+fn complete(result: Result<i64, task::Error>, turn: Any) { current = 1; }
 
 fn main() {
     task::spawn_scoped(repair(1));
@@ -54,6 +54,18 @@ fn main() {
             .map(|continuation| continuation.debug_name.as_str()),
         Some("complete")
     );
+    let continuation = second.continuation.as_ref().expect("continuation ABI");
+    assert_eq!(
+        continuation.outcome_contract,
+        vela_mir::MirTypeContract::Result {
+            ok: Some(Box::new(vela_mir::MirTypeContract::Primitive(
+                vela_common::PrimitiveTag::I64,
+            ))),
+            err: Some(Box::new(vela_mir::MirTypeContract::TaskError)),
+        }
+    );
+    assert_eq!(continuation.resume_parameters.len(), 1);
+    assert_eq!(continuation.resume_parameters[0].name, "turn");
     let worker_call = function_targets
         .call(second.worker_call)
         .expect("worker call placement");
@@ -199,4 +211,32 @@ fn main(value: Any) { task::spawn_scoped(worker(value)); }
         [Detachability::RuntimeChecked]
     );
     assert_eq!(task.detachability.result, Detachability::RuntimeChecked);
+}
+
+#[test]
+fn scoped_task_continuation_requires_the_exact_owned_outcome_abi() {
+    for (parameter, expected) in [
+        ("result: Any", "Result<i64, task::Error>"),
+        (
+            "result: Result<String, task::Error>",
+            "Result<i64, task::Error>",
+        ),
+        ("", "Result<i64, task::Error>"),
+    ] {
+        let source = format!(
+            r#"
+async fn worker() -> i64 {{ 1 }}
+fn continuation({parameter}) {{}}
+fn main() {{ task::spawn_scoped_then(worker(), continuation); }}
+"#
+        );
+        let error = prepare_source(&source, FixtureRoots::Program)
+            .expect_err("continuation outcome ABI mismatch must be rejected");
+        let diagnostic = error.to_diagnostic().expect("continuation diagnostic");
+        assert_eq!(
+            diagnostic.code.as_deref(),
+            Some("compiler::task_continuation_invalid")
+        );
+        assert!(diagnostic.message.contains(expected));
+    }
 }

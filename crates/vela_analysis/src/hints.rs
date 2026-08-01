@@ -35,6 +35,10 @@ pub fn type_fact_from_path(graph: &ModuleGraph, path: &[String]) -> TypeFact {
         return TypeFact::Unknown;
     }
 
+    if path == ["task", "Error"] {
+        return TypeFact::record("task::Error");
+    }
+
     if let [name] = path
         && let Some(fact) = builtin_type_fact(name)
     {
@@ -49,6 +53,9 @@ fn type_fact_from_hir_hint(
     module: Option<ModuleId>,
     hint: &HirTypeHint,
 ) -> TypeFact {
+    if hint.path.as_slice() == ["task", "Error"] && hint.args.is_empty() {
+        return TypeFact::record("task::Error");
+    }
     if let Some(fact) = builtin_type_fact_from_hir_hint(graph, module, hint) {
         return fact;
     }
