@@ -221,6 +221,7 @@ fn reflect_effects(effects: &crate::native::EffectSet) -> MethodEffectSet {
         reads_reflection: effects.reads_reflection(),
         writes_reflection: effects.writes_reflection(),
         calls_reflection: effects.calls_reflection(),
+        spawns_tasks: effects.spawns_tasks(),
     }
 }
 
@@ -242,6 +243,7 @@ fn reflect_function_effects(effects: &crate::native::EffectSet) -> FunctionEffec
         reads_reflection: effects.reads_reflection(),
         writes_reflection: effects.writes_reflection(),
         calls_reflection: effects.calls_reflection(),
+        spawns_tasks: effects.spawns_tasks(),
     }
 }
 

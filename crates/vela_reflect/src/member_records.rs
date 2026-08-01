@@ -294,6 +294,7 @@ fn effect_set_record(effects: &MethodEffectSet) -> ReflectValue {
                 "calls_reflection".to_owned(),
                 bool_value(effects.calls_reflection),
             ),
+            ("spawns_tasks".to_owned(), bool_value(effects.spawns_tasks)),
         ]),
     )
 }

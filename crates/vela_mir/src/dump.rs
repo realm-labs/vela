@@ -1007,6 +1007,7 @@ fn effect(effect: MirEffect) -> String {
         ("random", effect.uses_random),
         ("io-read", effect.reads_io),
         ("io-write", effect.writes_io),
+        ("task-spawn", effect.task_spawn),
     ] {
         if enabled {
             names.push(name);

@@ -964,6 +964,7 @@ struct SchemaEffectFact {
     reads_reflection: bool,
     writes_reflection: bool,
     calls_reflection: bool,
+    spawns_tasks: bool,
 }
 
 impl SchemaEffectFact {
@@ -979,6 +980,7 @@ impl SchemaEffectFact {
             reads_reflection: self.reads_reflection,
             writes_reflection: self.writes_reflection,
             calls_reflection: self.calls_reflection,
+            spawns_tasks: self.spawns_tasks,
         }
     }
 }
@@ -996,6 +998,7 @@ impl From<RegistryEffectFact> for SchemaEffectFact {
             reads_reflection: value.reads_reflection,
             writes_reflection: value.writes_reflection,
             calls_reflection: value.calls_reflection,
+            spawns_tasks: value.spawns_tasks,
         }
     }
 }

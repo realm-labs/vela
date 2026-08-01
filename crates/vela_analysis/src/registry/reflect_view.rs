@@ -242,6 +242,7 @@ fn function_effect_fact(effects: &FunctionEffectSet) -> RegistryEffectFact {
         reads_reflection: effects.reads_reflection,
         writes_reflection: effects.writes_reflection,
         calls_reflection: effects.calls_reflection,
+        spawns_tasks: effects.spawns_tasks,
     }
 }
 
@@ -257,6 +258,7 @@ fn method_effect_fact(effects: &MethodEffectSet) -> RegistryEffectFact {
         reads_reflection: effects.reads_reflection,
         writes_reflection: effects.writes_reflection,
         calls_reflection: effects.calls_reflection,
+        spawns_tasks: effects.spawns_tasks,
     }
 }
 

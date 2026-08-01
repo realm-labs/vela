@@ -12,10 +12,11 @@ pub enum Capability {
     ReflectionRead,
     ReflectionWrite,
     ReflectionCall,
+    TaskSpawn,
 }
 
 impl Capability {
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::HostRead,
         Self::HostWrite,
         Self::EventEmit,
@@ -26,6 +27,7 @@ impl Capability {
         Self::ReflectionRead,
         Self::ReflectionWrite,
         Self::ReflectionCall,
+        Self::TaskSpawn,
     ];
 
     #[must_use]
@@ -41,6 +43,7 @@ impl Capability {
             Self::ReflectionRead => "reflection_read",
             Self::ReflectionWrite => "reflection_write",
             Self::ReflectionCall => "reflection_call",
+            Self::TaskSpawn => "task_spawn",
         }
     }
 

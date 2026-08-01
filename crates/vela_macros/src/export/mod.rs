@@ -94,4 +94,17 @@ mod tests {
 
         assert!(error.to_string().contains("effects(...) only adds"));
     }
+
+    #[test]
+    fn export_accepts_task_spawn_effect() {
+        let expanded = expand_result(
+            quote! { path = "game::repair", effects(task_spawn) },
+            quote! {
+                pub fn repair() {}
+            },
+        )
+        .expect("task spawning should be an explicit host effect");
+
+        assert!(expanded.to_string().contains("task_spawn"));
+    }
 }

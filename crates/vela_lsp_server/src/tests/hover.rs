@@ -874,7 +874,8 @@ fn schema_with_player_grant_method() -> &'static str {
                         "writesIo": false,
                         "readsReflection": false,
                         "writesReflection": false,
-                        "callsReflection": false
+                        "callsReflection": false,
+                        "spawnsTasks": false
                     }
                 }
             ],

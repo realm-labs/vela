@@ -260,6 +260,7 @@ impl FunctionAbi {
                 function.effects.reads_reflection,
                 function.effects.writes_reflection,
                 function.effects.calls_reflection,
+                function.effects.spawns_tasks,
             ),
             AccessAbi::function(
                 function.access.public,
@@ -549,6 +550,7 @@ impl MethodAbi {
                 method.effects.reads_reflection,
                 method.effects.writes_reflection,
                 method.effects.calls_reflection,
+                method.effects.spawns_tasks,
             ),
             AccessAbi::new(method.access.public, method.access.reflect_callable),
         )
@@ -896,48 +898,49 @@ pub struct EffectAbi {
     pub reads_reflection: bool,
     pub writes_reflection: bool,
     pub calls_reflection: bool,
+    pub spawns_tasks: bool,
 }
 
 impl EffectAbi {
     #[must_use]
     pub const fn pure() -> Self {
         Self::new(
-            false, false, false, false, false, false, false, false, false, false,
+            false, false, false, false, false, false, false, false, false, false, false,
         )
     }
 
     #[must_use]
     pub const fn host_read() -> Self {
         Self::new(
-            true, false, false, false, false, false, false, false, false, false,
+            true, false, false, false, false, false, false, false, false, false, false,
         )
     }
 
     #[must_use]
     pub const fn host_write() -> Self {
         Self::new(
-            true, true, false, false, false, false, false, false, false, false,
+            true, true, false, false, false, false, false, false, false, false, false,
         )
     }
 
     #[must_use]
     pub const fn event_emit() -> Self {
         Self::new(
-            false, false, true, false, false, false, false, false, false, false,
+            false, false, true, false, false, false, false, false, false, false, false,
         )
     }
 
     #[must_use]
     pub const fn time() -> Self {
         Self::new(
-            false, false, false, true, false, false, false, false, false, false,
+            false, false, false, true, false, false, false, false, false, false, false,
         )
     }
 
     #[must_use]
     pub const fn random() -> Self {
         Self::new(
-            false, false, false, false, true, false, false, false, false, false,
+            false, false, false, false, true, false, false, false, false, false, false,
         )
     }
 
@@ -954,6 +957,7 @@ impl EffectAbi {
         reads_reflection: bool,
         writes_reflection: bool,
         calls_reflection: bool,
+        spawns_tasks: bool,
     ) -> Self {
         Self {
             reads_host,
@@ -966,6 +970,7 @@ impl EffectAbi {
             reads_reflection,
             writes_reflection,
             calls_reflection,
+            spawns_tasks,
         }
     }
 }

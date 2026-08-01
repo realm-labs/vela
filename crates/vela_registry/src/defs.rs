@@ -1226,4 +1226,5 @@ pub struct EffectSet {
     pub random: bool,
     pub io_read: bool,
     pub io_write: bool,
+    pub task_spawn: bool,
 }

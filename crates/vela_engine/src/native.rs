@@ -127,6 +127,7 @@ impl EffectSet {
     const READS_REFLECTION: u16 = 1 << (Capability::ReflectionRead as u8);
     const WRITES_REFLECTION: u16 = 1 << (Capability::ReflectionWrite as u8);
     const CALLS_REFLECTION: u16 = 1 << (Capability::ReflectionCall as u8);
+    const SPAWNS_TASKS: u16 = 1 << (Capability::TaskSpawn as u8);
 
     #[must_use]
     pub const fn pure() -> Self {
@@ -204,6 +205,13 @@ impl EffectSet {
     }
 
     #[must_use]
+    pub const fn task_spawn() -> Self {
+        Self {
+            bits: Self::SPAWNS_TASKS,
+        }
+    }
+
+    #[must_use]
     pub const fn union(self, other: Self) -> Self {
         Self {
             bits: self.bits | other.bits,
@@ -273,6 +281,11 @@ impl EffectSet {
     #[must_use]
     pub const fn calls_reflection(self) -> bool {
         self.contains(Self::CALLS_REFLECTION)
+    }
+
+    #[must_use]
+    pub const fn spawns_tasks(self) -> bool {
+        self.contains(Self::SPAWNS_TASKS)
     }
 
     pub const fn required_capability_set(self) -> CapabilitySet {
@@ -893,7 +906,8 @@ mod tests {
             .union(EffectSet::time())
             .union(EffectSet::io_write())
             .union(EffectSet::reflection_read())
-            .union(EffectSet::reflection_call());
+            .union(EffectSet::reflection_call())
+            .union(EffectSet::task_spawn());
 
         let capabilities = effects.required_capability_set();
 
@@ -905,6 +919,8 @@ mod tests {
         assert!(capabilities.contains(Capability::IoWrite));
         assert!(capabilities.contains(Capability::ReflectionRead));
         assert!(capabilities.contains(Capability::ReflectionCall));
+        assert!(effects.spawns_tasks());
+        assert!(capabilities.contains(Capability::TaskSpawn));
         assert_eq!(
             effects.required_capabilities().collect::<Vec<_>>(),
             capabilities.iter().collect::<Vec<_>>()

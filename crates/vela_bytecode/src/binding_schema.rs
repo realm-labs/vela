@@ -399,6 +399,7 @@ pub struct RustBindingEffectSet {
     pub uses_random: bool,
     pub reads_io: bool,
     pub writes_io: bool,
+    pub task_spawn: bool,
 }
 
 impl From<MirEffect> for RustBindingEffectSet {
@@ -421,6 +422,7 @@ impl From<MirEffect> for RustBindingEffectSet {
             uses_random: value.uses_random,
             reads_io: value.reads_io,
             writes_io: value.writes_io,
+            task_spawn: value.task_spawn,
         }
     }
 }
@@ -440,6 +442,7 @@ impl RustBindingEffectSet {
             (self.reflection_read, Capability::ReflectionRead),
             (self.reflection_write, Capability::ReflectionWrite),
             (self.reflection_call, Capability::ReflectionCall),
+            (self.task_spawn, Capability::TaskSpawn),
         ] {
             if present {
                 capabilities.insert(capability);
@@ -471,6 +474,7 @@ impl RustBindingEffectSet {
             self.uses_random,
             self.reads_io,
             self.writes_io,
+            self.task_spawn,
         ];
         flags.iter().enumerate().fold(0_u32, |bits, (index, set)| {
             bits | (u32::from(*set) << index)

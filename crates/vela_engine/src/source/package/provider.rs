@@ -351,6 +351,9 @@ fn observed_capabilities(
                 "reflect" if operation == "set" => Some(Capability::ReflectionWrite),
                 "reflect" if operation == "call" => Some(Capability::ReflectionCall),
                 "reflect" => Some(Capability::ReflectionRead),
+                "task" if operation == "spawn_scoped" || operation == "spawn_scoped_then" => {
+                    Some(Capability::TaskSpawn)
+                }
                 _ => None,
             };
             if let Some(capability) = capability {
@@ -373,6 +376,7 @@ fn insert_effect_capabilities(capabilities: &mut CapabilitySet, effect: &Registr
         (effect.reads_reflection, Capability::ReflectionRead),
         (effect.writes_reflection, Capability::ReflectionWrite),
         (effect.calls_reflection, Capability::ReflectionCall),
+        (effect.spawns_tasks, Capability::TaskSpawn),
     ] {
         if present {
             capabilities.insert(capability);

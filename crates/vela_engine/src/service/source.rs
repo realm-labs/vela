@@ -549,6 +549,7 @@ fn effect_set_from_capabilities(capabilities: vela_common::CapabilitySet) -> Eff
             vela_common::Capability::ReflectionRead => EffectSet::reflection_read(),
             vela_common::Capability::ReflectionWrite => EffectSet::reflection_write(),
             vela_common::Capability::ReflectionCall => EffectSet::reflection_call(),
+            vela_common::Capability::TaskSpawn => EffectSet::task_spawn(),
         });
     }
     effects
@@ -1061,6 +1062,9 @@ fn service_effects(function: &vela_mir::MirFunction) -> EffectSet {
     }
     if observed.reflection_call {
         effects = effects.union(EffectSet::reflection_call());
+    }
+    if observed.task_spawn {
+        effects = effects.union(EffectSet::task_spawn());
     }
     effects
 }

@@ -492,6 +492,7 @@ fn definition_effect_fact(effects: EffectSet) -> RegistryEffectFact {
         reads_reflection: effects.reflection_read,
         writes_reflection: effects.reflection_write,
         calls_reflection: effects.reflection_call,
+        spawns_tasks: effects.task_spawn,
     }
 }
 

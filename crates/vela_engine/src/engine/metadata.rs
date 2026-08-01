@@ -180,6 +180,7 @@ fn effect_names(effects: EffectSet) -> Vec<String> {
         ("reflection_read", effects.reads_reflection()),
         ("reflection_write", effects.writes_reflection()),
         ("reflection_call", effects.calls_reflection()),
+        ("task_spawn", effects.spawns_tasks()),
     ];
     let names = flags
         .into_iter()

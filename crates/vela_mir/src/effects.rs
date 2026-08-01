@@ -21,6 +21,7 @@ pub struct MirEffect {
     pub uses_random: bool,
     pub reads_io: bool,
     pub writes_io: bool,
+    pub task_spawn: bool,
 }
 
 impl MirEffect {
@@ -42,6 +43,7 @@ impl MirEffect {
         uses_random: false,
         reads_io: false,
         writes_io: false,
+        task_spawn: false,
     };
 
     #[must_use]
@@ -170,6 +172,16 @@ impl MirEffect {
     }
 
     #[must_use]
+    pub const fn task_spawn() -> Self {
+        Self {
+            may_trap: true,
+            may_allocate: true,
+            task_spawn: true,
+            ..Self::PURE
+        }
+    }
+
+    #[must_use]
     pub const fn union(self, other: Self) -> Self {
         Self {
             may_trap: self.may_trap || other.may_trap,
@@ -189,6 +201,7 @@ impl MirEffect {
             uses_random: self.uses_random || other.uses_random,
             reads_io: self.reads_io || other.reads_io,
             writes_io: self.writes_io || other.writes_io,
+            task_spawn: self.task_spawn || other.task_spawn,
         }
     }
 
@@ -211,6 +224,7 @@ impl MirEffect {
             && (!required.uses_random || self.uses_random)
             && (!required.reads_io || self.reads_io)
             && (!required.writes_io || self.writes_io)
+            && (!required.task_spawn || self.task_spawn)
     }
 
     #[must_use]
@@ -220,7 +234,11 @@ impl MirEffect {
 
     #[must_use]
     pub const fn requires_safepoint(self) -> bool {
-        self.may_allocate || self.script_call || self.dynamic_call || self.host_call
+        self.may_allocate
+            || self.script_call
+            || self.dynamic_call
+            || self.host_call
+            || self.task_spawn
     }
 }
 

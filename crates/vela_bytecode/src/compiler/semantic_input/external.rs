@@ -657,6 +657,7 @@ pub(super) fn effect(value: vela_registry::EffectSet) -> MirEffect {
         uses_random: value.random,
         reads_io: value.io_read,
         writes_io: value.io_write,
+        task_spawn: value.task_spawn,
         ..MirEffect::PURE
     }
 }

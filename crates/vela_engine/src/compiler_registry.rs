@@ -398,6 +398,7 @@ fn native_function_effects(effects: &crate::native::EffectSet) -> DefinitionEffe
         event_emit: effects.emits_events(),
         time: effects.reads_time(),
         random: effects.uses_random(),
+        task_spawn: effects.spawns_tasks(),
         io_read: effects.reads_io(),
         io_write: effects.writes_io(),
     }
@@ -413,6 +414,7 @@ fn method_effects(effects: &vela_reflect::access::MethodEffectSet) -> Definition
         event_emit: effects.emits_events,
         time: effects.reads_time,
         random: effects.uses_random,
+        task_spawn: effects.spawns_tasks,
         io_read: effects.reads_io,
         io_write: effects.writes_io,
     }

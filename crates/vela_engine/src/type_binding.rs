@@ -1066,4 +1066,5 @@ const fn method_effect_bits(effects: &vela_reflect::access::MethodEffectSet) -> 
         | (effects.reads_reflection as u16) << 7
         | (effects.writes_reflection as u16) << 8
         | (effects.calls_reflection as u16) << 9
+        | (effects.spawns_tasks as u16) << 10
 }

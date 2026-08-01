@@ -337,6 +337,7 @@ fn registry_effect(effects: &[String]) -> RegistryEffectFact {
         reads_reflection: has("reflection_read"),
         writes_reflection: has("reflection_write"),
         calls_reflection: has("reflection_call"),
+        spawns_tasks: has("task_spawn"),
     }
 }
 

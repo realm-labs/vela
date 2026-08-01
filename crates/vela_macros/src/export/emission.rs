@@ -1060,6 +1060,7 @@ pub(crate) fn effect_tokens(effects: &std::collections::BTreeSet<EffectName>) ->
             EffectName::ReflectionCall => {
                 quote! { ::vela_engine::native::EffectSet::reflection_call() }
             }
+            EffectName::TaskSpawn => quote! { ::vela_engine::native::EffectSet::task_spawn() },
         };
         tokens = quote! { #tokens.union(#next) };
     }

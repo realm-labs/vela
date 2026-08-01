@@ -30,6 +30,7 @@ pub(crate) enum EffectName {
     ReflectionRead,
     ReflectionWrite,
     ReflectionCall,
+    TaskSpawn,
 }
 
 impl EffectName {
@@ -45,6 +46,7 @@ impl EffectName {
             "reflection_read" => Ok(Self::ReflectionRead),
             "reflection_write" => Ok(Self::ReflectionWrite),
             "reflection_call" => Ok(Self::ReflectionCall),
+            "task_spawn" => Ok(Self::TaskSpawn),
             "pure" => Ok(Self::Pure),
             _ => Err(syn::Error::new(
                 ident.span(),

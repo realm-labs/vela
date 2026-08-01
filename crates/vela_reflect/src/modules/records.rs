@@ -140,6 +140,10 @@ fn function_effects_record(desc: &FunctionDesc) -> ReflectValue {
                 "calls_reflection".to_owned(),
                 bool_value(desc.effects.calls_reflection),
             ),
+            (
+                "spawns_tasks".to_owned(),
+                bool_value(desc.effects.spawns_tasks),
+            ),
         ]),
     )
 }

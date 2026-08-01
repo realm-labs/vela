@@ -35,9 +35,12 @@ generation pinning and optional safe-point continuations. No compatibility
 surface, TaskHandle, shared Runtime, dynamic target, or framework-specific API
 is planned. HIR now records both task forms as non-escaping lexical
 capabilities and rejects dynamic/non-function shapes, synchronous workers, and
-asynchronous continuations before compilation. Later Batch A work will connect
-those facts to dedicated MIR/effects/detachability and hard-switch portable
-artifacts from current version 2 to version 3.
+asynchronous continuations before compilation. `TaskSpawn` is now a first-class
+capability and effect bit across MIR, binding schemas, registry/reflection
+metadata, Service validation, tooling schemas, and hot-reload ABI comparison.
+Later Batch A work will connect the static HIR facts to dedicated MIR task
+operations and detachability, then hard-switch portable artifacts from current
+version 2 to version 3.
 
 Rust embedding now has one public registration vocabulary: every derived or
 generated Value/Host uses `register_type::<T>()`, callable bundles use
@@ -103,8 +106,9 @@ Phase status:
 - M20.75 Batch A in progress: the complete language, ownership, effect, Service-generation,
   continuation, host-lifecycle, unsafe-audit, and acceptance contract is frozen
   in the host-scoped detached async execution plan. Static HIR task shapes and
-  target asyncness are implemented; MIR task operations, detachability,
-  effects, authority types, and artifact v3 remain in Batch A.
+  target asyncness are implemented, and `TaskSpawn` now propagates through the
+  compiler/host effect and capability model. Dedicated MIR task operations,
+  detachability, authority types, and artifact v3 remain in Batch A.
 - P0-P3 accepted for service return totality: recursive macro diagnostics now
   reject nested, exclusive-envelope, projected-child, and otherwise
   non-executable borrowed returns. Exact direct parameters, direct borrowed
@@ -243,7 +247,7 @@ Host-backed and mutable collections retain HostRef identity and leases.
 | M19.5 | Complete enough | Cache-ready IDs, linked bytecode, profile ownership, and prepared host paths are validated. |
 | M20 | Complete enough | Actor Runtime/cache ownership, lifetime, reload, and concurrency gates are accepted. |
 | M20.5 | In progress | Per-keystroke latency is fixed for requests and diagnostics; the HIR rebuild is still whole-workspace. |
-| M20.75 | In progress | Batch A static HIR task capability and target validation are implemented; MIR/effect/detachability/authority/artifact work remains. |
+| M20.75 | In progress | Batch A static HIR task validation and the cross-layer `TaskSpawn` capability/effect contract are implemented; dedicated MIR task operations, detachability, authority, and artifact work remain. |
 | Rust/Vela service interop | Complete | S0-S7, P0-P7, and E0-E5 are accepted; explicit release, typed Service namespaces, artifact v2 rejection, and repository proof are complete. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, and debugger contracts stabilize. |
@@ -434,8 +438,8 @@ changes.
 ## Next Up
 
 1. Continue M20.75 Batch A by lowering the static HIR capability into dedicated
-   MIR task operations, `TaskSpawn` effects, detachability facts, authority
-   types, and portable artifact v3.
+   MIR task operations with transitive worker/continuation effects, then add
+   detachability facts, authority types, and portable artifact v3.
 2. Resume M20.5 incremental HIR re-lowering after the active detached-async
    goal or an explicit focus change.
 3. Audit the parameterized container and value-keyed Map/Set plans against

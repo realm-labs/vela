@@ -298,6 +298,7 @@ fn fixed_fields(kind: LogicalRecordKind) -> Vec<(&'static str, TypeFact)> {
             ("reads_io", TypeFact::BOOL),
             ("reads_reflection", TypeFact::BOOL),
             ("reads_time", TypeFact::BOOL),
+            ("spawns_tasks", TypeFact::BOOL),
             ("uses_random", TypeFact::BOOL),
             ("writes_host", TypeFact::BOOL),
             ("writes_io", TypeFact::BOOL),

@@ -407,6 +407,10 @@ fn module_function_queries_return_records_and_candidates() {
                     "calls_reflection".to_owned(),
                     ReflectValue::Host(HostValue::Bool(false))
                 ),
+                (
+                    "spawns_tasks".to_owned(),
+                    ReflectValue::Host(HostValue::Bool(false))
+                ),
             ]),
         })
     );

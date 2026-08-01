@@ -454,6 +454,7 @@ fn observed_capabilities(
             (effect.reflection_read, Capability::ReflectionRead),
             (effect.reflection_write, Capability::ReflectionWrite),
             (effect.reflection_call, Capability::ReflectionCall),
+            (effect.task_spawn, Capability::TaskSpawn),
         ] {
             if present {
                 capabilities.insert(capability);
@@ -596,6 +597,7 @@ fn reject_initializer_effect(
         (effect.reads_time, "time access"),
         (effect.uses_random, "random access"),
         (effect.reads_io || effect.writes_io, "IO access"),
+        (effect.task_spawn, "task spawning"),
     ]
     .into_iter()
     .find_map(|(present, reason)| present.then_some(reason));

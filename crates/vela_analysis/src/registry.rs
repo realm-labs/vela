@@ -289,6 +289,7 @@ pub struct RegistryEffectFact {
     pub reads_reflection: bool,
     pub writes_reflection: bool,
     pub calls_reflection: bool,
+    pub spawns_tasks: bool,
 }
 
 impl RegistryEffectFact {
@@ -305,6 +306,7 @@ impl RegistryEffectFact {
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
+            spawns_tasks: false,
         }
     }
 
@@ -321,6 +323,7 @@ impl RegistryEffectFact {
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
+            spawns_tasks: false,
         }
     }
 
@@ -337,6 +340,7 @@ impl RegistryEffectFact {
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
+            spawns_tasks: false,
         }
     }
 
@@ -353,6 +357,7 @@ impl RegistryEffectFact {
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
+            spawns_tasks: false,
         }
     }
 
@@ -379,7 +384,7 @@ impl RegistryEffectFact {
         }
     }
 
-    fn effect_flags(&self) -> [(&'static str, bool); 10] {
+    fn effect_flags(&self) -> [(&'static str, bool); 11] {
         [
             ("reads_host", self.reads_host && !self.writes_host),
             ("writes_host", self.writes_host),
@@ -391,6 +396,7 @@ impl RegistryEffectFact {
             ("reads_reflection", self.reads_reflection),
             ("writes_reflection", self.writes_reflection),
             ("calls_reflection", self.calls_reflection),
+            ("spawns_tasks", self.spawns_tasks),
         ]
     }
 }

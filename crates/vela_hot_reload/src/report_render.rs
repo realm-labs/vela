@@ -439,7 +439,7 @@ fn render_module_export_abi(export: &crate::module_abi::ModuleExportAbi) -> Stri
 
 fn render_effect_abi(effect: &EffectAbi) -> String {
     format!(
-        "reads_host={} writes_host={} emits_events={} reads_time={} uses_random={} reads_io={} writes_io={} reads_reflection={} writes_reflection={} calls_reflection={}",
+        "reads_host={} writes_host={} emits_events={} reads_time={} uses_random={} reads_io={} writes_io={} reads_reflection={} writes_reflection={} calls_reflection={} spawns_tasks={}",
         effect.reads_host,
         effect.writes_host,
         effect.emits_events,
@@ -449,7 +449,8 @@ fn render_effect_abi(effect: &EffectAbi) -> String {
         effect.writes_io,
         effect.reads_reflection,
         effect.writes_reflection,
-        effect.calls_reflection
+        effect.calls_reflection,
+        effect.spawns_tasks
     )
 }
 

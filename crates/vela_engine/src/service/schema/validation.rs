@@ -22,6 +22,7 @@ pub(super) const fn service_compile_effect(
         uses_random: effect.uses_random(),
         reads_io: effect.reads_io(),
         writes_io: effect.writes_io(),
+        task_spawn: effect.spawns_tasks(),
         ..vela_mir::MirEffect::PURE
     }
 }
