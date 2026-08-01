@@ -124,8 +124,11 @@ Phase status:
   close effective effects over both static targets. Static detachability and
   runtime-check requirements are sealed into each task target and reverified
   in MIR. The compiler-owned `task::Error` and exact continuation outcome plus
-  trailing resume contract are likewise sealed and reverified. Authority
-  types, runtime value transfer, and artifact v3 remain in Batch A.
+  trailing resume contract are likewise sealed and reverified. The
+  executor-neutral host admission protocol, finite task policy, owned execution
+  capsule, exact ordinary/Service generation identity, authority intersection,
+  outcome, cancellation, and structured error contracts are implemented.
+  Runtime value transfer and artifact v3 remain in Batch A.
 - P0-P3 accepted for service return totality: recursive macro diagnostics now
   reject nested, exclusive-envelope, projected-child, and otherwise
   non-executable borrowed returns. Exact direct parameters, direct borrowed

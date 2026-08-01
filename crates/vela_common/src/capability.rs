@@ -108,6 +108,13 @@ impl CapabilitySet {
     }
 
     #[must_use]
+    pub const fn intersection(self, other: Self) -> Self {
+        Self {
+            bits: self.bits & other.bits,
+        }
+    }
+
+    #[must_use]
     pub const fn without(mut self, capability: Capability) -> Self {
         self.bits &= !capability.bit();
         self

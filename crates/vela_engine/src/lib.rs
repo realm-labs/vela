@@ -33,6 +33,7 @@ pub mod schema;
 pub mod service;
 pub mod source;
 pub mod standard;
+pub mod task;
 pub mod type_binding;
 pub mod type_registration;
 pub mod typed;

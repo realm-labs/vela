@@ -3751,6 +3751,22 @@ is rejected before linking, staging, or activation. The loader does not infer,
 rewrite, or emulate old release behavior, and a rejected bundle cannot change
 the active Service generation.
 
+### Detached Task Authority Is An Owned Host Capability
+
+Host-scoped detached work crosses one executor-neutral `ScopedTaskHost`
+admission boundary. Each admitted task owns its future and an immutable
+`TaskExecutionCapsule`; that capsule retains the exact linked artifact,
+generation identity, Engine registry authority, finite child policy, and the
+intersection of caller, artifact, Engine, scope, and optional Service effect
+ceilings. It never retains the caller Runtime, frame, HostRef table, or a
+borrowed host context.
+
+The host lifecycle owns scheduling, capacity, cancellation, panic containment,
+and later safe-point continuation delivery. There is no process-global or
+thread-local executor lookup and no task identity or handle in the script
+language. Ordinary execution may omit this capability; a task operation in
+that execution fails with `TaskScopeUnavailable`.
+
 ### Generated Sync Host Methods Preserve Both Sealed Representations
 
 A generated synchronous Host method invokes its typed Rust body when the
