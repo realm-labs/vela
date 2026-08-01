@@ -3742,14 +3742,16 @@ original errors. It never recursively releases children. Strict
 `host::release` remains available so ordinary straight-line double release is
 diagnosed.
 
-### Explicit-Release Artifacts Start At Format Version 2
+### Detached-Task Artifacts Start At Format Version 3
 
 Portable bytecode, portable Service bundles, and detached Service deployment
-metadata use format version 2 after the explicit-release hard switch. Version
-1 may encode programs compiled with implicit last-use or scope release, so it
-is rejected before linking, staging, or activation. The loader does not infer,
-rewrite, or emulate old release behavior, and a rejected bundle cannot change
-the active Service generation.
+metadata use format version 3 after the host-scoped task hard switch. Version
+3 seals required feature bits, static worker and continuation slots, exact
+callable ABI and asyncness, detachability contracts, transitive effects, and
+the originating-Service generation requirement. Versions 1 and 2 are rejected
+before linking, staging, or activation; the loader does not infer missing task
+metadata or rewrite old bytecode. A rejected bundle cannot change the active
+Service generation.
 
 ### Detached Task Authority Is An Owned Host Capability
 

@@ -131,7 +131,7 @@ impl<'registry> Linker<'registry> {
     /// Binds a decoded, source-independent bytecode artifact against this
     /// process's exact native/type registry.
     ///
-    /// Format version 2 portable artifacts are interpreter-only and therefore
+    /// Format version 3 portable artifacts are interpreter-only and therefore
     /// carry no process-local MIR/JIT layouts.
     #[cfg(feature = "artifact-codec")]
     pub fn link_portable_program(
@@ -140,7 +140,13 @@ impl<'registry> Linker<'registry> {
     ) -> Result<Arc<crate::LinkedArtifact>, LinkError> {
         let (linked, package_metadata) = self.link_unowned(&program.bytecode, None)?;
         debug_assert!(package_metadata.is_none());
-        Ok(Arc::new(linked.bind_portable(program.binding_schema)))
+        linked
+            .bind_portable(
+                program.binding_schema,
+                program.required_features,
+                program.task_targets,
+            )
+            .map(Arc::new)
     }
 }
 
@@ -160,6 +166,11 @@ pub enum LinkError {
         name: String,
         id: FunctionId,
     },
+    MissingTaskTarget {
+        name: String,
+        id: FunctionId,
+    },
+    InvalidTaskMetadata(String),
     MirExecutableCountMismatch {
         expected: usize,
         actual: usize,
@@ -271,6 +282,12 @@ impl fmt::Display for LinkError {
             }
             Self::MissingScriptFunction { name, id } => {
                 write!(formatter, "missing script function {name} ({id:?})")
+            }
+            Self::MissingTaskTarget { name, id } => {
+                write!(formatter, "missing linked task target {name} ({id:?})")
+            }
+            Self::InvalidTaskMetadata(message) => {
+                write!(formatter, "invalid linked task metadata: {message}")
             }
             Self::MirExecutableCountMismatch { expected, actual } => {
                 write!(

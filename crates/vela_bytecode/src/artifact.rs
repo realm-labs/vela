@@ -7,6 +7,16 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use crate::linked::InstructionKind;
 use crate::{CacheSiteDesc, CacheSiteId, ExecutableGenerationId, LinkedProgram, ProgramImage};
 
+mod task;
+
+#[cfg(feature = "artifact-codec")]
+pub(crate) use task::collect_compiled_task_targets;
+pub use task::{
+    ArtifactFeatureSet, ArtifactTaskContinuation, ArtifactTaskOperation, ArtifactTaskParameter,
+    ArtifactTaskServiceRequirement, ArtifactTaskSignature, ArtifactTaskTarget,
+};
+use task::{collect_task_targets, verify_task_target_table};
+
 static NEXT_EXECUTABLE_GENERATION: AtomicU64 = AtomicU64::new(1);
 
 /// Content checksum for one immutable linked artifact.
@@ -48,6 +58,8 @@ pub struct LinkedArtifact {
     verified_mir: Arc<vela_mir::OwnedVerifiedMirBundle>,
     binding_schema: Arc<crate::RustBindingSchema>,
     package_metadata: Option<crate::PackageArtifactMetadata>,
+    required_features: ArtifactFeatureSet,
+    task_targets: Box<[ArtifactTaskTarget]>,
 }
 
 /// Private staged linker output. It cannot cross the production runtime boundary.
@@ -81,8 +93,9 @@ pub struct MirExecutableLayout {
 #[doc(hidden)]
 pub mod test_support {
     use super::{
-        Arc, ExecutableGenerationId, LinkedArtifact, LinkedProgram, NEXT_EXECUTABLE_GENERATION,
-        Ordering, ProfileFunctionLayout, ProfileLayout, ProgramImage, test_mir_binding,
+        Arc, ArtifactFeatureSet, ExecutableGenerationId, LinkedArtifact, LinkedProgram,
+        NEXT_EXECUTABLE_GENERATION, Ordering, ProfileFunctionLayout, ProfileLayout, ProgramImage,
+        test_mir_binding,
     };
 
     /// Declares one extern state on a fixture program and returns its slot.
@@ -141,6 +154,8 @@ pub mod test_support {
             verified_mir,
             binding_schema: Arc::new(crate::RustBindingSchema::empty()),
             package_metadata: None,
+            required_features: ArtifactFeatureSet::empty(),
+            task_targets: Box::new([]),
         };
         // Every `LinkedArtifact` the interpreter can execute must be verified,
         // including fixtures. The VM indexes registers without a bounds check
@@ -178,6 +193,8 @@ impl LinkedArtifact {
         hash_debug(&mut hasher, &self.verified_mir);
         hash_debug(&mut hasher, &self.binding_schema);
         hash_debug(&mut hasher, &self.package_metadata);
+        hash_debug(&mut hasher, &self.required_features);
+        hash_debug(&mut hasher, &self.task_targets);
         ArtifactChecksum::new(*hasher.finalize().as_bytes())
     }
 
@@ -225,6 +242,16 @@ impl LinkedArtifact {
         self.package_metadata.as_ref()
     }
 
+    #[must_use]
+    pub const fn required_features(&self) -> ArtifactFeatureSet {
+        self.required_features
+    }
+
+    #[must_use]
+    pub fn task_targets(&self) -> &[ArtifactTaskTarget] {
+        &self.task_targets
+    }
+
     pub fn verify(&self) -> Result<(), crate::verification::VerificationError> {
         self.image.verify()?;
         self.program.verify()?;
@@ -253,8 +280,10 @@ impl UnboundLinkedProgram {
     pub(crate) fn bind_portable(
         self,
         binding_schema: Arc<crate::RustBindingSchema>,
-    ) -> LinkedArtifact {
-        LinkedArtifact {
+        required_features: ArtifactFeatureSet,
+        task_targets: Box<[ArtifactTaskTarget]>,
+    ) -> Result<LinkedArtifact, crate::linker::LinkError> {
+        let artifact = LinkedArtifact {
             program: self.program,
             image: self.image,
             cache_layout: self.cache_layout,
@@ -263,7 +292,11 @@ impl UnboundLinkedProgram {
             verified_mir: Arc::new(vela_mir::OwnedVerifiedMirBundle::default()),
             binding_schema,
             package_metadata: None,
-        }
+            required_features,
+            task_targets,
+        };
+        verify_task_target_table(&artifact)?;
+        Ok(artifact)
     }
 
     #[cfg(any(test, feature = "test-support"))]
@@ -278,6 +311,8 @@ impl UnboundLinkedProgram {
             verified_mir,
             binding_schema: Arc::new(crate::RustBindingSchema::empty()),
             package_metadata: None,
+            required_features: ArtifactFeatureSet::empty(),
+            task_targets: Box::new([]),
         }
     }
 
@@ -346,7 +381,13 @@ impl UnboundLinkedProgram {
             })
             .collect::<Vec<_>>()
             .into_boxed_slice();
-        Ok(LinkedArtifact {
+        let task_targets = collect_task_targets(&bundle, &mir_executables)?;
+        let required_features = if task_targets.is_empty() {
+            ArtifactFeatureSet::empty()
+        } else {
+            ArtifactFeatureSet::host_scoped_tasks()
+        };
+        let artifact = LinkedArtifact {
             program: self.program,
             image: self.image,
             cache_layout: self.cache_layout,
@@ -355,7 +396,11 @@ impl UnboundLinkedProgram {
             verified_mir: bundle,
             binding_schema,
             package_metadata,
-        })
+            required_features,
+            task_targets,
+        };
+        verify_task_target_table(&artifact)?;
+        Ok(artifact)
     }
 
     fn program(&self) -> &LinkedProgram {

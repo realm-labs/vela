@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 use crate::{MirLocalId, MirSourceOrigin, MirTempId, MirTypeContract};
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct MirEffect {
     pub may_trap: bool,

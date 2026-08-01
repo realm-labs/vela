@@ -13,9 +13,9 @@ use super::{
     ServiceSelectionTable, ServiceSetSchema, ServiceStagingError,
 };
 
-// Version 1 metadata identifies generations built under the old implicit
-// Host-borrow release contract and is deliberately not loadable.
-const SERVICE_BUNDLE_FORMAT_VERSION: u32 = 2;
+// Versions 1 and 2 predate the complete host-scoped task contract and are
+// deliberately not loadable.
+const SERVICE_BUNDLE_FORMAT_VERSION: u32 = 3;
 
 /// Checksum used for service manifests, sparse operations, and package metadata.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -187,12 +187,7 @@ impl ServiceUpdateBundle {
         artifact: Arc<LinkedArtifact>,
         update: LinkedServiceSourceManifest,
     ) -> Result<Self, ServiceBundleError> {
-        if metadata.format_version != SERVICE_BUNDLE_FORMAT_VERSION {
-            return Err(ServiceBundleError::UnsupportedFormat {
-                expected: SERVICE_BUNDLE_FORMAT_VERSION,
-                actual: metadata.format_version,
-            });
-        }
+        validate_service_bundle_format(metadata.format_version)?;
         let rebuilt = Self::build(metadata.mode, schema, artifact, update)?;
         if rebuilt.metadata != metadata {
             return Err(ServiceBundleError::MetadataChecksumMismatch);
@@ -371,6 +366,16 @@ impl ServiceUpdateBundle {
             }
         }
     }
+}
+
+fn validate_service_bundle_format(actual: u32) -> Result<(), ServiceBundleError> {
+    if actual != SERVICE_BUNDLE_FORMAT_VERSION {
+        return Err(ServiceBundleError::UnsupportedFormat {
+            expected: SERVICE_BUNDLE_FORMAT_VERSION,
+            actual,
+        });
+    }
+    Ok(())
 }
 
 /// Counts from a successfully flattened dry-run selection table.
@@ -607,4 +612,26 @@ fn package_metadata(
         packages,
         Some(ServiceBundleChecksum::new(*hasher.finalize().as_bytes())),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        SERVICE_BUNDLE_FORMAT_VERSION, ServiceBundleError, validate_service_bundle_format,
+    };
+
+    #[test]
+    fn detached_service_metadata_rejects_v1_and_v2() {
+        assert_eq!(SERVICE_BUNDLE_FORMAT_VERSION, 3);
+        for actual in [1_u32, 2] {
+            assert_eq!(
+                validate_service_bundle_format(actual),
+                Err(ServiceBundleError::UnsupportedFormat {
+                    expected: 3,
+                    actual,
+                })
+            );
+        }
+        assert_eq!(validate_service_bundle_format(3), Ok(()));
+    }
 }

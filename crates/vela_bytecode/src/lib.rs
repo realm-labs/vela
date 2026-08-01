@@ -24,7 +24,9 @@ pub mod verification;
 #[doc(hidden)]
 pub use artifact::test_support;
 pub use artifact::{
-    ArtifactChecksum, LinkedArtifact, MirExecutableLayout, ProfileFunctionLayout, ProfileLayout,
+    ArtifactChecksum, ArtifactFeatureSet, ArtifactTaskContinuation, ArtifactTaskOperation,
+    ArtifactTaskParameter, ArtifactTaskServiceRequirement, ArtifactTaskSignature,
+    ArtifactTaskTarget, LinkedArtifact, MirExecutableLayout, ProfileFunctionLayout, ProfileLayout,
 };
 pub use binding_schema::{
     RUST_BINDING_SCHEMA_VERSION, RustBindingBorrowedReturnOrigin, RustBindingBoundaryMode,

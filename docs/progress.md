@@ -84,10 +84,10 @@ Phase status:
   typed thunks invoke non-`'static`, non-`Sync` Host defaults through one
   reviewed root reborrow boundary; pinned Rust/Vela chaining, target base,
   old-root isolation, cancellation, and panic cleanup are executable.
-- E5 accepted: portable program, Service bundle, and detached deployment
-  metadata format version 2 reject version 1 before activation; representative
-  ordinary/Service fixtures, release/base benchmark rows, structural audits,
-  and the complete repository validation matrix pass.
+- E5 accepted and superseded by M20.75 portability: its format version 2
+  explicit-release gate passed the representative ordinary/Service fixtures,
+  release/base benchmark rows, structural audits, and repository matrix. The
+  active artifact contract is now version 3.
 - S0 accepted: the migration inventory, executable fixture, and boundary
   baselines are frozen.
 - S1 accepted: the callable-level replacement model is deleted without aliases
@@ -114,7 +114,7 @@ Phase status:
   async caller; registered constructors/methods, nested views and grouping,
   business Result, old/new in-flight roots, publication-only rollback, stable
   boundary measurements, and the final repository gate are complete.
-- M20.75 Batch A in progress: the complete language, ownership, effect, Service-generation,
+- M20.75 Batch A accepted; Batch B in progress: the complete language, ownership, effect, Service-generation,
   continuation, host-lifecycle, unsafe-audit, and acceptance contract is frozen
   in the host-scoped detached async execution plan. Static HIR task shapes and
   target asyncness are implemented, and `TaskSpawn` now propagates through the
@@ -128,7 +128,13 @@ Phase status:
   executor-neutral host admission protocol, finite task policy, owned execution
   capsule, exact ordinary/Service generation identity, authority intersection,
   outcome, cancellation, and structured error contracts are implemented.
-  Runtime value transfer and artifact v3 remain in Batch A.
+  Portable program, Service bundle, and deployment metadata now hard-switch to
+  version 3; linked and portable artifacts seal and validate task feature bits,
+  static target slots, callable ABI/asyncness, detachability, transitive
+  effects, continuation ABI, and originating-Service requirements. Versions 1
+  and 2 reject before linking or activation. Batch B starts with the task
+  bytecode operation, owned graph transfer, scope installation, and an ordinary
+  fresh-Runtime vertical slice.
 - P0-P3 accepted for service return totality: recursive macro diagnostics now
   reject nested, exclusive-envelope, projected-child, and otherwise
   non-executable borrowed returns. Exact direct parameters, direct borrowed
@@ -363,8 +369,8 @@ parameters reach sync and async Rust defaults through generated typed thunks,
 and pinned calls may select Rust or Vela before a target patch calls its own
 base. The contextual receiver spellings are rejected; only
 `service::base::*` / `service::pinned::*` are compiler-owned paths. Portable
-format version 2 rejects artifacts compiled under implicit release semantics
-before activation. The accepted contract and gates are in the
+format version 3 rejects both pre-explicit-release and pre-task-metadata
+artifacts before activation. The accepted contract and gates are in the
 [final interop plan](rust-vela-interop-final-shape-hard-switch-plan.md).
 
 Shared custom service parameters now use one storage-directed boundary:

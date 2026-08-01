@@ -643,17 +643,19 @@ impl AuditPortableHotfix {
     let first = portable.encode().expect("first encoding");
     let second = portable.encode().expect("second encoding");
     assert_eq!(first, second);
-    let mut old_implicit_release = first.clone();
-    old_implicit_release[8..12].copy_from_slice(&1_u32.to_le_bytes());
-    assert!(matches!(
-        vela_engine::service::PortableServiceUpdateBundle::decode(&old_implicit_release),
-        Err(
-            vela_engine::service::PortableServiceBundleError::UnsupportedFormat {
-                expected: 2,
-                actual: 1,
-            }
-        )
-    ));
+    for old_version in [1_u32, 2] {
+        let mut old = first.clone();
+        old[8..12].copy_from_slice(&old_version.to_le_bytes());
+        assert!(matches!(
+            vela_engine::service::PortableServiceUpdateBundle::decode(&old),
+            Err(
+                vela_engine::service::PortableServiceBundleError::UnsupportedFormat {
+                    expected: 3,
+                    actual,
+                }
+            ) if actual == old_version
+        ));
+    }
     assert_eq!(services.pin().generation_id(), base.generation_id());
     let checksum = portable.checksum();
     let mut corrupted = first.clone();
