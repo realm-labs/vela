@@ -13,6 +13,7 @@ mod closure_calls;
 mod collection_mutation;
 mod constant_loads;
 mod container_contracts;
+mod detached_value;
 mod dynamic_method_resolution;
 mod equality;
 pub mod error;
@@ -139,11 +140,10 @@ use budget::ExecutionBudget;
 use value::Value;
 
 pub use async_resume::PreparedAsyncCall;
+pub use detached_value::DetachedValueImage;
 pub use execution_reentry::LinkedExecutionReentry;
 pub use execution_session::{LinkedExecutionSession, LinkedExecutionStart};
-pub use linked_execution::{
-    LinkedDriveOutcome, PreparedContextCall, PreparedTaskArgument, PreparedTaskCall,
-};
+pub use linked_execution::{LinkedDriveOutcome, PreparedContextCall, PreparedTaskCall};
 
 pub type NativeFunction =
     Arc<dyn Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static>;

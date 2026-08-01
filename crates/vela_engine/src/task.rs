@@ -15,8 +15,8 @@ use std::time::Duration;
 use vela_bytecode::{ExecutableGenerationId, LinkedArtifact};
 use vela_common::{CapabilitySet, ServiceGenerationId, ServiceSetId, Span};
 use vela_def::FunctionId;
+use vela_vm::DetachedValueImage;
 use vela_vm::budget::ExecutionLimits;
-use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
 
@@ -402,9 +402,9 @@ impl fmt::Debug for ScopedTask {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum ScopedTaskOutcome {
-    Completed(OwnedValue),
+    Completed(DetachedValueImage),
     Failed(TaskError),
 }
 

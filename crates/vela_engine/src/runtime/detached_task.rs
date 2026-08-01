@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use vela_common::{Capability, CapabilitySet};
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
-use vela_vm::{PreparedTaskArgument, PreparedTaskCall};
+use vela_vm::{DetachedValueImage, PreparedTaskCall};
 
 use super::{CallArgs, CallOptions, Runtime, handles};
 use crate::engine::Engine;
@@ -70,12 +70,10 @@ pub(super) fn admit(
         })
         .with_source_span(prepared.source_span()));
     }
-    let args = prepare_args(prepared.args()).map_err(|reason| {
-        VmError::new(VmErrorKind::TaskAdmissionDenied { reason })
-            .with_source_span(prepared.source_span())
-    })?;
+    let source_span = prepared.source_span();
     let worker = target.worker;
     let worker_name = target.worker_debug_name.clone();
+    let args = prepared.into_arguments();
     let child_capsule = Arc::clone(&capsule);
     let child_scope = scope.clone();
     let outcome_metadata = metadata.clone();
@@ -97,25 +95,8 @@ pub(super) fn admit(
             VmError::new(VmErrorKind::TaskAdmissionDenied {
                 reason: error.to_string(),
             })
-            .with_source_span(prepared.source_span())
+            .with_source_span(source_span)
         })
-}
-
-fn prepare_args(
-    args: &[PreparedTaskArgument],
-) -> Result<Vec<vela_vm::owned_value::OwnedValue>, String> {
-    let mut values = Vec::with_capacity(args.len());
-    let mut omitted = false;
-    for argument in args {
-        match argument {
-            PreparedTaskArgument::Missing => omitted = true,
-            PreparedTaskArgument::Value(value) if omitted => {
-                return Err("non-trailing omitted task arguments are not executable".to_owned());
-            }
-            PreparedTaskArgument::Value(value) => values.push(value.clone()),
-        }
-    }
-    Ok(values)
 }
 
 async fn run_child(
@@ -123,8 +104,8 @@ async fn run_child(
     scope: TaskScope,
     worker: vela_def::FunctionId,
     worker_name: String,
-    args: Vec<vela_vm::owned_value::OwnedValue>,
-) -> Result<vela_vm::owned_value::OwnedValue, (TaskErrorKind, String)> {
+    args: DetachedValueImage,
+) -> Result<DetachedValueImage, (TaskErrorKind, String)> {
     let mut runtime =
         Runtime::from_linked_artifact(capsule.engine().clone(), Arc::clone(capsule.artifact()))
             .map_err(|error| (TaskErrorKind::GenerationUnavailable, error.to_string()))?;
@@ -137,20 +118,19 @@ async fn run_child(
     .with_collection_limits(limits.collection_limits)
     .with_timeout(capsule.policy().timeout())
     .with_task_scope(scope);
-    let value = runtime
-        .call_impl_async(
+    let (value, mut budget) = runtime
+        .call_impl_async_with_budget(
             handles::StableVelaFunction {
                 function: worker,
                 diagnostic_name: worker_name,
             },
-            CallArgs::from_positional(args),
+            CallArgs::from_detached_image(args),
             options,
             None,
         )
         .await
         .map_err(|error| (TaskErrorKind::WorkerError, error.to_string()))?;
-    runtime
-        .value_to_owned(&value)
+    DetachedValueImage::export_result(value.value(), &runtime.state.vm_states.heap, &mut budget)
         .map_err(|error| (TaskErrorKind::WorkerError, error.to_string()))
 }
 

@@ -23,6 +23,7 @@ use super::VelaValue;
 #[derive(Default)]
 pub struct CallArgs<'a> {
     entries: Vec<CallArg<'a>>,
+    detached: Option<vela_vm::DetachedValueImage>,
     direct_host_slots: HostSlotTable<DirectHostSlot>,
     direct_host_object_id_base: Option<u64>,
     fallback: Option<&'a mut (dyn ScriptStateAdapter + Send)>,
@@ -117,6 +118,7 @@ impl<'a> CallArgs<'a> {
     pub fn from_positional(args: impl IntoIterator<Item = OwnedValue>) -> Self {
         Self {
             entries: args.into_iter().map(CallArg::Positional).collect(),
+            detached: None,
             direct_host_slots: HostSlotTable::new(),
             direct_host_object_id_base: None,
             fallback: None,
@@ -127,6 +129,7 @@ impl<'a> CallArgs<'a> {
     pub fn from_values(args: impl IntoIterator<Item = VelaValue>) -> Self {
         Self {
             entries: args.into_iter().map(CallArg::PositionalValue).collect(),
+            detached: None,
             direct_host_slots: HostSlotTable::new(),
             direct_host_object_id_base: None,
             fallback: None,
@@ -693,6 +696,14 @@ impl<'a> CallArgs<'a> {
         runtime: &mut CallArgRuntime<'_, '_, '_>,
         host: &mut (dyn ScriptStateAdapter + Send),
     ) -> VmResult<Vec<Value>> {
+        if let Some(detached) = &self.detached {
+            if !self.entries.is_empty() {
+                return Err(call_args_type_error(
+                    "detached task arguments cannot be mixed with call arguments",
+                ));
+            }
+            return detached.import_into(runtime.heap, runtime.budget);
+        }
         match self.mode()? {
             CallArgsMode::Empty | CallArgsMode::Positional => self
                 .entries
@@ -702,6 +713,16 @@ impl<'a> CallArgs<'a> {
             CallArgsMode::Named => {
                 self.resolve_named_values(entry, params, param_defaults, runtime, host)
             }
+        }
+    }
+
+    pub(super) fn from_detached_image(detached: vela_vm::DetachedValueImage) -> Self {
+        Self {
+            entries: Vec::new(),
+            detached: Some(detached),
+            direct_host_slots: HostSlotTable::new(),
+            direct_host_object_id_base: None,
+            fallback: None,
         }
     }
 

@@ -141,12 +141,88 @@ fn main() {
     let (_, _, mut future) = task.into_parts();
     let waker = std::task::Waker::noop();
     let mut context = std::task::Context::from_waker(waker);
-    assert_eq!(
-        future.as_mut().poll(&mut context),
-        std::task::Poll::Ready(crate::task::ScopedTaskOutcome::Completed(OwnedValue::i64(
-            2
-        )))
-    );
+    let std::task::Poll::Ready(crate::task::ScopedTaskOutcome::Completed(image)) =
+        future.as_mut().poll(&mut context)
+    else {
+        panic!("detached worker should complete with an owned image");
+    };
+    let mut result_heap = vela_vm::heap::ScriptHeap::new();
+    let mut result_budget = vela_vm::budget::ExecutionBudget::new(100, 4096, 8);
+    let roots = image
+        .import_into(&mut result_heap, &mut result_budget)
+        .expect("host can import detached outcome");
+    assert_eq!(roots, [Value::i64(2)]);
+}
+
+#[test]
+fn scoped_task_transfer_preserves_cross_argument_aliases_and_cycles() {
+    let engine = Engine::builder()
+        .capability(vela_common::Capability::TaskSpawn)
+        .build()
+        .expect("engine should build");
+    let program = engine
+        .compile_source(
+            r#"
+async fn inspect(root: Array, shared: Array) -> bool {
+    return root[0] === shared && root[1] === root;
+}
+
+fn main() {
+    let shared = [7];
+    let root = [];
+    root.push(shared);
+    root.push(root);
+    task::spawn_scoped(inspect(root, shared));
+}
+"#,
+        )
+        .expect("cyclic task fixture compiles");
+    let mut runtime = Runtime::new_compiled(engine, program).expect("runtime builds");
+    let host = Arc::new(RecordingTaskHost::default());
+    let limits =
+        ExecutionLimits::new(10_000, 1 << 20, 64).with_collection_limits(CollectionLimits {
+            max_array_len: 1_024,
+            max_map_entries: 1_024,
+            max_set_len: 1_024,
+        });
+    let policy = crate::task::TaskPolicy::new(
+        std::num::NonZeroUsize::new(4).expect("non-zero"),
+        std::num::NonZeroUsize::new(4).expect("non-zero"),
+        limits,
+        std::num::NonZeroU64::new(16).expect("non-zero"),
+        std::time::Duration::from_secs(1),
+        vela_common::CapabilitySet::new().with(vela_common::Capability::TaskSpawn),
+    )
+    .expect("finite task policy");
+    let scope = crate::task::TaskScope::new(host.clone(), policy);
+
+    runtime
+        .call(
+            "main",
+            CallArgs::new(),
+            CallOptions::unbounded().with_task_scope(scope),
+        )
+        .expect("caller admits cyclic graph");
+    let task = host
+        .admitted
+        .lock()
+        .expect("task host lock")
+        .pop()
+        .expect("one admitted task");
+    let (_, _, mut future) = task.into_parts();
+    let waker = std::task::Waker::noop();
+    let mut context = std::task::Context::from_waker(waker);
+    let std::task::Poll::Ready(crate::task::ScopedTaskOutcome::Completed(image)) =
+        future.as_mut().poll(&mut context)
+    else {
+        panic!("graph inspection worker should complete");
+    };
+    let mut result_heap = vela_vm::heap::ScriptHeap::new();
+    let mut result_budget = vela_vm::budget::ExecutionBudget::new(100, 4096, 8);
+    let roots = image
+        .import_into(&mut result_heap, &mut result_budget)
+        .expect("host can import detached outcome");
+    assert_eq!(roots, [Value::Bool(true)]);
 }
 
 #[test]

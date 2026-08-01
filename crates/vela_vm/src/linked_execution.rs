@@ -82,19 +82,13 @@ pub enum LinkedDriveOutcome {
     TaskBoundary(PreparedTaskCall),
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum PreparedTaskArgument {
-    Missing,
-    Value(crate::OwnedValue),
-}
-
 #[derive(Clone, Debug)]
 pub struct PreparedTaskCall {
     owner: Arc<LinkedArtifact>,
     worker: ScriptFunctionHandle,
     worker_name: String,
     mode: vela_bytecode::ScriptCallMode,
-    args: Vec<PreparedTaskArgument>,
+    arguments: crate::DetachedValueImage,
     continuation: Option<vela_bytecode::linked::TaskContinuation>,
     source_span: Option<Span>,
 }
@@ -121,8 +115,13 @@ impl PreparedTaskCall {
     }
 
     #[must_use]
-    pub fn args(&self) -> &[PreparedTaskArgument] {
-        &self.args
+    pub const fn arguments(&self) -> &crate::DetachedValueImage {
+        &self.arguments
+    }
+
+    #[must_use]
+    pub fn into_arguments(self) -> crate::DetachedValueImage {
+        self.arguments
     }
 
     #[must_use]
@@ -1376,15 +1375,13 @@ impl Vm {
                     let args = script_function_calls::script_call_args_from_call_arguments(
                         frame, &task.args,
                     )?;
-                    let args = args
-                        .as_slice()
-                        .iter()
-                        .map(|value| match value {
-                            Value::Missing => Ok(PreparedTaskArgument::Missing),
-                            value => crate::value_to_owned(value, heap.as_deref(), None)
-                                .map(PreparedTaskArgument::Value),
-                        })
-                        .collect::<VmResult<Vec<_>>>()?;
+                    let mut unbounded = ExecutionBudget::unbounded();
+                    let task_budget = budget.as_deref_mut().unwrap_or(&mut unbounded);
+                    let arguments = crate::DetachedValueImage::export_arguments(
+                        args.as_slice(),
+                        heap.as_deref().map(|execution| &*execution.heap),
+                        task_budget,
+                    )?;
                     frame.write(task.dst, Value::Unit)?;
                     frame_state.ip = InstructionOffset(ip);
                     return Ok(FrameDriveOutcome::Task(PreparedTaskCall {
@@ -1392,7 +1389,7 @@ impl Vm {
                         worker: task.worker,
                         worker_name: program.debug_name(task.worker_debug_name).to_owned(),
                         mode: task.mode,
-                        args,
+                        arguments,
                         continuation: task.continuation.clone(),
                         source_span: instruction.span,
                     }));

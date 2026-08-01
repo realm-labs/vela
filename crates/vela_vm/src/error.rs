@@ -215,6 +215,10 @@ pub enum VmErrorKind {
     TaskAdmissionDenied {
         reason: String,
     },
+    TaskValueNotDetachable {
+        path: String,
+        kind: vela_common::NonDetachableValueKind,
+    },
     CollectionLimitExceeded {
         collection: &'static str,
         limit: usize,
@@ -268,6 +272,7 @@ impl VmErrorKind {
             Self::DeadlineExceeded => "vm::deadline_exceeded",
             Self::TaskScopeUnavailable => "vm::task_scope_unavailable",
             Self::TaskAdmissionDenied { .. } => "vm::task_admission_denied",
+            Self::TaskValueNotDetachable { .. } => "vm::task_value_not_detachable",
             Self::CollectionLimitExceeded { .. } => "vm::collection_limit_exceeded",
             Self::CollectionChangedDuringCallback { .. } => {
                 "vm::collection_changed_during_callback"
@@ -388,6 +393,12 @@ impl VmErrorKind {
             }
             Self::TaskAdmissionDenied { reason } => {
                 format!("host-scoped task admission was denied: {reason}")
+            }
+            Self::TaskValueNotDetachable { path, kind } => {
+                format!(
+                    "task value at `{path}` is not detachable: {}",
+                    kind.as_str()
+                )
             }
             Self::CollectionLimitExceeded { collection, limit } => {
                 format!("{collection} length exceeds collection limit {limit}")

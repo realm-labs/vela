@@ -401,12 +401,28 @@ where
         T: RuntimeCallTarget + Send + 'call,
         'args: 'call,
     {
+        self.call_impl_async_with_budget(entry, args, options, service_dispatcher)
+            .await
+            .map(|(value, _)| value)
+    }
+
+    async fn call_impl_async_with_budget<'call, 'args, T>(
+        &'call mut self,
+        entry: T,
+        args: CallArgs<'args>,
+        options: CallOptions,
+        service_dispatcher: Option<std::sync::Arc<dyn crate::service::ServiceCallDispatcher>>,
+    ) -> VmResult<(VelaValue, ExecutionBudget)>
+    where
+        T: RuntimeCallTarget + Send + 'call,
+        'args: 'call,
+    {
         let task_scope = options.task_scope().cloned();
         let mut budget = options.budget();
         let target = handles::call_target_sealed::Sealed::into_call_target(entry);
         let target = self.resolve_call_target(target, &mut budget)?;
         let state = &mut self.state;
-        Self::call_runtime_args_async(RuntimeCallExecution {
+        let value = Self::call_runtime_args_async(RuntimeCallExecution {
             runtime_id: state.id,
             engine: self.image.engine(),
             registry_image: self.image.program_image(),
@@ -424,7 +440,8 @@ where
             service_scoped_return: None,
             task_scope,
         })
-        .await
+        .await?;
+        Ok((value, budget))
     }
 
     pub fn bind_method<T>(&self, receiver: &VelaValue, method: T) -> VmResult<VelaMethodTarget>
