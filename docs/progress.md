@@ -20,13 +20,13 @@ rejected old artifacts, and passed the repository acceptance matrix. The
 owns the detailed proof. There is no compatibility release mode, legacy
 artifact loader, contextual Service alias, or second Service dispatch path.
 
-The active implementation focus is M20.75 Batch E hardening, tooling, and
-portability. M20.5 incremental HIR re-lowering remains its prior in-progress
+The active implementation focus is M20.75 Batch F acceptance and cleanup.
+M20.5 incremental HIR re-lowering remains its prior in-progress
 checkpoint and resumes after the active product goal or at an explicit focus
 change.
 
-M20.75 host-scoped detached async execution is fully designed; Batches A-D
-are accepted, and Batch E is in progress. Its
+M20.75 host-scoped detached async execution is fully designed; Batches A-E
+are accepted, and Batch F is in progress. Its
 [execution plan](host-scoped-detached-async-execution-plan.md) hard-switches
 Vela and generated Service applications to a domain-neutral bounded host task
 scope. It permits synchronous ordinary functions and Service patches to admit
@@ -127,7 +127,7 @@ Phase status:
   async caller; registered constructors/methods, nested views and grouping,
   business Result, old/new in-flight roots, publication-only rollback, stable
   boundary measurements, and the final repository gate are complete.
-- M20.75 Batches A-D accepted; Batch E in progress: the complete language, ownership, effect, Service-generation,
+- M20.75 Batches A-E accepted; Batch F in progress: the complete language, ownership, effect, Service-generation,
   continuation, host-lifecycle, unsafe-audit, and acceptance contract is frozen
   in the host-scoped detached async execution plan. Static HIR task shapes and
   target asyncness are implemented, and `TaskSpawn` now propagates through the
@@ -178,6 +178,14 @@ Phase status:
   generation pinning until delivery or cancellation. Continuations receive an
   owned `Result<T, task::Error>` plus fresh trailing host arguments, never run
   on the worker context, and retain no parent Runtime or borrow.
+  Batch E hardens version 3 portability, sealed reflection facts, static LSP
+  diagnostics/navigation, and host-only lifecycle observation. Scope-local
+  task IDs, structured events, saturating metrics, bounded exact-artifact
+  Runtime pooling, concurrent teardown stress, recursive quota exhaustion, an
+  interpreter-only benchmark harness, and a runnable Service hotfix example
+  are covered. Pooled Runtimes clear all mutable owners and rerun artifact
+  initialization before reuse; observer failure is contained and no task ID or
+  control handle enters Vela.
 - P0-P3 accepted for service return totality: recursive macro diagnostics now
   reject nested, exclusive-envelope, projected-child, and otherwise
   non-executable borrowed returns. Exact direct parameters, direct borrowed

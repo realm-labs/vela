@@ -490,6 +490,7 @@ fn block_on<T>(future: impl Future<Output = T>) -> T {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let task_adapter = vela_examples::service_tasks::ActorTaskAdapter::new();
     let app = GameServices::builder(
         Engine::builder()
             .capability(Capability::HostWrite)
@@ -500,10 +501,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             .register_exports(HostTurn::vela_inherent_exports())
             .register_type_binding::<PatchAdjustment>(patch_adjustment_binding()),
     )
-    .task_scope(vela_examples::service_tasks::scope())
-    .emergency_patch_effect_ceiling(
-        vela_examples::service_tasks::emergency_patch_effect_ceiling(),
-    )
+    .task_scope(task_adapter.task_scope())
+    .emergency_patch_effect_ceiling(vela_examples::service_tasks::emergency_patch_effect_ceiling())
     .inventory(RustInventoryService)
     .reward(RustRewardService)
     .rule(RustGrantRuleService)

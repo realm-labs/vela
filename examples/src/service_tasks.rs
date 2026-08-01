@@ -8,11 +8,11 @@ use std::time::Duration;
 
 use vela_common::CapabilitySet;
 use vela_engine::native::EffectSet;
-use vela_engine::task::{
-    ScopedTask, ScopedTaskCompletion, ScopedTaskHost, TaskAdmissionError,
-    TaskCancellationReason, TaskContinuationOutcome, TaskPolicy, TaskScope,
-};
 use vela_engine::runtime::{CallArgs, CallOptions};
+use vela_engine::task::{
+    ScopedTask, ScopedTaskCompletion, ScopedTaskHost, TaskAdmissionError, TaskCancellationReason,
+    TaskContinuationOutcome, TaskMetricsSnapshot, TaskPolicy, TaskScope,
+};
 use vela_vm::budget::{CollectionLimits, ExecutionLimits};
 
 struct ActorTaskHost {
@@ -33,7 +33,7 @@ impl ScopedTaskHost for ActorTaskHost {
             })
             .map_err(|_| TaskAdmissionError::CapacityExceeded {
                 maximum: self.maximum,
-        })?;
+            })?;
         let active = Arc::clone(&self.active);
         let closed = Arc::clone(&self.closed);
         let completions = self.completions.clone();
@@ -93,6 +93,11 @@ impl ActorTaskAdapter {
         self.scope.clone()
     }
 
+    #[must_use]
+    pub fn metrics(&self) -> TaskMetricsSnapshot {
+        self.scope.metrics()
+    }
+
     pub fn resume_one<'host>(
         &self,
         args: CallArgs<'host>,
@@ -103,6 +108,21 @@ impl ActorTaskAdapter {
             .lock()
             .expect("actor completion queue lock")
             .try_recv()
+            .ok()?;
+        Some(completion.resume(args, options))
+    }
+
+    pub fn resume_one_timeout<'host>(
+        &self,
+        timeout: Duration,
+        args: CallArgs<'host>,
+        options: CallOptions,
+    ) -> Option<TaskContinuationOutcome> {
+        let completion = self
+            .completions
+            .lock()
+            .expect("actor completion queue lock")
+            .recv_timeout(timeout)
             .ok()?;
         Some(completion.resume(args, options))
     }
@@ -147,10 +167,6 @@ fn policy() -> TaskPolicy {
         CapabilitySet::all(),
     )
     .expect("finite example task policy")
-}
-
-pub fn scope() -> TaskScope {
-    ActorTaskAdapter::new().task_scope()
 }
 
 pub fn emergency_patch_effect_ceiling() -> EffectSet {

@@ -427,6 +427,7 @@ fn folded_source() -> Result<String, Box<dyn Error>> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let task_adapter = vela_examples::service_tasks::ActorTaskAdapter::new();
     ROW_CLONES.store(0, Ordering::SeqCst);
     ROW_CODEC_ENTRIES.store(0, Ordering::SeqCst);
     PATCH_BUFFER_DROPS.store(0, Ordering::SeqCst);
@@ -444,10 +445,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             .register_type::<RequestState>()
             .register_type_binding::<PatchBuffer>(patch_buffer_binding()),
     )
-    .task_scope(vela_examples::service_tasks::scope())
-    .emergency_patch_effect_ceiling(
-        vela_examples::service_tasks::emergency_patch_effect_ceiling(),
-    )
+    .task_scope(task_adapter.task_scope())
+    .emergency_patch_effect_ceiling(vela_examples::service_tasks::emergency_patch_effect_ceiling())
     .lookup(RustLookupService)
     .policy(RustPolicyService)
     .apply(RustApplyService)

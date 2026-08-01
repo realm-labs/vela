@@ -149,6 +149,12 @@ service_hotfix_coverage collections owned=8 shared=8 mutable-copyback=false\n",
 );
 
 success_example!(
+    scoped_service_task_runs_async_work_and_safe_point_continuation,
+    env!("CARGO_BIN_EXE_scoped_service_task"),
+    "immediate=50 continuation=106 turn=7 task_id_count=1 pool_hits=1 pool_misses=1\n",
+);
+
+success_example!(
     async_stateful_reentry_example_runs,
     env!("CARGO_BIN_EXE_async_stateful_reentry"),
     "async_stateful_reentry result=Scalar(I64(12)) total=12\n",

@@ -28,6 +28,7 @@ cargo bench -p vela_engine --bench hot_reload -- --quick
 cargo bench -p vela_engine --bench async_execution -- --quick
 cargo bench -p vela_engine --bench interop -- --quick
 cargo bench -p vela_engine --bench service_boundary_baseline
+cargo bench -p vela_engine --bench scoped_task_execution
 cargo bench -p vela_engine --bench actor_memory -- memory
 cargo bench -p vela_engine --bench actor_memory -- allocations
 cargo bench -p vela_engine --bench actor_concurrency
@@ -116,6 +117,17 @@ replace the frozen latency baseline. Full methodology and exact S0 rows are in
 the [S0 baseline report](archive/service-hard-switch-s0-baseline-2026-07-23.md).
 Use `cargo bench -p vela_engine --bench service_boundary_baseline` for quick
 sampling and append `-- --stable` for the frozen 100,000-iteration shape.
+
+The M20.75 `scoped_task_execution` harness keeps detached-task costs in
+separate interpreter-only rows: owned-graph admission/copy, forced-fresh child
+Runtime, scope-pooled child Runtime, first pending poll, exact-generation
+Service nested dispatch, and safe-point continuation delivery. Preparation is
+outside the timed interval for the pending-poll and continuation rows. The
+default 500-iteration macOS/arm64 release smoke run on 2026-08-01 recorded
+approximately 78.8 us, 28.6 us, 27.5 us, 14.8 us, 768.6 us, and 18.6 us per
+operation respectively, with stable checksums. These rows prove harness shape
+and establish a comparison point; they are not M20.75 performance acceptance
+thresholds. Use `-- --stable` for the 10,000-iteration shape.
 
 The 2026-07-24 S4 quick checkpoint added the generated Rust-default row after
 pinning one complete service generation outside the timed loop. On the local

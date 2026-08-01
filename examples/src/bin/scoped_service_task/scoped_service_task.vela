@@ -1,0 +1,17 @@
+async fn repair_worker(value: i64) -> i64 {
+    let fetched = example_io::pending(value).await;
+    let base = service::base::schedule(fetched);
+    return service::pinned::audit::record(base);
+}
+
+fn finish_repair(outcome: Result<i64, task::Error>, turn: i64) {
+    example_io::observe(outcome.unwrap_or(-1), turn);
+}
+
+#[service_impl(scoped_example::repair)]
+impl RepairPatch {
+    fn schedule(value: i64) -> i64 {
+        task::spawn_scoped_then(repair_worker(value), finish_repair);
+        return value * 10;
+    }
+}
