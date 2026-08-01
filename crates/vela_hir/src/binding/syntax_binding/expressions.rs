@@ -3,7 +3,9 @@ use vela_syntax::ast::{
     SyntaxInterpolatedStringPart, SyntaxMapEntry, SyntaxRecordExprField,
 };
 
-use crate::binding::{LocalBindingKind, PathUsage};
+use vela_common::{Diagnostic, Span};
+
+use crate::binding::{BindingResolution, LocalBindingKind, PathUsage, TaskLexicalCapability};
 use crate::body::{
     HirArgument, HirBodyOwner, HirBodyRoot, HirCall, HirElseBranch, HirExprKind, HirField, HirIf,
     HirIndex, HirLiteral, HirMapEntry, HirMatch, HirMatchArmBody, HirPathKind, HirPathOwner,
@@ -147,11 +149,13 @@ impl SyntaxBindingLowerer<'_> {
                     .flat_map(|expr| expr.arguments())
                     .map(|argument| self.bind_argument(&argument))
                     .collect();
-                HirExprKind::Call(HirCall {
+                let call = HirCall {
                     expression: id,
                     callee,
                     arguments,
-                })
+                };
+                self.validate_task_call(&call, span);
+                HirExprKind::Call(call)
             }
             SyntaxExpressionKind::Index => {
                 let index = expr.as_index();
@@ -393,6 +397,96 @@ impl SyntaxBindingLowerer<'_> {
                 span: span_for(self.source, entry.syntax().text_range()),
             },
         }
+    }
+
+    fn validate_task_call(&mut self, call: &HirCall, span: Span) {
+        let Some(capability) = self.task_capabilities.get(&call.callee).copied() else {
+            return;
+        };
+        if call
+            .arguments
+            .iter()
+            .any(|argument| argument.name.is_some())
+        {
+            self.diagnostics.push(
+                Diagnostic::error("task operations accept positional arguments only")
+                    .with_code("hir::named_task_argument")
+                    .with_span(span),
+            );
+        }
+        let expected = match capability {
+            TaskLexicalCapability::SpawnScoped => 1,
+            TaskLexicalCapability::SpawnScopedThen => 2,
+        };
+        if call.arguments.len() != expected {
+            self.diagnostics.push(
+                Diagnostic::error(format!(
+                    "task operation expects {expected} arguments, found {}",
+                    call.arguments.len()
+                ))
+                .with_code("hir::invalid_task_argument_count")
+                .with_span(span),
+            );
+            return;
+        }
+        let worker = call.arguments[0].value;
+        if !worker.is_some_and(|expression| self.is_static_worker_call(expression)) {
+            self.diagnostics.push(
+                Diagnostic::error("detached worker must be a direct static call")
+                    .with_code("hir::invalid_task_worker")
+                    .with_span(call.arguments[0].origin.span)
+                    .with_label(
+                        call.arguments[0].origin.span,
+                        "use a declared function call such as `worker(argument)`",
+                    ),
+            );
+        }
+        if capability == TaskLexicalCapability::SpawnScopedThen {
+            let continuation = call.arguments[1].value;
+            if !continuation.is_some_and(|expression| self.is_static_function_path(expression)) {
+                self.diagnostics.push(
+                    Diagnostic::error("task continuation must be a direct static function path")
+                        .with_code("hir::invalid_task_continuation")
+                        .with_span(call.arguments[1].origin.span)
+                        .with_label(
+                            call.arguments[1].origin.span,
+                            "pass `continuation`, not a call, closure, string, or local callable",
+                        ),
+                );
+            }
+        }
+    }
+
+    fn is_static_worker_call(&self, expression: HirExprId) -> bool {
+        let Some(body) = self.bodies.get(&self.current_body()) else {
+            return false;
+        };
+        let Some(HirExprKind::Call(call)) = body.expression(expression).map(|expr| &expr.kind)
+        else {
+            return false;
+        };
+        self.is_static_function_path(call.callee)
+    }
+
+    fn is_static_function_path(&self, expression: HirExprId) -> bool {
+        let Some(body) = self.bodies.get(&self.current_body()) else {
+            return false;
+        };
+        if !matches!(
+            body.expression(expression)
+                .map(|expression| &expression.kind),
+            Some(HirExprKind::Path(_))
+        ) {
+            return false;
+        }
+        matches!(
+            self.resolutions.get(&expression),
+            Some(
+                BindingResolution::Declaration(_)
+                    | BindingResolution::Import(_)
+                    | BindingResolution::QualifiedPath(_)
+            )
+        )
     }
 
     fn logical_map_key(&self, expression: HirExprId) -> Option<String> {

@@ -20,18 +20,24 @@ rejected old artifacts, and passed the repository acceptance matrix. The
 owns the detailed proof. There is no compatibility release mode, legacy
 artifact loader, contextual Service alias, or second Service dispatch path.
 
-The active implementation focus returns to M20.5 incremental HIR re-lowering.
+The active implementation focus is M20.75 Batch A host-scoped detached async
+contracts. M20.5 incremental HIR re-lowering remains its prior in-progress
+checkpoint and resumes after the active product goal or at an explicit focus
+change.
 
-M20.75 host-scoped detached async execution is now fully designed but not
-implemented. Its
+M20.75 host-scoped detached async execution is fully designed and Batch A has
+started. Its
 [execution plan](host-scoped-detached-async-execution-plan.md) hard-switches
 Vela and generated Service applications to a domain-neutral bounded host task
 scope. It permits synchronous ordinary functions and Service patches to admit
 statically linked async workers on isolated Runtimes, with exact Service
 generation pinning and optional safe-point continuations. No compatibility
 surface, TaskHandle, shared Runtime, dynamic target, or framework-specific API
-is planned. Implementation will hard-switch portable artifacts from current
-version 2 to version 3 and reject both earlier versions.
+is planned. HIR now records both task forms as non-escaping lexical
+capabilities and rejects dynamic/non-function shapes, synchronous workers, and
+asynchronous continuations before compilation. Later Batch A work will connect
+those facts to dedicated MIR/effects/detachability and hard-switch portable
+artifacts from current version 2 to version 3.
 
 Rust embedding now has one public registration vocabulary: every derived or
 generated Value/Host uses `register_type::<T>()`, callable bundles use
@@ -94,10 +100,11 @@ Phase status:
   async caller; registered constructors/methods, nested views and grouping,
   business Result, old/new in-flight roots, publication-only rollback, stable
   boundary measurements, and the final repository gate are complete.
-- M20.75 planned: the complete language, ownership, effect, Service-generation,
+- M20.75 Batch A in progress: the complete language, ownership, effect, Service-generation,
   continuation, host-lifecycle, unsafe-audit, and acceptance contract is frozen
-  in the host-scoped detached async execution plan. No implementation batch has
-  started.
+  in the host-scoped detached async execution plan. Static HIR task shapes and
+  target asyncness are implemented; MIR task operations, detachability,
+  effects, authority types, and artifact v3 remain in Batch A.
 - P0-P3 accepted for service return totality: recursive macro diagnostics now
   reject nested, exclusive-envelope, projected-child, and otherwise
   non-executable borrowed returns. Exact direct parameters, direct borrowed
@@ -236,7 +243,7 @@ Host-backed and mutable collections retain HostRef identity and leases.
 | M19.5 | Complete enough | Cache-ready IDs, linked bytecode, profile ownership, and prepared host paths are validated. |
 | M20 | Complete enough | Actor Runtime/cache ownership, lifetime, reload, and concurrency gates are accepted. |
 | M20.5 | In progress | Per-keystroke latency is fixed for requests and diagnostics; the HIR rebuild is still whole-workspace. |
-| M20.75 | Planned | Complete host-scoped detached async and Service-generation execution plan is written; implementation has not started. |
+| M20.75 | In progress | Batch A static HIR task capability and target validation are implemented; MIR/effect/detachability/authority/artifact work remains. |
 | Rust/Vela service interop | Complete | S0-S7, P0-P7, and E0-E5 are accepted; explicit release, typed Service namespaces, artifact v2 rejection, and repository proof are complete. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, and debugger contracts stabilize. |
@@ -400,9 +407,6 @@ suppression of future hints across dynamic `Any` boundaries.
 
 ### Deferred Tracks
 
-- M20.75 host-scoped detached async execution is designed and awaits Batch A;
-  it is the planned route for emergency async Service hotfixes and ordinary
-  function-level detached work.
 - M21 debugger/DAP work waits for stable runtime debug contracts.
 - M22 Cranelift JIT waits for M20/M21 close-out and consumes the verified
   MIR/linked-artifact contract.
@@ -429,11 +433,11 @@ changes.
 
 ## Next Up
 
-1. Continue M20.5 with incremental HIR re-lowering, which unblocks per-module
-   fact reuse and is the last superlinear term in a keystroke.
-2. Begin M20.75 Batch A when detached async implementation becomes the active
-   product priority; freeze the static call grammar and owned host-scope
-   authority before changing generated Service APIs.
+1. Continue M20.75 Batch A by lowering the static HIR capability into dedicated
+   MIR task operations, `TaskSpawn` effects, detachability facts, authority
+   types, and portable artifact v3.
+2. Resume M20.5 incremental HIR re-lowering after the active detached-async
+   goal or an explicit focus change.
 3. Audit the parameterized container and value-keyed Map/Set plans against
    their explicit acceptance matrices.
 4. Keep the shorter Runtime-owned host reclamation policy as a non-blocking

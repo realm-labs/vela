@@ -9,7 +9,7 @@ use vela_syntax::ast::{
 
 use crate::binding::{
     BindingMap, BindingResolution, ImportBinding, LocalBinding, LocalBindingKind, PathUsage,
-    ServiceLexicalCapability,
+    ServiceLexicalCapability, TaskLexicalCapability,
 };
 use crate::body::{
     HirBody, HirBodyOwner, HirBodyRoot, HirPathKind, HirPathOwner, HirPatternKind,
@@ -124,6 +124,7 @@ struct SyntaxBindingLowerer<'a> {
     diagnostics: Vec<Diagnostic>,
     service_capabilities_enabled: bool,
     service_capabilities: BTreeMap<HirExprId, ServiceLexicalCapability>,
+    task_capabilities: BTreeMap<HirExprId, TaskLexicalCapability>,
 }
 
 struct ActiveScope {
@@ -195,6 +196,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
             diagnostics: Vec::new(),
             service_capabilities_enabled: input.service_capabilities_enabled,
             service_capabilities: BTreeMap::new(),
+            task_capabilities: BTreeMap::new(),
         };
 
         for param in input.params {
@@ -308,6 +310,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
             diagnostics: Vec::new(),
             service_capabilities_enabled: false,
             service_capabilities: BTreeMap::new(),
+            task_capabilities: BTreeMap::new(),
         };
         let value = lowerer.bind_expr(&input.expression, PathUsage::Value);
         lowerer.body_mut(input.body_id).root = HirBodyRoot::Expr(value);
@@ -326,6 +329,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 pending_constructor_paths: self.pending_constructor_paths,
                 pending_pattern_paths: self.pending_pattern_paths,
                 service_capabilities: self.service_capabilities,
+                task_capabilities: self.task_capabilities,
             },
             self.bodies.into_values().collect(),
             self.diagnostics,
@@ -639,6 +643,10 @@ impl<'a> SyntaxBindingLowerer<'a> {
     }
 
     fn bind_path(&mut self, id: HirExprId, path: &[String], span: Span, usage: PathUsage) {
+        if path.len() > 1 && path.first().is_some_and(|segment| segment == "task") {
+            self.bind_task_path(id, path, span, usage);
+            return;
+        }
         if let Some(capability) = service_lexical_capability(path) {
             self.bind_service_path(id, path, span, usage, capability);
             return;
@@ -705,6 +713,44 @@ impl<'a> SyntaxBindingLowerer<'a> {
         if matches!(usage, PathUsage::Value | PathUsage::AssignmentTarget) {
             self.diagnostics
                 .push(self.unresolved_name_diagnostic(name, span));
+        }
+    }
+
+    fn bind_task_path(&mut self, id: HirExprId, path: &[String], span: Span, usage: PathUsage) {
+        let capability = match path {
+            [task, operation] if task == "task" && operation == "spawn_scoped" => {
+                TaskLexicalCapability::SpawnScoped
+            }
+            [task, operation] if task == "task" && operation == "spawn_scoped_then" => {
+                TaskLexicalCapability::SpawnScopedThen
+            }
+            _ => {
+                self.diagnostics.push(
+                    Diagnostic::error("unknown task operation")
+                        .with_code("hir::unknown_task_operation")
+                        .with_span(span)
+                        .with_label(
+                            span,
+                            "use `task::spawn_scoped(worker(...))` or `task::spawn_scoped_then(worker(...), continuation)`",
+                        ),
+                );
+                return;
+            }
+        };
+        self.task_capabilities.insert(id, capability);
+        if usage != PathUsage::Callee {
+            let expected = match capability {
+                TaskLexicalCapability::SpawnScoped => "task::spawn_scoped(worker(...))",
+                TaskLexicalCapability::SpawnScopedThen => {
+                    "task::spawn_scoped_then(worker(...), continuation)"
+                }
+            };
+            self.diagnostics.push(
+                Diagnostic::error("task operations cannot be used as values")
+                    .with_code("hir::invalid_task_capability_use")
+                    .with_span(span)
+                    .with_label(span, format!("call it directly as `{expected}`")),
+            );
         }
     }
 
