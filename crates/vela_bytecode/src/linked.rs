@@ -964,6 +964,7 @@ pub enum InstructionKind {
         mode: crate::ScriptCallMode,
         args: Vec<CallArgument>,
     },
+    Task(Box<TaskInstruction>),
     MakeClosure {
         dst: Register,
         function: ScriptFunctionHandle,
@@ -1197,6 +1198,22 @@ pub enum InstructionKind {
     Return {
         src: Register,
     },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TaskContinuation {
+    pub function: ScriptFunctionHandle,
+    pub debug_name: DebugNameId,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TaskInstruction {
+    pub dst: Register,
+    pub worker: ScriptFunctionHandle,
+    pub worker_debug_name: DebugNameId,
+    pub mode: crate::ScriptCallMode,
+    pub args: Vec<CallArgument>,
+    pub continuation: Option<TaskContinuation>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

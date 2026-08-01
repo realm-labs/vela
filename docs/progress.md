@@ -134,7 +134,11 @@ Phase status:
   effects, continuation ABI, and originating-Service requirements. Versions 1
   and 2 reject before linking or activation. Batch B starts with the task
   bytecode operation, owned graph transfer, scope installation, and an ordinary
-  fresh-Runtime vertical slice.
+  fresh-Runtime vertical slice. Dedicated unlinked/linked task bytecode now
+  preserves static worker/continuation handles and owned argument preparation,
+  participates in verification and call budgeting, and reaches an explicit VM
+  task boundary. An ordinary Runtime without installed scope deterministically
+  reports `TaskScopeUnavailable`; admission and child execution are next.
 - P0-P3 accepted for service return totality: recursive macro diagnostics now
   reject nested, exclusive-envelope, projected-child, and otherwise
   non-executable borrowed returns. Exact direct parameters, direct borrowed

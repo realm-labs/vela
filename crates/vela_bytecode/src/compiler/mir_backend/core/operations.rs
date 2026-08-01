@@ -3,12 +3,52 @@ use super::{
     CacheSiteId, CallArgument, CompileTryFamily, CompileTryTarget, DynamicCallArgument,
     FunctionBackend, HostTargetPlan, InstructionOffset, MirBackendError, MirBlockId, MirCall,
     MirHostOperation, MirHostPath, MirHostPathSegment, MirImmediate, MirReflectionOperation,
-    MirScriptParameterGuardMode, MirTerminatorKind, Register, ScriptCallMode, TryPropagateFamily,
-    UnlinkedInstructionKind,
+    MirScriptParameterGuardMode, MirTaskOperation, MirTerminatorKind, Register, ScriptCallMode,
+    TryPropagateFamily, UnlinkedInstructionKind, UnlinkedTaskContinuation, UnlinkedTaskInstruction,
 };
 use vela_mir::{MirAwaitOperation, MirPlace};
 
 impl<'a> FunctionBackend<'a> {
+    pub(super) fn task(
+        &mut self,
+        dst: Register,
+        task: &MirTaskOperation,
+        span: vela_common::Span,
+    ) -> Result<(), MirBackendError> {
+        let args = task
+            .arguments
+            .iter()
+            .map(|argument| match &argument.value {
+                Some(value) => Ok(CallArgument::Register(self.operand(value, span)?)),
+                None => Ok(CallArgument::Missing),
+            })
+            .collect::<Result<_, MirBackendError>>()?;
+        self.emit(
+            UnlinkedInstructionKind::Task(Box::new(UnlinkedTaskInstruction {
+                dst,
+                worker: task.worker,
+                worker_name: task.worker_debug_name.clone(),
+                mode: if matches!(
+                    task.parameter_guards,
+                    MirScriptParameterGuardMode::ProvenAtCallSite
+                ) {
+                    ScriptCallMode::Unchecked
+                } else {
+                    ScriptCallMode::Checked
+                },
+                args,
+                continuation: task.continuation.as_ref().map(|continuation| {
+                    UnlinkedTaskContinuation {
+                        target: continuation.function,
+                        name: continuation.debug_name.clone(),
+                    }
+                }),
+            })),
+            span,
+        );
+        Ok(())
+    }
+
     pub(super) fn call(
         &mut self,
         dst: Register,

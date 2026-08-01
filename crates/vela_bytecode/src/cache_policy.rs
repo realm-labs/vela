@@ -103,6 +103,7 @@ macro_rules! non_cache_instructions {
             | Self::JumpIfNotMissing { .. }
             | Self::Jump { .. }
             | Self::CallFunction { .. }
+            | Self::Task(_)
             | Self::MakeClosure { .. }
             | Self::CallClosure { .. }
             | Self::TryPropagate { .. }

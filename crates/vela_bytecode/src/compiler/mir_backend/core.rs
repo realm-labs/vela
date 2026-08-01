@@ -8,8 +8,8 @@ use vela_mir::{
     MirHostOperation, MirHostPath, MirHostPathSegment, MirIdentityOp, MirImmediate, MirIndexKey,
     MirIndexOperation, MirIteratorOperation, MirLiteralSide, MirOperand, MirPatternPredicate,
     MirPlace, MirProgram, MirReflectionOperation, MirRvalue, MirScriptParameterGuardMode,
-    MirStateOperation, MirStatementId, MirStatementKind, MirSwitchValue, MirTerminatorKind,
-    MirUnaryOp,
+    MirStateOperation, MirStatementId, MirStatementKind, MirSwitchValue, MirTaskOperation,
+    MirTerminatorKind, MirUnaryOp,
 };
 
 use crate::{
@@ -17,6 +17,7 @@ use crate::{
     FormatStringPart, FrameSlotInfo, FrameSlotKind, FunctionIndex, GuardKind, GuardLocation,
     InstructionOffset, Register, ScriptCallMode, TryPropagateFamily, UnlinkedCodeObject,
     UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedParameterTypeGuard,
+    UnlinkedTaskContinuation, UnlinkedTaskInstruction,
 };
 
 use crate::compiler::cache_sites::{attach_cache_site, cache_site_kind};
@@ -537,8 +538,8 @@ impl<'a> FunctionBackend<'a> {
             MirStatementKind::Call(call) => {
                 self.call(dst.ok_or(MirBackendError::MissingDestination)?, call, span)?
             }
-            MirStatementKind::Task(_) => {
-                return Err(MirBackendError::MissingTarget("task instruction"));
+            MirStatementKind::Task(task) => {
+                self.task(dst.ok_or(MirBackendError::MissingDestination)?, task, span)?
             }
             MirStatementKind::Host(operation) => self.host(dst, operation, span)?,
             MirStatementKind::Reflect(operation) => self.reflect(

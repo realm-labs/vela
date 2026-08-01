@@ -141,7 +141,9 @@ use value::Value;
 pub use async_resume::PreparedAsyncCall;
 pub use execution_reentry::LinkedExecutionReentry;
 pub use execution_session::{LinkedExecutionSession, LinkedExecutionStart};
-pub use linked_execution::{LinkedDriveOutcome, PreparedContextCall};
+pub use linked_execution::{
+    LinkedDriveOutcome, PreparedContextCall, PreparedTaskArgument, PreparedTaskCall,
+};
 
 pub type NativeFunction =
     Arc<dyn Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static>;

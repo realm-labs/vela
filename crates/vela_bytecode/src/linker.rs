@@ -10,7 +10,8 @@ use vela_registry::DefinitionRegistry;
 use crate::linked::{
     DynamicCallArgumentLinked, GuardContext, Instruction, InstructionKind, LinkedCodeObject,
     LinkedFrameDebugInfo, LinkedFrameSlotInfo, LinkedMethodDispatch, LinkedMethodDispatchKind,
-    LinkedNativeFunction, LinkedProgram, LinkedType, LinkedVariant, TypeGuard, TypeGuardPlan,
+    LinkedNativeFunction, LinkedProgram, LinkedType, LinkedVariant, TaskContinuation,
+    TaskInstruction, TypeGuard, TypeGuardPlan,
 };
 use crate::{
     CacheSiteInstruction, Constant, FieldSlot, FunctionIndex, HostTargetPlanId, InstructionOffset,
@@ -851,6 +852,29 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     mode: *mode,
                     args: args.clone(),
                 }
+            }
+            UnlinkedInstructionKind::Task(task) => {
+                let worker = self.resolve_script_function(task.worker, &task.worker_name)?;
+                let worker_debug_name = self.linked.intern_debug_name(task.worker_name.clone());
+                let continuation = task
+                    .continuation
+                    .as_ref()
+                    .map(|continuation| {
+                        Ok(TaskContinuation {
+                            function: self
+                                .resolve_script_function(continuation.target, &continuation.name)?,
+                            debug_name: self.linked.intern_debug_name(continuation.name.clone()),
+                        })
+                    })
+                    .transpose()?;
+                InstructionKind::Task(Box::new(TaskInstruction {
+                    dst: task.dst,
+                    worker,
+                    worker_debug_name,
+                    mode: task.mode,
+                    args: task.args.clone(),
+                    continuation,
+                }))
             }
             UnlinkedInstructionKind::MakeClosure {
                 dst,

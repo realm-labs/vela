@@ -721,6 +721,7 @@ fn instruction_matches_budget_class(
                 | InstructionKind::CallClosure { .. }
                 | InstructionKind::CallMethod { .. }
                 | InstructionKind::CallDynamicMethod { .. }
+                | InstructionKind::Task(_)
         ),
         Class::HostAccess => matches!(
             kind,

@@ -70,6 +70,7 @@ enum FrameDriveOutcome {
         destination: Option<Register>,
         source_span: Option<Span>,
     },
+    Task(PreparedTaskCall),
     Return(Value),
 }
 
@@ -78,6 +79,61 @@ pub enum LinkedDriveOutcome {
     ReentryComplete(ActiveExecutionValue),
     AsyncBoundary(PreparedAsyncCall),
     ContextBoundary(PreparedContextCall),
+    TaskBoundary(PreparedTaskCall),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum PreparedTaskArgument {
+    Missing,
+    Value(crate::OwnedValue),
+}
+
+#[derive(Clone, Debug)]
+pub struct PreparedTaskCall {
+    owner: Arc<LinkedArtifact>,
+    worker: ScriptFunctionHandle,
+    worker_name: String,
+    mode: vela_bytecode::ScriptCallMode,
+    args: Vec<PreparedTaskArgument>,
+    continuation: Option<vela_bytecode::linked::TaskContinuation>,
+    source_span: Option<Span>,
+}
+
+impl PreparedTaskCall {
+    #[must_use]
+    pub const fn owner(&self) -> &Arc<LinkedArtifact> {
+        &self.owner
+    }
+
+    #[must_use]
+    pub const fn worker(&self) -> ScriptFunctionHandle {
+        self.worker
+    }
+
+    #[must_use]
+    pub fn worker_name(&self) -> &str {
+        &self.worker_name
+    }
+
+    #[must_use]
+    pub const fn mode(&self) -> vela_bytecode::ScriptCallMode {
+        self.mode
+    }
+
+    #[must_use]
+    pub fn args(&self) -> &[PreparedTaskArgument] {
+        &self.args
+    }
+
+    #[must_use]
+    pub const fn continuation(&self) -> Option<&vela_bytecode::linked::TaskContinuation> {
+        self.continuation.as_ref()
+    }
+
+    #[must_use]
+    pub const fn source_span(&self) -> Option<Span> {
+        self.source_span
+    }
 }
 
 pub struct PreparedContextCall {
@@ -247,6 +303,9 @@ impl Vm {
                 Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
                     opcode: "context native boundary requires an Engine Runtime",
                 }))
+            }
+            LinkedDriveOutcome::TaskBoundary(_) => {
+                Err(VmError::new(VmErrorKind::TaskScopeUnavailable))
             }
         }
     }
@@ -419,6 +478,9 @@ impl Vm {
                     });
                     return Ok(LinkedDriveOutcome::ContextBoundary(call));
                 }
+                FrameDriveOutcome::Task(call) => {
+                    return Ok(LinkedDriveOutcome::TaskBoundary(call));
+                }
                 FrameDriveOutcome::Return(value) => {
                     let finished = session.frames.pop().expect("returning frame");
                     let Some(return_to) = finished.return_to else {
@@ -554,6 +616,9 @@ impl Vm {
             }
             Ok(LinkedDriveOutcome::ContextBoundary(call)) => {
                 Ok(LinkedDriveOutcome::ContextBoundary(call))
+            }
+            Ok(LinkedDriveOutcome::TaskBoundary(call)) => {
+                Ok(LinkedDriveOutcome::TaskBoundary(call))
             }
             Ok(LinkedDriveOutcome::ReentryComplete(value)) => {
                 Ok(LinkedDriveOutcome::ReentryComplete(value))
@@ -1306,6 +1371,31 @@ impl Vm {
                             });
                         }
                     }
+                }
+                InstructionKind::Task(task) => {
+                    let args = script_function_calls::script_call_args_from_call_arguments(
+                        frame, &task.args,
+                    )?;
+                    let args = args
+                        .as_slice()
+                        .iter()
+                        .map(|value| match value {
+                            Value::Missing => Ok(PreparedTaskArgument::Missing),
+                            value => crate::value_to_owned(value, heap.as_deref(), None)
+                                .map(PreparedTaskArgument::Value),
+                        })
+                        .collect::<VmResult<Vec<_>>>()?;
+                    frame.write(task.dst, Value::Unit)?;
+                    frame_state.ip = InstructionOffset(ip);
+                    return Ok(FrameDriveOutcome::Task(PreparedTaskCall {
+                        owner: Arc::clone(&current_owner),
+                        worker: task.worker,
+                        worker_name: program.debug_name(task.worker_debug_name).to_owned(),
+                        mode: task.mode,
+                        args,
+                        continuation: task.continuation.clone(),
+                        source_span: instruction.span,
+                    }));
                 }
                 InstructionKind::CallFunction {
                     dst,

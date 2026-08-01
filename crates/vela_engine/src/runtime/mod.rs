@@ -735,6 +735,9 @@ where
                         name: prepared.name().to_owned(),
                     }));
                 }
+                LinkedDriveOutcome::TaskBoundary(_) => {
+                    return Err(VmError::new(VmErrorKind::TaskScopeUnavailable));
+                }
                 LinkedDriveOutcome::ContextBoundary(prepared) => {
                     let result = {
                         let mut active = ActiveNativeReentry {
@@ -893,6 +896,9 @@ where
                         Some(&mut heap),
                         Some(budget),
                     )?;
+                }
+                LinkedDriveOutcome::TaskBoundary(_) => {
+                    return Err(VmError::new(VmErrorKind::TaskScopeUnavailable));
                 }
                 LinkedDriveOutcome::ContextBoundary(prepared) => {
                     let result = {

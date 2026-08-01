@@ -345,6 +345,27 @@ fn verify_linked_instruction(
             verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
             verify_linked_call_arguments(function, instruction_index, code, args)
         }
+        InstructionKind::Task(task) => {
+            verify_linked_register(function, instruction_index, code, task.dst)?;
+            verify_linked_function_handle(function, instruction_index, context, task.worker)?;
+            verify_linked_debug_name(function, instruction_index, context, task.worker_debug_name)?;
+            verify_linked_call_arguments(function, instruction_index, code, &task.args)?;
+            if let Some(continuation) = &task.continuation {
+                verify_linked_function_handle(
+                    function,
+                    instruction_index,
+                    context,
+                    continuation.function,
+                )?;
+                verify_linked_debug_name(
+                    function,
+                    instruction_index,
+                    context,
+                    continuation.debug_name,
+                )?;
+            }
+            Ok(())
+        }
         InstructionKind::MakeClosure {
             dst,
             function: closure,

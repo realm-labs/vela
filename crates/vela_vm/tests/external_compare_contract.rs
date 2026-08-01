@@ -357,6 +357,7 @@ fn opcode_label(kind: &InstructionKind) -> &'static str {
         InstructionKind::AwaitCall { .. } => "AwaitCall",
         InstructionKind::CallNative { .. } => "CallNative",
         InstructionKind::CallFunction { .. } => "CallFunction",
+        InstructionKind::Task(_) => "Task",
         InstructionKind::MakeClosure { .. } => "MakeClosure",
         InstructionKind::CallClosure { .. } => "CallClosure",
         InstructionKind::CallMethod { .. } => "CallMethod",

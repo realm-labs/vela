@@ -611,6 +611,10 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *dst)?;
             verify_call_arguments(function, instruction_index, code, args)
         }
+        UnlinkedInstructionKind::Task(task) => {
+            verify_register(function, instruction_index, code, task.dst)?;
+            verify_call_arguments(function, instruction_index, code, &task.args)
+        }
         UnlinkedInstructionKind::MakeClosure {
             dst,
             function: nested,

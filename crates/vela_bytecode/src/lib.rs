@@ -1111,6 +1111,7 @@ pub enum UnlinkedInstructionKind {
         mode: ScriptCallMode,
         args: Vec<CallArgument>,
     },
+    Task(Box<UnlinkedTaskInstruction>),
     MakeClosure {
         dst: Register,
         function: FunctionIndex,
@@ -1344,6 +1345,30 @@ pub enum UnlinkedInstructionKind {
     Return {
         src: Register,
     },
+}
+
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct UnlinkedTaskContinuation {
+    pub target: FunctionId,
+    pub name: String,
+}
+
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct UnlinkedTaskInstruction {
+    pub dst: Register,
+    pub worker: FunctionId,
+    pub worker_name: String,
+    pub mode: ScriptCallMode,
+    pub args: Vec<CallArgument>,
+    pub continuation: Option<UnlinkedTaskContinuation>,
 }
 
 #[cfg_attr(

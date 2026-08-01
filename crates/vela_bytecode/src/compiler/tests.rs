@@ -98,6 +98,41 @@ fn compiler_and_linker_preserve_function_asyncness() {
 }
 
 #[test]
+fn compiler_and_linker_emit_sealed_scoped_task_instruction() {
+    let program = compile_test_program(
+        SourceId::new(5),
+        r#"
+async fn repair(value: i64) -> i64 { return value + 1; }
+fn main() {
+    task::spawn_scoped(repair(41));
+}
+"#,
+    )
+    .expect("scoped task source should compile");
+    let main = program.function("main").expect("main bytecode");
+    assert!(matches!(
+        &main.instructions[1].kind,
+        UnlinkedInstructionKind::Task(task)
+            if task.worker_name == "repair"
+                && task.args.len() == 1
+                && task.continuation.is_none()
+    ));
+
+    let artifact = crate::Linker::new()
+        .link_compiled_program(program)
+        .expect("scoped task program should link");
+    assert!(
+        artifact
+            .required_features()
+            .contains(crate::ArtifactFeatureSet::host_scoped_tasks())
+    );
+    let target = artifact.task_targets().first().expect("sealed task target");
+    assert_eq!(target.worker_debug_name, "repair");
+    assert_eq!(target.worker_signature.parameter_detachability.len(), 1);
+    assert!(target.continuation.is_none());
+}
+
+#[test]
 fn graph_requests_compile_program_and_stable_function_roots() {
     let built = vela_hir::source_ingestion::build_single_source(
         SourceId::new(3),

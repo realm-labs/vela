@@ -207,6 +207,11 @@ impl ActiveNativeReentry<'_, '_> {
                         .abort_linked_reentry(self.session, self.heap, self.budget)?;
                     return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait { name }));
                 }
+                LinkedDriveOutcome::TaskBoundary(_) => {
+                    self.vm
+                        .abort_linked_reentry(self.session, self.heap, self.budget)?;
+                    return Err(VmError::new(VmErrorKind::TaskScopeUnavailable));
+                }
                 LinkedDriveOutcome::ContextBoundary(prepared) => {
                     let result = {
                         let mut nested = ActiveNativeReentry {
@@ -369,6 +374,11 @@ impl ActiveNativeReentry<'_, '_> {
                             .abort_linked_reentry(self.session, self.heap, self.budget)?;
                         return Err(error);
                     }
+                }
+                LinkedDriveOutcome::TaskBoundary(_) => {
+                    self.vm
+                        .abort_linked_reentry(self.session, self.heap, self.budget)?;
+                    return Err(VmError::new(VmErrorKind::TaskScopeUnavailable));
                 }
                 LinkedDriveOutcome::ContextBoundary(prepared) => {
                     let result = {

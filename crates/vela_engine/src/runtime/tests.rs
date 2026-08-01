@@ -45,6 +45,31 @@ fn runtime_program_rejects_unresolved_natives_before_image_construction() {
 }
 
 #[test]
+fn scoped_task_without_host_scope_fails_deterministically() {
+    let engine = Engine::builder()
+        .capability(vela_common::Capability::TaskSpawn)
+        .build()
+        .expect("engine should build");
+    let program = engine
+        .compile_source(
+            r#"
+async fn repair(value: i64) -> i64 { return value + 1; }
+fn main() { task::spawn_scoped(repair(41)); }
+"#,
+        )
+        .expect("task fixture compiles");
+    let mut runtime = Runtime::new_compiled(engine, program).expect("runtime builds");
+
+    let error = runtime
+        .call("main", CallArgs::new(), CallOptions::unbounded())
+        .expect_err("ordinary call has no installed host task scope");
+    assert_eq!(
+        error.kind(),
+        vela_vm::error::VmErrorKind::TaskScopeUnavailable
+    );
+}
+
+#[test]
 fn runtime_initializes_vm_state_once_and_shared_programs_remain_isolated() {
     let engine = Engine::builder().build().expect("engine should build");
     let source = r#"

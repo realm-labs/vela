@@ -211,6 +211,7 @@ pub enum VmErrorKind {
     },
     CallCancelled,
     DeadlineExceeded,
+    TaskScopeUnavailable,
     CollectionLimitExceeded {
         collection: &'static str,
         limit: usize,
@@ -262,6 +263,7 @@ impl VmErrorKind {
             Self::BudgetExceeded { .. } => "vm::budget_exceeded",
             Self::CallCancelled => "vm::call_cancelled",
             Self::DeadlineExceeded => "vm::deadline_exceeded",
+            Self::TaskScopeUnavailable => "vm::task_scope_unavailable",
             Self::CollectionLimitExceeded { .. } => "vm::collection_limit_exceeded",
             Self::CollectionChangedDuringCallback { .. } => {
                 "vm::collection_changed_during_callback"
@@ -377,6 +379,9 @@ impl VmErrorKind {
             }
             Self::CallCancelled => "runtime call was cancelled".to_owned(),
             Self::DeadlineExceeded => "runtime call deadline was exceeded".to_owned(),
+            Self::TaskScopeUnavailable => {
+                "host-scoped task execution requires an installed task scope".to_owned()
+            }
             Self::CollectionLimitExceeded { collection, limit } => {
                 format!("{collection} length exceeds collection limit {limit}")
             }
