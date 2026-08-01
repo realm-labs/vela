@@ -20,13 +20,14 @@ rejected old artifacts, and passed the repository acceptance matrix. The
 owns the detailed proof. There is no compatibility release mode, legacy
 artifact loader, contextual Service alias, or second Service dispatch path.
 
-The active implementation focus is M20.75 Batch F acceptance and cleanup.
-M20.5 incremental HIR re-lowering remains its prior in-progress
-checkpoint and resumes after the active product goal or at an explicit focus
-change.
+M20.75 is complete under the
+[host-scoped detached async acceptance report](archive/host-scoped-detached-async-acceptance-2026-08-01.md).
+All six batches, the complete acceptance matrix, structural audits, examples,
+benchmarks, and repository gates pass without a compatibility path or new
+unsafe boundary.
 
-M20.75 host-scoped detached async execution is fully designed; Batches A-E
-are accepted, and Batch F is in progress. Its
+The active implementation focus returns to M20.5 incremental HIR re-lowering.
+M20.75 host-scoped detached async execution is accepted. Its
 [execution plan](host-scoped-detached-async-execution-plan.md) hard-switches
 Vela and generated Service applications to a domain-neutral bounded host task
 scope. It permits synchronous ordinary functions and Service patches to admit
@@ -38,12 +39,12 @@ capabilities and rejects dynamic/non-function shapes, synchronous workers, and
 asynchronous continuations before compilation. `TaskSpawn` is now a first-class
 capability and effect bit across MIR, binding schemas, registry/reflection
 metadata, Service validation, tooling schemas, and hot-reload ABI comparison.
-Dedicated MIR task operations now preserve the worker arguments and stable
+Dedicated MIR task operations preserve the worker arguments and stable
 worker/continuation identities without executing the worker in the parent
 Runtime. They require a safepoint, charge the call budget, and contribute the
-worker/continuation effect closure to the spawning root. Later Batch A work
-adds the frozen continuation ABI and authority contracts, then hard-switches
-portable artifacts from current version 2 to version 3. One shared
+worker/continuation effect closure to the spawning root. Batch A froze the
+continuation ABI and authority contracts and hard-switched portable artifacts
+from version 2 to version 3. One shared
 `Detachability` fact now classifies recursively owned values, statically
 rejects known Host references, borrowed views, iterators, and callables with a
 nested contract path, and preserves mandatory runtime checking for `Any` and
@@ -127,9 +128,10 @@ Phase status:
   async caller; registered constructors/methods, nested views and grouping,
   business Result, old/new in-flight roots, publication-only rollback, stable
   boundary measurements, and the final repository gate are complete.
-- M20.75 Batches A-E accepted; Batch F in progress: the complete language, ownership, effect, Service-generation,
-  continuation, host-lifecycle, unsafe-audit, and acceptance contract is frozen
-  in the host-scoped detached async execution plan. Static HIR task shapes and
+- M20.75 Batches A-F accepted: the complete language, ownership, effect,
+  Service-generation, continuation, host-lifecycle, unsafe-audit, and
+  acceptance contract is frozen in the host-scoped detached async execution
+  plan. Static HIR task shapes and
   target asyncness are implemented, and `TaskSpawn` now propagates through the
   compiler/host effect and capability model. Static compile targets also retain
   exact worker/continuation identity. Dedicated MIR task operations capture
@@ -186,6 +188,10 @@ Phase status:
   are covered. Pooled Runtimes clear all mutable owners and rerun artifact
   initialization before reuse; observer failure is contained and no task ID or
   control handle enters Vela.
+  Batch F aligned semantic-input tests with the earlier analysis diagnostics,
+  completed source and generated-path audits, and passed the full repository,
+  examples, documentation, benchmark-build, fuzz-build, editor, Tree-sitter,
+  and website matrix. The archived acceptance report owns the durable proof.
 - P0-P3 accepted for service return totality: recursive macro diagnostics now
   reject nested, exclusive-envelope, projected-child, and otherwise
   non-executable borrowed returns. Exact direct parameters, direct borrowed
@@ -324,8 +330,8 @@ Host-backed and mutable collections retain HostRef identity and leases.
 | M19.5 | Complete enough | Cache-ready IDs, linked bytecode, profile ownership, and prepared host paths are validated. |
 | M20 | Complete enough | Actor Runtime/cache ownership, lifetime, reload, and concurrency gates are accepted. |
 | M20.5 | In progress | Per-keystroke latency is fixed for requests and diagnostics; the HIR rebuild is still whole-workspace. |
-| M20.75 | In progress | Batches A-C are accepted: static task contracts, v3 artifacts, isolated child Runtimes, transferable graphs, finite lifecycle/error paths, and exact generated Service-generation execution are validated. Batch D safe-point continuation delivery is active. |
-| Rust/Vela service interop | Complete | S0-S7, P0-P7, and E0-E5 are accepted; explicit release, typed Service namespaces, artifact v2 rejection, and repository proof are complete. |
+| M20.75 | Complete | Static scoped task forms, isolated owned execution, exact Service generations, safe-point continuations, v3 portability, tooling, observation, stress, and repository gates are accepted. |
+| Rust/Vela service interop | Complete | S0-S7, P0-P7, and E0-E5 are accepted; explicit release, typed Service namespaces, active artifact v3 rejection, and repository proof are complete. |
 | M21 | Not started | Debugger runtime hooks and DAP integration. |
 | M22 | Not started | Cranelift JIT after interpreter, cache, and debugger contracts stabilize. |
 | M23 | Not started | Release hardening, public documentation, validation, and performance targets. |
@@ -354,8 +360,8 @@ Host-backed and mutable collections retain HostRef identity and leases.
   owned transferable graph, finite host lifecycle policy, exact linked
   artifact, contained panic/error outcome, and no parent borrow. Exact
   whole-Service-generation execution and fresh-root safe-point continuations
-  are accepted; portability, tooling, stress, and benchmark hardening remain
-  the active M20.75 work.
+  are accepted together with v3 portability, tooling, stress, lifecycle
+  observation, bounded clean Runtime reuse, benchmarks, and runnable examples.
 
 ### Host Boundary And Embedding
 
@@ -511,19 +517,17 @@ result; a routine feature commit does not claim phase acceptance from focused
 tests alone.
 
 Miri remains unavailable on the installed stable Rust 1.97.1
-`x86_64-pc-windows-msvc` toolchain. The erased-borrow boundary relies on its
-focused lifecycle, async, lease/re-entry, and source-audit proof until that
-changes.
+`aarch64-apple-darwin` toolchain. The pre-existing erased-borrow boundary relies
+on its focused lifecycle, async, lease/re-entry, and source-audit proof until
+that changes. M20.75 introduced no new unsafe boundary.
 
 ## Next Up
 
-1. Continue M20.75 Batch E with portability corruption tests, tooling
-   diagnostics, structural audits, and benchmark coverage.
-2. Resume M20.5 incremental HIR re-lowering after the active detached-async
-   goal or an explicit focus change.
-3. Audit the parameterized container and value-keyed Map/Set plans against
+1. Resume M20.5 incremental HIR re-lowering with stable per-module HIR IDs and
+   move `did_change` diagnostics off the message loop.
+2. Audit the parameterized container and value-keyed Map/Set plans against
    their explicit acceptance matrices.
-4. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
+3. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
    post-S2 optimization follow-up.
 
 ## Update Rules
