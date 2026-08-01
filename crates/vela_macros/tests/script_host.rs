@@ -207,11 +207,8 @@ enum BusinessMode {
 #[derive(Debug, ScriptHost)]
 #[vela(path = "game::script::DetachedFieldState", fields)]
 struct DetachedFieldState {
-    #[vela(hint = "game::script::BusinessId")]
     player_id: BusinessId,
-    #[vela(hint = "Option<game::script::BusinessId>")]
     maybe_id: Option<BusinessId>,
-    #[vela(hint = "game::script::BusinessMode")]
     mode: BusinessMode,
 }
 

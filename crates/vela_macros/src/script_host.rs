@@ -165,7 +165,10 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
             desc = desc.trait_impl(::vela_reflect::registry::TraitDesc::new(#trait_name));
         }
     });
-    let field_tokens = fields.iter().map(emission::field_tokens);
+    let dynamic_field_type_hints = matches!(generated_method, GeneratedMethod::Host);
+    let field_tokens = fields
+        .iter()
+        .map(|field| emission::field_tokens(field, dynamic_field_type_hints));
     let field_helper_tokens = match generated_method {
         GeneratedMethod::Host => {
             let helpers = fields.iter().map(emission::field_helper_tokens);
@@ -482,7 +485,9 @@ mod tests {
         assert!(output.contains("register_type_dependency :: < Equipment >"));
         assert!(output.contains("Deref :: deref"));
         assert!(output.contains("DerefMut :: deref_mut"));
-        assert!(output.contains("type_hint (\"Equipment\")"));
+        assert!(output.contains(
+            "< Equipment as :: vela_host :: object :: ScriptHostFieldAccess > :: script_host_type_shape"
+        ));
     }
 
     #[test]
@@ -866,7 +871,9 @@ mod tests {
         .expect("fixed array host schema should expand")
         .to_string();
 
-        assert!(tokens.contains("type_hint (\"Array<i64>\")"));
+        assert!(tokens.contains(
+            "< [i64 ; 3] as :: vela_host :: object :: ScriptHostFieldAccess > :: script_host_type_shape"
+        ));
     }
 
     #[test]
@@ -886,8 +893,12 @@ mod tests {
         .expect("value-keyed map and set fields should expand")
         .to_string();
 
-        assert!(tokens.contains("type_hint (\"Map<i64, String>\")"));
-        assert!(tokens.contains("type_hint (\"Set<i64>\")"));
+        assert!(tokens.contains(
+            "< std :: collections :: BTreeMap < i64 , String > as :: vela_host :: object :: ScriptHostFieldAccess > :: script_host_type_shape"
+        ));
+        assert!(tokens.contains(
+            "< std :: collections :: HashSet < i64 > as :: vela_host :: object :: ScriptHostFieldAccess > :: script_host_type_shape"
+        ));
     }
 
     #[test]

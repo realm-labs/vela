@@ -14,7 +14,7 @@ use scoped_borrow::{
     prepared_field_collection_borrow_shared_arm_tokens,
 };
 
-pub(super) fn field_tokens(field: &FieldMeta) -> TokenStream {
+pub(super) fn field_tokens(field: &FieldMeta, dynamic_type_hint: bool) -> TokenStream {
     let id = u128::from(field.id);
     let script_name = &field.script_name;
     let rust_name = &field.rust_name;
@@ -24,10 +24,20 @@ pub(super) fn field_tokens(field: &FieldMeta) -> TokenStream {
         .permissions
         .iter()
         .map(|permission| quote! { .require_permission(#permission) });
-    let hint_tokens = field
-        .type_hint
-        .as_ref()
-        .map(|hint| quote! { .type_hint(#hint) });
+    let rust_type = &field.rust_type;
+    let hint_tokens = field.type_hint.as_ref().map(|hint| {
+        if field.type_hint_explicit || !dynamic_type_hint {
+            quote! { .type_hint(#hint) }
+        } else {
+            quote! {
+                .type_hint(
+                    <#rust_type as ::vela_host::object::ScriptHostFieldAccess>::
+                        script_host_type_shape()
+                        .expect("generated ScriptHost fields must have a canonical Vela type shape"),
+                )
+            }
+        }
+    });
     let docs_tokens = field.docs.as_ref().map(|docs| quote! { .docs(#docs) });
     let attr_tokens = field.attrs.iter().map(|(name, value)| {
         quote! {
@@ -1185,7 +1195,10 @@ pub(super) fn variant_tokens(variant: &VariantMeta) -> TokenStream {
             .attr(#name, #value)
         }
     });
-    let field_tokens = variant.fields.iter().map(field_tokens);
+    let field_tokens = variant
+        .fields
+        .iter()
+        .map(|field| field_tokens(field, false));
 
     quote! {
         ::vela_reflect::registry::VariantDesc::new(

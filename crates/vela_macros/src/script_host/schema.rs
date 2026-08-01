@@ -18,6 +18,7 @@ pub(super) struct FieldMeta {
     pub(super) readable: bool,
     pub(super) writable: bool,
     pub(super) type_hint: Option<String>,
+    pub(super) type_hint_explicit: bool,
     pub(super) docs: Option<String>,
     pub(super) attrs: Vec<(String, String)>,
     pub(super) permissions: Vec<String>,
@@ -89,6 +90,7 @@ pub(super) fn collect_fields(
             field.ty.to_token_stream()
         };
         let default_access = expose_all && !attrs.get && !attrs.set;
+        let type_hint_explicit = attrs.type_hint.is_some();
         result.push(FieldMeta {
             script_name,
             stable_name,
@@ -107,6 +109,7 @@ pub(super) fn collect_fields(
                     inferred_type_hint(&field.ty)
                 }
             }),
+            type_hint_explicit,
             docs: attrs.docs,
             attrs: attrs.attrs,
             permissions: attrs.permissions,
@@ -316,6 +319,7 @@ fn collect_variant_fields(
                         "duplicate generated script variant field id",
                     ));
                 }
+                let type_hint_explicit = attrs.type_hint.is_some();
                 result.push(FieldMeta {
                     script_name,
                     stable_name,
@@ -326,6 +330,7 @@ fn collect_variant_fields(
                     readable: attrs.get,
                     writable: attrs.set,
                     type_hint: attrs.type_hint.or_else(|| inferred_type_hint(&field.ty)),
+                    type_hint_explicit,
                     docs: attrs.docs,
                     attrs: attrs.attrs,
                     permissions: attrs.permissions,
