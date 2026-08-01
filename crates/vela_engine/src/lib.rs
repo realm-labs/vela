@@ -6,6 +6,11 @@
 
 extern crate self as vela_engine;
 
+#[doc(hidden)]
+pub mod __private {
+    pub use vela_host;
+}
+
 pub mod args;
 pub mod binding;
 pub mod builder;

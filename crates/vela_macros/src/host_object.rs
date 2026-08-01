@@ -2,23 +2,30 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenStream {
+    base_script_host_object_impl_tokens_with_path(self_ty, quote!(::vela_host))
+}
+
+pub(crate) fn base_script_host_object_impl_tokens_with_path(
+    self_ty: &syn::Type,
+    host: TokenStream,
+) -> TokenStream {
     quote! {
-        impl ::vela_host::object::ScriptHostObject for #self_ty {
+        impl #host::object::ScriptHostObject for #self_ty {
             fn host_type_id(&self) -> ::vela_common::HostTypeId {
-                ::vela_host::object::ScriptHostFieldAccess::script_host_type_id(self)
+                #host::object::ScriptHostFieldAccess::script_host_type_id(self)
             }
 
             fn resolve_host_type_target(
-                spec: ::vela_host::resolved::HostAccessSpec<'_>,
-            ) -> ::vela_host::error::HostResult<::vela_host::resolved::ResolvedHostAccess> {
+                spec: #host::resolved::HostAccessSpec<'_>,
+            ) -> #host::error::HostResult<#host::resolved::ResolvedHostAccess> {
                 if spec.offset < spec.plan.parts.len() {
-                    return <Self as ::vela_host::object::ScriptHostFieldAccess>::resolve_host_type_target_from(
+                    return <Self as #host::object::ScriptHostFieldAccess>::resolve_host_type_target_from(
                         spec,
                         spec.offset,
                     );
                 }
-                Ok(::vela_host::resolved::ResolvedHostAccess::generic_target(
-                    ::vela_host::resolved::HostSchemaEpoch::new(0),
+                Ok(#host::resolved::ResolvedHostAccess::generic_target(
+                    #host::resolved::HostSchemaEpoch::new(0),
                 ))
             }
 
@@ -32,26 +39,26 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
 
             fn resolve_host_target(
                 &self,
-                spec: ::vela_host::resolved::HostAccessSpec<'_>,
-            ) -> ::vela_host::error::HostResult<::vela_host::resolved::ResolvedHostAccess> {
+                spec: #host::resolved::HostAccessSpec<'_>,
+            ) -> #host::error::HostResult<#host::resolved::ResolvedHostAccess> {
                 if spec.offset < spec.plan.parts.len() {
-                    return ::vela_host::object::ScriptHostFieldAccess::resolve_host_target_from(
+                    return #host::object::ScriptHostFieldAccess::resolve_host_target_from(
                         self,
                         spec,
                         spec.offset,
                     );
                 }
-                Ok(::vela_host::resolved::ResolvedHostAccess::generic_target(
-                    ::vela_host::resolved::HostSchemaEpoch::new(0),
+                Ok(#host::resolved::ResolvedHostAccess::generic_target(
+                    #host::resolved::HostSchemaEpoch::new(0),
                 ))
             }
 
             fn read_resolved_host(
                 &self,
-                access: ::vela_host::resolved::ResolvedHostAccess,
-                target: ::vela_host::target::HostTargetInstance<'_>,
-            ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
-                ::vela_host::object::ScriptHostFieldAccess::read_resolved_host_target_from(
+                access: #host::resolved::ResolvedHostAccess,
+                target: #host::target::HostTargetInstance<'_>,
+            ) -> #host::error::HostResult<#host::value::HostValue> {
+                #host::object::ScriptHostFieldAccess::read_resolved_host_target_from(
                     self,
                     access,
                     target,
@@ -60,12 +67,12 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
 
             fn borrow_resolved_host_shared(
                 &self,
-                access: ::vela_host::resolved::ResolvedHostAccess,
-                target: ::vela_host::target::HostTargetInstance<'_>,
-            ) -> ::vela_host::error::HostResult<
-                Option<::vela_host::lease::ScopedHostDependent<'_>>
+                access: #host::resolved::ResolvedHostAccess,
+                target: #host::target::HostTargetInstance<'_>,
+            ) -> #host::error::HostResult<
+                Option<#host::lease::ScopedHostDependent<'_>>
             > {
-                ::vela_host::object::ScriptHostFieldAccess::borrow_resolved_host_shared(
+                #host::object::ScriptHostFieldAccess::borrow_resolved_host_shared(
                     self,
                     access,
                     target,
@@ -74,12 +81,12 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
 
             fn borrow_resolved_host_exclusive(
                 &mut self,
-                access: ::vela_host::resolved::ResolvedHostAccess,
-                target: ::vela_host::target::HostTargetInstance<'_>,
-            ) -> ::vela_host::error::HostResult<
-                Option<::vela_host::lease::ScopedHostDependent<'_>>
+                access: #host::resolved::ResolvedHostAccess,
+                target: #host::target::HostTargetInstance<'_>,
+            ) -> #host::error::HostResult<
+                Option<#host::lease::ScopedHostDependent<'_>>
             > {
-                ::vela_host::object::ScriptHostFieldAccess::borrow_resolved_host_exclusive(
+                #host::object::ScriptHostFieldAccess::borrow_resolved_host_exclusive(
                     self,
                     access,
                     target,
@@ -88,13 +95,13 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
 
             fn borrow_collection_resolved_host_shared(
                 &self,
-                access: ::vela_host::resolved::ResolvedHostAccess,
-                target: ::vela_host::target::HostTargetInstance<'_>,
-                projection: ::vela_host::protocol::HostCollectionProjection,
-            ) -> ::vela_host::error::HostResult<
-                Option<::vela_host::object::ScopedHostCollectionDependents<'_>>
+                access: #host::resolved::ResolvedHostAccess,
+                target: #host::target::HostTargetInstance<'_>,
+                projection: #host::protocol::HostCollectionProjection,
+            ) -> #host::error::HostResult<
+                Option<#host::object::ScopedHostCollectionDependents<'_>>
             > {
-                ::vela_host::object::ScriptHostFieldAccess::
+                #host::object::ScriptHostFieldAccess::
                     borrow_collection_resolved_host_shared(
                         self,
                         access,
@@ -105,13 +112,13 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
 
             fn borrow_collection_resolved_host_exclusive(
                 &mut self,
-                access: ::vela_host::resolved::ResolvedHostAccess,
-                target: ::vela_host::target::HostTargetInstance<'_>,
-                projection: ::vela_host::protocol::HostCollectionProjection,
-            ) -> ::vela_host::error::HostResult<
-                Option<::vela_host::object::ScopedHostCollectionDependents<'_>>
+                access: #host::resolved::ResolvedHostAccess,
+                target: #host::target::HostTargetInstance<'_>,
+                projection: #host::protocol::HostCollectionProjection,
+            ) -> #host::error::HostResult<
+                Option<#host::object::ScopedHostCollectionDependents<'_>>
             > {
-                ::vela_host::object::ScriptHostFieldAccess::
+                #host::object::ScriptHostFieldAccess::
                     borrow_collection_resolved_host_exclusive(
                         self,
                         access,
@@ -122,12 +129,12 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
 
             fn query_collection_resolved_host(
                 &self,
-                access: ::vela_host::resolved::ResolvedHostAccess,
-                target: ::vela_host::target::HostTargetInstance<'_>,
-                query: ::vela_host::protocol::HostCollectionQuery,
-            ) -> ::vela_host::error::HostResult<::vela_host::value::HostValue> {
+                access: #host::resolved::ResolvedHostAccess,
+                target: #host::target::HostTargetInstance<'_>,
+                query: #host::protocol::HostCollectionQuery,
+            ) -> #host::error::HostResult<#host::value::HostValue> {
                 if let Some((slot, child_access)) = access.next_prepared_field() {
-                    return ::vela_host::object::ScriptHostFieldAccess::query_prepared_field_target(
+                    return #host::object::ScriptHostFieldAccess::query_prepared_field_target(
                         self,
                         slot,
                         child_access,
@@ -136,10 +143,10 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
                     );
                 }
                 if target.offset + 1 == target.plan.parts.len() {
-                    if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
+                    if let #host::resolved::ResolvedHostAccessKind::DirectField(slot) =
                         access.adapter_kind
                     {
-                        return ::vela_host::object::ScriptHostFieldAccess::query_prepared_field_target(
+                        return #host::object::ScriptHostFieldAccess::query_prepared_field_target(
                             self,
                             slot,
                             access,
@@ -148,7 +155,7 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
                         );
                     }
                 }
-                ::vela_host::object::ScriptHostFieldAccess::query_collection_host_target_from(
+                #host::object::ScriptHostFieldAccess::query_collection_host_target_from(
                     self,
                     target,
                     target.offset,
@@ -158,14 +165,14 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
 
             fn snapshot_collection_resolved_host(
                 &self,
-                access: ::vela_host::resolved::ResolvedHostAccess,
-                target: ::vela_host::target::HostTargetInstance<'_>,
-                projection: ::vela_host::protocol::HostCollectionProjection,
-            ) -> ::vela_host::error::HostResult<
-                ::vela_host::protocol::HostCollectionSnapshot
+                access: #host::resolved::ResolvedHostAccess,
+                target: #host::target::HostTargetInstance<'_>,
+                projection: #host::protocol::HostCollectionProjection,
+            ) -> #host::error::HostResult<
+                #host::protocol::HostCollectionSnapshot
             > {
                 if let Some((slot, child_access)) = access.next_prepared_field() {
-                    return ::vela_host::object::ScriptHostFieldAccess::snapshot_prepared_field_target(
+                    return #host::object::ScriptHostFieldAccess::snapshot_prepared_field_target(
                         self,
                         slot,
                         child_access,
@@ -174,10 +181,10 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
                     );
                 }
                 if target.offset + 1 == target.plan.parts.len() {
-                    if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
+                    if let #host::resolved::ResolvedHostAccessKind::DirectField(slot) =
                         access.adapter_kind
                     {
-                        return ::vela_host::object::ScriptHostFieldAccess::snapshot_prepared_field_target(
+                        return #host::object::ScriptHostFieldAccess::snapshot_prepared_field_target(
                             self,
                             slot,
                             access,
@@ -186,7 +193,7 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
                         );
                     }
                 }
-                ::vela_host::object::ScriptHostFieldAccess::snapshot_collection_host_target_from(
+                #host::object::ScriptHostFieldAccess::snapshot_collection_host_target_from(
                     self,
                     target,
                     target.offset,
@@ -196,12 +203,12 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
 
             fn mutate_collection_resolved_host(
                 &mut self,
-                access: ::vela_host::resolved::ResolvedHostAccess,
-                target: ::vela_host::target::HostTargetInstance<'_>,
-                mutation: ::vela_host::protocol::HostCollectionMutation<'_>,
-            ) -> ::vela_host::error::HostResult<()> {
+                access: #host::resolved::ResolvedHostAccess,
+                target: #host::target::HostTargetInstance<'_>,
+                mutation: #host::protocol::HostCollectionMutation<'_>,
+            ) -> #host::error::HostResult<()> {
                 if let Some((slot, child_access)) = access.next_prepared_field() {
-                    return ::vela_host::object::ScriptHostFieldAccess::mutate_collection_prepared_field_target(
+                    return #host::object::ScriptHostFieldAccess::mutate_collection_prepared_field_target(
                         self,
                         slot,
                         child_access,
@@ -210,10 +217,10 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
                     );
                 }
                 if target.offset + 1 == target.plan.parts.len() {
-                    if let ::vela_host::resolved::ResolvedHostAccessKind::DirectField(slot) =
+                    if let #host::resolved::ResolvedHostAccessKind::DirectField(slot) =
                         access.adapter_kind
                     {
-                        return ::vela_host::object::ScriptHostFieldAccess::mutate_collection_prepared_field_target(
+                        return #host::object::ScriptHostFieldAccess::mutate_collection_prepared_field_target(
                             self,
                             slot,
                             access,
@@ -222,7 +229,7 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
                         );
                     }
                 }
-                ::vela_host::object::ScriptHostFieldAccess::mutate_collection_host_target_from(
+                #host::object::ScriptHostFieldAccess::mutate_collection_host_target_from(
                     self,
                     target,
                     target.offset,
@@ -232,10 +239,10 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
 
             fn remove_resolved_host(
                 &mut self,
-                _access: ::vela_host::resolved::ResolvedHostAccess,
-                target: ::vela_host::target::HostTargetInstance<'_>,
-            ) -> ::vela_host::error::HostResult<()> {
-                ::vela_host::object::ScriptHostFieldAccess::remove_host_target_from(
+                _access: #host::resolved::ResolvedHostAccess,
+                target: #host::target::HostTargetInstance<'_>,
+            ) -> #host::error::HostResult<()> {
+                #host::object::ScriptHostFieldAccess::remove_host_target_from(
                     self,
                     target,
                     target.offset,
@@ -244,11 +251,11 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
 
             fn write_resolved_host(
                 &mut self,
-                access: ::vela_host::resolved::ResolvedHostAccess,
-                target: ::vela_host::target::HostTargetInstance<'_>,
-                value: ::vela_host::value::HostValue,
-            ) -> ::vela_host::error::HostResult<()> {
-                ::vela_host::object::ScriptHostFieldAccess::write_resolved_host_target_from(
+                access: #host::resolved::ResolvedHostAccess,
+                target: #host::target::HostTargetInstance<'_>,
+                value: #host::value::HostValue,
+            ) -> #host::error::HostResult<()> {
+                #host::object::ScriptHostFieldAccess::write_resolved_host_target_from(
                     self,
                     access,
                     target,
@@ -258,12 +265,12 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
 
             fn mutate_resolved_host(
                 &mut self,
-                access: ::vela_host::resolved::ResolvedHostAccess,
-                target: ::vela_host::target::HostTargetInstance<'_>,
-                op: ::vela_host::resolved::HostMutationOp,
-                rhs: ::vela_host::value::HostValue,
-            ) -> ::vela_host::error::HostResult<()> {
-                ::vela_host::object::ScriptHostFieldAccess::mutate_resolved_host_target_from(
+                access: #host::resolved::ResolvedHostAccess,
+                target: #host::target::HostTargetInstance<'_>,
+                op: #host::resolved::HostMutationOp,
+                rhs: #host::value::HostValue,
+            ) -> #host::error::HostResult<()> {
+                #host::object::ScriptHostFieldAccess::mutate_resolved_host_target_from(
                     self,
                     access,
                     target,
@@ -274,13 +281,13 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
 
             fn call_resolved_host(
                 &mut self,
-                access: ::vela_host::resolved::ResolvedHostAccess,
-                target: ::vela_host::target::HostTargetInstance<'_>,
+                access: #host::resolved::ResolvedHostAccess,
+                target: #host::target::HostTargetInstance<'_>,
                 method: ::vela_common::HostMethodId,
-                args: &[::vela_host::call_value::HostCallValue],
-            ) -> ::vela_host::error::HostResult<::vela_host::call_value::HostCallValue> {
+                args: &[#host::call_value::HostCallValue],
+            ) -> #host::error::HostResult<#host::call_value::HostCallValue> {
                 if let Some((slot, child_access)) = access.next_prepared_field() {
-                    return ::vela_host::object::ScriptHostFieldAccess::call_prepared_field_target(
+                    return #host::object::ScriptHostFieldAccess::call_prepared_field_target(
                         self,
                         slot,
                         child_access,
@@ -290,7 +297,7 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
                     );
                 }
                 if target.offset < target.plan.parts.len() {
-                    return ::vela_host::object::ScriptHostFieldAccess::call_host_target_from(
+                    return #host::object::ScriptHostFieldAccess::call_host_target_from(
                         self,
                         target,
                         target.offset,
@@ -298,21 +305,21 @@ pub(crate) fn base_script_host_object_impl_tokens(self_ty: &syn::Type) -> TokenS
                         args,
                     );
                 }
-                if let ::vela_host::resolved::ResolvedHostAccessKind::DirectMethod(slot) =
+                if let #host::resolved::ResolvedHostAccessKind::DirectMethod(slot) =
                     access.adapter_kind
                 {
                     return match slot {
 
-                        _ => Err(::vela_host::error::HostError {
-                            kind: ::vela_host::error::HostErrorKind::UnsupportedMethod { method },
+                        _ => Err(#host::error::HostError {
+                            kind: #host::error::HostErrorKind::UnsupportedMethod { method },
                             source_span: None,
                         }),
                     };
                 }
                 match method {
 
-                    _ => Err(::vela_host::error::HostError {
-                        kind: ::vela_host::error::HostErrorKind::UnsupportedMethod { method },
+                    _ => Err(#host::error::HostError {
+                        kind: #host::error::HostErrorKind::UnsupportedMethod { method },
                         source_span: None,
                     }),
                 }
