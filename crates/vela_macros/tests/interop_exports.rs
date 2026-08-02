@@ -6,7 +6,7 @@ use vela_engine::engine::Engine;
 use vela_engine::interop::{BoundaryMode, CallableKind, VelaValueBoundary};
 use vela_engine::native::{EffectSet, TypeHint};
 use vela_engine::permission::Capability;
-use vela_engine::registration::VelaBindings;
+use vela_engine::registration::{TypeRegistration, VelaBindings};
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_engine::source::EngineSourceErrorKind;
 use vela_host::mock::MockStateAdapter;
@@ -666,12 +666,15 @@ fn empty_inherent_method_group_supports_field_only_host_objects() {
 
 #[test]
 fn centralized_external_host_binding_supports_borrowed_children() {
-    let engine = register_external_item(register_external_config(
-        Engine::builder().capability(Capability::HostRead),
-    ))
-    .install_generated_type::<ExternalQuality>()
-    .build()
-    .expect("centralized external bindings should register");
+    let mut bindings = VelaBindings::new();
+    bindings.register_type(TypeRegistration::<ExternalQuality>::of());
+    register_external_config(&mut bindings);
+    register_external_item(&mut bindings);
+    let engine = Engine::builder()
+        .capability(Capability::HostRead)
+        .register_bindings(bindings)
+        .build()
+        .expect("centralized external bindings should register");
     let program = engine
         .compile_source("fn main(config: ExternalConfig) { return config.item.count; }")
         .expect("external Host properties should compile");
@@ -699,12 +702,15 @@ fn centralized_external_host_binding_supports_borrowed_children() {
 
 #[test]
 fn centralized_external_host_properties_preserve_owned_enum_values() {
-    let engine = register_external_item(register_external_config(
-        Engine::builder().capability(Capability::HostRead),
-    ))
-    .install_generated_type::<ExternalQuality>()
-    .build()
-    .expect("centralized external properties should register");
+    let mut bindings = VelaBindings::new();
+    bindings.register_type(TypeRegistration::<ExternalQuality>::of());
+    register_external_config(&mut bindings);
+    register_external_item(&mut bindings);
+    let engine = Engine::builder()
+        .capability(Capability::HostRead)
+        .register_bindings(bindings)
+        .build()
+        .expect("centralized external properties should register");
     let program = engine
         .compile_source("fn main(item: ExternalItem) { return item.quality; }")
         .expect("external enum property should compile");

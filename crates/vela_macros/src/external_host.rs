@@ -272,15 +272,21 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
 
         #host_object_impl
 
-        #[must_use]
         pub fn #register_ident(
-            builder: ::vela_engine::builder::EngineBuilder,
-        ) -> ::vela_engine::builder::EngineBuilder {
-            let builder = builder.install_generated_type::<#self_ty>();
-            #(
-                let builder = #adapter_ident::#registration_functions(builder);
-            )*
-            builder
+            bindings: &mut ::vela_engine::registration::VelaBindings,
+        ) {
+            bindings
+                .register_type(::vela_engine::registration::TypeRegistration::<#self_ty>::of())
+                .register_methods(::vela_engine::registration::MethodsRegistration::new(
+                    vec![#(#adapter_ident::#contract_functions()),*],
+                    |builder| {
+                        let builder = builder;
+                        #(
+                            let builder = #adapter_ident::#registration_functions(builder);
+                        )*
+                        builder
+                    },
+                ));
         }
     })
 }
