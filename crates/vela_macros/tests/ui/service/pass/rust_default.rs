@@ -16,7 +16,7 @@ pub trait RewardService: Send + Sync {
 fn main() {
     let engine = __vela_register_service_RewardService(
         vela_engine::engine::Engine::builder()
-            .register_type::<Request>(),
+            .install_generated_type::<Request>(),
     )
     .build()
     .unwrap();

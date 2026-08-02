@@ -6,6 +6,7 @@ use vela_engine::engine::Engine;
 use vela_engine::interop::{BoundaryMode, CallableKind, VelaValueBoundary};
 use vela_engine::native::{EffectSet, TypeHint};
 use vela_engine::permission::Capability;
+use vela_engine::registration::VelaBindings;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_engine::source::EngineSourceErrorKind;
 use vela_host::mock::MockStateAdapter;
@@ -458,7 +459,7 @@ fn method_groups_share_receiver_classification() {
 #[test]
 fn trait_export_uses_explicit_vela_protocol_identity() {
     let protocol = vela_protocol_contract_Damageable();
-    let bundle = Player::vela_protocol_Damageable_exports();
+    let bundle = Player::vela_protocol_Damageable_methods();
 
     assert_eq!(protocol.identity.public_path, "game::Damageable");
     assert_eq!(protocol.methods.len(), 2);
@@ -473,7 +474,7 @@ fn trait_export_uses_explicit_vela_protocol_identity() {
 
 #[test]
 fn export_module_groups_public_contracts_once() {
-    let bundle = rules_exports::vela_exports();
+    let bundle = rules_exports::vela_module();
     let contracts = bundle.contracts();
 
     assert_eq!(contracts.len(), 2);
@@ -486,11 +487,13 @@ fn export_module_groups_public_contracts_once() {
 }
 
 #[test]
-fn export_bundle_registers_value_functions_with_engine_once() {
+fn module_registration_installs_through_application_bindings() {
+    let mut bindings = VelaBindings::new();
+    bindings.register_module(rules_exports::vela_module());
     let engine = Engine::builder()
-        .register_exports(rules_exports::vela_exports())
+        .register_bindings(bindings)
         .build()
-        .expect("export bundle should register");
+        .expect("module registration should install");
     let program = engine
         .compile_source("fn main() { return rules::clamp(-7); }")
         .expect("Vela should resolve the exported Rust function");
@@ -511,33 +514,33 @@ fn host_export_runtime(source: &str) -> Runtime {
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
         .capability(Capability::Random)
-        .register_type::<Player>()
-        .register_type::<PlayerService>()
-        .register_type::<Team>()
-        .register_exports(vela_export_bundle_grant_exp())
-        .register_exports(vela_export_bundle_sum_levels())
-        .register_exports(vela_export_bundle_transfer())
-        .register_exports(vela_export_bundle_mixed_alias())
-        .register_exports(vela_export_bundle_service_player())
-        .register_exports(vela_export_bundle_service_player_mut())
-        .register_exports(vela_export_bundle_maybe_service_player())
-        .register_exports(vela_export_bundle_checked_service_player())
-        .register_exports(vela_export_bundle_fallible_service_player())
-        .register_exports(vela_export_bundle_split_team())
-        .register_exports(vela_export_bundle_split_team_if())
-        .register_exports(vela_export_bundle_team_total())
-        .register_exports(vela_export_bundle_touch_service())
-        .register_exports(vela_export_bundle_roll())
-        .register_exports(vela_export_bundle_strict_grant())
-        .register_exports(vela_export_bundle_fail_grant())
-        .register_exports(vela_export_bundle_panic_grant())
-        .register_exports(vela_export_bundle_double_async())
-        .register_exports(vela_export_bundle_transfer_async())
-        .register_exports(vela_export_bundle_hold_player_async())
-        .register_exports(Player::vela_inherent_exports())
-        .register_exports(PlayerService::vela_inherent_exports())
-        .register_exports(Team::vela_inherent_exports())
-        .register_exports(Player::vela_protocol_Damageable_exports())
+        .install_generated_type::<Player>()
+        .install_generated_type::<PlayerService>()
+        .install_generated_type::<Team>()
+        .install_registration(vela_function_grant_exp())
+        .install_registration(vela_function_sum_levels())
+        .install_registration(vela_function_transfer())
+        .install_registration(vela_function_mixed_alias())
+        .install_registration(vela_function_service_player())
+        .install_registration(vela_function_service_player_mut())
+        .install_registration(vela_function_maybe_service_player())
+        .install_registration(vela_function_checked_service_player())
+        .install_registration(vela_function_fallible_service_player())
+        .install_registration(vela_function_split_team())
+        .install_registration(vela_function_split_team_if())
+        .install_registration(vela_function_team_total())
+        .install_registration(vela_function_touch_service())
+        .install_registration(vela_function_roll())
+        .install_registration(vela_function_strict_grant())
+        .install_registration(vela_function_fail_grant())
+        .install_registration(vela_function_panic_grant())
+        .install_registration(vela_function_double_async())
+        .install_registration(vela_function_transfer_async())
+        .install_registration(vela_function_hold_player_async())
+        .install_registration(Player::vela_methods())
+        .install_registration(PlayerService::vela_methods())
+        .install_registration(Team::vela_methods())
+        .install_registration(Player::vela_protocol_Damageable_methods())
         .build()
         .expect("host exports should register");
     let program = engine
@@ -591,8 +594,8 @@ fn generated_sync_method_uses_controlled_adapter_for_fallback_host_refs() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_type::<Player>()
-        .register_exports(Player::vela_inherent_exports())
+        .install_generated_type::<Player>()
+        .install_registration(Player::vela_methods())
         .build()
         .expect("generated Player methods should register");
     let program = engine
@@ -637,10 +640,10 @@ fn generated_sync_method_uses_controlled_adapter_for_fallback_host_refs() {
 fn empty_inherent_method_group_supports_field_only_host_objects() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
-        .register_type::<FieldOnly>()
-        .register_exports(FieldOnly::vela_inherent_exports())
-        .register_type::<FieldChild>()
-        .register_exports(FieldChild::vela_inherent_exports())
+        .install_generated_type::<FieldOnly>()
+        .install_registration(FieldOnly::vela_methods())
+        .install_generated_type::<FieldChild>()
+        .install_registration(FieldChild::vela_methods())
         .build()
         .expect("field-only host type should register");
     let program = engine
@@ -666,7 +669,7 @@ fn centralized_external_host_binding_supports_borrowed_children() {
     let engine = register_external_item(register_external_config(
         Engine::builder().capability(Capability::HostRead),
     ))
-    .register_type::<ExternalQuality>()
+    .install_generated_type::<ExternalQuality>()
     .build()
     .expect("centralized external bindings should register");
     let program = engine
@@ -699,7 +702,7 @@ fn centralized_external_host_properties_preserve_owned_enum_values() {
     let engine = register_external_item(register_external_config(
         Engine::builder().capability(Capability::HostRead),
     ))
-    .register_type::<ExternalQuality>()
+    .install_generated_type::<ExternalQuality>()
     .build()
     .expect("centralized external properties should register");
     let program = engine
@@ -1011,11 +1014,11 @@ fn discarded_scoped_producer_results_fail_before_execution() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_type::<Player>()
-        .register_type::<PlayerService>()
-        .register_exports(Player::vela_inherent_exports())
-        .register_exports(PlayerService::vela_inherent_exports())
-        .register_exports(vela_export_bundle_service_player_mut())
+        .install_generated_type::<Player>()
+        .install_generated_type::<PlayerService>()
+        .install_registration(Player::vela_methods())
+        .install_registration(PlayerService::vela_methods())
+        .install_registration(vela_function_service_player_mut())
         .build()
         .expect("scoped producer fixture should register");
 
@@ -1045,10 +1048,10 @@ fn unnamed_scoped_receiver_chains_fail_before_execution() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_type::<Player>()
-        .register_type::<PlayerService>()
-        .register_exports(Player::vela_inherent_exports())
-        .register_exports(PlayerService::vela_inherent_exports())
+        .install_generated_type::<Player>()
+        .install_generated_type::<PlayerService>()
+        .install_registration(Player::vela_methods())
+        .install_registration(PlayerService::vela_methods())
         .build()
         .expect("scoped producer fixture should register");
 
@@ -1083,10 +1086,10 @@ fn authored_release_intrinsics_compile_to_dedicated_instructions() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_type::<Player>()
-        .register_type::<PlayerService>()
-        .register_exports(Player::vela_inherent_exports())
-        .register_exports(PlayerService::vela_inherent_exports())
+        .install_generated_type::<Player>()
+        .install_generated_type::<PlayerService>()
+        .install_registration(Player::vela_methods())
+        .install_registration(PlayerService::vela_methods())
         .build()
         .expect("release instruction fixture should register");
     let program = engine

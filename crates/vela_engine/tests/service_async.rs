@@ -86,7 +86,7 @@ fn service_app() -> AsyncServicesApp {
     AsyncServices::builder(
         Engine::builder()
             .capabilities(CapabilitySet::new().with(Capability::HostWrite))
-            .register_type::<RequestContext>(),
+            .install_generated_type::<RequestContext>(),
     )
     .task_scope(crate::support::dropping_task_scope())
     .emergency_patch_effect_ceiling(crate::support::emergency_patch_effect_ceiling())

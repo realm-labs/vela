@@ -280,7 +280,7 @@ fn script_host_derive_generates_type_metadata() {
 #[test]
 fn script_host_derive_generates_unified_type_binding() {
     let engine = vela_engine::engine::Engine::builder()
-        .register_type::<Player>()
+        .install_generated_type::<Player>()
         .build()
         .expect("derived host TypeBinding should seal");
     let type_bindings = engine.type_bindings();
@@ -295,7 +295,7 @@ fn script_host_derive_generates_unified_type_binding() {
 #[test]
 fn script_host_fields_and_deref_projection_register_the_complete_host_graph() {
     let engine = Engine::builder()
-        .register_type::<ActorState>()
+        .install_generated_type::<ActorState>()
         .build()
         .expect("one root registration should install the complete host graph");
     let registry = engine.registry();
@@ -334,8 +334,8 @@ fn script_host_deref_projection_supports_live_iteration_and_write_through() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_type::<ActorState>()
-        .register_exports(EquipmentState::vela_inherent_exports())
+        .install_generated_type::<ActorState>()
+        .install_registration(EquipmentState::vela_methods())
         .build()
         .expect("projected host graph should seal");
     let program = engine
@@ -400,7 +400,7 @@ fn derived_values_and_options_are_writable_host_fields() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_type::<DetachedFieldState>()
+        .install_generated_type::<DetachedFieldState>()
         .build()
         .expect("detached host field graph should seal");
     assert!(
@@ -664,7 +664,7 @@ fn script_reflect_derive_feeds_engine_registration_api() {
 #[test]
 fn script_host_and_reflect_derive_register_matching_engine_schemas() {
     let host_engine = vela_engine::engine::Engine::builder()
-        .register_type::<Player>()
+        .install_generated_type::<Player>()
         .build()
         .expect("engine should build from host schema");
     let reflect_engine = vela_engine::engine::Engine::builder()
@@ -689,10 +689,10 @@ fn script_host_and_reflect_derive_register_matching_engine_schemas() {
 #[test]
 fn script_host_sample_game_schemas_register_with_engine_builder() {
     let engine = vela_engine::engine::Engine::builder()
-        .register_type::<Player>()
-        .register_type::<Monster>()
-        .register_type::<Inventory>()
-        .register_type::<GameConfig>()
+        .install_generated_type::<Player>()
+        .install_generated_type::<Monster>()
+        .install_generated_type::<Inventory>()
+        .install_generated_type::<GameConfig>()
         .build()
         .expect("engine should build from sample game host schemas");
     let registry = engine.registry();

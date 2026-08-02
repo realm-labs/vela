@@ -69,7 +69,7 @@ fn service_app() -> TestServicesApp {
                     .with(Capability::HostWrite)
                     .with(Capability::TaskSpawn),
             )
-            .register_type::<RequestContext>(),
+            .install_generated_type::<RequestContext>(),
     )
     .task_scope(crate::support::dropping_task_scope())
     .emergency_patch_effect_ceiling(crate::support::emergency_patch_effect_ceiling())

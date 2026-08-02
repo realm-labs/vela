@@ -330,7 +330,7 @@ struct ConcurrencyFixture {
 impl ConcurrencyFixture {
     fn new() -> Result<Self, Box<dyn Error>> {
         let engine = Engine::builder()
-            .register_exports(vela_export_bundle_wait_for_release())
+            .install_registration(vela_function_wait_for_release())
             .build()?;
         let program = engine.compile_source(
             r#"

@@ -172,6 +172,15 @@ where
             result
         })
     }
+
+    /// Erases the internal monomorphized family into the ordinary typed method
+    /// registration object consumed by application bindings.
+    #[must_use]
+    pub fn into_registration(self) -> crate::registration::MethodsRegistration<T> {
+        crate::registration::MethodsRegistration::from_installer(move |builder| {
+            self.install(builder)
+        })
+    }
 }
 
 fn nominal_type_name(value: &OwnedValue) -> Option<&str> {

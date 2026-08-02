@@ -134,8 +134,8 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
             #protocol_contract
 
             #[must_use]
-            pub fn vela_exports() -> ::vela_engine::interop::ExportBundle {
-                ::vela_engine::interop::ExportBundle::with_protocols(
+            pub fn vela_methods() -> ::vela_engine::registration::MethodsRegistration<#self_ty> {
+                ::vela_engine::registration::MethodsRegistration::with_protocols(
                     vec![#(Self::#contract_functions()),*],
                     vec![Self::#protocol_contract_ident()],
                     |builder| {
@@ -168,7 +168,7 @@ mod tests {
 
         assert!(expanded.contains("VelaExternalPlayerDamageableExports"));
         assert!(expanded.contains("external_game :: Damageable"));
-        assert!(expanded.contains("vela_exports"));
+        assert!(expanded.contains("vela_methods"));
         assert!(!expanded.contains("impl external_game :: Damageable for"));
     }
 }

@@ -309,7 +309,7 @@ fn async_service_accepts_send_non_sync_non_static_host_context() {
     let app = ScopedServices::builder(
         Engine::builder()
             .capabilities(CapabilitySet::new().with(Capability::HostWrite))
-            .register_type::<Reply>()
+            .install_generated_type::<Reply>()
             .register_host_type(context_type_spec()),
     )
     .task_scope(crate::support::dropping_task_scope())

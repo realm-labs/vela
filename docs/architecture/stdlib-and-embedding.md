@@ -350,11 +350,14 @@ failures are script-visible `Result::Err(IoError)` values.
 ### Engine
 
 ```rust
+let mut bindings = VelaBindings::new();
+bindings.register_type(Account::vela_type());
+bindings.register_type(Invoice::vela_type());
+bindings.register_type(Ledger::vela_type());
+
 let engine = Engine::builder()
     .with_standard_natives()
-    .register_type::<Account>()
-    .register_type::<Invoice>()
-    .register_type::<Ledger>()
+    .register_bindings(bindings)
     .register_reflect_schema::<CustomerView>()
     .register_typed_native_fn::<(String,), _>(
         NativeFunctionDesc::new("audit::log", NativeFunctionId::new(10_001))

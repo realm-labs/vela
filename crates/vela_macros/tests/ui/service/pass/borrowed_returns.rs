@@ -31,8 +31,8 @@ pub trait LookupService: Send + Sync {
 fn main() {
     let engine = __vela_register_service_LookupService(
         vela_engine::engine::Engine::builder()
-            .register_type::<Row>()
-            .register_type::<Table>(),
+            .install_generated_type::<Row>()
+            .install_generated_type::<Table>(),
     )
     .build()
     .unwrap();

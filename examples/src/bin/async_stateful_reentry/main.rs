@@ -11,9 +11,14 @@ use vela_macros::{ScriptHost, methods};
 const SOURCE: &str = include_str!("main.vela");
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let mut bindings = VelaBindings::new();
+    bindings
+        .register_type(WorkflowState::vela_type())
+        .register_methods(WorkflowState::vela_methods());
+    bindings.register_type(RuleService::vela_type());
+
     let engine = Engine::builder()
-        .register_type_with_exports::<WorkflowState>(WorkflowState::vela_inherent_exports())
-        .register_type::<RuleService>()
+        .register_bindings(bindings)
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
         .build()?;

@@ -89,7 +89,7 @@ pub(super) fn collection_registration_tokens(signature: &ClassifiedSignature) ->
                 output.push(collection.slice_element.as_ref().map_or_else(
                     || {
                         let ty = &collection.rust_ty;
-                        quote! { let builder = builder.register_type::<#ty>(); }
+                        quote! { let builder = builder.install_generated_type::<#ty>(); }
                     },
                     |element| {
                         if collection.host_elements {

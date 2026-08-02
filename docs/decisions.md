@@ -3888,7 +3888,7 @@ named field by default. A field-level `deref` projection exposes a
 single-argument storage wrapper as its `Deref::Target`; nested writes must pass
 through `DerefMut`, while replacing the wrapper is rejected. This preserves
 dirty tracking for persistence wrappers without teaching Vela their storage
-API. One `register_type::<Root>()` recursively installs every exposed nested
+API. One `Root::vela_type()` recursively installs every exposed nested
 Host type after peeling standard collection and deref wrappers. Traversal is
 cycle-safe by Rust `TypeId`, but an incompatible pre-existing binding remains a
 sealing error.
@@ -3903,15 +3903,28 @@ explicitly annotated unsupported signature is a macro error rather than a
 silent omission. `public_only` remains available for untrusted embedding
 surfaces, and `#[vela(skip)]` remains an explicit exceptional exclusion.
 
-### Rust Generic Operations Register As One Nominal Method Family
+### Registration Objects Share One Application-Owned Model
 
-`NominalHostMethodFamily<T>` exposes one non-generic, non-overloaded Host
-method and registers concrete Rust adapters for accepted nominal Value types.
+Types, owned methods, and free-function modules are represented by
+`TypeRegistration<T>`, `MethodsRegistration<T>`, and `ModuleRegistration`.
+Generated macros and manual bindings construct those same objects. Applications
+attach method registrations through the typed handle returned by
+`VelaBindings::register_type`, add modules to the same binding set, and install
+the set once through `EngineBuilder::register_bindings`. The former
+`register_exports`, `register_type_with_exports`, `register_type_binding`,
+`ExportBundle`, `vela_inherent_exports`, `vela_exports`, and
+`vela_export_bundle_*` surface is removed without aliases.
+
+### Rust Generic Operations Register As Ordinary Typed Methods
+
+`MethodsRegistration<T>` may internally carry one non-generic, non-overloaded
+Host method with concrete Rust adapters for accepted nominal Value types.
 The stable Record/Enum path selects the adapter, which then performs ordinary
 typed decoding and invokes the Rust monomorph. Duplicate registration of one
 concrete type is idempotent so an embedding's protocol registry can be the sole
 type list. Structural containers that do not retain a nominal element identity
-cannot be family dispatch keys.
+cannot be family dispatch keys. The method-family installer is a framework
+detail, not a second application-facing registration API.
 
 ## Validation Rules
 

@@ -37,7 +37,7 @@ pub trait Damageable {
 
 fn main() {
     let _ = vela_callable_contract_grant();
-    let _ = rules::vela_exports();
+    let _ = rules::vela_module();
     let _ = Player::vela_callable_contract_level();
     let _ = vela_protocol_contract_Damageable();
 }

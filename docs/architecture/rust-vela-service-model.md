@@ -198,10 +198,11 @@ marker rather than a fake runtime trait-object field. Rust defaults are
 instance-supplied during application construction:
 
 ```rust,ignore
+let mut bindings = VelaBindings::new();
+bindings.register_type(GameTurn::vela_type());
+bindings.register_type(Player::vela_type());
 let app = GameLogic::builder(
-    Engine::builder()
-        .register_type::<GameTurn>()
-        .register_type::<Player>(),
+    Engine::builder().register_bindings(bindings),
 )
 .inventory(RustInventoryService::new(database.clone()))
 .reward(RustRewardService::new(config.clone()))
@@ -855,17 +856,19 @@ constructors and methods where meaningful and implement Vela standard
 protocols once. `filter` and `group_by` belong to the shared protocols rather
 than handwritten implementations for every Rust collection.
 
-Hosts register custom types through the same low-level API used by standard
-bindings:
+Hosts register custom types by constructing the same typed registration object
+used by generated bindings:
 
 ```rust,ignore
-Engine::builder().register_type_binding::<Inventory>(
-    TypeBinding::host("host::Inventory")
+let mut bindings = VelaBindings::new();
+bindings.register_type(TypeRegistration::binding(
+    TypeBinding::<Inventory>::host("host::Inventory")
         .constructor("new", Inventory::new)
         .shared_method("contains", Inventory::contains)
         .exclusive_method("grant", Inventory::grant)
         .iterator(Inventory::iter),
-);
+));
+let engine = Engine::builder().register_bindings(bindings).build()?;
 ```
 
 `#[derive(vela_macros::Value)]`, `#[derive(vela_macros::ScriptHost)]`, and
@@ -955,9 +958,8 @@ No iterator may create an unbudgeted infinite execution path.
 
 The registry and macros must:
 
-- expose one public `register_type::<T>()` path for derived/generated standard
-  and user-defined types, plus the explicit low-level
-  `register_type_binding::<T>(TypeBinding)` escape hatch;
+- expose `TypeRegistration<T>` for both generated and manually constructed
+  standard/user-defined types, collected through `VelaBindings`;
 - generate stable identity, storage policy, conversion/view adapters,
   constructors, receiver-qualified methods, protocols, effects, and ABI;
 - provide manual bindings for unannotatable external Rust types;

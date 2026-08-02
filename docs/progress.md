@@ -67,9 +67,11 @@ now seals worker and continuation effects into artifact metadata, so nested
 database/IO/Host work cannot bypass Engine, policy, or Service ceilings. No new
 unsafe boundary was required.
 
-Rust embedding now has one public registration vocabulary: every derived or
-generated Value/Host uses `register_type::<T>()`, callable bundles use
-`register_exports(...)`, and each generated service domain owns one application
+Rust embedding now has one public registration model: derived/generated and
+manual Values/Hosts produce `TypeRegistration<T>`, method groups produce
+`MethodsRegistration<T>`, and free-function modules produce
+`ModuleRegistration`. Applications collect all three in `VelaBindings` and
+install it once. Each generated service domain still owns one application
 builder. `Service<dyn Trait>` fields declare the domain schema; concrete default
 instances, service-owned Runtime leasing, call options, Engine sealing, schema
 validation, and the initial generation converge at `.build()`. Business Host

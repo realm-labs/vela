@@ -451,7 +451,7 @@ impl RegistrationSpec {
     pub(super) fn tokens(&self) -> TokenStream {
         match self {
             Self::Value(ty) => quote! {
-                let builder = builder.register_type::<#ty>();
+                let builder = builder.install_generated_type::<#ty>();
             },
             Self::Shared(ty) => quote! {
                 let builder =

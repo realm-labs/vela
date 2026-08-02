@@ -72,11 +72,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("vela_engine_interop iterations={iterations}");
 
     let engine = Engine::builder()
-        .register_type::<Player>()
-        .register_exports(vela_export_bundle_scalar())
-        .register_exports(vela_export_bundle_read_player())
-        .register_exports(vela_export_bundle_write_player())
-        .register_exports(vela_export_bundle_round_trip())
+        .install_generated_type::<Player>()
+        .install_registration(vela_function_scalar())
+        .install_registration(vela_function_read_player())
+        .install_registration(vela_function_write_player())
+        .install_registration(vela_function_round_trip())
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
         .build()?;

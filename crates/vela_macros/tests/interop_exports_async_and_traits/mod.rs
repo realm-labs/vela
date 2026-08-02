@@ -24,9 +24,9 @@ fn declaration_only_external_trait_adapter_calls_existing_impl() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_type::<ExternalNpc>()
-        .register_exports(ExternalNpc::vela_inherent_exports())
-        .register_exports(VelaExternalExternalNpcExternalDamageExports::vela_exports())
+        .install_generated_type::<ExternalNpc>()
+        .install_registration(ExternalNpc::vela_methods())
+        .install_registration(VelaExternalExternalNpcExternalDamageExports::vela_methods())
         .build()
         .expect("declaration-only adapter should register");
     let program = engine

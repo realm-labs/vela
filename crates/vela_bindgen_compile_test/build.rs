@@ -39,11 +39,11 @@ pub fn deny_context_random(_context: &mut NativeCallContext<'_, '_>) -> VmResult
 
 fn main() -> Result<(), Box<dyn Error>> {
     let engine = Engine::builder()
-        .register_type::<model::Player>()
-        .register_exports(vela_export_bundle_reenter_player())
-        .register_exports(vela_export_bundle_reject_unrelated())
-        .register_exports(vela_export_bundle_deny_effect_expansion())
-        .register_exports(vela_export_bundle_deny_context_random())
+        .install_generated_type::<model::Player>()
+        .install_registration(vela_function_reenter_player())
+        .install_registration(vela_function_reject_unrelated())
+        .install_registration(vela_function_deny_effect_expansion())
+        .install_registration(vela_function_deny_context_random())
         .with_controlled_random(7)
         .build()
         .map_err(|error| error.to_string())?;

@@ -266,9 +266,9 @@ fn mixed_service_chain_preserves_custom_values_collection_identity_and_alias_pre
                     .with(Capability::HostRead)
                     .with(Capability::HostWrite),
             )
-            .register_type::<RequestContext>()
-            .register_type::<ObservedState>()
-            .register_type_binding::<ScratchState>(
+            .install_generated_type::<RequestContext>()
+            .install_generated_type::<ObservedState>()
+            .install_type_binding::<ScratchState>(
                 ScratchState::vela_type_binding().host_constructor_fn(
                     HostConstructionLifetime::CallScoped,
                     scratch_state_constructor(),

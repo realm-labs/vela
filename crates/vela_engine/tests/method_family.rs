@@ -1,8 +1,8 @@
 use vela_common::{Capability, HostMethodId, ReceiverCapability, stable_id};
 use vela_engine::engine::Engine;
 use vela_engine::method::NativeMethodDesc;
-use vela_engine::method_family::NominalHostMethodFamily;
 use vela_engine::native::{EffectSet, FunctionAccess, TypeHint};
+use vela_engine::registration::{__private::NominalHostMethodFamily, VelaBindings};
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_engine::schema::ScriptHostSchema;
 use vela_macros::{ScriptHost, Value};
@@ -100,12 +100,13 @@ fn nominal_method_family_dispatches_to_rust_monomorphized_instances() {
     family.register_instance::<Tick, _, _>(EventRecorder::publish::<Tick>);
     family.register_instance::<NestedEvent, _, _>(EventRecorder::publish::<NestedEvent>);
 
-    let engine = family
-        .install(
-            Engine::builder()
-                .capability(Capability::HostWrite)
-                .register_type::<EventRecorder>(),
-        )
+    let mut bindings = VelaBindings::new();
+    bindings
+        .register_type(EventRecorder::vela_type())
+        .register_methods(family.into_registration());
+    let engine = Engine::builder()
+        .capability(Capability::HostWrite)
+        .register_bindings(bindings)
         .build()
         .expect("method family should seal");
     let program = engine

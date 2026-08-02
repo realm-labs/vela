@@ -8,13 +8,16 @@ use vela_engine::prelude::*;
 use vela_macros::{ScriptHost, export};
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let mut bindings = VelaBindings::new();
+    bindings.register_type(Player::vela_type());
+    bindings.register_module(vela_function_bonus_macro());
+    bindings.register_module(vela_function_collection_bonus());
+    bindings.register_module(vela_function_grant_level());
+
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_type::<Player>()
-        .register_exports(vela_export_bundle_bonus_macro())
-        .register_exports(vela_export_bundle_collection_bonus())
-        .register_exports(vela_export_bundle_grant_level())
+        .register_bindings(bindings)
         .register_typed_native_fn::<(i64, i64), _>(
             NativeFunctionDesc::new("game::bonus_manual", NativeFunctionId::new(10_001))
                 .param("amount", TypeHint::i64())

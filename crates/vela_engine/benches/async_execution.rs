@@ -64,8 +64,8 @@ fn throughput(iterations: usize) -> Result<(), Box<dyn Error>> {
          fn main() -> i64 { return countdown(10_000); }",
     )?;
     let method_engine = Engine::builder()
-        .register_type::<Counter>()
-        .register_exports(Counter::vela_inherent_exports())
+        .install_generated_type::<Counter>()
+        .install_registration(Counter::vela_methods())
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
         .build()?;

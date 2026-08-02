@@ -749,8 +749,8 @@ macro-specific registry. Unless a field has an explicit `#[vela(type =
 `VelaValueBoundary`; Rust import spelling therefore cannot leak an unresolved
 short name into the sealed script schema.
 
-`VelaType` is the single public registration contract for both owned Values and
-Rust-owned Hosts. `EngineBuilder::register_type::<T>()` recursively installs
+`TypeRegistration<T>` is the single public type-registration object for both
+owned Values and Rust-owned Hosts. `T::vela_type()` recursively installs
 the exact concrete standard containers and derived Value field/variant types
 reachable from `T`. Derived Hosts likewise register every exposed nested Host
 type, peeling standard container wrappers and deref projections, so registering
@@ -759,12 +759,12 @@ idempotent only when their Rust `TypeId`, stable binding key, and complete
 pending ABI fingerprint agree; a different manual binding for the same Rust
 type remains a sealing error. This is Rust-side monomorphized registration of
 concrete ABI entries, not Vela
-generics. Manual `register_type_binding::<T>(binding)` remains the escape hatch for
-external types and custom codecs; generated service bundles will combine those
+generics. `TypeRegistration::binding(binding)` is the manual construction path
+for external types and custom codecs; generated service bundles combine those
 explicit leaves with the same recursive owned-Value closure.
 
-An embedding may also expose one Rust generic operation through a
-`NominalHostMethodFamily<T>`. The family publishes exactly one ordinary Host
+An embedding may also expose one Rust generic operation through one
+`MethodsRegistration<T>`. Its internal monomorphized family publishes exactly one ordinary Host
 method with one `Any` parameter and installs one Rust-monomorphized adapter for
 each accepted nominal `Record` or `Enum` type. Runtime selection uses the
 argument's stable Vela type path and the selected adapter performs the ordinary
@@ -786,10 +786,11 @@ empty method impl or Host-specific builder method. The object itself still
 enters execution only through a call-scoped or Runtime-owned `HostRef`.
 
 Rust callables use `#[vela_macros::export]`, `#[vela_macros::export_module]`,
-or `#[vela_macros::methods]`. These macros produce `ExportBundle` values;
-`EngineBuilder::register_exports` is the only ordinary callable-registration
-entry. Low-level descriptor constructors remain available only as framework
-escape hatches.
+or `#[vela_macros::methods]`. These macros produce `ModuleRegistration` or
+`MethodsRegistration<T>` values. Applications collect them with their
+`TypeRegistration<T>` values in one `VelaBindings`, then install that set once
+through `EngineBuilder::register_bindings`. Low-level descriptor constructors
+remain framework hooks rather than a parallel embedding API.
 Engine internals and tests that need explicit IDs may still use those
 low-level constructors:
 
@@ -807,8 +808,8 @@ authoring macros with item-level `#[vela_macros::export]`, explicit
 `#[vela_macros::export_module]` groups for many free functions, and
 `#[vela_macros::methods]` groups for inherent methods. An export module treats its
 supported immediate public functions as the approved surface, derives paths
-from one configured prefix, and generates one deterministic `vela_exports()`
-bundle. Engine registers that value once through `register_exports`; there is
+from one configured prefix, and generates one deterministic `vela_module()`
+registration. Engine installs it as part of `VelaBindings`; there is
 no ambient inventory, linker-section discovery, or runtime source scan.
 An unsupported public item inside an explicit export group is a declaration
 error rather than a silently omitted export; private helpers remain Rust-only.
@@ -917,7 +918,9 @@ path.
 ### Method Registration
 
 Host type methods are declared through `#[vela_macros::methods]`, collected in
-`Type::vela_inherent_exports()`, and installed with `register_exports`.
+`Type::vela_methods()`, attached to `Type::vela_type()` through a typed
+`VelaBindings` handle, and installed with the rest of the application binding
+set.
 Authored methods use ordinary `&self` and `&mut self`; generated adapters
 perform HostRef validation and lease acquisition before invoking them.
 

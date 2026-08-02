@@ -49,13 +49,17 @@ impl Player {
 }
 ```
 
-Register the generated bundles and host schemas explicitly:
+Register the generated type, method, and module objects explicitly:
 
 ```rust,ignore
+let mut bindings = VelaBindings::new();
+bindings
+    .register_type(Player::vela_type())
+    .register_methods(Player::vela_methods());
+bindings.register_module(vela_function_normalize());
+
 let engine = Engine::builder()
-    .register_type::<Player>()
-    .register_exports(vela_export_bundle_normalize())
-    .register_exports(Player::vela_inherent_exports())
+    .register_bindings(bindings)
     .capability(Capability::HostRead)
     .capability(Capability::HostWrite)
     .build()?;

@@ -476,14 +476,16 @@ transitive Value/Host/container requirement, seals the Engine, validates the
 schema, and creates the initial Rust generation in one terminal operation:
 
 ```rust,ignore
+let mut bindings = VelaBindings::new();
+bindings.register_type(Row::vela_type());
+bindings.register_type(Table::vela_type());
+bindings.register_type(RequestState::vela_type());
+bindings.register_type(TypeRegistration::binding(patch_buffer));
 let app = ExampleServices::builder(
     Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_type::<Row>()
-        .register_type::<Table>()
-        .register_type::<RequestState>()
-        .register_type_binding::<PatchBuffer>(patch_buffer),
+        .register_bindings(bindings),
 )
 .state(RustStateService)
 .policy(RustPolicyService::new(policy_config.clone()))

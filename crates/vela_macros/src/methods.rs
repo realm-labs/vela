@@ -126,12 +126,12 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             .last()
             .expect("trait paths contain at least one segment")
             .ident;
-        let bundle_ident = quote::format_ident!("vela_protocol_{trait_ident}_exports");
+        let bundle_ident = quote::format_ident!("vela_protocol_{trait_ident}_methods");
         let protocol_contract_ident = quote::format_ident!("vela_protocol_contract_{trait_ident}");
         quote! {
             #[must_use]
-            pub fn #bundle_ident() -> ::vela_engine::interop::ExportBundle {
-                ::vela_engine::interop::ExportBundle::with_protocols(
+            pub fn #bundle_ident() -> ::vela_engine::registration::MethodsRegistration<Self> {
+                ::vela_engine::registration::MethodsRegistration::with_protocols(
                     vec![#(Self::#contract_functions()),*],
                     vec![#protocol_contract_ident()],
                     |builder| {
@@ -145,8 +145,8 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     } else {
         quote! {
             #[must_use]
-            pub fn vela_inherent_exports() -> ::vela_engine::interop::ExportBundle {
-                ::vela_engine::interop::ExportBundle::new(
+            pub fn vela_methods() -> ::vela_engine::registration::MethodsRegistration<Self> {
+                ::vela_engine::registration::MethodsRegistration::new(
                     vec![#(Self::#contract_functions()),*],
                     |builder| {
                         let builder = builder;
@@ -562,7 +562,7 @@ mod tests {
         .expect("an empty method group should remain a valid empty bundle");
         let output = expanded.to_string();
 
-        assert!(output.contains("vela_inherent_exports"));
+        assert!(output.contains("vela_methods"));
         assert!(!output.contains("ScriptHostObject"));
     }
 }

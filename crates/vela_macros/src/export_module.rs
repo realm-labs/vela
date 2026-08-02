@@ -77,8 +77,8 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     items.push(Item::Verbatim(quote! {
         #[doc(hidden)]
         #[must_use]
-        pub fn vela_exports() -> ::vela_engine::interop::ExportBundle {
-            ::vela_engine::interop::ExportBundle::new(
+        pub fn vela_module() -> ::vela_engine::registration::ModuleRegistration {
+            ::vela_engine::registration::ModuleRegistration::new(
                 vec![#(#contract_functions()),*],
                 |builder| {
                     let builder = builder;
@@ -171,7 +171,7 @@ mod tests {
 
         assert!(output.contains("game::normalize"));
         assert!(output.contains("game::roll"));
-        assert!(output.contains("vela_exports"));
+        assert!(output.contains("vela_module"));
         assert!(!output.contains("vela_callable_contract_helper"));
     }
 }

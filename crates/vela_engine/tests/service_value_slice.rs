@@ -62,7 +62,7 @@ fn same_generation_base_decodes_read_only_value_slice_for_rust_default() {
     let app = TestServices::builder(
         Engine::builder()
             .capability(Capability::HostWrite)
-            .register_type::<RequestContext>(),
+            .install_generated_type::<RequestContext>(),
     )
     .task_scope(crate::support::dropping_task_scope())
     .emergency_patch_effect_ceiling(crate::support::emergency_patch_effect_ceiling())

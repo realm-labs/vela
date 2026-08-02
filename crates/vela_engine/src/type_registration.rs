@@ -14,6 +14,13 @@ use crate::standard::{StandardTypeBinding, standard_type_binding};
 /// install the full transitive dependency closure for structural Values or the
 /// exact Host binding for Rust-owned objects.
 pub trait VelaType: Sized + 'static {
+    /// Returns the complete registration object for this concrete Rust type.
+    #[must_use]
+    fn vela_type() -> crate::registration::TypeRegistration<Self> {
+        crate::registration::TypeRegistration::of()
+    }
+
+    #[doc(hidden)]
     fn register(builder: EngineBuilder) -> EngineBuilder;
 }
 
@@ -325,8 +332,8 @@ mod tests {
     #[test]
     fn standard_value_closure_registers_nested_types_once() {
         let engine = Engine::builder()
-            .register_type_binding::<i64>(standard_type_binding::<i64>())
-            .register_type::<NestedValue>()
+            .install_type_binding::<i64>(standard_type_binding::<i64>())
+            .install_generated_type::<NestedValue>()
             .build()
             .expect("exact prior registrations and shared dependencies should deduplicate");
         let bindings = engine.type_bindings();
@@ -357,8 +364,8 @@ mod tests {
                 .kind(TypeKind::I64),
         );
         let result = Engine::builder()
-            .register_type_binding::<i64>(conflicting)
-            .register_type::<i64>()
+            .install_type_binding::<i64>(conflicting)
+            .install_generated_type::<i64>()
             .build();
 
         assert!(matches!(
@@ -373,8 +380,8 @@ mod tests {
         let conflicting =
             standard_type_binding::<i64>().receiver_capabilities(ReceiverCapabilities::OWNED);
         let result = Engine::builder()
-            .register_type_binding::<i64>(conflicting)
-            .register_type::<i64>()
+            .install_type_binding::<i64>(conflicting)
+            .install_generated_type::<i64>()
             .build();
 
         assert!(matches!(

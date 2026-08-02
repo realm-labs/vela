@@ -9,6 +9,9 @@ pub use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint,
 };
 pub use crate::permission::{Capability, CapabilitySet, ExecutionProfile};
+pub use crate::registration::{
+    MethodsRegistration, ModuleRegistration, RegisteredType, TypeRegistration, VelaBindings,
+};
 pub use crate::runtime::{
     CallArgs, CallControl, CallOptions, CallSnapshot, CallStatus, ReloadSource, Runtime,
     RuntimeBuildError, RuntimeBuilder, RuntimeCallFuture, RuntimeInitializationLimits,

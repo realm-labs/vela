@@ -964,9 +964,9 @@ mod tests {
 
     fn registry() -> std::sync::Arc<crate::type_binding::TypeBindingRegistry> {
         Engine::builder()
-            .register_type::<i64>()
-            .register_type::<String>()
-            .register_type::<()>()
+            .install_generated_type::<i64>()
+            .install_generated_type::<String>()
+            .install_generated_type::<()>()
             .build()
             .expect("standard scalar bindings should seal")
             .type_bindings()

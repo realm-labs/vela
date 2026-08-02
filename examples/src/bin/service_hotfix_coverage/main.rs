@@ -432,6 +432,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     ROW_CODEC_ENTRIES.store(0, Ordering::SeqCst);
     PATCH_BUFFER_DROPS.store(0, Ordering::SeqCst);
 
+    let mut bindings = VelaBindings::new();
+    bindings.register_type(Row::vela_type());
+    bindings.register_type(Table::vela_type());
+    bindings.register_type(RequestState::vela_type());
+    bindings.register_type(TypeRegistration::binding(patch_buffer_binding()));
     let app = CoverageServices::builder(
         Engine::builder()
             .capabilities(
@@ -440,10 +445,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     .with(Capability::HostWrite)
                     .with(Capability::TaskSpawn),
             )
-            .register_type::<Row>()
-            .register_type::<Table>()
-            .register_type::<RequestState>()
-            .register_type_binding::<PatchBuffer>(patch_buffer_binding()),
+            .register_bindings(bindings),
     )
     .task_scope(task_adapter.task_scope())
     .emergency_patch_effect_ceiling(vela_examples::service_tasks::emergency_patch_effect_ceiling())

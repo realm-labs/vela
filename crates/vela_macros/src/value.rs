@@ -199,6 +199,11 @@ fn expand_struct(
             pub fn vela_type_binding() -> ::vela_engine::type_binding::TypeBinding<Self> {
                 <Self as ::vela_engine::schema::ScriptValueSchema>::script_value_binding()
             }
+
+            #[must_use]
+            pub fn vela_type() -> ::vela_engine::registration::TypeRegistration<Self> {
+                ::vela_engine::registration::TypeRegistration::of()
+            }
         }
 
         impl ::vela_engine::schema::ScriptValueSchema for #ident {
@@ -479,6 +484,11 @@ fn expand_enum(
             #[must_use]
             pub fn vela_type_binding() -> ::vela_engine::type_binding::TypeBinding<Self> {
                 <Self as ::vela_engine::schema::ScriptValueSchema>::script_value_binding()
+            }
+
+            #[must_use]
+            pub fn vela_type() -> ::vela_engine::registration::TypeRegistration<Self> {
+                ::vela_engine::registration::TypeRegistration::of()
             }
         }
 

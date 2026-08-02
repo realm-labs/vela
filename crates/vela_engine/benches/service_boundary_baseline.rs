@@ -221,7 +221,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         Engine::builder()
             .capability(Capability::HostWrite)
             .capability(Capability::TaskSpawn)
-            .register_type::<BoundaryHost>(),
+            .install_generated_type::<BoundaryHost>(),
     )
     .task_scope(task_scope())
     .emergency_patch_effect_ceiling(
@@ -378,14 +378,14 @@ fn boundary_runtime() -> Result<Runtime, Box<dyn Error>> {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_type::<BoundaryChild>()
-        .register_type::<BoundaryHost>()
-        .register_exports(BoundaryChild::vela_inherent_exports())
-        .register_exports(BoundaryHost::vela_inherent_exports())
-        .register_exports(vela_export_bundle_nested_reborrow())
-        .register_exports(vela_export_bundle_borrowed_child())
-        .register_exports(vela_export_bundle_shared_pair())
-        .register_exports(vela_export_bundle_exclusive_pair())
+        .install_generated_type::<BoundaryChild>()
+        .install_generated_type::<BoundaryHost>()
+        .install_registration(BoundaryChild::vela_methods())
+        .install_registration(BoundaryHost::vela_methods())
+        .install_registration(vela_function_nested_reborrow())
+        .install_registration(vela_function_borrowed_child())
+        .install_registration(vela_function_shared_pair())
+        .install_registration(vela_function_exclusive_pair())
         .build()?;
     let program = engine.compile_source(SOURCE)?;
     Ok(Runtime::new(engine, program)?)

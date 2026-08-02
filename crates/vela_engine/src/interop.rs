@@ -32,15 +32,15 @@ type ExportInstaller =
 /// One explicitly generated registration bundle. It carries immutable
 /// callable contracts plus generated erased adapters; there is no inventory or
 /// process-global discovery.
-pub struct ExportBundle {
+pub(crate) struct CallableRegistration {
     contracts: Vec<CallableContract>,
     protocols: Vec<VelaProtocolContract>,
     installer: Arc<ExportInstaller>,
 }
 
-impl ExportBundle {
+impl CallableRegistration {
     #[must_use]
-    pub fn new(
+    pub(crate) fn new(
         contracts: Vec<CallableContract>,
         installer: impl Fn(crate::builder::EngineBuilder) -> crate::builder::EngineBuilder
         + Send
@@ -55,7 +55,7 @@ impl ExportBundle {
     }
 
     #[must_use]
-    pub fn with_protocols(
+    pub(crate) fn with_protocols(
         contracts: Vec<CallableContract>,
         protocols: Vec<VelaProtocolContract>,
         installer: impl Fn(crate::builder::EngineBuilder) -> crate::builder::EngineBuilder

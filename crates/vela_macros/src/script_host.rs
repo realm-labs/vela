@@ -207,6 +207,11 @@ fn expand_result(input: TokenStream, generated_method: GeneratedMethod) -> Resul
             pub fn vela_type_binding() -> ::vela_engine::type_binding::TypeBinding<Self> {
                 <Self as ::vela_engine::schema::ScriptHostSchema>::script_host_binding()
             }
+
+            #[must_use]
+            pub fn vela_type() -> ::vela_engine::registration::TypeRegistration<Self> {
+                ::vela_engine::registration::TypeRegistration::of()
+            }
         },
         GeneratedMethod::Reflect => quote! {},
     };
@@ -305,6 +310,11 @@ fn expand_enum_result(expansion: EnumExpansion) -> Result<TokenStream> {
                 #[must_use]
                 pub fn vela_type_binding() -> ::vela_engine::type_binding::TypeBinding<Self> {
                     <Self as ::vela_engine::schema::ScriptHostSchema>::script_host_binding()
+                }
+
+                #[must_use]
+                pub fn vela_type() -> ::vela_engine::registration::TypeRegistration<Self> {
+                    ::vela_engine::registration::TypeRegistration::of()
                 }
 
                 #[must_use]

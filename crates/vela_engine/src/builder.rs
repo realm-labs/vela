@@ -74,32 +74,37 @@ impl EngineBuilder {
         self
     }
 
-    /// Registers one complete Rust type surface.
+    /// Installs an explicitly constructed binding.
+    #[doc(hidden)]
     #[must_use]
-    pub fn register_type<T>(self) -> Self
+    pub fn install_type_binding<T: 'static>(self, binding: TypeBinding<T>) -> Self {
+        self.push_rust_type::<T>(binding)
+    }
+
+    /// Installs a generated type dependency. Embedding applications use
+    /// `VelaBindings` instead of calling this framework hook directly.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn install_generated_type<T>(self) -> Self
     where
         T: crate::type_registration::VelaType,
     {
         T::register(self)
     }
 
-    /// Registers a Rust type together with one generated callable bundle.
+    /// Installs one complete application-owned binding set.
     #[must_use]
-    pub fn register_type_with_exports<T>(self, bundle: crate::interop::ExportBundle) -> Self
-    where
-        T: crate::type_registration::VelaType,
-    {
-        self.register_type::<T>().register_exports(bundle)
+    pub fn register_bindings(self, bindings: crate::registration::VelaBindings) -> Self {
+        bindings.install(self)
     }
 
-    /// Registers an explicitly constructed binding.
-    ///
-    /// This is the low-level escape hatch for custom codecs, constructors, and
-    /// framework-generated bindings. Ordinary derived types use
-    /// [`Self::register_type`].
+    #[doc(hidden)]
     #[must_use]
-    pub fn register_type_binding<T: 'static>(self, binding: TypeBinding<T>) -> Self {
-        self.push_rust_type::<T>(binding)
+    pub fn install_registration(
+        self,
+        registration: impl crate::registration::InstallRegistration,
+    ) -> Self {
+        registration.install_into(self)
     }
 
     /// Registers a stable Host contract without binding it to one `'static`
@@ -222,12 +227,6 @@ impl EngineBuilder {
     pub fn register_module(mut self, desc: ModuleDesc) -> Self {
         self.modules.push(desc);
         self
-    }
-
-    /// Installs one explicitly generated Rust export bundle.
-    #[must_use]
-    pub fn register_exports(self, bundle: crate::interop::ExportBundle) -> Self {
-        bundle.install(self)
     }
 
     #[doc(hidden)]

@@ -11,20 +11,27 @@ use vela_macros::{ScriptHost, methods};
 use vela_reflect::registry::{HostIndexCapability, TypeDesc, TypeKey};
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let mut bindings = VelaBindings::new();
+    bindings
+        .register_type(Player::vela_type())
+        .register_methods(Player::vela_methods());
+    bindings.register_type(Inventory::vela_type());
+    bindings.register_type(ItemStack::vela_type());
+    bindings
+        .register_type(IntIntMap::vela_type())
+        .register_methods(IntIntMap::vela_methods());
+    bindings
+        .register_type(TagSet::vela_type())
+        .register_methods(TagSet::vela_methods());
+    bindings
+        .register_type(RewardSink::vela_type())
+        .register_methods(RewardSink::vela_methods());
+
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .register_type::<Player>()
-        .register_type::<Inventory>()
-        .register_type::<ItemStack>()
+        .register_bindings(bindings)
         .register_type_spec(string_item_map_type())
-        .register_type::<IntIntMap>()
-        .register_type::<TagSet>()
-        .register_type::<RewardSink>()
-        .register_exports(Player::vela_inherent_exports())
-        .register_exports(IntIntMap::vela_inherent_exports())
-        .register_exports(TagSet::vela_inherent_exports())
-        .register_exports(RewardSink::vela_inherent_exports())
         .build()?;
     let program = engine.compile_source(include_str!("handle.vela"))?;
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");

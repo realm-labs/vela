@@ -109,7 +109,7 @@ pub(crate) fn function_value_adapter(
     let function_ident = &item.sig.ident;
     let contract_ident = format_ident!("vela_callable_contract_{function_ident}");
     let register_ident = format_ident!("vela_register_export_{function_ident}");
-    let bundle_ident = format_ident!("vela_export_bundle_{function_ident}");
+    let bundle_ident = format_ident!("vela_function_{function_ident}");
     let value_types = signature
         .parameters
         .iter()
@@ -221,8 +221,8 @@ pub(crate) fn function_value_adapter(
         }
 
         #[must_use]
-        pub fn #bundle_ident() -> ::vela_engine::interop::ExportBundle {
-            ::vela_engine::interop::ExportBundle::new(
+        pub fn #bundle_ident() -> ::vela_engine::registration::ModuleRegistration {
+            ::vela_engine::registration::ModuleRegistration::new(
                 vec![#contract_ident()],
                 #register_ident,
             )
@@ -238,7 +238,7 @@ fn function_sync_scoped_host_adapter(
     let function_ident = &item.sig.ident;
     let contract_ident = format_ident!("vela_callable_contract_{function_ident}");
     let register_ident = format_ident!("vela_register_export_{function_ident}");
-    let bundle_ident = format_ident!("vela_export_bundle_{function_ident}");
+    let bundle_ident = format_ident!("vela_function_{function_ident}");
     let expected = signature.parameters.len();
     let ReturnMode::ScopedHost { child, .. } = signature.returns.mode else {
         unreachable!("scoped adapter requires a scoped host return");
@@ -571,8 +571,8 @@ fn function_sync_scoped_host_adapter(
         }
 
         #[must_use]
-        pub fn #bundle_ident() -> ::vela_engine::interop::ExportBundle {
-            ::vela_engine::interop::ExportBundle::new(
+        pub fn #bundle_ident() -> ::vela_engine::registration::ModuleRegistration {
+            ::vela_engine::registration::ModuleRegistration::new(
                 vec![#contract_ident()],
                 #register_ident,
             )
@@ -585,7 +585,7 @@ fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -
     let function_ident = &item.sig.ident;
     let contract_ident = format_ident!("vela_callable_contract_{function_ident}");
     let register_ident = format_ident!("vela_register_export_{function_ident}");
-    let bundle_ident = format_ident!("vela_export_bundle_{function_ident}");
+    let bundle_ident = format_ident!("vela_function_{function_ident}");
     let expected = signature.parameters.len();
     let request_plans = signature
         .parameters
@@ -697,8 +697,8 @@ fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -
         }
 
         #[must_use]
-        pub fn #bundle_ident() -> ::vela_engine::interop::ExportBundle {
-            ::vela_engine::interop::ExportBundle::new(
+        pub fn #bundle_ident() -> ::vela_engine::registration::ModuleRegistration {
+            ::vela_engine::registration::ModuleRegistration::new(
                 vec![#contract_ident()],
                 #register_ident,
             )
@@ -711,7 +711,7 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
     let function_ident = &item.sig.ident;
     let contract_ident = format_ident!("vela_callable_contract_{function_ident}");
     let register_ident = format_ident!("vela_register_export_{function_ident}");
-    let bundle_ident = format_ident!("vela_export_bundle_{function_ident}");
+    let bundle_ident = format_ident!("vela_function_{function_ident}");
     let expected = signature
         .parameters
         .iter()
@@ -871,8 +871,8 @@ fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) ->
         }
 
         #[must_use]
-        pub fn #bundle_ident() -> ::vela_engine::interop::ExportBundle {
-            ::vela_engine::interop::ExportBundle::new(
+        pub fn #bundle_ident() -> ::vela_engine::registration::ModuleRegistration {
+            ::vela_engine::registration::ModuleRegistration::new(
                 vec![#contract_ident()],
                 #register_ident,
             )

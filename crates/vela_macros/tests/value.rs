@@ -89,7 +89,7 @@ fn value_derive_generates_schema_codec_and_unified_binding() {
     );
 
     let engine = Engine::builder()
-        .register_type::<ItemGrant>()
+        .install_generated_type::<ItemGrant>()
         .build()
         .expect("derived Value binding should seal");
     let type_bindings = engine.type_bindings();
@@ -117,7 +117,7 @@ fn byte_vector_fields_use_the_runtime_bytes_contract() {
     assert_eq!(desc.fields[1].type_hint.as_deref(), Some("Array<Bytes>"));
 
     let engine = Engine::builder()
-        .register_type::<ByteRecord>()
+        .install_generated_type::<ByteRecord>()
         .build()
         .expect("byte record binding should seal");
     let program = engine
@@ -156,7 +156,7 @@ fn make_bytes() {
 #[test]
 fn value_derive_registers_its_complete_nested_type_closure() {
     let engine = Engine::builder()
-        .register_type::<GrantBundle>()
+        .install_generated_type::<GrantBundle>()
         .build()
         .expect("derived Value should recursively register all concrete dependencies");
     let bindings = engine.type_bindings();
@@ -216,7 +216,7 @@ fn value_derive_registers_its_complete_nested_type_closure() {
 #[test]
 fn derived_value_round_trips_through_real_vela_execution() {
     let engine = Engine::builder()
-        .register_type::<ItemGrant>()
+        .install_generated_type::<ItemGrant>()
         .build()
         .expect("derived Value binding should seal");
     let program = engine
@@ -288,7 +288,7 @@ fn enum_value_derive_generates_schema_and_structural_codec() {
 #[test]
 fn derived_enum_round_trips_through_real_vela_match() {
     let engine = Engine::builder()
-        .register_type::<GrantDecision>()
+        .install_generated_type::<GrantDecision>()
         .build()
         .expect("derived enum binding should seal");
     let program = engine
@@ -337,9 +337,9 @@ fn increase(value: host::GrantDecision) {
 
 #[test]
 fn derived_enum_returned_by_rust_native_keeps_match_identity() {
-    let builder = Engine::builder().register_type::<GrantDecision>();
+    let builder = Engine::builder().install_generated_type::<GrantDecision>();
     let engine = builder
-        .register_exports(vela_export_bundle_current_decision())
+        .install_registration(vela_function_current_decision())
         .build()
         .expect("derived enum and native should seal together");
     let program = engine
@@ -368,9 +368,9 @@ fn count_decision() {
 
 #[test]
 fn derived_enum_returned_by_async_rust_native_keeps_match_identity() {
-    let builder = Engine::builder().register_type::<GrantDecision>();
+    let builder = Engine::builder().install_generated_type::<GrantDecision>();
     let engine = builder
-        .register_exports(vela_export_bundle_async_decision())
+        .install_registration(vela_function_async_decision())
         .build()
         .expect("derived enum and async native should seal together");
     let program = engine

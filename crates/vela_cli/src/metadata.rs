@@ -107,7 +107,7 @@ mod tests {
         let app = CliServices::builder(
             Engine::builder()
                 .capability(Capability::TaskSpawn)
-                .register_type_binding::<Observed>(
+                .install_type_binding::<Observed>(
                     Observed::vela_type_binding().host_constructor_fn(
                         HostConstructionLifetime::CallScoped,
                         constructor,

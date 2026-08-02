@@ -5,6 +5,7 @@ use vela_engine::error::EngineResult;
 use vela_engine::host_type::HostTypeSpec;
 use vela_engine::native::{EffectSet, FunctionAccess, NativeFunctionDesc, TypeHint};
 use vela_engine::permission::Capability;
+use vela_engine::registration::VelaBindings;
 use vela_macros::{ScriptHost, ScriptReflect, methods};
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::permissions::ReflectPolicy;
@@ -17,6 +18,7 @@ use super::ids;
 
 pub(crate) fn build_gameplay_engine(options: GameEngineOptions) -> EngineResult<Engine> {
     let mut builder = Engine::builder().with_standard_natives();
+    let mut bindings = VelaBindings::new();
 
     if options.host_read {
         builder = builder.capability(Capability::HostRead);
@@ -46,22 +48,23 @@ pub(crate) fn build_gameplay_engine(options: GameEngineOptions) -> EngineResult<
         builder = builder.register_type_desc(context_type_desc(options.schema.config));
     }
     if options.schema.player {
-        builder = builder.register_type_with_exports::<Player>(Player::vela_inherent_exports());
+        bindings
+            .register_type(Player::vela_type())
+            .register_methods(Player::vela_methods());
     }
     if options.schema.monster {
-        builder = builder.register_type::<Monster>();
+        bindings.register_type(Monster::vela_type());
     }
     if options.schema.inventory {
-        builder = builder
-            .register_type::<Inventory>()
-            .register_type::<ItemStack>()
-            .register_type_spec(string_item_map_type());
+        bindings.register_type(Inventory::vela_type());
+        bindings.register_type(ItemStack::vela_type());
+        builder = builder.register_type_spec(string_item_map_type());
     }
     if options.schema.quest {
         builder = builder.register_type_desc(HostQuestProgress::vela_reflect_type_desc());
     }
     if options.schema.config {
-        builder = builder.register_type::<Config>();
+        bindings.register_type(Config::vela_type());
     }
     if options.schema.reward {
         builder = builder
@@ -72,7 +75,7 @@ pub(crate) fn build_gameplay_engine(options: GameEngineOptions) -> EngineResult<
             )
             .register_typed_native_fn(gameplay_reward_grant_desc(), gameplay_reward_grant);
     }
-    builder.build()
+    builder.register_bindings(bindings).build()
 }
 
 fn context_type_desc(with_config: bool) -> TypeDesc {

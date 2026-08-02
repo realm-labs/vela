@@ -50,12 +50,12 @@ impl EquipmentTable {
 fn borrowed_host_object_slice_seals_and_compiles_as_a_collection_view() {
     let engine = Engine::builder()
         .capability(Capability::HostRead)
-        .register_type::<Equipment>()
-        .register_exports(Equipment::vela_inherent_exports())
-        .register_type::<EquipmentEntry>()
-        .register_exports(EquipmentEntry::vela_inherent_exports())
-        .register_type::<EquipmentTable>()
-        .register_exports(EquipmentTable::vela_inherent_exports())
+        .install_generated_type::<Equipment>()
+        .install_registration(Equipment::vela_methods())
+        .install_generated_type::<EquipmentEntry>()
+        .install_registration(EquipmentEntry::vela_methods())
+        .install_generated_type::<EquipmentTable>()
+        .install_registration(EquipmentTable::vela_methods())
         .build()
         .expect("host slice bindings seal");
 

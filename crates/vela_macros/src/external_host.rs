@@ -225,7 +225,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             fn register(
                 builder: ::vela_engine::builder::EngineBuilder,
             ) -> ::vela_engine::builder::EngineBuilder {
-                builder.register_type_binding::<Self>(
+                builder.install_type_binding::<Self>(
                     <Self as ::vela_engine::schema::ScriptHostSchema>::
                         script_host_binding(),
                 )
@@ -276,7 +276,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         pub fn #register_ident(
             builder: ::vela_engine::builder::EngineBuilder,
         ) -> ::vela_engine::builder::EngineBuilder {
-            let builder = builder.register_type::<#self_ty>();
+            let builder = builder.install_generated_type::<#self_ty>();
             #(
                 let builder = #adapter_ident::#registration_functions(builder);
             )*
