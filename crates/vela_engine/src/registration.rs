@@ -118,6 +118,69 @@ impl<T> MethodRegistration<T> {
         )
     }
 
+    /// Registers one shared-receiver method that returns a newly owned Host
+    /// object retained by the active Runtime.
+    ///
+    /// This is the Host equivalent of a Rust method such as `clone() -> Self`:
+    /// the receiver may be a nested borrowed Host path, while the returned
+    /// object has independent identity and can be used after that borrow ends.
+    #[must_use]
+    pub fn shared_owned_host<U>(
+        mut desc: NativeMethodDesc,
+        function: impl Fn(&T, &[OwnedValue]) -> VmResult<U> + Send + Sync + 'static,
+    ) -> Self
+    where
+        T: Send + Sync + 'static,
+        U: vela_host::object::ScriptHostObject + Send + Sync + 'static,
+    {
+        desc.receiver = ReceiverCapability::Shared;
+        let method_id = desc.id;
+        let callable = desc.name.clone();
+        Self::from_installer(move |builder| {
+            builder.register_native_method_fn(desc, move |receiver, args, host| {
+                let scoped_receiver =
+                    crate::host_call::retain_registered_host_method_receiver(receiver, host)?;
+                if !receiver.segments.is_empty() && scoped_receiver.is_none() {
+                    return crate::host_call::call_registered_host_method_through_adapter(
+                        receiver, args, method_id, host,
+                    );
+                }
+                let receiver_root = scoped_receiver.unwrap_or(receiver.root);
+                let requests = [(receiver_root, HostLeaseKind::Shared)];
+                let mut invocation_result = None;
+                let lease_result =
+                    host.adapter
+                        .with_host_leases(&requests, &mut |leases, _leased_adapter| {
+                            let receiver = leases
+                                .first()
+                                .expect("one receiver lease")
+                                .object()
+                                .lease_any()
+                                .and_then(|object| object.downcast_ref::<T>())
+                                .ok_or_else(|| {
+                                    vela_host::lease::host_lease_unsupported(receiver_root)
+                                })?;
+                            invocation_result =
+                                Some(catch_export_panic(&callable, || function(receiver, args)));
+                            Ok(())
+                        });
+                let object = match lease_result {
+                    Ok(()) => invocation_result.expect("host lease callback must run exactly once"),
+                    Err(error) => Err(error.into()),
+                };
+                let result = match object {
+                    Ok(object) => host
+                        .adapter
+                        .retain_owned_host(Box::new(object))
+                        .map(OwnedValue::HostRef)
+                        .map_err(Into::into),
+                    Err(error) => Err(error),
+                };
+                release_registered_receiver(scoped_receiver, result, host)
+            })
+        })
+    }
+
     /// Registers one exclusive-receiver method for an explicitly registered
     /// Host type. Arguments and the return value use Vela's owned dynamic
     /// values.

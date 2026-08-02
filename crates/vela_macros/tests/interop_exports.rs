@@ -72,6 +72,28 @@ struct RegisteredQueueOwner {
     queue: VecDeque<i64>,
 }
 
+#[derive(Debug, ScriptHost)]
+#[vela(path = "game::CloneableExternalOwner")]
+struct CloneableExternalOwner {
+    #[vela(host = "game::CloneableExternal")]
+    value: CloneableExternal,
+}
+
+#[derive(Clone, Debug)]
+struct CloneableExternal {
+    value: i64,
+}
+
+#[external_host(
+    path = "game::CloneableExternal",
+    register = "register_cloneable_external"
+)]
+impl CloneableExternal {
+    pub fn value(&self) -> i64 {
+        self.value
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum ExternalQuality {
     Normal,
@@ -777,6 +799,48 @@ fn centralized_external_host_binding_supports_borrowed_children() {
         runtime.value_to_owned(&result),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I32(42)))
     );
+}
+
+#[test]
+fn registered_nested_clone_returns_an_independently_owned_host() {
+    let mut bindings = VelaBindings::new();
+    register_cloneable_external(&mut bindings);
+    let clone_desc = registered_host_method_desc("game::CloneableExternal", "clone")
+        .returns(TypeHint::Host(
+            <CloneableExternal as vela_engine::schema::ScriptHostSchema>::script_host_type_desc()
+                .key,
+        ))
+        .effects(EffectSet::host_read())
+        .access(FunctionAccess::public());
+    bindings.type_mut::<CloneableExternal>().register_method(
+        MethodRegistration::shared_owned_host(clone_desc, |value: &CloneableExternal, _args| {
+            Ok(value.clone())
+        }),
+    );
+    bindings.register_type(TypeRegistration::<CloneableExternalOwner>::of());
+    let engine = Engine::builder()
+        .capability(Capability::HostRead)
+        .register_bindings(bindings)
+        .build()
+        .expect("owned Host clone bindings should register");
+    let program = engine
+        .compile_source(
+            "fn main(owner: CloneableExternalOwner) { let value = owner.value.clone(); return value.value(); }",
+        )
+        .expect("nested registered Host clone should compile");
+    let mut runtime = Runtime::new(engine, program).expect("owned Host runtime should initialize");
+    let owner = CloneableExternalOwner {
+        value: CloneableExternal { value: 42 },
+    };
+    let result = runtime
+        .call(
+            "main",
+            CallArgs::new().with_host_ref("owner", &owner),
+            CallOptions::unbounded(),
+        )
+        .expect("nested clone should detach the returned Host from its owner borrow");
+
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(42)));
 }
 
 #[test]
