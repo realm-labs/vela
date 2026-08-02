@@ -3,7 +3,8 @@ use std::collections::BTreeSet;
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
 use syn::{
-    ImplItem, ItemImpl, LitBool, LitStr, Result, Visibility, ext::IdentExt, parse::Parser, parse2,
+    FnArg, GenericArgument, ImplItem, ItemImpl, LitBool, LitStr, PathArguments, Result, ReturnType,
+    Type, Visibility, ext::IdentExt, parse::Parser, parse2,
 };
 
 use crate::attrs::{parse_key_value_attr, parse_qualified_name, reject_duplicate_attr_keys};
@@ -28,7 +29,6 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let MethodsOptions {
         owner_path,
         public_only,
-        explicit_only,
     } = parse_options(attr, &item)?;
     let trait_path = item.trait_.as_ref().map(|(_, path, _)| path);
     let mut generated = Vec::new();
@@ -42,15 +42,32 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         if method_attrs.skip {
             continue;
         }
-        if explicit_only && !method_attrs.explicit {
-            continue;
-        }
         if public_only && !matches!(method.vis, Visibility::Public(_)) {
             continue;
         }
-        if trait_path.is_none()
-            && matches!(method.vis, Visibility::Inherited)
-            && !method_attrs.explicit
+        if !method_attrs.explicit
+            && method
+                .attrs
+                .iter()
+                .any(|attr| attr.path().is_ident("cfg") || attr.path().is_ident("cfg_attr"))
+        {
+            continue;
+        }
+        let Some(FnArg::Receiver(receiver)) = method.sig.inputs.first() else {
+            if method_attrs.explicit {
+                return Err(syn::Error::new_spanned(
+                    &method.sig,
+                    "#[vela] associated functions require constructor registration; #[vela_macros::methods] exports instance methods",
+                ));
+            }
+            continue;
+        };
+        if !method_attrs.explicit
+            && (receiver.reference.is_none()
+                || !method.sig.generics.params.is_empty()
+                || method.sig.generics.where_clause.is_some()
+                || has_opaque_return(&method.sig.output)
+                || has_nested_borrowed_return(&method.sig.output))
         {
             continue;
         }
@@ -62,10 +79,22 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         } else {
             classify_method(&method.sig, &method_attrs.effects)?
         };
-        let docs = docs_from_attrs(&method.attrs);
         let public_name = method_attrs
             .name
+            .clone()
             .unwrap_or_else(|| method.sig.ident.to_string());
+        let Some(adapter) =
+            emission::method_adapter(method, &item.self_ty, trait_path, &public_name, &signature)
+        else {
+            if method_attrs.explicit {
+                return Err(syn::Error::new_spanned(
+                    &method.sig,
+                    "this exported method requires the async or borrowed-return adapter batch",
+                ));
+            }
+            continue;
+        };
+        let docs = docs_from_attrs(&method.attrs);
         generated.push(emission::method_contract(
             method,
             &item.self_ty,
@@ -78,15 +107,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             },
             &signature,
         ));
-        generated.push(
-            emission::method_adapter(method, &item.self_ty, trait_path, &public_name, &signature)
-                .ok_or_else(|| {
-                syn::Error::new_spanned(
-                    &method.sig,
-                    "this exported method requires the async or borrowed-return adapter batch",
-                )
-            })?,
-        );
+        generated.push(adapter);
         let helper_ident = method.sig.ident.unraw();
         contract_functions.push(quote::format_ident!(
             "vela_callable_contract_{helper_ident}"
@@ -144,6 +165,43 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             #bundle
         }
     })
+}
+
+fn has_opaque_return(output: &ReturnType) -> bool {
+    matches!(output, ReturnType::Type(_, ty) if matches!(ty.as_ref(), Type::ImplTrait(_)))
+}
+
+fn has_nested_borrowed_return(output: &ReturnType) -> bool {
+    let ReturnType::Type(_, ty) = output else {
+        return false;
+    };
+    nested_borrowed_type(ty, false)
+}
+
+fn nested_borrowed_type(ty: &Type, nested_in_owned_container: bool) -> bool {
+    match ty {
+        Type::Reference(_) => nested_in_owned_container,
+        Type::Tuple(tuple) => tuple
+            .elems
+            .iter()
+            .any(|element| nested_borrowed_type(element, nested_in_owned_container)),
+        Type::Path(path) => {
+            let Some(segment) = path.path.segments.last() else {
+                return false;
+            };
+            let transparent = matches!(segment.ident.to_string().as_str(), "Option" | "Result");
+            let PathArguments::AngleBracketed(arguments) = &segment.arguments else {
+                return false;
+            };
+            arguments.args.iter().any(|argument| {
+                let GenericArgument::Type(argument) = argument else {
+                    return false;
+                };
+                nested_borrowed_type(argument, nested_in_owned_container || !transparent)
+            })
+        }
+        _ => false,
+    }
 }
 
 #[derive(Default)]
@@ -234,13 +292,11 @@ pub(crate) fn take_method_attrs(method: &mut syn::ImplItemFn) -> Result<MethodAt
 struct MethodsOptions {
     owner_path: String,
     public_only: bool,
-    explicit_only: bool,
 }
 
 fn parse_options(attr: TokenStream, item: &ItemImpl) -> Result<MethodsOptions> {
     let mut configured = None;
     let mut public_only = false;
-    let mut explicit_only = false;
     let parser = syn::meta::parser(|meta| {
         if meta.path.is_ident("path") {
             configured = Some(parse_qualified_name(
@@ -253,10 +309,6 @@ fn parse_options(attr: TokenStream, item: &ItemImpl) -> Result<MethodsOptions> {
             public_only = true;
             return Ok(());
         }
-        if meta.path.is_ident("explicit_only") {
-            explicit_only = true;
-            return Ok(());
-        }
         Err(meta.error("unsupported methods attribute"))
     });
     parser.parse2(attr)?;
@@ -264,7 +316,6 @@ fn parse_options(attr: TokenStream, item: &ItemImpl) -> Result<MethodsOptions> {
         return Ok(MethodsOptions {
             owner_path: configured,
             public_only,
-            explicit_only,
         });
     }
     let syn::Type::Path(path) = item.self_ty.as_ref() else {
@@ -276,7 +327,6 @@ fn parse_options(attr: TokenStream, item: &ItemImpl) -> Result<MethodsOptions> {
     Ok(MethodsOptions {
         owner_path: path.path.to_token_stream().to_string().replace(' ', ""),
         public_only,
-        explicit_only,
     })
 }
 
@@ -303,7 +353,7 @@ mod tests {
 
         assert!(output.contains("vela_callable_contract_level"));
         assert!(output.contains("vela_callable_contract_grant"));
-        assert!(!output.contains("vela_callable_contract_helper"));
+        assert!(output.contains("vela_callable_contract_helper"));
         assert!(output.contains("host_read"));
         assert!(output.contains("host_write"));
     }
@@ -327,13 +377,13 @@ mod tests {
     }
 
     #[test]
-    fn methods_explicit_only_exports_annotated_methods() {
+    fn methods_automatically_exports_supported_instance_methods() {
         let expanded = expand_result(
-            quote! { path = "game::Player", explicit_only },
+            quote! { path = "game::Player" },
             quote! {
                 impl Player {
-                    #[vela]
                     pub fn level(&self) -> i64 { self.level }
+                    pub fn new(level: i64) -> Self { Self { level } }
                     pub fn unsupported_shape(&self) -> impl Iterator<Item = i64> {
                         std::iter::once(self.level)
                     }
@@ -344,18 +394,18 @@ mod tests {
         let output = expanded.to_string();
 
         assert!(output.contains("vela_callable_contract_level"));
+        assert!(!output.contains("vela_callable_contract_new"));
         assert!(!output.contains("vela_callable_contract_unsupported_shape"));
     }
 
     #[test]
-    fn methods_export_crate_visible_and_explicit_private_methods() {
+    fn methods_export_all_supported_instance_methods_regardless_of_visibility() {
         let expanded = expand_result(
             quote! { path = "game::Player" },
             quote! {
                 impl Player {
                     pub(crate) fn crate_visible(&self) -> i64 { 1 }
 
-                    #[vela]
                     fn explicitly_exposed(&self) -> i64 { 2 }
 
                     #[vela(skip)]
@@ -371,7 +421,44 @@ mod tests {
         assert!(output.contains("vela_callable_contract_crate_visible"));
         assert!(output.contains("vela_callable_contract_explicitly_exposed"));
         assert!(!output.contains("vela_callable_contract_hidden"));
-        assert!(!output.contains("vela_callable_contract_helper"));
+        assert!(output.contains("vela_callable_contract_helper"));
+    }
+
+    #[test]
+    fn explicit_metadata_keeps_unsupported_methods_strict() {
+        let error = expand_result(
+            quote! { path = "game::Player" },
+            quote! {
+                impl Player {
+                    #[vela]
+                    pub fn values(&self) -> impl Iterator<Item = i64> {
+                        std::iter::empty()
+                    }
+                }
+            },
+        )
+        .expect_err("explicitly exported unsupported methods must report their signature");
+
+        assert!(
+            error
+                .to_string()
+                .contains("unsupported exported Rust boundary type")
+        );
+    }
+
+    #[test]
+    fn explicit_only_option_is_removed() {
+        let error = expand_result(
+            quote! { path = "game::Player", explicit_only },
+            quote! {
+                impl Player {
+                    pub fn level(&self) -> i64 { self.level }
+                }
+            },
+        )
+        .expect_err("the explicit-only compatibility switch must stay removed");
+
+        assert!(error.to_string().contains("unsupported methods attribute"));
     }
 
     #[test]

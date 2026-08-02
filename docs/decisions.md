@@ -3893,11 +3893,15 @@ Host type after peeling standard collection and deref wrappers. Traversal is
 cycle-safe by Rust `TypeId`, but an incompatible pre-existing binding remains a
 sealing error.
 
-`#[vela_macros::methods]` is the explicit group boundary. Non-private Rust
-visibility is exported automatically; private methods require an explicit
-`#[vela(...)]`, and `#[vela(skip)]` always excludes a method. This keeps
-crate-local business APIs available to patches without making unrelated
-private helpers ambient script surface.
+`#[vela_macros::methods]` is the instance-method group boundary. Every
+representable receiver method is exported automatically regardless of Rust
+visibility; `#[vela(...)]` adds metadata such as a script name or effects, it
+does not opt a method into the group. Ordinary associated functions remain on
+the separate constructor-registration path. An unannotated method whose Rust
+signature has no Vela boundary representation remains Rust-only, while an
+explicitly annotated unsupported signature is a macro error rather than a
+silent omission. `public_only` remains available for untrusted embedding
+surfaces, and `#[vela(skip)]` remains an explicit exceptional exclusion.
 
 ## Validation Rules
 
