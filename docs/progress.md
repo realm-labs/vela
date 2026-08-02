@@ -68,8 +68,8 @@ database/IO/Host work cannot bypass Engine, policy, or Service ceilings. No new
 unsafe boundary was required.
 
 Rust embedding now has one public registration model: derived/generated and
-manual Values/Hosts produce `TypeRegistration<T>`, method groups produce
-`MethodsRegistration<T>`, and free-function modules produce
+manual Values/Hosts produce `TypeRegistration<T>`, individual methods and
+method groups produce `MethodRegistration<T>`/`MethodsRegistration<T>`, and free-function modules produce
 `ModuleRegistration`. Applications collect all three in `VelaBindings` and
 install it once. Each generated service domain still owns one application
 builder. `Service<dyn Trait>` fields declare the domain schema; concrete default

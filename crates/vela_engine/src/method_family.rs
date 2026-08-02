@@ -176,8 +176,8 @@ where
     /// Erases the internal monomorphized family into the ordinary typed method
     /// registration object consumed by application bindings.
     #[must_use]
-    pub fn into_registration(self) -> crate::registration::MethodsRegistration<T> {
-        crate::registration::MethodsRegistration::from_installer(move |builder| {
+    pub fn into_registration(self) -> crate::registration::MethodRegistration<T> {
+        crate::registration::MethodRegistration::from_installer(move |builder| {
             self.install(builder)
         })
     }

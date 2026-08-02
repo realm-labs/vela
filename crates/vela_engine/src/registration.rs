@@ -55,6 +55,39 @@ pub struct MethodsRegistration<T> {
     marker: PhantomData<fn() -> T>,
 }
 
+/// One method owned by one concrete Rust type.
+pub struct MethodRegistration<T> {
+    methods: MethodsRegistration<T>,
+}
+
+impl<T> MethodRegistration<T> {
+    #[must_use]
+    pub fn new(
+        contract: crate::interop::CallableContract,
+        installer: impl Fn(EngineBuilder) -> EngineBuilder + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            methods: MethodsRegistration::new(vec![contract], installer),
+        }
+    }
+
+    /// The callable contract contributed by this method.
+    #[must_use]
+    pub fn contract(&self) -> Option<&crate::interop::CallableContract> {
+        self.methods.contracts().first()
+    }
+
+    #[doc(hidden)]
+    #[must_use]
+    pub fn from_installer(
+        installer: impl FnOnce(EngineBuilder) -> EngineBuilder + 'static,
+    ) -> Self {
+        Self {
+            methods: MethodsRegistration::from_installer(installer),
+        }
+    }
+}
+
 enum MethodsSource {
     Bundle(CallableRegistration),
     Installer(Installer),
@@ -225,6 +258,11 @@ impl<T: 'static> RegisteredType<'_, T> {
             .installers
             .push(Box::new(move |builder| registration.install(builder)));
         self
+    }
+
+    /// Attaches one generated or manually constructed method to `T`.
+    pub fn register_method(self, registration: MethodRegistration<T>) -> Self {
+        self.register_methods(registration.methods)
     }
 }
 

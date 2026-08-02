@@ -3905,8 +3905,9 @@ surfaces, and `#[vela(skip)]` remains an explicit exceptional exclusion.
 
 ### Registration Objects Share One Application-Owned Model
 
-Types, owned methods, and free-function modules are represented by
-`TypeRegistration<T>`, `MethodsRegistration<T>`, and `ModuleRegistration`.
+Types, individual/owned method groups, and free-function modules are represented
+by `TypeRegistration<T>`, `MethodRegistration<T>`/`MethodsRegistration<T>`, and
+`ModuleRegistration`.
 Generated macros and manual bindings construct those same objects. Applications
 attach method registrations through the typed handle returned by
 `VelaBindings::register_type`, add modules to the same binding set, and install

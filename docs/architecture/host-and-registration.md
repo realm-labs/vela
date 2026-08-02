@@ -787,7 +787,7 @@ enters execution only through a call-scoped or Runtime-owned `HostRef`.
 
 Rust callables use `#[vela_macros::export]`, `#[vela_macros::export_module]`,
 or `#[vela_macros::methods]`. These macros produce `ModuleRegistration` or
-`MethodsRegistration<T>` values. Applications collect them with their
+`MethodRegistration<T>`/`MethodsRegistration<T>` values. Applications collect them with their
 `TypeRegistration<T>` values in one `VelaBindings`, then install that set once
 through `EngineBuilder::register_bindings`. Low-level descriptor constructors
 remain framework hooks rather than a parallel embedding API.

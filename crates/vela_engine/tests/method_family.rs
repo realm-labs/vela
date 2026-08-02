@@ -103,7 +103,7 @@ fn nominal_method_family_dispatches_to_rust_monomorphized_instances() {
     let mut bindings = VelaBindings::new();
     bindings
         .register_type(EventRecorder::vela_type())
-        .register_methods(family.into_registration());
+        .register_method(family.into_registration());
     let engine = Engine::builder()
         .capability(Capability::HostWrite)
         .register_bindings(bindings)

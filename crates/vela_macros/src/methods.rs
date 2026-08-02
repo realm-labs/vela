@@ -109,10 +109,21 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         ));
         generated.push(adapter);
         let helper_ident = method.sig.ident.unraw();
-        contract_functions.push(quote::format_ident!(
-            "vela_callable_contract_{helper_ident}"
-        ));
-        registration_functions.push(quote::format_ident!("vela_register_export_{helper_ident}"));
+        let contract_ident = quote::format_ident!("vela_callable_contract_{helper_ident}");
+        let registration_ident = quote::format_ident!("vela_register_export_{helper_ident}");
+        let method_registration_ident = quote::format_ident!("vela_method_{helper_ident}");
+        generated.push(quote! {
+            #[must_use]
+            pub fn #method_registration_ident(
+            ) -> ::vela_engine::registration::MethodRegistration<Self> {
+                ::vela_engine::registration::MethodRegistration::new(
+                    Self::#contract_ident(),
+                    Self::#registration_ident,
+                )
+            }
+        });
+        contract_functions.push(contract_ident);
+        registration_functions.push(registration_ident);
     }
     if trait_path.is_some() && generated.is_empty() {
         return Err(syn::Error::new_spanned(

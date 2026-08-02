@@ -10,7 +10,8 @@ pub use crate::native::{
 };
 pub use crate::permission::{Capability, CapabilitySet, ExecutionProfile};
 pub use crate::registration::{
-    MethodsRegistration, ModuleRegistration, RegisteredType, TypeRegistration, VelaBindings,
+    MethodRegistration, MethodsRegistration, ModuleRegistration, RegisteredType, TypeRegistration,
+    VelaBindings,
 };
 pub use crate::runtime::{
     CallArgs, CallControl, CallOptions, CallSnapshot, CallStatus, ReloadSource, Runtime,
