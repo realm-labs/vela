@@ -759,6 +759,17 @@ generics. Manual `register_type_binding::<T>(binding)` remains the escape hatch 
 external types and custom codecs; generated service bundles will combine those
 explicit leaves with the same recursive owned-Value closure.
 
+An embedding may also expose one Rust generic operation through a
+`NominalHostMethodFamily<T>`. The family publishes exactly one ordinary Host
+method with one `Any` parameter and installs one Rust-monomorphized adapter for
+each accepted nominal `Record` or `Enum` type. Runtime selection uses the
+argument's stable Vela type path and the selected adapter performs the ordinary
+generated decode before calling Rust. Re-registering the same concrete type is
+idempotent, so an application protocol registry can remain the only list of
+accepted message types even when a type has several handlers. This is an
+embedding registration facility, not script generics or overload resolution;
+containers without retained nominal element identity are deliberately rejected.
+
 Registered structural types used by a linked program are emitted into its
 nominal descriptor table. Every Rust-owned argument and every sync or async
 native result is materialized against that table before script execution, so

@@ -3903,6 +3903,16 @@ explicitly annotated unsupported signature is a macro error rather than a
 silent omission. `public_only` remains available for untrusted embedding
 surfaces, and `#[vela(skip)]` remains an explicit exceptional exclusion.
 
+### Rust Generic Operations Register As One Nominal Method Family
+
+`NominalHostMethodFamily<T>` exposes one non-generic, non-overloaded Host
+method and registers concrete Rust adapters for accepted nominal Value types.
+The stable Record/Enum path selects the adapter, which then performs ordinary
+typed decoding and invokes the Rust monomorph. Duplicate registration of one
+concrete type is idempotent so an embedding's protocol registry can be the sole
+type list. Structural containers that do not retain a nominal element identity
+cannot be family dispatch keys.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

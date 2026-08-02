@@ -28,6 +28,7 @@ pub mod interop;
 pub mod io;
 mod metadata;
 pub mod method;
+pub mod method_family;
 pub mod native;
 pub mod permission;
 pub mod prelude;

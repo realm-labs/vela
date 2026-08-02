@@ -3,6 +3,7 @@
 mod args;
 mod host_collection_returns;
 mod hot_reload;
+mod method_family;
 mod portable_artifact;
 mod prelude;
 mod script_reflection;
