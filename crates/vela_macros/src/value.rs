@@ -67,13 +67,16 @@ fn expand_struct(
     type_attrs: ScriptAttrs,
     identity: TypeIdentity,
 ) -> Result<TokenStream> {
-    let Fields::Named(named) = &data.fields else {
-        return Err(spanned_error(
-            &data.fields,
-            "Value requires named struct fields",
-        ));
+    let fields = match &data.fields {
+        Fields::Named(named) => collect_fields(named, &identity.stable_path)?,
+        Fields::Unit => Vec::new(),
+        Fields::Unnamed(_) => {
+            return Err(spanned_error(
+                &data.fields,
+                "Value requires named fields or a unit struct",
+            ));
+        }
     };
-    let fields = collect_fields(named, &identity.stable_path)?;
     let schema_hash = schema_hash(
         &identity.name,
         &identity.module,
@@ -151,6 +154,11 @@ fn expand_struct(
         }
     });
     let field_count = fields.len();
+    let decoded_value = if matches!(data.fields, Fields::Unit) {
+        quote! { Self }
+    } else {
+        quote! { Self { #(#decode_fields),* } }
+    };
     let dependency_registrations = fields.iter().map(|field| {
         let rust_type = &field.rust_type;
         quote! {
@@ -294,7 +302,7 @@ fn expand_struct(
                         },
                     ));
                 }
-                Ok(Self { #(#decode_fields),* })
+                Ok(#decoded_value)
             }
         }
 

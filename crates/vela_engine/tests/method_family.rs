@@ -42,6 +42,16 @@ impl TestEvent for Multiplied {
     }
 }
 
+#[derive(Debug, Value)]
+#[vela(path = "test::Tick")]
+struct Tick;
+
+impl TestEvent for Tick {
+    fn amount(self) -> i64 {
+        1
+    }
+}
+
 impl EventRecorder {
     fn publish<E: TestEvent>(&mut self, event: E) -> i64 {
         self.total += event.amount();
@@ -69,6 +79,7 @@ fn nominal_method_family_dispatches_to_rust_monomorphized_instances() {
     let mut family = NominalHostMethodFamily::<EventRecorder>::new(desc);
     family.register_instance::<Added, _, _>(EventRecorder::publish::<Added>);
     family.register_instance::<Multiplied, _, _>(EventRecorder::publish::<Multiplied>);
+    family.register_instance::<Tick, _, _>(EventRecorder::publish::<Tick>);
 
     let engine = family
         .install(
@@ -83,7 +94,8 @@ fn nominal_method_family_dispatches_to_rust_monomorphized_instances() {
             r#"
 pub fn main(recorder: EventRecorder) -> i64 {
     recorder.publish(test::Added { amount: 2 });
-    return recorder.publish(test::Multiplied { factor: 3 });
+    recorder.publish(test::Multiplied { factor: 3 });
+    return recorder.publish(test::Tick {});
 }
 "#,
         )
@@ -98,6 +110,6 @@ pub fn main(recorder: EventRecorder) -> i64 {
         )
         .expect("method family invocation");
 
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(32)));
-    assert_eq!(recorder.total, 32);
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(33)));
+    assert_eq!(recorder.total, 33);
 }

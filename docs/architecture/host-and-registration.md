@@ -736,9 +736,10 @@ but never own the Rust allocation.
 For structural DTOs, `#[derive(Value)]` generates the exact `ScriptStruct` or
 `ScriptEnum` descriptor, stable field and variant IDs, direct
 `IntoScriptArg`/`FromScriptArg` lowering, and `vela_type_binding()`. Named Rust
-struct fields and enum variants participate by default; enums support unit and
-named-field variants, while tuple variants are rejected until they have one
-explicit structural ABI. `#[vela(name = "...")]` changes a public name and
+struct fields and enum variants participate by default. Unit structs encode as
+nominal zero-field Records; enums support unit and named-field variants, while
+tuple structs and tuple variants are rejected until they have one explicit
+structural ABI. `#[vela(name = "...")]` changes a public name and
 `alias` preserves stable identity. Fields and variants cannot be skipped
 because decoding and encoding must cover the exact Rust value; hosts with
 partial/private representations use a manual `ValueCodec`. The generated
