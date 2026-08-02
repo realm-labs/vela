@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use vela_common::{HostMethodId, HostTypeId};
@@ -57,6 +57,7 @@ pub(super) struct ExecutionHost<'state, 'host> {
     fallback: FallbackAdapter<'host>,
     next_direct_object_id: u64,
     call_scoped_hosts: Vec<HostRef>,
+    expired_call_scoped_hosts: BTreeSet<HostRef>,
     scoped_hosts: HostSlotTable<ScopedHostBinding<'host>>,
     expired_scoped_hosts: BTreeMap<HostRef, BorrowLeaseId>,
     expired_scoped_slots: BTreeMap<HostSlotRef, HostRef>,
@@ -136,6 +137,7 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
             fallback,
             next_direct_object_id: EXECUTION_HOST_OBJECT_ID_BASE,
             call_scoped_hosts: Vec::new(),
+            expired_call_scoped_hosts: BTreeSet::new(),
             scoped_hosts: HostSlotTable::new(),
             expired_scoped_hosts: BTreeMap::new(),
             expired_scoped_slots: BTreeMap::new(),
@@ -171,6 +173,31 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
     }
 
     fn release_scoped_host_impl(&mut self, root: HostRef, allow_expired: bool) -> HostResult<bool> {
+        if let Some(index) = self
+            .call_scoped_hosts
+            .iter()
+            .position(|candidate| *candidate == root)
+        {
+            self.call_scoped_hosts.swap_remove(index);
+            if let Some(handle) = self.host_slots.handle_for(root) {
+                let _ = self.host_slots.release(handle);
+                self.expired_scoped_slots.insert(handle, root);
+            }
+            debug_assert!(self.host_arena.release(root));
+            self.expired_call_scoped_hosts.insert(root);
+            return Ok(true);
+        }
+        if self.expired_call_scoped_hosts.contains(&root) {
+            if allow_expired {
+                return Ok(false);
+            }
+            return Err(HostError {
+                kind: HostErrorKind::ExpiredBorrowedHostRef {
+                    path: vela_host::path::HostPath::new(root),
+                },
+                source_span: None,
+            });
+        }
         let Some(handle) = self.scoped_handle(root) else {
             if self.expired_scoped_hosts.contains_key(&root) {
                 if allow_expired {
@@ -249,7 +276,9 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
         root: HostRef,
         kind: HostLeaseKind,
     ) -> HostResult<ErasedHostLease<'host>> {
-        if self.expired_scoped_hosts.contains_key(&root) {
+        if self.expired_call_scoped_hosts.contains(&root)
+            || self.expired_scoped_hosts.contains_key(&root)
+        {
             return Err(HostError {
                 kind: HostErrorKind::ExpiredBorrowedHostRef {
                     path: vela_host::path::HostPath::new(root),
@@ -977,7 +1006,8 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
     ) -> HostResult<()> {
         let call_scoped = self.call_scoped_hosts.contains(&root);
         let live = self.scoped_handle(root).is_some();
-        let expired = self.expired_scoped_hosts.contains_key(&root);
+        let expired = self.expired_call_scoped_hosts.contains(&root)
+            || self.expired_scoped_hosts.contains_key(&root);
         let invalid = match boundary {
             HostRefLifetimeBoundary::AsyncSuspend => call_scoped || live,
             HostRefLifetimeBoundary::PersistentState | HostRefLifetimeBoundary::RootReturn => {

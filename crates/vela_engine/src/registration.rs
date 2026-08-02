@@ -118,14 +118,16 @@ impl<T> MethodRegistration<T> {
         )
     }
 
-    /// Registers one shared-receiver method that returns a newly owned Host
-    /// object retained by the active Runtime.
+    /// Registers one shared-receiver method that returns a newly constructed
+    /// Host retained for the active root call.
     ///
     /// This is the Host equivalent of a Rust method such as `clone() -> Self`:
     /// the receiver may be a nested borrowed Host path, while the returned
     /// object has independent identity and can be used after that borrow ends.
+    /// It cannot escape into persistent script state and is reclaimed when the
+    /// root call ends unless `host::release` frees it earlier.
     #[must_use]
-    pub fn shared_owned_host<U>(
+    pub fn shared_call_scoped_host<U>(
         mut desc: NativeMethodDesc,
         function: impl Fn(&T, &[OwnedValue]) -> VmResult<U> + Send + Sync + 'static,
     ) -> Self
@@ -171,7 +173,7 @@ impl<T> MethodRegistration<T> {
                 let result = match object {
                     Ok(object) => host
                         .adapter
-                        .retain_owned_host(Box::new(object))
+                        .retain_call_scoped_host(Box::new(object))
                         .map(OwnedValue::HostRef)
                         .map_err(Into::into),
                     Err(error) => Err(error),

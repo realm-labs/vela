@@ -671,7 +671,7 @@ impl EngineBuilder {
                     .returns(crate::native::TypeHint::unit())
                     .effects(crate::native::EffectSet::pure())
                     .access(crate::native::FunctionAccess::public())
-                    .docs("Releases one call-tree-scoped borrowed host value."),
+                    .docs("Releases one call-scoped host value."),
                 |args, host| {
                     let [OwnedValue::HostRef(root)] = args else {
                         return Err(vela_vm::error::VmError::new(
@@ -692,7 +692,7 @@ impl EngineBuilder {
                     .returns(crate::native::TypeHint::boolean())
                     .effects(crate::native::EffectSet::pure())
                     .access(crate::native::FunctionAccess::public())
-                    .docs("Idempotently releases one call-tree-scoped borrowed host value."),
+                    .docs("Idempotently releases one call-scoped host value."),
                 |args, host| {
                     let [OwnedValue::HostRef(root)] = args else {
                         return Err(vela_vm::error::VmError::new(

@@ -802,7 +802,7 @@ fn centralized_external_host_binding_supports_borrowed_children() {
 }
 
 #[test]
-fn registered_nested_clone_returns_an_independently_owned_host() {
+fn registered_nested_clone_returns_a_releasable_call_scoped_host() {
     let mut bindings = VelaBindings::new();
     register_cloneable_external(&mut bindings);
     let clone_desc = registered_host_method_desc("game::CloneableExternal", "clone")
@@ -813,22 +813,35 @@ fn registered_nested_clone_returns_an_independently_owned_host() {
         .effects(EffectSet::host_read())
         .access(FunctionAccess::public());
     bindings.type_mut::<CloneableExternal>().register_method(
-        MethodRegistration::shared_owned_host(clone_desc, |value: &CloneableExternal, _args| {
-            Ok(value.clone())
-        }),
+        MethodRegistration::shared_call_scoped_host(
+            clone_desc,
+            |value: &CloneableExternal, _args| Ok(value.clone()),
+        ),
     );
     bindings.register_type(TypeRegistration::<CloneableExternalOwner>::of());
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .register_bindings(bindings)
         .build()
-        .expect("owned Host clone bindings should register");
+        .expect("call-scoped Host clone bindings should register");
     let program = engine
         .compile_source(
-            "fn main(owner: CloneableExternalOwner) { let value = owner.value.clone(); return value.value(); }",
+            r#"
+fn main(owner: CloneableExternalOwner) {
+    let value = owner.value.clone();
+    let result = value.value();
+    host::release(value);
+    return result;
+}
+
+fn leak(owner: CloneableExternalOwner) {
+    return owner.value.clone();
+}
+"#,
         )
         .expect("nested registered Host clone should compile");
-    let mut runtime = Runtime::new(engine, program).expect("owned Host runtime should initialize");
+    let mut runtime =
+        Runtime::new(engine, program).expect("call-scoped Host runtime should initialize");
     let owner = CloneableExternalOwner {
         value: CloneableExternal { value: 42 },
     };
@@ -841,6 +854,21 @@ fn registered_nested_clone_returns_an_independently_owned_host() {
         .expect("nested clone should detach the returned Host from its owner borrow");
 
     assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(42)));
+
+    let error = runtime
+        .call(
+            "leak",
+            CallArgs::new().with_host_ref("owner", &owner),
+            CallOptions::unbounded(),
+        )
+        .expect_err("call-scoped Host clone must not escape the root call");
+    assert!(matches!(
+        error.kind_ref(),
+        VmErrorKind::Host(vela_host::error::HostErrorKind::BorrowedHostRefEscape {
+            boundary: vela_host::error::HostRefLifetimeBoundary::RootReturn,
+            ..
+        })
+    ));
 }
 
 #[test]
