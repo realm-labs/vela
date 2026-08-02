@@ -72,6 +72,9 @@ pub(crate) fn base_script_host_object_impl_tokens_with_path(
             ) -> #host::error::HostResult<
                 Option<#host::lease::ScopedHostDependent<'_>>
             > {
+                if target.offset >= target.plan.parts.len() {
+                    return Ok(Some(#host::lease::shared_scoped_host(self)));
+                }
                 #host::object::ScriptHostFieldAccess::borrow_resolved_host_shared(
                     self,
                     access,
@@ -86,6 +89,9 @@ pub(crate) fn base_script_host_object_impl_tokens_with_path(
             ) -> #host::error::HostResult<
                 Option<#host::lease::ScopedHostDependent<'_>>
             > {
+                if target.offset >= target.plan.parts.len() {
+                    return Ok(Some(#host::lease::exclusive_scoped_host(self)));
+                }
                 #host::object::ScriptHostFieldAccess::borrow_resolved_host_exclusive(
                     self,
                     access,

@@ -75,7 +75,7 @@ struct RegisteredQueueOwner {
 #[derive(Debug, ScriptHost)]
 #[vela(path = "game::CloneableExternalOwner")]
 struct CloneableExternalOwner {
-    #[vela(host = "game::CloneableExternal")]
+    #[vela(get)]
     value: CloneableExternal,
 }
 
