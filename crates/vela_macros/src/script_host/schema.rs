@@ -17,6 +17,7 @@ pub(super) struct FieldMeta {
     pub(super) id: u64,
     pub(super) readable: bool,
     pub(super) writable: bool,
+    pub(super) registered_host: Option<String>,
     pub(super) type_hint: Option<String>,
     pub(super) type_hint_explicit: bool,
     pub(super) docs: Option<String>,
@@ -84,13 +85,26 @@ pub(super) fn collect_fields(
                 "deref-projected host fields cannot replace their storage wrapper; mutate the projected child instead",
             ));
         }
+        if attrs.deref && attrs.host.is_some() {
+            return Err(error(
+                ident.span(),
+                "registered Host fields cannot also use deref projection",
+            ));
+        }
+        if attrs.host.is_some() && attrs.type_hint.is_some() {
+            return Err(error(
+                ident.span(),
+                "registered Host fields derive their type hint from `host`",
+            ));
+        }
         let rust_type = if attrs.deref {
             deref_target_type(&field.ty)?.to_token_stream()
         } else {
             field.ty.to_token_stream()
         };
-        let default_access = expose_all && !attrs.get && !attrs.set;
-        let type_hint_explicit = attrs.type_hint.is_some();
+        let default_access = expose_all && !attrs.get && !attrs.set && attrs.host.is_none();
+        let type_hint_explicit = attrs.type_hint.is_some() || attrs.host.is_some();
+        let registered_host = attrs.host.clone();
         result.push(FieldMeta {
             script_name,
             stable_name,
@@ -98,9 +112,10 @@ pub(super) fn collect_fields(
             rust_type,
             deref: attrs.deref,
             id,
-            readable: attrs.get || default_access,
+            readable: attrs.get || attrs.host.is_some() || default_access,
             writable: attrs.set || default_access && !attrs.deref,
-            type_hint: attrs.type_hint.or_else(|| {
+            registered_host,
+            type_hint: attrs.host.or(attrs.type_hint).or_else(|| {
                 if attrs.deref {
                     deref_target_type(&field.ty)
                         .ok()
@@ -123,6 +138,9 @@ pub(super) fn registration_types(fields: &[FieldMeta]) -> Vec<TokenStream> {
     let mut seen = BTreeSet::new();
     let mut dependencies = Vec::new();
     for field in fields {
+        if field.registered_host.is_some() {
+            continue;
+        }
         collect_registration_types(&field.rust_type, &mut seen, &mut dependencies);
     }
     dependencies
@@ -329,6 +347,7 @@ fn collect_variant_fields(
                     id,
                     readable: attrs.get,
                     writable: attrs.set,
+                    registered_host: None,
                     type_hint: attrs.type_hint.or_else(|| inferred_type_hint(&field.ty)),
                     type_hint_explicit,
                     docs: attrs.docs,

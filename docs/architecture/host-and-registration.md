@@ -763,6 +763,18 @@ generics. `TypeRegistration::binding(binding)` is the manual construction path
 for external types and custom codecs; generated service bundles combine those
 explicit leaves with the same recursive owned-Value closure.
 
+An arbitrary concrete Rust type can also use the same registry without
+implementing `ScriptHostObject`, deriving a Vela trait, or adding a business
+newtype. `TypeRegistration::<T>::host("module::Type")` installs an opaque Host
+identity, and `MethodRegistration::<T>::shared`/`exclusive` attach only the
+methods selected by the embedding. A derived parent projects such a field with
+`#[vela(host = "module::Type")]`; generated code stores an internal erased
+call-scoped wrapper whose `Any` payload is the exact `T`, so method adapters
+recover `&T` or `&mut T` after the ordinary lease checks. The wrapper exposes
+no implicit fields, collection protocol, constructors, or methods. Generic
+Rust containers are registered one concrete monomorphization at a time, while
+Vela still sees a normal non-generic Host type.
+
 An embedding may also expose one Rust generic operation through one
 `MethodsRegistration<T>`. Its internal monomorphized family publishes exactly one ordinary Host
 method with one `Any` parameter and installs one Rust-monomorphized adapter for
@@ -790,7 +802,9 @@ or `#[vela_macros::methods]`. These macros produce `ModuleRegistration` or
 `MethodRegistration<T>`/`MethodsRegistration<T>` values. Applications collect them with their
 `TypeRegistration<T>` values in one `VelaBindings`, then install that set once
 through `EngineBuilder::register_bindings`. Low-level descriptor constructors
-remain framework hooks rather than a parallel embedding API.
+remain framework hooks rather than a parallel embedding API. Handwritten
+opaque-Host methods use `registered_host_method_desc` to derive the same stable
+owner and method identities as generated methods.
 Engine internals and tests that need explicit IDs may still use those
 low-level constructors:
 

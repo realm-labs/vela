@@ -22,6 +22,7 @@ pub(crate) struct ScriptAttrs {
     pub(crate) get: bool,
     pub(crate) set: bool,
     pub(crate) type_hint: Option<String>,
+    pub(crate) host: Option<String>,
     pub(crate) permissions: Vec<String>,
 }
 
@@ -98,6 +99,11 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
                 )?);
             } else if path_name(&meta.path, "hint") || path_name(&meta.path, "type") {
                 parsed.type_hint = Some(parse_type_hint(value.parse::<LitStr>()?, "vela")?);
+            } else if path_name(&meta.path, "host") {
+                parsed.host = Some(parse_qualified_name(
+                    value.parse::<LitStr>()?,
+                    "vela host type",
+                )?);
             } else if path_name(&meta.path, "permission") {
                 parsed
                     .permissions

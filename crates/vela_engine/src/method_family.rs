@@ -162,14 +162,7 @@ where
                 Ok(()) => invocation_result.expect("host lease callback must run exactly once"),
                 Err(error) => Err(error.into()),
             };
-            if let Some(scoped_receiver) = scoped_receiver {
-                if let Err(error) = host.adapter.release_scoped_host(scoped_receiver) {
-                    if result.is_ok() {
-                        return Err(error.into());
-                    }
-                }
-            }
-            result
+            crate::registration::release_registered_receiver(scoped_receiver, result, host)
         })
     }
 

@@ -1,12 +1,16 @@
+use std::collections::VecDeque;
+
 use vela_bytecode::UnlinkedInstructionKind;
 use vela_bytecode::compiler::error::CompileErrorKind;
 use vela_engine::args::FromScriptArg;
 use vela_engine::context::NativeCallContext;
 use vela_engine::engine::Engine;
 use vela_engine::interop::{BoundaryMode, CallableKind, VelaValueBoundary};
-use vela_engine::native::{EffectSet, TypeHint};
+use vela_engine::native::{EffectSet, FunctionAccess, TypeHint};
 use vela_engine::permission::Capability;
-use vela_engine::registration::{TypeRegistration, VelaBindings};
+use vela_engine::registration::{
+    MethodRegistration, TypeRegistration, VelaBindings, registered_host_method_desc,
+};
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_engine::source::EngineSourceErrorKind;
 use vela_host::mock::MockStateAdapter;
@@ -59,6 +63,13 @@ impl FieldOnly {}
 pub struct FieldChild {
     #[vela(get)]
     value: i64,
+}
+
+#[derive(Debug, ScriptHost)]
+#[vela(path = "game::RegisteredQueueOwner")]
+struct RegisteredQueueOwner {
+    #[vela(host = "game::RegisteredQueue")]
+    queue: VecDeque<i64>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -665,6 +676,71 @@ fn empty_inherent_method_group_supports_field_only_host_objects() {
         .expect("field-only host object should cross the root boundary");
 
     assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(42)));
+}
+
+#[test]
+fn arbitrary_rust_type_can_be_registered_without_a_business_newtype() {
+    let queue_len = registered_host_method_desc("game::RegisteredQueue", "len")
+        .returns(TypeHint::i64())
+        .effects(EffectSet::host_read())
+        .access(FunctionAccess::public());
+    let queue_pop_front = registered_host_method_desc("game::RegisteredQueue", "pop_front")
+        .returns(TypeHint::i64())
+        .effects(EffectSet::host_write())
+        .access(FunctionAccess::public());
+    let mut bindings = VelaBindings::new();
+    bindings.register_type(RegisteredQueueOwner::vela_type());
+    bindings
+        .register_type(TypeRegistration::<VecDeque<i64>>::host(
+            "game::RegisteredQueue",
+        ))
+        .register_method(MethodRegistration::shared(
+            queue_len,
+            |queue: &VecDeque<i64>, _args| Ok(OwnedValue::i64(queue.len() as i64)),
+        ))
+        .register_method(MethodRegistration::exclusive(
+            queue_pop_front,
+            |queue: &mut VecDeque<i64>, _args| {
+                Ok(OwnedValue::i64(
+                    queue.pop_front().expect("test queue is not empty"),
+                ))
+            },
+        ));
+    let engine = Engine::builder()
+        .capability(Capability::HostRead)
+        .capability(Capability::HostWrite)
+        .register_bindings(bindings)
+        .build()
+        .expect("explicit Host type and methods should register");
+    let program = engine
+        .compile_source(
+            "fn queue_len(owner: RegisteredQueueOwner) { return owner.queue.len(); } fn pop(owner: RegisteredQueueOwner) { return owner.queue.pop_front(); }",
+        )
+        .expect("registered Rust methods should compile through the projected HostRef");
+    let mut runtime = Runtime::new(engine, program).expect("registered Host runtime");
+    let mut owner = RegisteredQueueOwner {
+        queue: VecDeque::from([7, 8]),
+    };
+
+    let len = runtime
+        .call(
+            "queue_len",
+            CallArgs::new().with_host_ref("owner", &owner),
+            CallOptions::unbounded(),
+        )
+        .expect("registered shared method should use the concrete queue borrow");
+    assert_eq!(runtime.value_to_owned(&len), Ok(OwnedValue::i64(2)));
+
+    let first = runtime
+        .call(
+            "pop",
+            CallArgs::new().with_host_mut("owner", &mut owner),
+            CallOptions::unbounded(),
+        )
+        .expect("registered exclusive method should use the concrete queue borrow");
+
+    assert_eq!(runtime.value_to_owned(&first), Ok(OwnedValue::i64(7)));
+    assert_eq!(owner.queue, VecDeque::from([8]));
 }
 
 #[test]

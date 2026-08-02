@@ -80,6 +80,14 @@ contract directly. The former service-set registration/construction surface,
 Host/Value-specific builder aliases, and shape-specific `script_*` callable
 macros have been removed without compatibility shims.
 
+Arbitrary concrete Rust types now participate in that same model without a
+business newtype or `ScriptHostObject` implementation.
+`TypeRegistration::<T>::host(path)` installs the opaque Host identity,
+`MethodRegistration::<T>::shared`/`exclusive` installs the explicitly selected
+surface, and `#[vela(host = path)]` projects a derived parent field through an
+internal erased scoped wrapper. The end-to-end fixture uses `VecDeque<i64>`
+directly and proves both shared and exclusive registered methods.
+
 Phase status:
 
 - E0 accepted: the final explicit-release, namespaced Service capability, and

@@ -501,6 +501,49 @@ mod tests {
     }
 
     #[test]
+    fn registered_host_field_projects_arbitrary_rust_type_without_trait_dependency() {
+        let expanded = expand_result(
+            quote! {
+                #[vela(path = "game::Actor")]
+                struct Actor {
+                    #[vela(host = "game::Outbox")]
+                    outbox: std::collections::VecDeque<Frame>,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect("registered Host field should expand");
+        let output = expanded.to_string();
+
+        assert!(output.contains("registered_shared_host"));
+        assert!(output.contains("registered_exclusive_host"));
+        assert!(output.contains("game::Outbox"));
+        assert!(!output.contains("register_type_dependency :: < std :: collections :: VecDeque"));
+        assert!(!output.contains("VecDeque < Frame > as :: vela_host :: object"));
+    }
+
+    #[test]
+    fn registered_host_field_rejects_conflicting_projection_attributes() {
+        let error = expand_result(
+            quote! {
+                #[vela(path = "game::Actor")]
+                struct Actor {
+                    #[vela(host = "game::Outbox", deref)]
+                    outbox: Wrapper<Outbox>,
+                }
+            },
+            GeneratedMethod::Host,
+        )
+        .expect_err("registered Host and deref projection must be unambiguous");
+
+        assert!(
+            error
+                .to_string()
+                .contains("registered Host fields cannot also use deref projection")
+        );
+    }
+
+    #[test]
     fn deref_projection_rejects_replacing_the_storage_wrapper() {
         let error = expand_result(
             quote! {

@@ -110,6 +110,34 @@ effects. A trusted Rust body receiving `&mut T` has ordinary field-level Rust
 authority for that invocation; direct Vela path writes still use fine-grained
 `HostAccess` checks.
 
+Existing Rust types that cannot or should not implement a Vela trait use the
+same registration flow. No application newtype is required:
+
+```rust,ignore
+#[derive(vela_macros::ScriptHost)]
+#[vela(path = "game::Actor")]
+struct Actor {
+    #[vela(host = "game::Outbox")]
+    outbox: VecDeque<Frame>,
+}
+
+let len = registered_host_method_desc("game::Outbox", "len")
+    .returns(TypeHint::i64());
+
+bindings
+    .register_type(TypeRegistration::<VecDeque<Frame>>::host("game::Outbox"))
+    .register_method(MethodRegistration::shared(
+        len,
+        |outbox: &VecDeque<Frame>, _args| Ok(OwnedValue::i64(outbox.len() as i64)),
+    ));
+```
+
+`TypeRegistration`, `MethodRegistration`, and `VelaBindings` remain the only
+user-facing registration model. `#[vela(host = ...)]` only projects the
+borrowed field; it does not implicitly publish all Rust methods or container
+operations. Each concrete generic instantiation has its own explicit stable
+Vela path and selected method set.
+
 ## Generate Typed Rust Bindings
 
 The compiler-owned `RustBindingSchema` is the only generator input. A build

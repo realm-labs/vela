@@ -4,8 +4,15 @@ use std::any::TypeId;
 use std::collections::HashSet;
 use std::marker::PhantomData;
 
+use vela_common::{HostMethodId, HostTypeId, ReceiverCapability, stable_id};
+use vela_host::lease::HostLeaseKind;
+use vela_reflect::registry::{SchemaHash, TypeDesc, TypeKey, TypeKind};
+use vela_vm::error::VmResult;
+use vela_vm::owned_value::OwnedValue;
+
 use crate::builder::EngineBuilder;
-use crate::interop::CallableRegistration;
+use crate::interop::{CallableRegistration, catch_export_panic};
+use crate::method::NativeMethodDesc;
 use crate::type_binding::TypeBinding;
 use crate::type_registration::VelaType;
 
@@ -33,6 +40,16 @@ impl<T: 'static> TypeRegistration<T> {
     #[must_use]
     pub fn binding(binding: TypeBinding<T>) -> Self {
         Self::from_installer(move |builder| builder.install_type_binding(binding))
+    }
+
+    /// Registers an arbitrary concrete Rust type as an opaque Host type.
+    ///
+    /// The Rust type does not need to implement a Vela trait or be wrapped in
+    /// an application-owned newtype. Its script surface consists only of the
+    /// methods explicitly attached through [`MethodRegistration`].
+    #[must_use]
+    pub fn host(path: &str) -> Self {
+        Self::binding(TypeBinding::host(registered_host_type_desc(path)))
     }
 }
 
@@ -77,6 +94,80 @@ impl<T> MethodRegistration<T> {
         self.methods.contracts().first()
     }
 
+    /// Registers one shared-receiver method for an explicitly registered Host
+    /// type. Arguments and the return value use Vela's owned dynamic values.
+    #[must_use]
+    pub fn shared(
+        mut desc: NativeMethodDesc,
+        function: impl Fn(&T, &[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static,
+    ) -> Self
+    where
+        T: Send + Sync + 'static,
+    {
+        desc.receiver = ReceiverCapability::Shared;
+        registered_host_method(
+            desc,
+            HostLeaseKind::Shared,
+            move |object, args, receiver_root| {
+                let receiver = object
+                    .lease_any()
+                    .and_then(|object| object.downcast_ref::<T>())
+                    .ok_or_else(|| vela_host::lease::host_lease_unsupported(receiver_root))?;
+                function(receiver, args)
+            },
+        )
+    }
+
+    /// Registers one exclusive-receiver method for an explicitly registered
+    /// Host type. Arguments and the return value use Vela's owned dynamic
+    /// values.
+    #[must_use]
+    pub fn exclusive(
+        mut desc: NativeMethodDesc,
+        function: impl Fn(&mut T, &[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static,
+    ) -> Self
+    where
+        T: Send + Sync + 'static,
+    {
+        desc.receiver = ReceiverCapability::Exclusive;
+        let method_id = desc.id;
+        let callable = desc.name.clone();
+        Self::from_installer(move |builder| {
+            builder.register_native_method_fn(desc, move |receiver, args, host| {
+                let scoped_receiver =
+                    crate::host_call::retain_registered_host_method_receiver(receiver, host)?;
+                if !receiver.segments.is_empty() && scoped_receiver.is_none() {
+                    return crate::host_call::call_registered_host_method_through_adapter(
+                        receiver, args, method_id, host,
+                    );
+                }
+                let receiver_root = scoped_receiver.unwrap_or(receiver.root);
+                let requests = [(receiver_root, HostLeaseKind::Exclusive)];
+                let mut invocation_result = None;
+                let lease_result =
+                    host.adapter
+                        .with_host_leases(&requests, &mut |leases, _leased_adapter| {
+                            let receiver = leases
+                                .first_mut()
+                                .and_then(|lease| lease.object_mut())
+                                .and_then(|object| object.lease_any_mut())
+                                .and_then(|object| object.downcast_mut::<T>())
+                                .ok_or_else(|| {
+                                    vela_host::lease::host_lease_unsupported(receiver_root)
+                                })?;
+                            invocation_result =
+                                Some(catch_export_panic(&callable, || function(receiver, args)));
+                            Ok(())
+                        });
+                let result = match lease_result {
+                    Ok(()) => invocation_result.expect("host lease callback must run exactly once"),
+                    Err(error) => Err(error.into()),
+                };
+                release_registered_receiver(scoped_receiver, result, host)
+            })
+        })
+    }
+
     #[doc(hidden)]
     #[must_use]
     pub fn from_installer(
@@ -86,6 +177,100 @@ impl<T> MethodRegistration<T> {
             methods: MethodsRegistration::from_installer(installer),
         }
     }
+}
+
+fn registered_host_method<T>(
+    desc: NativeMethodDesc,
+    lease_kind: HostLeaseKind,
+    function: impl Fn(
+        &dyn vela_host::object::ScriptHostObject,
+        &[OwnedValue],
+        vela_host::path::HostRef,
+    ) -> VmResult<OwnedValue>
+    + Send
+    + Sync
+    + 'static,
+) -> MethodRegistration<T>
+where
+    T: Send + Sync + 'static,
+{
+    let method_id = desc.id;
+    let callable = desc.name.clone();
+    MethodRegistration::from_installer(move |builder| {
+        builder.register_native_method_fn(desc, move |receiver, args, host| {
+            let scoped_receiver =
+                crate::host_call::retain_registered_host_method_receiver(receiver, host)?;
+            if !receiver.segments.is_empty() && scoped_receiver.is_none() {
+                return crate::host_call::call_registered_host_method_through_adapter(
+                    receiver, args, method_id, host,
+                );
+            }
+            let receiver_root = scoped_receiver.unwrap_or(receiver.root);
+            let requests = [(receiver_root, lease_kind)];
+            let mut invocation_result = None;
+            let lease_result =
+                host.adapter
+                    .with_host_leases(&requests, &mut |leases, _leased_adapter| {
+                        let receiver = leases.first().expect("one receiver lease").object();
+                        invocation_result = Some(catch_export_panic(&callable, || {
+                            function(receiver, args, receiver_root)
+                        }));
+                        Ok(())
+                    });
+            let result = match lease_result {
+                Ok(()) => invocation_result.expect("host lease callback must run exactly once"),
+                Err(error) => Err(error.into()),
+            };
+            release_registered_receiver(scoped_receiver, result, host)
+        })
+    })
+}
+
+pub(crate) fn release_registered_receiver(
+    scoped_receiver: Option<vela_host::path::HostRef>,
+    result: VmResult<OwnedValue>,
+    host: &mut vela_vm::HostExecution<'_>,
+) -> VmResult<OwnedValue> {
+    if let Some(scoped_receiver) = scoped_receiver
+        && let Err(error) = host.adapter.release_scoped_host(scoped_receiver)
+        && result.is_ok()
+    {
+        return Err(error.into());
+    }
+    result
+}
+
+/// Builds the stable reflection identity used by [`TypeRegistration::host`]
+/// and by handwritten [`NativeMethodDesc`] owners.
+#[must_use]
+pub fn registered_host_type_desc(path: &str) -> TypeDesc {
+    let (module, name) = path
+        .rsplit_once("::")
+        .filter(|(module, name)| !module.is_empty() && !name.is_empty())
+        .unwrap_or_else(|| panic!("registered Host path must include a module and type name"));
+    TypeDesc::new(TypeKey::new(
+        vela_def::TypeId::new(u128::from(stable_id("host_type", "", path))),
+        name,
+    ))
+    .kind(TypeKind::Host)
+    .schema_hash(SchemaHash::new(stable_id(
+        "registered_host_schema_v1",
+        "",
+        path,
+    )))
+    .host_type(HostTypeId::new(stable_id("host_ref_type", "", path)))
+    .attr("module", module)
+}
+
+/// Creates a method descriptor with the same stable owner and method identity
+/// as generated Host methods.
+#[must_use]
+pub fn registered_host_method_desc(path: &str, name: &str) -> NativeMethodDesc {
+    NativeMethodDesc::new(
+        registered_host_type_desc(path).key,
+        HostMethodId::new(u128::from(stable_id("host_method", path, name))),
+        name,
+    )
 }
 
 enum MethodsSource {

@@ -94,12 +94,12 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
     let direct_read_arms = fields
         .iter()
         .enumerate()
-        .filter(|(_, field)| field.readable)
+        .filter(|(_, field)| field.readable && field.registered_host.is_none())
         .map(direct_field_read_arm_tokens);
     let direct_write_arms = fields
         .iter()
         .enumerate()
-        .filter(|(_, field)| field.readable || field.writable)
+        .filter(|(_, field)| (field.readable || field.writable) && field.registered_host.is_none())
         .map(direct_field_write_arm_tokens);
     let resolve_arms = fields.iter().enumerate().map(field_resolve_arm_tokens);
     let static_resolve_arms = fields
@@ -108,37 +108,41 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
         .map(field_static_resolve_arm_tokens);
     let read_arms = fields
         .iter()
-        .filter(|field| field.readable)
+        .filter(|field| field.readable && field.registered_host.is_none())
         .map(field_read_arm_tokens);
     let write_arms = fields
         .iter()
-        .filter(|field| field.readable || field.writable)
+        .filter(|field| (field.readable || field.writable) && field.registered_host.is_none())
         .map(field_write_arm_tokens);
     let query_arms = fields
         .iter()
-        .filter(|field| field.readable)
+        .filter(|field| field.readable && field.registered_host.is_none())
         .map(field_query_arm_tokens);
     let snapshot_arms = fields
         .iter()
-        .filter(|field| field.readable)
+        .filter(|field| field.readable && field.registered_host.is_none())
         .map(field_snapshot_arm_tokens);
     let collection_mutation_arms = fields
         .iter()
-        .filter(|field| field.readable || field.writable)
+        .filter(|field| (field.readable || field.writable) && field.registered_host.is_none())
         .map(field_collection_mutation_arm_tokens);
     let remove_arms = fields
         .iter()
-        .filter(|field| field.readable || field.writable)
+        .filter(|field| (field.readable || field.writable) && field.registered_host.is_none())
         .map(field_remove_arm_tokens);
-    let call_arms = fields.iter().map(field_call_arm_tokens);
+    let call_arms = fields
+        .iter()
+        .filter(|field| field.registered_host.is_none())
+        .map(field_call_arm_tokens);
     let prepared_call_arms = fields
         .iter()
         .enumerate()
+        .filter(|(_, field)| field.registered_host.is_none())
         .map(prepared_field_call_arm_tokens);
     let prepared_read_arms = fields
         .iter()
         .enumerate()
-        .filter(|(_, field)| field.readable)
+        .filter(|(_, field)| field.readable && field.registered_host.is_none())
         .map(prepared_field_read_arm_tokens);
     let prepared_borrow_shared_arms = fields
         .iter()
@@ -153,37 +157,37 @@ pub(super) fn field_access_impl_tokens(ident: &Ident, fields: &[FieldMeta]) -> T
     let prepared_collection_borrow_shared_arms = fields
         .iter()
         .enumerate()
-        .filter(|(_, field)| field.readable)
+        .filter(|(_, field)| field.readable && field.registered_host.is_none())
         .map(prepared_field_collection_borrow_shared_arm_tokens);
     let prepared_collection_borrow_exclusive_arms = fields
         .iter()
         .enumerate()
-        .filter(|(_, field)| field.readable || field.writable)
+        .filter(|(_, field)| (field.readable || field.writable) && field.registered_host.is_none())
         .map(prepared_field_collection_borrow_exclusive_arm_tokens);
     let prepared_write_arms = fields
         .iter()
         .enumerate()
-        .filter(|(_, field)| field.readable || field.writable)
+        .filter(|(_, field)| (field.readable || field.writable) && field.registered_host.is_none())
         .map(prepared_field_write_arm_tokens);
     let prepared_mutate_arms = fields
         .iter()
         .enumerate()
-        .filter(|(_, field)| field.readable || field.writable)
+        .filter(|(_, field)| (field.readable || field.writable) && field.registered_host.is_none())
         .map(prepared_field_mutate_arm_tokens);
     let prepared_query_arms = fields
         .iter()
         .enumerate()
-        .filter(|(_, field)| field.readable)
+        .filter(|(_, field)| field.readable && field.registered_host.is_none())
         .map(prepared_field_query_arm_tokens);
     let prepared_snapshot_arms = fields
         .iter()
         .enumerate()
-        .filter(|(_, field)| field.readable)
+        .filter(|(_, field)| field.readable && field.registered_host.is_none())
         .map(prepared_field_snapshot_arm_tokens);
     let prepared_collection_mutation_arms = fields
         .iter()
         .enumerate()
-        .filter(|(_, field)| field.readable || field.writable)
+        .filter(|(_, field)| (field.readable || field.writable) && field.registered_host.is_none())
         .map(prepared_field_collection_mutation_arm_tokens);
 
     quote! {
@@ -886,6 +890,26 @@ fn direct_field_write_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStr
 fn field_resolve_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
     let id = u128::from(field.id);
     let slot = u32::try_from(slot).expect("host field slot index fits u32");
+    if field.registered_host.is_some() {
+        return quote! {
+            Some(::vela_host::target::HostPathPart::Field(field))
+                if *field == ::vela_def::FieldId::new(#id) =>
+            {
+                if offset + 1 == spec.plan.parts.len()
+                    && !matches!(spec.op, ::vela_host::resolved::HostAccessOp::Call(_))
+                {
+                    Ok(::vela_host::resolved::ResolvedHostAccess::direct_field(
+                        #slot,
+                        ::vela_host::resolved::HostSchemaEpoch::new(0),
+                    ))
+                } else {
+                    Ok(::vela_host::resolved::ResolvedHostAccess::generic_target(
+                        ::vela_host::resolved::HostSchemaEpoch::new(0),
+                    ).prepend_prepared_field(#slot))
+                }
+            }
+        };
+    }
     let field_access = shared_field_access_tokens(field);
     quote! {
         Some(::vela_host::target::HostPathPart::Field(field))
@@ -924,6 +948,26 @@ fn field_resolve_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
 fn field_static_resolve_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {
     let id = u128::from(field.id);
     let slot = u32::try_from(slot).expect("host field slot index fits u32");
+    if field.registered_host.is_some() {
+        return quote! {
+            Some(::vela_host::target::HostPathPart::Field(field))
+                if *field == ::vela_def::FieldId::new(#id) =>
+            {
+                if offset + 1 == spec.plan.parts.len()
+                    && !matches!(spec.op, ::vela_host::resolved::HostAccessOp::Call(_))
+                {
+                    Ok(::vela_host::resolved::ResolvedHostAccess::direct_field(
+                        #slot,
+                        ::vela_host::resolved::HostSchemaEpoch::new(0),
+                    ))
+                } else {
+                    Ok(::vela_host::resolved::ResolvedHostAccess::generic_target(
+                        ::vela_host::resolved::HostSchemaEpoch::new(0),
+                    ).prepend_prepared_field(#slot))
+                }
+            }
+        };
+    }
     let rust_type = &field.rust_type;
     quote! {
         Some(::vela_host::target::HostPathPart::Field(field))

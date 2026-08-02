@@ -5,7 +5,7 @@ use parking_lot::{
 };
 
 use crate::call_value::HostCallValue;
-use crate::error::{HostError, HostErrorKind};
+use crate::error::{HostError, HostErrorKind, HostResult};
 use crate::object::ScriptHostObject;
 use crate::path::{HostPath, HostRef};
 use crate::resolved::{HostAccessSpec, HostMutationOp, ResolvedHostAccess};
@@ -192,6 +192,116 @@ impl<'host, T: ?Sized> ExclusiveScopedHost<'host, T> {
     pub const fn with_type_id(value: &'host mut T, type_id: vela_common::HostTypeId) -> Self {
         Self(value, Some(type_id))
     }
+}
+
+/// A call-scoped shared borrow of a Rust type whose Vela surface is supplied
+/// entirely by an explicit type and method registration.
+///
+/// The wrapped Rust type does not implement [`ScriptHostObject`]. Vela keeps
+/// only this erased object behind a [`HostRef`], while registered native
+/// method thunks recover `&T` through [`ScriptHostObject::lease_any`].
+pub struct RegisteredSharedHost<'host, T> {
+    value: &'host T,
+    type_id: vela_common::HostTypeId,
+}
+
+impl<'host, T> RegisteredSharedHost<'host, T> {
+    #[must_use]
+    pub const fn new(value: &'host T, type_id: vela_common::HostTypeId) -> Self {
+        Self { value, type_id }
+    }
+}
+
+/// Exclusive counterpart to [`RegisteredSharedHost`].
+pub struct RegisteredExclusiveHost<'host, T> {
+    value: &'host mut T,
+    type_id: vela_common::HostTypeId,
+}
+
+impl<'host, T> RegisteredExclusiveHost<'host, T> {
+    #[must_use]
+    pub const fn new(value: &'host mut T, type_id: vela_common::HostTypeId) -> Self {
+        Self { value, type_id }
+    }
+}
+
+fn registered_host_read_error(target: HostTargetInstance<'_>) -> HostError {
+    HostError {
+        kind: HostErrorKind::MissingPath {
+            path: target.to_diagnostic_path().to_host_path(),
+        },
+        source_span: None,
+    }
+}
+
+impl<T> ScriptHostObject for RegisteredSharedHost<'_, T>
+where
+    T: Send + Sync + 'static,
+{
+    fn host_type_id(&self) -> vela_common::HostTypeId {
+        self.type_id
+    }
+
+    fn lease_any(&self) -> Option<&dyn std::any::Any> {
+        Some(self.value)
+    }
+
+    fn read_resolved_host(
+        &self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
+        Err(registered_host_read_error(target))
+    }
+}
+
+impl<T> ScriptHostObject for RegisteredExclusiveHost<'_, T>
+where
+    T: Send + Sync + 'static,
+{
+    fn host_type_id(&self) -> vela_common::HostTypeId {
+        self.type_id
+    }
+
+    fn lease_any(&self) -> Option<&dyn std::any::Any> {
+        Some(self.value)
+    }
+
+    fn lease_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+        Some(self.value)
+    }
+
+    fn read_resolved_host(
+        &self,
+        _access: ResolvedHostAccess,
+        target: HostTargetInstance<'_>,
+    ) -> HostResult<HostValue> {
+        Err(registered_host_read_error(target))
+    }
+}
+
+/// Erases a registered shared Rust borrow into one call-scoped Host object.
+#[must_use]
+pub fn registered_shared_host<T>(
+    value: &T,
+    type_id: vela_common::HostTypeId,
+) -> ScopedHostDependent<'_>
+where
+    T: Send + Sync + 'static,
+{
+    Box::new(RegisteredSharedHost::new(value, type_id))
+}
+
+/// Erases a registered exclusive Rust borrow into one call-scoped Host object.
+#[must_use]
+pub fn registered_exclusive_host<T>(
+    value: &mut T,
+    type_id: vela_common::HostTypeId,
+) -> ScopedHostDependent<'_>
+where
+    T: Send + Sync + 'static,
+{
+    Box::new(RegisteredExclusiveHost::new(value, type_id))
 }
 
 pub fn try_scoped_host_cell<'host, Error>(
