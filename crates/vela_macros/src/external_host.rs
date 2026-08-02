@@ -225,7 +225,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             fn register(
                 builder: ::vela_engine::builder::EngineBuilder,
             ) -> ::vela_engine::builder::EngineBuilder {
-                builder.install_type_binding::<Self>(
+                builder.register_generated_type_binding::<Self>(
                     <Self as ::vela_engine::schema::ScriptHostSchema>::
                         script_host_binding(),
                 )
