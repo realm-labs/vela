@@ -591,11 +591,14 @@ fn host_exports_allow_two_shared_aliases() {
 
 #[test]
 fn generated_sync_method_uses_controlled_adapter_for_fallback_host_refs() {
+    let mut bindings = VelaBindings::new();
+    bindings
+        .register_type(Player::vela_type())
+        .register_method(Player::vela_method_increment());
     let engine = Engine::builder()
         .capability(Capability::HostRead)
         .capability(Capability::HostWrite)
-        .install_generated_type::<Player>()
-        .install_registration(Player::vela_methods())
+        .register_bindings(bindings)
         .build()
         .expect("generated Player methods should register");
     let program = engine
