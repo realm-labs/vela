@@ -52,6 +52,24 @@ impl TestEvent for Tick {
     }
 }
 
+#[derive(Debug, Value)]
+#[vela(path = "test::NestedAmount")]
+struct NestedAmount {
+    value: i64,
+}
+
+#[derive(Debug, Value)]
+#[vela(path = "test::NestedEvent")]
+struct NestedEvent {
+    amount: NestedAmount,
+}
+
+impl TestEvent for NestedEvent {
+    fn amount(self) -> i64 {
+        self.amount.value
+    }
+}
+
 impl EventRecorder {
     fn publish<E: TestEvent>(&mut self, event: E) -> i64 {
         self.total += event.amount();
@@ -80,6 +98,7 @@ fn nominal_method_family_dispatches_to_rust_monomorphized_instances() {
     family.register_instance::<Added, _, _>(EventRecorder::publish::<Added>);
     family.register_instance::<Multiplied, _, _>(EventRecorder::publish::<Multiplied>);
     family.register_instance::<Tick, _, _>(EventRecorder::publish::<Tick>);
+    family.register_instance::<NestedEvent, _, _>(EventRecorder::publish::<NestedEvent>);
 
     let engine = family
         .install(
@@ -95,7 +114,10 @@ fn nominal_method_family_dispatches_to_rust_monomorphized_instances() {
 pub fn main(recorder: EventRecorder) -> i64 {
     recorder.publish(test::Added { amount: 2 });
     recorder.publish(test::Multiplied { factor: 3 });
-    return recorder.publish(test::Tick {});
+    recorder.publish(test::Tick {});
+    return recorder.publish(test::NestedEvent {
+        amount: test::NestedAmount { value: 4 },
+    });
 }
 "#,
         )
@@ -110,6 +132,6 @@ pub fn main(recorder: EventRecorder) -> i64 {
         )
         .expect("method family invocation");
 
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(33)));
-    assert_eq!(recorder.total, 33);
+    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::i64(37)));
+    assert_eq!(recorder.total, 37);
 }

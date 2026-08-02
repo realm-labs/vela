@@ -16,6 +16,7 @@ struct ValueField {
     stable_name: String,
     id: u64,
     type_hint: Option<String>,
+    explicit_type_hint: bool,
     docs: Option<String>,
     attrs: Vec<(String, String)>,
 }
@@ -791,6 +792,7 @@ fn collect_named_fields(
                 "duplicate generated Value field id",
             ));
         }
+        let explicit_type_hint = attrs.type_hint.is_some();
         result.push(ValueField {
             rust_ident,
             rust_type: field.ty.clone(),
@@ -798,6 +800,7 @@ fn collect_named_fields(
             stable_name,
             id,
             type_hint: attrs.type_hint.or_else(|| inferred_type_hint(&field.ty)),
+            explicit_type_hint,
             docs: attrs.docs,
             attrs: attrs.attrs,
         });
@@ -832,10 +835,20 @@ fn field_desc_tokens(field: &ValueField) -> TokenStream {
     let id = u128::from(field.id);
     let script_name = &field.script_name;
     let rust_name = field.rust_ident.to_string();
-    let hint = field
-        .type_hint
-        .as_ref()
-        .map(|hint| quote! { .type_hint(#hint) });
+    let hint = if field.explicit_type_hint {
+        field
+            .type_hint
+            .as_ref()
+            .map(|hint| quote! { .type_hint(#hint) })
+    } else {
+        let rust_type = &field.rust_type;
+        Some(quote! {
+            .type_hint(
+                <#rust_type as ::vela_engine::interop::VelaValueBoundary>::
+                    vela_type_hint().display_name()
+            )
+        })
+    };
     let docs = field.docs.as_ref().map(|docs| quote! { .docs(#docs) });
     let attrs = field.attrs.iter().map(|(name, value)| {
         quote! { .attr(#name, #value) }

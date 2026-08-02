@@ -744,7 +744,10 @@ structural ABI. `#[vela(name = "...")]` changes a public name and
 because decoding and encoding must cover the exact Rust value; hosts with
 partial/private representations use a manual `ValueCodec`. The generated
 binding still enters the ordinary `TypeBinding` registry and does not create a
-macro-specific registry.
+macro-specific registry. Unless a field has an explicit `#[vela(type =
+"...")]` override, its reflected type hint comes from the field's
+`VelaValueBoundary`; Rust import spelling therefore cannot leak an unresolved
+short name into the sealed script schema.
 
 `VelaType` is the single public registration contract for both owned Values and
 Rust-owned Hosts. `EngineBuilder::register_type::<T>()` recursively installs
