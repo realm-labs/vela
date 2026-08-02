@@ -390,8 +390,9 @@ impl VelaBindings {
     where
         T: 'static,
     {
-        self.registered_types.insert(TypeId::of::<T>());
-        self.installers.push(registration.installer);
+        if self.registered_types.insert(TypeId::of::<T>()) {
+            self.installers.push(registration.installer);
+        }
         RegisteredType {
             bindings: self,
             marker: PhantomData,
@@ -427,6 +428,20 @@ impl VelaBindings {
             builder = installer(builder);
         }
         builder
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{TypeRegistration, VelaBindings};
+
+    #[test]
+    fn repeated_concrete_type_registration_installs_once() {
+        let mut bindings = VelaBindings::new();
+        bindings.register_type(TypeRegistration::<i64>::from_installer(|builder| builder));
+        bindings.register_type(TypeRegistration::<i64>::from_installer(|builder| builder));
+
+        assert_eq!(bindings.installers.len(), 1);
     }
 }
 
