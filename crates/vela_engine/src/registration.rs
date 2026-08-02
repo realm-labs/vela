@@ -151,9 +151,10 @@ impl ModuleRegistration {
 
 /// One explicit, application-owned set of Vela bindings.
 ///
-/// Registration has no inventory or ambient discovery. A type is added once,
-/// then its generated or manually constructed method sets are attached through
-/// the typed handle returned by [`Self::register_type`].
+/// Registration has no inventory or ambient discovery. Exact repeated type
+/// registrations compose across binding modules; Engine sealing still rejects
+/// incompatible bindings for the same Rust type. Method sets are attached
+/// through the typed handle returned by [`Self::register_type`].
 #[derive(Default)]
 pub struct VelaBindings {
     registered_types: HashSet<TypeId>,
@@ -171,11 +172,7 @@ impl VelaBindings {
     where
         T: 'static,
     {
-        assert!(
-            self.registered_types.insert(TypeId::of::<T>()),
-            "Vela type `{}` was registered more than once",
-            std::any::type_name::<T>()
-        );
+        self.registered_types.insert(TypeId::of::<T>());
         self.installers.push(registration.installer);
         RegisteredType {
             bindings: self,
