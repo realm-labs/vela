@@ -28,6 +28,12 @@ pub type ServiceSetSchemaFactory = fn(
     crate::native::EffectSet,
 ) -> Result<ServiceSetSchema, ServiceSchemaError>;
 
+#[doc(hidden)]
+pub type ServiceMethodSchemaFactory = fn(
+    &TypeBindingRegistry,
+    crate::native::EffectSet,
+) -> Result<ServiceMethodDescriptor, ServiceSchemaError>;
+
 /// One generated service method and its complete boundary type closure.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ServiceMethodDescriptor {
@@ -68,6 +74,21 @@ pub struct ServiceSchema {
 }
 
 impl ServiceSchema {
+    #[doc(hidden)]
+    pub fn from_method_factories(
+        id: ServiceId,
+        path: impl Into<String>,
+        factories: &[ServiceMethodSchemaFactory],
+        registry: &TypeBindingRegistry,
+        patch_effect_ceiling: crate::native::EffectSet,
+    ) -> Result<Self, ServiceSchemaError> {
+        let mut methods = Vec::with_capacity(factories.len());
+        for factory in factories {
+            methods.push(factory(registry, patch_effect_ceiling)?);
+        }
+        Self::new(id, path, methods, registry)
+    }
+
     pub fn new(
         id: ServiceId,
         path: impl Into<String>,

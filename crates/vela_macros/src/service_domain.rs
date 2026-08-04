@@ -53,6 +53,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         rust_snapshot_fields,
         dispatcher_fields,
         dispatcher_initializers,
+        dispatcher_entries,
         dispatcher_rust_branches,
         dispatcher_async_rust_branches,
         composed_services,
@@ -61,6 +62,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         root_accessors,
     } = DomainEmission::new(&services, set_ident);
     let vis = &item.vis;
+    let service_count = services.len();
     let schema_factory_ident = format_ident!("__vela_service_domain_schema_{set_ident}");
     let schema_factory = crate::service_domain_emission::schema_factory(
         set_ident,
@@ -204,16 +206,28 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             ) -> ::vela_vm::error::VmResult<
                 ::vela_vm::owned_value::OwnedValue
             > {
-                #(#dispatcher_rust_branches)*
-                Err(::vela_vm::error::VmError::new(
-                    ::vela_vm::error::VmErrorKind::UnknownMethod {
-                        method: ::std::format!(
-                            "service {} method {}",
-                            __vela_target.service.get(),
-                            __vela_target.method.get(),
-                        ),
-                    },
-                ))
+                const __VELA_SERVICE_SLOTS: [(u128, u32); #service_count] =
+                    ::vela_engine::service::sorted_service_slots([
+                        #(#dispatcher_entries),*
+                    ]);
+                let Some(__vela_slot) = ::vela_engine::service::dense_service_slot(
+                    &__VELA_SERVICE_SLOTS,
+                    __vela_target.service.get(),
+                ) else {
+                    return Err(::vela_vm::error::VmError::new(
+                        ::vela_vm::error::VmErrorKind::UnknownMethod {
+                            method: ::std::format!(
+                                "service {} method {}",
+                                __vela_target.service.get(),
+                                __vela_target.method.get(),
+                            ),
+                        },
+                    ));
+                };
+                match __vela_slot {
+                    #(#dispatcher_rust_branches,)*
+                    _ => unreachable!("generated Service domain slot is valid"),
+                }
             }
 
             fn __vela_dispatch_rust_async<'__vela_call, '__vela_lease>(
@@ -233,18 +247,30 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             where
                 '__vela_lease: '__vela_call,
             {
-                #(#dispatcher_async_rust_branches)*
-                ::std::boxed::Box::pin(async move {
-                    Err(::vela_vm::error::VmError::new(
-                        ::vela_vm::error::VmErrorKind::UnknownMethod {
-                            method: ::std::format!(
-                                "service {} method {}",
-                                __vela_target.service.get(),
-                                __vela_target.method.get(),
-                            ),
-                        },
-                    ))
-                })
+                const __VELA_SERVICE_SLOTS: [(u128, u32); #service_count] =
+                    ::vela_engine::service::sorted_service_slots([
+                        #(#dispatcher_entries),*
+                    ]);
+                let Some(__vela_slot) = ::vela_engine::service::dense_service_slot(
+                    &__VELA_SERVICE_SLOTS,
+                    __vela_target.service.get(),
+                ) else {
+                    return ::std::boxed::Box::pin(async move {
+                        Err(::vela_vm::error::VmError::new(
+                            ::vela_vm::error::VmErrorKind::UnknownMethod {
+                                method: ::std::format!(
+                                    "service {} method {}",
+                                    __vela_target.service.get(),
+                                    __vela_target.method.get(),
+                                ),
+                            },
+                        ))
+                    });
+                };
+                match __vela_slot {
+                    #(#dispatcher_async_rust_branches,)*
+                    _ => unreachable!("generated async Service domain slot is valid"),
+                }
             }
         }
 

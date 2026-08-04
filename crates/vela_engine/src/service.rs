@@ -1,6 +1,7 @@
 //! Whole-generation publication for generated Rust/Vela service domains.
 
 mod deployment;
+mod dispatch_table;
 #[cfg(feature = "artifact-codec")]
 mod portable;
 mod runtime;
@@ -13,6 +14,8 @@ pub use deployment::{
     ServiceBundleChecksum, ServiceBundleError, ServiceDryRunReport, ServicePackageIdentity,
     ServiceSelectionSummary, ServiceUpdateBundle, ServiceUpdateMetadata, ServiceUpdateMode,
 };
+#[doc(hidden)]
+pub use dispatch_table::{dense_service_slot, sorted_service_slots};
 #[cfg(feature = "artifact-codec")]
 pub use portable::{
     PortableDiagnosticSource, PortableServiceBundleChecksum, PortableServiceBundleError,
@@ -23,8 +26,8 @@ pub use runtime::{
     ServiceFuture, ServiceInvocationError, ServiceRuntimeBinding, ServiceRuntimeLease,
 };
 pub use schema::{
-    ServiceMethodDescriptor, ServiceSchema, ServiceSchemaError, ServiceSetSchema,
-    ServiceSetSchemaFactory, ServiceTypeRequirement,
+    ServiceMethodDescriptor, ServiceMethodSchemaFactory, ServiceSchema, ServiceSchemaError,
+    ServiceSetSchema, ServiceSetSchemaFactory, ServiceTypeRequirement,
 };
 pub use selection::{
     ServiceMethodKey, ServiceMethodSelection, ServiceMethodUpdate, ServiceSelectionError,

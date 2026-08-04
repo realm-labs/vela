@@ -13,7 +13,7 @@ pub(super) fn emit_rust_dispatch_arm(
     service_path: &str,
     method: &syn::TraitItemFn,
     signature: &ClassifiedSignature,
-    method_id: u128,
+    dispatch_slot: u32,
 ) -> Result<TokenStream> {
     let method_ident = &method.sig.ident;
     let expected = signature.parameters.len().saturating_sub(1);
@@ -33,7 +33,7 @@ pub(super) fn emit_rust_dispatch_arm(
         }
     };
     if matches!(signature.returns.mode, ReturnMode::ScopedHost { .. }) {
-        return emit_scoped_rust_dispatch_arm(method, signature, method_id, arity);
+        return emit_scoped_rust_dispatch_arm(method, signature, dispatch_slot, arity);
     }
     let mut lease_index = 0_usize;
     let mut lease_requests = Vec::new();
@@ -244,7 +244,7 @@ pub(super) fn emit_rust_dispatch_arm(
     };
 
     Ok(quote! {
-        #method_id => {
+        #dispatch_slot => {
             #arity
             #body
         }
@@ -255,7 +255,7 @@ pub(super) fn emit_async_rust_dispatch_arm(
     service_path: &str,
     method: &syn::TraitItemFn,
     signature: &ClassifiedSignature,
-    method_id: u128,
+    dispatch_slot: u32,
 ) -> Result<TokenStream> {
     if matches!(signature.returns.mode, ReturnMode::ScopedHost { .. }) {
         return Err(syn::Error::new_spanned(
@@ -437,7 +437,7 @@ pub(super) fn emit_async_rust_dispatch_arm(
     }
 
     Ok(quote! {
-        #method_id => {
+        #dispatch_slot => {
             ::std::boxed::Box::pin(async move {
                 if __vela_args.len() != #expected {
                     return Err(::vela_vm::error::VmError::new(
@@ -549,7 +549,7 @@ fn type_has_non_static_lifetime(ty: &syn::Type) -> bool {
 fn emit_scoped_rust_dispatch_arm(
     method: &syn::TraitItemFn,
     signature: &ClassifiedSignature,
-    method_id: u128,
+    dispatch_slot: u32,
     arity: TokenStream,
 ) -> Result<TokenStream> {
     let container = signature.scoped_return_container().ok_or_else(|| {
@@ -837,7 +837,7 @@ fn emit_scoped_rust_dispatch_arm(
     };
 
     Ok(quote! {
-        #method_id => {
+        #dispatch_slot => {
             #arity
             #(#value_preparation)*
             let mut __vela_lease_requests =

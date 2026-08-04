@@ -3942,6 +3942,17 @@ Defaults remain typed,
 instance-supplied, and validated before the initial whole Service generation is
 published.
 
+### Generated Service Lookup Uses Stable IDs And Dense Slots
+
+Stable Service and method IDs remain the public ABI and artifact identity, but
+generated dispatch does not repeat wide-ID comparisons through a domain-sized
+control-flow chain. Each generated Service and Service domain owns a sorted
+stable-ID-to-`u32`-slot table; shared lookup resolves the stable ID before a
+dense typed dispatch match performs boundary conversion. Service schemas are
+assembled through a static table of per-method factories, keeping each factory
+and the schema collector bounded as a Service grows. These tables are generated
+metadata, not an alternate dynamic registration or invocation path.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

@@ -18,6 +18,7 @@ pub(super) struct DomainEmission {
     pub(super) rust_snapshot_fields: Vec<TokenStream>,
     pub(super) dispatcher_fields: Vec<TokenStream>,
     pub(super) dispatcher_initializers: Vec<TokenStream>,
+    pub(super) dispatcher_entries: Vec<TokenStream>,
     pub(super) dispatcher_rust_branches: Vec<TokenStream>,
     pub(super) dispatcher_async_rust_branches: Vec<TokenStream>,
     pub(super) composed_services: Vec<TokenStream>,
@@ -53,6 +54,7 @@ impl DomainEmission {
             rust_snapshot_fields: default_generation_fields,
             dispatcher_fields: shared_fields,
             dispatcher_initializers: dispatcher_initializers(services),
+            dispatcher_entries: dispatcher_entries(services),
             dispatcher_rust_branches: dispatcher_rust_branches(services),
             dispatcher_async_rust_branches: dispatcher_async_rust_branches(services),
             composed_services: composed_services(services),
@@ -274,22 +276,33 @@ fn dispatcher_initializers(services: &[ServiceField]) -> Vec<TokenStream> {
         .collect()
 }
 
+fn dispatcher_entries(services: &[ServiceField]) -> Vec<TokenStream> {
+    services
+        .iter()
+        .enumerate()
+        .map(|(slot, service)| {
+            let service_id = service.service_id_path();
+            let slot = u32::try_from(slot).expect("Service domain slot fits u32");
+            quote! { (#service_id().get(), #slot) }
+        })
+        .collect()
+}
+
 fn dispatcher_rust_branches(services: &[ServiceField]) -> Vec<TokenStream> {
     services
         .iter()
-        .map(|service| {
+        .enumerate()
+        .map(|(slot, service)| {
             let field = &service.field;
-            let service_id = service.service_id_path();
             let dispatch = service.rust_dispatch_path();
+            let slot = u32::try_from(slot).expect("Service domain slot fits u32");
             quote! {
-                if __vela_target.service == #service_id() {
-                    return #dispatch(
-                        self.#field.as_ref(),
-                        __vela_target.method,
-                        __vela_args,
-                        __vela_context,
-                    );
-                }
+                #slot => #dispatch(
+                    self.#field.as_ref(),
+                    __vela_target.method,
+                    __vela_args,
+                    __vela_context,
+                )
             }
         })
         .collect()
@@ -298,19 +311,18 @@ fn dispatcher_rust_branches(services: &[ServiceField]) -> Vec<TokenStream> {
 fn dispatcher_async_rust_branches(services: &[ServiceField]) -> Vec<TokenStream> {
     services
         .iter()
-        .map(|service| {
+        .enumerate()
+        .map(|(slot, service)| {
             let field = &service.field;
-            let service_id = service.service_id_path();
             let dispatch = service.rust_async_dispatch_path();
+            let slot = u32::try_from(slot).expect("Service domain slot fits u32");
             quote! {
-                if __vela_target.service == #service_id() {
-                    return #dispatch(
-                        self.#field.as_ref(),
-                        __vela_target.method,
-                        __vela_args,
-                        __vela_leases,
-                    );
-                }
+                #slot => #dispatch(
+                    self.#field.as_ref(),
+                    __vela_target.method,
+                    __vela_args,
+                    __vela_leases,
+                )
             }
         })
         .collect()

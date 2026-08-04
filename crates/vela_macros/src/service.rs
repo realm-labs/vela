@@ -21,6 +21,8 @@ use crate::signature::{
 mod boundary;
 mod dispatch;
 mod egress;
+
+const METHOD_SCHEMA_FACTORY_THRESHOLD: usize = 16;
 mod requirements;
 
 use requirements::{
@@ -77,6 +79,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             &item.ident,
             method,
             &signature,
+            methods.len(),
             &mut registrations,
             &mut registration_keys,
         )?;
@@ -100,7 +103,55 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let async_dispatch_ident = rust_async_dispatch_function_ident(trait_ident);
     let adapter_ident = format_ident!("__VelaServiceAdapter{trait_ident}");
     let registration_tokens = registrations.iter().map(RegistrationSpec::tokens);
-    let method_tokens = methods.iter().map(|method| &method.tokens);
+    let use_method_schema_factories = methods.len() >= METHOD_SCHEMA_FACTORY_THRESHOLD;
+    let method_schema_factories = if use_method_schema_factories {
+        methods
+            .iter()
+            .map(|method| {
+                let factory = &method.schema_factory;
+                let tokens = &method.tokens;
+                quote! {
+                    #[inline(never)]
+                    fn #factory(
+                        registry: &::vela_engine::type_binding::TypeBindingRegistry,
+                        patch_effect_ceiling: ::vela_engine::native::EffectSet,
+                    ) -> ::std::result::Result<
+                        ::vela_engine::service::ServiceMethodDescriptor,
+                        ::vela_engine::service::ServiceSchemaError,
+                    > {
+                        Ok(#tokens)
+                    }
+                }
+            })
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+    let schema_build = if use_method_schema_factories {
+        let method_schema_entries = methods.iter().map(|method| &method.schema_factory);
+        quote! {
+            const __VELA_SERVICE_METHOD_SCHEMAS: &[
+                ::vela_engine::service::ServiceMethodSchemaFactory
+            ] = &[#(#method_schema_entries),*];
+            ::vela_engine::service::ServiceSchema::from_method_factories(
+                ::vela_common::ServiceId::new(#service_id),
+                #service_path,
+                __VELA_SERVICE_METHOD_SCHEMAS,
+                registry,
+                patch_effect_ceiling,
+            )
+        }
+    } else {
+        let method_tokens = methods.iter().map(|method| &method.tokens);
+        quote! {
+            ::vela_engine::service::ServiceSchema::new(
+                ::vela_common::ServiceId::new(#service_id),
+                #service_path,
+                vec![#(#method_tokens),*],
+                registry,
+            )
+        }
+    };
     let adapter_fields = methods.iter().map(|method| &method.adapter_field);
     let adapter_initializers = methods.iter().map(|method| &method.adapter_initializer);
     let adapter_methods = methods.iter().map(|method| &method.adapter_method);
@@ -112,6 +163,24 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let async_rust_dispatch_arms = methods
         .iter()
         .filter_map(|method| method.async_rust_dispatch_arm.as_ref());
+    let mut sync_dispatch_entries = methods
+        .iter()
+        .filter(|method| !method.is_async)
+        .map(|method| (method.method_id, method.dispatch_slot))
+        .collect::<Vec<_>>();
+    sync_dispatch_entries.sort_unstable_by_key(|(method_id, _)| *method_id);
+    let sync_dispatch_entries = sync_dispatch_entries.iter().map(|(method_id, slot)| {
+        quote! { (#method_id, #slot) }
+    });
+    let mut async_dispatch_entries = methods
+        .iter()
+        .filter(|method| method.is_async)
+        .map(|method| (method.method_id, method.dispatch_slot))
+        .collect::<Vec<_>>();
+    async_dispatch_entries.sort_unstable_by_key(|(method_id, _)| *method_id);
+    let async_dispatch_entries = async_dispatch_entries.iter().map(|(method_id, slot)| {
+        quote! { (#method_id, #slot) }
+    });
     let docs = docs_from_attrs(&item.attrs)
         .map_or_else(|| quote! { None }, |docs| quote! { Some(#docs.to_owned()) });
 
@@ -152,6 +221,8 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             ::vela_common::ServiceId::new(#service_id)
         }
 
+        #(#method_schema_factories)*
+
         #[doc(hidden)]
         #[allow(non_snake_case)]
         pub fn #schema_ident(
@@ -162,12 +233,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             ::vela_engine::service::ServiceSchemaError,
         > {
             let _service_docs: ::std::option::Option<::std::string::String> = #docs;
-            ::vela_engine::service::ServiceSchema::new(
-                ::vela_common::ServiceId::new(#service_id),
-                #service_path,
-                vec![#(#method_tokens),*],
-                registry,
-            )
+            #schema_build
         }
 
         #[doc(hidden)]
@@ -193,9 +259,14 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             __vela_args: &[::vela_vm::owned_value::OwnedValue],
             __vela_context: &mut ::vela_engine::context::NativeCallContext<'_, '_>,
         ) -> ::vela_vm::error::VmResult<::vela_vm::owned_value::OwnedValue> {
-            match __vela_method.get() {
-                #(#rust_dispatch_arms,)*
-                _ => Err(::vela_vm::error::VmError::new(
+            const __VELA_RUST_METHODS: &[(u128, u32)] = &[
+                #(#sync_dispatch_entries),*
+            ];
+            let Some(__vela_slot) = ::vela_engine::service::dense_service_slot(
+                __VELA_RUST_METHODS,
+                __vela_method.get(),
+            ) else {
+                return Err(::vela_vm::error::VmError::new(
                     ::vela_vm::error::VmErrorKind::UnknownMethod {
                         method: ::std::format!(
                             "{}::{}",
@@ -203,7 +274,11 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                             __vela_method.get(),
                         ),
                     },
-                )),
+                ));
+            };
+            match __vela_slot {
+                #(#rust_dispatch_arms,)*
+                _ => unreachable!("generated sync Service dispatch slot is valid"),
             }
         }
 
@@ -225,9 +300,14 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         where
             '__vela_lease: '__vela_call,
         {
-            match __vela_method.get() {
-                #(#async_rust_dispatch_arms,)*
-                _ => ::std::boxed::Box::pin(async move {
+            const __VELA_ASYNC_RUST_METHODS: &[(u128, u32)] = &[
+                #(#async_dispatch_entries),*
+            ];
+            let Some(__vela_slot) = ::vela_engine::service::dense_service_slot(
+                __VELA_ASYNC_RUST_METHODS,
+                __vela_method.get(),
+            ) else {
+                return ::std::boxed::Box::pin(async move {
                     Err(::vela_vm::error::VmError::new(
                         ::vela_vm::error::VmErrorKind::UnknownMethod {
                             method: ::std::format!(
@@ -237,7 +317,11 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                             ),
                         },
                     ))
-                }),
+                });
+            };
+            match __vela_slot {
+                #(#async_rust_dispatch_arms,)*
+                _ => unreachable!("generated async Service dispatch slot is valid"),
             }
         }
 
@@ -454,6 +538,10 @@ fn parse_path(attr: TokenStream) -> Result<String> {
 
 struct EmittedMethod {
     tokens: TokenStream,
+    schema_factory: syn::Ident,
+    method_id: u128,
+    dispatch_slot: u32,
+    is_async: bool,
     adapter_field: TokenStream,
     adapter_initializer: TokenStream,
     dispatch_trait_method: TokenStream,
@@ -468,6 +556,7 @@ fn emit_method(
     trait_ident: &syn::Ident,
     method: &syn::TraitItemFn,
     signature: &ClassifiedSignature,
+    dispatch_slot: usize,
     registrations: &mut Vec<RegistrationSpec>,
     registration_keys: &mut HashSet<String>,
 ) -> Result<EmittedMethod> {
@@ -478,6 +567,8 @@ fn emit_method(
         service_path,
         &method_ident.to_string(),
     ));
+    let dispatch_slot = u32::try_from(dispatch_slot).expect("Service method slot fits u32");
+    let schema_factory = format_ident!("__vela_service_method_schema_{trait_ident}_{method_ident}");
     let service_id = u128::from(vela_common::stable_id("vela_service", "", service_path));
     let mut requirements = Vec::new();
     let mut requirement_keys = HashSet::new();
@@ -623,7 +714,7 @@ fn emit_method(
             service_path,
             method,
             signature,
-            method_id,
+            dispatch_slot,
         )?)
     };
     let async_rust_dispatch_arm = if signature.is_async {
@@ -631,13 +722,17 @@ fn emit_method(
             service_path,
             method,
             signature,
-            method_id,
+            dispatch_slot,
         )?)
     } else {
         None
     };
     Ok(EmittedMethod {
         tokens,
+        schema_factory,
+        method_id,
+        dispatch_slot,
+        is_async: signature.is_async,
         adapter_field,
         adapter_initializer,
         dispatch_trait_method,
@@ -969,9 +1064,9 @@ fn service_call_argument_tokens(parameter: &ClassifiedParameter) -> Result<Token
 
 #[cfg(test)]
 mod tests {
-    use quote::quote;
+    use quote::{format_ident, quote};
 
-    use super::expand_result;
+    use super::{METHOD_SCHEMA_FACTORY_THRESHOLD, expand_result};
 
     #[test]
     fn service_generates_stable_schema_and_registration_bundle() {
@@ -992,8 +1087,31 @@ mod tests {
         assert!(output.contains("ServiceTypeRequirement"));
         assert!(output.contains("__vela_compose_service_RewardService"));
         assert!(output.contains("PinnedServiceExecution"));
+        assert!(!output.contains("ServiceMethodSchemaFactory"));
+        assert!(!output.contains("from_method_factories"));
+        assert!(output.contains("dense_service_slot"));
         assert!(!output.contains("HostRef"));
         assert!(!output.contains("__vela_runtime : :: vela_engine :: runtime :: Runtime"));
+    }
+
+    #[test]
+    fn wide_service_schemas_use_bounded_method_factories() {
+        let methods = (0..METHOD_SCHEMA_FACTORY_THRESHOLD)
+            .map(|index| format_ident!("method_{index}"))
+            .collect::<Vec<_>>();
+        let output = expand_result(
+            quote! { path = "game::wide" },
+            quote! {
+                pub trait WideService: Send + Sync {
+                    #(fn #methods(&self);)*
+                }
+            },
+        )
+        .expect("wide service trait should expand")
+        .to_string();
+
+        assert!(output.contains("ServiceMethodSchemaFactory"));
+        assert!(output.contains("from_method_factories"));
     }
 
     #[test]
