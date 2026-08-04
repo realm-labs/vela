@@ -2,6 +2,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Fields, ItemStruct, Result, parse2};
 
+use crate::service_domain_emission::DomainEmission;
 use crate::service_domain_input::{
     parse_context, parse_service_field, validate_services_not_empty, validate_struct,
 };
@@ -37,229 +38,39 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let candidate_ident = format_ident!("{set_ident}Candidate");
     let rollback_ident = format_ident!("{set_ident}Rollback");
     let dispatcher_ident = format_ident!("__VelaServiceDispatcher{set_ident}");
-    let marker_uses = crate::service_domain_emission::marker_uses(&services);
-    let registration_entries = crate::service_domain_emission::registration_entries(&services);
-    let schema_entries = crate::service_domain_emission::schema_entries(&services);
-    let generation_fields = services.iter().map(|service| {
-        let field = &service.field;
-        let trait_path = service.dispatch_trait_path();
-        quote! {
-            #field: ::std::sync::Arc<dyn #trait_path>
-        }
-    });
-    let defaults_fields = services.iter().map(|service| {
-        let field = &service.field;
-        let trait_path = service.dispatch_trait_path();
-        quote! {
-            #field: ::std::sync::Arc<dyn #trait_path>
-        }
-    });
-    let builder_fields = services.iter().map(|service| {
-        let field = &service.field;
-        let trait_path = service.dispatch_trait_path();
-        quote! {
-            #field: ::std::option::Option<::std::sync::Arc<dyn #trait_path>>
-        }
-    });
-    let empty_builder_fields = crate::service_domain_emission::empty_builder_fields(&services);
-    let builder_setters = services.iter().map(|service| {
-        let field = &service.field;
-        let trait_path = &service.trait_path;
-        let dispatch_trait_path = service.dispatch_trait_path();
-        quote! {
-            #[must_use]
-            pub fn #field<__VelaDefault>(mut self, implementation: __VelaDefault) -> Self
-            where
-                __VelaDefault:
-                    #trait_path
-                    + ::std::marker::Send
-                    + ::std::marker::Sync
-                    + 'static,
-            {
-                let implementation: ::std::sync::Arc<dyn #dispatch_trait_path> =
-                    ::std::sync::Arc::new(implementation);
-                self.state.#field = Some(implementation);
-                self
-            }
-        }
-    });
-    let required_defaults = services.iter().map(|service| {
-        let field = &service.field;
-        quote! {
-            let #field = self.state.#field.take().ok_or(
-                ::vela_engine::service::ServiceDomainBuildError::MissingDefault {
-                    domain: ::std::stringify!(#set_ident),
-                    service: ::std::stringify!(#field),
-                },
-            )?;
-        }
-    });
-    let defaults_initializers = services.iter().map(|service| {
-        let field = &service.field;
-        quote! {
-            #field
-        }
-    });
-    let initial_generation_fields =
-        crate::service_domain_emission::default_generation_fields(&services);
-    let rust_snapshot_fields = crate::service_domain_emission::default_generation_fields(&services);
-    let dispatcher_fields = services.iter().map(|service| {
-        let field = &service.field;
-        let trait_path = service.dispatch_trait_path();
-        quote! {
-            #field: ::std::sync::Arc<dyn #trait_path>
-        }
-    });
-    let dispatcher_initializers = services.iter().map(|service| {
-        let field = &service.field;
-        quote! {
-            #field: ::std::sync::Arc::clone(&defaults.#field)
-        }
-    });
-    let dispatcher_rust_branches = services.iter().map(|service| {
-        let field = &service.field;
-        let service_id = service.service_id_path();
-        let dispatch = service.rust_dispatch_path();
-        quote! {
-            if __vela_target.service == #service_id() {
-                return #dispatch(
-                    self.#field.as_ref(),
-                    __vela_target.method,
-                    __vela_args,
-                    __vela_context,
-                );
-            }
-        }
-    });
-    let dispatcher_async_rust_branches = services.iter().map(|service| {
-        let field = &service.field;
-        let service_id = service.service_id_path();
-        let dispatch = service.rust_async_dispatch_path();
-        quote! {
-            if __vela_target.service == #service_id() {
-                return #dispatch(
-                    self.#field.as_ref(),
-                    __vela_target.method,
-                    __vela_args,
-                    __vela_leases,
-                );
-            }
-        }
-    });
-    let composed_services = services.iter().map(|service| {
-        let field = &service.field;
-        let trait_path = service.dispatch_trait_path();
-        let composition = service.composition_path();
-        quote! {
-            let #field: ::std::sync::Arc<dyn #trait_path> = #composition(
-                ::std::sync::Arc::clone(&defaults.#field),
-                __vela_execution.clone(),
-                &selections,
-            );
-        }
-    });
-    let generation_initializers = services
-        .iter()
-        .map(|service| &service.field)
-        .collect::<Vec<_>>();
-    let generation_accessors = services.iter().map(|service| {
-        let field = &service.field;
-        let trait_path = service.dispatch_trait_path();
-        quote! {
-            #[must_use]
-            pub fn #field(&self) -> &(dyn #trait_path + 'static) {
-                self.#field.as_ref()
-            }
-        }
-    });
-    let root_accessors = services.iter().map(|service| {
-        let field = &service.field;
-        let trait_path = service.dispatch_trait_path();
-        quote! {
-            #[must_use]
-            pub fn #field(&self) -> &(dyn #trait_path + 'static) {
-                self.root.services().#field()
-            }
-        }
-    });
+    let DomainEmission {
+        marker_uses,
+        registration_entries,
+        schema_entries,
+        generation_fields,
+        defaults_fields,
+        builder_fields,
+        empty_builder_fields,
+        builder_setters,
+        required_defaults,
+        defaults_initializers,
+        initial_generation_fields,
+        rust_snapshot_fields,
+        dispatcher_fields,
+        dispatcher_initializers,
+        dispatcher_rust_branches,
+        dispatcher_async_rust_branches,
+        composed_services,
+        generation_initializers,
+        generation_accessors,
+        root_accessors,
+    } = DomainEmission::new(&services, set_ident);
     let vis = &item.vis;
     let schema_factory_ident = format_ident!("__vela_service_domain_schema_{set_ident}");
+    let schema_factory = crate::service_domain_emission::schema_factory(
+        set_ident,
+        &schema_factory_ident,
+        &schema_entries,
+    );
 
     Ok(quote! {
         #(#marker_uses)*
-
-        #[doc(hidden)]
-        fn #schema_factory_ident(
-            registry: &::vela_engine::type_binding::TypeBindingRegistry,
-            patch_effect_ceiling: ::vela_engine::native::EffectSet,
-        ) -> ::std::result::Result<
-            ::vela_engine::service::ServiceSetSchema,
-            ::vela_engine::service::ServiceSchemaError,
-        > {
-            type __VelaServiceSchemaFactory = fn(
-                &::vela_engine::type_binding::TypeBindingRegistry,
-                ::vela_engine::native::EffectSet,
-            ) -> ::std::result::Result<
-                ::vela_engine::service::ServiceSchema,
-                ::vela_engine::service::ServiceSchemaError,
-            >;
-            const __VELA_SERVICE_SCHEMAS: &[
-                (&str, __VelaServiceSchemaFactory)
-            ] = &[#(#schema_entries),*];
-
-            #[inline(never)]
-            fn __vela_push_service_schema(
-                services: &mut ::std::vec::Vec<(
-                    ::std::string::String,
-                    ::vela_engine::service::ServiceSchema,
-                )>,
-                name: &'static str,
-                schema: fn(
-                    &::vela_engine::type_binding::TypeBindingRegistry,
-                    ::vela_engine::native::EffectSet,
-                ) -> ::std::result::Result<
-                    ::vela_engine::service::ServiceSchema,
-                    ::vela_engine::service::ServiceSchemaError,
-                >,
-                registry: &::vela_engine::type_binding::TypeBindingRegistry,
-                patch_effect_ceiling: ::vela_engine::native::EffectSet,
-            ) -> ::std::result::Result<
-                (),
-                ::vela_engine::service::ServiceSchemaError,
-            > {
-                let schema = schema(registry, patch_effect_ceiling)?;
-                services.push((name.to_owned(), schema));
-                Ok(())
-            }
-
-            let path = ::std::concat!(
-                ::std::module_path!(),
-                "::",
-                ::std::stringify!(#set_ident),
-            );
-            let id = ::vela_common::ServiceSetId::new(
-                u128::from(::vela_common::stable_id("vela_service_domain", "", path)),
-            );
-            let mut services = ::std::vec::Vec::with_capacity(
-                __VELA_SERVICE_SCHEMAS.len()
-            );
-            for &(name, schema) in __VELA_SERVICE_SCHEMAS {
-                __vela_push_service_schema(
-                    &mut services,
-                    name,
-                    schema,
-                    registry,
-                    patch_effect_ceiling,
-                )?;
-            }
-            ::vela_engine::service::ServiceSetSchema::new_named(
-                id,
-                path,
-                services,
-                registry,
-                patch_effect_ceiling,
-            )
-        }
+        #schema_factory
 
         struct #defaults_ident {
             #(#defaults_fields,)*
