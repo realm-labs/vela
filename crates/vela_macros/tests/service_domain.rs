@@ -63,6 +63,11 @@ pub struct AsyncGameLogic {
 
 #[test]
 fn generated_domain_builds_engine_and_instance_defaults_together() {
+    assert_eq!(
+        std::mem::size_of::<GameLogicBuilder>(),
+        std::mem::size_of::<Box<()>>(),
+        "generated Service builders keep their field-scaled state off stack",
+    );
     let app = GameLogic::builder(vela_engine::engine::Engine::builder())
         .task_scope(crate::support::task_scope())
         .emergency_patch_effect_ceiling(crate::support::patch_ceiling())

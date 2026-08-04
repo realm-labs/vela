@@ -28,6 +28,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let generation_ident = format_ident!("__{set_ident}Generation");
     let defaults_ident = format_ident!("__{set_ident}Defaults");
     let builder_ident = format_ident!("{set_ident}Builder");
+    let builder_state_ident = format_ident!("__{set_ident}BuilderState");
     let app_ident = format_ident!("{set_ident}App");
     let patches_ident = format_ident!("{set_ident}Patches");
     let staged_patch_ident = format_ident!("{set_ident}StagedPatch");
@@ -38,7 +39,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let dispatcher_ident = format_ident!("__VelaServiceDispatcher{set_ident}");
     let marker_uses = crate::service_domain_emission::marker_uses(&services);
     let register_calls = crate::service_domain_emission::register_calls(&services);
-    let schema_calls = crate::service_domain_emission::schema_calls(&services);
+    let schema_entries = crate::service_domain_emission::schema_entries(&services);
     let generation_fields = services.iter().map(|service| {
         let field = &service.field;
         let trait_path = service.dispatch_trait_path();
@@ -77,7 +78,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             {
                 let implementation: ::std::sync::Arc<dyn #dispatch_trait_path> =
                     ::std::sync::Arc::new(implementation);
-                self.#field = Some(implementation);
+                self.state.#field = Some(implementation);
                 self
             }
         }
@@ -85,7 +86,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let required_defaults = services.iter().map(|service| {
         let field = &service.field;
         quote! {
-            let #field = self.#field.ok_or(
+            let #field = self.state.#field.take().ok_or(
                 ::vela_engine::service::ServiceDomainBuildError::MissingDefault {
                     domain: ::std::stringify!(#set_ident),
                     service: ::std::stringify!(#field),
@@ -195,6 +196,42 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             ::vela_engine::service::ServiceSetSchema,
             ::vela_engine::service::ServiceSchemaError,
         > {
+            type __VelaServiceSchemaFactory = fn(
+                &::vela_engine::type_binding::TypeBindingRegistry,
+                ::vela_engine::native::EffectSet,
+            ) -> ::std::result::Result<
+                ::vela_engine::service::ServiceSchema,
+                ::vela_engine::service::ServiceSchemaError,
+            >;
+            const __VELA_SERVICE_SCHEMAS: &[
+                (&str, __VelaServiceSchemaFactory)
+            ] = &[#(#schema_entries),*];
+
+            #[inline(never)]
+            fn __vela_push_service_schema(
+                services: &mut ::std::vec::Vec<(
+                    ::std::string::String,
+                    ::vela_engine::service::ServiceSchema,
+                )>,
+                name: &'static str,
+                schema: fn(
+                    &::vela_engine::type_binding::TypeBindingRegistry,
+                    ::vela_engine::native::EffectSet,
+                ) -> ::std::result::Result<
+                    ::vela_engine::service::ServiceSchema,
+                    ::vela_engine::service::ServiceSchemaError,
+                >,
+                registry: &::vela_engine::type_binding::TypeBindingRegistry,
+                patch_effect_ceiling: ::vela_engine::native::EffectSet,
+            ) -> ::std::result::Result<
+                (),
+                ::vela_engine::service::ServiceSchemaError,
+            > {
+                let schema = schema(registry, patch_effect_ceiling)?;
+                services.push((name.to_owned(), schema));
+                Ok(())
+            }
+
             let path = ::std::concat!(
                 ::std::module_path!(),
                 "::",
@@ -203,10 +240,22 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             let id = ::vela_common::ServiceSetId::new(
                 u128::from(::vela_common::stable_id("vela_service_domain", "", path)),
             );
+            let mut services = ::std::vec::Vec::with_capacity(
+                __VELA_SERVICE_SCHEMAS.len()
+            );
+            for &(name, schema) in __VELA_SERVICE_SCHEMAS {
+                __vela_push_service_schema(
+                    &mut services,
+                    name,
+                    schema,
+                    registry,
+                    patch_effect_ceiling,
+                )?;
+            }
             ::vela_engine::service::ServiceSetSchema::new_named(
                 id,
                 path,
-                vec![#(#schema_calls),*],
+                services,
                 registry,
                 patch_effect_ceiling,
             )
@@ -522,18 +571,40 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             pub fn builder(
                 builder: ::vela_engine::builder::EngineBuilder,
             ) -> #builder_ident {
-                let builder = builder;
+                #[inline(never)]
+                fn __vela_update_engine_builder(
+                    builder: &mut ::std::option::Option<
+                        ::vela_engine::builder::EngineBuilder
+                    >,
+                    update: fn(
+                        ::vela_engine::builder::EngineBuilder
+                    ) -> ::vela_engine::builder::EngineBuilder,
+                ) {
+                    let current = builder.take().expect(
+                        "generated Service registration owns its Engine builder"
+                    );
+                    *builder = Some(update(current));
+                }
+
+                let mut builder = Some(builder);
                 #(#register_calls)*
+                let builder = builder.take().expect(
+                    "generated Service registration retains its Engine builder"
+                );
                 #builder_ident {
-                    engine: builder.register_service_set_schema(#schema_factory_ident),
-                    call_options: ::vela_engine::runtime::CallOptions::new(
-                        1_000_000,
-                        16 * 1024 * 1024,
-                        256,
-                    ),
-                    task_scope: None,
-                    emergency_patch_effect_ceiling: None,
-                    #(#empty_builder_fields,)*
+                    state: ::std::boxed::Box::new(#builder_state_ident {
+                        engine: Some(
+                            builder.register_service_set_schema(#schema_factory_ident)
+                        ),
+                        call_options: ::vela_engine::runtime::CallOptions::new(
+                            1_000_000,
+                            16 * 1024 * 1024,
+                            256,
+                        ),
+                        task_scope: None,
+                        emergency_patch_effect_ceiling: None,
+                        #(#empty_builder_fields,)*
+                    }),
                 }
             }
 
@@ -728,13 +799,17 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             }
         }
 
-        #vis struct #builder_ident {
-            engine: ::vela_engine::builder::EngineBuilder,
+        struct #builder_state_ident {
+            engine: ::std::option::Option<::vela_engine::builder::EngineBuilder>,
             call_options: ::vela_engine::runtime::CallOptions,
             task_scope: ::std::option::Option<::vela_engine::task::TaskScope>,
             emergency_patch_effect_ceiling:
                 ::std::option::Option<::vela_engine::native::EffectSet>,
             #(#builder_fields,)*
+        }
+
+        #vis struct #builder_ident {
+            state: ::std::boxed::Box<#builder_state_ident>,
         }
 
         impl #builder_ident {
@@ -743,13 +818,13 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 mut self,
                 options: ::vela_engine::runtime::CallOptions,
             ) -> Self {
-                self.call_options = options;
+                self.state.call_options = options;
                 self
             }
 
             #[must_use]
             pub fn task_scope(mut self, scope: ::vela_engine::task::TaskScope) -> Self {
-                self.task_scope = Some(scope);
+                self.state.task_scope = Some(scope);
                 self
             }
 
@@ -758,26 +833,26 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 mut self,
                 ceiling: ::vela_engine::native::EffectSet,
             ) -> Self {
-                self.emergency_patch_effect_ceiling = Some(ceiling);
+                self.state.emergency_patch_effect_ceiling = Some(ceiling);
                 self
             }
 
             #(#builder_setters)*
 
             pub fn build(
-                self,
+                mut self,
             ) -> ::std::result::Result<
                 #app_ident,
                 ::vela_engine::service::ServiceDomainBuildError,
             > {
                 #(#required_defaults)*
-                let task_scope = self.task_scope.ok_or(
+                let task_scope = self.state.task_scope.take().ok_or(
                     ::vela_engine::service::ServiceDomainBuildError::MissingTaskScope {
                         domain: ::std::stringify!(#set_ident),
                     },
                 )?;
                 let emergency_patch_effect_ceiling =
-                    self.emergency_patch_effect_ceiling.ok_or(
+                    self.state.emergency_patch_effect_ceiling.take().ok_or(
                         ::vela_engine::service::ServiceDomainBuildError::MissingPatchEffectCeiling {
                             domain: ::std::stringify!(#set_ident),
                         },
@@ -791,7 +866,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                         },
                     );
                 }
-                let engine = self.engine
+                let engine = self.state.engine.take().expect(
+                        "generated Service builder owns its Engine builder"
+                    )
                     .service_patch_effect_ceiling(emergency_patch_effect_ceiling)
                     .build()?;
                 let runtime =
@@ -818,7 +895,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 Ok(#app_ident {
                     engine,
                     domain,
-                    call_options: self.call_options.with_task_scope(task_scope),
+                    call_options: self.state.call_options.clone().with_task_scope(task_scope),
                     runtime,
                     patch_state: ::vela_engine::service::ServicePatchState::new(
                         ::vela_common::ServiceGenerationId::new(1),

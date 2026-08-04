@@ -19,6 +19,11 @@ fn service_domain_generates_one_whole_generation_controller() {
     assert!(output.contains("__GameLogicGeneration"));
     assert!(output.contains("ServiceController < __GameLogicGeneration >"));
     assert!(output.contains("GameLogicBuilder"));
+    assert!(output.contains("__GameLogicBuilderState"));
+    assert!(output.contains("Box < __GameLogicBuilderState >"));
+    assert!(output.contains("__vela_update_engine_builder"));
+    assert!(output.contains("__vela_push_service_schema"));
+    assert!(output.contains("__VELA_SERVICE_SCHEMAS"));
     assert!(output.contains("GameLogicApp"));
     assert!(output.contains("GameLogicPatches"));
     assert!(output.contains("PatchRevision"));

@@ -3927,6 +3927,20 @@ type list. Structural containers that do not retain a nominal element identity
 cannot be family dispatch keys. The method-family installer is a framework
 detail, not a second application-facing registration API.
 
+### Generated Service Builders Keep Domain-Scaled State Off Stack
+
+A generated Service builder is a pointer-sized owner of heap-backed typed
+state. Adding Service fields therefore does not enlarge the public builder or
+make a by-value setter chain retain one full domain-sized temporary per field.
+Generated Engine registration also updates one bounded slot through a
+non-inlined trampoline, so debug-codegen stack use does not grow with the
+number of registration statements. Service-set schema collection preallocates
+its vector, iterates a static schema-factory table, and uses the same bounded-slot
+pattern instead of materializing every `ServiceSchema` in one `vec!` expression.
+Defaults remain typed,
+instance-supplied, and validated before the initial whole Service generation is
+published.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

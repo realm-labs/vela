@@ -21,23 +21,20 @@ pub(super) fn register_calls(services: &[ServiceField]) -> Vec<TokenStream> {
         .map(|service| {
             let function = service.registration_path();
             quote! {
-                let builder = #function(builder);
+                __vela_update_engine_builder(&mut builder, #function);
             }
         })
         .collect()
 }
 
-pub(super) fn schema_calls(services: &[ServiceField]) -> Vec<TokenStream> {
+pub(super) fn schema_entries(services: &[ServiceField]) -> Vec<TokenStream> {
     services
         .iter()
         .map(|service| {
             let field = &service.field;
             let function = service.schema_path();
             quote! {
-                (
-                    ::std::stringify!(#field).to_owned(),
-                    #function(registry, patch_effect_ceiling)?,
-                )
+                (::std::stringify!(#field), #function)
             }
         })
         .collect()
