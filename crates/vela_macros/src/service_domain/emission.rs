@@ -15,14 +15,12 @@ pub(super) fn marker_uses(services: &[ServiceField]) -> Vec<TokenStream> {
         .collect()
 }
 
-pub(super) fn register_calls(services: &[ServiceField]) -> Vec<TokenStream> {
+pub(super) fn registration_entries(services: &[ServiceField]) -> Vec<TokenStream> {
     services
         .iter()
         .map(|service| {
             let function = service.registration_path();
-            quote! {
-                __vela_update_engine_builder(&mut builder, #function);
-            }
+            quote! { #function }
         })
         .collect()
 }

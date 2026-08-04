@@ -38,7 +38,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
     let rollback_ident = format_ident!("{set_ident}Rollback");
     let dispatcher_ident = format_ident!("__VelaServiceDispatcher{set_ident}");
     let marker_uses = crate::service_domain_emission::marker_uses(&services);
-    let register_calls = crate::service_domain_emission::register_calls(&services);
+    let registration_entries = crate::service_domain_emission::registration_entries(&services);
     let schema_entries = crate::service_domain_emission::schema_entries(&services);
     let generation_fields = services.iter().map(|service| {
         let field = &service.field;
@@ -571,6 +571,13 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             pub fn builder(
                 builder: ::vela_engine::builder::EngineBuilder,
             ) -> #builder_ident {
+                type __VelaServiceRegistration = fn(
+                    ::vela_engine::builder::EngineBuilder
+                ) -> ::vela_engine::builder::EngineBuilder;
+                const __VELA_SERVICE_REGISTRATIONS: &[
+                    __VelaServiceRegistration
+                ] = &[#(#registration_entries),*];
+
                 #[inline(never)]
                 fn __vela_update_engine_builder(
                     builder: &mut ::std::option::Option<
@@ -587,7 +594,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
                 }
 
                 let mut builder = Some(builder);
-                #(#register_calls)*
+                for &registration in __VELA_SERVICE_REGISTRATIONS {
+                    __vela_update_engine_builder(&mut builder, registration);
+                }
                 let builder = builder.take().expect(
                     "generated Service registration retains its Engine builder"
                 );

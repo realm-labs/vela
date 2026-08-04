@@ -3933,8 +3933,9 @@ A generated Service builder is a pointer-sized owner of heap-backed typed
 state. Adding Service fields therefore does not enlarge the public builder or
 make a by-value setter chain retain one full domain-sized temporary per field.
 Generated Engine registration also updates one bounded slot through a
-non-inlined trampoline, so debug-codegen stack use does not grow with the
-number of registration statements. Service-set schema collection preallocates
+non-inlined trampoline while iterating a static registration table, so
+debug-codegen stack use does not grow with the number of registration
+statements. Service-set schema collection preallocates
 its vector, iterates a static schema-factory table, and uses the same bounded-slot
 pattern instead of materializing every `ServiceSchema` in one `vec!` expression.
 Defaults remain typed,
