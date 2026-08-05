@@ -10,17 +10,20 @@
 > bindings, callers, fixtures, and tests as one contract. Do not add aliases,
 > compatibility branches, dual execution paths, fallback to obsolete scoped
 > projection behavior, or adapters whose only purpose is keeping old validation
-> green. When executable semantics or encoding changes, bump the portable
-> artifact format and reject every earlier format before linking or activation;
-> do not translate old artifacts into the new model.
+> green. When executable semantics or encoding changes, advance the portable
+> artifact format and emit only the current format. The loader recognizes only
+> its current format; every other format is simply unknown and follows the same
+> generic unsupported-format path before decoding, linking, or activation. Do
+> not enumerate old versions or add version-specific rejection, translation, or
+> migration logic.
 
 ## Hard-Switch Rules
 
 This plan has no compatibility phase. Each migrated surface removes its
 superseded producer and consumer in the same verified checkpoint. A later
 batch may build on an earlier batch, but it must not keep old and new semantics
-selectable through a feature flag, runtime fallback, artifact decoder, hidden
-adapter, or test-only path.
+selectable through a feature flag, runtime fallback, legacy artifact decoder,
+hidden adapter, or test-only path.
 
 Existing tests and fixtures are safety evidence, not a requirement to preserve
 obsolete pre-release behavior. When a test expects ordinary fields, collection
@@ -506,9 +509,9 @@ Deliverables:
   branches, admitted containers, and arguments;
 - capture dynamic keys/indexes without string conversion;
 - distinguish projection facts from scoped-resource facts; and
-- bump the portable artifact format at the first incompatible semantic or
-  encoding change and reject all earlier formats without a compatibility
-  decoder.
+- advance the portable artifact format at the first incompatible semantic or
+  encoding change, emit only that current format, and keep one current-format
+  decoder with a generic unknown-format outcome for every other identifier.
 
 Gate:
 
@@ -517,8 +520,9 @@ let child = root.field preserves an exact typed path through a local
 projection aliases create no lease or scoped-resource entry
 dynamic keys preserve canonical identity
 verifiers reject forged and ill-typed projections
-all earlier artifacts reject before linking or activation after the format bump
-no old projection value or instruction is translated at load time
+the loader recognizes exactly the current artifact format
+every other format identifier follows the same unknown-format path
+no old-format registry, decoder, translator, or targeted rejection branch exists
 ```
 
 ### P2 - Route Ordinary Host Operations Through Projections
@@ -656,7 +660,7 @@ no ordinary-field retained child producer remains
 every retained producer corresponds to a documented real Rust borrow
 reflection/dynamic dispatch preserve the same split
 no legacy compatibility or implicit ancestor release remains
-no feature flag, fallback, decoder, or test-only entry can restore old behavior
+no feature flag, fallback, legacy decoder, or test-only entry can restore old behavior
 ```
 
 ### P7 - Acceptance, Performance, And Documentation
@@ -667,8 +671,8 @@ Deliverables:
 - run stable interleaved benchmarks against P0;
 - update architecture, interop usage, decisions, and examples;
 - update progress only when active focus or status changes;
-- confirm every earlier artifact format is rejected after an executable format
-  change; and
+- confirm portable artifacts use the current format and the loader contains no
+  old-version registry, decoder, translator, or targeted rejection branch; and
 - write an archived acceptance report with the matrix and measurements.
 
 Gate:
@@ -757,8 +761,8 @@ validation contains no legacy-mode run and no compatibility-only assertion
 
 | ID | Proof |
 |---|---|
-| AR-01 | Artifacts encode or reject the projection instruction/value contract exactly. |
-| AR-02 | After the format bump, every earlier format rejects before linking/activation; no compatibility decoder or translator exists. |
+| AR-01 | Current artifacts encode the projection instruction/value contract exactly. |
+| AR-02 | The loader recognizes only the current format; every other identifier follows one generic unknown-format path with no old-version-specific logic. |
 | AR-03 | Active frames retain exact plans across reload. |
 | AR-04 | Projections cannot cross Runtime/root/session boundaries. |
 | AR-05 | Detached tasks reject nested projections with an exact value path. |
@@ -820,7 +824,7 @@ and portable artifact tests identified in P0.
 
 Validation runs only the new contract after a surface migrates. Update obsolete
 tests, fixtures, snapshots, examples, and benchmarks in the same commit as that
-surface. A green legacy mode, compatibility feature, fallback decoder, or
+surface. A green legacy mode, compatibility feature, legacy decoder, or
 old/new test matrix is not an acceptance result for this plan.
 
 The phase-closing gate is:
@@ -851,8 +855,9 @@ This plan does not add:
 - silent skipping of removed entries in frozen traversal;
 - a second Host path/adapter system;
 - compatibility aliases for ordinary-field scoped children;
-- dual old/new execution modes, legacy feature flags, compatibility artifact
-  decoders, or fallback to obsolete scoped-projection behavior; or
+- dual old/new execution modes, legacy feature flags, old-version artifact
+  registries/decoders, targeted old-format rejection branches, or fallback to
+  obsolete scoped-projection behavior; or
 - code retained solely to satisfy tests, fixtures, snapshots, examples,
   benchmarks, or artifacts that assert the superseded contract.
 
