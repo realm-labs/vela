@@ -105,11 +105,14 @@ writes, and method calls to the adapter immediately.
 
 Host handles are call-scope references to Rust-owned state. Complex Rust
 objects stay behind `HostRef` roots and compiled `HostTargetPlan` shapes; child
-field access extends the target plan instead of cloning parent structures. Host
-field reads and writes use scalar `HostValue` conversion at the boundary: unit,
-bool, char, explicit scalar primitives such as `i64`, `u32`, `f32`, and `f64`,
-string, bytes, and handles. Complex script-owned records, arrays, maps, and
-enums cross via the explicit owned-value serialization path, not the
+field access extends the target plan instead of cloning parent structures.
+Ordinary field reads and writes use the narrow `HostValue` vocabulary at the
+boundary: unit, bool, char, explicit scalar primitives such as `i64`, `u32`,
+`f32`, and `f64`, string, bytes, and handles. A schema-declared owned-value
+field may additionally carry one complete record, enum, tuple, or collection
+replacement as `HostValue::Detached`. The VM serializes that script-owned value
+without retaining a heap object, and the typed adapter validates and decodes
+its declared shape. This explicit replacement path is distinct from the
 high-frequency host handle path.
 
 Scripts observe writes made earlier in the same call because writes mutate the
@@ -150,9 +153,10 @@ Dynamic host indexes and keys are passed as explicit `HostPathArg` values, so
 adapters can resolve them without depending on VM-internal symbol tables.
 Collection-shaped host mutations must be adapter-defined write-through
 operations. The default host boundary must not read a complex host collection,
-clone it into `HostValue`, modify the clone, and write it back. Scalar-only
-`HostValue` conversion cannot synthesize collection mutation by copying arrays
-or maps.
+clone it into `HostValue`, modify the clone, and write it back. Detached
+whole-field replacement does not synthesize collection mutation by reading,
+copying, and writing an existing host collection. Element and structural
+collection mutations still require adapter-defined write-through operations.
 
 ### Host State Adapter
 
@@ -277,8 +281,9 @@ collections, records, and enums without storing a VM heap handle or requiring
 the concrete Host object to be `'static`. The engine's typed helpers decode and
 encode derived Rust Value types through the same `FromScriptArg` and
 `IntoScriptArg` contracts used by registered native thunks. Field/path
-operations continue to use the narrower `HostValue` vocabulary. Passing the
-receiver target instance is required for child methods such as
+operations continue to use `HostValue`; fields with an explicitly declared
+owned-value shape wrap the same detached vocabulary in `HostValue::Detached`.
+Passing the receiver target instance is required for child methods such as
 `player.inventory.add("gold", 10)` and trait-object fields whose callable
 surface lives behind a nested host target.
 

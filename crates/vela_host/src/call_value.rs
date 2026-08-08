@@ -1,15 +1,16 @@
-//! Detached structural values used by schema-declared Host method calls.
+//! Detached structural values used by schema-declared Host methods and fields.
 
 use vela_common::ScalarValue;
 
 use crate::path::HostRef;
 use crate::value::HostValue;
 
-/// A VM-independent, owned value crossing an erased Host method vtable.
+/// A VM-independent, owned value crossing an erased Host boundary.
 ///
-/// Field and path access continue to use [`HostValue`]. This wider vocabulary
-/// exists only for method arguments and results, where registered Rust methods
-/// may accept ordinary records, enums, and collections.
+/// Method arguments and results use this vocabulary directly. A field whose
+/// schema declares an owned structural value carries it inside
+/// [`HostValue::Detached`], allowing its typed adapter to decode one complete
+/// replacement without retaining a VM heap object.
 #[derive(Clone, Debug, PartialEq)]
 pub enum HostCallValue {
     Unit,

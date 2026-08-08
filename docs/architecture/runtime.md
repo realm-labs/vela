@@ -148,13 +148,16 @@ Value       VM runtime slot; Copy; scalars or handles only
 OwnedValue  heap-detached Rust boundary/materialized value
 HeapValue   non-moving script heap object referenced by GcRef
 HostValue   host-adapter boundary value copied across ScriptStateAdapter
-HostCallValue detached structural value for erased Host method calls
+HostCallValue detached structural value for erased Host calls and owned fields
 ```
 
-`HostValue` remains deliberately narrow for field/path reads and writes.
-`HostCallValue` additionally carries detached tuples, collections, records,
-and enums so a non-`'static` erased Host object can use the ordinary typed
-Value codecs without retaining VM heap objects.
+`HostValue` keeps scalars, strings, bytes, and handles cheap for ordinary
+field/path reads and writes. A schema-declared owned-value field may also carry
+one complete `HostCallValue` replacement in `HostValue::Detached`.
+`HostCallValue` carries detached tuples, collections, records, and enums so a
+non-`'static` erased Host object can use the ordinary typed Value codecs without
+retaining VM heap objects. The receiving typed adapter remains responsible for
+validating the declared field shape.
 
 The engine embedding layer also exposes `VelaValue`, a runtime-managed handle
 to a `Value` pinned in a specific `Runtime`'s persistent heap roots. Hosts use

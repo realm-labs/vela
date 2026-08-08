@@ -222,14 +222,14 @@ fn managed_heap_host_execution_materializes_return_and_updates_adapter() {
 }
 
 #[test]
-fn managed_heap_host_execution_rejects_map_for_host_write() {
+fn managed_heap_host_execution_writes_detached_map() {
     let host_ref = player_ref(3);
     let program = compile_host_program_source(
         SourceId::new(1),
         r#"
 fn main(player: Player) {
     player.level = {"class": "mage", score: 3};
-    return 1;
+    return player.level;
 }
 "#,
         host_definition_registry(
@@ -243,7 +243,7 @@ fn main(player: Player) {
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
-    let error = {
+    let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
@@ -257,24 +257,27 @@ fn main(player: Player) {
             &mut host,
             &mut budget,
         )
-        .expect_err("host map write should be rejected")
+        .expect("detached map host write should execute")
     };
 
-    assert_eq!(
-        error.kind(),
-        VmErrorKind::TypeMismatch {
-            operation: "set_host_field"
-        }
-    );
+    let expected = OwnedValue::map([
+        (OwnedValue::from("class"), OwnedValue::from("mage")),
+        (OwnedValue::from("score"), OwnedValue::i64(3)),
+    ]);
+    let expected_host = HostValue::Detached(Box::new(
+        crate::host_call_values::owned_to_host_call_value(&expected)
+            .expect("map should detach for host write"),
+    ));
+    assert_eq!(result, expected);
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
-        Ok(HostValue::Unit)
+        Ok(expected_host)
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
 
 #[test]
-fn managed_heap_host_execution_rejects_record_for_host_write() {
+fn managed_heap_host_execution_writes_detached_record() {
     let host_ref = player_ref(3);
     let program = compile_host_program_source(
         SourceId::new(1),
@@ -300,7 +303,7 @@ fn main(player: Player) {
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
-    let error = {
+    let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
@@ -314,24 +317,30 @@ fn main(player: Player) {
             &mut host,
             &mut budget,
         )
-        .expect_err("host record write should be rejected")
+        .expect("detached record host write should execute")
     };
 
-    assert_eq!(
-        error.kind(),
-        VmErrorKind::TypeMismatch {
-            operation: "set_host_field"
-        }
+    let expected = OwnedValue::record(
+        "Reward",
+        [
+            ("item_id", OwnedValue::from("gold")),
+            ("count", OwnedValue::i64(2)),
+        ],
     );
+    let expected_host = HostValue::Detached(Box::new(
+        crate::host_call_values::owned_to_host_call_value(&expected)
+            .expect("record should detach for host write"),
+    ));
+    assert_eq!(result, expected);
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
-        Ok(HostValue::Unit)
+        Ok(expected_host)
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }
 
 #[test]
-fn managed_heap_host_execution_rejects_enum_for_host_write() {
+fn managed_heap_host_execution_writes_detached_enum() {
     let host_ref = player_ref(3);
     let program = compile_host_program_source(
         SourceId::new(1),
@@ -352,7 +361,7 @@ fn main(player: Player) {
     let mut tx = HostAccess::new();
     let mut budget = ExecutionBudget::new(u64::MAX, 4096, usize::MAX);
 
-    let error = {
+    let result = {
         let mut host = HostExecution {
             adapter: &mut adapter,
             access: &mut tx,
@@ -366,18 +375,18 @@ fn main(player: Player) {
             &mut host,
             &mut budget,
         )
-        .expect_err("host enum write should be rejected")
+        .expect("detached enum host write should execute")
     };
 
-    assert_eq!(
-        error.kind(),
-        VmErrorKind::TypeMismatch {
-            operation: "set_host_field"
-        }
-    );
+    let expected = OwnedValue::enum_variant("Damage", "Physical", [("amount", OwnedValue::i64(7))]);
+    let expected_host = HostValue::Detached(Box::new(
+        crate::host_call_values::owned_to_host_call_value(&expected)
+            .expect("enum should detach for host write"),
+    ));
+    assert_eq!(result, expected);
     assert_eq!(
         adapter.read_diagnostic_path(&level_path(host_ref)),
-        Ok(HostValue::Unit)
+        Ok(expected_host)
     );
     assert_eq!(budget.memory_bytes_allocated(), 0);
 }

@@ -126,8 +126,11 @@ enums, but those shapes are represented by the reflection value model
 `ReflectValue::ScriptRecord`, and `ReflectValue::ScriptEnum`). Script maps use
 key-preserving map entries so non-string keys are not stringified at reflection
 boundaries. `ReflectValue::Record` remains the string-field shape for copied
-metadata records. These aggregate shapes are not `HostValue` payloads.
-`HostValue` is reserved for scalar host-boundary values and host handles.
+metadata records. Reflection aggregate metadata is not transported as a Host
+field payload merely because it has the same shape. Ordinary `HostValue`
+payloads remain scalars, strings, bytes, and host handles; a schema-declared
+owned-value field may carry one explicitly serialized aggregate in
+`HostValue::Detached` for typed adapter validation and decoding.
 
 Tooling metadata:
 

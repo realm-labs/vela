@@ -453,6 +453,59 @@ fn replace(state: DetachedFieldState) {
 }
 
 #[test]
+fn derived_value_host_field_rejects_mismatched_detached_value() {
+    let engine = Engine::builder()
+        .capability(Capability::HostWrite)
+        .install_generated_type::<DetachedFieldState>()
+        .build()
+        .expect("detached host field graph should seal");
+    let program = engine
+        .compile_source(
+            r#"
+fn replace(state: DetachedFieldState, replacement) {
+    state.player_id = replacement;
+}
+"#,
+        )
+        .expect("dynamic detached field replacement should compile");
+    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
+    let mut state = DetachedFieldState {
+        player_id: BusinessId { value: 1 },
+        maybe_id: None,
+        mode: BusinessMode::Active,
+    };
+
+    let error = runtime
+        .call(
+            "replace",
+            CallArgs::new()
+                .with_host_mut("state", &mut state)
+                .with_value(
+                    "replacement",
+                    OwnedValue::enum_variant(
+                        "game::script::BusinessMode",
+                        "Active",
+                        std::iter::empty::<(&str, OwnedValue)>(),
+                    ),
+                ),
+            CallOptions::unbounded(),
+        )
+        .expect_err("typed detached host field should reject a mismatched value");
+
+    assert!(
+        matches!(
+            error.kind(),
+            vela_vm::error::VmErrorKind::Host(vela_host::error::HostErrorKind::InvalidArgument {
+                expected: "game::script::BusinessId"
+            })
+        ),
+        "unexpected error: {:?}",
+        error.kind()
+    );
+    assert_eq!(state.player_id, BusinessId { value: 1 });
+}
+
+#[test]
 fn script_reflect_derive_generates_enum_variant_metadata() {
     let desc = HostQuestProgress::vela_reflect_type_desc();
     let active_variant = VariantDesc::new(
