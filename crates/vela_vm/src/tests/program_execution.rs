@@ -957,7 +957,7 @@ fn maybe(value) {
     if value > 0 {
         return Option::Some(value);
     }
-    return Option::None {};
+    return Option::None;
 }
 
 fn present() {
@@ -1089,7 +1089,7 @@ fn option_some_in_result() -> Result<i64, String> {
 }
 
 fn option_none_in_result() -> Result<i64, String> {
-    let value = Option::None {}?;
+    let value = Option::None?;
     return Result::Ok(value);
 }
 "#,

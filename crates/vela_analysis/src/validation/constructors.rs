@@ -38,6 +38,23 @@ pub(super) fn record_body(
                 expression.origin.span,
                 fields,
             ),
+            HirExprKind::Path(_)
+                if matches!(
+                    facts.constructor_target(expression.id),
+                    Some(
+                        ConstructorTargetFact::Variant { .. }
+                            | ConstructorTargetFact::RegistryVariant { .. }
+                    )
+                ) =>
+            {
+                record_field_constructor(
+                    validation,
+                    &context,
+                    expression.id,
+                    expression.origin.span,
+                    &[],
+                );
+            }
             HirExprKind::Call(call)
                 if matches!(
                     facts.call_target(expression.id),
@@ -643,11 +660,13 @@ fn unknown_variant_diagnostic(enum_name: &str, variant: &str, span: Span) -> Dia
 }
 
 fn constructor_path(body: &HirBody, expression: HirExprId) -> Option<&[String]> {
-    let HirExprKind::Record { constructor, .. } = &body.expression(expression)?.kind else {
-        return None;
-    };
-    let constructor = constructor.as_ref()?;
-    Some(body.paths.get(constructor)?.path.as_slice())
+    match &body.expression(expression)?.kind {
+        HirExprKind::Record { constructor, .. } => {
+            Some(body.paths.get(constructor.as_ref()?)?.path.as_slice())
+        }
+        HirExprKind::Path(path) => Some(body.paths.get(path)?.path.as_slice()),
+        _ => None,
+    }
 }
 
 fn registered_unknown_variant(

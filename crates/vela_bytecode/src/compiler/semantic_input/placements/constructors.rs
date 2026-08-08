@@ -19,18 +19,24 @@ impl GenerationBuilder<'_, '_> {
         let origin = self
             .expression_origin(expression)
             .ok_or_else(registry_input_error)?;
-        let HirExprKind::Record {
-            constructor,
-            fields,
-        } = &body
+        let kind = &body
             .expression(expression)
             .ok_or_else(registry_input_error)?
-            .kind
-        else {
-            return Err(input_error(MirBuildError::InconsistentInput {
-                origin,
-                message: format!("constructor target {expression:?} is not a record expression"),
-            }));
+            .kind;
+        let (constructor, fields) = match kind {
+            HirExprKind::Record {
+                constructor,
+                fields,
+            } => (*constructor, fields.as_slice()),
+            HirExprKind::Path(path) => (Some(*path), &[][..]),
+            _ => {
+                return Err(input_error(MirBuildError::InconsistentInput {
+                    origin,
+                    message: format!(
+                        "constructor target {expression:?} is not a record or path expression"
+                    ),
+                }));
+            }
         };
         let placement =
             self.checked_record_constructor_placement(executable, expression, fields, origin)?;
@@ -69,7 +75,7 @@ impl GenerationBuilder<'_, '_> {
                 executable,
                 body,
                 expression,
-                *constructor,
+                constructor,
                 &placement,
             ),
             ConstructorTargetFact::Unresolved => {

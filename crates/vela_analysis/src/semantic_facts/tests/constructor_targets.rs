@@ -25,6 +25,8 @@ fn main() {
     let qualified_record = game::schema::Reward { amount: 2 };
     let imported_variant = ImportedState::Ready { amount: 3 };
     let qualified_variant = game::schema::State::Ready { amount: 4 };
+    let imported_unit_variant = ImportedState::Idle;
+    let qualified_unit_variant = game::schema::State::Idle;
     let dynamic_record = Missing { amount: 5 };
     match imported_variant {
         ImportedState::Ready { amount } => { amount; },
@@ -94,6 +96,25 @@ pub enum State { Ready { amount: i64 }, Idle }
             variant: "Ready".to_owned(),
         })
     );
+    for path in ["ImportedState::Idle", "game::schema::State::Idle"] {
+        let expression = body
+            .expressions
+            .values()
+            .find(|expression| {
+                body.paths.iter().any(|candidate| {
+                    candidate.owner == vela_hir::body::HirPathOwner::Expression(expression.id)
+                        && candidate.path.join("::") == path
+                })
+            })
+            .unwrap_or_else(|| panic!("unit variant expression `{path}`"));
+        assert_eq!(
+            analysis.constructor_target(expression.id),
+            Some(&ConstructorTargetFact::Variant {
+                enum_declaration: state,
+                variant: "Idle".to_owned(),
+            })
+        );
+    }
     assert_eq!(
         constructors["Missing"],
         Some(ConstructorTargetFact::Dynamic)

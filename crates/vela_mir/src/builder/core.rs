@@ -692,7 +692,13 @@ impl<'a> FunctionBuilder<'a> {
         } else {
             match kind {
                 HirExprKind::Literal(literal) => self.lower_literal(expression, &literal, origin),
-                HirExprKind::Path(_) => self.lower_path(expression, origin),
+                HirExprKind::Path(_) => {
+                    if self.input.targets().constructor(expression).is_some() {
+                        self.lower_constructor(expression, origin)
+                    } else {
+                        self.lower_path(expression, origin)
+                    }
+                }
                 HirExprKind::Paren {
                     expression: Some(inner),
                 } => self.lower_expression(inner),

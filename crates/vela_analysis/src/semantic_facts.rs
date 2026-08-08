@@ -302,18 +302,17 @@ impl HirSemanticFacts {
         }
         match &expression.kind {
             HirExprKind::Literal(literal) => literal_fact(literal),
-            HirExprKind::Path(_) => match base.resolution(id) {
-                Some(BindingResolution::Local(local)) => self
-                    .local_use_types
-                    .get(&id)
-                    .cloned()
-                    .or_else(|| self.locals.get(local).cloned())
-                    .unwrap_or(TypeFact::Unknown),
-                _ => base
-                    .base_expression(id)
-                    .cloned()
-                    .unwrap_or(TypeFact::Unknown),
-            },
+            HirExprKind::Path(_) => self
+                .unit_variant_fact(graph, schema, id)
+                .or_else(|| match base.resolution(id) {
+                    Some(BindingResolution::Local(local)) => self
+                        .local_use_types
+                        .get(&id)
+                        .cloned()
+                        .or_else(|| self.locals.get(local).cloned()),
+                    _ => base.base_expression(id).cloned(),
+                })
+                .unwrap_or(TypeFact::Unknown),
             HirExprKind::Record { fields, .. } => self
                 .logical_record_constructors
                 .get(&id)
@@ -636,6 +635,30 @@ impl HirSemanticFacts {
                     self.host_paths.insert(id, target);
                 }
             }
+            HirExprKind::Path(_) => {
+                let Some(path) = expression_path(body, id, HirPathKind::Value) else {
+                    return;
+                };
+                let resolution = base.resolution(id);
+                let Some(target) = unit_variant_constructor_target(graph, schema, path, resolution)
+                else {
+                    return;
+                };
+                if let ConstructorTargetFact::Variant {
+                    enum_declaration,
+                    variant,
+                } = &target
+                {
+                    self.script_types.insert(
+                        id,
+                        ScriptTypeTargetFact {
+                            declaration: *enum_declaration,
+                            variant: Some(variant.clone()),
+                        },
+                    );
+                }
+                self.constructors.insert(id, target);
+            }
             HirExprKind::Record { .. } => {
                 let resolution = graph
                     .bindings_for_body(body.id)
@@ -675,6 +698,36 @@ impl HirSemanticFacts {
                 self.control_flow.insert(id, fallthrough_flow());
             }
             _ => {}
+        }
+    }
+
+    fn unit_variant_fact(
+        &self,
+        graph: &ModuleGraph,
+        schema: Option<&RegistryFacts>,
+        expression: HirExprId,
+    ) -> Option<TypeFact> {
+        match self.constructors.get(&expression)? {
+            ConstructorTargetFact::Variant {
+                enum_declaration,
+                variant,
+            } => graph.declaration(*enum_declaration).map(|declaration| {
+                if declaration.name == "Option" && variant == "None" {
+                    TypeFact::OptionNone
+                } else {
+                    let name = graph
+                        .qualified_declaration_name(*enum_declaration)
+                        .unwrap_or_else(|| declaration.name.clone());
+                    TypeFact::enum_type(name, Some(variant.as_str()))
+                }
+            }),
+            ConstructorTargetFact::RegistryVariant { owner, variant } => schema
+                .and_then(|schema| schema.variant_for_owner_or_unique_short_name(owner, variant))
+                .map(|target| target.fact),
+            ConstructorTargetFact::Declaration(_)
+            | ConstructorTargetFact::RegistryType { .. }
+            | ConstructorTargetFact::Dynamic
+            | ConstructorTargetFact::Unresolved => None,
         }
     }
 
@@ -1256,6 +1309,38 @@ fn constructor_target(
         return ConstructorTargetFact::RegistryType { path: qualified };
     }
     ConstructorTargetFact::Dynamic
+}
+
+fn unit_variant_constructor_target(
+    graph: &ModuleGraph,
+    schema: Option<&RegistryFacts>,
+    path: &[String],
+    resolution: Option<&BindingResolution>,
+) -> Option<ConstructorTargetFact> {
+    let (variant, owner_path) = path.split_last()?;
+    if owner_path.is_empty() {
+        return None;
+    }
+    let declaration = match resolution {
+        Some(BindingResolution::Declaration(declaration)) => graph.declaration(*declaration),
+        _ => source_declaration_for_path(graph, owner_path),
+    };
+    if let Some(declaration) = declaration
+        && declaration.kind == DeclarationKind::Enum
+    {
+        return Some(ConstructorTargetFact::Variant {
+            enum_declaration: declaration.id,
+            variant: variant.clone(),
+        });
+    }
+    schema
+        .and_then(|schema| {
+            schema.variant_for_owner_or_unique_short_name(&owner_path.join("::"), variant)
+        })
+        .map(|target| ConstructorTargetFact::RegistryVariant {
+            owner: target.owner,
+            variant: target.name,
+        })
 }
 
 fn source_declaration_for_path<'a>(

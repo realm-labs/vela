@@ -69,6 +69,14 @@ impl GenerationBuilder<'_, '_> {
                         HirExprKind::Record { .. } => {
                             self.insert_constructor(function, &body, expression.id)?;
                         }
+                        HirExprKind::Path(_)
+                            if self
+                                .executable_analysis(function)?
+                                .constructor_target(expression.id)
+                                .is_some() =>
+                        {
+                            self.insert_constructor(function, &body, expression.id)?;
+                        }
                         HirExprKind::Try { .. } => {
                             self.insert_try_target(function, &body, expression.id)?;
                         }

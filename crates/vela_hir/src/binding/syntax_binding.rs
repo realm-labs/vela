@@ -653,7 +653,7 @@ impl<'a> SyntaxBindingLowerer<'a> {
         }
 
         if path.len() > 1
-            && matches!(usage, PathUsage::Callee)
+            && matches!(usage, PathUsage::Value | PathUsage::Callee)
             && let Some(resolution) = self.resolve_constructor_path(path)
         {
             self.record_capture_for_resolution(id, &resolution);

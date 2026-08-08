@@ -296,7 +296,7 @@ fn derived_enum_round_trips_through_real_vela_match() {
             r#"
 fn increase(value: host::GrantDecision) {
     return match value {
-        host::GrantDecision::Pending {} => host::GrantDecision::Pending {},
+        host::GrantDecision::Pending => host::GrantDecision::Pending,
         host::GrantDecision::Accepted { total, item } => host::GrantDecision::Accepted {
             total: total + 3,
             item: item,
@@ -333,6 +333,21 @@ fn increase(value: host::GrantDecision) {
         }
     );
     assert!(matches!(result, OwnedValue::Enum { .. }));
+
+    let pending = runtime
+        .call(
+            "increase",
+            CallArgs::from_positional([codec.encode(GrantDecision::Pending)]),
+            CallOptions::unbounded(),
+        )
+        .expect("script should construct a bare unit variant");
+    let pending = runtime
+        .value_to_owned(&pending)
+        .expect("unit variant should materialize");
+    assert_eq!(
+        codec.decode(&pending).expect("unit variant should decode"),
+        GrantDecision::Pending,
+    );
 }
 
 #[test]

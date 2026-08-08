@@ -340,7 +340,7 @@ fn present() {
 }
 
 fn absent() {
-    return pass(Option::None {});
+    return pass(Option::None);
 }
 "#,
     );
