@@ -54,6 +54,17 @@ pub(crate) fn i8_try_from_i64(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     }
 }
 
+pub(crate) fn i32_try_from_i64(args: &[OwnedValue]) -> VmResult<OwnedValue> {
+    expect_arity("i32::try_from_i64", args, 1)?;
+    let OwnedValue::Scalar(ScalarValue::I64(value)) = &args[0] else {
+        return type_error("i32::try_from_i64");
+    };
+    match i32::try_from(*value) {
+        Ok(value) => Ok(ok_scalar(ScalarValue::I32(value))),
+        Err(_) => Ok(err_string("i64 value is outside i32 range")),
+    }
+}
+
 pub(crate) fn i16_try_from_i64(args: &[OwnedValue]) -> VmResult<OwnedValue> {
     expect_arity("i16::try_from_i64", args, 1)?;
     let OwnedValue::Scalar(ScalarValue::I64(value)) = &args[0] else {

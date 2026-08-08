@@ -59,6 +59,7 @@ fn native_function(implementation: StdFunctionImplementation) -> StdNativeFuncti
         StdFunctionImplementation::U32FromU16 => crate::numeric_conversions::u32_from_u16,
         StdFunctionImplementation::U64FromU32 => crate::numeric_conversions::u64_from_u32,
         StdFunctionImplementation::F64FromF32 => crate::numeric_conversions::f64_from_f32,
+        StdFunctionImplementation::I32TryFromI64 => crate::numeric_conversions::i32_try_from_i64,
         StdFunctionImplementation::I16TryFromI64 => crate::numeric_conversions::i16_try_from_i64,
         StdFunctionImplementation::I8TryFromI64 => crate::numeric_conversions::i8_try_from_i64,
         StdFunctionImplementation::U16TryFromU64 => crate::numeric_conversions::u16_try_from_u64,

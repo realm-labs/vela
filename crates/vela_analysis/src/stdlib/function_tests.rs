@@ -122,7 +122,7 @@ fn math_set_and_time_functions_expose_return_facts() {
         TypeFact::result(TypeFact::BYTES, TypeFact::STRING)
     );
     assert_eq!(
-        stdlib_function_fact("i64::from_i32", &[TypeFact::I64])
+        stdlib_function_fact("i64::from_i32", &[TypeFact::I32])
             .expect("i64::from_i32 fact")
             .returns,
         TypeFact::I64
@@ -131,13 +131,13 @@ fn math_set_and_time_functions_expose_return_facts() {
         stdlib_function_fact("i8::try_from_i64", &[TypeFact::I64])
             .expect("i8::try_from_i64 fact")
             .returns,
-        TypeFact::result(TypeFact::I64, TypeFact::STRING)
+        TypeFact::result(TypeFact::I8, TypeFact::STRING)
     );
     assert_eq!(
         stdlib_function_fact("f32::try_from_f64", &[TypeFact::F64])
             .expect("f32::try_from_f64 fact")
             .returns,
-        TypeFact::result(TypeFact::F64, TypeFact::STRING)
+        TypeFact::result(TypeFact::F32, TypeFact::STRING)
     );
     assert_eq!(
         stdlib_function_fact("u8::wrapping_add", &[TypeFact::I64, TypeFact::I64])
@@ -228,13 +228,13 @@ fn function_completion_facts_enumerate_global_api_surface() {
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "i64::from_i32"
-            && fact.params == vec![TypeFact::I64]
+            && fact.params == vec![TypeFact::I32]
             && fact.returns == TypeFact::I64
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "f32::try_from_f64"
             && fact.params == vec![TypeFact::F64]
-            && fact.returns == TypeFact::result(TypeFact::F64, TypeFact::STRING)
+            && fact.returns == TypeFact::result(TypeFact::F32, TypeFact::STRING)
     }));
     assert!(facts.iter().any(|fact| {
         fact.name == "u8::bit_and"

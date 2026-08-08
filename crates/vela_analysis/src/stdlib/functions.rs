@@ -186,23 +186,40 @@ pub(super) fn completion_facts() -> Vec<StdlibFunctionFact> {
             vec![TypeFact::STRING],
             TypeFact::result(TypeFact::BYTES, TypeFact::STRING),
         ),
-        StdlibFunctionFact::new("i64::from_i32", vec![TypeFact::I64], TypeFact::I64),
-        StdlibFunctionFact::new("u64::from_u32", vec![TypeFact::I64], TypeFact::I64),
-        StdlibFunctionFact::new("f64::from_f32", vec![TypeFact::F64], TypeFact::F64),
+        StdlibFunctionFact::new("i32::from_i16", vec![TypeFact::I16], TypeFact::I32),
+        StdlibFunctionFact::new("i64::from_i32", vec![TypeFact::I32], TypeFact::I64),
+        StdlibFunctionFact::new("u32::from_u16", vec![TypeFact::U16], TypeFact::U32),
+        StdlibFunctionFact::new("u64::from_u32", vec![TypeFact::U32], TypeFact::U64),
+        StdlibFunctionFact::new("f64::from_f32", vec![TypeFact::F32], TypeFact::F64),
+        StdlibFunctionFact::new(
+            "i32::try_from_i64",
+            vec![TypeFact::I64],
+            TypeFact::result(TypeFact::I32, TypeFact::STRING),
+        ),
+        StdlibFunctionFact::new(
+            "i16::try_from_i64",
+            vec![TypeFact::I64],
+            TypeFact::result(TypeFact::I16, TypeFact::STRING),
+        ),
         StdlibFunctionFact::new(
             "i8::try_from_i64",
             vec![TypeFact::I64],
-            TypeFact::result(TypeFact::I64, TypeFact::STRING),
+            TypeFact::result(TypeFact::I8, TypeFact::STRING),
+        ),
+        StdlibFunctionFact::new(
+            "u16::try_from_u64",
+            vec![TypeFact::U64],
+            TypeFact::result(TypeFact::U16, TypeFact::STRING),
         ),
         StdlibFunctionFact::new(
             "u8::try_from_u64",
-            vec![TypeFact::I64],
-            TypeFact::result(TypeFact::I64, TypeFact::STRING),
+            vec![TypeFact::U64],
+            TypeFact::result(TypeFact::U8, TypeFact::STRING),
         ),
         StdlibFunctionFact::new(
             "f32::try_from_f64",
             vec![TypeFact::F64],
-            TypeFact::result(TypeFact::F64, TypeFact::STRING),
+            TypeFact::result(TypeFact::F32, TypeFact::STRING),
         ),
         StdlibFunctionFact::new(
             "u8::wrapping_add",
@@ -520,12 +537,19 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 TypeFact::result(TypeFact::BYTES, TypeFact::STRING),
             ))
         }
-        "i64::from_i32" | "u64::from_u32" => {
+        "i32::from_i16" | "i64::from_i32" | "u32::from_u16" | "u64::from_u32" => {
             expect_len(args, 1)?;
+            let returns = match name {
+                "i32::from_i16" => TypeFact::I32,
+                "i64::from_i32" => TypeFact::I64,
+                "u32::from_u16" => TypeFact::U32,
+                "u64::from_u32" => TypeFact::U64,
+                _ => unreachable!(),
+            };
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
                 args.to_vec(),
-                TypeFact::I64,
+                returns,
             ))
         }
         "f64::from_f32" => {
@@ -536,12 +560,21 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
                 TypeFact::F64,
             ))
         }
-        "i8::try_from_i64" | "u8::try_from_u64" => {
+        "i32::try_from_i64" | "i16::try_from_i64" | "i8::try_from_i64" | "u16::try_from_u64"
+        | "u8::try_from_u64" => {
             expect_len(args, 1)?;
+            let value = match name {
+                "i32::try_from_i64" => TypeFact::I32,
+                "i16::try_from_i64" => TypeFact::I16,
+                "i8::try_from_i64" => TypeFact::I8,
+                "u16::try_from_u64" => TypeFact::U16,
+                "u8::try_from_u64" => TypeFact::U8,
+                _ => unreachable!(),
+            };
             Some(StdlibFunctionFact::new(
                 canonical_function_name(name)?,
                 args.to_vec(),
-                TypeFact::result(TypeFact::I64, TypeFact::STRING),
+                TypeFact::result(value, TypeFact::STRING),
             ))
         }
         "f32::try_from_f64" => {
@@ -549,7 +582,7 @@ pub(super) fn function_fact(name: &str, args: &[TypeFact]) -> Option<StdlibFunct
             Some(StdlibFunctionFact::new(
                 "f32::try_from_f64",
                 args.to_vec(),
-                TypeFact::result(TypeFact::F64, TypeFact::STRING),
+                TypeFact::result(TypeFact::F32, TypeFact::STRING),
             ))
         }
         "u8::wrapping_add" | "u32::wrapping_mul" | "i8::wrapping_add" | "u8::bit_and"
@@ -766,9 +799,14 @@ fn canonical_function_name(name: &str) -> Option<&'static str> {
         "time::elapsed_since" => Some("time::elapsed_since"),
         "io::print" => Some("io::print"),
         "io::println" => Some("io::println"),
+        "i32::from_i16" => Some("i32::from_i16"),
         "i64::from_i32" => Some("i64::from_i32"),
+        "u32::from_u16" => Some("u32::from_u16"),
         "u64::from_u32" => Some("u64::from_u32"),
+        "i32::try_from_i64" => Some("i32::try_from_i64"),
+        "i16::try_from_i64" => Some("i16::try_from_i64"),
         "i8::try_from_i64" => Some("i8::try_from_i64"),
+        "u16::try_from_u64" => Some("u16::try_from_u64"),
         "u8::try_from_u64" => Some("u8::try_from_u64"),
         "u8::wrapping_add" => Some("u8::wrapping_add"),
         "u32::wrapping_mul" => Some("u32::wrapping_mul"),

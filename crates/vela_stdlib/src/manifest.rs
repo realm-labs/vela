@@ -642,6 +642,13 @@ pub const STD_FUNCTIONS: &[StdFunctionSpec] = &[
         "Widens an f32 value to f64.",
     ),
     StdFunctionSpec::new(
+        "i32",
+        "try_from_i64",
+        &[StdParamSpec::new("value", "i64")],
+        "Result<i32, String>",
+        "Narrows an i64 value to i32 or returns an error string.",
+    ),
+    StdFunctionSpec::new(
         "i16",
         "try_from_i64",
         &[StdParamSpec::new("value", "i64")],
@@ -793,7 +800,7 @@ mod tests {
         assert_eq!(STD_TYPES.len(), 24);
         assert_eq!(STD_VARIANTS.len(), 4);
         assert_eq!(STD_FIELDS.len(), 3);
-        assert_eq!(STD_FUNCTIONS.len(), 51);
+        assert_eq!(STD_FUNCTIONS.len(), 52);
         assert_eq!(STD_METHODS.len(), 164);
     }
 
@@ -823,6 +830,11 @@ mod tests {
             STD_FUNCTIONS
                 .iter()
                 .any(|spec| spec.module == "i64" && spec.name == "from_i32")
+        );
+        assert!(
+            STD_FUNCTIONS
+                .iter()
+                .any(|spec| spec.module == "i32" && spec.name == "try_from_i64")
         );
         assert!(
             STD_FUNCTIONS

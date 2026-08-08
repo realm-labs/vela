@@ -101,6 +101,16 @@ fn numeric_try_conversions_return_result_ok_with_narrow_scalar_tags() {
         run_conversion_source(
             r#"
 fn main() {
+    return result::unwrap_or(i32::try_from_i64(2147483647), 0i32);
+}
+"#
+        ),
+        Ok(OwnedValue::Scalar(ScalarValue::I32(i32::MAX)))
+    );
+    assert_eq!(
+        run_conversion_source(
+            r#"
+fn main() {
     return result::unwrap_or(i16::try_from_i64(-1024), 0i16);
 }
 "#
@@ -151,6 +161,16 @@ fn main() {
 
 #[test]
 fn numeric_try_conversions_return_result_err_out_of_range() {
+    assert_eq!(
+        run_conversion_source(
+            r#"
+fn main() {
+    return result::is_err(i32::try_from_i64(2147483648));
+}
+"#
+        ),
+        Ok(OwnedValue::Bool(true))
+    );
     assert_eq!(
         run_conversion_source(
             r#"
