@@ -503,6 +503,22 @@ fn unlinked_next_path_reaches(
     if jump_offset == body_offset {
         return true;
     }
+    if matches!(
+        (
+            code.instructions
+                .get(jump_offset)
+                .map(|instruction| &instruction.kind),
+            code.instructions
+                .get(jump_offset + 1)
+                .map(|instruction| &instruction.kind),
+        ),
+        (
+            Some(crate::UnlinkedInstructionKind::ChargeExecutionUnits { .. }),
+            Some(crate::UnlinkedInstructionKind::Jump { target })
+        ) if target.0 == body_offset
+    ) {
+        return true;
+    }
     let Some(crate::UnlinkedInstructionKind::Jump { target }) = code
         .instructions
         .get(jump_offset)
@@ -597,6 +613,22 @@ fn linked_next_path_reaches(
     body_offset: usize,
 ) -> bool {
     if jump_offset == body_offset {
+        return true;
+    }
+    if matches!(
+        (
+            code.instructions
+                .get(jump_offset)
+                .map(|instruction| &instruction.kind),
+            code.instructions
+                .get(jump_offset + 1)
+                .map(|instruction| &instruction.kind),
+        ),
+        (
+            Some(crate::linked::InstructionKind::ChargeExecutionUnits { .. }),
+            Some(crate::linked::InstructionKind::Jump { target })
+        ) if target.0 == body_offset
+    ) {
         return true;
     }
     let Some(crate::linked::InstructionKind::Jump { target }) = code

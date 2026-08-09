@@ -47,7 +47,9 @@ fn scalar_range_artifact(
         dst: Register(2),
         constant: not_done,
     }));
-    let done = InstructionOffset(if selected { 6 } else { 8 });
+    let body = InstructionOffset(7);
+    let done_stub = InstructionOffset(if selected { 8 } else { 10 });
+    let return_offset = InstructionOffset(if selected { 10 } else { 12 });
     code.push_instruction(
         Instruction::new(InstructionKind::I64RangeNext {
             cursor: Register(0),
@@ -55,11 +57,15 @@ fn scalar_range_artifact(
             done: Register(2),
             inclusive,
             dst: Register(3),
-            jump_if_done: done,
+            jump_if_done: done_stub,
         })
         .with_span(span(13))
         .with_execution_units(1),
     );
+    code.push_instruction(
+        Instruction::new(InstructionKind::ChargeExecutionUnits { units: 1 }).with_span(span(14)),
+    );
+    code.push_instruction(Instruction::new(InstructionKind::Jump { target: body }));
 
     if selected {
         let mut plan = ScalarBlockPlan::new(
@@ -87,7 +93,7 @@ fn scalar_range_artifact(
                 source: source(2),
                 execution_units: 1,
             },
-            Box::new([span(10), span(11), span(12), span(13)]),
+            Box::new([span(10), span(11), span(12), span(13), span(14), span(15)]),
         );
         plan.range_loop = Some(ScalarRangeLoop {
             cursor: Register(0),
@@ -98,10 +104,14 @@ fn scalar_range_artifact(
             header_source: source(3),
             header_execution_units: 1,
             next_edge: ChargedScalarEdge {
-                execution_units: 0,
-                budget_source: None,
+                execution_units: 1,
+                budget_source: Some(source(4)),
             },
-            done_target: target(done.0),
+            done_target: ChargedScalarTarget {
+                target: return_offset,
+                execution_units: 1,
+                budget_source: Some(source(5)),
+            },
         });
         code.scalar_blocks.push(plan);
         code.push_instruction(Instruction::new(InstructionKind::RunScalarBlock {
@@ -132,7 +142,14 @@ fn scalar_range_artifact(
             .with_execution_units(1),
         );
     }
-    debug_assert_eq!(code.instructions.len(), done.0);
+    debug_assert_eq!(code.instructions.len(), done_stub.0);
+    code.push_instruction(
+        Instruction::new(InstructionKind::ChargeExecutionUnits { units: 1 }).with_span(span(15)),
+    );
+    code.push_instruction(Instruction::new(InstructionKind::Jump {
+        target: return_offset,
+    }));
+    debug_assert_eq!(code.instructions.len(), return_offset.0);
     code.push_instruction(Instruction::new(InstructionKind::Return {
         src: Register(4),
     }));
@@ -796,7 +813,7 @@ fn linked_scalar_range_loop_matches_empty_one_element_and_bound_modes() {
 fn linked_scalar_range_loop_matches_exact_budget_failure_points() {
     let selected = scalar_range_artifact(true, 0, 4, false, 0);
     let ordinary = scalar_range_artifact(false, 0, 4, false, 0);
-    for limit in 0..=13 {
+    for limit in 0..=18 {
         let mut selected_budget = ExecutionBudget::new(limit, usize::MAX, usize::MAX);
         let selected_result =
             Vm::new().run_linked_program_with_budget(&selected, "main", &[], &mut selected_budget);
@@ -810,12 +827,12 @@ fn linked_scalar_range_loop_matches_exact_budget_failure_points() {
             "budget limit {limit}"
         );
     }
-    let mut exact = ExecutionBudget::new(13, usize::MAX, usize::MAX);
+    let mut exact = ExecutionBudget::new(18, usize::MAX, usize::MAX);
     assert_eq!(
         Vm::new().run_linked_program_with_budget(&selected, "main", &[], &mut exact),
         Ok(OwnedValue::i64(6))
     );
-    assert_eq!(exact.execution_units_consumed(), 13);
+    assert_eq!(exact.execution_units_consumed(), 18);
 }
 
 #[test]
