@@ -1,0 +1,44 @@
+# captured_at_utc=20260809T035147Z
+# commit=6d85f9d23eb9c2dbafe90b6af3fe0cc9427b45aa
+# branch=master
+# worktree=clean
+# rustc=rustc 1.97.1 (8bab26f4f 2026-07-14)
+# cargo=cargo 1.97.1 (c980f4866 2026-06-30)
+# platform=macOS-26.5.2-arm64-arm-64bit-Mach-O
+# machine=arm64
+# cpu=Apple M1 Max
+# logical_cpus=10
+# load_average_before=12.16,13.57,13.33
+# elapsed_seconds=9.684
+# exit_status=0
+# command=cargo bench -p vela_engine --bench actor_memory -- memory
+
+   Compiling vela_engine v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_engine)
+    Finished `bench` profile [optimized] target(s) in 1.76s
+     Running benches/actor_memory.rs (target/release/deps/actor_memory-4289e8c7d76130ef)
+suite=actor_memory sampling=stable rss_ceiling_bytes=1610612736 time_ceiling_ms=90000
+entry_sizes state_read_bytes=16 host_access_bytes=112 record_field_bytes=48 method_dispatch_bytes=48 dynamic_method_bytes=80 native_call_bytes=48 profile_counter_bytes=8
+memory_child shape=small profile=disabled runtimes=1 construction_ns=451750 retained_rss_bytes=688128 rss_before_bytes=11075584 rss_after_bytes=11763712 allocation_count=118 allocated_bytes=30569 deallocated_bytes=18878 cache_sites=2 instruction_count=9 state_schema_count=1 actor_state_payload_bytes=8
+memory_result shape=small profile=disabled runtimes=1 status=ok peak_rss_bytes=11763712
+memory_child shape=small profile=disabled runtimes=100 construction_ns=911959 retained_rss_bytes=1966080 rss_before_bytes=11010048 rss_after_bytes=12976128 allocation_count=11305 allocated_bytes=3049476 deallocated_bytes=1887800 cache_sites=2 instruction_count=9 state_schema_count=1 actor_state_payload_bytes=800
+memory_result shape=small profile=disabled runtimes=100 status=ok peak_rss_bytes=12976128
+memory_child shape=small profile=disabled runtimes=10000 construction_ns=70618500 retained_rss_bytes=120782848 rss_before_bytes=11010048 rss_after_bytes=131792896 allocation_count=1130005 allocated_bytes=312848720 deallocated_bytes=188780000 cache_sites=2 instruction_count=9 state_schema_count=1 actor_state_payload_bytes=80000
+memory_result shape=small profile=disabled runtimes=10000 status=ok peak_rss_bytes=131858432
+memory_child shape=small profile=enabled runtimes=1 construction_ns=191084 retained_rss_bytes=704512 rss_before_bytes=11042816 rss_after_bytes=11747328 allocation_count=123 allocated_bytes=30865 deallocated_bytes=18910 cache_sites=2 instruction_count=9 state_schema_count=1 actor_state_payload_bytes=8
+memory_result shape=small profile=enabled runtimes=1 status=ok peak_rss_bytes=11796480
+memory_child shape=small profile=enabled runtimes=100 construction_ns=805333 retained_rss_bytes=1933312 rss_before_bytes=10993664 rss_after_bytes=12926976 allocation_count=11310 allocated_bytes=3049772 deallocated_bytes=1887832 cache_sites=2 instruction_count=9 state_schema_count=1 actor_state_payload_bytes=800
+memory_result shape=small profile=enabled runtimes=100 status=ok peak_rss_bytes=12926976
+memory_child shape=small profile=enabled runtimes=10000 construction_ns=68773667 retained_rss_bytes=120782848 rss_before_bytes=11108352 rss_after_bytes=131891200 allocation_count=1130010 allocated_bytes=312849016 deallocated_bytes=188780032 cache_sites=2 instruction_count=9 state_schema_count=1 actor_state_payload_bytes=80000
+memory_result shape=small profile=enabled runtimes=10000 status=ok peak_rss_bytes=131956736
+memory_child shape=large profile=disabled runtimes=1 construction_ns=541917 retained_rss_bytes=737280 rss_before_bytes=137641984 rss_after_bytes=138379264 allocation_count=4360 allocated_bytes=540195 deallocated_bytes=438744 cache_sites=512 instruction_count=2309 state_schema_count=1 actor_state_payload_bytes=8
+memory_result shape=large profile=disabled runtimes=1 status=ok peak_rss_bytes=138444800
+memory_child shape=large profile=disabled runtimes=100 construction_ns=29486584 retained_rss_bytes=1622016 rss_before_bytes=136790016 rss_after_bytes=138412032 allocation_count=435505 allocated_bytes=45125836 deallocated_bytes=43874400 cache_sites=512 instruction_count=2309 state_schema_count=1 actor_state_payload_bytes=800
+memory_result shape=large profile=disabled runtimes=100 status=ok peak_rss_bytes=138477568
+memory_child shape=large profile=disabled runtimes=10000 construction_ns=2986456917 retained_rss_bytes=117080064 rss_before_bytes=136740864 rss_after_bytes=253820928 allocation_count=43550005 allocated_bytes=4511598480 deallocated_bytes=4387440000 cache_sites=512 instruction_count=2309 state_schema_count=1 actor_state_payload_bytes=80000
+memory_result shape=large profile=disabled runtimes=10000 status=ok peak_rss_bytes=253886464
+memory_child shape=large profile=enabled runtimes=1 construction_ns=495500 retained_rss_bytes=786432 rss_before_bytes=136937472 rss_after_bytes=137723904 allocation_count=4646 allocated_bytes=577003 deallocated_bytes=447000 cache_sites=512 instruction_count=2309 state_schema_count=1 actor_state_payload_bytes=8
+memory_result shape=large profile=enabled runtimes=1 status=ok peak_rss_bytes=137773056
+memory_child shape=large profile=enabled runtimes=100 construction_ns=30022250 retained_rss_bytes=1851392 rss_before_bytes=137510912 rss_after_bytes=139362304 allocation_count=435791 allocated_bytes=45162644 deallocated_bytes=43882656 cache_sites=512 instruction_count=2309 state_schema_count=1 actor_state_payload_bytes=800
+memory_result shape=large profile=enabled runtimes=100 status=ok peak_rss_bytes=139411456
+memory_child shape=large profile=enabled runtimes=10000 construction_ns=3050396167 retained_rss_bytes=117522432 rss_before_bytes=137052160 rss_after_bytes=254574592 allocation_count=43550291 allocated_bytes=4511635288 deallocated_bytes=4387448256 cache_sites=512 instruction_count=2309 state_schema_count=1 actor_state_payload_bytes=80000
+memory_result shape=large profile=enabled runtimes=10000 status=ok peak_rss_bytes=254623744
