@@ -63,6 +63,95 @@ fn enabled_profile_counts_offsets_and_reset_clears_the_generation() {
 }
 
 #[test]
+fn enabled_profile_counts_scalar_loop_units_and_logical_subpoints() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source_with_id(
+            SourceId::new(1),
+            "fn main() -> i64 { let total = 0; for value in 0..3 { total += value + 1 - 1; } return total; }",
+        )
+        .expect("scalar loop profile source should compile");
+    let mut runtime = Runtime::builder(engine, program)
+        .expect("runtime builder")
+        .with_bytecode_profiling()
+        .build()
+        .expect("runtime should initialize");
+    let main = linked_function(&runtime, "main");
+    let (offset, plan_id) = main
+        .instructions
+        .iter()
+        .enumerate()
+        .find_map(|(offset, instruction)| match instruction.kind {
+            vela_bytecode::linked::InstructionKind::RunScalarBlock { plan }
+                if main.scalar_blocks[plan.index()].range_loop.is_some() =>
+            {
+                Some((InstructionOffset(offset), plan))
+            }
+            _ => None,
+        })
+        .expect("fixture should contain a selected scalar loop");
+    let plan = &main.scalar_blocks[plan_id.index()];
+    let operation_sources = plan
+        .operations
+        .iter()
+        .map(|operation| operation.source)
+        .collect::<Vec<_>>();
+    let exit_source = plan.exit.source;
+    let header_source = plan.range_loop.expect("range loop").header_source;
+    let main_name = main.debug_name;
+
+    runtime
+        .call("main", CallArgs::new(), CallOptions::unbounded())
+        .expect("scalar loop should run");
+    let snapshot = runtime
+        .bytecode_profile_snapshot()
+        .expect("enabled profile snapshot");
+    let unit = snapshot
+        .functions()
+        .iter()
+        .find(|function| function.debug_name() == main_name)
+        .and_then(|function| {
+            function
+                .scalar_units()
+                .iter()
+                .find(|unit| unit.offset() == offset && unit.plan() == plan_id)
+        })
+        .expect("scalar unit profile");
+    let loop_profile = unit.loop_profile().expect("range loop profile");
+    assert_eq!(loop_profile.entries(), 1);
+    assert_eq!(loop_profile.iterations(), 3);
+    assert_eq!(loop_profile.exits(), 1);
+    assert_eq!(loop_profile.charged_backedges(), 3);
+    for source in operation_sources {
+        assert_eq!(unit.subpoint_hits()[source.index()], 3);
+    }
+    assert_eq!(unit.subpoint_hits()[exit_source.index()], 3);
+    assert_eq!(unit.subpoint_hits()[header_source.index()], 3);
+
+    assert!(runtime.reset_bytecode_profile());
+    let reset = runtime
+        .bytecode_profile_snapshot()
+        .expect("reset profile snapshot");
+    let reset_unit = reset
+        .functions()
+        .iter()
+        .find(|function| function.debug_name() == main_name)
+        .and_then(|function| {
+            function
+                .scalar_units()
+                .iter()
+                .find(|unit| unit.offset() == offset && unit.plan() == plan_id)
+        })
+        .expect("reset scalar unit profile");
+    assert!(reset_unit.subpoint_hits().iter().all(|hits| *hits == 0));
+    let reset_loop = reset_unit.loop_profile().expect("reset loop profile");
+    assert_eq!(reset_loop.entries(), 0);
+    assert_eq!(reset_loop.iterations(), 0);
+    assert_eq!(reset_loop.exits(), 0);
+    assert_eq!(reset_loop.charged_backedges(), 0);
+}
+
+#[test]
 fn aggregate_profile_counters_saturate_instead_of_wrapping() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
@@ -135,7 +224,10 @@ fn engine_deployment_uses_one_aggregate_profile_across_owned_images() {
 fn accepted_reload_publishes_a_fresh_generation_profile() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial_with_id(SourceId::new(1), "fn main() { return 1; }")
+        .compile_hot_reload_initial_with_id(
+            SourceId::new(1),
+            "fn main() -> i64 { let total = 0; for value in 0..2 { total += value + 1 - 1; } return total; }",
+        )
         .expect("initial hot reload source should compile");
     let mut runtime = Runtime::builder_from_hot_reload_version(engine, initial)
         .with_bytecode_profiling()
@@ -148,13 +240,17 @@ fn accepted_reload_publishes_a_fresh_generation_profile() {
     let initial_snapshot = runtime
         .bytecode_profile_snapshot()
         .expect("enabled initial profile");
-    assert_eq!(
-        snapshot_hit(&initial_snapshot, initial_name, InstructionOffset(0)),
-        Some(1)
-    );
+    let initial_loop = snapshot_scalar_loop(&initial_snapshot, initial_name);
+    assert_eq!(initial_loop.entries(), 1);
+    assert_eq!(initial_loop.iterations(), 2);
+    assert_eq!(initial_loop.exits(), 1);
+    assert_eq!(initial_loop.charged_backedges(), 2);
 
     let update = runtime
-        .compile_reload_with_id(SourceId::new(2), "fn main() { return 2; }")
+        .compile_reload_with_id(
+            SourceId::new(2),
+            "fn main() -> i64 { let total = 0; for value in 0..4 { total += value + 1 - 1; } return total; }",
+        )
         .expect("runtime should compile hot reload update")
         .expect("compatible return-value change should be accepted");
     let report = runtime
@@ -170,17 +266,45 @@ fn accepted_reload_publishes_a_fresh_generation_profile() {
         initial_snapshot.generation(),
         reloaded_snapshot.generation()
     );
-    assert_eq!(
-        snapshot_hit(&reloaded_snapshot, reloaded_name, InstructionOffset(0)),
-        Some(0)
-    );
+    let reloaded_loop = snapshot_scalar_loop(&reloaded_snapshot, reloaded_name);
+    assert_eq!(reloaded_loop.entries(), 0);
+    assert_eq!(reloaded_loop.iterations(), 0);
+    assert_eq!(reloaded_loop.exits(), 0);
+    assert_eq!(reloaded_loop.charged_backedges(), 0);
     runtime
         .call("main", CallArgs::new(), CallOptions::unbounded())
         .expect("reloaded main should run");
-    assert_eq!(
-        profile_hit(&runtime, reloaded_name, InstructionOffset(0)),
-        Some(1)
-    );
+    let after_reload = runtime
+        .bytecode_profile_snapshot()
+        .expect("enabled reloaded profile");
+    let after_reload_loop = snapshot_scalar_loop(&after_reload, reloaded_name);
+    assert_eq!(after_reload_loop.entries(), 1);
+    assert_eq!(after_reload_loop.iterations(), 4);
+    assert_eq!(after_reload_loop.exits(), 1);
+    assert_eq!(after_reload_loop.charged_backedges(), 4);
+
+    let retained_initial_loop = snapshot_scalar_loop(&initial_snapshot, initial_name);
+    assert_eq!(retained_initial_loop.entries(), 1);
+    assert_eq!(retained_initial_loop.iterations(), 2);
+    assert_eq!(retained_initial_loop.exits(), 1);
+    assert_eq!(retained_initial_loop.charged_backedges(), 2);
+}
+
+fn snapshot_scalar_loop(
+    snapshot: &BytecodeProfileSnapshot,
+    function: DebugNameId,
+) -> crate::runtime::ScalarLoopBytecodeProfile {
+    snapshot
+        .functions()
+        .iter()
+        .find(|profile| profile.debug_name() == function)
+        .and_then(|profile| {
+            profile
+                .scalar_units()
+                .iter()
+                .find_map(|unit| unit.loop_profile().copied())
+        })
+        .expect("function should contain one profiled scalar loop")
 }
 
 fn profile_hit<I>(

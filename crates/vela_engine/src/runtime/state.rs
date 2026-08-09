@@ -294,6 +294,38 @@ impl vela_vm::VmBytecodeProfiler for RuntimeGenerations {
             offset,
         );
     }
+
+    fn record_scalar_subpoint(
+        &self,
+        function: DebugNameId,
+        offset: InstructionOffset,
+        plan: vela_bytecode::ScalarBlockPlanId,
+        source: vela_bytecode::ScalarSourcePointId,
+    ) {
+        vela_vm::VmBytecodeProfiler::record_scalar_subpoint(
+            self.active().execution_data.as_ref(),
+            function,
+            offset,
+            plan,
+            source,
+        );
+    }
+
+    fn record_scalar_loop_event(
+        &self,
+        function: DebugNameId,
+        offset: InstructionOffset,
+        plan: vela_bytecode::ScalarBlockPlanId,
+        event: vela_vm::ScalarLoopProfileEvent,
+    ) {
+        vela_vm::VmBytecodeProfiler::record_scalar_loop_event(
+            self.active().execution_data.as_ref(),
+            function,
+            offset,
+            plan,
+            event,
+        );
+    }
 }
 
 impl RuntimeGenerations {

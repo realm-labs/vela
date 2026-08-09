@@ -80,6 +80,15 @@ pub struct ProfileFunctionLayout {
     pub handle: crate::ScriptFunctionHandle,
     pub debug_name: crate::DebugNameId,
     pub instruction_count: usize,
+    pub scalar_units: Box<[ProfileScalarUnitLayout]>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ProfileScalarUnitLayout {
+    pub offset: crate::InstructionOffset,
+    pub plan: crate::ScalarBlockPlanId,
+    pub source_count: usize,
+    pub has_range_loop: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -94,8 +103,7 @@ pub struct MirExecutableLayout {
 pub mod test_support {
     use super::{
         Arc, ArtifactFeatureSet, ExecutableGenerationId, LinkedArtifact, LinkedProgram,
-        NEXT_EXECUTABLE_GENERATION, Ordering, ProfileFunctionLayout, ProfileLayout, ProgramImage,
-        test_mir_binding,
+        NEXT_EXECUTABLE_GENERATION, Ordering, ProgramImage, profile_layout, test_mir_binding,
     };
 
     /// Declares one extern state on a fixture program and returns its slot.
@@ -133,17 +141,7 @@ pub mod test_support {
             .flat_map(|(_, code)| code.cache_sites.sites().iter().cloned())
             .collect::<Vec<_>>()
             .into_boxed_slice();
-        let profile_layout = ProfileLayout {
-            functions: program
-                .functions()
-                .map(|(handle, code)| ProfileFunctionLayout {
-                    handle,
-                    debug_name: code.debug_name,
-                    instruction_count: code.instructions.len(),
-                })
-                .collect::<Vec<_>>()
-                .into_boxed_slice(),
-        };
+        let profile_layout = profile_layout(&program);
         let (verified_mir, mir_executables) = test_mir_binding(&program);
         let artifact = LinkedArtifact {
             program: Arc::new(program),
@@ -206,17 +204,7 @@ impl LinkedArtifact {
             NEXT_EXECUTABLE_GENERATION.fetch_add(1, Ordering::Relaxed),
         ));
         let cache_layout = image.cache_sites().to_vec().into_boxed_slice();
-        let profile_layout = ProfileLayout {
-            functions: program
-                .functions()
-                .map(|(handle, code)| ProfileFunctionLayout {
-                    handle,
-                    debug_name: code.debug_name,
-                    instruction_count: code.instructions.len(),
-                })
-                .collect::<Vec<_>>()
-                .into_boxed_slice(),
-        };
+        let profile_layout = profile_layout(&program);
         let artifact = UnboundLinkedProgram {
             program: Arc::new(program),
             image,
@@ -1133,6 +1121,38 @@ impl ProfileLayout {
     #[must_use]
     pub fn functions(&self) -> &[ProfileFunctionLayout] {
         &self.functions
+    }
+}
+
+fn profile_layout(program: &LinkedProgram) -> ProfileLayout {
+    ProfileLayout {
+        functions: program
+            .functions()
+            .map(|(handle, code)| ProfileFunctionLayout {
+                handle,
+                debug_name: code.debug_name,
+                instruction_count: code.instructions.len(),
+                scalar_units: code
+                    .instructions
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(offset, instruction)| {
+                        let InstructionKind::RunScalarBlock { plan } = instruction.kind else {
+                            return None;
+                        };
+                        let scalar = &code.scalar_blocks[plan.index()];
+                        Some(ProfileScalarUnitLayout {
+                            offset: crate::InstructionOffset(offset),
+                            plan,
+                            source_count: scalar.source_points.len(),
+                            has_range_loop: scalar.range_loop.is_some(),
+                        })
+                    })
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice(),
+            })
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
     }
 }
 

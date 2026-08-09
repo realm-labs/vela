@@ -160,6 +160,34 @@ impl vela_vm::VmBytecodeProfiler for GenerationExecutionData {
             vela_vm::VmBytecodeProfiler::record_instruction(profile, function, offset);
         }
     }
+
+    fn record_scalar_subpoint(
+        &self,
+        function: vela_bytecode::DebugNameId,
+        offset: vela_bytecode::InstructionOffset,
+        plan: vela_bytecode::ScalarBlockPlanId,
+        source: vela_bytecode::ScalarSourcePointId,
+    ) {
+        if let Some(profile) = self.bytecode_profile() {
+            vela_vm::VmBytecodeProfiler::record_scalar_subpoint(
+                profile, function, offset, plan, source,
+            );
+        }
+    }
+
+    fn record_scalar_loop_event(
+        &self,
+        function: vela_bytecode::DebugNameId,
+        offset: vela_bytecode::InstructionOffset,
+        plan: vela_bytecode::ScalarBlockPlanId,
+        event: vela_vm::ScalarLoopProfileEvent,
+    ) {
+        if let Some(profile) = self.bytecode_profile() {
+            vela_vm::VmBytecodeProfiler::record_scalar_loop_event(
+                profile, function, offset, plan, event,
+            );
+        }
+    }
 }
 
 pub(crate) type SharedGenerationExecutionData = Arc<GenerationExecutionData>;

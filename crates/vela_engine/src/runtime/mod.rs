@@ -57,7 +57,10 @@ mod vm_states;
 
 pub use options::CallOptions;
 
-pub use bytecode_profile::{BytecodeProfileSnapshot, FunctionBytecodeProfile};
+pub use bytecode_profile::{
+    BytecodeProfileSnapshot, FunctionBytecodeProfile, ScalarLoopBytecodeProfile,
+    ScalarUnitBytecodeProfile,
+};
 pub use call_args::{
     CallArgs, DirectHostIdentity, ServiceScopedReturn, ServiceScopedReturnEnvelope,
 };
