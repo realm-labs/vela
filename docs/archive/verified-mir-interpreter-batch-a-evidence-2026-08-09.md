@@ -52,6 +52,27 @@ match Lua.
 it must use fresh-process interleaving and consider median/minimum as well as
 mean rather than treating this five-repeat result as a narrow noise floor.
 
+The frozen external guardrail capture is
+[`perf-baselines/verified_mir_guardrails_macos_aarch64.txt`](../../perf-baselines/verified_mir_guardrails_macos_aarch64.txt).
+It uses the same machine, toolchain, exact runtimes, iteration count, repeats,
+warmups, cleanliness rule, and load ceiling at measurement commit
+`7fd7ce7d9`. These rows are regression guards rather than scalar-selection
+targets:
+
+| Workload | Vela mean ns/iteration | Lua 5.4 mean ns/iteration | Vela/Lua | Vela min-to-p95 spread |
+|---|---:|---:|---:|---:|
+| `array_scan` | 279,958 | 58,274 | 4.804x | 2.27% |
+| `string_methods` | 84,033 | 25,280 | 3.324x | 2.40% |
+| `map_string_index_lookup_update` | 57,277 | 3,839 | 14.920x | 9.84% |
+| `object_field_methods` | 58,874 | 14,085 | 4.180x | 2.01% |
+
+The Vela Map row and the Lua string/Map rows retain high process-state noise;
+the Lua min-to-p95 spreads are 17.61% and 18.27%. Their raw checksums and
+directional ratios are frozen, but a later 5% retention decision must use
+fresh-process interleaving with a noise floor rather than this single-process
+mean. The other Vela guardrail rows are sufficiently tight for the initial
+regression screen.
+
 ## Verified-MIR and dynamic-dispatch inventory
 
 The reproducible inventory test compiles each workload, examines its verified
@@ -150,10 +171,10 @@ coverage verifier first. Batch D should prioritize the long pure scalar regions
 in `range_iteration`; Batch E may then internalize only eligible natural loops
 while charging every taken backedge. Call fusion remains deferred.
 
-Batch A is not complete until the frozen guardrail rows, artifact bytes, compile
-time, peak compile RSS, and Runtime/Actor memory are captured and the complete
-stable-checksum/geometric-mean report is archived. No runtime or artifact
-behavior changed in this checkpoint.
+Batch A is not complete until the baseline/engine guardrail rows, artifact
+bytes, compile time, peak compile RSS, and Runtime/Actor memory are captured
+and the complete stable-checksum/geometric-mean report is archived. No runtime
+or artifact behavior changed in this checkpoint.
 
 ## Validation
 

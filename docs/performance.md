@@ -191,10 +191,12 @@ are boundary baselines, not optimization targets; stable multi-sample runs use
 example `cargo bench -p vela_vm --bench baseline -- --quick host_field`.
 `external_compare` accepts the same kind of workload-name substring filters,
 for example `cargo bench -p vela_vm --bench external_compare -- --quick string`.
-It also accepts profiling/regression parameters:
+Its `--runtime` option accepts exact runtime names or a comma-separated list;
+workload filters remain substrings. It also accepts profiling/regression
+parameters:
 
 ```text
---runtime <substring-or-comma-list>
+--runtime <exact-name-or-comma-list>
 --iterations <count>
 --repeats <count>
 --warmup <count>
