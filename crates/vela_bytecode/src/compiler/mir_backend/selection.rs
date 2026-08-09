@@ -4,9 +4,9 @@ use std::fmt;
 use vela_mir::{
     MirBackendHandoff, MirBasicBlock, MirBinaryOp, MirBlockId, MirBudgetPoint, MirBudgetSite,
     MirComparisonOp, MirDebugLocalId, MirFunction, MirFunctionAnalyses, MirFunctionId,
-    MirImmediate, MirLiveValue, MirNumericBinaryOp, MirOperand, MirPlace, MirRvalue,
-    MirSafepointId, MirSourceOrigin, MirStatementId, MirStatementKind, MirTerminatorKind,
-    MirUnaryOp, MirValueType,
+    MirImmediate, MirLiveValue, MirNumericBinaryOp, MirOperand, MirPlace, MirRangeStepMode,
+    MirRvalue, MirSafepointId, MirSourceOrigin, MirStatementId, MirStatementKind,
+    MirTerminatorKind, MirUnaryOp, MirValueType,
 };
 
 mod verify;
@@ -72,6 +72,12 @@ pub(super) struct SuperinstructionPlan {
 pub(super) struct ScalarBlockSelection {
     block: MirBlockId,
     statements: Box<[MirStatementId]>,
+    range_loop: Option<ScalarRangeLoopSelection>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) struct ScalarRangeLoopSelection {
+    header: MirBlockId,
 }
 
 impl SelectedFunctionPlan {
@@ -103,6 +109,16 @@ impl ScalarBlockSelection {
 
     pub(super) const fn statements(&self) -> &[MirStatementId] {
         &self.statements
+    }
+
+    pub(super) const fn range_loop(&self) -> Option<ScalarRangeLoopSelection> {
+        self.range_loop
+    }
+}
+
+impl ScalarRangeLoopSelection {
+    pub(super) const fn header(self) -> MirBlockId {
+        self.header
     }
 }
 
@@ -434,7 +450,111 @@ fn scalar_block_candidate(
     Some(ScalarBlockSelection {
         block: block_id,
         statements: block.statements().to_vec().into_boxed_slice(),
+        range_loop: scalar_range_loop(function, block_id),
     })
+}
+
+fn scalar_range_loop(
+    function: &MirFunction,
+    latch: MirBlockId,
+) -> Option<ScalarRangeLoopSelection> {
+    let MirTerminatorKind::Jump(header) = function.block(latch)?.terminator()?.kind else {
+        return None;
+    };
+    let header_terminator = function.block(header)?.terminator()?;
+    let MirTerminatorKind::RangeNext {
+        mode: MirRangeStepMode::I64Proven,
+        next,
+        done,
+        ..
+    } = header_terminator.kind
+    else {
+        return None;
+    };
+    if header_terminator.safepoint.is_some() || next != latch || done == header || done == latch {
+        return None;
+    }
+    let predecessors = mir_predecessors(function);
+    if predecessors.get(&latch).map(Vec::as_slice) != Some([header].as_slice()) {
+        return None;
+    }
+    let dominators = mir_dominators(function, &predecessors);
+    let cyclic_predecessors = predecessors
+        .get(&header)?
+        .iter()
+        .filter(|predecessor| {
+            dominators
+                .get(predecessor)
+                .is_some_and(|blocks| blocks.contains(&header))
+        })
+        .copied()
+        .collect::<Vec<_>>();
+    if cyclic_predecessors.as_slice() != [latch] {
+        return None;
+    }
+    Some(ScalarRangeLoopSelection { header })
+}
+
+fn mir_predecessors(function: &MirFunction) -> BTreeMap<MirBlockId, Vec<MirBlockId>> {
+    let mut predecessors = BTreeMap::<MirBlockId, Vec<MirBlockId>>::new();
+    for (block, data) in function.blocks() {
+        if let Some(terminator) = data.terminator() {
+            for successor in mir_successors(&terminator.kind) {
+                predecessors.entry(successor).or_default().push(block);
+            }
+        }
+    }
+    predecessors
+}
+
+fn mir_dominators(
+    function: &MirFunction,
+    predecessors: &BTreeMap<MirBlockId, Vec<MirBlockId>>,
+) -> BTreeMap<MirBlockId, BTreeSet<MirBlockId>> {
+    let blocks = function
+        .blocks()
+        .map(|(block, _)| block)
+        .collect::<BTreeSet<_>>();
+    let entry = function.entry_block();
+    let mut dominators = blocks
+        .iter()
+        .map(|block| {
+            (
+                *block,
+                if *block == entry {
+                    BTreeSet::from([entry])
+                } else {
+                    blocks.clone()
+                },
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    loop {
+        let mut changed = false;
+        for block in blocks.iter().copied().filter(|block| *block != entry) {
+            let mut next = predecessors
+                .get(&block)
+                .and_then(|items| items.first())
+                .and_then(|predecessor| dominators.get(predecessor))
+                .cloned()
+                .unwrap_or_default();
+            if let Some(items) = predecessors.get(&block) {
+                for predecessor in items.iter().skip(1) {
+                    if let Some(other) = dominators.get(predecessor) {
+                        next.retain(|candidate| other.contains(candidate));
+                    }
+                }
+            }
+            next.insert(block);
+            if dominators.get(&block) != Some(&next) {
+                dominators.insert(block, next);
+                changed = true;
+            }
+        }
+        if !changed {
+            return dominators;
+        }
+    }
 }
 
 fn block_is_cyclic(function: &MirFunction, origin: MirBlockId) -> bool {
@@ -1055,6 +1175,25 @@ fn main(limit: i64) -> i64 {
         selected.statements = selected.statements[1..].into();
         assert!(matches!(
             verify(handoff, &plan),
+            Err(SelectionError::InvalidScalarBlock { .. })
+        ));
+
+        let mut range_plan = select(handoff).expect("scalar selection should succeed");
+        let (latch, range) = range_plan
+            .functions
+            .values_mut()
+            .flat_map(|function| function.units.iter_mut())
+            .find_map(|unit| match unit {
+                SelectedUnit::ScalarBlock(selected) => {
+                    let latch = selected.block;
+                    selected.range_loop.as_mut().map(|range| (latch, range))
+                }
+                SelectedUnit::Ordinary(_) | SelectedUnit::Superinstruction(_) => None,
+            })
+            .expect("fixture has one selected scalar range loop");
+        range.header = latch;
+        assert!(matches!(
+            verify(handoff, &range_plan),
             Err(SelectionError::InvalidScalarBlock { .. })
         ));
     }

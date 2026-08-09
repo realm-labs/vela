@@ -507,11 +507,79 @@ fn verify_selected_source_mapping(
             crate::scalar_plan::ScalarBudgetLocation::Exit,
             budget.terminator_before(block_id),
         ) || !scalar_exit_budget_matches(plan, block_id, &terminator.kind, budget)
+            || !scalar_range_loop_source_matches(plan, block_id, function, budget)
         {
             return Err(mismatch());
         }
     }
     Ok(())
+}
+
+fn scalar_range_loop_source_matches(
+    plan: &crate::ScalarBlockPlan,
+    latch: vela_mir::MirBlockId,
+    function: &vela_mir::MirFunction,
+    budget: &vela_mir::MirBudgetSchedule,
+) -> bool {
+    let (Some(range_loop), Some(header)) = (plan.range_loop, plan.mir_range_header) else {
+        return plan.range_loop.is_none() && plan.mir_range_header.is_none();
+    };
+    let Some(terminator) = function
+        .block(header)
+        .and_then(vela_mir::MirBasicBlock::terminator)
+    else {
+        return false;
+    };
+    let vela_mir::MirTerminatorKind::RangeNext {
+        mode: vela_mir::MirRangeStepMode::I64Proven,
+        next,
+        done,
+        inclusive,
+        ..
+    } = &terminator.kind
+    else {
+        return false;
+    };
+    if *next != latch
+        || range_loop.inclusive != *inclusive
+        || plan
+            .source_points
+            .get(range_loop.header_source.index())
+            .copied()
+            != Some(terminator.origin.span)
+        || range_loop.header_execution_units
+            != budget
+                .terminator_before(header)
+                .map_or(0, |point| point.units)
+        || !scalar_edge_budget_matches(plan, range_loop.next_edge, header, *next, budget)
+    {
+        return false;
+    }
+    let expected = budget.edge(header, *done);
+    range_loop.done_target.execution_units == expected.map_or(0, |point| point.units)
+        && match expected {
+            Some(point) => range_loop.done_target.budget_source.is_some_and(|source| {
+                plan.source_points.get(source.index()).copied() == Some(point.origin.span)
+            }),
+            None => range_loop.done_target.budget_source.is_none(),
+        }
+}
+
+fn scalar_edge_budget_matches(
+    plan: &crate::ScalarBlockPlan,
+    edge: crate::ChargedScalarEdge,
+    from: vela_mir::MirBlockId,
+    to: vela_mir::MirBlockId,
+    budget: &vela_mir::MirBudgetSchedule,
+) -> bool {
+    let expected = budget.edge(from, to);
+    edge.execution_units == expected.map_or(0, |point| point.units)
+        && match expected {
+            Some(point) => edge.budget_source.is_some_and(|source| {
+                plan.source_points.get(source.index()).copied() == Some(point.origin.span)
+            }),
+            None => edge.budget_source.is_none(),
+        }
 }
 
 fn scalar_budget_site_matches(

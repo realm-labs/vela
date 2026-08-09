@@ -59,6 +59,63 @@ fn main() {
             UnlinkedInstructionKind::IterInit { .. }
         ))
     );
+    let inclusivity = code
+        .scalar_blocks
+        .iter()
+        .filter_map(|plan| plan.range_loop.map(|range_loop| range_loop.inclusive))
+        .collect::<Vec<_>>();
+    assert_eq!(inclusivity, [false, true]);
+}
+
+#[test]
+fn compiler_keeps_dynamic_and_multi_exit_ranges_out_of_scalar_loop_plans() {
+    let dynamic = compile_test_function(
+        SourceId::new(1),
+        r#"
+fn main(start, end) {
+    let total = 0;
+    for value in start..end {
+        total += value;
+    }
+    return total;
+}
+"#,
+        "main",
+    )
+    .expect("dynamic range should compile");
+    assert!(
+        dynamic
+            .scalar_blocks
+            .iter()
+            .all(|plan| plan.range_loop.is_none())
+    );
+
+    let multi_exit = compile_test_function(
+        SourceId::new(1),
+        r#"
+fn main(limit: i64) -> i64 {
+    let total = 0;
+    for value in 0..limit {
+        if value == 2 {
+            continue;
+        }
+        if value == 5 {
+            break;
+        }
+        total += value;
+    }
+    return total;
+}
+"#,
+        "main",
+    )
+    .expect("break and continue range should compile");
+    assert!(
+        multi_exit
+            .scalar_blocks
+            .iter()
+            .all(|plan| plan.range_loop.is_none())
+    );
 }
 
 #[test]

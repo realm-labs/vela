@@ -6,9 +6,9 @@ use std::sync::Arc;
 use stats_alloc::{INSTRUMENTED_SYSTEM, Region, StatsAlloc};
 use vela_bytecode::linked::{Instruction, InstructionKind};
 use vela_bytecode::{
-    ChargedScalarTarget, Constant, I64CompareOp, InstructionOffset, LinkedArtifact,
-    LinkedCodeObject, LinkedProgram, Register, ScalarBlockPlan, ScalarBlockPlanId, ScalarExit,
-    ScalarExitKind, ScalarOp, ScalarOpKind, ScalarSourcePointId,
+    ChargedScalarEdge, ChargedScalarTarget, Constant, I64CompareOp, InstructionOffset,
+    LinkedArtifact, LinkedCodeObject, LinkedProgram, Register, ScalarBlockPlan, ScalarBlockPlanId,
+    ScalarExit, ScalarExitKind, ScalarOp, ScalarOpKind, ScalarRangeLoop, ScalarSourcePointId,
 };
 use vela_common::{SourceId, Span};
 use vela_vm::Vm;
@@ -50,7 +50,114 @@ fn main() -> Result<(), Box<dyn Error>> {
         one_stats.bytes_allocated,
         many_stats.bytes_allocated,
     );
+
+    let one = range_loop_artifact(1);
+    let many = range_loop_artifact(MANY_ENTRIES);
+    black_box(one_vm.run_linked_program(&one, "main", &[])?);
+    black_box(many_vm.run_linked_program(&many, "main", &[])?);
+    let one_region = Region::new(GLOBAL);
+    let one_result = black_box(one_vm.run_linked_program(&one, "main", &[])?);
+    let one_stats = one_region.change();
+    let many_region = Region::new(GLOBAL);
+    let many_result = black_box(many_vm.run_linked_program(&many, "main", &[])?);
+    let many_stats = many_region.change();
+    assert_eq!(one_result, OwnedValue::i64(1));
+    assert_eq!(many_result, OwnedValue::i64(MANY_ENTRIES));
+    assert_eq!(many_stats.allocations, one_stats.allocations);
+    assert_eq!(many_stats.bytes_allocated, one_stats.bytes_allocated);
+    assert_eq!(many_stats.bytes_deallocated, one_stats.bytes_deallocated);
+    println!(
+        "scalar_range_loop_allocation_result one_iterations=1 many_iterations={MANY_ENTRIES} one_allocations={} many_allocations={} incremental_allocations={} one_allocated_bytes={} many_allocated_bytes={} incremental_allocated_bytes=0 checksum={MANY_ENTRIES}",
+        one_stats.allocations,
+        many_stats.allocations,
+        many_stats.allocations.saturating_sub(one_stats.allocations),
+        one_stats.bytes_allocated,
+        many_stats.bytes_allocated,
+    );
     Ok(())
+}
+
+fn range_loop_artifact(limit: i64) -> Arc<LinkedArtifact> {
+    let mut plan = ScalarBlockPlan::new(
+        Box::new([
+            ScalarOp {
+                kind: ScalarOpKind::Move {
+                    dst: Register(5),
+                    src: Register(3),
+                },
+                source: ScalarSourcePointId::new(0),
+                execution_units: 0,
+            },
+            ScalarOp {
+                kind: ScalarOpKind::I64AddImm {
+                    dst: Register(4),
+                    lhs: Register(4),
+                    imm: 1,
+                },
+                source: ScalarSourcePointId::new(1),
+                execution_units: 0,
+            },
+        ]),
+        ScalarExit {
+            kind: ScalarExitKind::Jump(target(4)),
+            source: ScalarSourcePointId::new(2),
+            execution_units: 0,
+        },
+        (0..4)
+            .map(|index| Span::new(SourceId::new(903), index, index + 1))
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
+    );
+    plan.range_loop = Some(ScalarRangeLoop {
+        cursor: Register(0),
+        end: Register(1),
+        done: Register(2),
+        inclusive: false,
+        dst: Register(3),
+        header_source: ScalarSourcePointId::new(3),
+        header_execution_units: 0,
+        next_edge: ChargedScalarEdge {
+            execution_units: 0,
+            budget_source: None,
+        },
+        done_target: target(6),
+    });
+
+    let mut program = LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let mut code = LinkedCodeObject::new(main_name, 6);
+    for (register, constant) in [
+        (Register(0), Constant::i64(0)),
+        (Register(1), Constant::i64(limit)),
+        (Register(2), Constant::Bool(false)),
+        (Register(4), Constant::i64(0)),
+    ] {
+        let constant = code.push_constant(constant);
+        code.push_instruction(Instruction::new(InstructionKind::LoadConst {
+            dst: register,
+            constant,
+        }));
+    }
+    code.push_instruction(Instruction::new(InstructionKind::I64RangeNext {
+        cursor: Register(0),
+        end: Register(1),
+        done: Register(2),
+        inclusive: false,
+        dst: Register(3),
+        jump_if_done: InstructionOffset(6),
+    }));
+    code.scalar_blocks.push(plan);
+    code.push_instruction(Instruction::new(InstructionKind::RunScalarBlock {
+        plan: ScalarBlockPlanId::new(0),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(4),
+    }));
+    code.verify()
+        .expect("range allocation fixture should verify");
+    let main = program.push_function(code);
+    program.set_entry_point(main_name, main);
+    vela_bytecode::test_support::linked_artifact(program)
 }
 
 fn loop_artifact(limit: i64) -> Arc<LinkedArtifact> {

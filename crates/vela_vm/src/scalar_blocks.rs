@@ -1,8 +1,9 @@
 //! Focused executor for verified compact scalar basic-block plans.
 
 use vela_bytecode::{
-    ChargedScalarTarget, DebugNameId, InstructionOffset, Register, ScalarBlockPlan,
-    ScalarBlockPlanId, ScalarConstant, ScalarExitKind, ScalarOpKind, ScalarSourcePointId,
+    ChargedScalarEdge, ChargedScalarTarget, DebugNameId, InstructionOffset, Register,
+    ScalarBlockPlan, ScalarBlockPlanId, ScalarConstant, ScalarExitKind, ScalarOpKind,
+    ScalarRangeLoop, ScalarSourcePointId,
 };
 use vela_common::Span;
 
@@ -10,7 +11,7 @@ use crate::budget::ExecutionBudget;
 use crate::error::{VmError, VmErrorKind, VmResult};
 use crate::frame::CallFrame;
 use crate::value::Value;
-use crate::{VmBytecodeProfiler, i64_ops};
+use crate::{ScalarLoopProfileEvent, VmBytecodeProfiler, i64_ops};
 
 pub(crate) struct ScalarBlockExecution<'a> {
     pub(crate) plan_id: ScalarBlockPlanId,
@@ -21,6 +22,19 @@ pub(crate) struct ScalarBlockExecution<'a> {
 }
 
 pub(crate) fn execute_scalar_block<const CHARGE_BUDGET: bool, const PROFILE: bool>(
+    execution: ScalarBlockExecution<'_>,
+    frame: &mut CallFrame,
+    budget: &mut Option<&mut ExecutionBudget>,
+) -> VmResult<InstructionOffset> {
+    match execution.plan.range_loop {
+        Some(range_loop) => execute_scalar_range_loop::<CHARGE_BUDGET, PROFILE>(
+            execution, frame, budget, range_loop,
+        ),
+        None => execute_scalar_block_once::<CHARGE_BUDGET, PROFILE>(execution, frame, budget),
+    }
+}
+
+fn execute_scalar_block_once<const CHARGE_BUDGET: bool, const PROFILE: bool>(
     execution: ScalarBlockExecution<'_>,
     frame: &mut CallFrame,
     budget: &mut Option<&mut ExecutionBudget>,
@@ -40,26 +54,149 @@ pub(crate) fn execute_scalar_block<const CHARGE_BUDGET: bool, const PROFILE: boo
             return Err(error.with_source_span_if_absent(source_point(plan, operation.source)));
         }
     }
-
     profile_subpoint::<PROFILE>(profiler, function, instruction, plan_id, plan.exit.source);
     charge::<CHARGE_BUDGET>(plan, budget, plan.exit.execution_units, plan.exit.source)?;
-    let target = match plan.exit.kind {
-        ScalarExitKind::Fallthrough(target) | ScalarExitKind::Jump(target) => target,
+    let target = scalar_exit_target(registers, plan)?;
+    charge_target::<CHARGE_BUDGET>(plan, budget, target)?;
+    Ok(target.target)
+}
+
+#[inline(never)]
+fn execute_scalar_range_loop<const CHARGE_BUDGET: bool, const PROFILE: bool>(
+    execution: ScalarBlockExecution<'_>,
+    frame: &mut CallFrame,
+    budget: &mut Option<&mut ExecutionBudget>,
+    range_loop: ScalarRangeLoop,
+) -> VmResult<InstructionOffset> {
+    let ScalarBlockExecution {
+        plan_id,
+        plan,
+        function,
+        instruction,
+        profiler,
+    } = execution;
+    let registers = frame.scalar_registers_mut();
+    profile_loop_event::<PROFILE>(
+        profiler,
+        function,
+        instruction,
+        plan_id,
+        ScalarLoopProfileEvent::Entry,
+    );
+    loop {
+        profile_loop_event::<PROFILE>(
+            profiler,
+            function,
+            instruction,
+            plan_id,
+            ScalarLoopProfileEvent::Iteration,
+        );
+        for operation in &plan.operations {
+            profile_subpoint::<PROFILE>(profiler, function, instruction, plan_id, operation.source);
+            charge::<CHARGE_BUDGET>(plan, budget, operation.execution_units, operation.source)?;
+            if let Err(error) = execute_operation(registers, operation.kind) {
+                return Err(error.with_source_span_if_absent(source_point(plan, operation.source)));
+            }
+        }
+
+        profile_subpoint::<PROFILE>(profiler, function, instruction, plan_id, plan.exit.source);
+        charge::<CHARGE_BUDGET>(plan, budget, plan.exit.execution_units, plan.exit.source)?;
+        let target =
+            match plan.exit.kind {
+                ScalarExitKind::Fallthrough(target) | ScalarExitKind::Jump(target) => target,
+                ScalarExitKind::BoolBranch {
+                    condition,
+                    passed,
+                    failed,
+                } => {
+                    let condition = match read_bool(registers, condition, "scalar block branch") {
+                        Ok(condition) => condition,
+                        Err(error) => {
+                            return Err(error
+                                .with_source_span_if_absent(source_point(plan, plan.exit.source)));
+                        }
+                    };
+                    if condition { passed } else { failed }
+                }
+                ScalarExitKind::I64CompareBranch {
+                    op,
+                    lhs,
+                    rhs,
+                    passed,
+                    failed,
+                } => {
+                    let lhs = match read_i64(registers, lhs, "scalar block compare") {
+                        Ok(value) => value,
+                        Err(error) => {
+                            return Err(error
+                                .with_source_span_if_absent(source_point(plan, plan.exit.source)));
+                        }
+                    };
+                    let rhs = match read_i64(registers, rhs, "scalar block compare") {
+                        Ok(value) => value,
+                        Err(error) => {
+                            return Err(error
+                                .with_source_span_if_absent(source_point(plan, plan.exit.source)));
+                        }
+                    };
+                    if i64_ops::compare(lhs, op, rhs) {
+                        passed
+                    } else {
+                        failed
+                    }
+                }
+            };
+        profile_loop_event::<PROFILE>(
+            profiler,
+            function,
+            instruction,
+            plan_id,
+            ScalarLoopProfileEvent::ChargedBackedge,
+        );
+        charge_target::<CHARGE_BUDGET>(plan, budget, target)?;
+        debug_assert_eq!(target.target, range_header_target(plan));
+        if execute_range_header::<CHARGE_BUDGET, PROFILE>(
+            ScalarBlockExecution {
+                plan_id,
+                plan,
+                function,
+                instruction,
+                profiler,
+            },
+            registers,
+            budget,
+            range_loop,
+        )? {
+            profile_loop_event::<PROFILE>(
+                profiler,
+                function,
+                instruction,
+                plan_id,
+                ScalarLoopProfileEvent::Exit,
+            );
+            charge_target::<CHARGE_BUDGET>(plan, budget, range_loop.done_target)?;
+            return Ok(range_loop.done_target.target);
+        }
+        charge_edge::<CHARGE_BUDGET>(plan, budget, range_loop.next_edge)?;
+    }
+}
+
+#[inline(always)]
+fn scalar_exit_target(
+    registers: &[Value],
+    plan: &ScalarBlockPlan,
+) -> VmResult<ChargedScalarTarget> {
+    match plan.exit.kind {
+        ScalarExitKind::Fallthrough(target) | ScalarExitKind::Jump(target) => Ok(target),
         ScalarExitKind::BoolBranch {
             condition,
             passed,
             failed,
-        } => {
-            let condition = match read_bool(registers, condition, "scalar block branch") {
-                Ok(condition) => condition,
-                Err(error) => {
-                    return Err(
-                        error.with_source_span_if_absent(source_point(plan, plan.exit.source))
-                    );
-                }
-            };
-            if condition { passed } else { failed }
-        }
+        } => read_bool(registers, condition, "scalar block branch")
+            .map(|condition| if condition { passed } else { failed })
+            .map_err(|error| {
+                error.with_source_span_if_absent(source_point(plan, plan.exit.source))
+            }),
         ScalarExitKind::I64CompareBranch {
             op,
             lhs,
@@ -67,31 +204,68 @@ pub(crate) fn execute_scalar_block<const CHARGE_BUDGET: bool, const PROFILE: boo
             passed,
             failed,
         } => {
-            let lhs = match read_i64(registers, lhs, "scalar block compare") {
-                Ok(value) => value,
-                Err(error) => {
-                    return Err(
-                        error.with_source_span_if_absent(source_point(plan, plan.exit.source))
-                    );
-                }
-            };
-            let rhs = match read_i64(registers, rhs, "scalar block compare") {
-                Ok(value) => value,
-                Err(error) => {
-                    return Err(
-                        error.with_source_span_if_absent(source_point(plan, plan.exit.source))
-                    );
-                }
-            };
-            if i64_ops::compare(lhs, op, rhs) {
+            let lhs = read_i64(registers, lhs, "scalar block compare").map_err(|error| {
+                error.with_source_span_if_absent(source_point(plan, plan.exit.source))
+            })?;
+            let rhs = read_i64(registers, rhs, "scalar block compare").map_err(|error| {
+                error.with_source_span_if_absent(source_point(plan, plan.exit.source))
+            })?;
+            Ok(if i64_ops::compare(lhs, op, rhs) {
                 passed
             } else {
                 failed
-            }
+            })
         }
+    }
+}
+
+fn execute_range_header<const CHARGE_BUDGET: bool, const PROFILE: bool>(
+    execution: ScalarBlockExecution<'_>,
+    registers: &mut [Value],
+    budget: &mut Option<&mut ExecutionBudget>,
+    range_loop: ScalarRangeLoop,
+) -> VmResult<bool> {
+    profile_subpoint::<PROFILE>(
+        execution.profiler,
+        execution.function,
+        execution.instruction,
+        execution.plan_id,
+        range_loop.header_source,
+    );
+    charge::<CHARGE_BUDGET>(
+        execution.plan,
+        budget,
+        range_loop.header_execution_units,
+        range_loop.header_source,
+    )?;
+    if read_bool(registers, range_loop.done, "range")? {
+        return Ok(true);
+    }
+    let current = read_i64(registers, range_loop.cursor, "range")?;
+    let end = read_i64(registers, range_loop.end, "range")?;
+    let has_next = if range_loop.inclusive {
+        current <= end
+    } else {
+        current < end
     };
-    charge_target::<CHARGE_BUDGET>(plan, budget, target)?;
-    Ok(target.target)
+    if !has_next {
+        write(registers, range_loop.done, Value::Bool(true))?;
+        return Ok(true);
+    }
+    write(registers, range_loop.dst, Value::I64(current))?;
+    if current == i64::MAX {
+        write(registers, range_loop.done, Value::Bool(true))
+    } else {
+        write(registers, range_loop.cursor, Value::I64(current + 1))
+    }?;
+    Ok(false)
+}
+
+fn range_header_target(plan: &ScalarBlockPlan) -> InstructionOffset {
+    match plan.exit.kind {
+        ScalarExitKind::Jump(target) => target.target,
+        _ => unreachable!("verified scalar range loop has an unconditional latch"),
+    }
 }
 
 #[inline(always)]
@@ -227,6 +401,26 @@ fn charge_target<const CHARGE_BUDGET: bool>(
     Ok(())
 }
 
+fn charge_edge<const CHARGE_BUDGET: bool>(
+    plan: &ScalarBlockPlan,
+    budget: &mut Option<&mut ExecutionBudget>,
+    edge: ChargedScalarEdge,
+) -> VmResult<()> {
+    if CHARGE_BUDGET && edge.execution_units != 0 {
+        let result = budget
+            .as_deref_mut()
+            .expect("execution-unit budget mode requires a budget")
+            .charge_execution_units(u64::from(edge.execution_units));
+        if let Err(error) = result {
+            let source = edge
+                .budget_source
+                .and_then(|source| source_point(plan, source));
+            return Err(error.with_source_span_if_absent(source));
+        }
+    }
+    Ok(())
+}
+
 #[inline(always)]
 fn charge<const CHARGE_BUDGET: bool>(
     plan: &ScalarBlockPlan,
@@ -258,6 +452,21 @@ fn profile_subpoint<const PROFILE: bool>(
         profiler
             .expect("profile execution mode requires a profiler")
             .record_scalar_subpoint(function, instruction, plan, source);
+    }
+}
+
+#[inline(always)]
+fn profile_loop_event<const PROFILE: bool>(
+    profiler: Option<&dyn VmBytecodeProfiler>,
+    function: DebugNameId,
+    instruction: InstructionOffset,
+    plan: ScalarBlockPlanId,
+    event: ScalarLoopProfileEvent,
+) {
+    if PROFILE {
+        profiler
+            .expect("profile execution mode requires a profiler")
+            .record_scalar_loop_event(function, instruction, plan, event);
     }
 }
 

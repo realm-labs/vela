@@ -81,6 +81,7 @@ impl FunctionBackend<'_> {
             exit_execution_units: exit_budget.map_or(0, |point| point.units),
             source_points,
             mir_budget_sites,
+            range_loop_header: selected.range_loop().map(|range_loop| range_loop.header()),
         });
         Ok(())
     }
@@ -248,21 +249,121 @@ impl FunctionBackend<'_> {
                     )?,
                 },
             };
-            self.code.scalar_blocks.push(
-                crate::ScalarBlockPlan::new(
-                    pending.operations,
-                    crate::ScalarExit {
-                        kind: exit,
-                        source: pending.exit_source,
-                        execution_units: pending.exit_execution_units,
-                    },
-                    source_points.into_boxed_slice(),
-                )
-                .with_mir_coverage(pending.statements, pending.block)
-                .with_mir_budget_sites(mir_budget_sites.into_boxed_slice()),
-            );
+            let range_loop = pending
+                .range_loop_header
+                .map(|header| self.scalar_range_loop(header, pending.block, &mut source_points))
+                .transpose()?;
+            let mut plan = crate::ScalarBlockPlan::new(
+                pending.operations,
+                crate::ScalarExit {
+                    kind: exit,
+                    source: pending.exit_source,
+                    execution_units: pending.exit_execution_units,
+                },
+                source_points.into_boxed_slice(),
+            )
+            .with_mir_coverage(pending.statements, pending.block)
+            .with_mir_budget_sites(mir_budget_sites.into_boxed_slice());
+            if let Some((range_loop, header)) = range_loop {
+                plan = plan.with_range_loop(range_loop, header);
+            }
+            self.code.scalar_blocks.push(plan);
         }
         Ok(())
+    }
+
+    fn scalar_range_loop(
+        &self,
+        header: vela_mir::MirBlockId,
+        latch: vela_mir::MirBlockId,
+        source_points: &mut Vec<vela_common::Span>,
+    ) -> Result<(crate::ScalarRangeLoop, vela_mir::MirBlockId), MirBackendError> {
+        let terminator = self
+            .function
+            .block(header)
+            .and_then(vela_mir::MirBasicBlock::terminator)
+            .ok_or(MirBackendError::MissingBlock(header))?;
+        let vela_mir::MirTerminatorKind::RangeNext {
+            cursor,
+            end,
+            exhausted,
+            inclusive,
+            item,
+            mode: vela_mir::MirRangeStepMode::I64Proven,
+            next,
+            done,
+        } = &terminator.kind
+        else {
+            return Err(MirBackendError::MissingTarget("scalar range loop header"));
+        };
+        if *next != latch {
+            return Err(MirBackendError::MissingTarget("scalar range loop body"));
+        }
+        let header_source = crate::ScalarSourcePointId::new(source_points.len());
+        source_points.push(terminator.origin.span);
+        let header_budget = self.budget.terminator_before(header);
+        let next_edge = self.scalar_loop_edge(header, *next, source_points);
+        let done_target = self.scalar_loop_target(header, *done, source_points)?;
+        Ok((
+            crate::ScalarRangeLoop {
+                cursor: self.locals[cursor],
+                end: self.scalar_operand(end)?,
+                done: self.locals[exhausted],
+                inclusive: *inclusive,
+                dst: self.locals[item],
+                header_source,
+                header_execution_units: header_budget.map_or(0, |point| point.units),
+                next_edge,
+                done_target,
+            },
+            header,
+        ))
+    }
+
+    fn scalar_loop_edge(
+        &self,
+        from: vela_mir::MirBlockId,
+        to: vela_mir::MirBlockId,
+        source_points: &mut Vec<vela_common::Span>,
+    ) -> crate::ChargedScalarEdge {
+        let Some(point) = self.budget.edge(from, to) else {
+            return crate::ChargedScalarEdge {
+                execution_units: 0,
+                budget_source: None,
+            };
+        };
+        let source = crate::ScalarSourcePointId::new(source_points.len());
+        source_points.push(point.origin.span);
+        crate::ChargedScalarEdge {
+            execution_units: point.units,
+            budget_source: Some(source),
+        }
+    }
+
+    fn scalar_loop_target(
+        &self,
+        from: vela_mir::MirBlockId,
+        target: vela_mir::MirBlockId,
+        source_points: &mut Vec<vela_common::Span>,
+    ) -> Result<crate::ChargedScalarTarget, MirBackendError> {
+        let instruction = *self
+            .blocks
+            .get(&target)
+            .ok_or(MirBackendError::MissingBlock(target))?;
+        let Some(point) = self.budget.edge(from, target) else {
+            return Ok(crate::ChargedScalarTarget {
+                target: instruction,
+                execution_units: 0,
+                budget_source: None,
+            });
+        };
+        let source = crate::ScalarSourcePointId::new(source_points.len());
+        source_points.push(point.origin.span);
+        Ok(crate::ChargedScalarTarget {
+            target: instruction,
+            execution_units: point.units,
+            budget_source: Some(source),
+        })
     }
 
     fn scalar_target(

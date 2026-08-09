@@ -184,6 +184,33 @@ pub struct ChargedScalarTarget {
     derive(serde::Serialize, serde::Deserialize)
 )]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ChargedScalarEdge {
+    pub execution_units: u32,
+    pub budget_source: Option<ScalarSourcePointId>,
+}
+
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ScalarRangeLoop {
+    pub cursor: Register,
+    pub end: Register,
+    pub done: Register,
+    pub inclusive: bool,
+    pub dst: Register,
+    pub header_source: ScalarSourcePointId,
+    pub header_execution_units: u32,
+    pub next_edge: ChargedScalarEdge,
+    pub done_target: ChargedScalarTarget,
+}
+
+#[cfg_attr(
+    feature = "artifact-codec",
+    derive(serde::Serialize, serde::Deserialize)
+)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ScalarExitKind {
     Fallthrough(ChargedScalarTarget),
     Jump(ChargedScalarTarget),
@@ -220,11 +247,14 @@ pub struct ScalarExit {
 pub struct ScalarBlockPlan {
     pub operations: Box<[ScalarOp]>,
     pub exit: ScalarExit,
+    pub range_loop: Option<ScalarRangeLoop>,
     pub source_points: Box<[Span]>,
     #[cfg_attr(feature = "artifact-codec", serde(skip))]
     pub(crate) mir_statements: Box<[vela_mir::MirStatementId]>,
     #[cfg_attr(feature = "artifact-codec", serde(skip))]
     pub(crate) mir_terminator: Option<vela_mir::MirBlockId>,
+    #[cfg_attr(feature = "artifact-codec", serde(skip))]
+    pub(crate) mir_range_header: Option<vela_mir::MirBlockId>,
     #[cfg_attr(feature = "artifact-codec", serde(skip))]
     pub(crate) mir_budget_sites: Box<[ScalarMirBudgetSite]>,
 }
@@ -251,11 +281,24 @@ impl ScalarBlockPlan {
         Self {
             operations,
             exit,
+            range_loop: None,
             source_points,
             mir_statements: Box::new([]),
             mir_terminator: None,
+            mir_range_header: None,
             mir_budget_sites: Box::new([]),
         }
+    }
+
+    #[must_use]
+    pub(crate) fn with_range_loop(
+        mut self,
+        range_loop: ScalarRangeLoop,
+        header: vela_mir::MirBlockId,
+    ) -> Self {
+        self.range_loop = Some(range_loop);
+        self.mir_range_header = Some(header);
+        self
     }
 
     #[must_use]
@@ -327,6 +370,16 @@ pub(crate) fn verify_scalar_block_plans(
             &mut used_sources,
             &mut total_units,
         )?;
+        if let Some(range_loop) = plan.range_loop {
+            verify_range_loop(
+                range_loop,
+                register_count,
+                instruction_count,
+                plan.source_points.len(),
+                &mut used_sources,
+                &mut total_units,
+            )?;
+        }
         if used_sources.len() != plan.source_points.len() {
             return Err("scalar block contains an unreferenced source point");
         }
@@ -337,27 +390,298 @@ pub(crate) fn verify_scalar_block_plans(
 pub(crate) fn verify_unlinked_scalar_block_references(
     code: &crate::UnlinkedCodeObject,
 ) -> Result<(), &'static str> {
-    let references = code.instructions.iter().filter_map(|instruction| {
+    let references = code
+        .instructions
+        .iter()
+        .filter_map(|instruction| match instruction.kind {
+            crate::UnlinkedInstructionKind::RunScalarBlock { plan } => {
+                Some((plan, instruction.execution_units))
+            }
+            _ => None,
+        });
+    verify_scalar_block_references(code.scalar_blocks.len(), references)?;
+    for (offset, instruction) in code.instructions.iter().enumerate() {
         if let crate::UnlinkedInstructionKind::RunScalarBlock { plan } = instruction.kind {
-            Some((plan, instruction.execution_units))
-        } else {
-            None
+            verify_unlinked_range_loop_reference(code, offset, plan)?;
         }
-    });
-    verify_scalar_block_references(code.scalar_blocks.len(), references)
+    }
+    Ok(())
 }
 
 pub(crate) fn verify_linked_scalar_block_references(
     code: &crate::LinkedCodeObject,
 ) -> Result<(), &'static str> {
-    let references = code.instructions.iter().filter_map(|instruction| {
+    let references = code
+        .instructions
+        .iter()
+        .filter_map(|instruction| match instruction.kind {
+            crate::linked::InstructionKind::RunScalarBlock { plan } => {
+                Some((plan, instruction.execution_units))
+            }
+            _ => None,
+        });
+    verify_scalar_block_references(code.scalar_blocks.len(), references)?;
+    for (offset, instruction) in code.instructions.iter().enumerate() {
         if let crate::linked::InstructionKind::RunScalarBlock { plan } = instruction.kind {
-            Some((plan, instruction.execution_units))
-        } else {
-            None
+            verify_linked_range_loop_reference(code, offset, plan)?;
         }
-    });
-    verify_scalar_block_references(code.scalar_blocks.len(), references)
+    }
+    Ok(())
+}
+
+fn verify_unlinked_range_loop_reference(
+    code: &crate::UnlinkedCodeObject,
+    body_offset: usize,
+    plan_id: ScalarBlockPlanId,
+) -> Result<(), &'static str> {
+    let plan = &code.scalar_blocks[plan_id.index()];
+    let Some(range_loop) = plan.range_loop else {
+        return Ok(());
+    };
+    let ScalarExitKind::Jump(backedge) = plan.exit.kind else {
+        return Err("scalar range loop latch is not an unconditional backedge");
+    };
+    let Some(header) = code.instructions.get(backedge.target.0) else {
+        return Err("scalar range loop header is out of bounds");
+    };
+    let crate::UnlinkedInstructionKind::I64RangeNext {
+        cursor,
+        end,
+        done,
+        inclusive,
+        dst,
+        jump_if_done,
+    } = header.kind
+    else {
+        return Err("scalar range loop backedge does not target an i64 range header");
+    };
+    if (cursor, end, done, inclusive, dst)
+        != (
+            range_loop.cursor,
+            range_loop.end,
+            range_loop.done,
+            range_loop.inclusive,
+            range_loop.dst,
+        )
+        || !unlinked_target_path_reaches(code, jump_if_done.0, range_loop.done_target.target.0)
+        || !unlinked_next_path_reaches(code, backedge.target.0 + 1, body_offset)
+    {
+        return Err("scalar range loop physical header does not match its plan");
+    }
+    Ok(())
+}
+
+fn unlinked_target_path_reaches(
+    code: &crate::UnlinkedCodeObject,
+    physical_offset: usize,
+    semantic_offset: usize,
+) -> bool {
+    if physical_offset == semantic_offset {
+        return true;
+    }
+    matches!(
+        (
+            code.instructions
+                .get(physical_offset)
+                .map(|instruction| &instruction.kind),
+            code.instructions
+                .get(physical_offset + 1)
+                .map(|instruction| &instruction.kind),
+        ),
+        (
+            Some(crate::UnlinkedInstructionKind::ChargeExecutionUnits { .. }),
+            Some(crate::UnlinkedInstructionKind::Jump { target })
+        ) if target.0 == semantic_offset
+    )
+}
+
+fn unlinked_next_path_reaches(
+    code: &crate::UnlinkedCodeObject,
+    jump_offset: usize,
+    body_offset: usize,
+) -> bool {
+    if jump_offset == body_offset {
+        return true;
+    }
+    let Some(crate::UnlinkedInstructionKind::Jump { target }) = code
+        .instructions
+        .get(jump_offset)
+        .map(|instruction| &instruction.kind)
+    else {
+        return false;
+    };
+    if target.0 == body_offset {
+        return true;
+    }
+    matches!(
+        (
+            code.instructions.get(target.0).map(|instruction| &instruction.kind),
+            code.instructions.get(target.0 + 1).map(|instruction| &instruction.kind),
+        ),
+        (
+            Some(crate::UnlinkedInstructionKind::ChargeExecutionUnits { .. }),
+            Some(crate::UnlinkedInstructionKind::Jump { target })
+        ) if target.0 == body_offset
+    )
+}
+
+fn verify_linked_range_loop_reference(
+    code: &crate::LinkedCodeObject,
+    body_offset: usize,
+    plan_id: ScalarBlockPlanId,
+) -> Result<(), &'static str> {
+    let plan = &code.scalar_blocks[plan_id.index()];
+    let Some(range_loop) = plan.range_loop else {
+        return Ok(());
+    };
+    let ScalarExitKind::Jump(backedge) = plan.exit.kind else {
+        return Err("scalar range loop latch is not an unconditional backedge");
+    };
+    let Some(header) = code.instructions.get(backedge.target.0) else {
+        return Err("scalar range loop header is out of bounds");
+    };
+    let crate::linked::InstructionKind::I64RangeNext {
+        cursor,
+        end,
+        done,
+        inclusive,
+        dst,
+        jump_if_done,
+    } = header.kind
+    else {
+        return Err("scalar range loop backedge does not target an i64 range header");
+    };
+    if (cursor, end, done, inclusive, dst)
+        != (
+            range_loop.cursor,
+            range_loop.end,
+            range_loop.done,
+            range_loop.inclusive,
+            range_loop.dst,
+        )
+        || !linked_target_path_reaches(code, jump_if_done.0, range_loop.done_target.target.0)
+        || !linked_next_path_reaches(code, backedge.target.0 + 1, body_offset)
+    {
+        return Err("scalar range loop physical header does not match its plan");
+    }
+    Ok(())
+}
+
+fn linked_target_path_reaches(
+    code: &crate::LinkedCodeObject,
+    physical_offset: usize,
+    semantic_offset: usize,
+) -> bool {
+    if physical_offset == semantic_offset {
+        return true;
+    }
+    matches!(
+        (
+            code.instructions
+                .get(physical_offset)
+                .map(|instruction| &instruction.kind),
+            code.instructions
+                .get(physical_offset + 1)
+                .map(|instruction| &instruction.kind),
+        ),
+        (
+            Some(crate::linked::InstructionKind::ChargeExecutionUnits { .. }),
+            Some(crate::linked::InstructionKind::Jump { target })
+        ) if target.0 == semantic_offset
+    )
+}
+
+fn linked_next_path_reaches(
+    code: &crate::LinkedCodeObject,
+    jump_offset: usize,
+    body_offset: usize,
+) -> bool {
+    if jump_offset == body_offset {
+        return true;
+    }
+    let Some(crate::linked::InstructionKind::Jump { target }) = code
+        .instructions
+        .get(jump_offset)
+        .map(|instruction| &instruction.kind)
+    else {
+        return false;
+    };
+    if target.0 == body_offset {
+        return true;
+    }
+    matches!(
+        (
+            code.instructions.get(target.0).map(|instruction| &instruction.kind),
+            code.instructions.get(target.0 + 1).map(|instruction| &instruction.kind),
+        ),
+        (
+            Some(crate::linked::InstructionKind::ChargeExecutionUnits { .. }),
+            Some(crate::linked::InstructionKind::Jump { target })
+        ) if target.0 == body_offset
+    )
+}
+
+fn verify_range_loop(
+    range_loop: ScalarRangeLoop,
+    register_count: u16,
+    instruction_count: usize,
+    source_count: usize,
+    used_sources: &mut BTreeSet<ScalarSourcePointId>,
+    total_units: &mut u32,
+) -> Result<(), &'static str> {
+    for register in [
+        range_loop.cursor,
+        range_loop.end,
+        range_loop.done,
+        range_loop.dst,
+    ] {
+        verify_register(register, register_count)?;
+    }
+    verify_source(range_loop.header_source, source_count)?;
+    used_sources.insert(range_loop.header_source);
+    *total_units = total_units
+        .checked_add(range_loop.header_execution_units)
+        .ok_or("scalar loop execution-unit coverage overflows")?;
+    verify_edge(
+        range_loop.next_edge,
+        source_count,
+        used_sources,
+        total_units,
+    )?;
+    let mut target_units = 0;
+    verify_exit(
+        ScalarExitKind::Jump(range_loop.done_target),
+        register_count,
+        instruction_count,
+        source_count,
+        used_sources,
+        &mut target_units,
+    )?;
+    *total_units = total_units
+        .checked_add(target_units)
+        .ok_or("scalar loop execution-unit coverage overflows")?;
+    Ok(())
+}
+
+fn verify_edge(
+    edge: ChargedScalarEdge,
+    source_count: usize,
+    used_sources: &mut BTreeSet<ScalarSourcePointId>,
+    total_units: &mut u32,
+) -> Result<(), &'static str> {
+    match (edge.execution_units, edge.budget_source) {
+        (0, None) => {}
+        (0, Some(_)) => return Err("uncharged scalar edge carries a budget source"),
+        (_, None) => return Err("charged scalar edge is missing a budget source"),
+        (_, Some(source)) => {
+            verify_source(source, source_count)?;
+            used_sources.insert(source);
+        }
+    }
+    *total_units = total_units
+        .checked_add(edge.execution_units)
+        .ok_or("scalar loop execution-unit coverage overflows")?;
+    Ok(())
 }
 
 fn verify_scalar_block_references(
@@ -495,11 +819,34 @@ mod tests {
                 source: source(2),
                 execution_units: 1,
             },
+            range_loop: None,
             source_points: Box::new([span(0, 1), span(1, 2), span(2, 3)]),
             mir_statements: Box::new([]),
             mir_terminator: None,
+            mir_range_header: None,
             mir_budget_sites: Box::new([]),
         }
+    }
+
+    fn valid_range_plan() -> ScalarBlockPlan {
+        let mut plan = valid_plan();
+        plan.exit.kind = ScalarExitKind::Jump(target(0));
+        plan.source_points = Box::new([span(0, 1), span(1, 2), span(2, 3), span(3, 4)]);
+        plan.range_loop = Some(ScalarRangeLoop {
+            cursor: Register(0),
+            end: Register(1),
+            done: Register(2),
+            inclusive: false,
+            dst: Register(3),
+            header_source: source(3),
+            header_execution_units: 0,
+            next_edge: ChargedScalarEdge {
+                execution_units: 0,
+                budget_source: None,
+            },
+            done_target: target(2),
+        });
+        plan
     }
 
     #[test]
@@ -592,6 +939,55 @@ mod tests {
         assert_eq!(
             verify_unlinked_scalar_block_references(&code),
             Err("scalar block plan is referenced by more than one instruction")
+        );
+    }
+
+    #[test]
+    fn scalar_range_plan_reference_verifier_rejects_physical_corruption() {
+        let mut code = crate::UnlinkedCodeObject::new("main", 4);
+        code.scalar_blocks.push(valid_range_plan());
+        code.push_instruction(crate::UnlinkedInstruction::new(
+            crate::UnlinkedInstructionKind::I64RangeNext {
+                cursor: Register(0),
+                end: Register(1),
+                done: Register(2),
+                inclusive: false,
+                dst: Register(3),
+                jump_if_done: InstructionOffset(2),
+            },
+        ));
+        code.push_instruction(crate::UnlinkedInstruction::new(
+            crate::UnlinkedInstructionKind::RunScalarBlock {
+                plan: ScalarBlockPlanId::new(0),
+            },
+        ));
+        code.push_instruction(crate::UnlinkedInstruction::new(
+            crate::UnlinkedInstructionKind::Return { src: Register(0) },
+        ));
+        verify_scalar_block_plans(&code.scalar_blocks, 4, 3).expect("valid scalar range plan");
+        verify_unlinked_scalar_block_references(&code).expect("valid scalar range references");
+
+        let mut corrupted_header = code.clone();
+        if let crate::UnlinkedInstructionKind::I64RangeNext { cursor, .. } =
+            &mut corrupted_header.instructions[0].kind
+        {
+            *cursor = Register(1);
+        }
+        assert_eq!(
+            verify_unlinked_scalar_block_references(&corrupted_header),
+            Err("scalar range loop physical header does not match its plan")
+        );
+
+        let mut corrupted_exit = code;
+        corrupted_exit.scalar_blocks[0]
+            .range_loop
+            .as_mut()
+            .expect("range plan")
+            .done_target
+            .target = InstructionOffset(1);
+        assert_eq!(
+            verify_unlinked_scalar_block_references(&corrupted_exit),
+            Err("scalar range loop physical header does not match its plan")
         );
     }
 }

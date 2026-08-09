@@ -420,6 +420,23 @@ pub trait VmBytecodeProfiler {
         _source: vela_bytecode::ScalarSourcePointId,
     ) {
     }
+
+    fn record_scalar_loop_event(
+        &self,
+        _function: DebugNameId,
+        _offset: InstructionOffset,
+        _plan: vela_bytecode::ScalarBlockPlanId,
+        _event: ScalarLoopProfileEvent,
+    ) {
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum ScalarLoopProfileEvent {
+    Entry,
+    Iteration,
+    Exit,
+    ChargedBackedge,
 }
 
 pub(crate) fn validate_inline_cache_layout(

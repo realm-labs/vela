@@ -24,7 +24,9 @@ use vela_mir::{
 };
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::owned_value::OwnedValue;
-use vela_vm::{HostExecution, LinkedProgramHostBudgetCall, Vm, VmBytecodeProfiler};
+use vela_vm::{
+    HostExecution, LinkedProgramHostBudgetCall, ScalarLoopProfileEvent, Vm, VmBytecodeProfiler,
+};
 
 #[test]
 fn external_compare_workload_names_are_unique() {
@@ -138,23 +140,23 @@ fn lead_workloads_have_reproducible_verified_mir_inventories() {
     for (workload_name, expected) in [
         (
             "scalar_branch_loop",
-            "verified_mir_inventory workload=scalar_branch_loop functions=2 blocks=14 statements=37 terminators=14 cfg_edges=16 budget_sites=7 budget_classes={\"call\": 1, \"dynamic_work\": 1, \"iterator_step\": 2, \"loop_backedge\": 3} safepoints=1 trap_points=10 source_points=51 outer_dispatches=40 code_bytes=5120 candidate_sequences={\"mir:i64_compare_immediate+branch\": 2, \"mir:scalar_run_len_3\": 1, \"mir:scalar_run_len_5_plus\": 5, \"selected:i64_cmp_imm_jump_if_false\": 2, \"selected:scalar_block\": 2, \"selected:scalar_op\": 12} profiled_dispatches=4167 profiled_candidate_sequences={\"selected:i64_cmp_imm_jump_if_false\": 606, \"selected:scalar_block\": 362, \"selected:scalar_op\": 2290} checksum=23880",
+            "verified_mir_inventory workload=scalar_branch_loop functions=2 blocks=14 statements=37 terminators=14 cfg_edges=16 budget_sites=7 budget_classes={\"call\": 1, \"dynamic_work\": 1, \"iterator_step\": 2, \"loop_backedge\": 3} safepoints=1 trap_points=10 source_points=51 outer_dispatches=38 code_bytes=4864 candidate_sequences={\"mir:i64_compare_immediate+branch\": 2, \"mir:scalar_run_len_3\": 1, \"mir:scalar_run_len_5_plus\": 5, \"selected:i64_cmp_imm_jump_if_false\": 2, \"selected:scalar_block\": 2, \"selected:scalar_op\": 12} profiled_dispatches=3801 profiled_candidate_sequences={\"selected:i64_cmp_imm_jump_if_false\": 606, \"selected:scalar_block\": 362, \"selected:scalar_op\": 2290} checksum=23880",
         ),
         (
             "range_iteration",
-            "verified_mir_inventory workload=range_iteration functions=2 blocks=14 statements=35 terminators=14 cfg_edges=16 budget_sites=10 budget_classes={\"call\": 1, \"dynamic_work\": 1, \"iterator_step\": 4, \"loop_backedge\": 4} safepoints=1 trap_points=6 source_points=49 outer_dispatches=43 code_bytes=5504 candidate_sequences={\"mir:scalar_run_len_4\": 2, \"mir:scalar_run_len_5_plus\": 4, \"selected:scalar_block\": 3, \"selected:scalar_op\": 15} profiled_dispatches=6699 profiled_candidate_sequences={\"selected:scalar_block\": 2192, \"selected:scalar_op\": 12880} checksum=134080",
+            "verified_mir_inventory workload=range_iteration functions=2 blocks=14 statements=35 terminators=14 cfg_edges=16 budget_sites=10 budget_classes={\"call\": 1, \"dynamic_work\": 1, \"iterator_step\": 4, \"loop_backedge\": 4} safepoints=1 trap_points=6 source_points=49 outer_dispatches=39 code_bytes=4992 candidate_sequences={\"mir:scalar_run_len_4\": 2, \"mir:scalar_run_len_5_plus\": 4, \"selected:scalar_block\": 3, \"selected:scalar_op\": 15, \"selected:scalar_range_loop\": 2} profiled_dispatches=171 profiled_candidate_sequences={\"selected:scalar_block\": 34, \"selected:scalar_loop_charged_backedge\": 2176, \"selected:scalar_loop_entry\": 18, \"selected:scalar_loop_exit\": 18, \"selected:scalar_loop_iteration\": 2176, \"selected:scalar_op\": 184} checksum=134080",
         ),
         (
             "function_calls",
-            "verified_mir_inventory workload=function_calls functions=4 blocks=10 statements=29 terminators=10 cfg_edges=8 budget_sites=11 budget_classes={\"call\": 3, \"dynamic_work\": 4, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=3 trap_points=10 source_points=39 outer_dispatches=45 code_bytes=5760 candidate_sequences={\"mir:scalar_run_len_2\": 1, \"mir:scalar_run_len_3\": 1, \"mir:scalar_run_len_5_plus\": 2} profiled_dispatches=9645 profiled_candidate_sequences={} checksum=233764",
+            "verified_mir_inventory workload=function_calls functions=4 blocks=10 statements=29 terminators=10 cfg_edges=8 budget_sites=11 budget_classes={\"call\": 3, \"dynamic_work\": 4, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=3 trap_points=10 source_points=39 outer_dispatches=43 code_bytes=5504 candidate_sequences={\"mir:scalar_run_len_2\": 1, \"mir:scalar_run_len_3\": 1, \"mir:scalar_run_len_5_plus\": 2} profiled_dispatches=9163 profiled_candidate_sequences={} checksum=233764",
         ),
         (
             "recursive_countdown",
-            "verified_mir_inventory workload=recursive_countdown functions=3 blocks=12 statements=27 terminators=12 cfg_edges=11 budget_sites=10 budget_classes={\"call\": 3, \"dynamic_work\": 3, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=3 trap_points=8 source_points=39 outer_dispatches=44 code_bytes=5632 candidate_sequences={\"mir:scalar_run_len_2\": 2, \"mir:scalar_run_len_5_plus\": 2} profiled_dispatches=2453 profiled_candidate_sequences={} checksum=3240",
+            "verified_mir_inventory workload=recursive_countdown functions=3 blocks=12 statements=27 terminators=12 cfg_edges=11 budget_sites=10 budget_classes={\"call\": 3, \"dynamic_work\": 3, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=3 trap_points=8 source_points=39 outer_dispatches=42 code_bytes=5376 candidate_sequences={\"mir:scalar_run_len_2\": 2, \"mir:scalar_run_len_5_plus\": 2} profiled_dispatches=2435 profiled_candidate_sequences={} checksum=3240",
         ),
         (
             "float_math_loop",
-            "verified_mir_inventory workload=float_math_loop functions=2 blocks=8 statements=34 terminators=8 cfg_edges=8 budget_sites=7 budget_classes={\"call\": 2, \"dynamic_work\": 1, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=2 trap_points=9 source_points=42 outer_dispatches=48 code_bytes=6144 candidate_sequences={\"mir:scalar_run_len_5_plus\": 3} profiled_dispatches=9781 profiled_candidate_sequences={} checksum=39210",
+            "verified_mir_inventory workload=float_math_loop functions=2 blocks=8 statements=34 terminators=8 cfg_edges=8 budget_sites=7 budget_classes={\"call\": 2, \"dynamic_work\": 1, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=2 trap_points=9 source_points=42 outer_dispatches=46 code_bytes=5888 candidate_sequences={\"mir:scalar_run_len_5_plus\": 3} profiled_dispatches=9267 profiled_candidate_sequences={} checksum=39210",
         ),
     ] {
         let inventory = verified_mir_inventory(&vm, registry.compile_view(), workload_name);
@@ -503,7 +505,30 @@ fn verified_mir_inventory(
                     .profiled_candidate_sequences
                     .entry("selected:scalar_op")
                     .or_insert(0) += hits * scalar.operations.len() as u64;
+                if scalar.range_loop.is_some() {
+                    *inventory
+                        .candidate_sequences
+                        .entry("selected:scalar_range_loop")
+                        .or_insert(0) += 1;
+                }
             }
+        }
+    }
+    for (event, label) in [
+        (ScalarLoopProfileEvent::Entry, "selected:scalar_loop_entry"),
+        (
+            ScalarLoopProfileEvent::Iteration,
+            "selected:scalar_loop_iteration",
+        ),
+        (ScalarLoopProfileEvent::Exit, "selected:scalar_loop_exit"),
+        (
+            ScalarLoopProfileEvent::ChargedBackedge,
+            "selected:scalar_loop_charged_backedge",
+        ),
+    ] {
+        let count = profiler.loop_event_count(event);
+        if count != 0 {
+            inventory.profiled_candidate_sequences.insert(label, count);
         }
     }
     inventory
@@ -512,6 +537,7 @@ fn verified_mir_inventory(
 #[derive(Default)]
 struct RecordingBytecodeProfiler {
     hits: RefCell<BTreeMap<(DebugNameId, InstructionOffset), u64>>,
+    loop_events: RefCell<BTreeMap<ScalarLoopProfileEvent, u64>>,
 }
 
 impl RecordingBytecodeProfiler {
@@ -526,6 +552,14 @@ impl RecordingBytecodeProfiler {
     fn total_hits(&self) -> u64 {
         self.hits.borrow().values().copied().sum()
     }
+
+    fn loop_event_count(&self, event: ScalarLoopProfileEvent) -> u64 {
+        self.loop_events
+            .borrow()
+            .get(&event)
+            .copied()
+            .unwrap_or_default()
+    }
 }
 
 impl VmBytecodeProfiler for RecordingBytecodeProfiler {
@@ -535,6 +569,16 @@ impl VmBytecodeProfiler for RecordingBytecodeProfiler {
             .borrow_mut()
             .entry((function, offset))
             .or_default() += 1;
+    }
+
+    fn record_scalar_loop_event(
+        &self,
+        _function: DebugNameId,
+        _offset: InstructionOffset,
+        _plan: vela_bytecode::ScalarBlockPlanId,
+        event: ScalarLoopProfileEvent,
+    ) {
+        *self.loop_events.borrow_mut().entry(event).or_default() += 1;
     }
 }
 

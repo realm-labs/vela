@@ -591,13 +591,19 @@ impl<'a> FunctionBackend<'a> {
                 {
                     instruction.span = None;
                 }
-                self.emit_patch(
-                    UnlinkedInstructionKind::Jump {
-                        target: InstructionOffset(0),
-                    },
-                    *next,
-                    span,
-                );
+                if Some(*next) != next_block
+                    || self
+                        .current_terminator
+                        .is_none_or(|from| self.budget.edge(from, *next).is_some())
+                {
+                    self.emit_patch(
+                        UnlinkedInstructionKind::Jump {
+                            target: InstructionOffset(0),
+                        },
+                        *next,
+                        span,
+                    );
+                }
                 if matches!(mode, vela_mir::MirRangeStepMode::I64Proven)
                     && let Some(instruction) = self.code.instructions.last_mut()
                 {

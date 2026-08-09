@@ -127,6 +127,7 @@ struct PendingScalarBlock {
     exit_execution_units: u32,
     source_points: Vec<vela_common::Span>,
     mir_budget_sites: Vec<crate::scalar_plan::ScalarMirBudgetSite>,
+    range_loop_header: Option<MirBlockId>,
 }
 
 enum PendingScalarExit {

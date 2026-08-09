@@ -9,8 +9,8 @@ use std::collections::BTreeSet;
 use vela_mir::{
     MirBackendHandoff, MirBasicBlock, MirBinaryOp, MirBlockId, MirBudgetSite, MirComparisonOp,
     MirFunction, MirFunctionAnalyses, MirFunctionId, MirImmediate, MirLiveValue,
-    MirNumericBinaryOp, MirOperand, MirPlace, MirRvalue, MirStatementId, MirStatementKind,
-    MirTerminatorKind, MirUnaryOp, MirValueType,
+    MirNumericBinaryOp, MirOperand, MirPlace, MirRangeStepMode, MirRvalue, MirStatementId,
+    MirStatementKind, MirTerminatorKind, MirUnaryOp, MirValueType,
 };
 
 use super::{
@@ -125,6 +125,12 @@ fn verify_scalar_block(
             block: selected.block(),
         });
     }
+    if selected.range_loop != verified_scalar_range_loop(function, selected.block()) {
+        return Err(SelectionError::InvalidScalarBlock {
+            function: function_id,
+            block: selected.block(),
+        });
+    }
     let invalid = || SelectionError::InvalidScalarBlock {
         function: function_id,
         block: selected.block,
@@ -158,6 +164,113 @@ fn verify_scalar_block(
             }
         }
         _ => Err(invalid()),
+    }
+}
+
+fn verified_scalar_range_loop(
+    function: &MirFunction,
+    latch: MirBlockId,
+) -> Option<super::ScalarRangeLoopSelection> {
+    let MirTerminatorKind::Jump(header) = &function.block(latch)?.terminator()?.kind else {
+        return None;
+    };
+    let header = *header;
+    let header_terminator = function.block(header)?.terminator()?;
+    let MirTerminatorKind::RangeNext {
+        mode: MirRangeStepMode::I64Proven,
+        next,
+        done,
+        ..
+    } = &header_terminator.kind
+    else {
+        return None;
+    };
+    if header_terminator.safepoint.is_some() || *next != latch || *done == header || *done == latch
+    {
+        return None;
+    }
+    let predecessors = mir_predecessors(function);
+    if predecessors.get(&latch).map(Vec::as_slice) != Some([header].as_slice()) {
+        return None;
+    }
+    let dominators = mir_dominators(function, &predecessors);
+    let cyclic_predecessors = predecessors
+        .get(&header)?
+        .iter()
+        .filter(|predecessor| {
+            dominators
+                .get(predecessor)
+                .is_some_and(|blocks| blocks.contains(&header))
+        })
+        .copied()
+        .collect::<Vec<_>>();
+    if cyclic_predecessors.as_slice() != [latch] {
+        return None;
+    }
+    Some(super::ScalarRangeLoopSelection { header })
+}
+
+fn mir_predecessors(
+    function: &MirFunction,
+) -> std::collections::BTreeMap<MirBlockId, Vec<MirBlockId>> {
+    let mut predecessors = std::collections::BTreeMap::<MirBlockId, Vec<MirBlockId>>::new();
+    for (block, data) in function.blocks() {
+        if let Some(terminator) = data.terminator() {
+            for successor in mir_successors(&terminator.kind) {
+                predecessors.entry(successor).or_default().push(block);
+            }
+        }
+    }
+    predecessors
+}
+
+fn mir_dominators(
+    function: &MirFunction,
+    predecessors: &std::collections::BTreeMap<MirBlockId, Vec<MirBlockId>>,
+) -> std::collections::BTreeMap<MirBlockId, BTreeSet<MirBlockId>> {
+    let blocks = function
+        .blocks()
+        .map(|(block, _)| block)
+        .collect::<BTreeSet<_>>();
+    let entry = function.entry_block();
+    let mut dominators = blocks
+        .iter()
+        .map(|block| {
+            (
+                *block,
+                if *block == entry {
+                    BTreeSet::from([entry])
+                } else {
+                    blocks.clone()
+                },
+            )
+        })
+        .collect::<std::collections::BTreeMap<_, _>>();
+    loop {
+        let mut changed = false;
+        for block in blocks.iter().copied().filter(|block| *block != entry) {
+            let mut next = predecessors
+                .get(&block)
+                .and_then(|items| items.first())
+                .and_then(|predecessor| dominators.get(predecessor))
+                .cloned()
+                .unwrap_or_default();
+            if let Some(items) = predecessors.get(&block) {
+                for predecessor in items.iter().skip(1) {
+                    if let Some(other) = dominators.get(predecessor) {
+                        next.retain(|candidate| other.contains(candidate));
+                    }
+                }
+            }
+            next.insert(block);
+            if dominators.get(&block) != Some(&next) {
+                dominators.insert(block, next);
+                changed = true;
+            }
+        }
+        if !changed {
+            return dominators;
+        }
     }
 }
 

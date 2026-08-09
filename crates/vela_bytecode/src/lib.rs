@@ -78,8 +78,8 @@ pub use portable::{
 };
 pub use program_image::ProgramImage;
 pub use scalar_plan::{
-    ChargedScalarTarget, ScalarBlockPlan, ScalarBlockPlanId, ScalarConstant, ScalarExit,
-    ScalarExitKind, ScalarOp, ScalarOpKind, ScalarSourcePointId,
+    ChargedScalarEdge, ChargedScalarTarget, ScalarBlockPlan, ScalarBlockPlanId, ScalarConstant,
+    ScalarExit, ScalarExitKind, ScalarOp, ScalarOpKind, ScalarRangeLoop, ScalarSourcePointId,
 };
 pub use script_metadata::{derived_linked_record_trait_fields, derived_record_trait_fields};
 pub use selected_plan::{SelectedPhysicalUnit, SelectedPhysicalUnitKind};

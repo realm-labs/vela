@@ -270,6 +270,7 @@ fn canonical_portable_code(mut code: UnlinkedCodeObject) -> UnlinkedCodeObject {
     for scalar in &mut code.scalar_blocks {
         scalar.mir_statements = Box::new([]);
         scalar.mir_terminator = None;
+        scalar.mir_range_header = None;
         scalar.mir_budget_sites = Box::new([]);
     }
     code.nested_functions = code
@@ -450,6 +451,7 @@ mod tests {
                 source: ScalarSourcePointId::new(2),
                 execution_units: 1,
             },
+            range_loop: None,
             source_points: Box::new([
                 Span::new(source, 0, 1),
                 Span::new(source, 1, 2),
@@ -457,6 +459,7 @@ mod tests {
             ]),
             mir_statements: Box::new([]),
             mir_terminator: None,
+            mir_range_header: None,
             mir_budget_sites: Box::new([]),
         }
     }
