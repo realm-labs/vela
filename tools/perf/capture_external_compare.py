@@ -5,7 +5,10 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import os
 import pathlib
+import platform
+import shlex
 import shutil
 import subprocess
 import sys
@@ -19,6 +22,13 @@ def output_text(command: list[str]) -> str:
         return subprocess.check_output(command, cwd=ROOT, text=True).strip()
     except (OSError, subprocess.CalledProcessError):
         return "unknown"
+
+
+def load_average_text() -> str:
+    try:
+        return ",".join(f"{value:.2f}" for value in os.getloadavg())
+    except (AttributeError, OSError):
+        return "unavailable"
 
 
 def main() -> int:
@@ -55,14 +65,21 @@ def main() -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / f"{captured_at}-{args.name}.txt"
 
+    worktree = output_text(["git", "status", "--porcelain"])
     metadata = [
-        f"# captured_at_utc={captured_at}",
-        f"# commit={output_text(['git', 'rev-parse', 'HEAD'])}",
-        f"# branch={output_text(['git', 'branch', '--show-current'])}",
-        f"# rustc={output_text(['rustc', '--version'])}",
-        f"# cargo={output_text(['cargo', '--version'])}",
-        f"# command={' '.join(command)}",
-        "",
+        f"# captured_at_utc={captured_at}\n",
+        f"# commit={output_text(['git', 'rev-parse', 'HEAD'])}\n",
+        f"# branch={output_text(['git', 'branch', '--show-current'])}\n",
+        f"# worktree={'clean' if not worktree else 'dirty'}\n",
+        f"# rustc={output_text(['rustc', '--version'])}\n",
+        f"# cargo={output_text(['cargo', '--version'])}\n",
+        f"# platform={platform.platform()}\n",
+        f"# machine={platform.machine()}\n",
+        f"# cpu={output_text(['sysctl', '-n', 'machdep.cpu.brand_string'])}\n",
+        f"# logical_cpus={os.cpu_count()}\n",
+        f"# load_average_before={load_average_text()}\n",
+        f"# command={shlex.join(command)}\n",
+        "\n",
     ]
 
     process = subprocess.Popen(
@@ -83,7 +100,7 @@ def main() -> int:
     output_path.write_text("".join(metadata + lines), encoding="utf-8")
     print(f"saved={output_path.relative_to(ROOT)}")
 
-    if args.baseline:
+    if args.baseline and status == 0:
         baseline_path = ROOT / "perf-baselines" / f"{args.baseline}.txt"
         baseline_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(output_path, baseline_path)

@@ -283,6 +283,7 @@ fn external_compare_config_accepts_profile_parameters() {
     assert!(!config.should_run("range_iteration"));
     assert!(config.should_run_runtime("vela"));
     assert!(config.should_run_runtime("lua54"));
+    assert!(!config.should_run_runtime("vela-cache"));
     assert!(!config.should_run_runtime("rhai"));
     assert_eq!(config.runtimes_label(), "vela,lua54");
 }

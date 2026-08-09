@@ -113,7 +113,7 @@ impl BenchConfig {
     }
 
     pub(crate) fn should_run_runtime(&self, runtime: &str) -> bool {
-        self.runtimes.is_empty() || self.runtimes.iter().any(|filter| runtime.contains(filter))
+        self.runtimes.is_empty() || self.runtimes.iter().any(|filter| runtime == filter)
     }
 }
 
