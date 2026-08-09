@@ -13,9 +13,9 @@ use super::{
     ServiceSelectionTable, ServiceSetSchema, ServiceStagingError,
 };
 
-// Versions 1 and 2 predate the complete host-scoped task contract and are
-// deliberately not loadable.
-const SERVICE_BUNDLE_FORMAT_VERSION: u32 = 4;
+// Version 5 binds deployment metadata to selected-plan-aware artifacts. Older
+// deployment metadata is deliberately not loadable.
+const SERVICE_BUNDLE_FORMAT_VERSION: u32 = 5;
 
 /// Checksum used for service manifests, sparse operations, and package metadata.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -622,16 +622,16 @@ mod tests {
 
     #[test]
     fn detached_service_metadata_rejects_legacy_formats() {
-        assert_eq!(SERVICE_BUNDLE_FORMAT_VERSION, 4);
-        for actual in [1_u32, 2, 3] {
+        assert_eq!(SERVICE_BUNDLE_FORMAT_VERSION, 5);
+        for actual in [1_u32, 2, 3, 4] {
             assert_eq!(
                 validate_service_bundle_format(actual),
                 Err(ServiceBundleError::UnsupportedFormat {
-                    expected: 4,
+                    expected: 5,
                     actual,
                 })
             );
         }
-        assert_eq!(validate_service_bundle_format(4), Ok(()));
+        assert_eq!(validate_service_bundle_format(5), Ok(()));
     }
 }

@@ -335,6 +335,33 @@ impl<'a> FunctionBackend<'a> {
         Ok(())
     }
 
+    pub(super) fn finalize_selected_units(&mut self) -> Result<(), MirBackendError> {
+        for pending in std::mem::take(&mut self.pending_selected_units) {
+            let false_target = match self
+                .code
+                .instructions
+                .get(pending.instruction.0)
+                .map(|instruction| &instruction.kind)
+            {
+                Some(UnlinkedInstructionKind::I64CmpImmJumpIfFalse { target, .. }) => *target,
+                _ => {
+                    return Err(MirBackendError::MissingTarget(
+                        "selected branch instruction",
+                    ));
+                }
+            };
+            self.code
+                .selected_units
+                .push(crate::SelectedPhysicalUnit::i64_cmp_imm_jump_if_false(
+                    pending.instruction,
+                    pending.source_points,
+                    [InstructionOffset(pending.instruction.0 + 1), false_target],
+                    pending.budget_units,
+                ));
+        }
+        Ok(())
+    }
+
     pub(super) fn attach_cache_sites(&mut self) {
         for index in 0..self.code.instructions.len() {
             let kind = self.code.instructions[index].kind.clone();

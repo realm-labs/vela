@@ -564,6 +564,7 @@ pub struct LinkedCodeObject {
     pub type_guards: Vec<TypeGuard>,
     pub param_guards: Vec<ParameterTypeGuard>,
     pub return_guard: Option<TypeGuardPlanId>,
+    pub selected_units: Vec<crate::SelectedPhysicalUnit>,
     pub instructions: Vec<Instruction>,
 }
 
@@ -584,6 +585,7 @@ impl LinkedCodeObject {
             type_guards: Vec::new(),
             param_guards: Vec::new(),
             return_guard: None,
+            selected_units: Vec::new(),
             instructions: Vec::new(),
         }
     }

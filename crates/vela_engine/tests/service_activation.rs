@@ -628,6 +628,9 @@ impl CalculatorPortableHotfix {
     fn adjust(context: RequestContext, value: i64) -> i64 {
         task::spawn_scoped(portable_worker(value));
         context.counter += 5;
+        if value > 4 {
+            return value + 31;
+        }
         return value + 30;
     }
 }
@@ -654,14 +657,14 @@ impl AuditPortableHotfix {
     let first = portable.encode().expect("first encoding");
     let second = portable.encode().expect("second encoding");
     assert_eq!(first, second);
-    for old_version in [1_u32, 2, 3] {
+    for old_version in [1_u32, 2, 3, 4] {
         let mut old = first.clone();
         old[8..12].copy_from_slice(&old_version.to_le_bytes());
         assert!(matches!(
             vela_engine::service::PortableServiceUpdateBundle::decode(&old),
             Err(
                 vela_engine::service::PortableServiceBundleError::UnsupportedFormat {
-                    expected: 4,
+                    expected: 5,
                     actual,
                 }
             ) if actual == old_version
@@ -702,6 +705,14 @@ impl AuditPortableHotfix {
     let [task_target] = loaded.artifact().task_targets() else {
         panic!("portable Service artifact should preserve one task target");
     };
+    assert!(
+        loaded
+            .artifact()
+            .program()
+            .functions()
+            .any(|(_, code)| !code.selected_units.is_empty()),
+        "portable Service artifact should preserve selected physical coverage"
+    );
     assert_eq!(
         task_target.operation,
         vela_bytecode::ArtifactTaskOperation::SpawnScoped

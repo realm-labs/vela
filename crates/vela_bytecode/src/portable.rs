@@ -13,9 +13,9 @@ use crate::{
 use vela_def::FunctionId;
 
 const MAGIC: &[u8; 8] = b"VELAPRG\0";
-// Version 4 adds static HostRef collection iteration shape to IterInit. The
-// hard switch intentionally has no compatibility loader or bytecode rewrite.
-const FORMAT_VERSION: u32 = 4;
+// Version 5 adds portable physical coverage for verifier-selected interpreter
+// units. The hard switch intentionally has no compatibility loader or rewrite.
+const FORMAT_VERSION: u32 = 5;
 const HEADER_LEN: usize = MAGIC.len() + size_of::<u32>() + size_of::<u64>() + 32;
 const MAX_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
 
@@ -48,7 +48,7 @@ impl fmt::Display for PortableArtifactChecksum {
 ///
 /// Loading still binds stable native/type identities against the receiving
 /// Engine and runs the bytecode verifier. MIR and process-local executable
-/// generations are deliberately not portable in format version 4.
+/// generations are deliberately not portable in format version 5.
 #[derive(Debug)]
 pub struct PortableCompiledProgram {
     pub(crate) bytecode: UnlinkedProgram,
@@ -136,6 +136,7 @@ impl PortableProgramArtifact {
     /// Encodes a deterministic, versioned and checksummed binary artifact.
     pub fn encode(&self) -> Result<Vec<u8>, PortableArtifactError> {
         validate_task_metadata(&self.payload)?;
+        validate_selected_plans(&self.payload)?;
         let payload = codec()
             .serialize(&self.payload)
             .map_err(|error| PortableArtifactError::Encode(error.to_string()))?;
@@ -206,6 +207,7 @@ impl PortableProgramArtifact {
             .deserialize(payload)
             .map_err(|error| PortableArtifactError::Decode(error.to_string()))?;
         validate_task_metadata(&payload)?;
+        validate_selected_plans(&payload)?;
         Ok(Self { payload })
     }
 
@@ -254,6 +256,9 @@ impl PortableProgramArtifact {
 
 fn canonical_portable_code(mut code: UnlinkedCodeObject) -> UnlinkedCodeObject {
     code.compiled_mir = None;
+    for slot in &mut code.frame.slots {
+        slot.local = None;
+    }
     for instruction in &mut code.instructions {
         instruction.mir_origin = None;
         instruction.mir_budget_charges = Box::new([]);
@@ -280,6 +285,22 @@ fn validate_task_metadata(payload: &PortableProgramPayload) -> Result<(), Portab
         return Err(PortableArtifactError::TaskMetadata(
             "host-scoped task feature bit disagrees with the target table".to_owned(),
         ));
+    }
+    Ok(())
+}
+
+fn validate_selected_plans(payload: &PortableProgramPayload) -> Result<(), PortableArtifactError> {
+    fn validate(code: &UnlinkedCodeObject) -> Result<(), PortableArtifactError> {
+        crate::selected_plan::verify_selected_physical_units(code)
+            .map_err(|detail| PortableArtifactError::SelectedPlan(detail.to_owned()))?;
+        for nested in &code.nested_functions {
+            validate(nested)?;
+        }
+        Ok(())
+    }
+
+    for code in &payload.functions {
+        validate(code)?;
     }
     Ok(())
 }
@@ -319,6 +340,7 @@ pub enum PortableArtifactError {
     Decode(String),
     UnsupportedPackageMetadata,
     TaskMetadata(String),
+    SelectedPlan(String),
     UnsupportedFeatures { required: u64, supported: u64 },
 }
 
@@ -349,10 +371,13 @@ impl fmt::Display for PortableArtifactError {
                 write!(formatter, "portable artifact decode failed: {message}")
             }
             Self::UnsupportedPackageMetadata => formatter.write_str(
-                "portable artifact format 3 does not yet encode package/provider runtime metadata",
+                "portable artifact format 5 does not yet encode package/provider runtime metadata",
             ),
             Self::TaskMetadata(message) => {
                 write!(formatter, "portable task metadata is invalid: {message}")
+            }
+            Self::SelectedPlan(message) => {
+                write!(formatter, "portable selected plan is invalid: {message}")
             }
             Self::UnsupportedFeatures {
                 required,
@@ -372,6 +397,7 @@ mod tests {
     use vela_common::SourceId;
 
     use super::*;
+    use crate::InstructionOffset;
 
     fn portable_task_artifact() -> PortableProgramArtifact {
         let compiled = crate::compiler::compile_test_program(
@@ -423,7 +449,76 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v4_round_trips_sealed_task_metadata_and_feature_bits() {
+    fn portable_v5_round_trips_selected_physical_coverage_from_source_and_linked_artifacts() {
+        let compiled = crate::compiler::compile_test_program(
+            SourceId::new(77),
+            "fn main(value: i64) -> i64 { if value > 4 { return 1; } return 0; }",
+        )
+        .expect("compile selected branch");
+        let artifact = PortableProgramArtifact::from_compiled(compiled)
+            .expect("portable selected-plan artifact");
+        let main = artifact
+            .payload
+            .functions
+            .iter()
+            .find(|code| code.name == "main")
+            .expect("main function");
+        assert_eq!(main.selected_units.len(), 1);
+        assert_eq!(main.selected_units[0].source_points().len(), 2);
+        assert_eq!(main.selected_units[0].exits().len(), 2);
+
+        let encoded = artifact.encode().expect("encode selected plan");
+        let decoded = PortableProgramArtifact::decode(&encoded).expect("decode selected plan");
+        assert_eq!(decoded, artifact);
+        let linked = crate::Linker::new()
+            .link_portable_program(decoded.into_compiled())
+            .expect("link selected plan");
+        assert!(
+            linked
+                .program()
+                .functions()
+                .any(|(_, code)| code.selected_units.len() == 1)
+        );
+        let reencoded =
+            PortableProgramArtifact::from_linked(&linked).expect("re-encode linked selected plan");
+        assert_eq!(reencoded, artifact);
+        assert_eq!(reencoded.checksum(), artifact.checksum());
+    }
+
+    #[test]
+    fn portable_v5_rejects_checksum_valid_invalid_selected_coverage() {
+        let compiled = crate::compiler::compile_test_program(
+            SourceId::new(78),
+            "fn main(value: i64) -> i64 { if value > 4 { return 1; } return 0; }",
+        )
+        .expect("compile selected branch");
+        let mut artifact = PortableProgramArtifact::from_compiled(compiled)
+            .expect("portable selected-plan artifact");
+        let main = artifact
+            .payload
+            .functions
+            .iter_mut()
+            .find(|code| code.name == "main")
+            .expect("main function");
+        main.selected_units[0].exits[1] = InstructionOffset(usize::MAX);
+
+        let payload = codec()
+            .serialize(&artifact.payload)
+            .expect("serialize malformed payload");
+        let mut encoded = Vec::new();
+        encoded.extend_from_slice(MAGIC);
+        encoded.extend_from_slice(&FORMAT_VERSION.to_le_bytes());
+        encoded.extend_from_slice(&(payload.len() as u64).to_le_bytes());
+        encoded.extend_from_slice(blake3::hash(&payload).as_bytes());
+        encoded.extend_from_slice(&payload);
+        assert!(matches!(
+            PortableProgramArtifact::decode(&encoded),
+            Err(PortableArtifactError::SelectedPlan(_))
+        ));
+    }
+
+    #[test]
+    fn portable_v5_round_trips_sealed_task_metadata_and_feature_bits() {
         let artifact = portable_task_artifact();
         let [target] = artifact.payload.task_targets.as_ref() else {
             panic!("real task program should seal one target");
@@ -457,8 +552,8 @@ fn main(value: Any) {
         assert!(continuation.resume_parameters[0].has_default);
         assert!(continuation.effects.state_write);
 
-        let encoded = artifact.encode().expect("encode v4 task metadata");
-        let decoded = PortableProgramArtifact::decode(&encoded).expect("decode v4 task metadata");
+        let encoded = artifact.encode().expect("encode v5 task metadata");
+        let decoded = PortableProgramArtifact::decode(&encoded).expect("decode v5 task metadata");
         assert_eq!(
             decoded.payload.required_features,
             artifact.payload.required_features
@@ -466,7 +561,7 @@ fn main(value: Any) {
         assert_eq!(decoded.payload.task_targets, artifact.payload.task_targets);
         let linked = crate::Linker::new()
             .link_portable_program(decoded.into_compiled())
-            .expect("link v4 task metadata");
+            .expect("link v5 task metadata");
         assert!(
             linked
                 .required_features()
@@ -486,7 +581,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v4_rejects_corrupted_task_slots_and_continuation_shape() {
+    fn portable_v5_rejects_corrupted_task_slots_and_continuation_shape() {
         fn assert_link_rejects(
             mut artifact: PortableProgramArtifact,
             corrupt: impl FnOnce(&mut crate::ArtifactTaskTarget),
@@ -541,7 +636,7 @@ fn main(value: Any) {
             Err(PortableArtifactError::ChecksumMismatch)
         );
 
-        for old_version in [1_u32, 2, 3] {
+        for old_version in [1_u32, 2, 3, 4] {
             let mut old = artifact.encode().expect("encode artifact");
             old[MAGIC.len()..MAGIC.len() + size_of::<u32>()]
                 .copy_from_slice(&old_version.to_le_bytes());

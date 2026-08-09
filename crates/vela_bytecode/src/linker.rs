@@ -132,7 +132,7 @@ impl<'registry> Linker<'registry> {
     /// Binds a decoded, source-independent bytecode artifact against this
     /// process's exact native/type registry.
     ///
-    /// Format version 4 portable artifacts are interpreter-only and therefore
+    /// Format version 5 portable artifacts are interpreter-only and therefore
     /// carry no process-local MIR/JIT layouts.
     #[cfg(feature = "artifact-codec")]
     pub fn link_portable_program(
@@ -555,6 +555,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         linked.frame = frame;
         linked.cache_sites = code.cache_sites.clone();
         linked.constants = code.constants.clone();
+        linked.selected_units = code.selected_units.clone();
         for guard in &code.param_guards {
             let linked_guard = self.link_type_guard(guard.guard.clone(), &mut linked)?;
             linked.push_param_guard(guard.parameter, linked_guard);

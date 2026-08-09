@@ -650,4 +650,54 @@ impl<'a> FunctionBackend<'a> {
         }
         Ok(())
     }
+
+    pub(super) fn superinstruction(
+        &mut self,
+        selected: &super::super::selection::SuperinstructionPlan,
+        terminator_span: vela_common::Span,
+        next_block: Option<MirBlockId>,
+    ) -> Result<(), MirBackendError> {
+        let statement = self
+            .function
+            .statement(selected.statement())
+            .ok_or(MirBackendError::MissingStatement)?;
+        let lhs = self.operand(selected.value(), statement.origin.span)?;
+        let instruction = InstructionOffset(self.code.instructions.len());
+        self.emit_patch(
+            UnlinkedInstructionKind::I64CmpImmJumpIfFalse {
+                op: selected.op(),
+                lhs,
+                imm: selected.immediate(),
+                target: InstructionOffset(0),
+            },
+            selected.else_block(),
+            statement.origin.span,
+        );
+        let block = self
+            .current_block
+            .expect("selected instruction is emitted inside one MIR block");
+        self.pending_selected_units
+            .push(super::PendingSelectedUnit {
+                instruction,
+                source_points: [statement.origin.span, terminator_span],
+                budget_units: [
+                    self.budget
+                        .statement_before(selected.statement())
+                        .map_or(0, |point| point.units),
+                    self.budget
+                        .terminator_before(block)
+                        .map_or(0, |point| point.units),
+                ],
+            });
+        if Some(selected.then_block()) != next_block {
+            self.emit_patch(
+                UnlinkedInstructionKind::Jump {
+                    target: InstructionOffset(0),
+                },
+                selected.then_block(),
+                terminator_span,
+            );
+        }
+        Ok(())
+    }
 }

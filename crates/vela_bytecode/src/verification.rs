@@ -51,6 +51,9 @@ pub enum VerificationErrorKind {
         reason: &'static str,
     },
     InvalidAwaitOperation,
+    InvalidSelectedPlan {
+        detail: &'static str,
+    },
     ArityFrameMismatch {
         capture_count: u16,
         parameter_count: usize,
@@ -492,6 +495,13 @@ fn verify_code_object_with_scope(
             cache_scope,
         )?;
     }
+    crate::selected_plan::verify_selected_physical_units(code).map_err(|detail| {
+        error(
+            function,
+            None,
+            VerificationErrorKind::InvalidSelectedPlan { detail },
+        )
+    })?;
     verify_cache_site_layout(function, code, cache_scope)?;
     for nested in &code.nested_functions {
         verify_code_object_with_scope(nested, &nested.name, closure_scope, cache_scope)?;

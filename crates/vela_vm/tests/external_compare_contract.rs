@@ -115,8 +115,7 @@ fn scalar_workloads_have_reproducible_opcode_count_reports() {
     let scalar = opcode_count_report(&vm, registry.compile_view(), "scalar_branch_loop");
     assert_has_opcode(&scalar, "I64RemImm");
     assert_has_opcode(&scalar, "I64MulImm");
-    assert_has_opcode(&scalar, "I64CmpImm");
-    assert_has_opcode(&scalar, "JumpIfFalse");
+    assert_has_opcode(&scalar, "I64CmpImmJumpIfFalse");
     assert_has_opcode(&scalar, "I64Add");
     assert_has_opcode(&scalar, "Jump");
     assert_has_opcode(&scalar, "I64RangeNext");
@@ -144,7 +143,7 @@ fn lead_workloads_have_reproducible_verified_mir_inventories() {
     for (workload_name, expected) in [
         (
             "scalar_branch_loop",
-            "verified_mir_inventory workload=scalar_branch_loop functions=2 blocks=14 statements=37 terminators=14 cfg_edges=16 budget_sites=7 budget_classes={\"call\": 1, \"dynamic_work\": 1, \"iterator_step\": 2, \"loop_backedge\": 3} safepoints=1 trap_points=10 source_points=51 outer_dispatches=58 code_bytes=7424 candidate_sequences={\"bytecode:i64_cmp_imm+jump_if_false\": 2, \"mir:i64_compare_immediate+branch\": 2, \"mir:scalar_run_len_3\": 1, \"mir:scalar_run_len_5_plus\": 5} profiled_dispatches=7787 profiled_candidate_sequences={\"bytecode:i64_cmp_imm+jump_if_false\": 606} checksum=23880",
+            "verified_mir_inventory workload=scalar_branch_loop functions=2 blocks=14 statements=37 terminators=14 cfg_edges=16 budget_sites=7 budget_classes={\"call\": 1, \"dynamic_work\": 1, \"iterator_step\": 2, \"loop_backedge\": 3} safepoints=1 trap_points=10 source_points=51 outer_dispatches=56 code_bytes=7168 candidate_sequences={\"mir:i64_compare_immediate+branch\": 2, \"mir:scalar_run_len_3\": 1, \"mir:scalar_run_len_5_plus\": 5, \"selected:i64_cmp_imm_jump_if_false\": 2} profiled_dispatches=7181 profiled_candidate_sequences={\"selected:i64_cmp_imm_jump_if_false\": 606} checksum=23880",
         ),
         (
             "range_iteration",
@@ -471,6 +470,22 @@ fn verified_mir_inventory(
                 *inventory
                     .profiled_candidate_sequences
                     .entry("bytecode:i64_cmp_imm+jump_if_false")
+                    .or_insert(0) +=
+                    profiler.hit_count(function.debug_name, InstructionOffset(offset));
+            }
+        }
+        for (offset, instruction) in function.instructions.iter().enumerate() {
+            if matches!(
+                instruction.kind,
+                InstructionKind::I64CmpImmJumpIfFalse { .. }
+            ) {
+                *inventory
+                    .candidate_sequences
+                    .entry("selected:i64_cmp_imm_jump_if_false")
+                    .or_insert(0) += 1;
+                *inventory
+                    .profiled_candidate_sequences
+                    .entry("selected:i64_cmp_imm_jump_if_false")
                     .or_insert(0) +=
                     profiler.hit_count(function.debug_name, InstructionOffset(offset));
             }

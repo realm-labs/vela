@@ -208,6 +208,13 @@ fn verify_linked_code_object_with_context(
     for (index, instruction) in code.instructions.iter().enumerate() {
         verify_linked_instruction(function, code, index, instruction, context)?;
     }
+    crate::selected_plan::verify_linked_selected_physical_units(code).map_err(|detail| {
+        error(
+            function,
+            None,
+            VerificationErrorKind::InvalidSelectedPlan { detail },
+        )
+    })?;
     verify_linked_cache_site_layout(
         function,
         code,

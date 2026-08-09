@@ -336,8 +336,9 @@ fn main() {
     .expect("block and if expression values should compile");
     assert!(code.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        UnlinkedInstructionKind::JumpIfFalse { .. }
+        UnlinkedInstructionKind::I64CmpImmJumpIfFalse { .. }
     )));
+    assert_eq!(code.selected_units.len(), 1);
     assert!(
         code.instructions
             .iter()

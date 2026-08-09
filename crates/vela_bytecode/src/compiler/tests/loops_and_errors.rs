@@ -95,16 +95,13 @@ fn main() {
     )));
     assert!(code.instructions.iter().any(|instruction| matches!(
         instruction.kind,
-        UnlinkedInstructionKind::I64CmpImm {
+        UnlinkedInstructionKind::I64CmpImmJumpIfFalse {
             op: crate::I64CompareOp::Greater,
             imm: 180,
             ..
         }
     )));
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        instruction.kind,
-        UnlinkedInstructionKind::JumpIfFalse { .. }
-    )));
+    assert!(!code.selected_units.is_empty());
     assert!(
         code.instructions
             .iter()

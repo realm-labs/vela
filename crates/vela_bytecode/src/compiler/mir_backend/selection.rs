@@ -2,9 +2,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 use vela_mir::{
-    MirBackendHandoff, MirBinaryOp, MirBlockId, MirBudgetPoint, MirBudgetSite, MirDebugLocalId,
-    MirFunction, MirFunctionAnalyses, MirFunctionId, MirLiveValue, MirPlace, MirSafepointId,
-    MirSourceOrigin, MirStatementId, MirStatementKind, MirTerminatorKind,
+    MirBackendHandoff, MirBinaryOp, MirBlockId, MirBudgetPoint, MirBudgetSite, MirComparisonOp,
+    MirDebugLocalId, MirFunction, MirFunctionAnalyses, MirFunctionId, MirImmediate, MirLiveValue,
+    MirOperand, MirPlace, MirSafepointId, MirSourceOrigin, MirStatementId, MirStatementKind,
+    MirTerminatorKind,
 };
 
 mod verify;
@@ -16,13 +17,19 @@ pub(super) fn verify(
     verify::verify(handoff, plan)
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(super) struct SelectedProgramPlan {
     functions: BTreeMap<MirFunctionId, SelectedFunctionPlan>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct SelectedFunctionPlan {
+impl SelectedProgramPlan {
+    pub(super) fn function(&self, function: MirFunctionId) -> Option<&SelectedFunctionPlan> {
+        self.functions.get(&function)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct SelectedFunctionPlan {
     function: MirFunctionId,
     units: Box<[SelectedUnit]>,
     block_entries: BTreeMap<MirBlockId, SelectedUnitId>,
@@ -32,9 +39,68 @@ struct SelectedFunctionPlan {
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 struct SelectedUnitId(u32);
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 enum SelectedUnit {
     Ordinary(MirUnitRange),
+    Superinstruction(SuperinstructionPlan),
+}
+
+impl SelectedUnit {
+    const fn block(&self) -> MirBlockId {
+        match self {
+            Self::Ordinary(range) => range.block,
+            Self::Superinstruction(plan) => plan.block,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct SuperinstructionPlan {
+    block: MirBlockId,
+    statement: MirStatementId,
+    op: crate::I64CompareOp,
+    value: MirOperand,
+    immediate: i64,
+    then_block: MirBlockId,
+    else_block: MirBlockId,
+}
+
+impl SelectedFunctionPlan {
+    pub(super) fn superinstruction(&self, block: MirBlockId) -> Option<&SuperinstructionPlan> {
+        self.block_entries
+            .get(&block)
+            .and_then(|unit| self.units.get(unit.0 as usize))
+            .and_then(|unit| match unit {
+                SelectedUnit::Superinstruction(plan) => Some(plan),
+                SelectedUnit::Ordinary(_) => None,
+            })
+    }
+}
+
+impl SuperinstructionPlan {
+    pub(super) const fn statement(&self) -> MirStatementId {
+        self.statement
+    }
+
+    pub(super) const fn op(&self) -> crate::I64CompareOp {
+        self.op
+    }
+
+    pub(super) const fn value(&self) -> &MirOperand {
+        &self.value
+    }
+
+    pub(super) const fn immediate(&self) -> i64 {
+        self.immediate
+    }
+
+    pub(super) const fn then_block(&self) -> MirBlockId {
+        self.then_block
+    }
+
+    pub(super) const fn else_block(&self) -> MirBlockId {
+        self.else_block
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -45,10 +111,10 @@ struct MirUnitRange {
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 enum OrdinaryReason {
-    CandidateDeferred(SelectionCandidate),
     NoApprovedRecipe,
 }
 
+#[cfg(test)]
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 enum SelectionCandidate {
     I64CompareImmediateBranch,
@@ -173,6 +239,10 @@ pub(crate) enum SelectionError {
         block: MirBlockId,
         fact: &'static str,
     },
+    InvalidSuperinstruction {
+        function: MirFunctionId,
+        block: MirBlockId,
+    },
 }
 
 impl SelectionError {
@@ -222,6 +292,9 @@ impl SelectionError {
             }
             | Self::MissingAnalysisFact {
                 function: expected, ..
+            }
+            | Self::InvalidSuperinstruction {
+                function: expected, ..
             } => Some(expected),
         }
     }
@@ -252,13 +325,15 @@ pub(super) fn select(
                 u32::try_from(units.len())
                     .map_err(|_| SelectionError::UnitCountOverflow(function_id))?,
             );
-            units.push(SelectedUnit::Ordinary(MirUnitRange {
-                block,
-                reason: measured_candidate(function, analyses, block).map_or(
-                    OrdinaryReason::NoApprovedRecipe,
-                    OrdinaryReason::CandidateDeferred,
-                ),
-            }));
+            units.push(measured_candidate(function, analyses, block).map_or_else(
+                || {
+                    SelectedUnit::Ordinary(MirUnitRange {
+                        block,
+                        reason: OrdinaryReason::NoApprovedRecipe,
+                    })
+                },
+                SelectedUnit::Superinstruction,
+            ));
             coverage.push(select_coverage(function_id, function, analyses, block)?);
             block_entries.insert(block, unit);
         }
@@ -278,16 +353,16 @@ pub(super) fn select(
 fn measured_candidate(
     function: &MirFunction,
     analyses: &MirFunctionAnalyses,
-    block: MirBlockId,
-) -> Option<SelectionCandidate> {
-    let block = function.block(block)?;
+    block_id: MirBlockId,
+) -> Option<SuperinstructionPlan> {
+    let block = function.block(block_id)?;
     let last_statement_id = block.statements().last().copied()?;
     let last_statement = function.statement(last_statement_id)?;
     let MirStatementKind::Binary {
         operation:
             MirBinaryOp::Compare {
+                operation,
                 kind: vela_common::PrimitiveTag::I64,
-                ..
             },
         left,
         right,
@@ -308,15 +383,92 @@ fn measured_candidate(
     if destination != *condition {
         return None;
     }
-    let has_immediate = analyses
+    if analyses
+        .value_liveness
+        .block_live_out
+        .get(&block_id)
+        .is_none_or(|live| live.contains(&MirLiveValue::Temp(destination)))
+        || last_statement.safepoint.is_some()
+        || block.terminator()?.safepoint.is_some()
+    {
+        return None;
+    }
+    let (value, immediate, operation) =
+        compare_immediate_operands(analyses, last_statement_id, *operation, left, right)?;
+    let MirTerminatorKind::Branch {
+        then_block,
+        else_block,
+        ..
+    } = block.terminator()?.kind
+    else {
+        unreachable!("branch shape was checked above")
+    };
+    Some(SuperinstructionPlan {
+        block: block_id,
+        statement: last_statement_id,
+        op: bytecode_compare(operation),
+        value,
+        immediate,
+        then_block,
+        else_block,
+    })
+}
+
+fn compare_immediate_operands(
+    analyses: &MirFunctionAnalyses,
+    statement: MirStatementId,
+    operation: MirComparisonOp,
+    left: &MirOperand,
+    right: &MirOperand,
+) -> Option<(MirOperand, i64, MirComparisonOp)> {
+    let left_immediate = i64_immediate(analyses, statement, left);
+    let right_immediate = i64_immediate(analyses, statement, right);
+    match (left_immediate, right_immediate) {
+        (None, Some(immediate)) if !matches!(left, MirOperand::Immediate(_)) => {
+            Some((left.clone(), immediate, operation))
+        }
+        (Some(immediate), None) if !matches!(right, MirOperand::Immediate(_)) => {
+            Some((right.clone(), immediate, reverse_compare(operation)))
+        }
+        _ => None,
+    }
+}
+
+fn i64_immediate(
+    analyses: &MirFunctionAnalyses,
+    statement: MirStatementId,
+    operand: &MirOperand,
+) -> Option<i64> {
+    match analyses
         .facts
-        .operand_before(last_statement_id, left)
-        .is_some_and(|fact| fact.immediate.is_some())
-        || analyses
-            .facts
-            .operand_before(last_statement_id, right)
-            .is_some_and(|fact| fact.immediate.is_some());
-    has_immediate.then_some(SelectionCandidate::I64CompareImmediateBranch)
+        .operand_before(statement, operand)?
+        .immediate?
+    {
+        MirImmediate::Scalar(vela_common::ScalarValue::I64(value)) => Some(value),
+        _ => None,
+    }
+}
+
+const fn reverse_compare(operation: MirComparisonOp) -> MirComparisonOp {
+    match operation {
+        MirComparisonOp::Equal => MirComparisonOp::Equal,
+        MirComparisonOp::NotEqual => MirComparisonOp::NotEqual,
+        MirComparisonOp::Less => MirComparisonOp::Greater,
+        MirComparisonOp::LessEqual => MirComparisonOp::GreaterEqual,
+        MirComparisonOp::Greater => MirComparisonOp::Less,
+        MirComparisonOp::GreaterEqual => MirComparisonOp::LessEqual,
+    }
+}
+
+const fn bytecode_compare(operation: MirComparisonOp) -> crate::I64CompareOp {
+    match operation {
+        MirComparisonOp::Equal => crate::I64CompareOp::Equal,
+        MirComparisonOp::NotEqual => crate::I64CompareOp::NotEqual,
+        MirComparisonOp::Less => crate::I64CompareOp::Less,
+        MirComparisonOp::LessEqual => crate::I64CompareOp::LessEqual,
+        MirComparisonOp::Greater => crate::I64CompareOp::Greater,
+        MirComparisonOp::GreaterEqual => crate::I64CompareOp::GreaterEqual,
+    }
 }
 
 fn select_coverage(
@@ -553,11 +705,16 @@ fn selection_report(plan: &SelectedProgramPlan) -> SelectionReport {
         .values()
         .flat_map(|function| function.units.iter())
     {
-        let SelectedUnit::Ordinary(range) = unit;
-        ordinary_units += 1;
-        *rejection_reasons.entry(range.reason).or_default() += 1;
-        if let OrdinaryReason::CandidateDeferred(candidate) = range.reason {
-            *candidates.entry(candidate).or_default() += 1;
+        match unit {
+            SelectedUnit::Ordinary(range) => {
+                ordinary_units += 1;
+                *rejection_reasons.entry(range.reason).or_default() += 1;
+            }
+            SelectedUnit::Superinstruction(_) => {
+                *candidates
+                    .entry(SelectionCandidate::I64CompareImmediateBranch)
+                    .or_default() += 1;
+            }
         }
     }
     SelectionReport {
@@ -622,7 +779,7 @@ fn main(limit: i64) -> i64 {
     }
 
     #[test]
-    fn ordinary_selection_covers_every_function_and_reports_rejections() {
+    fn selection_covers_every_function_and_reports_selected_recipes() {
         let (owner, plan) = plan();
         let handoff = owner
             .backend_handoff()
@@ -652,6 +809,26 @@ fn main(limit: i64) -> i64 {
     }
 
     #[test]
+    fn coverage_verifier_rejects_corrupted_superinstruction_recipe() {
+        let (owner, mut plan) = plan();
+        let handoff = owner.backend_handoff().expect("complete analyses");
+        let selected = plan
+            .functions
+            .values_mut()
+            .flat_map(|function| function.units.iter_mut())
+            .find_map(|unit| match unit {
+                SelectedUnit::Superinstruction(selected) => Some(selected),
+                SelectedUnit::Ordinary(_) => None,
+            })
+            .expect("fixture has one selected recipe");
+        selected.immediate = selected.immediate.wrapping_add(1);
+        assert!(matches!(
+            verify(handoff, &plan),
+            Err(SelectionError::InvalidSuperinstruction { .. })
+        ));
+    }
+
+    #[test]
     fn coverage_verifier_rejects_missing_and_duplicate_blocks() {
         let (owner, original) = plan();
         let handoff = owner.backend_handoff().expect("complete analyses");
@@ -660,10 +837,10 @@ fn main(limit: i64) -> i64 {
         let mut missing = original.clone();
         let function_plan = missing.functions.get_mut(&function).expect("function plan");
         let removed_unit = function_plan.units.last().expect("one unit").clone();
-        let SelectedUnit::Ordinary(removed_range) = removed_unit;
+        let removed_block = removed_unit.block();
         function_plan.units = function_plan.units[..function_plan.units.len() - 1].into();
         function_plan.coverage = function_plan.coverage[..function_plan.coverage.len() - 1].into();
-        function_plan.block_entries.remove(&removed_range.block);
+        function_plan.block_entries.remove(&removed_block);
         assert!(matches!(
             verify(handoff, &missing),
             Err(SelectionError::MissingBlock { .. })

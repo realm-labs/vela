@@ -27,7 +27,7 @@ mod operations;
 mod physical;
 mod support;
 
-use super::selection::{SelectionError, mir_successors};
+use super::selection::{SelectedFunctionPlan, SelectedProgramPlan, SelectionError, mir_successors};
 use support::{dynamic_binary_instruction, guard_kind, guard_location, mir_reaches, type_guard};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -45,6 +45,7 @@ pub(crate) enum MirBackendError {
 
 pub(crate) fn compile(
     handoff: MirBackendHandoff<'_>,
+    plan: &SelectedProgramPlan,
 ) -> Result<UnlinkedCodeObject, MirBackendError> {
     let program = handoff.program();
     let analyses = handoff.all_analyses();
@@ -52,16 +53,29 @@ pub(crate) fn compile(
         .functions()
         .next()
         .ok_or(MirBackendError::MissingRoot)?;
-    compile_function(program, analyses, root_id, root)
+    compile_function(program, analyses, plan, root_id, root)
 }
 
 fn compile_function(
     program: &MirProgram,
     analyses: &BTreeMap<MirFunctionId, MirFunctionAnalyses>,
+    plan: &SelectedProgramPlan,
     function_id: MirFunctionId,
     function: &MirFunction,
 ) -> Result<UnlinkedCodeObject, MirBackendError> {
-    let mut backend = FunctionBackend::new(program, analyses, function_id, function)?;
+    let function_plan = plan
+        .function(function_id)
+        .ok_or(MirBackendError::InvalidSelection(
+            SelectionError::MissingFunctionPlan(function_id),
+        ))?;
+    let mut backend = FunctionBackend::new(
+        program,
+        analyses,
+        plan,
+        function_plan,
+        function_id,
+        function,
+    )?;
     backend.compile()?;
     Ok(backend.finish())
 }
@@ -71,6 +85,8 @@ struct FunctionBackend<'a> {
     function_id: MirFunctionId,
     function: &'a MirFunction,
     analyses: &'a BTreeMap<MirFunctionId, MirFunctionAnalyses>,
+    selection: &'a SelectedProgramPlan,
+    function_selection: &'a SelectedFunctionPlan,
     facts: &'a vela_mir::MirProgramPointFacts,
     budget: &'a vela_mir::MirBudgetSchedule,
     code: UnlinkedCodeObject,
@@ -88,12 +104,21 @@ struct FunctionBackend<'a> {
     pending_execution_units: u32,
     pending_budget_charges: Vec<crate::MirBudgetCharge>,
     unspanned_spans: Vec<vela_common::Span>,
+    pending_selected_units: Vec<PendingSelectedUnit>,
+}
+
+struct PendingSelectedUnit {
+    instruction: InstructionOffset,
+    source_points: [vela_common::Span; 2],
+    budget_units: [u32; 2],
 }
 
 impl<'a> FunctionBackend<'a> {
     fn new(
         program: &'a MirProgram,
         analyses: &'a BTreeMap<MirFunctionId, MirFunctionAnalyses>,
+        selection: &'a SelectedProgramPlan,
+        function_selection: &'a SelectedFunctionPlan,
         function_id: MirFunctionId,
         function: &'a MirFunction,
     ) -> Result<Self, MirBackendError> {
@@ -217,6 +242,8 @@ impl<'a> FunctionBackend<'a> {
         Ok(Self {
             program,
             analyses,
+            selection,
+            function_selection,
             facts: &analyses
                 .get(&function_id)
                 .ok_or(MirBackendError::MissingMirFunction(function_id))?
@@ -242,6 +269,7 @@ impl<'a> FunctionBackend<'a> {
             pending_execution_units: 0,
             pending_budget_charges: Vec::new(),
             unspanned_spans,
+            pending_selected_units: Vec::new(),
         })
     }
 
@@ -253,6 +281,7 @@ impl<'a> FunctionBackend<'a> {
             let next = blocks.get(index + 1).map(|(id, _)| *id);
             self.blocks
                 .insert(block_id, InstructionOffset(self.code.instructions.len()));
+            let superinstruction = self.function_selection.superinstruction(block_id).cloned();
             for statement_id in block.statements() {
                 let statement = self
                     .function
@@ -265,7 +294,12 @@ impl<'a> FunctionBackend<'a> {
                         point,
                     );
                 }
-                self.statement(statement)?;
+                if superinstruction
+                    .as_ref()
+                    .is_none_or(|selected| selected.statement() != *statement_id)
+                {
+                    self.statement(statement)?;
+                }
             }
             self.current_statement = None;
             let terminator = block
@@ -278,10 +312,15 @@ impl<'a> FunctionBackend<'a> {
                     point,
                 );
             }
-            self.terminator(&terminator.kind, terminator.origin.span, next)?;
+            if let Some(selected) = &superinstruction {
+                self.superinstruction(selected, terminator.origin.span, next)?;
+            } else {
+                self.terminator(&terminator.kind, terminator.origin.span, next)?;
+            }
             self.current_terminator = None;
         }
         self.patch_targets()?;
+        self.finalize_selected_units()?;
         self.attach_cache_sites();
         self.code.register_count = self.next_register;
         Ok(())
@@ -294,7 +333,7 @@ impl<'a> FunctionBackend<'a> {
             .filter(|(_, function)| matches!(function.owner(), vela_mir::MirFunctionOwner::Lambda { parent, .. } if *parent == self.function_id))
             .collect::<Vec<_>>();
         for (id, function) in nested {
-            let code = compile_function(self.program, self.analyses, id, function)?;
+            let code = compile_function(self.program, self.analyses, self.selection, id, function)?;
             let index = self.code.push_nested_function(code);
             self.nested.insert(id, index);
         }

@@ -17,6 +17,7 @@ mod portable;
 pub mod program_image;
 mod script_metadata;
 pub mod script_methods;
+mod selected_plan;
 mod state;
 pub mod verification;
 
@@ -76,6 +77,7 @@ pub use portable::{
 };
 pub use program_image::ProgramImage;
 pub use script_metadata::{derived_linked_record_trait_fields, derived_record_trait_fields};
+pub use selected_plan::{SelectedPhysicalUnit, SelectedPhysicalUnitKind};
 pub use state::{LinkedStateDescriptor, StateDescriptor, StateStorage, StateVisibility};
 pub use vela_registry::DebugNameId;
 
@@ -402,6 +404,9 @@ pub struct UnlinkedCodeObject {
     pub param_guards: Vec<UnlinkedParameterTypeGuard>,
     pub return_guard: Option<UnlinkedTypeGuard>,
     pub nested_functions: Vec<UnlinkedCodeObject>,
+    /// Portable physical coverage for every verifier-selected instruction.
+    #[cfg_attr(feature = "artifact-codec", serde(default))]
+    pub selected_units: Vec<SelectedPhysicalUnit>,
     pub(crate) stable_function: Option<FunctionId>,
     /// Capabilities observed by the verified compiler for this stable root,
     /// including transitive script calls. Portable artifacts retain this
@@ -430,6 +435,7 @@ impl UnlinkedCodeObject {
             param_guards: Vec::new(),
             return_guard: None,
             nested_functions: Vec::new(),
+            selected_units: Vec::new(),
             stable_function: None,
             verified_capabilities: None,
             compiled_mir: None,
