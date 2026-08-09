@@ -3,7 +3,7 @@
 > **Track:** post-M20 non-JIT interpreter structural optimization, before M22
 > Cranelift JIT
 >
-> **Status:** planned execution contract; no batch is accepted yet
+> **Status:** Batch A accepted on 2026-08-09; Batch B is next
 >
 > **Compatibility policy:** pre-release hard switch. Internal instruction,
 > verifier, artifact, profiler, and frame-location shapes may change without a
@@ -735,6 +735,9 @@ changes that premise.
 ## 11. Execution Batches
 
 ### Batch A — Freeze baselines, profiles, and semantic boundaries
+
+> Accepted in
+> [the Batch A evidence report](archive/verified-mir-interpreter-batch-a-evidence-2026-08-09.md).
 
 Deliverables:
 

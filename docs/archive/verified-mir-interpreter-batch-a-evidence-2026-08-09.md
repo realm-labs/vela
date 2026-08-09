@@ -1,11 +1,11 @@
 # Verified-MIR Interpreter Batch A Evidence — 2026-08-09
 
-This report records the first valid measurement checkpoint for Batch A of the
+This report closes Batch A of the
 [Verified-MIR superinstruction and basic-block interpreter plan](../verified-mir-superinstruction-basic-block-interpreter-plan.md).
-It is an intermediate checkpoint, not Batch A acceptance: lead scalar rows,
-runtime instruction frequencies, profiles, and the cancellation/budget boundary
-are frozen, while the complete guardrail, compile-resource, artifact-size, and
-Runtime/Actor-memory matrix remains outstanding.
+Lead scalar rows, guardrails, runtime instruction frequencies, profiles,
+compile resources, portable artifact size, Runtime/Actor memory, and the
+cancellation/budget boundary are frozen. Batch B may now add an ordinary-output
+selector and independent coverage verifier without changing runtime behavior.
 
 ## Invalidated captures
 
@@ -93,6 +93,36 @@ host-field, host-state, and host-aggregate detail rows. These boundaries remain
 ordinary execution in the initial selector and are the inexpensive per-batch
 screen for accidental non-target regressions.
 
+## Engine, Service, async, and Actor guardrails
+
+The engine-side captures use their existing stable workload shapes and are
+retained as separate raw files so boundary families are never folded into the
+pure scalar geometric mean:
+
+- [`verified_mir_engine_interop_macos_aarch64.txt`](../../perf-baselines/verified_mir_engine_interop_macos_aarch64.txt)
+- [`verified_mir_service_boundary_macos_aarch64.txt`](../../perf-baselines/verified_mir_service_boundary_macos_aarch64.txt)
+- [`verified_mir_async_execution_macos_aarch64.txt`](../../perf-baselines/verified_mir_async_execution_macos_aarch64.txt)
+- [`verified_mir_scoped_task_macos_aarch64.txt`](../../perf-baselines/verified_mir_scoped_task_macos_aarch64.txt)
+- [`verified_mir_actor_memory_macos_aarch64.txt`](../../perf-baselines/verified_mir_actor_memory_macos_aarch64.txt)
+- [`verified_mir_actor_allocations_macos_aarch64.txt`](../../perf-baselines/verified_mir_actor_allocations_macos_aarch64.txt)
+- [`verified_mir_actor_concurrency_macos_aarch64.txt`](../../perf-baselines/verified_mir_actor_concurrency_macos_aarch64.txt)
+
+Representative stable boundaries are:
+
+| Family | Frozen result |
+|---|---|
+| interop | Vela-to-Rust scalar 15,987.5 ns/call; shared/exclusive Host 16,371.0/16,237.5; Rust-to-Vela root 15,879.1; same-session round trip 20,500.8 |
+| Service | generated Rust default 2 ns/call with zero allocations; Vela plus `base` 7,891 ns/call; static field/method 23,139/23,357; nested reborrow 27,877 |
+| async | sync/ready/pending 3,957.4/4,390.7/4,735.2 ns/call; scalar reentry 9,097.8; async provider 7,701.7 |
+| scoped task | owned admission 71.2 us; fresh/pooled worker 29.4/30.8 us; first pending poll 16.8 us; Service nested dispatch 785.2 us; continuation delivery 20.3 us |
+| Actor memory | 10,000 large-artifact Runtimes retain 117,080,064 bytes with profiling off and 117,522,432 with it on; both remain far below the 1.5 GiB capacity ceiling |
+| Actor concurrency | ten-worker hot/cold throughput 451,144/346,954 calls/s; pending Actor overlap succeeds; shared dynamic-method execution data is 2.14% below isolated in this sample |
+
+The Actor allocation capture separately freezes the single-worker
+`stats_alloc` calibration used by concurrency. Selected plans are immutable
+generation data, so Batch F must keep the 10,000-Actor memory delta within the
+5% guardrail rather than duplicating plans or counters per Runtime.
+
 ## Verified-MIR and dynamic-dispatch inventory
 
 The reproducible inventory test compiles each workload, examines its verified
@@ -126,6 +156,29 @@ that run. No other lead workload contains that exact linked pair.
 
 The test intentionally reports all snapshot mismatches in one failure so a
 compiler change cannot hide later workload drift behind the first mismatch.
+
+## Compile resources and portable artifact size
+
+The dedicated
+[`verified_mir_compile_resources_macos_aarch64.txt`](../../perf-baselines/verified_mir_compile_resources_macos_aarch64.txt)
+capture runs two warmup and seven measured fresh child processes. Each child
+builds the standard registry once, then times source-to-`CompiledProgram` for
+all five lead workloads. Portable encoding occurs outside that timer. The
+parent polls child RSS every 2 ms, and every sample must reproduce the exact
+artifact byte length and checksum.
+
+| Workload | Mean compile ns | Min / p95 ns | Portable bytes |
+|---|---:|---:|---:|
+| `scalar_branch_loop` | 3,824,285 | 3,521,667 / 4,067,041 | 2,239 |
+| `range_iteration` | 3,118,494 | 2,929,167 / 3,455,333 | 2,288 |
+| `function_calls` | 3,056,863 | 2,768,667 / 3,379,333 | 2,301 |
+| `recursive_countdown` | 2,869,113 | 2,621,416 / 3,067,459 | 2,065 |
+| `float_math_loop` | 2,802,291 | 2,678,792 / 3,107,708 | 2,023 |
+
+Measured child peak RSS is 11,377,517 bytes mean, 11,370,496 median, and
+11,468,800 p95. This is the Vela compiler process boundary, not Cargo/Rust
+build time or RSS. Later batches rerun the harness to detect selector and plan
+metadata costs.
 
 ## Dominant sampled stacks
 
@@ -176,7 +229,7 @@ regions may not introduce an unbudgeted backedge; adding a new mid-loop
 cancellation/deadline policy would be a separate semantic decision rather than
 an optimization detail.
 
-## Candidate decision and remaining Batch A work
+## Candidate decision and Batch A conclusion
 
 The first bounded vertical proof is the MIR-native
 `I64CmpImmJumpIfFalse` recipe. It has two verified sites and measured dynamic
@@ -196,10 +249,12 @@ format version 4 for static HostRef collection-iteration metadata. The plan's
 stale `3 -> 4` reservation is corrected to an atomic `4 -> 5` hard switch;
 selected-plan artifacts will reject versions 1-4 without compatibility readers.
 
-Batch A is not complete until the engine guardrail rows, artifact bytes,
-compile time, peak compile RSS, and Runtime/Actor memory are captured and the
-complete stable-checksum/geometric-mean report is archived. No runtime or
-artifact behavior changed in this checkpoint.
+Batch A is accepted. Every lead workload has a reproducible checksum, verified
+MIR/CFG/semantic-point inventory, static code size, dynamic dispatch count,
+portable byte size, compile-time sample, and profile. The pure-language,
+ordinary VM, Host/Service/async/task, and Actor memory/concurrency before rows
+are retained with machine/toolchain/load metadata. Candidate choice is based on
+measured frequency, and no runtime or artifact behavior changed in Batch A.
 
 ## Validation
 

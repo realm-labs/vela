@@ -10,6 +10,18 @@ Completed execution plans and acceptance reports live under
 
 ## Current Focus
 
+The active execution track is the post-M20
+[Verified-MIR superinstruction and basic-block interpreter plan](verified-mir-superinstruction-basic-block-interpreter-plan.md).
+Batch A is accepted with newly captured quiet-machine scalar, VM, Host,
+Service, async, scoped-task, Actor memory/concurrency, compile-resource, and
+portable-size baselines. Earlier overloaded-machine data is excluded. Profiles
+and dynamic instruction counts select `I64CmpImmJumpIfFalse` as the first
+bounded MIR-native proof while identifying `range_iteration` scalar blocks and
+loops as the primary throughput lever. Artifact version 4 is already occupied,
+so portable selected plans will hard-switch all three surfaces to version 5.
+Batch B is next: add a deterministic ordinary-output selector and independent
+coverage verifier without changing emitted code or runtime behavior.
+
 The Rust/Vela interop checkpoint is complete under the
 [final interop and explicit-release hard switch](rust-vela-interop-final-shape-hard-switch-plan.md).
 E0-E5 removed compiler-driven Host release, added authored

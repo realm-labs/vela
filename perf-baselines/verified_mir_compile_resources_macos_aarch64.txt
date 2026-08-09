@@ -1,0 +1,24 @@
+# captured_at_utc=20260809T035847Z
+# commit=3ccc40b443dd89270d92655640150134c607984d
+# branch=master
+# worktree=clean
+# rustc=rustc 1.97.1 (8bab26f4f 2026-07-14)
+# cargo=cargo 1.97.1 (c980f4866 2026-06-30)
+# platform=macOS-26.5.2-arm64-arm-64bit-Mach-O
+# machine=arm64
+# cpu=Apple M1 Max
+# logical_cpus=10
+# load_average_before=13.90,13.81,13.35
+# elapsed_seconds=0.388
+# exit_status=0
+# command=cargo bench -p vela_vm --bench verified_mir_compile
+
+    Finished `bench` profile [optimized] target(s) in 0.13s
+     Running benches/verified_mir_compile.rs (target/release/deps/verified_mir_compile-c165093d91d922fc)
+suite=verified_mir_compile samples=7 warmups=2 rss_poll_interval_ms=2
+compile_result workload=scalar_branch_loop min_ns=3521667 mean_ns=3824285 median_ns=3826750 p95_ns=4067041 artifact_bytes=2239 artifact_checksum=483727e20f6f3a8e081c7b87bad1e5662492e304a67b9d45d1b7a60f39fef73c
+compile_result workload=range_iteration min_ns=2929167 mean_ns=3118494 median_ns=3055834 p95_ns=3455333 artifact_bytes=2288 artifact_checksum=443d6f1a66deb0e7a338454f3db5a84792b1c28b130a5c56561eb536cccce912
+compile_result workload=function_calls min_ns=2768667 mean_ns=3056863 median_ns=3096708 p95_ns=3379333 artifact_bytes=2301 artifact_checksum=7f5018073fa6ab6f33a51ef30d9777590f86257f2d474709ed5103951a772a05
+compile_result workload=recursive_countdown min_ns=2621416 mean_ns=2869113 median_ns=2969250 p95_ns=3067459 artifact_bytes=2065 artifact_checksum=0f18bed842d20e77e51b30cba958a2d7f2adecfcfdaf7657e3c7a18cc48f1aee
+compile_result workload=float_math_loop min_ns=2678792 mean_ns=2802291 median_ns=2713917 p95_ns=3107708 artifact_bytes=2023 artifact_checksum=378969fbabf18fe11b3049804a97c7c1cc2ca5d58987984ab0e3ca54b001291a
+compile_memory samples=7 min_peak_rss_bytes=11321344 mean_peak_rss_bytes=11377517 median_peak_rss_bytes=11370496 p95_peak_rss_bytes=11468800
