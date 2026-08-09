@@ -111,6 +111,8 @@ struct PendingSelectedUnit {
     instruction: InstructionOffset,
     source_points: [vela_common::Span; 2],
     budget_units: [u32; 2],
+    mir_statement: MirStatementId,
+    mir_terminator: MirBlockId,
 }
 
 impl<'a> FunctionBackend<'a> {

@@ -351,6 +351,29 @@ fn linked_artifact_rejects_bytecode_that_drops_verified_mir_budget_points() {
     );
 }
 
+#[test]
+fn linked_artifact_rejects_selected_source_coverage_moved_from_verified_mir() {
+    let mut program = compile_test_program(
+        SourceId::new(46),
+        "fn main(value: i64) -> i64 { if value > 4 { return 1; } return 0; }",
+    )
+    .expect("selected source coverage fixture compiles");
+    let code = program
+        .bytecode
+        .function_mut("main")
+        .expect("fixture main function");
+    let selected = code
+        .selected_units
+        .first_mut()
+        .expect("fixture has selected coverage");
+    selected.source_points[1] = vela_common::Span::new(SourceId::new(46), 0, 1);
+
+    assert!(matches!(
+        crate::Linker::new().link_compiled_program(program),
+        Err(crate::LinkError::MirSelectedPlanMismatch { .. })
+    ));
+}
+
 fn assert_moved_budget_charge_is_rejected(
     mut program: super::CompiledProgram,
     class: vela_mir::MirBudgetClass,

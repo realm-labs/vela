@@ -263,6 +263,10 @@ fn canonical_portable_code(mut code: UnlinkedCodeObject) -> UnlinkedCodeObject {
         instruction.mir_origin = None;
         instruction.mir_budget_charges = Box::new([]);
     }
+    for selected in &mut code.selected_units {
+        selected.mir_statement = None;
+        selected.mir_terminator = None;
+    }
     code.nested_functions = code
         .nested_functions
         .into_iter()

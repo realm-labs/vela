@@ -28,6 +28,10 @@ pub struct SelectedPhysicalUnit {
     pub(crate) source_points: Box<[Span]>,
     pub(crate) exits: Box<[InstructionOffset]>,
     pub(crate) budget_units: Box<[u32]>,
+    #[cfg_attr(feature = "artifact-codec", serde(skip))]
+    pub(crate) mir_statement: Option<vela_mir::MirStatementId>,
+    #[cfg_attr(feature = "artifact-codec", serde(skip))]
+    pub(crate) mir_terminator: Option<vela_mir::MirBlockId>,
 }
 
 impl SelectedPhysicalUnit {
@@ -37,6 +41,8 @@ impl SelectedPhysicalUnit {
         source_points: [Span; 2],
         exits: [InstructionOffset; 2],
         budget_units: [u32; 2],
+        mir_statement: vela_mir::MirStatementId,
+        mir_terminator: vela_mir::MirBlockId,
     ) -> Self {
         Self {
             instruction,
@@ -45,6 +51,8 @@ impl SelectedPhysicalUnit {
             source_points: Box::new(source_points),
             exits: Box::new(exits),
             budget_units: Box::new(budget_units),
+            mir_statement: Some(mir_statement),
+            mir_terminator: Some(mir_terminator),
         }
     }
 

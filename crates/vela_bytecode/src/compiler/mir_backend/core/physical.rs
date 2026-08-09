@@ -357,6 +357,8 @@ impl<'a> FunctionBackend<'a> {
                     pending.source_points,
                     [InstructionOffset(pending.instruction.0 + 1), false_target],
                     pending.budget_units,
+                    pending.mir_statement,
+                    pending.mir_terminator,
                 ));
         }
         Ok(())

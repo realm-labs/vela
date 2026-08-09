@@ -190,6 +190,10 @@ pub enum LinkError {
         root: FunctionId,
         function: vela_mir::MirFunctionId,
     },
+    MirSelectedPlanMismatch {
+        executable: usize,
+        instruction: InstructionOffset,
+    },
     MissingMirBudgetCharge {
         executable: usize,
         site: vela_mir::MirBudgetSite,
@@ -312,6 +316,13 @@ impl fmt::Display for LinkError {
             Self::MissingMirFunction { root, function } => write!(
                 formatter,
                 "missing verified MIR function {function:?} in root {root:?}"
+            ),
+            Self::MirSelectedPlanMismatch {
+                executable,
+                instruction,
+            } => write!(
+                formatter,
+                "linked executable {executable} has selected coverage inconsistent with verified MIR at {instruction:?}"
             ),
             Self::MissingMirBudgetCharge { executable, site } => write!(
                 formatter,

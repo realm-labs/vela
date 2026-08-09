@@ -370,6 +370,13 @@ impl UnboundLinkedProgram {
                     actual: self.program.function_count(),
                 })?;
             verify_budget_mapping(index, code, &analyses.budget, &budget_layouts[index])?;
+            let function = owner.program().function(expected.function).ok_or(
+                crate::linker::LinkError::MissingMirFunction {
+                    root: expected.root,
+                    function: expected.function,
+                },
+            )?;
+            verify_selected_source_mapping(index, code, function)?;
         }
         let mir_executables = compiled_layouts
             .iter()
@@ -416,6 +423,33 @@ impl UnboundLinkedProgram {
         self.program.verify()?;
         verify_unbound_cache_correspondence(self)
     }
+}
+
+fn verify_selected_source_mapping(
+    executable: usize,
+    code: &crate::LinkedCodeObject,
+    function: &vela_mir::MirFunction,
+) -> Result<(), crate::linker::LinkError> {
+    for selected in &code.selected_units {
+        let mismatch = || crate::linker::LinkError::MirSelectedPlanMismatch {
+            executable,
+            instruction: selected.instruction,
+        };
+        let statement_id = selected.mir_statement.ok_or_else(mismatch)?;
+        let block_id = selected.mir_terminator.ok_or_else(mismatch)?;
+        let block = function.block(block_id).ok_or_else(mismatch)?;
+        if !block.statements().contains(&statement_id) {
+            return Err(mismatch());
+        }
+        let statement = function.statement(statement_id).ok_or_else(mismatch)?;
+        let terminator = block.terminator().ok_or_else(mismatch)?;
+        if selected.source_points.as_ref()
+            != [statement.origin.span, terminator.origin.span].as_slice()
+        {
+            return Err(mismatch());
+        }
+    }
+    Ok(())
 }
 
 #[cfg(any(test, feature = "test-support"))]

@@ -688,6 +688,8 @@ impl<'a> FunctionBackend<'a> {
                         .terminator_before(block)
                         .map_or(0, |point| point.units),
                 ],
+                mir_statement: selected.statement(),
+                mir_terminator: block,
             });
         if Some(selected.then_block()) != next_block {
             self.emit_patch(
