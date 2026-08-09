@@ -73,6 +73,26 @@ fresh-process interleaving with a noise floor rather than this single-process
 mean. The other Vela guardrail rows are sufficiently tight for the initial
 regression screen.
 
+The frozen focused VM guardrail capture is
+[`perf-baselines/verified_mir_vm_guardrails_macos_aarch64.txt`](../../perf-baselines/verified_mir_vm_guardrails_macos_aarch64.txt).
+It uses the baseline harness's stable shape of seven repeats, 100 calls per
+repeat, and ten warmups. All ordinary/profile/cache variants report matching
+checksums and paired profile-hit counts. Representative mean sample times are:
+
+| Boundary | Mean ns per 100-call sample |
+|---|---:|
+| scalar branch / budgeted scalar | 2,180,000 / 1,675,571 |
+| range iteration / scalar dispatch mix | 6,666,559 / 9,155,595 |
+| script small-argument call / direct closure | 7,283,946 / 14,213,589 |
+| managed-heap direct closure / materialization | 14,600,988 / 4,166,887 |
+| GC pacing | 29,657,202 |
+| host aggregate / field read-write | 228,690 / 1,162,886 |
+
+The capture also freezes profile-only and cache-enabled script-call, closure,
+host-field, host-state, and host-aggregate detail rows. These boundaries remain
+ordinary execution in the initial selector and are the inexpensive per-batch
+screen for accidental non-target regressions.
+
 ## Verified-MIR and dynamic-dispatch inventory
 
 The reproducible inventory test compiles each workload, examines its verified
@@ -171,10 +191,10 @@ coverage verifier first. Batch D should prioritize the long pure scalar regions
 in `range_iteration`; Batch E may then internalize only eligible natural loops
 while charging every taken backedge. Call fusion remains deferred.
 
-Batch A is not complete until the baseline/engine guardrail rows, artifact
-bytes, compile time, peak compile RSS, and Runtime/Actor memory are captured
-and the complete stable-checksum/geometric-mean report is archived. No runtime
-or artifact behavior changed in this checkpoint.
+Batch A is not complete until the engine guardrail rows, artifact bytes,
+compile time, peak compile RSS, and Runtime/Actor memory are captured and the
+complete stable-checksum/geometric-mean report is archived. No runtime or
+artifact behavior changed in this checkpoint.
 
 ## Validation
 
