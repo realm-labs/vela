@@ -1,0 +1,26 @@
+# captured_at_utc=20260809T023822Z
+# commit=cced68d6171c671cd58474efaca01713e1b28c53
+# branch=master
+# worktree=clean
+# rustc=rustc 1.97.1 (8bab26f4f 2026-07-14)
+# cargo=cargo 1.97.1 (c980f4866 2026-06-30)
+# platform=macOS-26.5.2-arm64-arm-64bit-Mach-O
+# machine=arm64
+# cpu=Apple M1 Max
+# logical_cpus=10
+# load_average_before=9.94,16.76,17.47
+# command=cargo bench -p vela_vm --bench external_compare -- --runtime vela,lua54 --iterations 500000 --repeats 5 --warmup 2 scalar range function recursive float
+
+    Finished `bench` profile [optimized] target(s) in 0.19s
+     Running benches/external_compare.rs (target/release/deps/external_compare-d43f15e4f19e66af)
+vela_vm_external_compare profile=release target=macos/aarch64 repeats=5 iterations=500000 warmup=2 filters=scalar,range,function,recursive,float runtimes=vela,lua54
+runtime=vela version="0.1.0" bench=scalar_branch_loop mode=internal_hot_loop min_ns=10833015500 mean_ns=10980632575 median_ns=10976949000 p95_ns=11260398042 per_iter_mean_ns=21961 checksum=9167640163716684702
+runtime=vela version="0.1.0" bench=range_iteration mode=internal_hot_loop min_ns=32888215042 mean_ns=33108354483 median_ns=32942979792 p95_ns=33411702167 per_iter_mean_ns=66216 checksum=17465248949711426606
+runtime=vela version="0.1.0" bench=function_calls mode=internal_hot_loop min_ns=35555734792 mean_ns=36475609558 median_ns=35943493542 p95_ns=38971148583 per_iter_mean_ns=72951 checksum=8755211125294941583
+runtime=vela version="0.1.0" bench=recursive_countdown mode=internal_hot_loop min_ns=11208570333 mean_ns=11251672383 median_ns=11218817000 p95_ns=11325942291 per_iter_mean_ns=22503 checksum=17152208954171019626
+runtime=vela version="0.1.0" bench=float_math_loop mode=internal_hot_loop min_ns=13932561291 mean_ns=14056844083 median_ns=14045167750 p95_ns=14241855458 per_iter_mean_ns=28113 checksum=13195440509861763724
+runtime=lua54 version="mlua-vendored-lua54" bench=scalar_branch_loop mode=embedded_hot_loop min_ns=1176302292 mean_ns=1197926133 median_ns=1190607042 p95_ns=1230692292 per_iter_mean_ns=2395 checksum=6596496049714917199
+runtime=lua54 version="mlua-vendored-lua54" bench=range_iteration mode=embedded_hot_loop min_ns=5065636000 mean_ns=5084232600 median_ns=5082892083 p95_ns=5105075375 per_iter_mean_ns=10168 checksum=15478996711933337855
+runtime=lua54 version="mlua-vendored-lua54" bench=function_calls mode=embedded_hot_loop min_ns=5216915917 mean_ns=5261364450 median_ns=5253179750 p95_ns=5338705917 per_iter_mean_ns=10522 checksum=6715346691990057310
+runtime=lua54 version="mlua-vendored-lua54" bench=recursive_countdown mode=embedded_hot_loop min_ns=1940707458 mean_ns=1951156891 median_ns=1947890917 p95_ns=1968241292 per_iter_mean_ns=3902 checksum=14607870933663933883
+runtime=lua54 version="mlua-vendored-lua54" bench=float_math_loop mode=embedded_hot_loop min_ns=1865038542 mean_ns=1909657625 median_ns=1871645750 p95_ns=2055612000 per_iter_mean_ns=3819 checksum=10641699319787662941
