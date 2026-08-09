@@ -1,9 +1,9 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use vela_bytecode::{
     DebugNameId, ExecutableGenerationId, InstructionOffset, ProfileLayout, ScalarBlockPlanId,
-    ScalarSourcePointId, ScriptFunctionHandle,
+    ScalarSourcePointId, ScriptFunctionHandle, SelectedPhysicalUnitKind,
 };
 use vela_vm::{ScalarLoopProfileEvent, VmBytecodeProfiler};
 
@@ -23,6 +23,106 @@ impl BytecodeProfileSnapshot {
     pub fn functions(&self) -> &[FunctionBytecodeProfile] {
         &self.functions
     }
+
+    #[must_use]
+    pub fn summary(&self) -> BytecodeProfileSummary {
+        self.functions.iter().fold(
+            BytecodeProfileSummary::default(),
+            |mut summary, function| {
+                summary.ordinary_instruction_hits = summary
+                    .ordinary_instruction_hits
+                    .saturating_add(function.ordinary_instruction_hits);
+                for unit in &function.superinstructions {
+                    summary.superinstruction_hits =
+                        summary.superinstruction_hits.saturating_add(unit.hits);
+                    summary.eliminated_dispatches = summary
+                        .eliminated_dispatches
+                        .saturating_add(unit.eliminated_dispatches);
+                }
+                for unit in &function.scalar_units {
+                    summary.scalar_block_entries =
+                        summary.scalar_block_entries.saturating_add(unit.entry_hits);
+                    summary.scalar_compact_operation_hits = summary
+                        .scalar_compact_operation_hits
+                        .saturating_add(unit.compact_operation_hits);
+                    if let Some(loop_profile) = unit.loop_profile {
+                        summary.scalar_loop_entries = summary
+                            .scalar_loop_entries
+                            .saturating_add(loop_profile.entries);
+                        summary.scalar_loop_iterations = summary
+                            .scalar_loop_iterations
+                            .saturating_add(loop_profile.iterations);
+                        summary.scalar_loop_exits =
+                            summary.scalar_loop_exits.saturating_add(loop_profile.exits);
+                        summary.scalar_loop_charged_backedges = summary
+                            .scalar_loop_charged_backedges
+                            .saturating_add(loop_profile.charged_backedges);
+                    }
+                }
+                summary
+            },
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct BytecodeProfileSummary {
+    ordinary_instruction_hits: u64,
+    superinstruction_hits: u64,
+    eliminated_dispatches: u64,
+    scalar_block_entries: u64,
+    scalar_compact_operation_hits: u64,
+    scalar_loop_entries: u64,
+    scalar_loop_iterations: u64,
+    scalar_loop_exits: u64,
+    scalar_loop_charged_backedges: u64,
+}
+
+impl BytecodeProfileSummary {
+    #[must_use]
+    pub const fn ordinary_instruction_hits(self) -> u64 {
+        self.ordinary_instruction_hits
+    }
+
+    #[must_use]
+    pub const fn superinstruction_hits(self) -> u64 {
+        self.superinstruction_hits
+    }
+
+    #[must_use]
+    pub const fn eliminated_dispatches(self) -> u64 {
+        self.eliminated_dispatches
+    }
+
+    #[must_use]
+    pub const fn scalar_block_entries(self) -> u64 {
+        self.scalar_block_entries
+    }
+
+    #[must_use]
+    pub const fn scalar_compact_operation_hits(self) -> u64 {
+        self.scalar_compact_operation_hits
+    }
+
+    #[must_use]
+    pub const fn scalar_loop_entries(self) -> u64 {
+        self.scalar_loop_entries
+    }
+
+    #[must_use]
+    pub const fn scalar_loop_iterations(self) -> u64 {
+        self.scalar_loop_iterations
+    }
+
+    #[must_use]
+    pub const fn scalar_loop_exits(self) -> u64 {
+        self.scalar_loop_exits
+    }
+
+    #[must_use]
+    pub const fn scalar_loop_charged_backedges(self) -> u64 {
+        self.scalar_loop_charged_backedges
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -30,6 +130,8 @@ pub struct FunctionBytecodeProfile {
     handle: ScriptFunctionHandle,
     debug_name: DebugNameId,
     instruction_hits: Vec<u64>,
+    ordinary_instruction_hits: u64,
+    superinstructions: Vec<SuperinstructionBytecodeProfile>,
     scalar_units: Vec<ScalarUnitBytecodeProfile>,
 }
 
@@ -50,8 +152,48 @@ impl FunctionBytecodeProfile {
     }
 
     #[must_use]
+    pub const fn ordinary_instruction_hits(&self) -> u64 {
+        self.ordinary_instruction_hits
+    }
+
+    #[must_use]
+    pub fn superinstructions(&self) -> &[SuperinstructionBytecodeProfile] {
+        &self.superinstructions
+    }
+
+    #[must_use]
     pub fn scalar_units(&self) -> &[ScalarUnitBytecodeProfile] {
         &self.scalar_units
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SuperinstructionBytecodeProfile {
+    offset: InstructionOffset,
+    kind: SelectedPhysicalUnitKind,
+    hits: u64,
+    eliminated_dispatches: u64,
+}
+
+impl SuperinstructionBytecodeProfile {
+    #[must_use]
+    pub const fn offset(self) -> InstructionOffset {
+        self.offset
+    }
+
+    #[must_use]
+    pub const fn kind(self) -> SelectedPhysicalUnitKind {
+        self.kind
+    }
+
+    #[must_use]
+    pub const fn hits(self) -> u64 {
+        self.hits
+    }
+
+    #[must_use]
+    pub const fn eliminated_dispatches(self) -> u64 {
+        self.eliminated_dispatches
     }
 }
 
@@ -59,6 +201,8 @@ impl FunctionBytecodeProfile {
 pub struct ScalarUnitBytecodeProfile {
     offset: InstructionOffset,
     plan: ScalarBlockPlanId,
+    entry_hits: u64,
+    compact_operation_hits: u64,
     subpoint_hits: Vec<u64>,
     loop_profile: Option<ScalarLoopBytecodeProfile>,
 }
@@ -72,6 +216,16 @@ impl ScalarUnitBytecodeProfile {
     #[must_use]
     pub const fn plan(&self) -> ScalarBlockPlanId {
         self.plan
+    }
+
+    #[must_use]
+    pub const fn entry_hits(&self) -> u64 {
+        self.entry_hits
+    }
+
+    #[must_use]
+    pub const fn compact_operation_hits(&self) -> u64 {
+        self.compact_operation_hits
     }
 
     #[must_use]
@@ -126,14 +280,24 @@ struct FunctionCounters {
     handle: ScriptFunctionHandle,
     debug_name: DebugNameId,
     instruction_hits: Box<[AtomicU64]>,
+    ordinary_offsets: Box<[InstructionOffset]>,
+    superinstructions: Box<[SuperinstructionCounters]>,
     scalar_units: Box<[ScalarUnitCounters]>,
     scalar_index: BTreeMap<(InstructionOffset, ScalarBlockPlanId), usize>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct SuperinstructionCounters {
+    offset: InstructionOffset,
+    kind: SelectedPhysicalUnitKind,
+    covered_operations: u16,
 }
 
 #[derive(Debug)]
 struct ScalarUnitCounters {
     offset: InstructionOffset,
     plan: ScalarBlockPlanId,
+    operation_sources: Box<[ScalarSourcePointId]>,
     subpoint_hits: Box<[AtomicU64]>,
     loop_counters: Option<ScalarLoopCounters>,
 }
@@ -152,12 +316,32 @@ impl GenerationBytecodeProfile {
             .functions()
             .iter()
             .map(|function| {
+                let reserved_offsets = function
+                    .selected_units
+                    .iter()
+                    .map(|unit| unit.offset)
+                    .chain(function.scalar_units.iter().map(|unit| unit.offset))
+                    .collect::<BTreeSet<_>>();
+                let ordinary_offsets = (0..function.instruction_count)
+                    .map(InstructionOffset)
+                    .filter(|offset| !reserved_offsets.contains(offset))
+                    .collect::<Box<[_]>>();
+                let superinstructions = function
+                    .selected_units
+                    .iter()
+                    .map(|unit| SuperinstructionCounters {
+                        offset: unit.offset,
+                        kind: unit.kind,
+                        covered_operations: unit.covered_operations,
+                    })
+                    .collect::<Box<[_]>>();
                 let scalar_units = function
                     .scalar_units
                     .iter()
                     .map(|unit| ScalarUnitCounters {
                         offset: unit.offset,
                         plan: unit.plan,
+                        operation_sources: unit.operation_sources.clone(),
                         subpoint_hits: (0..unit.source_count).map(|_| AtomicU64::new(0)).collect(),
                         loop_counters: unit.has_range_loop.then(ScalarLoopCounters::new),
                     })
@@ -173,6 +357,8 @@ impl GenerationBytecodeProfile {
                     instruction_hits: (0..function.instruction_count)
                         .map(|_| AtomicU64::new(0))
                         .collect(),
+                    ordinary_offsets,
+                    superinstructions,
                     scalar_units,
                     scalar_index,
                 }
@@ -195,20 +381,7 @@ impl GenerationBytecodeProfile {
             functions: self
                 .functions
                 .iter()
-                .map(|function| FunctionBytecodeProfile {
-                    handle: function.handle,
-                    debug_name: function.debug_name,
-                    instruction_hits: function
-                        .instruction_hits
-                        .iter()
-                        .map(|count| count.load(Ordering::Relaxed))
-                        .collect(),
-                    scalar_units: function
-                        .scalar_units
-                        .iter()
-                        .map(ScalarUnitCounters::snapshot)
-                        .collect(),
-                })
+                .map(FunctionCounters::snapshot)
                 .collect(),
         }
     }
@@ -324,19 +497,68 @@ impl GenerationBytecodeProfile {
 }
 
 impl ScalarUnitCounters {
-    fn snapshot(&self) -> ScalarUnitBytecodeProfile {
+    fn snapshot(&self, instruction_hits: &[AtomicU64]) -> ScalarUnitBytecodeProfile {
+        let subpoint_hits = self
+            .subpoint_hits
+            .iter()
+            .map(|count| count.load(Ordering::Relaxed))
+            .collect::<Vec<_>>();
+        let compact_operation_hits = self.operation_sources.iter().fold(0_u64, |total, source| {
+            total.saturating_add(subpoint_hits.get(source.index()).copied().unwrap_or(0))
+        });
         ScalarUnitBytecodeProfile {
             offset: self.offset,
             plan: self.plan,
-            subpoint_hits: self
-                .subpoint_hits
-                .iter()
+            entry_hits: instruction_hits
+                .get(self.offset.0)
                 .map(|count| count.load(Ordering::Relaxed))
-                .collect(),
+                .unwrap_or(0),
+            compact_operation_hits,
+            subpoint_hits,
             loop_profile: self
                 .loop_counters
                 .as_ref()
                 .map(ScalarLoopCounters::snapshot),
+        }
+    }
+}
+
+impl FunctionCounters {
+    fn snapshot(&self) -> FunctionBytecodeProfile {
+        let instruction_hits = self
+            .instruction_hits
+            .iter()
+            .map(|count| count.load(Ordering::Relaxed))
+            .collect::<Vec<_>>();
+        let ordinary_instruction_hits =
+            self.ordinary_offsets.iter().fold(0_u64, |total, offset| {
+                total.saturating_add(instruction_hits.get(offset.0).copied().unwrap_or(0))
+            });
+        let superinstructions = self
+            .superinstructions
+            .iter()
+            .map(|unit| {
+                let hits = instruction_hits.get(unit.offset.0).copied().unwrap_or(0);
+                SuperinstructionBytecodeProfile {
+                    offset: unit.offset,
+                    kind: unit.kind,
+                    hits,
+                    eliminated_dispatches: hits
+                        .saturating_mul(u64::from(unit.covered_operations.saturating_sub(1))),
+                }
+            })
+            .collect();
+        FunctionBytecodeProfile {
+            handle: self.handle,
+            debug_name: self.debug_name,
+            ordinary_instruction_hits,
+            superinstructions,
+            scalar_units: self
+                .scalar_units
+                .iter()
+                .map(|unit| unit.snapshot(&self.instruction_hits))
+                .collect(),
+            instruction_hits,
         }
     }
 }

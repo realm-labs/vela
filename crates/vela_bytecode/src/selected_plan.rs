@@ -67,6 +67,11 @@ impl SelectedPhysicalUnit {
     }
 
     #[must_use]
+    pub const fn covered_operations(&self) -> u16 {
+        self.covered_operations
+    }
+
+    #[must_use]
     pub const fn source_points(&self) -> &[Span] {
         &self.source_points
     }

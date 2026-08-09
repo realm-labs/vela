@@ -68,7 +68,7 @@ fn enabled_profile_counts_scalar_loop_units_and_logical_subpoints() {
     let program = engine
         .compile_source_with_id(
             SourceId::new(1),
-            "fn main() -> i64 { let total = 0; for value in 0..3 { total += value + 1 - 1; } return total; }",
+            "fn branch(value: i64) -> i64 { if value < 10 { return value + 1; } return value; } fn main() -> i64 { let total = 0; for value in 0..3 { total += value + 1 - 1; } return branch(total); }",
         )
         .expect("scalar loop profile source should compile");
     let mut runtime = Runtime::builder(engine, program)
@@ -99,6 +99,13 @@ fn enabled_profile_counts_scalar_loop_units_and_logical_subpoints() {
     let exit_source = plan.exit.source;
     let header_source = plan.range_loop.expect("range loop").header_source;
     let main_name = main.debug_name;
+    assert!(
+        runtime
+            .image
+            .linked_program()
+            .functions()
+            .any(|(_, code)| !code.selected_units.is_empty())
+    );
 
     runtime
         .call("main", CallArgs::new(), CallOptions::unbounded())
@@ -122,11 +129,28 @@ fn enabled_profile_counts_scalar_loop_units_and_logical_subpoints() {
     assert_eq!(loop_profile.iterations(), 3);
     assert_eq!(loop_profile.exits(), 1);
     assert_eq!(loop_profile.charged_backedges(), 3);
-    for source in operation_sources {
+    for source in &operation_sources {
         assert_eq!(unit.subpoint_hits()[source.index()], 3);
     }
     assert_eq!(unit.subpoint_hits()[exit_source.index()], 3);
     assert_eq!(unit.subpoint_hits()[header_source.index()], 3);
+    assert_eq!(
+        unit.compact_operation_hits(),
+        operation_sources.iter().fold(0_u64, |total, source| {
+            total.saturating_add(unit.subpoint_hits()[source.index()])
+        })
+    );
+    assert_eq!(unit.entry_hits(), 1);
+    let summary = snapshot.summary();
+    assert!(summary.ordinary_instruction_hits() > 0);
+    assert_eq!(summary.superinstruction_hits(), 1);
+    assert_eq!(summary.eliminated_dispatches(), 1);
+    assert!(summary.scalar_block_entries() >= 1);
+    assert!(summary.scalar_compact_operation_hits() > 0);
+    assert_eq!(summary.scalar_loop_entries(), 1);
+    assert_eq!(summary.scalar_loop_iterations(), 3);
+    assert_eq!(summary.scalar_loop_exits(), 1);
+    assert_eq!(summary.scalar_loop_charged_backedges(), 3);
 
     assert!(runtime.reset_bytecode_profile());
     let reset = runtime

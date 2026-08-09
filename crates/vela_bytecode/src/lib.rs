@@ -29,7 +29,7 @@ pub use artifact::{
     ArtifactChecksum, ArtifactFeatureSet, ArtifactTaskContinuation, ArtifactTaskOperation,
     ArtifactTaskParameter, ArtifactTaskServiceRequirement, ArtifactTaskSignature,
     ArtifactTaskTarget, LinkedArtifact, MirExecutableLayout, ProfileFunctionLayout, ProfileLayout,
-    ProfileScalarUnitLayout,
+    ProfileScalarUnitLayout, ProfileSelectedUnitLayout,
 };
 pub use binding_schema::{
     RUST_BINDING_SCHEMA_VERSION, RustBindingBorrowedReturnOrigin, RustBindingBoundaryMode,
