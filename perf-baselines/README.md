@@ -8,3 +8,8 @@ which is ignored by git.
 Baseline files should include the command, commit, toolchain, target, profile,
 warmup, repeats, iterations, checksums, and the raw benchmark rows emitted by
 the harness.
+
+Use `tools/perf/capture_external_compare.py` for the cross-language harness and
+`tools/perf/capture_command.py` for other repository benchmark commands. Both
+helpers can require a clean worktree, enforce an initial load-per-CPU ceiling,
+and publish the named baseline only after a successful command.
