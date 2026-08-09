@@ -622,6 +622,72 @@ fn main(value: Any) {
     }
 
     #[test]
+    fn portable_v5_round_trips_and_rejects_corrupted_scalar_range_loops() {
+        let compiled = crate::compiler::compile_test_program(
+            SourceId::new(82),
+            "fn main(limit: i64) -> i64 { let total = 0; for value in 0..limit { total += value + 1 - 1; } return total; }",
+        )
+        .expect("compile scalar range loop");
+        let artifact = PortableProgramArtifact::from_compiled(compiled)
+            .expect("portable scalar range artifact");
+        let main = artifact
+            .payload
+            .functions
+            .iter()
+            .find(|code| code.name == "main")
+            .expect("main function");
+        assert!(
+            main.scalar_blocks
+                .iter()
+                .any(|plan| plan.range_loop.is_some())
+        );
+
+        let encoded = artifact.encode().expect("encode scalar range loop");
+        let decoded = PortableProgramArtifact::decode(&encoded).expect("decode scalar range loop");
+        assert_eq!(decoded, artifact);
+        let linked = crate::Linker::new()
+            .link_portable_program(decoded.into_compiled())
+            .expect("link scalar range loop");
+        assert!(linked.program().functions().any(|(_, code)| {
+            code.scalar_blocks
+                .iter()
+                .any(|plan| plan.range_loop.is_some())
+        }));
+        let reencoded =
+            PortableProgramArtifact::from_linked(&linked).expect("re-encode scalar range loop");
+        assert_eq!(reencoded, artifact);
+        assert_eq!(reencoded.checksum(), artifact.checksum());
+
+        for corrupt in [
+            |range: &mut crate::ScalarRangeLoop| range.cursor = Register(u16::MAX),
+            |range: &mut crate::ScalarRangeLoop| {
+                range.done_target.target = InstructionOffset(usize::MAX);
+            },
+            |range: &mut crate::ScalarRangeLoop| {
+                range.header_source = ScalarSourcePointId::new(usize::from(u16::MAX));
+            },
+        ] {
+            let mut corrupted = artifact.clone();
+            let range = corrupted
+                .payload
+                .functions
+                .iter_mut()
+                .find(|code| code.name == "main")
+                .and_then(|code| {
+                    code.scalar_blocks
+                        .iter_mut()
+                        .find_map(|plan| plan.range_loop.as_mut())
+                })
+                .expect("scalar range loop");
+            corrupt(range);
+            assert!(matches!(
+                corrupted.encode(),
+                Err(PortableArtifactError::SelectedPlan(_))
+            ));
+        }
+    }
+
+    #[test]
     fn portable_v5_rejects_scalar_plan_count_above_format_limit() {
         let compiled =
             crate::compiler::compile_test_program(SourceId::new(80), "fn main() { return 1; }")
