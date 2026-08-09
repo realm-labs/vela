@@ -1,0 +1,20 @@
+# captured_at_utc=20260809T035205Z
+# commit=4d0632e225cf747cec8cd741d56da2812f7df2ed
+# branch=master
+# worktree=clean
+# rustc=rustc 1.97.1 (8bab26f4f 2026-07-14)
+# cargo=cargo 1.97.1 (c980f4866 2026-06-30)
+# platform=macOS-26.5.2-arm64-arm-64bit-Mach-O
+# machine=arm64
+# cpu=Apple M1 Max
+# logical_cpus=10
+# load_average_before=10.38,13.11,13.18
+# elapsed_seconds=0.186
+# exit_status=0
+# command=cargo bench -p vela_engine --bench actor_memory -- allocations
+
+    Finished `bench` profile [optimized] target(s) in 0.11s
+     Running benches/actor_memory.rs (target/release/deps/actor_memory-4289e8c7d76130ef)
+suite=actor_allocation_calibration sampling=stable allocator=stats_alloc hot_calls=5000 cold_actors=128
+concurrency_result mode=cache_hot workers=1 calls=5000 throughput_per_sec=156909.510 p50_ns=6125 p95_ns=6583 p99_ns=9166 allocation_count=640009 allocated_bytes=157502208 deallocated_bytes=157425616 lock_wait_ns=0 lock_wait_source=workload_has_no_mutable_cache_site checksum=12712500
+concurrency_result mode=cache_cold workers=1 calls=128 throughput_per_sec=135241.078 p50_ns=6208 p95_ns=6917 p99_ns=12125 allocation_count=16392 allocated_bytes=4032432 deallocated_bytes=4497184 lock_wait_ns=0 lock_wait_source=workload_has_no_mutable_cache_site checksum=5376
