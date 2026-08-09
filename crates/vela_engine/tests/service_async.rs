@@ -1,5 +1,6 @@
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
 
 use vela_common::SourceId;
@@ -16,7 +17,9 @@ impl CalculatorPatch {
     async fn apply(context: RequestContext, input: Input) -> i64 {
         context.counter += 10;
         let adjusted = service::base::apply(context, input).await;
-        return adjusted + 20;
+        let total = 0;
+        for item in 0..3 { total += item + 1 - 1; }
+        return adjusted + 20 + total - total;
     }
 }
 "#;
@@ -117,8 +120,9 @@ fn async_service_root_selects_rust_or_vela_through_one_send_adapter() {
     let artifact = engine
         .link_compiled_program(compiled)
         .expect("linked async service artifact");
+    assert!(artifact_has_selected_scalar_loop(&artifact));
     let update = manifest
-        .bind_artifact(artifact)
+        .bind_artifact(Arc::clone(&artifact))
         .expect("artifact-bound async update");
     let candidate = services
         .stage_snapshot(
@@ -132,6 +136,10 @@ fn async_service_root_selects_rust_or_vela_through_one_send_adapter() {
         .activate_if_current(candidate)
         .expect("activate async snapshot");
     let vela_root = services.pin();
+    assert!(Arc::ptr_eq(
+        vela_root.artifact().expect("async Vela artifact"),
+        &artifact
+    ));
 
     let vela_input = Input { value: 5 };
     let vela_future = vela_root.calculator().apply(&mut context, &vela_input);
@@ -255,8 +263,9 @@ fn active_fixture() -> (Engine, AsyncServices, AsyncServicesRoot) {
     let artifact = engine
         .link_compiled_program(compiled)
         .expect("linked async service artifact");
+    assert!(artifact_has_selected_scalar_loop(&artifact));
     let update = manifest
-        .bind_artifact(artifact)
+        .bind_artifact(Arc::clone(&artifact))
         .expect("artifact-bound async update");
     let candidate = services
         .stage_snapshot(
@@ -270,7 +279,19 @@ fn active_fixture() -> (Engine, AsyncServices, AsyncServicesRoot) {
         .activate_if_current(candidate)
         .expect("activate async snapshot");
     let root = services.pin();
+    assert!(Arc::ptr_eq(
+        root.artifact().expect("active async artifact"),
+        &artifact
+    ));
     (engine, services, root)
+}
+
+fn artifact_has_selected_scalar_loop(artifact: &vela_bytecode::LinkedArtifact) -> bool {
+    artifact.program().functions().any(|(_, code)| {
+        code.scalar_blocks
+            .iter()
+            .any(|plan| plan.range_loop.is_some())
+    })
 }
 
 fn poll_after_one_pending<T>(mut future: impl Future<Output = T> + Unpin) -> T {

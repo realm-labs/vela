@@ -16,7 +16,9 @@ pub struct Command {}
 impl CommandProvider for Command {
     pub async fn run(self, value: i64) -> i64 {
         test::mark();
-        return value + 1;
+        let total = 0;
+        for item in 0..3 { total += item + 1 - 1; }
+        return value + 1 + total - total;
     }
 }
 
@@ -69,6 +71,11 @@ pub async fn main() -> i64 { return test::enter_provider().await; }
     let artifact = engine
         .compile_provider_selection(&snapshot, &request)
         .expect("selected async provider compiles");
+    assert!(artifact.program().functions().any(|(_, code)| {
+        code.scalar_blocks
+            .iter()
+            .any(|plan| plan.range_loop.is_some())
+    }));
     let mut runtime =
         Runtime::from_linked_artifact(engine, artifact).expect("runtime should initialize");
     let handle = runtime.provider_handle(&key).expect("provider handle");

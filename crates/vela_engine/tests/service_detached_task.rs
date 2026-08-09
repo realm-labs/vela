@@ -17,10 +17,16 @@ use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
 
 const OLD_SOURCE: &str = r#"
+fn scalar_adjust(value: i64) -> i64 {
+    let total = 0;
+    for item in 0..3 { total += item + 1 - 1; }
+    return value + total;
+}
+
 async fn repair(value: i64) -> i64 {
     let fetched = test_io::pending(value).await;
     let default = service::base::grant(fetched);
-    return service::pinned::audit::record(default);
+    return scalar_adjust(service::pinned::audit::record(default));
 }
 
 fn admit_repair(value: i64) {
@@ -29,7 +35,7 @@ fn admit_repair(value: i64) {
 
 fn finish_repair(outcome: Result<i64, task::Error>, turn: i64) {
     let value = outcome.unwrap_or(-1);
-    test_io::observe(service::pinned::audit::record(value), turn);
+    test_io::observe(scalar_adjust(service::pinned::audit::record(value)), turn);
 }
 
 #[service_impl(detached_test::inventory)]
@@ -42,10 +48,16 @@ impl InventoryPatch {
 "#;
 
 const NEW_SOURCE: &str = r#"
+fn scalar_adjust(value: i64) -> i64 {
+    let total = 0;
+    for item in 0..3 { total += item + 1 - 1; }
+    return value + total;
+}
+
 async fn repair(value: i64) -> i64 {
     let fetched = test_io::pending(value).await;
     let default = service::base::grant(fetched);
-    return service::pinned::audit::record(default);
+    return scalar_adjust(service::pinned::audit::record(default));
 }
 
 fn admit_repair(value: i64) {
@@ -54,7 +66,7 @@ fn admit_repair(value: i64) {
 
 fn finish_repair(outcome: Result<i64, task::Error>, turn: i64) {
     let value = outcome.unwrap_or(-1);
-    test_io::observe(service::pinned::audit::record(value), turn);
+    test_io::observe(scalar_adjust(service::pinned::audit::record(value)), turn);
 }
 
 #[service_impl(detached_test::inventory)]
@@ -217,6 +229,8 @@ fn detached_service_worker_pins_origin_generation_across_reload() {
         .apply(ServicePatch::against(&revision).put("repair.vela", OLD_SOURCE))
         .expect("activate old detached patch");
     let old = app.domain().pin();
+    let old_artifact = Arc::clone(old.artifact().expect("old artifact"));
+    assert!(artifact_has_selected_scalar_loop(&old_artifact));
     assert_eq!(old.inventory().grant(5), 50);
     let mut old_task = take_task(&host);
     assert_eq!(
@@ -236,9 +250,12 @@ fn detached_service_worker_pins_origin_generation_across_reload() {
         .expect("activate new detached patch");
     let new = app.domain().pin();
     assert_ne!(new.generation_id(), old.generation_id());
+    let new_artifact = Arc::clone(new.artifact().expect("new artifact"));
+    assert!(artifact_has_selected_scalar_loop(&new_artifact));
+    assert!(!Arc::ptr_eq(&old_artifact, &new_artifact));
 
     let old_completion = complete(&mut old_task);
-    assert_eq!(completed_i64(&old_completion), 106);
+    assert_eq!(completed_i64(&old_completion), 109);
     drop(old_task);
     assert!(matches!(
         old_completion.resume(
@@ -251,7 +268,7 @@ fn detached_service_worker_pins_origin_generation_across_reload() {
     let mut new_task = take_task(&host);
     assert!(new_task.poll(&mut context).is_pending());
     let new_completion = complete(&mut new_task);
-    assert_eq!(completed_i64(&new_completion), 1006);
+    assert_eq!(completed_i64(&new_completion), 1009);
     drop(new_task);
     assert!(matches!(
         new_completion.resume(
@@ -266,8 +283,16 @@ fn detached_service_worker_pins_origin_generation_across_reload() {
             .expect("continuation observation lock")
             .as_slice(),
         [
-            vec![OwnedValue::i64(206), OwnedValue::i64(7)],
-            vec![OwnedValue::i64(2006), OwnedValue::i64(8)],
+            vec![OwnedValue::i64(212), OwnedValue::i64(7)],
+            vec![OwnedValue::i64(2012), OwnedValue::i64(8)],
         ]
     );
+}
+
+fn artifact_has_selected_scalar_loop(artifact: &vela_bytecode::LinkedArtifact) -> bool {
+    artifact.program().functions().any(|(_, code)| {
+        code.scalar_blocks
+            .iter()
+            .any(|plan| plan.range_loop.is_some())
+    })
 }

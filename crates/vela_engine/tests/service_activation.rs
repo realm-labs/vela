@@ -283,7 +283,9 @@ fn snapshot_activates_one_vela_method_keeps_adjacent_rust_and_rolls_back() {
 #[service_impl(test::calculator)]
 impl CalculatorHotfix {
     fn adjust(context, value) {
-        return value + 10;
+        let total = 0;
+        for item in 0..3 { total += item + 1 - 1; }
+        return value + 10 + total - total;
     }
 }
 "#;
@@ -296,8 +298,9 @@ impl CalculatorHotfix {
     let artifact = engine
         .link_compiled_program(compiled)
         .expect("linked service artifact");
+    assert!(artifact_has_selected_scalar_loop(&artifact));
     let update = manifest
-        .bind_artifact(artifact)
+        .bind_artifact(Arc::clone(&artifact))
         .expect("artifact-bound update");
     let candidate = services
         .stage_snapshot(
@@ -314,6 +317,10 @@ impl CalculatorHotfix {
     let active = services.pin();
 
     assert_eq!(active.generation_id(), installed);
+    assert!(Arc::ptr_eq(
+        active.artifact().expect("active Snapshot artifact"),
+        &artifact
+    ));
     assert_eq!(old.calculator().adjust(&mut context, 5), 6);
     assert_eq!(active.calculator().adjust(&mut context, 5), 15);
     assert_eq!(active.calculator().adjacent(&mut context, 5), 10);
@@ -325,6 +332,8 @@ impl CalculatorHotfix {
         .expect("conditional rollback");
     let restored = services.pin();
     assert_eq!(restored.generation_id(), old.generation_id());
+    assert!(restored.artifact().is_none());
+    assert!(artifact_has_selected_scalar_loop(&artifact));
     assert_eq!(restored.calculator().adjust(&mut context, 5), 6);
     assert_eq!(context.counter, 13);
 
@@ -340,16 +349,24 @@ impl CalculatorHotfix {
         .activate_if_current(snapshot)
         .expect("second snapshot activation");
     let vela_base = services.pin();
+    assert!(Arc::ptr_eq(
+        vela_base.artifact().expect("reactivated Snapshot artifact"),
+        &artifact
+    ));
 
     let delta_source = r#"
 #[service_impl(test::calculator)]
 impl CalculatorHotfix {
     fn adjust(context, value) {
-        return value + 10;
+        let total = 0;
+        for item in 0..3 { total += item + 1 - 1; }
+        return value + 10 + total - total;
     }
 
     fn adjacent(context, value) {
-        return value * 3;
+        let total = 0;
+        for item in 0..4 { total += item + 1 - 1; }
+        return value * 3 + total - total;
     }
 }
 "#;
@@ -363,7 +380,9 @@ impl CalculatorHotfix {
     let delta_artifact = engine
         .link_compiled_program(delta_compiled)
         .expect("linked Delta artifact");
+    assert!(artifact_has_selected_scalar_loop(&delta_artifact));
     let delta_artifact_generation = delta_artifact.generation();
+    let delta_artifact_owner = Arc::clone(&delta_artifact);
     let linked_delta = delta_manifest
         .bind_artifact(delta_artifact)
         .expect("artifact-bound Delta");
@@ -397,6 +416,10 @@ impl CalculatorHotfix {
         .activate_if_current(delta_candidate)
         .expect("Delta activation");
     let delta_root = services.pin();
+    assert!(Arc::ptr_eq(
+        delta_root.artifact().expect("folded Delta artifact"),
+        &delta_artifact_owner
+    ));
 
     context.counter = 0;
     assert_eq!(delta_root.calculator().adjust(&mut context, 5), 15);
@@ -512,12 +535,17 @@ fn lexical_base_and_pinned_cross_service_calls_keep_one_generation() {
 #[service_impl(test::calculator)]
 impl CalculatorHotfix {
     fn adjust(context, value) {
+        let total = 0;
+        for item in 0..3 { total += item + 1 - 1; }
         let original = service::base::adjust(context, value);
-        return service::pinned::audit::record(context, original);
+        return service::pinned::audit::record(context, original) + total - total;
     }
 }
 "#;
     let snapshot_update = linked_update(&engine, services.schema(), 11, snapshot_source);
+    assert!(artifact_has_selected_scalar_loop(
+        snapshot_update.artifact().expect("Snapshot artifact")
+    ));
     let snapshot = services
         .stage_snapshot(
             &base,
@@ -541,19 +569,25 @@ impl CalculatorHotfix {
 #[service_impl(test::calculator)]
 impl CalculatorHotfix {
     fn adjust(context, value) {
+        let total = 0;
+        for item in 0..3 { total += item + 1 - 1; }
         let original = service::base::adjust(context, value);
-        return service::pinned::audit::record(context, original);
+        return service::pinned::audit::record(context, original) + total - total;
     }
 }
 
 #[service_impl(test::audit)]
 impl AuditHotfix {
     fn record(context, value) {
-        return value + 7;
+        let total = 0;
+        for item in 0..4 { total += item + 1 - 1; }
+        return value + 7 + total - total;
     }
 }
 "#;
     let linked_delta = linked_update(&engine, services.schema(), 12, delta_source);
+    let delta_artifact = Arc::clone(linked_delta.artifact().expect("Delta artifact"));
+    assert!(artifact_has_selected_scalar_loop(&delta_artifact));
     let audit = services
         .schema()
         .service("audit")
@@ -577,6 +611,10 @@ impl AuditHotfix {
         .activate_if_current(delta)
         .expect("activate cross-service Delta");
     let second = services.pin();
+    assert!(Arc::ptr_eq(
+        second.artifact().expect("cross-service Delta artifact"),
+        &delta_artifact
+    ));
 
     context.counter = 0;
     assert_eq!(first.calculator().adjust(&mut context, 5), 12);
@@ -611,6 +649,14 @@ fn linked_update(
     manifest
         .bind_artifact(artifact)
         .expect("artifact-bound service update")
+}
+
+fn artifact_has_selected_scalar_loop(artifact: &vela_bytecode::LinkedArtifact) -> bool {
+    artifact.program().functions().any(|(_, code)| {
+        code.scalar_blocks
+            .iter()
+            .any(|plan| plan.range_loop.is_some())
+    })
 }
 
 #[cfg(feature = "artifact-codec")]
