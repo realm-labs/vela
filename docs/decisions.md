@@ -2010,6 +2010,16 @@ subpoint, preserves earlier writes on a later trap, and records logical
 subpoints only in the existing profiled execution specialization. It does not
 own calls, heap work, HostAccess, suspension, or another frame loop.
 
+Production selection first retains any accepted short superinstruction, then
+selects a complete MIR block only when it contains at least three eligible
+Bool/i64 operations, no safepoint, and a Jump or a Branch consuming the last
+operation's proven Bool result. The first slice does not split blocks or select
+partial regions. Source compilation retains process-local statement,
+terminator, and budget-placement identities and independently checks every
+compact operation, exit, and charged edge against verified MIR before artifact
+publication; portable canonicalization removes those MIR identities while
+retaining the bounded physical plan.
+
 ### Package-Qualified Script Identity
 
 Script module identity is `PackageId + ModulePath`, and every stable script

@@ -267,6 +267,11 @@ fn canonical_portable_code(mut code: UnlinkedCodeObject) -> UnlinkedCodeObject {
         selected.mir_statement = None;
         selected.mir_terminator = None;
     }
+    for scalar in &mut code.scalar_blocks {
+        scalar.mir_statements = Box::new([]);
+        scalar.mir_terminator = None;
+        scalar.mir_budget_sites = Box::new([]);
+    }
     code.nested_functions = code
         .nested_functions
         .into_iter()
@@ -450,6 +455,9 @@ mod tests {
                 Span::new(source, 1, 2),
                 Span::new(source, 2, 3),
             ]),
+            mir_statements: Box::new([]),
+            mir_terminator: None,
+            mir_budget_sites: Box::new([]),
         }
     }
 

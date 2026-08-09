@@ -25,6 +25,7 @@ use crate::compiler::constant_encoding::encode_evaluated_constant;
 
 mod operations;
 mod physical;
+mod scalar;
 mod support;
 
 use super::selection::{SelectedFunctionPlan, SelectedProgramPlan, SelectionError, mir_successors};
@@ -105,6 +106,7 @@ struct FunctionBackend<'a> {
     pending_budget_charges: Vec<crate::MirBudgetCharge>,
     unspanned_spans: Vec<vela_common::Span>,
     pending_selected_units: Vec<PendingSelectedUnit>,
+    pending_scalar_blocks: Vec<PendingScalarBlock>,
 }
 
 struct PendingSelectedUnit {
@@ -113,6 +115,27 @@ struct PendingSelectedUnit {
     budget_units: [u32; 2],
     mir_statement: MirStatementId,
     mir_terminator: MirBlockId,
+}
+
+struct PendingScalarBlock {
+    instruction: InstructionOffset,
+    block: MirBlockId,
+    statements: Box<[MirStatementId]>,
+    operations: Box<[crate::ScalarOp]>,
+    exit: PendingScalarExit,
+    exit_source: crate::ScalarSourcePointId,
+    exit_execution_units: u32,
+    source_points: Vec<vela_common::Span>,
+    mir_budget_sites: Vec<crate::scalar_plan::ScalarMirBudgetSite>,
+}
+
+enum PendingScalarExit {
+    Jump(MirBlockId),
+    BoolBranch {
+        condition: Register,
+        passed: MirBlockId,
+        failed: MirBlockId,
+    },
 }
 
 impl<'a> FunctionBackend<'a> {
@@ -272,6 +295,7 @@ impl<'a> FunctionBackend<'a> {
             pending_budget_charges: Vec::new(),
             unspanned_spans,
             pending_selected_units: Vec::new(),
+            pending_scalar_blocks: Vec::new(),
         })
     }
 
@@ -283,7 +307,17 @@ impl<'a> FunctionBackend<'a> {
             let next = blocks.get(index + 1).map(|(id, _)| *id);
             self.blocks
                 .insert(block_id, InstructionOffset(self.code.instructions.len()));
+            let scalar_block = self.function_selection.scalar_block(block_id).cloned();
             let superinstruction = self.function_selection.superinstruction(block_id).cloned();
+            if let Some(selected) = &scalar_block {
+                let terminator = block
+                    .terminator()
+                    .ok_or(MirBackendError::MissingBlock(block_id))?;
+                self.current_terminator = Some(block_id);
+                self.scalar_block(selected, &terminator.kind, terminator.origin.span)?;
+                self.current_terminator = None;
+                continue;
+            }
             for statement_id in block.statements() {
                 let statement = self
                     .function
@@ -322,6 +356,7 @@ impl<'a> FunctionBackend<'a> {
             self.current_terminator = None;
         }
         self.patch_targets()?;
+        self.finalize_scalar_blocks()?;
         self.finalize_selected_units()?;
         self.attach_cache_sites();
         self.code.register_count = self.next_register;

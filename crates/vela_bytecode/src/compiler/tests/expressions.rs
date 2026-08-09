@@ -334,15 +334,24 @@ fn main() {
         "main",
     )
     .expect("block and if expression values should compile");
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        instruction.kind,
-        UnlinkedInstructionKind::I64CmpImmJumpIfFalse { .. }
-    )));
-    assert_eq!(code.selected_units.len(), 1);
+    assert!(
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::I64CmpImmJumpIfFalse { .. }
+        )) || code.scalar_blocks.iter().any(|plan| {
+            plan.operations.iter().any(|operation| {
+                matches!(operation.kind, crate::ScalarOpKind::I64CompareImm { .. })
+            })
+        })
+    );
     assert!(
         code.instructions
             .iter()
             .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Move { .. }))
+            || code.scalar_blocks.iter().any(|plan| plan
+                .operations
+                .iter()
+                .any(|operation| matches!(operation.kind, crate::ScalarOpKind::Move { .. })))
     );
 }
 #[test]
@@ -528,16 +537,28 @@ fn main() {
         code.instructions
             .iter()
             .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Move { .. }))
+            || code.scalar_blocks.iter().any(|plan| plan
+                .operations
+                .iter()
+                .any(|operation| matches!(operation.kind, crate::ScalarOpKind::Move { .. })))
     );
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        instruction.kind,
-        UnlinkedInstructionKind::Add { .. }
-            | UnlinkedInstructionKind::I64AddImm { .. }
-            | UnlinkedInstructionKind::BinaryIntLiteral {
-                op: crate::BinaryLiteralOp::Add,
-                ..
-            }
-    )));
+    assert!(
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::Add { .. }
+                | UnlinkedInstructionKind::I64AddImm { .. }
+                | UnlinkedInstructionKind::BinaryIntLiteral {
+                    op: crate::BinaryLiteralOp::Add,
+                    ..
+                }
+        )) || code
+            .scalar_blocks
+            .iter()
+            .any(|plan| plan.operations.iter().any(|operation| matches!(
+                operation.kind,
+                crate::ScalarOpKind::I64Add { .. } | crate::ScalarOpKind::I64AddImm { .. }
+            )))
+    );
 }
 #[test]
 fn compiler_lowers_match_guards() {
@@ -564,20 +585,39 @@ fn main() {
                 UnlinkedInstructionKind::JumpIfFalse { .. }
             ))
             .count()
+            + code
+                .scalar_blocks
+                .iter()
+                .filter(|plan| matches!(plan.exit.kind, crate::ScalarExitKind::BoolBranch { .. }))
+                .count()
             >= 2
     );
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        instruction.kind,
-        UnlinkedInstructionKind::Less { .. }
-            | UnlinkedInstructionKind::I64CmpImm {
-                op: crate::I64CompareOp::Less,
-                ..
-            }
-            | UnlinkedInstructionKind::BinaryIntLiteral {
-                op: crate::BinaryLiteralOp::Less,
-                ..
-            }
-    )));
+    assert!(
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::Less { .. }
+                | UnlinkedInstructionKind::I64CmpImm {
+                    op: crate::I64CompareOp::Less,
+                    ..
+                }
+                | UnlinkedInstructionKind::BinaryIntLiteral {
+                    op: crate::BinaryLiteralOp::Less,
+                    ..
+                }
+        )) || code
+            .scalar_blocks
+            .iter()
+            .any(|plan| plan.operations.iter().any(|operation| matches!(
+                operation.kind,
+                crate::ScalarOpKind::I64Compare {
+                    op: crate::I64CompareOp::Less,
+                    ..
+                } | crate::ScalarOpKind::I64CompareImm {
+                    op: crate::I64CompareOp::Less,
+                    ..
+                }
+            )))
+    );
 }
 #[test]
 fn compiler_lowers_record_variant_field_patterns() {

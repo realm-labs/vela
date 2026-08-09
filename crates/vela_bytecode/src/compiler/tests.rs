@@ -352,26 +352,79 @@ fn linked_artifact_rejects_bytecode_that_drops_verified_mir_budget_points() {
 }
 
 #[test]
-fn linked_artifact_rejects_selected_source_coverage_moved_from_verified_mir() {
+fn linked_artifact_accepts_scalar_block_budget_and_source_coverage() {
+    let program = compile_test_program(
+        SourceId::new(46),
+        "fn main(limit: i64) -> i64 { let total = 0; for value in 0..limit { total += value; } return total; }",
+    )
+    .expect("scalar source coverage fixture compiles");
+    assert!(
+        program
+            .bytecode
+            .function("main")
+            .is_some_and(|code| !code.scalar_blocks.is_empty())
+    );
+    crate::Linker::new()
+        .link_compiled_program(program)
+        .expect("scalar budget and source coverage should remain sealed");
+}
+
+#[test]
+fn linked_artifact_rejects_scalar_source_coverage_moved_from_verified_mir() {
     let mut program = compile_test_program(
         SourceId::new(46),
-        "fn main(value: i64) -> i64 { if value > 4 { return 1; } return 0; }",
+        "fn main(limit: i64) -> i64 { let total = 0; for value in 0..limit { total += value; } return total; }",
     )
     .expect("selected source coverage fixture compiles");
     let code = program
         .bytecode
         .function_mut("main")
         .expect("fixture main function");
-    let selected = code
-        .selected_units
+    let scalar = code
+        .scalar_blocks
         .first_mut()
-        .expect("fixture has selected coverage");
-    selected.source_points[1] = vela_common::Span::new(SourceId::new(46), 0, 1);
+        .expect("fixture has scalar block coverage");
+    scalar.source_points[0] = vela_common::Span::new(SourceId::new(46), 0, 1);
 
     assert!(matches!(
         crate::Linker::new().link_compiled_program(program),
         Err(crate::LinkError::MirSelectedPlanMismatch { .. })
     ));
+}
+
+#[test]
+fn linked_artifact_rejects_scalar_budget_coverage_moved_from_verified_mir() {
+    let mut program = compile_test_program(
+        SourceId::new(47),
+        "fn main(limit: i64) -> i64 { let total = 0; for value in 0..limit { total += value; } return total; }",
+    )
+    .expect("scalar budget coverage fixture compiles");
+    let scalar = program
+        .bytecode
+        .function_mut("main")
+        .expect("fixture main function")
+        .scalar_blocks
+        .iter_mut()
+        .find(|plan| !plan.mir_budget_sites.is_empty())
+        .expect("fixture has a budgeted scalar block");
+    let site = scalar.mir_budget_sites[0];
+    match site.location {
+        crate::scalar_plan::ScalarBudgetLocation::Operation(index) => {
+            scalar.operations[index].execution_units =
+                scalar.operations[index].execution_units.saturating_add(1);
+        }
+        crate::scalar_plan::ScalarBudgetLocation::Exit => {
+            scalar.exit.execution_units = scalar.exit.execution_units.saturating_add(1);
+        }
+        crate::scalar_plan::ScalarBudgetLocation::JumpEdge
+        | crate::scalar_plan::ScalarBudgetLocation::PassedEdge
+        | crate::scalar_plan::ScalarBudgetLocation::FailedEdge => {
+            scalar.mir_budget_sites[0].point.units =
+                scalar.mir_budget_sites[0].point.units.saturating_add(1);
+        }
+    }
+
+    assert!(crate::Linker::new().link_compiled_program(program).is_err());
 }
 
 fn assert_moved_budget_charge_is_rejected(

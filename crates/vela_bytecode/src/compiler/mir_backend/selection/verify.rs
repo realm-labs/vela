@@ -8,15 +8,16 @@ use std::collections::BTreeSet;
 
 use vela_mir::{
     MirBackendHandoff, MirBinaryOp, MirBlockId, MirBudgetSite, MirComparisonOp, MirFunction,
-    MirFunctionAnalyses, MirFunctionId, MirImmediate, MirLiveValue, MirOperand, MirPlace,
-    MirStatementKind, MirTerminatorKind,
+    MirFunctionAnalyses, MirFunctionId, MirImmediate, MirLiveValue, MirNumericBinaryOp, MirOperand,
+    MirPlace, MirRvalue, MirStatementId, MirStatementKind, MirTerminatorKind, MirUnaryOp,
+    MirValueType,
 };
 
 use super::{
-    SelectedBudgetCoverage, SelectedCoverage, SelectedExitCoverage, SelectedFunctionPlan,
-    SelectedProgramPlan, SelectedSafepointCoverage, SelectedSourcePoint, SelectedSourcePointKind,
-    SelectedStatementLiveness, SelectedUnit, SelectedUnitId, SelectionError, SuperinstructionPlan,
-    mir_successors,
+    ScalarBlockSelection, SelectedBudgetCoverage, SelectedCoverage, SelectedExitCoverage,
+    SelectedFunctionPlan, SelectedProgramPlan, SelectedSafepointCoverage, SelectedSourcePoint,
+    SelectedSourcePointKind, SelectedStatementLiveness, SelectedUnit, SelectedUnitId,
+    SelectionError, SuperinstructionPlan, mir_successors,
 };
 
 pub(super) fn verify(
@@ -74,8 +75,14 @@ fn verify_function(
             });
         }
         verify_block(function_id, function, analyses, block, coverage)?;
-        if let SelectedUnit::Superinstruction(selected) = unit {
-            verify_superinstruction(function_id, function, analyses, selected)?;
+        match unit {
+            SelectedUnit::Superinstruction(selected) => {
+                verify_superinstruction(function_id, function, analyses, selected)?;
+            }
+            SelectedUnit::ScalarBlock(selected) => {
+                verify_scalar_block(function_id, function, analyses, selected)?;
+            }
+            SelectedUnit::Ordinary(_) => {}
         }
         verify_block_entry(function_id, plan, block, index)?;
     }
@@ -101,6 +108,129 @@ fn verify_function(
         });
     }
     Ok(())
+}
+
+fn verify_scalar_block(
+    function_id: MirFunctionId,
+    function: &MirFunction,
+    analyses: &MirFunctionAnalyses,
+    selected: &ScalarBlockSelection,
+) -> Result<(), SelectionError> {
+    let invalid = || SelectionError::InvalidScalarBlock {
+        function: function_id,
+        block: selected.block,
+    };
+    let block = function.block(selected.block).ok_or_else(invalid)?;
+    if block.statements() != selected.statements.as_ref() || selected.statements.len() < 3 {
+        return Err(invalid());
+    }
+    if selected
+        .statements
+        .iter()
+        .any(|statement| !verified_scalar_statement(function, analyses, *statement))
+    {
+        return Err(invalid());
+    }
+    let terminator = block.terminator().ok_or_else(invalid)?;
+    if terminator.safepoint.is_some() {
+        return Err(invalid());
+    }
+    match &terminator.kind {
+        MirTerminatorKind::Jump(_) => Ok(()),
+        MirTerminatorKind::Branch { condition, .. } => {
+            let last = *selected.statements.last().ok_or_else(invalid)?;
+            let statement = function.statement(last).ok_or_else(invalid)?;
+            if statement.destination == verified_operand_place(condition)
+                && verified_statement_produces_bool(&statement.kind)
+            {
+                Ok(())
+            } else {
+                Err(invalid())
+            }
+        }
+        _ => Err(invalid()),
+    }
+}
+
+fn verified_scalar_statement(
+    function: &MirFunction,
+    analyses: &MirFunctionAnalyses,
+    statement_id: MirStatementId,
+) -> bool {
+    let Some(statement) = function.statement(statement_id) else {
+        return false;
+    };
+    if statement.safepoint.is_some() || statement.destination.is_none() {
+        return false;
+    }
+    match &statement.kind {
+        MirStatementKind::Assign(MirRvalue::Use(operand)) => analyses
+            .facts
+            .operand_before(statement_id, operand)
+            .is_some_and(|fact| {
+                matches!(
+                    fact.value_type,
+                    MirValueType::Primitive(
+                        vela_common::PrimitiveTag::Bool | vela_common::PrimitiveTag::I64
+                    )
+                )
+            }),
+        MirStatementKind::Assign(MirRvalue::Constant { value, .. }) => matches!(
+            value,
+            MirImmediate::Bool(_) | MirImmediate::Scalar(vela_common::ScalarValue::I64(_))
+        ),
+        MirStatementKind::Unary {
+            operation: MirUnaryOp::NotBool,
+            operand,
+        } => verified_register_operand(operand),
+        MirStatementKind::Binary {
+            operation:
+                MirBinaryOp::Numeric {
+                    operation:
+                        MirNumericBinaryOp::Add
+                        | MirNumericBinaryOp::Subtract
+                        | MirNumericBinaryOp::Multiply
+                        | MirNumericBinaryOp::Remainder,
+                    kind: vela_common::NumericTag::I64,
+                }
+                | MirBinaryOp::Compare {
+                    kind: vela_common::PrimitiveTag::I64,
+                    ..
+                },
+            left,
+            right,
+        } => verified_register_operand(left) && verified_register_operand(right),
+        _ => false,
+    }
+}
+
+const fn verified_register_operand(operand: &MirOperand) -> bool {
+    matches!(operand, MirOperand::Local(_) | MirOperand::Temp(_))
+}
+
+const fn verified_operand_place(operand: &MirOperand) -> Option<MirPlace> {
+    match operand {
+        MirOperand::Local(local) => Some(MirPlace::Local(*local)),
+        MirOperand::Temp(temp) => Some(MirPlace::Temp(*temp)),
+        MirOperand::Immediate(_) => None,
+    }
+}
+
+const fn verified_statement_produces_bool(statement: &MirStatementKind) -> bool {
+    matches!(
+        statement,
+        MirStatementKind::Unary {
+            operation: MirUnaryOp::NotBool,
+            ..
+        } | MirStatementKind::Binary {
+            operation: MirBinaryOp::Compare { .. },
+            ..
+        } | MirStatementKind::Assign(MirRvalue::Use(MirOperand::Immediate(MirImmediate::Bool(_))))
+            | MirStatementKind::Assign(MirRvalue::Constant {
+                value: MirImmediate::Bool(_),
+                ..
+            })
+    )
 }
 
 fn verify_block_entry(

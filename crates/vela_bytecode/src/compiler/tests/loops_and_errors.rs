@@ -85,27 +85,61 @@ fn main() {
     )
     .expect("proven i64 scalar loop should compile");
 
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        instruction.kind,
-        UnlinkedInstructionKind::I64RemImm { imm: 3, .. }
-    )));
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        instruction.kind,
-        UnlinkedInstructionKind::I64MulImm { imm: 2, .. }
-    )));
-    assert!(code.instructions.iter().any(|instruction| matches!(
-        instruction.kind,
-        UnlinkedInstructionKind::I64CmpImmJumpIfFalse {
-            op: crate::I64CompareOp::Greater,
-            imm: 180,
-            ..
-        }
-    )));
-    assert!(!code.selected_units.is_empty());
+    assert!(
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::I64RemImm { imm: 3, .. }
+        )) || code
+            .scalar_blocks
+            .iter()
+            .any(|plan| plan.operations.iter().any(|operation| matches!(
+                operation.kind,
+                crate::ScalarOpKind::I64RemImm { imm: 3, .. }
+            )))
+    );
+    assert!(
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::I64MulImm { imm: 2, .. }
+        )) || code
+            .scalar_blocks
+            .iter()
+            .any(|plan| plan.operations.iter().any(|operation| matches!(
+                operation.kind,
+                crate::ScalarOpKind::I64MulImm { imm: 2, .. }
+            )))
+    );
+    assert!(
+        code.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::I64CmpImmJumpIfFalse {
+                op: crate::I64CompareOp::Greater,
+                imm: 180,
+                ..
+            }
+        )) || code
+            .scalar_blocks
+            .iter()
+            .any(|plan| plan.operations.iter().any(|operation| matches!(
+                operation.kind,
+                crate::ScalarOpKind::I64CompareImm {
+                    op: crate::I64CompareOp::Greater,
+                    imm: 180,
+                    ..
+                }
+            )))
+    );
+    assert!(!code.scalar_blocks.is_empty() || !code.selected_units.is_empty());
     assert!(
         code.instructions
             .iter()
             .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::I64Add { .. }))
+            || code
+                .scalar_blocks
+                .iter()
+                .any(|plan| plan.operations.iter().any(|operation| {
+                    matches!(operation.kind, crate::ScalarOpKind::I64Add { .. })
+                }))
     );
 }
 

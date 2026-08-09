@@ -113,17 +113,12 @@ fn scalar_workloads_have_reproducible_opcode_count_reports() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
 
     let scalar = opcode_count_report(&vm, registry.compile_view(), "scalar_branch_loop");
-    assert_has_opcode(&scalar, "I64RemImm");
-    assert_has_opcode(&scalar, "I64MulImm");
-    assert_has_opcode(&scalar, "I64CmpImmJumpIfFalse");
-    assert_has_opcode(&scalar, "I64Add");
-    assert_has_opcode(&scalar, "Jump");
+    assert_has_opcode(&scalar, "RunScalarBlock");
     assert_has_opcode(&scalar, "I64RangeNext");
 
     let range = opcode_count_report(&vm, registry.compile_view(), "range_iteration");
     assert_has_opcode(&range, "I64RangeNext");
-    assert_has_opcode(&range, "I64Add");
-    assert_has_opcode(&range, "I64Sub");
+    assert_has_opcode(&range, "RunScalarBlock");
 
     let function_calls = opcode_count_report(&vm, registry.compile_view(), "function_calls");
     assert_has_opcode(&function_calls, "CallFunction");
@@ -143,23 +138,23 @@ fn lead_workloads_have_reproducible_verified_mir_inventories() {
     for (workload_name, expected) in [
         (
             "scalar_branch_loop",
-            "verified_mir_inventory workload=scalar_branch_loop functions=2 blocks=14 statements=37 terminators=14 cfg_edges=16 budget_sites=7 budget_classes={\"call\": 1, \"dynamic_work\": 1, \"iterator_step\": 2, \"loop_backedge\": 3} safepoints=1 trap_points=10 source_points=51 outer_dispatches=56 code_bytes=7168 candidate_sequences={\"mir:i64_compare_immediate+branch\": 2, \"mir:scalar_run_len_3\": 1, \"mir:scalar_run_len_5_plus\": 5, \"selected:i64_cmp_imm_jump_if_false\": 2} profiled_dispatches=7181 profiled_candidate_sequences={\"selected:i64_cmp_imm_jump_if_false\": 606} checksum=23880",
+            "verified_mir_inventory workload=scalar_branch_loop functions=2 blocks=14 statements=37 terminators=14 cfg_edges=16 budget_sites=7 budget_classes={\"call\": 1, \"dynamic_work\": 1, \"iterator_step\": 2, \"loop_backedge\": 3} safepoints=1 trap_points=10 source_points=51 outer_dispatches=28 code_bytes=3584 candidate_sequences={\"mir:i64_compare_immediate+branch\": 2, \"mir:scalar_run_len_3\": 1, \"mir:scalar_run_len_5_plus\": 5, \"selected:i64_cmp_imm_jump_if_false\": 2, \"selected:scalar_block\": 4, \"selected:scalar_op\": 24} profiled_dispatches=4149 profiled_candidate_sequences={\"selected:i64_cmp_imm_jump_if_false\": 606, \"selected:scalar_block\": 365, \"selected:scalar_op\": 2308} checksum=23880",
         ),
         (
             "range_iteration",
-            "verified_mir_inventory workload=range_iteration functions=2 blocks=14 statements=35 terminators=14 cfg_edges=16 budget_sites=10 budget_classes={\"call\": 1, \"dynamic_work\": 1, \"iterator_step\": 4, \"loop_backedge\": 4} safepoints=1 trap_points=6 source_points=49 outer_dispatches=63 code_bytes=8064 candidate_sequences={\"mir:scalar_run_len_4\": 2, \"mir:scalar_run_len_5_plus\": 4} profiled_dispatches=23947 profiled_candidate_sequences={} checksum=134080",
+            "verified_mir_inventory workload=range_iteration functions=2 blocks=14 statements=35 terminators=14 cfg_edges=16 budget_sites=10 budget_classes={\"call\": 1, \"dynamic_work\": 1, \"iterator_step\": 4, \"loop_backedge\": 4} safepoints=1 trap_points=6 source_points=49 outer_dispatches=26 code_bytes=3328 candidate_sequences={\"mir:scalar_run_len_4\": 2, \"mir:scalar_run_len_5_plus\": 4, \"selected:scalar_block\": 6, \"selected:scalar_op\": 31} profiled_dispatches=6671 profiled_candidate_sequences={\"selected:scalar_block\": 2197, \"selected:scalar_op\": 12906} checksum=134080",
         ),
         (
             "function_calls",
-            "verified_mir_inventory workload=function_calls functions=4 blocks=10 statements=29 terminators=10 cfg_edges=8 budget_sites=11 budget_classes={\"call\": 3, \"dynamic_work\": 4, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=3 trap_points=10 source_points=39 outer_dispatches=45 code_bytes=5760 candidate_sequences={\"mir:scalar_run_len_2\": 1, \"mir:scalar_run_len_3\": 1, \"mir:scalar_run_len_5_plus\": 2} profiled_dispatches=9645 profiled_candidate_sequences={} checksum=233764",
+            "verified_mir_inventory workload=function_calls functions=4 blocks=10 statements=29 terminators=10 cfg_edges=8 budget_sites=11 budget_classes={\"call\": 3, \"dynamic_work\": 4, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=3 trap_points=10 source_points=39 outer_dispatches=33 code_bytes=4224 candidate_sequences={\"mir:scalar_run_len_2\": 1, \"mir:scalar_run_len_3\": 1, \"mir:scalar_run_len_5_plus\": 2, \"selected:scalar_block\": 2, \"selected:scalar_op\": 12} profiled_dispatches=9627 profiled_candidate_sequences={\"selected:scalar_block\": 3, \"selected:scalar_op\": 18} checksum=233764",
         ),
         (
             "recursive_countdown",
-            "verified_mir_inventory workload=recursive_countdown functions=3 blocks=12 statements=27 terminators=12 cfg_edges=11 budget_sites=10 budget_classes={\"call\": 3, \"dynamic_work\": 3, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=3 trap_points=8 source_points=39 outer_dispatches=44 code_bytes=5632 candidate_sequences={\"mir:scalar_run_len_2\": 2, \"mir:scalar_run_len_5_plus\": 2} profiled_dispatches=2453 profiled_candidate_sequences={} checksum=3240",
+            "verified_mir_inventory workload=recursive_countdown functions=3 blocks=12 statements=27 terminators=12 cfg_edges=11 budget_sites=10 budget_classes={\"call\": 3, \"dynamic_work\": 3, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=3 trap_points=8 source_points=39 outer_dispatches=32 code_bytes=4096 candidate_sequences={\"mir:scalar_run_len_2\": 2, \"mir:scalar_run_len_5_plus\": 2, \"selected:scalar_block\": 2, \"selected:scalar_op\": 12} profiled_dispatches=2435 profiled_candidate_sequences={\"selected:scalar_block\": 3, \"selected:scalar_op\": 18} checksum=3240",
         ),
         (
             "float_math_loop",
-            "verified_mir_inventory workload=float_math_loop functions=2 blocks=8 statements=34 terminators=8 cfg_edges=8 budget_sites=7 budget_classes={\"call\": 2, \"dynamic_work\": 1, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=2 trap_points=9 source_points=42 outer_dispatches=48 code_bytes=6144 candidate_sequences={\"mir:scalar_run_len_5_plus\": 3} profiled_dispatches=9781 profiled_candidate_sequences={} checksum=39210",
+            "verified_mir_inventory workload=float_math_loop functions=2 blocks=8 statements=34 terminators=8 cfg_edges=8 budget_sites=7 budget_classes={\"call\": 2, \"dynamic_work\": 1, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=2 trap_points=9 source_points=42 outer_dispatches=42 code_bytes=5376 candidate_sequences={\"mir:scalar_run_len_5_plus\": 3, \"selected:scalar_block\": 1, \"selected:scalar_op\": 6} profiled_dispatches=9775 profiled_candidate_sequences={\"selected:scalar_block\": 1, \"selected:scalar_op\": 6} checksum=39210",
         ),
     ] {
         let inventory = verified_mir_inventory(&vm, registry.compile_view(), workload_name);
@@ -488,6 +483,26 @@ fn verified_mir_inventory(
                     .entry("selected:i64_cmp_imm_jump_if_false")
                     .or_insert(0) +=
                     profiler.hit_count(function.debug_name, InstructionOffset(offset));
+            }
+            if let InstructionKind::RunScalarBlock { plan } = instruction.kind {
+                let scalar = &function.scalar_blocks[plan.index()];
+                *inventory
+                    .candidate_sequences
+                    .entry("selected:scalar_block")
+                    .or_insert(0) += 1;
+                *inventory
+                    .candidate_sequences
+                    .entry("selected:scalar_op")
+                    .or_insert(0) += scalar.operations.len();
+                let hits = profiler.hit_count(function.debug_name, InstructionOffset(offset));
+                *inventory
+                    .profiled_candidate_sequences
+                    .entry("selected:scalar_block")
+                    .or_insert(0) += hits;
+                *inventory
+                    .profiled_candidate_sequences
+                    .entry("selected:scalar_op")
+                    .or_insert(0) += hits * scalar.operations.len() as u64;
             }
         }
     }

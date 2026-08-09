@@ -3,8 +3,8 @@ use super::*;
 use std::cell::RefCell;
 
 use vela_bytecode::{
-    ChargedScalarTarget, I64CompareOp, ScalarBlockPlan, ScalarBlockPlanId, ScalarConstant,
-    ScalarExit, ScalarExitKind, ScalarOp, ScalarOpKind, ScalarSourcePointId,
+    ChargedScalarTarget, Constant, I64CompareOp, ScalarBlockPlan, ScalarBlockPlanId,
+    ScalarConstant, ScalarExit, ScalarExitKind, ScalarOp, ScalarOpKind, ScalarSourcePointId,
     linked::{Instruction, InstructionKind},
 };
 
@@ -45,8 +45,8 @@ fn scalar_artifact(plan: ScalarBlockPlan, register_count: u16) -> Arc<LinkedArti
 }
 
 fn arithmetic_plan() -> ScalarBlockPlan {
-    ScalarBlockPlan {
-        operations: Box::new([
+    ScalarBlockPlan::new(
+        Box::new([
             ScalarOp {
                 kind: ScalarOpKind::LoadScalar {
                     dst: Register(0),
@@ -74,24 +74,154 @@ fn arithmetic_plan() -> ScalarBlockPlan {
                 execution_units: 1,
             },
         ]),
-        exit: ScalarExit {
+        ScalarExit {
             kind: ScalarExitKind::Jump(target(1)),
             source: source(3),
             execution_units: 1,
         },
-        source_points: Box::new([span(0), span(1), span(2), span(3)]),
+        Box::new([span(0), span(1), span(2), span(3)]),
+    )
+}
+
+fn ordinary_arithmetic_artifact(initial: i64) -> Arc<LinkedArtifact> {
+    let mut program = LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 3);
+    let initial = code.push_constant(Constant::i64(initial));
+    code.push_instruction(
+        Instruction::new(InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: initial,
+        })
+        .with_span(span(0))
+        .with_execution_units(1),
+    );
+    code.push_instruction(
+        Instruction::new(InstructionKind::I64AddImm {
+            dst: Register(1),
+            lhs: Register(0),
+            imm: 2,
+        })
+        .with_span(span(1))
+        .with_execution_units(1),
+    );
+    code.push_instruction(
+        Instruction::new(InstructionKind::I64MulImm {
+            dst: Register(2),
+            lhs: Register(1),
+            imm: 2,
+        })
+        .with_span(span(2))
+        .with_execution_units(1),
+    );
+    code.push_instruction(
+        Instruction::new(InstructionKind::Jump {
+            target: InstructionOffset(4),
+        })
+        .with_span(span(3))
+        .with_execution_units(1),
+    );
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(2),
+    }));
+    code.verify()
+        .expect("ordinary scalar fixture should verify");
+    let main = program.push_function(code);
+    program.set_entry_point(main_name, main);
+    linked_test_owner(program)
+}
+
+fn ordinary_overflow_artifact() -> Arc<LinkedArtifact> {
+    let mut program = LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 3);
+    let maximum = code.push_constant(Constant::i64(i64::MAX));
+    let unreachable = code.push_constant(Constant::i64(99));
+    code.push_instruction(
+        Instruction::new(InstructionKind::LoadConst {
+            dst: Register(0),
+            constant: maximum,
+        })
+        .with_span(span(0)),
+    );
+    code.push_instruction(
+        Instruction::new(InstructionKind::I64AddImm {
+            dst: Register(1),
+            lhs: Register(0),
+            imm: 1,
+        })
+        .with_span(span(1)),
+    );
+    code.push_instruction(
+        Instruction::new(InstructionKind::LoadConst {
+            dst: Register(2),
+            constant: unreachable,
+        })
+        .with_span(span(2)),
+    );
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(2),
+    }));
+    code.verify()
+        .expect("ordinary overflow fixture should verify");
+    let main = program.push_function(code);
+    program.set_entry_point(main_name, main);
+    linked_test_owner(program)
+}
+
+fn ordinary_branch_artifact() -> Arc<LinkedArtifact> {
+    let mut program = LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 4);
+    for (register, value, source_index) in [(0, 7, 0), (1, 10, 1), (2, 20, 2)] {
+        let constant = code.push_constant(Constant::i64(value));
+        code.push_instruction(
+            Instruction::new(InstructionKind::LoadConst {
+                dst: Register(register),
+                constant,
+            })
+            .with_span(span(source_index)),
+        );
     }
+    code.push_instruction(
+        Instruction::new(InstructionKind::Less {
+            dst: Register(3),
+            lhs: Register(0),
+            rhs: Register(1),
+        })
+        .with_span(span(3)),
+    );
+    code.push_instruction(Instruction::new(InstructionKind::JumpIfFalse {
+        condition: Register(3),
+        target: InstructionOffset(6),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(1),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(2),
+    }));
+    code.verify()
+        .expect("ordinary branch fixture should verify");
+    let main = program.push_function(code);
+    program.set_entry_point(main_name, main);
+    linked_test_owner(program)
 }
 
 #[test]
 fn linked_scalar_block_executes_checked_operations_and_exact_budget_units() {
     let artifact = scalar_artifact(arithmetic_plan(), 3);
+    let ordinary = ordinary_arithmetic_artifact(4);
     let mut budget = ExecutionBudget::new(4, usize::MAX, usize::MAX);
-    assert_eq!(
-        Vm::new().run_linked_program_with_budget(&artifact, "main", &[], &mut budget),
-        Ok(OwnedValue::i64(12))
-    );
+    let selected_result =
+        Vm::new().run_linked_program_with_budget(&artifact, "main", &[], &mut budget);
+    let mut ordinary_budget = ExecutionBudget::new(4, usize::MAX, usize::MAX);
+    let ordinary_result =
+        Vm::new().run_linked_program_with_budget(&ordinary, "main", &[], &mut ordinary_budget);
+    assert_eq!(selected_result, ordinary_result);
+    assert_eq!(selected_result, Ok(OwnedValue::i64(12)));
     assert_eq!(budget.execution_units_consumed(), 4);
+    assert_eq!(ordinary_budget.execution_units_consumed(), 4);
 
     let mut exhausted = ExecutionBudget::new(3, usize::MAX, usize::MAX);
     let error = Vm::new()
@@ -106,12 +236,19 @@ fn linked_scalar_block_executes_checked_operations_and_exact_budget_units() {
     );
     assert_eq!(error.source_span, Some(span(3)));
     assert_eq!(exhausted.execution_units_consumed(), 3);
+    let mut ordinary_exhausted = ExecutionBudget::new(3, usize::MAX, usize::MAX);
+    let ordinary_error = Vm::new()
+        .run_linked_program_with_budget(&ordinary, "main", &[], &mut ordinary_exhausted)
+        .expect_err("ordinary terminator charge should exhaust the budget");
+    assert_eq!(ordinary_error.kind(), error.kind());
+    assert_eq!(ordinary_error.source_span, error.source_span);
+    assert_eq!(ordinary_exhausted.execution_units_consumed(), 3);
 }
 
 #[test]
 fn linked_scalar_block_stops_at_the_first_trap_source() {
-    let plan = ScalarBlockPlan {
-        operations: Box::new([
+    let plan = ScalarBlockPlan::new(
+        Box::new([
             ScalarOp {
                 kind: ScalarOpKind::LoadScalar {
                     dst: Register(0),
@@ -138,27 +275,32 @@ fn linked_scalar_block_stops_at_the_first_trap_source() {
                 execution_units: 0,
             },
         ]),
-        exit: ScalarExit {
+        ScalarExit {
             kind: ScalarExitKind::Jump(target(1)),
             source: source(3),
             execution_units: 0,
         },
-        source_points: Box::new([span(0), span(1), span(2), span(3)]),
-    };
+        Box::new([span(0), span(1), span(2), span(3)]),
+    );
     let error = Vm::new()
         .run_linked_program(&scalar_artifact(plan, 3), "main", &[])
         .expect_err("checked addition should trap");
+    let ordinary_error = Vm::new()
+        .run_linked_program(&ordinary_overflow_artifact(), "main", &[])
+        .expect_err("ordinary checked addition should trap");
     assert_eq!(
         error.kind(),
         VmErrorKind::ArithmeticOverflow { operation: "add" }
     );
     assert_eq!(error.source_span, Some(span(1)));
+    assert_eq!(ordinary_error.kind(), error.kind());
+    assert_eq!(ordinary_error.source_span, error.source_span);
 }
 
 #[test]
 fn linked_scalar_block_fused_branch_selects_the_exact_exit() {
-    let plan = ScalarBlockPlan {
-        operations: Box::new([
+    let plan = ScalarBlockPlan::new(
+        Box::new([
             ScalarOp {
                 kind: ScalarOpKind::LoadScalar {
                     dst: Register(0),
@@ -184,7 +326,7 @@ fn linked_scalar_block_fused_branch_selects_the_exact_exit() {
                 execution_units: 0,
             },
         ]),
-        exit: ScalarExit {
+        ScalarExit {
             kind: ScalarExitKind::I64CompareBranch {
                 op: I64CompareOp::Less,
                 lhs: Register(0),
@@ -195,8 +337,8 @@ fn linked_scalar_block_fused_branch_selects_the_exact_exit() {
             source: source(3),
             execution_units: 0,
         },
-        source_points: Box::new([span(0), span(1), span(2), span(3)]),
-    };
+        Box::new([span(0), span(1), span(2), span(3)]),
+    );
 
     let mut program = LinkedProgram::new();
     let main_name = program.intern_debug_name("main");
@@ -215,10 +357,10 @@ fn linked_scalar_block_fused_branch_selects_the_exact_exit() {
     let main = program.push_function(code);
     program.set_entry_point(main_name, main);
     let artifact = linked_test_owner(program);
-    assert_eq!(
-        Vm::new().run_linked_program(&artifact, "main", &[]),
-        Ok(OwnedValue::i64(10))
-    );
+    let selected = Vm::new().run_linked_program(&artifact, "main", &[]);
+    let ordinary = Vm::new().run_linked_program(&ordinary_branch_artifact(), "main", &[]);
+    assert_eq!(selected, ordinary);
+    assert_eq!(selected, Ok(OwnedValue::i64(10)));
 }
 
 #[derive(Default)]

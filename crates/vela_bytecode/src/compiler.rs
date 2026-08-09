@@ -87,6 +87,10 @@ pub(crate) struct ExecutableBudgetSite {
 pub(crate) enum ExecutableBudgetBoundary {
     Operation,
     EdgeStub,
+    Scalar {
+        plan: crate::ScalarBlockPlanId,
+        location: crate::scalar_plan::ScalarBudgetLocation,
+    },
 }
 
 impl CompiledProgram {
@@ -644,7 +648,7 @@ fn reject_invalid_graph(graph: &ModuleGraph) -> CompileResult<()> {
 
 fn compiled_budget_layouts(program: &UnlinkedProgram) -> Box<[CompiledExecutableBudgetLayout]> {
     fn layout(code: &UnlinkedCodeObject) -> CompiledExecutableBudgetLayout {
-        let sites = code
+        let mut sites = code
             .instructions
             .iter()
             .enumerate()
@@ -664,9 +668,37 @@ fn compiled_budget_layouts(program: &UnlinkedProgram) -> Box<[CompiledExecutable
                         },
                     })
             })
-            .collect::<Vec<_>>()
-            .into_boxed_slice();
-        CompiledExecutableBudgetLayout { sites }
+            .collect::<Vec<_>>();
+        for (plan_index, plan) in code.scalar_blocks.iter().enumerate() {
+            let plan_id = crate::ScalarBlockPlanId::new(plan_index);
+            let offset = code
+                .instructions
+                .iter()
+                .position(|instruction| {
+                    matches!(
+                        instruction.kind,
+                        crate::UnlinkedInstructionKind::RunScalarBlock { plan } if plan == plan_id
+                    )
+                })
+                .expect("verified scalar block has one physical entry");
+            sites.extend(
+                plan.mir_budget_sites
+                    .iter()
+                    .map(|site| ExecutableBudgetSite {
+                        site: site.site,
+                        offset: crate::InstructionOffset(offset),
+                        class: site.point.class,
+                        units: site.point.units,
+                        boundary: ExecutableBudgetBoundary::Scalar {
+                            plan: plan_id,
+                            location: site.location,
+                        },
+                    }),
+            );
+        }
+        CompiledExecutableBudgetLayout {
+            sites: sites.into_boxed_slice(),
+        }
     }
 
     fn append(code: &UnlinkedCodeObject, layouts: &mut Vec<CompiledExecutableBudgetLayout>) {

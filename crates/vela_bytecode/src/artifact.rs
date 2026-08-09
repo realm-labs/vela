@@ -376,7 +376,7 @@ impl UnboundLinkedProgram {
                     function: expected.function,
                 },
             )?;
-            verify_selected_source_mapping(index, code, function)?;
+            verify_selected_source_mapping(index, code, function, &analyses.budget)?;
         }
         let mir_executables = compiled_layouts
             .iter()
@@ -429,6 +429,7 @@ fn verify_selected_source_mapping(
     executable: usize,
     code: &crate::LinkedCodeObject,
     function: &vela_mir::MirFunction,
+    budget: &vela_mir::MirBudgetSchedule,
 ) -> Result<(), crate::linker::LinkError> {
     for selected in &code.selected_units {
         let mismatch = || crate::linker::LinkError::MirSelectedPlanMismatch {
@@ -449,7 +450,147 @@ fn verify_selected_source_mapping(
             return Err(mismatch());
         }
     }
+    for (plan_index, plan) in code.scalar_blocks.iter().enumerate() {
+        let plan_id = crate::ScalarBlockPlanId::new(plan_index);
+        let instruction = code
+            .instructions
+            .iter()
+            .position(|instruction| {
+                matches!(instruction.kind, InstructionKind::RunScalarBlock { plan } if plan == plan_id)
+            })
+            .map(crate::InstructionOffset)
+            .unwrap_or(crate::InstructionOffset(0));
+        let mismatch = || crate::linker::LinkError::MirSelectedPlanMismatch {
+            executable,
+            instruction,
+        };
+        let block_id = plan.mir_terminator.ok_or_else(mismatch)?;
+        let block = function.block(block_id).ok_or_else(mismatch)?;
+        let terminator = block.terminator().ok_or_else(mismatch)?;
+        if plan.mir_statements.as_ref() != block.statements()
+            || plan.operations.len() != plan.mir_statements.len()
+            || plan.source_points.get(plan.exit.source.index()).copied()
+                != Some(terminator.origin.span)
+            || plan.exit.execution_units
+                != budget
+                    .terminator_before(block_id)
+                    .map_or(0, |point| point.units)
+        {
+            return Err(mismatch());
+        }
+        for ((statement_id, operation), operation_index) in plan
+            .mir_statements
+            .iter()
+            .zip(plan.operations.iter())
+            .zip(0_usize..)
+        {
+            let statement = function.statement(*statement_id).ok_or_else(mismatch)?;
+            if plan.source_points.get(operation.source.index()).copied()
+                != Some(statement.origin.span)
+                || operation.execution_units
+                    != budget
+                        .statement_before(*statement_id)
+                        .map_or(0, |point| point.units)
+                || !scalar_budget_site_matches(
+                    plan,
+                    vela_mir::MirBudgetSite::StatementBefore(*statement_id),
+                    crate::scalar_plan::ScalarBudgetLocation::Operation(operation_index),
+                    budget.statement_before(*statement_id),
+                )
+            {
+                return Err(mismatch());
+            }
+        }
+        if !scalar_budget_site_matches(
+            plan,
+            vela_mir::MirBudgetSite::TerminatorBefore(block_id),
+            crate::scalar_plan::ScalarBudgetLocation::Exit,
+            budget.terminator_before(block_id),
+        ) || !scalar_exit_budget_matches(plan, block_id, &terminator.kind, budget)
+        {
+            return Err(mismatch());
+        }
+    }
     Ok(())
+}
+
+fn scalar_budget_site_matches(
+    plan: &crate::ScalarBlockPlan,
+    site: vela_mir::MirBudgetSite,
+    location: crate::scalar_plan::ScalarBudgetLocation,
+    expected: Option<vela_mir::MirBudgetPoint>,
+) -> bool {
+    let actual = plan
+        .mir_budget_sites
+        .iter()
+        .filter(|candidate| candidate.site == site)
+        .collect::<Vec<_>>();
+    match expected {
+        Some(point) => {
+            actual.as_slice()
+                == [&crate::scalar_plan::ScalarMirBudgetSite {
+                    site,
+                    point,
+                    location,
+                }]
+        }
+        None => actual.is_empty(),
+    }
+}
+
+fn scalar_exit_budget_matches(
+    plan: &crate::ScalarBlockPlan,
+    from: vela_mir::MirBlockId,
+    terminator: &vela_mir::MirTerminatorKind,
+    budget: &vela_mir::MirBudgetSchedule,
+) -> bool {
+    let matches_target =
+        |target: &crate::ChargedScalarTarget,
+         to: vela_mir::MirBlockId,
+         location: crate::scalar_plan::ScalarBudgetLocation| {
+            let expected = budget.edge(from, to);
+            target.execution_units == expected.map_or(0, |point| point.units)
+                && match expected {
+                    Some(point) => target.budget_source.is_some_and(|source| {
+                        plan.source_points.get(source.index()).copied() == Some(point.origin.span)
+                    }),
+                    None => target.budget_source.is_none(),
+                }
+                && scalar_budget_site_matches(
+                    plan,
+                    vela_mir::MirBudgetSite::Edge { from, to },
+                    location,
+                    expected,
+                )
+        };
+    match (&plan.exit.kind, terminator) {
+        (crate::ScalarExitKind::Jump(target), vela_mir::MirTerminatorKind::Jump(to)) => {
+            matches_target(
+                target,
+                *to,
+                crate::scalar_plan::ScalarBudgetLocation::JumpEdge,
+            )
+        }
+        (
+            crate::ScalarExitKind::BoolBranch { passed, failed, .. },
+            vela_mir::MirTerminatorKind::Branch {
+                then_block,
+                else_block,
+                ..
+            },
+        ) => {
+            matches_target(
+                passed,
+                *then_block,
+                crate::scalar_plan::ScalarBudgetLocation::PassedEdge,
+            ) && matches_target(
+                failed,
+                *else_block,
+                crate::scalar_plan::ScalarBudgetLocation::FailedEdge,
+            )
+        }
+        _ => false,
+    }
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -606,7 +747,7 @@ fn verify_budget_mapping(
                 offset: mapped.offset,
             });
         };
-        if !instruction_implements_budget_boundary(instruction, *mapped) {
+        if !instruction_implements_budget_boundary(code, instruction, *mapped) {
             return Err(crate::linker::LinkError::MirBudgetLayoutMismatch {
                 executable,
                 site: *site,
@@ -683,6 +824,33 @@ fn verify_budget_mapping(
             }
         }
     }
+    for plan in &code.scalar_blocks {
+        for scalar_site in &plan.mir_budget_sites {
+            let Some(point) = expected.get(&scalar_site.site) else {
+                return Err(crate::linker::LinkError::ExtraMirBudgetCharge {
+                    executable,
+                    offset: crate::InstructionOffset(0),
+                    site: scalar_site.site,
+                });
+            };
+            if !seen.insert(scalar_site.site) {
+                return Err(crate::linker::LinkError::DuplicateMirBudgetCharge {
+                    executable,
+                    site: scalar_site.site,
+                });
+            }
+            if scalar_site.point != *point {
+                return Err(crate::linker::LinkError::MirBudgetChargeMismatch {
+                    executable,
+                    site: scalar_site.site,
+                    expected: *point,
+                    actual_class: scalar_site.point.class,
+                    actual_units: scalar_site.point.units,
+                });
+            }
+            actual_units = actual_units.saturating_add(u64::from(scalar_site.point.units));
+        }
+    }
     for (site, point) in expected {
         expected_units = expected_units.saturating_add(u64::from(point.units));
         if !seen.contains(&site) {
@@ -700,9 +868,19 @@ fn verify_budget_mapping(
 }
 
 fn instruction_implements_budget_boundary(
+    code: &crate::LinkedCodeObject,
     instruction: &crate::Instruction,
     mapped: crate::compiler::ExecutableBudgetSite,
 ) -> bool {
+    if let crate::compiler::ExecutableBudgetBoundary::Scalar { plan, location } = mapped.boundary {
+        return scalar_instruction_implements_budget_boundary(
+            code,
+            instruction,
+            mapped,
+            plan,
+            location,
+        );
+    }
     if instruction.mir_origin != Some(mapped.site)
         || instruction.execution_units
             + match instruction.kind {
@@ -731,7 +909,80 @@ fn instruction_implements_budget_boundary(
                     | InstructionKind::Return { .. }
             ) && instruction_matches_budget_class(&instruction.kind, mapped.class)
         }
+        crate::compiler::ExecutableBudgetBoundary::Scalar { .. } => false,
     }
+}
+
+fn scalar_instruction_implements_budget_boundary(
+    code: &crate::LinkedCodeObject,
+    instruction: &crate::Instruction,
+    mapped: crate::compiler::ExecutableBudgetSite,
+    plan_id: crate::ScalarBlockPlanId,
+    location: crate::scalar_plan::ScalarBudgetLocation,
+) -> bool {
+    if !matches!(instruction.kind, InstructionKind::RunScalarBlock { plan } if plan == plan_id) {
+        return false;
+    }
+    let Some(plan) = code.scalar_blocks.get(plan_id.index()) else {
+        return false;
+    };
+    let mut sites = plan.mir_budget_sites.iter().filter(|site| {
+        site.site == mapped.site
+            && site.point.class == mapped.class
+            && site.point.units == mapped.units
+            && site.location == location
+    });
+    let Some(site) = sites.next() else {
+        return false;
+    };
+    if sites.next().is_some() {
+        return false;
+    }
+    let source_matches = |source: crate::ScalarSourcePointId| {
+        plan.source_points.get(source.index()).copied() == Some(site.point.origin.span)
+    };
+    match location {
+        crate::scalar_plan::ScalarBudgetLocation::Operation(index) => {
+            plan.operations.get(index).is_some_and(|operation| {
+                operation.execution_units == mapped.units && source_matches(operation.source)
+            })
+        }
+        crate::scalar_plan::ScalarBudgetLocation::Exit => {
+            plan.exit.execution_units == mapped.units && source_matches(plan.exit.source)
+        }
+        crate::scalar_plan::ScalarBudgetLocation::JumpEdge => match plan.exit.kind {
+            crate::ScalarExitKind::Jump(target) => {
+                scalar_target_implements_budget(plan, target, mapped.units, site.point.origin.span)
+            }
+            _ => false,
+        },
+        crate::scalar_plan::ScalarBudgetLocation::PassedEdge => match plan.exit.kind {
+            crate::ScalarExitKind::BoolBranch { passed, .. }
+            | crate::ScalarExitKind::I64CompareBranch { passed, .. } => {
+                scalar_target_implements_budget(plan, passed, mapped.units, site.point.origin.span)
+            }
+            _ => false,
+        },
+        crate::scalar_plan::ScalarBudgetLocation::FailedEdge => match plan.exit.kind {
+            crate::ScalarExitKind::BoolBranch { failed, .. }
+            | crate::ScalarExitKind::I64CompareBranch { failed, .. } => {
+                scalar_target_implements_budget(plan, failed, mapped.units, site.point.origin.span)
+            }
+            _ => false,
+        },
+    }
+}
+
+fn scalar_target_implements_budget(
+    plan: &crate::ScalarBlockPlan,
+    target: crate::ChargedScalarTarget,
+    units: u32,
+    span: vela_common::Span,
+) -> bool {
+    target.execution_units == units
+        && target
+            .budget_source
+            .is_some_and(|source| plan.source_points.get(source.index()).copied() == Some(span))
 }
 
 fn instruction_matches_budget_class(

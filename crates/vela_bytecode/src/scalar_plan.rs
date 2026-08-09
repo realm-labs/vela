@@ -221,6 +221,59 @@ pub struct ScalarBlockPlan {
     pub operations: Box<[ScalarOp]>,
     pub exit: ScalarExit,
     pub source_points: Box<[Span]>,
+    #[cfg_attr(feature = "artifact-codec", serde(skip))]
+    pub(crate) mir_statements: Box<[vela_mir::MirStatementId]>,
+    #[cfg_attr(feature = "artifact-codec", serde(skip))]
+    pub(crate) mir_terminator: Option<vela_mir::MirBlockId>,
+    #[cfg_attr(feature = "artifact-codec", serde(skip))]
+    pub(crate) mir_budget_sites: Box<[ScalarMirBudgetSite]>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum ScalarBudgetLocation {
+    Operation(usize),
+    Exit,
+    JumpEdge,
+    PassedEdge,
+    FailedEdge,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct ScalarMirBudgetSite {
+    pub(crate) site: vela_mir::MirBudgetSite,
+    pub(crate) point: vela_mir::MirBudgetPoint,
+    pub(crate) location: ScalarBudgetLocation,
+}
+
+impl ScalarBlockPlan {
+    #[must_use]
+    pub fn new(operations: Box<[ScalarOp]>, exit: ScalarExit, source_points: Box<[Span]>) -> Self {
+        Self {
+            operations,
+            exit,
+            source_points,
+            mir_statements: Box::new([]),
+            mir_terminator: None,
+            mir_budget_sites: Box::new([]),
+        }
+    }
+
+    #[must_use]
+    pub(crate) fn with_mir_coverage(
+        mut self,
+        statements: Box<[vela_mir::MirStatementId]>,
+        terminator: vela_mir::MirBlockId,
+    ) -> Self {
+        self.mir_statements = statements;
+        self.mir_terminator = Some(terminator);
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn with_mir_budget_sites(mut self, sites: Box<[ScalarMirBudgetSite]>) -> Self {
+        self.mir_budget_sites = sites;
+        self
+    }
 }
 
 pub(crate) fn verify_scalar_block_plans(
@@ -443,6 +496,9 @@ mod tests {
                 execution_units: 1,
             },
             source_points: Box::new([span(0, 1), span(1, 2), span(2, 3)]),
+            mir_statements: Box::new([]),
+            mir_terminator: None,
+            mir_budget_sites: Box::new([]),
         }
     }
 

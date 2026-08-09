@@ -4,8 +4,8 @@ use std::fmt;
 use vela_mir::{
     MirBackendHandoff, MirBinaryOp, MirBlockId, MirBudgetPoint, MirBudgetSite, MirComparisonOp,
     MirDebugLocalId, MirFunction, MirFunctionAnalyses, MirFunctionId, MirImmediate, MirLiveValue,
-    MirOperand, MirPlace, MirSafepointId, MirSourceOrigin, MirStatementId, MirStatementKind,
-    MirTerminatorKind,
+    MirNumericBinaryOp, MirOperand, MirPlace, MirRvalue, MirSafepointId, MirSourceOrigin,
+    MirStatementId, MirStatementKind, MirTerminatorKind, MirUnaryOp, MirValueType,
 };
 
 mod verify;
@@ -43,6 +43,7 @@ struct SelectedUnitId(u32);
 enum SelectedUnit {
     Ordinary(MirUnitRange),
     Superinstruction(SuperinstructionPlan),
+    ScalarBlock(ScalarBlockSelection),
 }
 
 impl SelectedUnit {
@@ -50,6 +51,7 @@ impl SelectedUnit {
         match self {
             Self::Ordinary(range) => range.block,
             Self::Superinstruction(plan) => plan.block,
+            Self::ScalarBlock(plan) => plan.block,
         }
     }
 }
@@ -65,6 +67,12 @@ pub(super) struct SuperinstructionPlan {
     else_block: MirBlockId,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct ScalarBlockSelection {
+    block: MirBlockId,
+    statements: Box<[MirStatementId]>,
+}
+
 impl SelectedFunctionPlan {
     pub(super) fn superinstruction(&self, block: MirBlockId) -> Option<&SuperinstructionPlan> {
         self.block_entries
@@ -72,8 +80,28 @@ impl SelectedFunctionPlan {
             .and_then(|unit| self.units.get(unit.0 as usize))
             .and_then(|unit| match unit {
                 SelectedUnit::Superinstruction(plan) => Some(plan),
-                SelectedUnit::Ordinary(_) => None,
+                SelectedUnit::Ordinary(_) | SelectedUnit::ScalarBlock(_) => None,
             })
+    }
+
+    pub(super) fn scalar_block(&self, block: MirBlockId) -> Option<&ScalarBlockSelection> {
+        self.block_entries
+            .get(&block)
+            .and_then(|unit| self.units.get(unit.0 as usize))
+            .and_then(|unit| match unit {
+                SelectedUnit::ScalarBlock(plan) => Some(plan),
+                SelectedUnit::Ordinary(_) | SelectedUnit::Superinstruction(_) => None,
+            })
+    }
+}
+
+impl ScalarBlockSelection {
+    pub(super) const fn block(&self) -> MirBlockId {
+        self.block
+    }
+
+    pub(super) const fn statements(&self) -> &[MirStatementId] {
+        &self.statements
     }
 }
 
@@ -118,6 +146,7 @@ enum OrdinaryReason {
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 enum SelectionCandidate {
     I64CompareImmediateBranch,
+    ScalarBlock,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -243,6 +272,10 @@ pub(crate) enum SelectionError {
         function: MirFunctionId,
         block: MirBlockId,
     },
+    InvalidScalarBlock {
+        function: MirFunctionId,
+        block: MirBlockId,
+    },
 }
 
 impl SelectionError {
@@ -295,6 +328,9 @@ impl SelectionError {
             }
             | Self::InvalidSuperinstruction {
                 function: expected, ..
+            }
+            | Self::InvalidScalarBlock {
+                function: expected, ..
             } => Some(expected),
         }
     }
@@ -325,15 +361,20 @@ pub(super) fn select(
                 u32::try_from(units.len())
                     .map_err(|_| SelectionError::UnitCountOverflow(function_id))?,
             );
-            units.push(measured_candidate(function, analyses, block).map_or_else(
-                || {
-                    SelectedUnit::Ordinary(MirUnitRange {
-                        block,
-                        reason: OrdinaryReason::NoApprovedRecipe,
+            units.push(
+                measured_candidate(function, analyses, block)
+                    .map(SelectedUnit::Superinstruction)
+                    .or_else(|| {
+                        scalar_block_candidate(function, analyses, block)
+                            .map(SelectedUnit::ScalarBlock)
                     })
-                },
-                SelectedUnit::Superinstruction,
-            ));
+                    .unwrap_or({
+                        SelectedUnit::Ordinary(MirUnitRange {
+                            block,
+                            reason: OrdinaryReason::NoApprovedRecipe,
+                        })
+                    }),
+            );
             coverage.push(select_coverage(function_id, function, analyses, block)?);
             block_entries.insert(block, unit);
         }
@@ -348,6 +389,126 @@ pub(super) fn select(
         );
     }
     Ok(SelectedProgramPlan { functions })
+}
+
+fn scalar_block_candidate(
+    function: &MirFunction,
+    analyses: &MirFunctionAnalyses,
+    block_id: MirBlockId,
+) -> Option<ScalarBlockSelection> {
+    let block = function.block(block_id)?;
+    if block.statements().len() < 3
+        || block
+            .statements()
+            .iter()
+            .any(|statement| !scalar_statement(function, analyses, *statement))
+    {
+        return None;
+    }
+    let terminator = block.terminator()?;
+    if terminator.safepoint.is_some() {
+        return None;
+    }
+    match &terminator.kind {
+        MirTerminatorKind::Jump(_) => {}
+        MirTerminatorKind::Branch { condition, .. } => {
+            let last = *block.statements().last()?;
+            let statement = function.statement(last)?;
+            if statement.destination != operand_place(condition)
+                || !statement_produces_bool(&statement.kind)
+            {
+                return None;
+            }
+        }
+        _ => return None,
+    }
+    Some(ScalarBlockSelection {
+        block: block_id,
+        statements: block.statements().to_vec().into_boxed_slice(),
+    })
+}
+
+fn scalar_statement(
+    function: &MirFunction,
+    analyses: &MirFunctionAnalyses,
+    statement_id: MirStatementId,
+) -> bool {
+    let Some(statement) = function.statement(statement_id) else {
+        return false;
+    };
+    if statement.safepoint.is_some() || statement.destination.is_none() {
+        return false;
+    }
+    match &statement.kind {
+        MirStatementKind::Assign(MirRvalue::Use(operand)) => analyses
+            .facts
+            .operand_before(statement_id, operand)
+            .is_some_and(|fact| {
+                matches!(
+                    fact.value_type,
+                    MirValueType::Primitive(
+                        vela_common::PrimitiveTag::Bool | vela_common::PrimitiveTag::I64
+                    )
+                )
+            }),
+        MirStatementKind::Assign(MirRvalue::Constant { value, .. }) => {
+            matches!(
+                value,
+                MirImmediate::Bool(_) | MirImmediate::Scalar(vela_common::ScalarValue::I64(_))
+            )
+        }
+        MirStatementKind::Unary {
+            operation: MirUnaryOp::NotBool,
+            operand,
+        } => register_operand(operand),
+        MirStatementKind::Binary {
+            operation:
+                MirBinaryOp::Numeric {
+                    operation:
+                        MirNumericBinaryOp::Add
+                        | MirNumericBinaryOp::Subtract
+                        | MirNumericBinaryOp::Multiply
+                        | MirNumericBinaryOp::Remainder,
+                    kind: vela_common::NumericTag::I64,
+                }
+                | MirBinaryOp::Compare {
+                    kind: vela_common::PrimitiveTag::I64,
+                    ..
+                },
+            left,
+            right,
+        } => register_operand(left) && register_operand(right),
+        _ => false,
+    }
+}
+
+const fn register_operand(operand: &MirOperand) -> bool {
+    matches!(operand, MirOperand::Local(_) | MirOperand::Temp(_))
+}
+
+const fn operand_place(operand: &MirOperand) -> Option<MirPlace> {
+    match operand {
+        MirOperand::Local(local) => Some(MirPlace::Local(*local)),
+        MirOperand::Temp(temp) => Some(MirPlace::Temp(*temp)),
+        MirOperand::Immediate(_) => None,
+    }
+}
+
+const fn statement_produces_bool(statement: &MirStatementKind) -> bool {
+    matches!(
+        statement,
+        MirStatementKind::Unary {
+            operation: MirUnaryOp::NotBool,
+            ..
+        } | MirStatementKind::Binary {
+            operation: MirBinaryOp::Compare { .. },
+            ..
+        } | MirStatementKind::Assign(MirRvalue::Use(MirOperand::Immediate(MirImmediate::Bool(_))))
+            | MirStatementKind::Assign(MirRvalue::Constant {
+                value: MirImmediate::Bool(_),
+                ..
+            })
+    )
 }
 
 fn measured_candidate(
@@ -715,6 +876,11 @@ fn selection_report(plan: &SelectedProgramPlan) -> SelectionReport {
                     .entry(SelectionCandidate::I64CompareImmediateBranch)
                     .or_default() += 1;
             }
+            SelectedUnit::ScalarBlock(_) => {
+                *candidates
+                    .entry(SelectionCandidate::ScalarBlock)
+                    .or_default() += 1;
+            }
         }
     }
     SelectionReport {
@@ -804,7 +970,7 @@ fn main(limit: i64) -> i64 {
                 .candidates
                 .get(&SelectionCandidate::I64CompareImmediateBranch)
                 .is_some_and(|count| *count > 0),
-            "fixture should report the deferred measured branch recipe"
+            "fixture should report selected short recipes"
         );
     }
 
@@ -812,19 +978,55 @@ fn main(limit: i64) -> i64 {
     fn coverage_verifier_rejects_corrupted_superinstruction_recipe() {
         let (owner, mut plan) = plan();
         let handoff = owner.backend_handoff().expect("complete analyses");
+        let (function_id, block, mut selected) = handoff
+            .program()
+            .functions()
+            .find_map(|(function_id, function)| {
+                let analyses = handoff.analyses(function_id)?;
+                function.blocks().find_map(|(block, _)| {
+                    measured_candidate(function, analyses, block)
+                        .map(|selected| (function_id, block, selected))
+                })
+            })
+            .expect("fixture has one measured superinstruction recipe");
+        selected.immediate = selected.immediate.wrapping_add(1);
+        let function = plan.functions.get_mut(&function_id).expect("function plan");
+        let unit = function.block_entries[&block];
+        function.units[unit.0 as usize] = SelectedUnit::Superinstruction(selected);
+        assert!(matches!(
+            verify(handoff, &plan),
+            Err(SelectionError::InvalidSuperinstruction { .. })
+        ));
+    }
+
+    #[test]
+    fn coverage_verifier_rejects_corrupted_scalar_block_recipe() {
+        let compiled = compile_test_program(
+            SourceId::new(902),
+            "fn main() -> i64 { let total = 0; for outer in 0..8 { for value in 0..128 { total += value + outer - outer; } } return total; }",
+        )
+        .expect("scalar selection fixture should compile");
+        let (_, owner) = compiled
+            .verified_mir()
+            .roots()
+            .next()
+            .expect("fixture has one root");
+        let owner = Arc::clone(owner);
+        let handoff = owner.backend_handoff().expect("complete analyses");
+        let mut plan = select(handoff).expect("scalar selection should succeed");
         let selected = plan
             .functions
             .values_mut()
             .flat_map(|function| function.units.iter_mut())
             .find_map(|unit| match unit {
-                SelectedUnit::Superinstruction(selected) => Some(selected),
-                SelectedUnit::Ordinary(_) => None,
+                SelectedUnit::ScalarBlock(selected) => Some(selected),
+                SelectedUnit::Ordinary(_) | SelectedUnit::Superinstruction(_) => None,
             })
-            .expect("fixture has one selected recipe");
-        selected.immediate = selected.immediate.wrapping_add(1);
+            .expect("fixture has one selected scalar block");
+        selected.statements = selected.statements[1..].into();
         assert!(matches!(
             verify(handoff, &plan),
-            Err(SelectionError::InvalidSuperinstruction { .. })
+            Err(SelectionError::InvalidScalarBlock { .. })
         ));
     }
 

@@ -35,8 +35,13 @@ op/exit/source/charged-target tables and `RunScalarBlock` entry now exist and
 round-trip through unlinked, portable, and linked forms. The focused safe-Rust
 executor preserves checked tags/arithmetic, partial writes, per-subpoint
 profiling, exact ordered budget charges, fused exits, and trap spans. Production
-scalar-region selection remains ordinary until the next Batch D checkpoint
-proves and emits eligible regions.
+selection now emits whole verified-MIR blocks with at least three eligible
+Bool/i64 operations and a Jump or proven last-value Branch exit, after giving
+the accepted short superinstruction recipe priority. Independent selection,
+source-link, physical-plan, portable, budget, trap, profiling, and ordinary-
+versus-selected executor tests pass. Batch D performance and non-target
+guardrails remain to be freshly captured against the quiet-machine Batch A
+baseline before this implementation is accepted or removed.
 
 The Rust/Vela interop checkpoint is complete under the
 [final interop and explicit-release hard switch](rust-vela-interop-final-shape-hard-switch-plan.md).
