@@ -1074,6 +1074,7 @@ Minimum focused commands include:
 tools/perf/capture_external_compare.py \
   --name verified-mir-scalar-before \
   --baseline verified_mir_scalar_macos_aarch64 \
+  --require-clean --max-load-per-cpu 1.50 \
   -- \
   --runtime vela,lua54 --iterations 500000 --repeats 5 --warmup 2 \
   scalar range function recursive float
