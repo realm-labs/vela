@@ -272,6 +272,11 @@ fn memory_child(args: &[String]) -> Result<(), Box<dyn Error>> {
     let version = engine.compile_hot_reload_initial(&memory_source(shape))?;
     let cache_sites = version.linked_artifact().cache_layout().len();
     let instruction_count = instruction_count(&version);
+    let (scalar_plan_count, scalar_source_count, scalar_loop_count) =
+        selected_plan_counts(&version);
+    let profile_counter_count = instruction_count
+        .saturating_add(scalar_source_count)
+        .saturating_add(scalar_loop_count.saturating_mul(4));
     let state_schema_count = version.linked_program().states().len();
     let actor_state_payload_bytes = state_schema_count.saturating_mul(std::mem::size_of::<i64>());
     let rss_before = process_rss_bytes(std::process::id()).unwrap_or(0);
@@ -291,7 +296,7 @@ fn memory_child(args: &[String]) -> Result<(), Box<dyn Error>> {
     let allocation = allocation_region.change();
     let rss_after = process_rss_bytes(std::process::id()).unwrap_or(rss_before);
     println!(
-        "memory_child shape={} profile={} runtimes={} construction_ns={} retained_rss_bytes={} rss_before_bytes={} rss_after_bytes={} allocation_count={} allocated_bytes={} deallocated_bytes={} cache_sites={} instruction_count={} state_schema_count={} actor_state_payload_bytes={}",
+        "memory_child shape={} profile={} runtimes={} construction_ns={} retained_rss_bytes={} rss_before_bytes={} rss_after_bytes={} allocation_count={} allocated_bytes={} deallocated_bytes={} cache_sites={} instruction_count={} scalar_plan_count={} scalar_source_count={} scalar_loop_count={} profile_counter_count={} state_schema_count={} actor_state_payload_bytes={}",
         shape.label(),
         profile_label,
         runtimes.len(),
@@ -304,6 +309,10 @@ fn memory_child(args: &[String]) -> Result<(), Box<dyn Error>> {
         allocation.bytes_deallocated,
         cache_sites,
         instruction_count,
+        scalar_plan_count,
+        scalar_source_count,
+        scalar_loop_count,
+        profile_counter_count,
         state_schema_count,
         actor_state_payload_bytes.saturating_mul(runtime_count)
     );
@@ -545,10 +554,33 @@ fn instruction_count(version: &ProgramVersion) -> usize {
         .sum()
 }
 
+fn selected_plan_counts(version: &ProgramVersion) -> (usize, usize, usize) {
+    version.linked_program().functions().fold(
+        (0_usize, 0_usize, 0_usize),
+        |(plans, sources, loops), (_, code)| {
+            (
+                plans.saturating_add(code.scalar_blocks.len()),
+                sources.saturating_add(
+                    code.scalar_blocks
+                        .iter()
+                        .map(|plan| plan.source_points.len())
+                        .sum::<usize>(),
+                ),
+                loops.saturating_add(
+                    code.scalar_blocks
+                        .iter()
+                        .filter(|plan| plan.range_loop.is_some())
+                        .count(),
+                ),
+            )
+        },
+    )
+}
+
 fn memory_source(shape: ArtifactShape) -> String {
     match shape {
         ArtifactShape::Small => {
-            "state counter: i64 = 0; pub fn main(value: i64) -> i64 { counter += value; return counter; }".to_owned()
+            "state counter: i64 = 0;\nfn add(value: i64) -> i64 { counter += value; return counter; }\npub fn main(value: i64) -> i64 { let total = 0; for index in 0..8 { total += index + 1 - 1; } return add(value) + total; }\n".to_owned()
         }
         ArtifactShape::Large => {
             let mut source = "state counter: i64 = 0;\n".to_owned();
@@ -557,7 +589,7 @@ fn memory_source(shape: ArtifactShape) -> String {
                     "fn function_{index}(value: i64) -> i64 {{ counter += value; return counter + {index}; }}\n"
                 ));
             }
-            source.push_str("pub fn main(value: i64) -> i64 { return function_0(value); }\n");
+            source.push_str("pub fn main(value: i64) -> i64 { let total = 0; for index in 0..8 { total += index + 1 - 1; } return function_0(value) + total; }\n");
             source
         }
     }

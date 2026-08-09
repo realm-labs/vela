@@ -157,6 +157,55 @@ fn cached(value) { return value.starts_with("q"); }
 }
 
 #[test]
+fn selected_plans_are_generation_shared_across_actor_runtime_scales() {
+    let engine = Engine::builder().build().expect("engine should build");
+    let program = engine
+        .compile_source(
+            "fn main(limit: i64) -> i64 { let total = 0; for value in 0..limit { total += value + 1 - 1; } return total; }",
+        )
+        .expect("selected-plan fixture compiles");
+    let image = RuntimeImage::new_compiled(engine, program).into_shared();
+    let artifact = Arc::clone(image.linked_artifact());
+    let generation = artifact.generation();
+    let scalar_blocks = artifact
+        .program()
+        .functions()
+        .find_map(|(_, code)| {
+            code.scalar_blocks
+                .iter()
+                .any(|plan| plan.range_loop.is_some())
+                .then_some(code.scalar_blocks.as_ptr())
+        })
+        .expect("fixture should contain a selected scalar loop");
+
+    for runtime_count in [1, 100, 10_000] {
+        let runtimes = (0..runtime_count)
+            .map(|_| SharedRuntime::from_shared_image(image.clone()).expect("shared Runtime"))
+            .collect::<Vec<_>>();
+        assert_eq!(runtimes.len(), runtime_count);
+        assert!(runtimes.iter().all(|runtime| {
+            runtime.image.linked_artifact().generation() == generation
+                && Arc::ptr_eq(runtime.image.linked_artifact(), &artifact)
+                && Arc::ptr_eq(runtime.image.execution_data(), image.execution_data())
+                && runtime
+                    .image
+                    .linked_program()
+                    .functions()
+                    .any(|(_, code)| code.scalar_blocks.as_ptr() == scalar_blocks)
+        }));
+        if let (Some(first), Some(last)) = (runtimes.first(), runtimes.last()) {
+            assert_eq!(
+                first.image.linked_artifact().profile_layout(),
+                artifact.profile_layout()
+            );
+            if runtime_count > 1 {
+                assert_ne!(first.state.id, last.state.id, "Runtime state remains local");
+            }
+        }
+    }
+}
+
+#[test]
 fn runtime_state_initialization_enforces_bounded_call_depth() {
     let engine = Engine::builder().build().expect("engine should build");
     let program = engine
