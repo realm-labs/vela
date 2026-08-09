@@ -1,0 +1,26 @@
+# captured_at_utc=20260809T035121Z
+# commit=71fe8a606879185e19e934519644fab02f253de8
+# branch=master
+# worktree=clean
+# rustc=rustc 1.97.1 (8bab26f4f 2026-07-14)
+# cargo=cargo 1.97.1 (c980f4866 2026-06-30)
+# platform=macOS-26.5.2-arm64-arm-64bit-Mach-O
+# machine=arm64
+# cpu=Apple M1 Max
+# logical_cpus=10
+# load_average_before=10.34,13.39,13.27
+# elapsed_seconds=14.768
+# exit_status=0
+# command=cargo bench -p vela_engine --bench scoped_task_execution -- --stable
+
+   Compiling vela_engine v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_engine)
+    Finished `bench` profile [optimized] target(s) in 3.99s
+     Running benches/scoped_task_execution.rs (target/release/deps/scoped_task_execution-e8be30bcfc5bb91d)
+suite=scoped_task_execution iterations=10000 warmup=50 mode=interpreter
+task_result name=admission_copy_owned_graph iterations=10000 total_ns=712369083 ns_per_operation=71236.9 checksum=1190112520884489315
+task_result name=fresh_runtime_worker iterations=10000 total_ns=294290250 ns_per_operation=29429.0 checksum=1190112520884489315
+task_result name=pooled_runtime_worker iterations=10000 total_ns=308324708 ns_per_operation=30832.5 checksum=1190112520884489315
+task_result name=pending_worker_first_poll iterations=10000 total_ns=168067333 ns_per_operation=16806.7 checksum=1190112520884489315
+task_result name=service_nested_dispatch iterations=10000 total_ns=7852015542 ns_per_operation=785201.6 checksum=1190112520884489315
+task_result name=continuation_safe_point_delivery iterations=10000 total_ns=203112666 ns_per_operation=20311.3 checksum=1190112520884489315
+task_pool hits=40049 misses=1 returns=40050 discards=0
