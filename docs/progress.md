@@ -29,20 +29,21 @@ first MIR-native i64 compare-immediate branch removes exactly 606 predicted
 outer dispatches, improves its focused scalar row by 8.86% and the complete
 scalar row by 10.30%, and leaves the five-row geometric mean 1.91% faster than
 Batch A. Portable program, Service artifact, and deployment formats are now v5
-and reject versions 1-4. Batch D is next: compact eligible three-or-more-op
-scalar regions through the same verified coverage boundary. Its bounded v5
-op/exit/source/charged-target tables and `RunScalarBlock` entry now exist and
-round-trip through unlinked, portable, and linked forms. The focused executor
-borrows the fixed frame slice once; its two private unchecked slot helpers are
-guarded by the three verifier layers, while checked tags/arithmetic, partial writes, per-subpoint
-profiling, exact ordered budget charges, fused exits, and trap spans. Production
-selection now emits whole verified-MIR blocks with at least three eligible
-Bool/i64 operations and a Jump or proven last-value Branch exit, after giving
-the accepted short superinstruction recipe priority. Independent selection,
-source-link, physical-plan, portable, budget, trap, profiling, and ordinary-
-versus-selected executor tests pass. Batch D performance and non-target
-guardrails remain to be freshly captured against the quiet-machine Batch A
-baseline before this implementation is accepted or removed.
+and reject versions 1-4. Batch D is accepted under its
+[archived report](archive/verified-mir-interpreter-batch-d-acceptance-2026-08-09.md).
+Bounded v5 op/exit/source/charged-target tables and one `RunScalarBlock` entry
+execute eligible cyclic three-or-more-op Bool/i64 blocks through the existing
+frame driver after short-superinstruction priority. Independent selection,
+source-link, physical-plan, portable, budget, trap, profiling, break/continue,
+malformed-entry, and ordinary-versus-selected proofs pass. The executor's two
+private unchecked slot helpers remain guarded by all verifier layers; tags,
+checked arithmetic, partial writes, logical profiling, budget order, exits, and
+trap spans remain canonical. The quiet-machine five-row geometric mean is
+18.856% faster than Batch A, scalar/range improve 33.487%/47.229%, target-
+independent guardrails remain within 5%, and 10,000 additional block entries
+allocate zero incremental bytes. Batch E is next: form verified natural
+single-entry scalar loop regions that preserve exact per-iteration semantic
+boundaries and must raise the same five-row improvement to at least 25%.
 
 The Rust/Vela interop checkpoint is complete under the
 [final interop and explicit-release hard switch](rust-vela-interop-final-shape-hard-switch-plan.md).
@@ -566,15 +567,20 @@ tests alone.
 Miri remains unavailable on the installed stable Rust 1.97.1
 `aarch64-apple-darwin` toolchain. The pre-existing erased-borrow boundary relies
 on its focused lifecycle, async, lease/re-entry, and source-audit proof until
-that changes. M20.75 introduced no new unsafe boundary.
+that changes. Batch D's new private unchecked scalar-register access instead
+relies on unlinked/portable/linked verifier proofs, malformed-entry tests, and
+the fixed non-resizing frame layout; Miri must be added when the toolchain
+provides it.
 
 ## Next Up
 
-1. Resume M20.5 incremental HIR re-lowering with stable per-module HIR IDs and
+1. Implement verified-MIR Batch E single-entry scalar loop regions and its
+   exact iteration-budget/cancellation/trap differential matrix.
+2. Resume M20.5 incremental HIR re-lowering with stable per-module HIR IDs and
    move `did_change` diagnostics off the message loop.
-2. Audit the parameterized container and value-keyed Map/Set plans against
+3. Audit the parameterized container and value-keyed Map/Set plans against
    their explicit acceptance matrices.
-3. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
+4. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
    post-S2 optimization follow-up.
 
 ## Update Rules

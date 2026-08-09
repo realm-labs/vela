@@ -640,6 +640,21 @@ warmup=10, repeats=7, iterations=100
 | map_mutation | inline | 54207744 | 52557666 | -3.04% | 53207458 |
 | map_mutation_cache_hot_offsets | cache_enabled | 54491898 | 52476000 | -3.70% | 52997417 |
 
+## Verified-MIR Scalar Block Checkpoint
+
+Batch D is accepted against the quiet-machine 2026-08-09 Batch A baseline.
+At 500,000 iterations, five repeats, and two warmups, `scalar_branch_loop` and
+`range_iteration` improve 33.487% and 47.229%; the frozen five-row geometric
+mean improves 18.856%. The other three scalar rows remain within 1.643%, and
+stable VM, external, Engine, Service, async, scoped-task, Actor, and compile
+guardrails show no unexplained regression above 5%. One versus 10,001 scalar
+block entries has zero incremental allocations or bytes after warmup. Detailed
+measurements and capture paths live in the
+[Batch D acceptance report](archive/verified-mir-interpreter-batch-d-acceptance-2026-08-09.md).
+
+Batch E retains the 25% five-row geometric-mean target and 35% individual
+scalar/range targets; Batch D does not relax those final loop-region gates.
+
 ## Current Conclusions
 
 M19 is complete enough for M19.5. The interpreter/heap phase delivered measured
