@@ -32,8 +32,9 @@ Batch A. Portable program, Service artifact, and deployment formats are now v5
 and reject versions 1-4. Batch D is next: compact eligible three-or-more-op
 scalar regions through the same verified coverage boundary. Its bounded v5
 op/exit/source/charged-target tables and `RunScalarBlock` entry now exist and
-round-trip through unlinked, portable, and linked forms. The focused safe-Rust
-executor preserves checked tags/arithmetic, partial writes, per-subpoint
+round-trip through unlinked, portable, and linked forms. The focused executor
+borrows the fixed frame slice once; its two private unchecked slot helpers are
+guarded by the three verifier layers, while checked tags/arithmetic, partial writes, per-subpoint
 profiling, exact ordered budget charges, fused exits, and trap spans. Production
 selection now emits whole verified-MIR blocks with at least three eligible
 Bool/i64 operations and a Jump or proven last-value Branch exit, after giving

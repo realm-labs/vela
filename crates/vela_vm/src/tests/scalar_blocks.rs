@@ -298,6 +298,52 @@ fn linked_scalar_block_stops_at_the_first_trap_source() {
 }
 
 #[test]
+fn linked_scalar_block_rejects_a_malformed_entry_value_before_unchecked_slot_reuse() {
+    let plan = ScalarBlockPlan::new(
+        Box::new([
+            ScalarOp {
+                kind: ScalarOpKind::I64AddImm {
+                    dst: Register(0),
+                    lhs: Register(0),
+                    imm: 1,
+                },
+                source: source(0),
+                execution_units: 0,
+            },
+            ScalarOp {
+                kind: ScalarOpKind::I64AddImm {
+                    dst: Register(0),
+                    lhs: Register(0),
+                    imm: 1,
+                },
+                source: source(1),
+                execution_units: 0,
+            },
+            ScalarOp {
+                kind: ScalarOpKind::I64AddImm {
+                    dst: Register(0),
+                    lhs: Register(0),
+                    imm: 1,
+                },
+                source: source(2),
+                execution_units: 0,
+            },
+        ]),
+        ScalarExit {
+            kind: ScalarExitKind::Jump(target(1)),
+            source: source(3),
+            execution_units: 0,
+        },
+        Box::new([span(0), span(1), span(2), span(3)]),
+    );
+    let error = Vm::new()
+        .run_linked_program(&scalar_artifact(plan, 1), "main", &[])
+        .expect_err("Unit in a proven i64 lane should remain a type error");
+    assert_eq!(error.kind(), VmErrorKind::TypeMismatch { operation: "add" });
+    assert_eq!(error.source_span, Some(span(0)));
+}
+
+#[test]
 fn linked_scalar_block_fused_branch_selects_the_exact_exit() {
     let plan = ScalarBlockPlan::new(
         Box::new([

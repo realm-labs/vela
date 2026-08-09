@@ -158,6 +158,12 @@ impl CallFrame {
         Ok(())
     }
 
+    /// Exposes the fixed register slice only to verified compact executors.
+    #[inline(always)]
+    pub(crate) fn scalar_registers_mut(&mut self) -> &mut [Value] {
+        self.registers.values_mut()
+    }
+
     #[allow(dead_code)]
     pub(crate) fn heap_roots(&self) -> Vec<GcRef> {
         let mut roots = Vec::new();

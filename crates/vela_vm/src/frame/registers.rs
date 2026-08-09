@@ -124,6 +124,11 @@ impl RegisterFile {
     pub(crate) fn values(&self) -> &[Value] {
         &self.slots
     }
+
+    #[inline(always)]
+    pub(crate) fn values_mut(&mut self) -> &mut [Value] {
+        &mut self.slots
+    }
 }
 
 /// Reports the first out-of-range slot of a rejected window operation.

@@ -2003,8 +2003,11 @@ portable, and linked verification reject invalid handles, duplicate or orphan
 plans, registers, targets, sources, budget-source shapes, operation totals, and
 minimum-size violations.
 
-The focused safe-Rust executor uses checked `CallFrame` reads and writes and
-the canonical checked i64 helpers. It charges each logical operation,
+The focused executor borrows the fixed register slice once and uses two
+private unchecked slot helpers after unlinked, portable, and linked verification
+have proven every register below the owning code object's fixed frame size.
+This is the scalar executor's only unsafe boundary; runtime value tags and the
+canonical checked i64 helpers remain mandatory. It charges each logical operation,
 terminator, and chosen edge in semantic order, reports the exact failing source
 subpoint, preserves earlier writes on a later trap, and records logical
 subpoints only in the existing profiled execution specialization. It does not

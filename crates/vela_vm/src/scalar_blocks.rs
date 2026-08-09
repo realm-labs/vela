@@ -1,8 +1,8 @@
 //! Focused executor for verified compact scalar basic-block plans.
 
 use vela_bytecode::{
-    ChargedScalarTarget, DebugNameId, InstructionOffset, ScalarBlockPlan, ScalarBlockPlanId,
-    ScalarConstant, ScalarExitKind, ScalarOpKind, ScalarSourcePointId,
+    ChargedScalarTarget, DebugNameId, InstructionOffset, Register, ScalarBlockPlan,
+    ScalarBlockPlanId, ScalarConstant, ScalarExitKind, ScalarOpKind, ScalarSourcePointId,
 };
 use vela_common::Span;
 
@@ -32,17 +32,17 @@ pub(crate) fn execute_scalar_block<const CHARGE_BUDGET: bool, const PROFILE: boo
         instruction,
         profiler,
     } = execution;
+    let registers = frame.scalar_registers_mut();
     for operation in &plan.operations {
         profile_subpoint::<PROFILE>(profiler, function, instruction, plan_id, operation.source);
-        let source = source_point(plan, operation.source);
-        charge::<CHARGE_BUDGET>(budget, operation.execution_units, source)?;
-        execute_operation(frame, operation.kind)
-            .map_err(|error| error.with_source_span_if_absent(source))?;
+        charge::<CHARGE_BUDGET>(plan, budget, operation.execution_units, operation.source)?;
+        if let Err(error) = execute_operation(registers, operation.kind) {
+            return Err(error.with_source_span_if_absent(source_point(plan, operation.source)));
+        }
     }
 
     profile_subpoint::<PROFILE>(profiler, function, instruction, plan_id, plan.exit.source);
-    let exit_source = source_point(plan, plan.exit.source);
-    charge::<CHARGE_BUDGET>(budget, plan.exit.execution_units, exit_source)?;
+    charge::<CHARGE_BUDGET>(plan, budget, plan.exit.execution_units, plan.exit.source)?;
     let target = match plan.exit.kind {
         ScalarExitKind::Fallthrough(target) | ScalarExitKind::Jump(target) => target,
         ScalarExitKind::BoolBranch {
@@ -50,14 +50,15 @@ pub(crate) fn execute_scalar_block<const CHARGE_BUDGET: bool, const PROFILE: boo
             passed,
             failed,
         } => {
-            if frame
-                .read_bool(condition, "scalar block branch")
-                .map_err(|error| error.with_source_span_if_absent(exit_source))?
-            {
-                passed
-            } else {
-                failed
-            }
+            let condition = match read_bool(registers, condition, "scalar block branch") {
+                Ok(condition) => condition,
+                Err(error) => {
+                    return Err(
+                        error.with_source_span_if_absent(source_point(plan, plan.exit.source))
+                    );
+                }
+            };
+            if condition { passed } else { failed }
         }
         ScalarExitKind::I64CompareBranch {
             op,
@@ -66,12 +67,22 @@ pub(crate) fn execute_scalar_block<const CHARGE_BUDGET: bool, const PROFILE: boo
             passed,
             failed,
         } => {
-            let lhs = frame
-                .read_i64(lhs, "scalar block compare")
-                .map_err(|error| error.with_source_span_if_absent(exit_source))?;
-            let rhs = frame
-                .read_i64(rhs, "scalar block compare")
-                .map_err(|error| error.with_source_span_if_absent(exit_source))?;
+            let lhs = match read_i64(registers, lhs, "scalar block compare") {
+                Ok(value) => value,
+                Err(error) => {
+                    return Err(
+                        error.with_source_span_if_absent(source_point(plan, plan.exit.source))
+                    );
+                }
+            };
+            let rhs = match read_i64(registers, rhs, "scalar block compare") {
+                Ok(value) => value,
+                Err(error) => {
+                    return Err(
+                        error.with_source_span_if_absent(source_point(plan, plan.exit.source))
+                    );
+                }
+            };
             if i64_ops::compare(lhs, op, rhs) {
                 passed
             } else {
@@ -83,61 +94,116 @@ pub(crate) fn execute_scalar_block<const CHARGE_BUDGET: bool, const PROFILE: boo
     Ok(target.target)
 }
 
-fn execute_operation(frame: &mut CallFrame, operation: ScalarOpKind) -> VmResult<()> {
+#[inline(always)]
+fn execute_operation(registers: &mut [Value], operation: ScalarOpKind) -> VmResult<()> {
     match operation {
-        ScalarOpKind::LoadScalar { dst, value } => frame.write(
+        ScalarOpKind::LoadScalar { dst, value } => write(
+            registers,
             dst,
             match value {
                 ScalarConstant::Bool(value) => Value::Bool(value),
                 ScalarConstant::I64(value) => Value::I64(value),
             },
         ),
-        ScalarOpKind::Move { dst, src } => frame.write(dst, frame.read(src)?),
+        ScalarOpKind::Move { dst, src } => {
+            let value = read(registers, src);
+            write(registers, dst, value)
+        }
         ScalarOpKind::BoolNot { dst, src } => {
-            let value = frame.read_bool(src, "scalar bool not")?;
-            frame.write_bool(dst, !value)
+            let value = read_bool(registers, src, "scalar bool not")?;
+            write(registers, dst, Value::Bool(!value))
         }
         ScalarOpKind::I64Add { dst, lhs, rhs } => {
-            let value = i64_ops::add_raw(frame.read_i64(lhs, "add")?, frame.read_i64(rhs, "add")?)?;
-            frame.write_i64(dst, value)
+            let value = i64_ops::add_raw(
+                read_i64(registers, lhs, "add")?,
+                read_i64(registers, rhs, "add")?,
+            )?;
+            write(registers, dst, Value::I64(value))
         }
         ScalarOpKind::I64Sub { dst, lhs, rhs } => {
-            let value = i64_ops::sub_raw(frame.read_i64(lhs, "sub")?, frame.read_i64(rhs, "sub")?)?;
-            frame.write_i64(dst, value)
+            let value = i64_ops::sub_raw(
+                read_i64(registers, lhs, "sub")?,
+                read_i64(registers, rhs, "sub")?,
+            )?;
+            write(registers, dst, Value::I64(value))
         }
         ScalarOpKind::I64Mul { dst, lhs, rhs } => {
-            let value = i64_ops::mul_raw(frame.read_i64(lhs, "mul")?, frame.read_i64(rhs, "mul")?)?;
-            frame.write_i64(dst, value)
+            let value = i64_ops::mul_raw(
+                read_i64(registers, lhs, "mul")?,
+                read_i64(registers, rhs, "mul")?,
+            )?;
+            write(registers, dst, Value::I64(value))
         }
         ScalarOpKind::I64Rem { dst, lhs, rhs } => {
-            let value = i64_ops::rem_raw(frame.read_i64(lhs, "rem")?, frame.read_i64(rhs, "rem")?)?;
-            frame.write_i64(dst, value)
+            let value = i64_ops::rem_raw(
+                read_i64(registers, lhs, "rem")?,
+                read_i64(registers, rhs, "rem")?,
+            )?;
+            write(registers, dst, Value::I64(value))
         }
         ScalarOpKind::I64AddImm { dst, lhs, imm } => {
-            let value = i64_ops::add_raw(frame.read_i64(lhs, "add")?, imm)?;
-            frame.write_i64(dst, value)
+            let value = i64_ops::add_raw(read_i64(registers, lhs, "add")?, imm)?;
+            write(registers, dst, Value::I64(value))
         }
         ScalarOpKind::I64SubImm { dst, lhs, imm } => {
-            let value = i64_ops::sub_raw(frame.read_i64(lhs, "sub")?, imm)?;
-            frame.write_i64(dst, value)
+            let value = i64_ops::sub_raw(read_i64(registers, lhs, "sub")?, imm)?;
+            write(registers, dst, Value::I64(value))
         }
         ScalarOpKind::I64MulImm { dst, lhs, imm } => {
-            let value = i64_ops::mul_raw(frame.read_i64(lhs, "mul")?, imm)?;
-            frame.write_i64(dst, value)
+            let value = i64_ops::mul_raw(read_i64(registers, lhs, "mul")?, imm)?;
+            write(registers, dst, Value::I64(value))
         }
         ScalarOpKind::I64RemImm { dst, lhs, imm } => {
-            let value = i64_ops::rem_raw(frame.read_i64(lhs, "rem")?, imm)?;
-            frame.write_i64(dst, value)
+            let value = i64_ops::rem_raw(read_i64(registers, lhs, "rem")?, imm)?;
+            write(registers, dst, Value::I64(value))
         }
         ScalarOpKind::I64Compare { dst, op, lhs, rhs } => {
-            let lhs = frame.read_i64(lhs, "compare")?;
-            let rhs = frame.read_i64(rhs, "compare")?;
-            frame.write_bool(dst, i64_ops::compare(lhs, op, rhs))
+            let lhs = read_i64(registers, lhs, "compare")?;
+            let rhs = read_i64(registers, rhs, "compare")?;
+            write(registers, dst, Value::Bool(i64_ops::compare(lhs, op, rhs)))
         }
         ScalarOpKind::I64CompareImm { dst, op, lhs, imm } => {
-            let lhs = frame.read_i64(lhs, "compare")?;
-            frame.write_bool(dst, i64_ops::compare(lhs, op, imm))
+            let lhs = read_i64(registers, lhs, "compare")?;
+            write(registers, dst, Value::Bool(i64_ops::compare(lhs, op, imm)))
         }
+    }
+}
+
+/// Scalar plan verification proves every register is below the owning code
+/// object's register count, and a linked frame is created with exactly that
+/// count. The slice never resizes while a block executes, so unchecked access
+/// is confined to this verified-plan boundary.
+#[inline(always)]
+#[allow(unsafe_code)]
+fn read(registers: &[Value], register: Register) -> Value {
+    // SAFETY: The invariant above is re-established by unlinked, portable, and
+    // linked verification before a plan can execute.
+    unsafe { *registers.get_unchecked(usize::from(register.0)) }
+}
+
+#[inline(always)]
+#[allow(unsafe_code)]
+fn write(registers: &mut [Value], register: Register, value: Value) -> VmResult<()> {
+    // SAFETY: See `read`; the same verified bound applies to destinations.
+    unsafe {
+        *registers.get_unchecked_mut(usize::from(register.0)) = value;
+    }
+    Ok(())
+}
+
+#[inline(always)]
+fn read_i64(registers: &[Value], register: Register, operation: &'static str) -> VmResult<i64> {
+    match read(registers, register) {
+        Value::I64(value) => Ok(value),
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
+    }
+}
+
+#[inline(always)]
+fn read_bool(registers: &[Value], register: Register, operation: &'static str) -> VmResult<bool> {
+    match read(registers, register) {
+        Value::Bool(value) => Ok(value),
+        _ => Err(VmError::new(VmErrorKind::TypeMismatch { operation })),
     }
 }
 
@@ -146,24 +212,36 @@ fn charge_target<const CHARGE_BUDGET: bool>(
     budget: &mut Option<&mut ExecutionBudget>,
     target: ChargedScalarTarget,
 ) -> VmResult<()> {
-    let source = target
-        .budget_source
-        .and_then(|source| source_point(plan, source));
-    charge::<CHARGE_BUDGET>(budget, target.execution_units, source)
+    if CHARGE_BUDGET && target.execution_units != 0 {
+        let result = budget
+            .as_deref_mut()
+            .expect("execution-unit budget mode requires a budget")
+            .charge_execution_units(u64::from(target.execution_units));
+        if let Err(error) = result {
+            let source = target
+                .budget_source
+                .and_then(|source| source_point(plan, source));
+            return Err(error.with_source_span_if_absent(source));
+        }
+    }
+    Ok(())
 }
 
 #[inline(always)]
 fn charge<const CHARGE_BUDGET: bool>(
+    plan: &ScalarBlockPlan,
     budget: &mut Option<&mut ExecutionBudget>,
     units: u32,
-    source: Option<Span>,
+    source: ScalarSourcePointId,
 ) -> VmResult<()> {
     if CHARGE_BUDGET && units != 0 {
-        budget
+        let result = budget
             .as_deref_mut()
             .expect("execution-unit budget mode requires a budget")
-            .charge_execution_units(u64::from(units))
-            .map_err(|error| error.with_source_span_if_absent(source))?;
+            .charge_execution_units(u64::from(units));
+        if let Err(error) = result {
+            return Err(error.with_source_span_if_absent(source_point(plan, source)));
+        }
     }
     Ok(())
 }
