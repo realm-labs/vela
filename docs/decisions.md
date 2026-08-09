@@ -1993,6 +1993,23 @@ coverage without portable MIR, and decode/link independently reject malformed
 coverage. Ordinary program, Service artifact, and deployment surfaces all
 reject versions 1-4; no compatibility reader or plan reconstruction exists.
 
+### Compact Scalar Blocks Use One Checked Executor And Bounded Version 5 Tables
+
+Compact scalar blocks are immutable per-code-object tables addressed by a
+dense `ScalarBlockPlanId` from one `RunScalarBlock` instruction in the existing
+linked frame driver. Operations, fused exits, charged targets, and source
+subpoints have explicit per-block and per-code format limits. Unlinked,
+portable, and linked verification reject invalid handles, duplicate or orphan
+plans, registers, targets, sources, budget-source shapes, operation totals, and
+minimum-size violations.
+
+The focused safe-Rust executor uses checked `CallFrame` reads and writes and
+the canonical checked i64 helpers. It charges each logical operation,
+terminator, and chosen edge in semantic order, reports the exact failing source
+subpoint, preserves earlier writes on a later trap, and records logical
+subpoints only in the existing profiled execution specialization. It does not
+own calls, heap work, HostAccess, suspension, or another frame loop.
+
 ### Package-Qualified Script Identity
 
 Script module identity is `PackageId + ModulePath`, and every stable script

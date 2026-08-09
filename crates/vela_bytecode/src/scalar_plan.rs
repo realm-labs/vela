@@ -281,6 +281,54 @@ pub(crate) fn verify_scalar_block_plans(
     Ok(())
 }
 
+pub(crate) fn verify_unlinked_scalar_block_references(
+    code: &crate::UnlinkedCodeObject,
+) -> Result<(), &'static str> {
+    let references = code.instructions.iter().filter_map(|instruction| {
+        if let crate::UnlinkedInstructionKind::RunScalarBlock { plan } = instruction.kind {
+            Some((plan, instruction.execution_units))
+        } else {
+            None
+        }
+    });
+    verify_scalar_block_references(code.scalar_blocks.len(), references)
+}
+
+pub(crate) fn verify_linked_scalar_block_references(
+    code: &crate::LinkedCodeObject,
+) -> Result<(), &'static str> {
+    let references = code.instructions.iter().filter_map(|instruction| {
+        if let crate::linked::InstructionKind::RunScalarBlock { plan } = instruction.kind {
+            Some((plan, instruction.execution_units))
+        } else {
+            None
+        }
+    });
+    verify_scalar_block_references(code.scalar_blocks.len(), references)
+}
+
+fn verify_scalar_block_references(
+    plan_count: usize,
+    references: impl Iterator<Item = (ScalarBlockPlanId, u32)>,
+) -> Result<(), &'static str> {
+    let mut referenced = BTreeSet::new();
+    for (plan, instruction_units) in references {
+        if plan.index() >= plan_count {
+            return Err("scalar block plan handle is out of bounds");
+        }
+        if instruction_units != 0 {
+            return Err("scalar block entry carries duplicate instruction budget units");
+        }
+        if !referenced.insert(plan) {
+            return Err("scalar block plan is referenced by more than one instruction");
+        }
+    }
+    if referenced.len() != plan_count {
+        return Err("scalar block plan table contains an unreferenced plan");
+    }
+    Ok(())
+}
+
 fn verify_exit(
     exit: ScalarExitKind,
     register_count: u16,
@@ -455,6 +503,39 @@ mod tests {
         assert_eq!(
             verify_scalar_block_plans(&[source_point], 2, 4),
             Err("scalar block contains an unreferenced source point")
+        );
+    }
+
+    #[test]
+    fn scalar_plan_reference_verifier_rejects_missing_duplicate_and_orphan_handles() {
+        let mut code = crate::UnlinkedCodeObject::new("main", 2);
+        code.scalar_blocks.push(valid_plan());
+        assert_eq!(
+            verify_unlinked_scalar_block_references(&code),
+            Err("scalar block plan table contains an unreferenced plan")
+        );
+
+        code.push_instruction(crate::UnlinkedInstruction::new(
+            crate::UnlinkedInstructionKind::RunScalarBlock {
+                plan: ScalarBlockPlanId::new(1),
+            },
+        ));
+        assert_eq!(
+            verify_unlinked_scalar_block_references(&code),
+            Err("scalar block plan handle is out of bounds")
+        );
+
+        code.instructions[0].kind = crate::UnlinkedInstructionKind::RunScalarBlock {
+            plan: ScalarBlockPlanId::new(0),
+        };
+        code.push_instruction(crate::UnlinkedInstruction::new(
+            crate::UnlinkedInstructionKind::RunScalarBlock {
+                plan: ScalarBlockPlanId::new(0),
+            },
+        ));
+        assert_eq!(
+            verify_unlinked_scalar_block_references(&code),
+            Err("scalar block plan is referenced by more than one instruction")
         );
     }
 }

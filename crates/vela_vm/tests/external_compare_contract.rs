@@ -740,6 +740,7 @@ fn opcode_label(kind: &InstructionKind) -> &'static str {
         InstructionKind::I64RemImm { .. } => "I64RemImm",
         InstructionKind::I64CmpImm { .. } => "I64CmpImm",
         InstructionKind::I64CmpImmJumpIfFalse { .. } => "I64CmpImmJumpIfFalse",
+        InstructionKind::RunScalarBlock { .. } => "RunScalarBlock",
         InstructionKind::BinaryIntLiteral { op, side, .. } => binary_int_literal_label(*op, *side),
         InstructionKind::BinaryFloatLiteral { op, side, .. } => {
             binary_float_literal_label(*op, *side)

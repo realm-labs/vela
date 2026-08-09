@@ -96,6 +96,7 @@ macro_rules! non_cache_instructions {
             | Self::I64RemImm { .. }
             | Self::I64CmpImm { .. }
             | Self::I64CmpImmJumpIfFalse { .. }
+            | Self::RunScalarBlock { .. }
             | Self::BinaryIntLiteral { .. }
             | Self::BinaryFloatLiteral { .. }
             | Self::GuardType { .. }

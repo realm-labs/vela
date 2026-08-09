@@ -1262,6 +1262,24 @@ impl Vm {
                         ip = target.0;
                     }
                 }
+                InstructionKind::RunScalarBlock { plan } => {
+                    let scalar_plan = code
+                        .scalar_blocks
+                        .get(plan.index())
+                        .ok_or_else(|| crate::scalar_blocks::missing_plan_error(*plan))?;
+                    ip = crate::scalar_blocks::execute_scalar_block::<CHARGE_BUDGET, PROFILE>(
+                        crate::scalar_blocks::ScalarBlockExecution {
+                            plan_id: *plan,
+                            plan: scalar_plan,
+                            function: code.debug_name,
+                            instruction: instruction_offset,
+                            profiler: call.bytecode_profiler,
+                        },
+                        frame,
+                        budget,
+                    )?
+                    .0;
+                }
                 InstructionKind::GuardType { src, guard } => {
                     let mut guard_context =
                         runtime_type_guards::GuardExecutionContext::new_with_host(

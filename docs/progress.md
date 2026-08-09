@@ -30,7 +30,13 @@ outer dispatches, improves its focused scalar row by 8.86% and the complete
 scalar row by 10.30%, and leaves the five-row geometric mean 1.91% faster than
 Batch A. Portable program, Service artifact, and deployment formats are now v5
 and reject versions 1-4. Batch D is next: compact eligible three-or-more-op
-scalar regions through the same verified coverage boundary.
+scalar regions through the same verified coverage boundary. Its bounded v5
+op/exit/source/charged-target tables and `RunScalarBlock` entry now exist and
+round-trip through unlinked, portable, and linked forms. The focused safe-Rust
+executor preserves checked tags/arithmetic, partial writes, per-subpoint
+profiling, exact ordered budget charges, fused exits, and trap spans. Production
+scalar-region selection remains ordinary until the next Batch D checkpoint
+proves and emits eligible regions.
 
 The Rust/Vela interop checkpoint is complete under the
 [final interop and explicit-release hard switch](rust-vela-interop-final-shape-hard-switch-plan.md).

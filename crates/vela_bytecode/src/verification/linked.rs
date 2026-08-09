@@ -227,6 +227,13 @@ fn verify_linked_code_object_with_context(
             VerificationErrorKind::InvalidSelectedPlan { detail },
         )
     })?;
+    crate::scalar_plan::verify_linked_scalar_block_references(code).map_err(|detail| {
+        error(
+            function,
+            None,
+            VerificationErrorKind::InvalidSelectedPlan { detail },
+        )
+    })?;
     verify_linked_cache_site_layout(
         function,
         code,
@@ -301,6 +308,7 @@ fn verify_linked_instruction(
             verify_linked_register(function, instruction_index, code, *lhs)?;
             verify_linked_jump(function, instruction_index, code, *target)
         }
+        InstructionKind::RunScalarBlock { .. } => Ok(()),
         InstructionKind::BinaryIntLiteral { dst, value, .. }
         | InstructionKind::BinaryFloatLiteral { dst, value, .. } => {
             verify_linked_register(function, instruction_index, code, *dst)?;

@@ -60,6 +60,7 @@ mod reflection_values;
 mod resumable_callbacks;
 mod runtime_checks;
 mod runtime_type_guards;
+mod scalar_blocks;
 mod script_aggregate_construction;
 mod script_builtin_methods;
 mod script_function_calls;
@@ -410,6 +411,15 @@ pub trait VmBytecodeProfiler {
     }
 
     fn record_instruction(&self, _function: DebugNameId, _offset: InstructionOffset) {}
+
+    fn record_scalar_subpoint(
+        &self,
+        _function: DebugNameId,
+        _offset: InstructionOffset,
+        _plan: vela_bytecode::ScalarBlockPlanId,
+        _source: vela_bytecode::ScalarSourcePointId,
+    ) {
+    }
 }
 
 pub(crate) fn validate_inline_cache_layout(

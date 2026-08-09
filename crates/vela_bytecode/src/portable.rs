@@ -303,6 +303,8 @@ fn validate_selected_plans(payload: &PortableProgramPayload) -> Result<(), Porta
             code.instructions.len(),
         )
         .map_err(|detail| PortableArtifactError::SelectedPlan(detail.to_owned()))?;
+        crate::scalar_plan::verify_unlinked_scalar_block_references(code)
+            .map_err(|detail| PortableArtifactError::SelectedPlan(detail.to_owned()))?;
         for nested in &code.nested_functions {
             validate(nested)?;
         }
@@ -585,6 +587,11 @@ fn main(value: Any) {
             .find(|code| code.name == "main")
             .expect("main function");
         main.scalar_blocks.push(portable_scalar_plan());
+        main.push_instruction(crate::UnlinkedInstruction::new(
+            crate::UnlinkedInstructionKind::RunScalarBlock {
+                plan: crate::ScalarBlockPlanId::new(0),
+            },
+        ));
 
         let encoded = artifact.encode().expect("encode scalar plan");
         let decoded = PortableProgramArtifact::decode(&encoded).expect("decode scalar plan");
@@ -623,6 +630,44 @@ fn main(value: Any) {
             artifact.encode(),
             Err(PortableArtifactError::SelectedPlan(message))
                 if message.contains("count exceeds")
+        ));
+    }
+
+    #[test]
+    fn portable_v5_rejects_checksum_valid_invalid_scalar_plan_handle() {
+        let compiled = crate::compiler::compile_test_program(
+            SourceId::new(81),
+            "fn main(value: i64) -> i64 { let next = value + 1; return next; }",
+        )
+        .expect("compile scalar program");
+        let mut artifact = PortableProgramArtifact::from_compiled(compiled)
+            .expect("portable scalar-plan artifact");
+        let main = artifact
+            .payload
+            .functions
+            .iter_mut()
+            .find(|code| code.name == "main")
+            .expect("main function");
+        main.scalar_blocks.push(portable_scalar_plan());
+        main.push_instruction(crate::UnlinkedInstruction::new(
+            crate::UnlinkedInstructionKind::RunScalarBlock {
+                plan: crate::ScalarBlockPlanId::new(1),
+            },
+        ));
+
+        let payload = codec()
+            .serialize(&artifact.payload)
+            .expect("serialize malformed scalar plan");
+        let mut encoded = Vec::new();
+        encoded.extend_from_slice(MAGIC);
+        encoded.extend_from_slice(&FORMAT_VERSION.to_le_bytes());
+        encoded.extend_from_slice(&(payload.len() as u64).to_le_bytes());
+        encoded.extend_from_slice(blake3::hash(&payload).as_bytes());
+        encoded.extend_from_slice(&payload);
+        assert!(matches!(
+            PortableProgramArtifact::decode(&encoded),
+            Err(PortableArtifactError::SelectedPlan(message))
+                if message.contains("handle is out of bounds")
         ));
     }
 

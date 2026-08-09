@@ -139,6 +139,7 @@ mod reflection_modules;
 mod reflection_permissions;
 mod reflection_values;
 mod runtime_semantics;
+mod scalar_blocks;
 mod scalar_numeric_ops;
 mod script_methods;
 mod standard_array_id_dispatch;

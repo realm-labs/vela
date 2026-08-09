@@ -514,6 +514,13 @@ fn verify_code_object_with_scope(
             VerificationErrorKind::InvalidSelectedPlan { detail },
         )
     })?;
+    crate::scalar_plan::verify_unlinked_scalar_block_references(code).map_err(|detail| {
+        error(
+            function,
+            None,
+            VerificationErrorKind::InvalidSelectedPlan { detail },
+        )
+    })?;
     verify_cache_site_layout(function, code, cache_scope)?;
     for nested in &code.nested_functions {
         verify_code_object_with_scope(nested, &nested.name, closure_scope, cache_scope)?;
@@ -586,6 +593,7 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *lhs)?;
             verify_jump(function, instruction_index, code, *target)
         }
+        UnlinkedInstructionKind::RunScalarBlock { .. } => Ok(()),
         UnlinkedInstructionKind::BinaryIntLiteral { dst, value, .. }
         | UnlinkedInstructionKind::BinaryFloatLiteral { dst, value, .. } => {
             verify_register(function, instruction_index, code, *dst)?;

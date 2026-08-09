@@ -776,6 +776,9 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 imm: *imm,
                 target: *target,
             },
+            UnlinkedInstructionKind::RunScalarBlock { plan } => {
+                InstructionKind::RunScalarBlock { plan: *plan }
+            }
             UnlinkedInstructionKind::BinaryIntLiteral {
                 dst,
                 op,
