@@ -6,6 +6,7 @@ mod version;
 #[path = "../benches/external_compare/workloads.rs"]
 mod workloads;
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 
 use mlua::{Function, Lua};
@@ -13,7 +14,7 @@ use rhai::{Engine, Scope};
 
 use crate::test_compile_support::compile_test_program_with_registry;
 use vela_bytecode::linked::InstructionKind;
-use vela_bytecode::{BinaryLiteralOp, BinaryLiteralSide};
+use vela_bytecode::{BinaryLiteralOp, BinaryLiteralSide, DebugNameId, InstructionOffset};
 use vela_bytecode::{Linker, UnlinkedProgram};
 use vela_common::ScalarValue;
 use vela_common::SourceId;
@@ -21,8 +22,9 @@ use vela_mir::{
     MirBinaryOp, MirBudgetClass, MirFunction, MirFunctionAnalyses, MirPlace, MirStatementKind,
     MirTerminatorKind,
 };
-use vela_vm::Vm;
+use vela_vm::budget::ExecutionBudget;
 use vela_vm::owned_value::OwnedValue;
+use vela_vm::{HostExecution, LinkedProgramHostBudgetCall, Vm, VmBytecodeProfiler};
 
 #[test]
 fn external_compare_workload_names_are_unique() {
@@ -137,27 +139,28 @@ fn scalar_workloads_have_reproducible_opcode_count_reports() {
 fn lead_workloads_have_reproducible_verified_mir_inventories() {
     let vm = Vm::new().with_standard_natives();
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let mut mismatches = Vec::new();
 
     for (workload_name, expected) in [
         (
             "scalar_branch_loop",
-            "verified_mir_inventory workload=scalar_branch_loop functions=2 blocks=14 statements=37 terminators=14 cfg_edges=16 budget_sites=7 budget_classes={\"call\": 1, \"dynamic_work\": 1, \"iterator_step\": 2, \"loop_backedge\": 3} safepoints=1 trap_points=10 source_points=51 outer_dispatches=58 code_bytes=7424 candidate_sequences={\"bytecode:i64_cmp_imm+jump_if_false\": 2, \"mir:i64_compare_immediate+branch\": 2, \"mir:scalar_run_len_3\": 1, \"mir:scalar_run_len_5_plus\": 5} checksum=23880",
+            "verified_mir_inventory workload=scalar_branch_loop functions=2 blocks=14 statements=37 terminators=14 cfg_edges=16 budget_sites=7 budget_classes={\"call\": 1, \"dynamic_work\": 1, \"iterator_step\": 2, \"loop_backedge\": 3} safepoints=1 trap_points=10 source_points=51 outer_dispatches=58 code_bytes=7424 candidate_sequences={\"bytecode:i64_cmp_imm+jump_if_false\": 2, \"mir:i64_compare_immediate+branch\": 2, \"mir:scalar_run_len_3\": 1, \"mir:scalar_run_len_5_plus\": 5} profiled_dispatches=7787 profiled_candidate_sequences={\"bytecode:i64_cmp_imm+jump_if_false\": 606} checksum=23880",
         ),
         (
             "range_iteration",
-            "verified_mir_inventory workload=range_iteration functions=2 blocks=14 statements=35 terminators=14 cfg_edges=16 budget_sites=10 budget_classes={\"call\": 1, \"dynamic_work\": 1, \"iterator_step\": 4, \"loop_backedge\": 4} safepoints=1 trap_points=6 source_points=49 outer_dispatches=63 code_bytes=8064 candidate_sequences={\"mir:scalar_run_len_4\": 2, \"mir:scalar_run_len_5_plus\": 4} checksum=134080",
+            "verified_mir_inventory workload=range_iteration functions=2 blocks=14 statements=35 terminators=14 cfg_edges=16 budget_sites=10 budget_classes={\"call\": 1, \"dynamic_work\": 1, \"iterator_step\": 4, \"loop_backedge\": 4} safepoints=1 trap_points=6 source_points=49 outer_dispatches=63 code_bytes=8064 candidate_sequences={\"mir:scalar_run_len_4\": 2, \"mir:scalar_run_len_5_plus\": 4} profiled_dispatches=23947 profiled_candidate_sequences={} checksum=134080",
         ),
         (
             "function_calls",
-            "verified_mir_inventory workload=function_calls functions=4 blocks=10 statements=29 terminators=10 cfg_edges=8 budget_sites=11 budget_classes={\"call\": 3, \"dynamic_work\": 4, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=3 trap_points=10 source_points=39 outer_dispatches=45 code_bytes=5760 candidate_sequences={\"mir:scalar_run_len_2\": 1, \"mir:scalar_run_len_3\": 1, \"mir:scalar_run_len_5_plus\": 2} checksum=233764",
+            "verified_mir_inventory workload=function_calls functions=4 blocks=10 statements=29 terminators=10 cfg_edges=8 budget_sites=11 budget_classes={\"call\": 3, \"dynamic_work\": 4, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=3 trap_points=10 source_points=39 outer_dispatches=45 code_bytes=5760 candidate_sequences={\"mir:scalar_run_len_2\": 1, \"mir:scalar_run_len_3\": 1, \"mir:scalar_run_len_5_plus\": 2} profiled_dispatches=9645 profiled_candidate_sequences={} checksum=233764",
         ),
         (
             "recursive_countdown",
-            "verified_mir_inventory workload=recursive_countdown functions=3 blocks=12 statements=27 terminators=12 cfg_edges=11 budget_sites=10 budget_classes={\"call\": 3, \"dynamic_work\": 3, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=3 trap_points=8 source_points=39 outer_dispatches=44 code_bytes=5632 candidate_sequences={\"mir:scalar_run_len_2\": 2, \"mir:scalar_run_len_5_plus\": 2} checksum=3240",
+            "verified_mir_inventory workload=recursive_countdown functions=3 blocks=12 statements=27 terminators=12 cfg_edges=11 budget_sites=10 budget_classes={\"call\": 3, \"dynamic_work\": 3, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=3 trap_points=8 source_points=39 outer_dispatches=44 code_bytes=5632 candidate_sequences={\"mir:scalar_run_len_2\": 2, \"mir:scalar_run_len_5_plus\": 2} profiled_dispatches=2453 profiled_candidate_sequences={} checksum=3240",
         ),
         (
             "float_math_loop",
-            "verified_mir_inventory workload=float_math_loop functions=2 blocks=8 statements=34 terminators=8 cfg_edges=8 budget_sites=7 budget_classes={\"call\": 2, \"dynamic_work\": 1, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=2 trap_points=9 source_points=42 outer_dispatches=48 code_bytes=6144 candidate_sequences={\"mir:scalar_run_len_5_plus\": 3} checksum=39210",
+            "verified_mir_inventory workload=float_math_loop functions=2 blocks=8 statements=34 terminators=8 cfg_edges=8 budget_sites=7 budget_classes={\"call\": 2, \"dynamic_work\": 1, \"iterator_step\": 2, \"loop_backedge\": 2} safepoints=2 trap_points=9 source_points=42 outer_dispatches=48 code_bytes=6144 candidate_sequences={\"mir:scalar_run_len_5_plus\": 3} profiled_dispatches=9781 profiled_candidate_sequences={} checksum=39210",
         ),
     ] {
         let inventory = verified_mir_inventory(&vm, registry.compile_view(), workload_name);
@@ -177,9 +180,15 @@ fn lead_workloads_have_reproducible_verified_mir_inventories() {
             "{workload_name}: {inventory:#?}"
         );
         assert!(inventory.checksum > 0, "{workload_name}: {inventory:#?}");
-        assert_eq!(inventory.to_string(), expected);
         eprintln!("{inventory}");
+        let actual = inventory.to_string();
+        if actual != expected {
+            mismatches.push(format!(
+                "{workload_name}:\nactual: {actual}\nexpected: {expected}"
+            ));
+        }
     }
+    assert!(mismatches.is_empty(), "{}", mismatches.join("\n\n"));
 }
 
 #[test]
@@ -378,6 +387,8 @@ struct VerifiedMirInventory {
     outer_dispatches: usize,
     code_bytes: usize,
     candidate_sequences: BTreeMap<&'static str, usize>,
+    profiled_dispatches: u64,
+    profiled_candidate_sequences: BTreeMap<&'static str, u64>,
     checksum: i64,
 }
 
@@ -389,7 +400,8 @@ impl std::fmt::Display for VerifiedMirInventory {
                 "verified_mir_inventory workload={} functions={} blocks={} statements={} ",
                 "terminators={} cfg_edges={} budget_sites={} budget_classes={:?} ",
                 "safepoints={} trap_points={} source_points={} outer_dispatches={} ",
-                "code_bytes={} candidate_sequences={:?} checksum={}"
+                "code_bytes={} candidate_sequences={:?} profiled_dispatches={} ",
+                "profiled_candidate_sequences={:?} checksum={}"
             ),
             self.workload,
             self.functions,
@@ -405,6 +417,8 @@ impl std::fmt::Display for VerifiedMirInventory {
             self.outer_dispatches,
             self.code_bytes,
             self.candidate_sequences,
+            self.profiled_dispatches,
+            self.profiled_candidate_sequences,
             self.checksum,
         )
     }
@@ -422,10 +436,12 @@ fn verified_mir_inventory(
         .unwrap_or_else(|error| panic!("{workload_name} should compile: {error:?}"));
     let linked = link_program_for_vm(vm, &program)
         .unwrap_or_else(|error| panic!("{workload_name} should link: {error}"));
-    let checksum = run_vela_workload(vm, registry, workload, 2)
+    let profiler = RecordingBytecodeProfiler::default();
+    let checksum = run_profiled_workload(vm, &linked, &profiler, 2)
         .unwrap_or_else(|error| panic!("{workload_name} should run: {error}"));
     let mut inventory = VerifiedMirInventory {
         workload: workload.name,
+        profiled_dispatches: profiler.total_hits(),
         checksum,
         ..VerifiedMirInventory::default()
     };
@@ -444,7 +460,7 @@ fn verified_mir_inventory(
         inventory.outer_dispatches += function.instructions.len();
         inventory.code_bytes +=
             function.instructions.len() * std::mem::size_of::<vela_bytecode::Instruction>();
-        for pair in function.instructions.windows(2) {
+        for (offset, pair) in function.instructions.windows(2).enumerate() {
             if matches!(pair[0].kind, InstructionKind::I64CmpImm { .. })
                 && matches!(pair[1].kind, InstructionKind::JumpIfFalse { .. })
             {
@@ -452,10 +468,73 @@ fn verified_mir_inventory(
                     .candidate_sequences
                     .entry("bytecode:i64_cmp_imm+jump_if_false")
                     .or_insert(0) += 1;
+                *inventory
+                    .profiled_candidate_sequences
+                    .entry("bytecode:i64_cmp_imm+jump_if_false")
+                    .or_insert(0) +=
+                    profiler.hit_count(function.debug_name, InstructionOffset(offset));
             }
         }
     }
     inventory
+}
+
+#[derive(Default)]
+struct RecordingBytecodeProfiler {
+    hits: RefCell<BTreeMap<(DebugNameId, InstructionOffset), u64>>,
+}
+
+impl RecordingBytecodeProfiler {
+    fn hit_count(&self, function: DebugNameId, offset: InstructionOffset) -> u64 {
+        self.hits
+            .borrow()
+            .get(&(function, offset))
+            .copied()
+            .unwrap_or_default()
+    }
+
+    fn total_hits(&self) -> u64 {
+        self.hits.borrow().values().copied().sum()
+    }
+}
+
+impl VmBytecodeProfiler for RecordingBytecodeProfiler {
+    fn record_instruction(&self, function: DebugNameId, offset: InstructionOffset) {
+        *self
+            .hits
+            .borrow_mut()
+            .entry((function, offset))
+            .or_default() += 1;
+    }
+}
+
+fn run_profiled_workload(
+    vm: &Vm,
+    linked: &std::sync::Arc<vela_bytecode::LinkedArtifact>,
+    profiler: &RecordingBytecodeProfiler,
+    iterations: i64,
+) -> Result<i64, Box<dyn std::error::Error>> {
+    let mut adapter = vela_host::mock::MockStateAdapter::default();
+    let mut access = vela_host::access::HostAccess;
+    let mut host = HostExecution {
+        adapter: &mut adapter,
+        access: &mut access,
+        state_values: None,
+    };
+    let mut budget = ExecutionBudget::unbounded();
+    let value = vm.run_linked_program_host_budget_call(LinkedProgramHostBudgetCall {
+        artifact: linked,
+        entry: "main",
+        args: &[OwnedValue::Scalar(ScalarValue::I64(iterations))],
+        host: &mut host,
+        budget: &mut budget,
+        inline_caches: None,
+        bytecode_profiler: Some(profiler),
+    })?;
+    match value {
+        OwnedValue::Scalar(ScalarValue::I64(value)) => Ok(value),
+        other => Err(format!("expected i64 checksum, got {other:?}").into()),
+    }
 }
 
 fn inventory_function(

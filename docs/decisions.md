@@ -1936,6 +1936,26 @@ the same retained MIR for machine code. Neither follow-up may reconstruct facts
 from bytecode layout, restore source/HIR queries in the backend, or weaken the
 execution-unit schedule.
 
+### Verified-MIR Interpreter Selection Starts With A Bounded Branch Recipe
+
+Fresh quiet-machine Batch A evidence selects the existing
+`I64CmpImmJumpIfFalse` physical shape as the first MIR-native vertical proof,
+not as the expected source of the track's full performance gain. Two verified
+MIR sites in `scalar_branch_loop` execute 606 times across 7,787 profiled linked
+dispatches for two workload iterations, so fusing each compare/branch pair
+predicts 606 eliminated dispatches. Selection must prove the recipe from MIR
+definition/use, type, liveness, terminator, budget, and source facts; emitted
+bytecode adjacency remains forbidden as an input.
+
+Profiles place 99.6% of `range_iteration` samples in the frame driver and its
+verified MIR contains six scalar runs of length four or greater. The primary
+throughput lever therefore remains compact scalar blocks and eligible natural
+loops after the selector and coverage verifier exist. Function and recursive
+call fusion remains deferred because those profiles expose frame preparation,
+copying, allocation, and recycling costs outside a bounded scalar recipe. The
+full evidence and invalidated-capture policy are archived in
+[verified-mir-interpreter-batch-a-evidence-2026-08-09.md](archive/verified-mir-interpreter-batch-a-evidence-2026-08-09.md).
+
 ### Package-Qualified Script Identity
 
 Script module identity is `PackageId + ModulePath`, and every stable script
