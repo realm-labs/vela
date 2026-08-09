@@ -1,0 +1,29 @@
+# captured_at_utc=20260809T035306Z
+# commit=99b8e91531b418abe71b5bda7357ceea11ca6594
+# branch=master
+# worktree=clean
+# rustc=rustc 1.97.1 (8bab26f4f 2026-07-14)
+# cargo=cargo 1.97.1 (c980f4866 2026-06-30)
+# platform=macOS-26.5.2-arm64-arm-64bit-Mach-O
+# machine=arm64
+# cpu=Apple M1 Max
+# logical_cpus=10
+# load_average_before=9.91,12.88,13.11
+# elapsed_seconds=4.368
+# exit_status=0
+# command=cargo bench -p vela_engine --bench actor_concurrency
+
+   Compiling vela_engine v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_engine)
+    Finished `bench` profile [optimized] target(s) in 2.03s
+     Running benches/actor_concurrency.rs (target/release/deps/actor_concurrency-2de5aa05853cce0d)
+suite=actor_concurrency sampling=stable allocator=system available_workers=10 hot_calls_per_worker=5000 cold_actors_per_worker=128 contention_calls_per_worker=2000
+concurrency_result mode=pending_overlap workers=2 calls=2 throughput_per_sec=51779.935 p50_ns=38625 p95_ns=38625 p99_ns=38625 allocation_count_source=actor_memory_calibration lock_wait_ns=0 lock_wait_source=workload_has_no_mutable_cache_site independent_result=42 pending_result=41 overlapped=true
+concurrency_result mode=cache_hot workers=1 calls=5000 throughput_per_sec=111901.048 p50_ns=8208 p95_ns=11291 p99_ns=11792 allocation_count_source=actor_memory_calibration lock_wait_ns=0 lock_wait_source=workload_has_no_mutable_cache_site checksum=12712500
+concurrency_result mode=cache_cold workers=1 calls=128 throughput_per_sec=115284.988 p50_ns=7250 p95_ns=7667 p99_ns=19708 allocation_count_source=actor_memory_calibration lock_wait_ns=0 lock_wait_source=workload_has_no_mutable_cache_site checksum=5376
+contention_result family=dynamic_method workers=1 calls=2000 shared_throughput_per_sec=49375.249 isolated_throughput_per_sec=50098.475 shared_vs_isolated_pct=-1.444 shared_p95_ns=21250 isolated_p95_ns=20708 shared_checksum=64000 isolated_checksum=64000 lock_wait_ns=unmeasured contention_signal=shared_vs_isolated_execution_data
+concurrency_result mode=cache_hot workers=2 calls=10000 throughput_per_sec=172621.883 p50_ns=8792 p95_ns=24833 p99_ns=29750 allocation_count_source=actor_memory_calibration lock_wait_ns=0 lock_wait_source=workload_has_no_mutable_cache_site checksum=25425000
+concurrency_result mode=cache_cold workers=2 calls=256 throughput_per_sec=170685.556 p50_ns=9625 p95_ns=13250 p99_ns=23791 allocation_count_source=actor_memory_calibration lock_wait_ns=0 lock_wait_source=workload_has_no_mutable_cache_site checksum=10752
+contention_result family=dynamic_method workers=2 calls=4000 shared_throughput_per_sec=39312.909 isolated_throughput_per_sec=39194.504 shared_vs_isolated_pct=0.302 shared_p95_ns=80209 isolated_p95_ns=77500 shared_checksum=128000 isolated_checksum=128000 lock_wait_ns=unmeasured contention_signal=shared_vs_isolated_execution_data
+concurrency_result mode=cache_hot workers=10 calls=50000 throughput_per_sec=451143.932 p50_ns=16334 p95_ns=40500 p99_ns=64542 allocation_count_source=actor_memory_calibration lock_wait_ns=0 lock_wait_source=workload_has_no_mutable_cache_site checksum=127125000
+concurrency_result mode=cache_cold workers=10 calls=1280 throughput_per_sec=346953.988 p50_ns=15250 p95_ns=44333 p99_ns=87709 allocation_count_source=actor_memory_calibration lock_wait_ns=0 lock_wait_source=workload_has_no_mutable_cache_site checksum=53760
+contention_result family=dynamic_method workers=10 calls=20000 shared_throughput_per_sec=42963.831 isolated_throughput_per_sec=43901.099 shared_vs_isolated_pct=-2.135 shared_p95_ns=444917 isolated_p95_ns=381459 shared_checksum=640000 isolated_checksum=640000 lock_wait_ns=unmeasured contention_signal=shared_vs_isolated_execution_data
