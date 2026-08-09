@@ -178,7 +178,9 @@ fn deployment_bundle_build_load_dry_run_and_exact_base_diagnostics() {
 #[service_impl(test::calculator)]
 impl CalculatorHotfix {
     fn adjust(context, value) {
-        return value + 20;
+        let total = 0;
+        for item in 0..3 { total += item + 1 - 1; }
+        return value + 20 + total - total;
     }
 }
 "#;
@@ -188,6 +190,7 @@ impl CalculatorHotfix {
     let artifact = engine
         .link_compiled_program(engine.compile_source(source).expect("compiled source"))
         .expect("linked artifact");
+    assert!(artifact_has_selected_scalar_loop(&artifact));
     let second_artifact = engine
         .link_compiled_program(engine.compile_source(source).expect("recompiled source"))
         .expect("relinked artifact");
@@ -666,7 +669,9 @@ fn portable_service_bundle_round_trips_binds_and_executes_without_source_compila
     let base = services.pin();
     let source = r#"
 async fn portable_worker(value: i64) -> i64 {
-    return value + 1;
+    let total = 0;
+    for item in 0..3 { total += item + 1 - 1; }
+    return value + 1 + total - total;
 }
 
 #[service_impl(test::calculator)]
@@ -752,12 +757,17 @@ impl AuditPortableHotfix {
         panic!("portable Service artifact should preserve one task target");
     };
     assert!(
+        loaded.artifact().program().functions().any(|(_, code)| code
+            .scalar_blocks
+            .iter()
+            .any(|plan| plan.range_loop.is_some())),
+        "portable Service artifact should preserve selected physical coverage"
+    );
+    assert!(
         loaded
             .artifact()
-            .program()
-            .functions()
-            .any(|(_, code)| !code.selected_units.is_empty()),
-        "portable Service artifact should preserve selected physical coverage"
+            .required_features()
+            .contains(vela_bytecode::ArtifactFeatureSet::host_scoped_tasks())
     );
     assert_eq!(
         task_target.operation,
@@ -800,7 +810,9 @@ impl AuditPortableHotfix {
 #[service_impl(test::calculator)]
 impl CalculatorPortableDelta {
     fn adjust(context: RequestContext, value: i64) -> i64 {
-        return value + 40;
+        let total = 0;
+        for item in 0..4 { total += item + 1 - 1; }
+        return value + 40 + total - total;
     }
 }
 "#;
@@ -854,6 +866,7 @@ impl CalculatorPortableDelta {
     .expect("decode exact-base Delta")
     .load(&engine, services.schema(), host_schema_hash)
     .expect("load exact-base Delta");
+    assert!(artifact_has_selected_scalar_loop(delta.artifact()));
     assert!(services.dry_run_bundle(&active, &delta).accepted());
     let candidate = services
         .stage_bundle(
