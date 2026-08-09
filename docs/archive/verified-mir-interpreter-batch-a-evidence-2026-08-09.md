@@ -191,6 +191,11 @@ coverage verifier first. Batch D should prioritize the long pure scalar regions
 in `range_iteration`; Batch E may then internalize only eligible natural loops
 while charging every taken backedge. Call fusion remains deferred.
 
+Repository inventory also found that all three portable surfaces already use
+format version 4 for static HostRef collection-iteration metadata. The plan's
+stale `3 -> 4` reservation is corrected to an atomic `4 -> 5` hard switch;
+selected-plan artifacts will reject versions 1-4 without compatibility readers.
+
 Batch A is not complete until the engine guardrail rows, artifact bytes,
 compile time, peak compile RSS, and Runtime/Actor memory are captured and the
 complete stable-checksum/geometric-mean report is archived. No runtime or

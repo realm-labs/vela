@@ -8,7 +8,8 @@
 > **Compatibility policy:** pre-release hard switch. Internal instruction,
 > verifier, artifact, profiler, and frame-location shapes may change without a
 > compatibility layer. The first portable plan representation raises ordinary
-> and Service artifact formats to version 4 and rejects versions 1-3.
+> and Service artifact formats to version 5 and rejects versions 1-4. Version 4
+> is already occupied by static HostRef collection-iteration metadata.
 >
 > **Supersedes:** the remaining execution work in
 > [typed-scalar-bytecode-optimization-plan.md](typed-scalar-bytecode-optimization-plan.md).
@@ -64,9 +65,9 @@ fallback for semantically ineligible code, but expose no production flag that
 selects the pre-optimization backend.
 
 When selected plans become portable, atomically raise the ordinary program,
-Service artifact, and Service deployment bundle formats to version 4. Encode
+Service artifact, and Service deployment bundle formats to version 5. Encode
 all execution plans and verification sidecars required to load without MIR;
-reject versions 1-3 without inference or compatibility readers. Plans, caches,
+reject versions 1-4 without inference or compatibility readers. Plans, caches,
 profiles, and counters remain exact-generation data shared by all Runtimes for
 that artifact and must not be duplicated per Actor.
 
@@ -77,7 +78,7 @@ decisions, docs/performance.md only for baseline/threshold/exit changes, and
 docs/progress.md only when active focus or milestone status changes. Commit
 each coherent verified checkpoint with a Conventional Commit. Do not mark the
 track complete until the semantic matrix, stable performance gates, artifact
-v4 hard switch, full repository validation, and archived acceptance report all
+v5 hard switch, full repository validation, and archived acceptance report all
 pass.
 ```
 
@@ -686,26 +687,26 @@ hide a required cancellation/deadline check; Batch A inventories the current
 check schedule and the selector models every such boundary before loop regions
 are enabled.
 
-### 9.3 Portable artifact version 4
+### 9.3 Portable artifact version 5
 
 The first serialized selected-plan representation is one atomic hard switch:
 
 ```text
-portable Vela program format: 3 -> 4
-portable Service artifact:     3 -> 4
-Service deployment bundle:     3 -> 4
+portable Vela program format: 4 -> 5
+portable Service artifact:     4 -> 5
+Service deployment bundle:     4 -> 5
 ```
 
-Version 4 encodes deterministic unlinked scalar/super/loop plans, compact
+Version 5 encodes deterministic unlinked scalar/super/loop plans, compact
 operands, exits, source points, profile layout, physical coverage manifest,
 required feature bits, and all ordinary instruction data required for ineligible
 regions. Decoding applies size/count/depth limits before allocation and rejects
 invalid plan handles, registers, constants, targets, exits, source points,
 coverage, budgets, and feature combinations before linking or activation.
 
-Versions 1-3 reject immediately. There is no compatibility reader, plan
+Versions 1-4 reject immediately. There is no compatibility reader, plan
 inference, load-time MIR reconstruction, or fallback that silently expands a
-version 4 plan into old instructions. `PortableProgramArtifact::from_linked`
+version 5 plan into old instructions. `PortableProgramArtifact::from_linked`
 round-trips the canonical plan rather than discarding it. Ordinary and Service
 artifact checksums include plan content and metadata.
 
@@ -804,7 +805,7 @@ coverage verifier rejects every malformed fixture before link/execution
 ordinary workload bytecode, checksums, and performance remain within noise
 ```
 
-### Batch C — MIR-native short superinstructions and artifact v4
+### Batch C — MIR-native short superinstructions and artifact v5
 
 Deliverables:
 
@@ -815,7 +816,7 @@ Deliverables:
 - implement unlinked/linked forms, linker projection, verifier coverage,
   source/trap behavior, cache/profile classification, and disassembly/testing;
 - atomically raise ordinary program, Service artifact, and deployment bundle
-  formats to version 4 and reject versions 1-3;
+  formats to version 5 and reject versions 1-4;
 - encode the physical coverage/source metadata needed for the first selected
   unit without portable MIR;
 - add structural dispatch-count and stable before/after measurements; and
@@ -828,7 +829,7 @@ matching workload eliminates the predicted outer dispatches
 focused stable mean improves by at least 5% or contributes indispensably to a
   later accepted block family with separately demonstrated combined evidence
 no stable scalar/guardrail row regresses by more than 5%
-all artifact v4 rejection and round-trip tests pass
+all artifact v5 rejection and round-trip tests pass
 ```
 
 Checkpoint:
@@ -929,8 +930,8 @@ Deliverables:
   safe-point continuations preserve exact plans and resume only between units;
 - prove Service Snapshot/Delta/fold/rollback and nested
   `service::base`/`service::pinned` calls remain generation-coherent;
-- complete version 4 ordinary/Service/deployment round trips, checksums,
-  corruption limits, feature bits, and v1-3 rejection at every public load,
+- complete version 5 ordinary/Service/deployment round trips, checksums,
+  corruption limits, feature bits, and v1-4 rejection at every public load,
   stage, and activation entry;
 - finalize unit/subpoint profiler ownership and output rows;
 - prove 1, 100, and 10,000 Runtimes share plan memory through the exact
@@ -1032,9 +1033,9 @@ ordinary fallback covers every ineligible operation through the one VM
 
 ### Artifact and tooling
 
-- version 4 source/linked/portable round trips produce equivalent plans and
+- version 5 source/linked/portable round trips produce equivalent plans and
   checksums;
-- versions 1-3 reject at ordinary, Service, and deployment entries;
+- versions 1-4 reject at ordinary, Service, and deployment entries;
 - malformed size/count/depth, plan handle, register, constant, target, exit,
   source, profile, and coverage data rejects transactionally;
 - reflection may report physical counts for diagnostics but cannot invoke or
@@ -1155,7 +1156,7 @@ record unavailable toolchains explicitly.
 This track is complete only when verified MIR selects profitable larger
 execution units without introducing a second semantic engine; selected units
 preserve exact budgets, traps, roots, source points, reload generations, async
-boundaries, and Service behavior; artifact version 4 loads the same plans
+boundaries, and Service behavior; artifact version 5 loads the same plans
 without MIR and rejects old formats; stable scalar workloads meet the retention
 thresholds; all unrelated guardrails and repository gates pass; and the final
 accepted architecture is documented with detailed history archived outside

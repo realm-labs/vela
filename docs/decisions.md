@@ -1956,6 +1956,15 @@ copying, allocation, and recycling costs outside a bounded scalar recipe. The
 full evidence and invalidated-capture policy are archived in
 [verified-mir-interpreter-batch-a-evidence-2026-08-09.md](archive/verified-mir-interpreter-batch-a-evidence-2026-08-09.md).
 
+### Portable Selected Plans Start At Artifact Version 5
+
+Ordinary program, portable Service, and Service deployment formats already use
+version 4 for static HostRef collection-iteration metadata. The first portable
+verified-MIR selected-plan representation therefore performs one atomic hard
+switch from version 4 to version 5 and rejects versions 1-4. Reusing version 4
+would make two incompatible payload contracts share one discriminator; adding
+a compatibility reader would violate the pre-release hard-switch policy.
+
 ### Package-Qualified Script Identity
 
 Script module identity is `PackageId + ModulePath`, and every stable script
