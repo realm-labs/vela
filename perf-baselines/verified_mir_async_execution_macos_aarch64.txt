@@ -1,0 +1,30 @@
+# captured_at_utc=20260809T035041Z
+# commit=322cc68ec24c16ac4beae92fac0d13e1fac6c9ca
+# branch=master
+# worktree=clean
+# rustc=rustc 1.97.1 (8bab26f4f 2026-07-14)
+# cargo=cargo 1.97.1 (c980f4866 2026-06-30)
+# platform=macOS-26.5.2-arm64-arm-64bit-Mach-O
+# machine=arm64
+# cpu=Apple M1 Max
+# logical_cpus=10
+# load_average_before=8.49,13.66,13.36
+# elapsed_seconds=29.510
+# exit_status=0
+# command=cargo bench -p vela_engine --bench async_execution -- --stable
+
+   Compiling vela_engine v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_engine)
+    Finished `bench` profile [optimized] target(s) in 3.83s
+     Running benches/async_execution.rs (target/release/deps/async_execution-c804d07a901e63d7)
+vela_engine_async_execution iterations=100000
+workload=sync_entry samples=3 iterations_per_sample=100000 total_ns=395735583 ns_per_call=3957.4 min_ns_per_call=3893.3 max_ns_per_call=3975.0 checksum=12600000
+workload=ready_async_entry samples=3 iterations_per_sample=100000 total_ns=439066584 ns_per_call=4390.7 min_ns_per_call=4387.1 max_ns_per_call=4426.4 checksum=12600000
+workload=pending_wake_resume samples=3 iterations_per_sample=100000 total_ns=473515834 ns_per_call=4735.2 min_ns_per_call=4701.5 max_ns_per_call=4776.7 checksum=12600000
+workload=reentry_scalar samples=3 iterations_per_sample=100000 total_ns=909783083 ns_per_call=9097.8 min_ns_per_call=8999.0 max_ns_per_call=9154.1 checksum=12600000
+workload=reentry_dynamic_root samples=3 iterations_per_sample=100000 total_ns=1147591625 ns_per_call=11475.9 min_ns_per_call=11433.1 max_ns_per_call=11593.0 checksum=12600000
+workload=deep_call_depth_10000 samples=1 iterations_per_sample=1000 total_ns=3110925125 ns_per_call=3110925.1 min_ns_per_call=3110925.1 max_ns_per_call=3110925.1 checksum=42000
+workload=ready_async_mut_lease samples=3 iterations_per_sample=100000 total_ns=735718167 ns_per_call=7357.2 min_ns_per_call=7303.5 max_ns_per_call=7418.4 checksum=45030150000
+workload=ready_async_mut_origin_shared_receiver samples=3 iterations_per_sample=100000 total_ns=721482625 ns_per_call=7214.8 min_ns_per_call=7195.4 max_ns_per_call=7238.2 checksum=12600000
+workload=ready_async_shared_lease samples=3 iterations_per_sample=100000 total_ns=730434625 ns_per_call=7304.3 min_ns_per_call=7222.6 max_ns_per_call=7446.3 checksum=12600000
+workload=provider_sync samples=3 iterations_per_sample=100000 total_ns=662648459 ns_per_call=6626.5 min_ns_per_call=6613.0 max_ns_per_call=8003.9 checksum=12600000
+workload=provider_async samples=3 iterations_per_sample=100000 total_ns=770171583 ns_per_call=7701.7 min_ns_per_call=7613.8 max_ns_per_call=8723.3 checksum=12600000
