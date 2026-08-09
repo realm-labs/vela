@@ -9,6 +9,7 @@ pub enum CompilationRequestError {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MirBackendFailureKind {
+    InvalidSelection(String),
     MissingRoot,
     MissingFunction(vela_mir::MirFunctionId),
     MissingBlock(vela_mir::MirBlockId),

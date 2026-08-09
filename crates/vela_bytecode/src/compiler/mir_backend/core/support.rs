@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use vela_host::resolved::HostMutationOp;
 use vela_mir::{
     MirBinaryOp, MirBlockId, MirComparisonOp, MirDynamicBinaryOp, MirFunction, MirGuardLocation,
-    MirHostMutation, MirNumericBinaryOp, MirProgram, MirTerminatorKind, MirTypeContract,
+    MirHostMutation, MirNumericBinaryOp, MirProgram, MirTypeContract,
 };
 
 use crate::{
@@ -11,6 +11,7 @@ use crate::{
     UnlinkedInstructionKind, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
 
+use super::super::selection::mir_successors;
 use super::MirBackendError;
 
 pub(super) fn binary_instruction(
@@ -57,42 +58,6 @@ pub(super) fn binary_instruction(
             ..
         } => UnlinkedInstructionKind::Rem { dst, lhs, rhs },
         MirBinaryOp::Compare { operation, .. } => comparison_instruction(operation, dst, lhs, rhs),
-    }
-}
-
-pub(super) fn mir_successors(kind: &MirTerminatorKind) -> Vec<MirBlockId> {
-    match kind {
-        MirTerminatorKind::Jump(target) => vec![*target],
-        MirTerminatorKind::Branch {
-            then_block,
-            else_block,
-            ..
-        } => vec![*then_block, *else_block],
-        MirTerminatorKind::Switch {
-            cases, otherwise, ..
-        } => cases
-            .iter()
-            .map(|case| case.target)
-            .chain(std::iter::once(*otherwise))
-            .collect(),
-        MirTerminatorKind::GuardBranch { passed, slow, .. } => vec![*passed, *slow],
-        MirTerminatorKind::TrySwitch {
-            continuations,
-            propagate,
-            invalid,
-            join,
-            ..
-        } => continuations
-            .iter()
-            .map(|continuation| continuation.block)
-            .chain([*propagate, *invalid, *join])
-            .collect(),
-        MirTerminatorKind::IteratorNext { next, done, .. }
-        | MirTerminatorKind::RangeNext { next, done, .. } => vec![*next, *done],
-        MirTerminatorKind::AwaitCall { resume, .. } => vec![*resume],
-        MirTerminatorKind::Return(_)
-        | MirTerminatorKind::TryTypeMismatch { .. }
-        | MirTerminatorKind::Unreachable => Vec::new(),
     }
 }
 

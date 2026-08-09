@@ -840,8 +840,9 @@ fn mir_backend_compile_error(
         return CompileError::new(CompileErrorKind::RegisterOverflow)
             .with_span(root_body.origin().span);
     }
-    let function = match error {
-        mir_backend::MirBackendError::MissingMirFunction(function) => function,
+    let function = match &error {
+        mir_backend::MirBackendError::InvalidSelection(error) => error.function().unwrap_or(root),
+        mir_backend::MirBackendError::MissingMirFunction(function) => *function,
         _ => root,
     };
     let origin = verified
@@ -849,6 +850,9 @@ fn mir_backend_compile_error(
         .function(function)
         .map_or(root_body.origin(), vela_mir::MirFunction::origin);
     let kind = match error {
+        mir_backend::MirBackendError::InvalidSelection(error) => {
+            error::MirBackendFailureKind::InvalidSelection(error.to_string())
+        }
         mir_backend::MirBackendError::MissingRoot => error::MirBackendFailureKind::MissingRoot,
         mir_backend::MirBackendError::MissingMirFunction(function) => {
             error::MirBackendFailureKind::MissingFunction(function)

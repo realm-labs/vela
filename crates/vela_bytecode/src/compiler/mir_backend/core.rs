@@ -27,12 +27,12 @@ mod operations;
 mod physical;
 mod support;
 
-use support::{
-    dynamic_binary_instruction, guard_kind, guard_location, mir_reaches, mir_successors, type_guard,
-};
+use super::selection::{SelectionError, mir_successors};
+use support::{dynamic_binary_instruction, guard_kind, guard_location, mir_reaches, type_guard};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum MirBackendError {
+    InvalidSelection(SelectionError),
     MissingRoot,
     MissingMirFunction(MirFunctionId),
     MissingBlock(MirBlockId),
