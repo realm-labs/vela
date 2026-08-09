@@ -2027,6 +2027,31 @@ compact operation, exit, and charged edge against verified MIR before artifact
 publication; portable canonicalization removes those MIR identities while
 retaining the bounded physical plan.
 
+### Scalar Range Loops Reuse The Block Executor And MIR Budget Authority
+
+The first loop-region family is a proven-i64 `RangeNext` header plus one
+single-entry scalar body/latch and one dominated natural backedge. Selection
+and its independent verifier derive predecessors and dominators from verified
+MIR. Dynamic ranges, safepoints, internal branches, multiple latches, and
+regions containing calls, allocation, HostAccess, reflection, state, tasks,
+await, or try control remain ordinary. A selected inner leaf is allowed, but a
+single plan never contains another loop.
+
+The optional immutable range metadata lives on the existing scalar block plan;
+`RunScalarBlock` remains the only physical entry and the production frame
+driver remains singular. The ordinary range header handles the first turn,
+then the focused executor repeats body, latch, header, and chosen edge in
+semantic order. Original header/edge instructions uniquely own MIR budget
+layout sites for their first execution; the plan carries an independently
+verified charge copy only for subsequent internal turns. This preserves exact
+failure iteration without duplicating artifact budget ownership.
+
+Profile-only execution exposes loop entry, iteration, exit, and charged
+backedge events. Unprofiled execution has no profile branch. Unlinked,
+portable, linked, source-link, and physical-reference verification must all
+accept the exact header/body/exit topology before private unchecked register
+slot access is reachable.
+
 ### Package-Qualified Script Identity
 
 Script module identity is `PackageId + ModulePath`, and every stable script

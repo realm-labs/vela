@@ -655,6 +655,19 @@ measurements and capture paths live in the
 Batch E retains the 25% five-row geometric-mean target and 35% individual
 scalar/range targets; Batch D does not relax those final loop-region gates.
 
+## Verified-MIR Scalar Loop Checkpoint
+
+Batch E is accepted against the same quiet-machine Batch A baseline. At
+500,000 iterations, five repeats, and two warmups, `scalar_branch_loop` and
+`range_iteration` improve 38.347% and 79.043%; the frozen five-row geometric
+mean improves 34.401%. The other three rows change by +1.466%, +0.907%, and
+-8.179%, while the stable VM guardrail's largest positive non-target delta is
+4.82%. `range_iteration` profiled outer dispatch falls from 6,699 in Batch D
+to 171, with 2,176 internal iterations/backedges still reported. One versus
+10,001 scalar-loop iterations has zero incremental allocations or bytes after
+warmup. Detailed measurements and capture paths live in the
+[Batch E acceptance report](archive/verified-mir-interpreter-batch-e-acceptance-2026-08-09.md).
+
 ## Current Conclusions
 
 M19 is complete enough for M19.5. The interpreter/heap phase delivered measured

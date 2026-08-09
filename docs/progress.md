@@ -41,9 +41,18 @@ checked arithmetic, partial writes, logical profiling, budget order, exits, and
 trap spans remain canonical. The quiet-machine five-row geometric mean is
 18.856% faster than Batch A, scalar/range improve 33.487%/47.229%, target-
 independent guardrails remain within 5%, and 10,000 additional block entries
-allocate zero incremental bytes. Batch E is next: form verified natural
-single-entry scalar loop regions that preserve exact per-iteration semantic
-boundaries and must raise the same five-row improvement to at least 25%.
+allocate zero incremental bytes. Batch E is accepted under its
+[archived report](archive/verified-mir-interpreter-batch-e-acceptance-2026-08-09.md).
+Verified CFG predecessor/dominator facts select only proven-i64, single-entry,
+single-latch scalar range regions; dynamic, safepointed, multi-exit, and
+multiple-latch shapes remain ordinary. The one scalar executor preserves exact
+header/edge/backedge budgets, later-iteration traps, portable metadata, and
+logical loop profile events. `range_iteration` profiled outer dispatch falls
+97.45% from Batch D, one versus 10,001 loop iterations adds zero allocations,
+and the quiet-machine five-row geometric mean is 34.401% faster than Batch A;
+scalar/range improve 38.347%/79.043%. Batch F is next: close reload, async,
+Service, generation-owned profiling, portability corruption, and shared-plan
+memory proofs around this accepted physical model.
 
 The Rust/Vela interop checkpoint is complete under the
 [final interop and explicit-release hard switch](rust-vela-interop-final-shape-hard-switch-plan.md).
@@ -574,8 +583,8 @@ provides it.
 
 ## Next Up
 
-1. Implement verified-MIR Batch E single-entry scalar loop regions and its
-   exact iteration-budget/cancellation/trap differential matrix.
+1. Complete verified-MIR Batch F reload, async, Service, profiling,
+   portability, and generation-sharing closure.
 2. Resume M20.5 incremental HIR re-lowering with stable per-module HIR IDs and
    move `did_change` diagnostics off the message loop.
 3. Audit the parameterized container and value-keyed Map/Set plans against
