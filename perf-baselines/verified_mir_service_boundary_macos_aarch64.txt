@@ -1,0 +1,34 @@
+# captured_at_utc=20260809T035011Z
+# commit=34110ec396b5f1341c3149472c8152b6fa89233e
+# branch=master
+# worktree=clean
+# rustc=rustc 1.97.1 (8bab26f4f 2026-07-14)
+# cargo=cargo 1.97.1 (c980f4866 2026-06-30)
+# platform=macOS-26.5.2-arm64-arm-64bit-Mach-O
+# machine=arm64
+# cpu=Apple M1 Max
+# logical_cpus=10
+# load_average_before=10.91,14.61,13.67
+# elapsed_seconds=20.137
+# exit_status=0
+# command=cargo bench -p vela_engine --bench service_boundary_baseline -- --stable
+
+   Compiling vela_engine v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_engine)
+    Finished `bench` profile [optimized] target(s) in 3.62s
+     Running benches/service_boundary_baseline.rs (target/release/deps/service_boundary_baseline-7178b7703e232021)
+suite=service_boundary_baseline iterations=100000 warmup=100
+boundary_result name=direct_rust_concrete ns_per_call=2 calls_per_second=418848167.539 allocation_count=0 allocations_per_call=0.000 allocated_bytes=0 allocated_bytes_per_call=0.000 deallocated_bytes=0 checksum=2489826204827925701
+boundary_result name=direct_rust_trait_dispatch ns_per_call=2 calls_per_second=452318812.392 allocation_count=0 allocations_per_call=0.000 allocated_bytes=0 allocated_bytes_per_call=0.000 deallocated_bytes=0 checksum=14940177656754034621
+boundary_result name=generated_rust_default ns_per_call=2 calls_per_second=454287336.740 allocation_count=0 allocations_per_call=0.000 allocated_bytes=0 allocated_bytes_per_call=0.000 deallocated_bytes=0 checksum=7790243001604634986
+boundary_result name=generated_vela_service_base_dispatch ns_per_call=7891 calls_per_second=126715.082 allocation_count=18800000 allocations_per_call=188.000 allocated_bytes=5887000000 allocated_bytes_per_call=58870.000 deallocated_bytes=5887000000 checksum=15378207977205587828
+boundary_result name=host_ref_alias_copy ns_per_call=0 calls_per_second=1094391244.870 allocation_count=0 allocations_per_call=0.000 allocated_bytes=0 allocated_bytes_per_call=0.000 deallocated_bytes=0 checksum=13645085255455806654
+boundary_result name=static_field_read_write ns_per_call=23139 calls_per_second=43216.572 allocation_count=51400000 allocations_per_call=514.000 allocated_bytes=9469300000 allocated_bytes_per_call=94693.000 deallocated_bytes=9469300000 checksum=1360453593402711245
+boundary_result name=registered_method_call ns_per_call=23357 calls_per_second=42812.244 allocation_count=51500000 allocations_per_call=515.000 allocated_bytes=9499500000 allocated_bytes_per_call=94995.000 deallocated_bytes=9499500000 checksum=16265871057084463768
+boundary_result name=shared_argument_preflight ns_per_call=21 calls_per_second=46728971.963 allocation_count=0 allocations_per_call=0.000 allocated_bytes=0 allocated_bytes_per_call=0.000 deallocated_bytes=0 checksum=0
+boundary_result name=exclusive_argument_preflight ns_per_call=17 calls_per_second=56494525.963 allocation_count=0 allocations_per_call=0.000 allocated_bytes=0 allocated_bytes_per_call=0.000 deallocated_bytes=0 checksum=2469249206683207954
+boundary_result name=prepared_shared_argument_preflight ns_per_call=24 calls_per_second=41553399.026 allocation_count=0 allocations_per_call=0.000 allocated_bytes=0 allocated_bytes_per_call=0.000 deallocated_bytes=0 checksum=0
+boundary_result name=prepared_exclusive_argument_preflight ns_per_call=23 calls_per_second=42307161.841 allocation_count=0 allocations_per_call=0.000 allocated_bytes=0 allocated_bytes_per_call=0.000 deallocated_bytes=0 checksum=2469249206683207954
+boundary_result name=nested_same_session_reborrow ns_per_call=27877 calls_per_second=35870.598 allocation_count=63300000 allocations_per_call=633.000 allocated_bytes=12499000000 allocated_bytes_per_call=124990.000 deallocated_bytes=12499000000 checksum=1360460410836880069
+boundary_result name=borrowed_return_release ns_per_call=23474 calls_per_second=42599.549 allocation_count=53300000 allocations_per_call=533.000 allocated_bytes=9755600000 allocated_bytes_per_call=97556.000 deallocated_bytes=9755600000 checksum=9242823804985964407
+boundary_result name=borrowed_return_try_release ns_per_call=23490 calls_per_second=42570.793 allocation_count=53300000 allocations_per_call=533.000 allocated_bytes=9756400000 allocated_bytes_per_call=97564.000 deallocated_bytes=9756400000 checksum=7610713204376738995
+boundary_result name=host_backed_bulk_collection ns_per_call=22711 calls_per_second=44030.470 allocation_count=51400000 allocations_per_call=514.000 allocated_bytes=9466900000 allocated_bytes_per_call=94669.000 deallocated_bytes=9466900000 checksum=8424497294147703719
