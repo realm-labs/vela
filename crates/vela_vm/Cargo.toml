@@ -22,7 +22,7 @@ vela_stdlib_runtime = { workspace = true }
 serde = ["dep:serde"]
 
 [dev-dependencies]
-vela_bytecode = { workspace = true, features = ["test-support"] }
+vela_bytecode = { workspace = true, features = ["artifact-codec", "test-support"] }
 mlua = { version = "0.11.4", features = ["lua54", "vendored"] }
 rhai = "1.25.1"
 serde_json = { workspace = true }
@@ -48,6 +48,10 @@ harness = false
 
 [[bench]]
 name = "external_compare"
+harness = false
+
+[[bench]]
+name = "verified_mir_compile"
 harness = false
 
 [lints]
