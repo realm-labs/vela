@@ -1,0 +1,50 @@
+# captured_at_utc=20260809T034549Z
+# commit=decb8a06fd044d6c97b8d18ac1167deba5c97b2d
+# branch=master
+# worktree=clean
+# rustc=rustc 1.97.1 (8bab26f4f 2026-07-14)
+# cargo=cargo 1.97.1 (c980f4866 2026-06-30)
+# platform=macOS-26.5.2-arm64-arm-64bit-Mach-O
+# machine=arm64
+# cpu=Apple M1 Max
+# logical_cpus=10
+# load_average_before=8.48,9.34,11.16
+# elapsed_seconds=73.050
+# exit_status=0
+# command=cargo bench -p vela_engine --bench interop -- --stable
+
+   Compiling smallvec v1.15.2
+   Compiling serde_core v1.0.228
+   Compiling blake3 v1.8.5
+   Compiling arrayref v0.3.9
+   Compiling arrayvec v0.7.6
+   Compiling constant_time_eq v0.4.2
+   Compiling serde v1.0.228
+   Compiling syn v2.0.118
+   Compiling arc-swap v1.9.2
+   Compiling stats_alloc v0.1.10
+   Compiling parking_lot_core v0.9.12
+   Compiling parking_lot v0.12.5
+   Compiling vela_host v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_host)
+   Compiling vela_reflect v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_reflect)
+   Compiling serde_derive v1.0.228
+   Compiling vela_def v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_def)
+   Compiling vela_common v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_common)
+   Compiling vela_macros v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_macros)
+   Compiling vela_analysis v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_analysis)
+   Compiling serde_json v1.0.150
+   Compiling vela_mir v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_mir)
+   Compiling vela_language_service v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_language_service)
+   Compiling vela_bytecode v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_bytecode)
+   Compiling vela_vm v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_vm)
+   Compiling vela_hot_reload v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_hot_reload)
+   Compiling vela_engine v0.1.0 (/Users/mikai/CLionProjects/vela/crates/vela_engine)
+    Finished `bench` profile [optimized] target(s) in 46.70s
+     Running benches/interop.rs (target/release/deps/interop-103718c7484335d4)
+vela_engine_interop iterations=100000
+workload=direct_rust_scalar samples=3 iterations_per_sample=100000 total_ns=32333 ns_per_call=0.3 min_ns_per_call=0.3 max_ns_per_call=0.3 checksum=12600000
+workload=vela_to_rust_scalar samples=3 iterations_per_sample=100000 total_ns=1598750917 ns_per_call=15987.5 min_ns_per_call=15954.3 max_ns_per_call=16155.7 checksum=12600000
+workload=vela_to_rust_shared_host samples=3 iterations_per_sample=100000 total_ns=1637100875 ns_per_call=16371.0 min_ns_per_call=16246.6 max_ns_per_call=16559.6 checksum=12300000
+workload=vela_to_rust_exclusive_host samples=3 iterations_per_sample=100000 total_ns=1623749167 ns_per_call=16237.5 min_ns_per_call=16235.9 max_ns_per_call=16431.0 checksum=45030150000
+workload=rust_to_vela_generated_root samples=3 iterations_per_sample=100000 total_ns=1587914292 ns_per_call=15879.1 min_ns_per_call=15861.1 max_ns_per_call=16113.6 checksum=12600000
+workload=vela_rust_vela_round_trip samples=3 iterations_per_sample=100000 total_ns=2050084167 ns_per_call=20500.8 min_ns_per_call=19440.3 max_ns_per_call=23399.4 checksum=12600000
