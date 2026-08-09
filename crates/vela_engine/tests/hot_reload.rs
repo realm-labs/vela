@@ -10,6 +10,7 @@ use vela_engine::native::{NativeFunctionDesc, TypeHint};
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_host::access::HostAccess;
 use vela_host::mock::MockStateAdapter;
+use vela_hot_reload::version::ProgramVersion;
 use vela_reflect::permissions::ReflectPolicy;
 use vela_vm::owned_value::OwnedValue;
 
@@ -64,14 +65,18 @@ fn call_raw(
 fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
     let engine = Engine::builder().build().expect("engine should build");
     let initial = engine
-        .compile_hot_reload_initial("fn main() { return 1; }")
+        .compile_hot_reload_initial(
+            "fn main() -> i64 { let total = 0; for value in 0..2 { total += value + 1 - 1; } return total; }",
+        )
         .expect("initial hot reload compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let initial_version = runtime
+    let initial = runtime
         .hot_reload_version()
-        .expect("runtime should expose active hot reload version")
-        .id;
+        .expect("runtime should expose active hot reload version");
+    let initial_version = initial.id;
+    let initial_artifact = Arc::clone(initial.linked_artifact());
+    assert!(has_selected_scalar_loop(&initial));
     let mut adapter = MockStateAdapter::new();
     let mut tx = HostAccess::new();
 
@@ -88,16 +93,19 @@ fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
     );
 
     runtime
-        .stage_reload("fn main() { return 2; }")
+        .stage_reload(
+            "fn main() -> i64 { let total = 0; for value in 0..2 { total += value + 1 - 1; } return total + 1; }",
+        )
         .expect("compatible update should stage");
 
-    assert_eq!(
-        runtime
-            .hot_reload_version()
-            .expect("runtime should keep active version until apply")
-            .id,
-        initial_version
-    );
+    let staged_active = runtime
+        .hot_reload_version()
+        .expect("runtime should keep active version until apply");
+    assert_eq!(staged_active.id, initial_version);
+    assert!(Arc::ptr_eq(
+        staged_active.linked_artifact(),
+        &initial_artifact
+    ));
     assert_eq!(
         call_raw(
             &mut runtime,
@@ -116,6 +124,20 @@ fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
         .expect("staged update should produce a report");
 
     assert!(report.accepted);
+    let activated = runtime
+        .hot_reload_version()
+        .expect("accepted reload should publish a new version");
+    assert!(has_selected_scalar_loop(&activated));
+    assert_ne!(
+        activated.executable_generation_id(),
+        initial_artifact.generation()
+    );
+    assert!(!Arc::ptr_eq(activated.linked_artifact(), &initial_artifact));
+    assert!(initial_artifact.program().functions().any(|(_, code)| {
+        code.scalar_blocks
+            .iter()
+            .any(|plan| plan.range_loop.is_some())
+    }));
     assert_eq!(
         call_raw(
             &mut runtime,
@@ -138,7 +160,8 @@ fn suspended_async_call_keeps_old_generation_until_completion_safe_point() {
             r#"
 state value: i64 = 1;
 async fn wait_value() -> i64 { return reload_gate(10).await; }
-async fn main() -> i64 { return (wait_value().await) + value; }
+fn scalar_sum(limit: i64) -> i64 { let total = 0; for item in 0..limit { total += item + 1 - 1; } return total; }
+async fn main() -> i64 { return (wait_value().await) + value + scalar_sum(3); }
 fn version() -> i64 { return 1; }
 "#,
         )
@@ -150,11 +173,27 @@ fn version() -> i64 { return 1; }
 state extra: i64 = 100;
 state value: i64 = 999;
 async fn wait_value() -> i64 { return reload_gate(10).await; }
-async fn main() -> i64 { return (wait_value().await) + value + extra; }
+fn scalar_sum(limit: i64) -> i64 { let total = 0; for item in 0..limit { total += item + 1 - 1; } return total; }
+async fn main() -> i64 { return (wait_value().await) + value + extra + scalar_sum(5); }
 fn version() -> i64 { return 2; }
 "#,
         )
         .expect("ABI-compatible async update should compile");
+    assert!(has_selected_scalar_loop(&initial));
+    assert!(
+        update
+            .linked_artifact()
+            .program()
+            .functions()
+            .any(|(_, code)| {
+                code.scalar_blocks
+                    .iter()
+                    .any(|plan| plan.range_loop.is_some())
+            })
+    );
+    let initial_artifact = Arc::clone(initial.linked_artifact());
+    let update_artifact = Arc::clone(update.linked_artifact());
+    assert_ne!(initial_artifact.generation(), update_artifact.generation());
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
     let staging = runtime
@@ -177,7 +216,14 @@ fn version() -> i64 { return 2; }
     let old_result = result.expect("old generation should complete");
     drop(future);
 
-    assert_eq!(runtime.value_to_owned(&old_result), Ok(OwnedValue::i64(11)));
+    assert_eq!(runtime.value_to_owned(&old_result), Ok(OwnedValue::i64(14)));
+    assert!(Arc::ptr_eq(
+        runtime
+            .hot_reload_version()
+            .expect("completed old root keeps staged version inactive")
+            .linked_artifact(),
+        &initial_artifact
+    ));
     assert_eq!(
         runtime
             .hot_reload_version()
@@ -193,6 +239,13 @@ fn version() -> i64 { return 2; }
         .expect("staged update should activate after completion");
     assert!(report.accepted);
     assert_eq!(report.added_states, ["main::extra"]);
+    assert!(Arc::ptr_eq(
+        runtime
+            .hot_reload_version()
+            .expect("new version should activate")
+            .linked_artifact(),
+        &update_artifact
+    ));
 
     let mut next = runtime.call_async("main", CallArgs::new(), CallOptions::unbounded());
     let Poll::Ready(result) = Pin::new(&mut next).poll(&mut context) else {
@@ -202,7 +255,7 @@ fn version() -> i64 { return 2; }
     drop(next);
     assert_eq!(
         runtime.value_to_owned(&new_result),
-        Ok(OwnedValue::i64(111))
+        Ok(OwnedValue::i64(121))
     );
 }
 
@@ -263,7 +316,7 @@ fn retained_closure_pins_old_generation_across_handle_layout_reload() {
     let initial = engine
         .compile_hot_reload_initial(
             r#"
-fn helper(value: i64) -> i64 { return value + 1; }
+fn helper(value: i64) -> i64 { let total = 0; for item in 0..2 { total += item + 1 - 1; } return value + 1 + total; }
 fn make() { return |value: i64| helper(value) + 10; }
 fn invoke(callback, value: i64) -> i64 { return callback(value); }
 "#,
@@ -271,6 +324,15 @@ fn invoke(callback, value: i64) -> i64 { return callback(value); }
         .expect("initial closure generation should compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
+    let old_artifact = runtime
+        .hot_reload_version()
+        .map(|version| Arc::clone(version.linked_artifact()))
+        .expect("old closure version");
+    assert!(old_artifact.program().functions().any(|(_, code)| {
+        code.scalar_blocks
+            .iter()
+            .any(|plan| plan.range_loop.is_some())
+    }));
     let old_closure = runtime
         .call("make", CallArgs::new(), CallOptions::unbounded())
         .expect("old closure should be retained");
@@ -279,7 +341,7 @@ fn invoke(callback, value: i64) -> i64 { return callback(value); }
         .stage_reload(
             r#"
 fn alpha_private(value: i64) -> i64 { return value * 1000; }
-fn helper(value: i64) -> i64 { return value + 100; }
+fn helper(value: i64) -> i64 { let total = 0; for item in 0..4 { total += item + 1 - 1; } return value + 100 + total; }
 fn make() { return |value: i64| helper(value) + 20; }
 fn invoke(callback, value: i64) -> i64 { return callback(value); }
 "#,
@@ -289,6 +351,14 @@ fn invoke(callback, value: i64) -> i64 { return callback(value); }
         .activate_reload()
         .expect("closure reload should activate")
         .expect("staged closure reload should produce a report");
+    let new_version = runtime
+        .hot_reload_version()
+        .expect("new closure version should be active");
+    assert!(has_selected_scalar_loop(&new_version));
+    assert_ne!(
+        new_version.executable_generation_id(),
+        old_artifact.generation()
+    );
 
     let mut old_args = CallArgs::from_values([old_closure.clone()]);
     old_args.push(5_i64);
@@ -304,10 +374,10 @@ fn invoke(callback, value: i64) -> i64 { return callback(value); }
         .call("invoke", new_args, CallOptions::unbounded())
         .expect("new closure should execute active code");
 
-    assert_eq!(runtime.value_to_owned(&old_result), Ok(OwnedValue::i64(16)));
+    assert_eq!(runtime.value_to_owned(&old_result), Ok(OwnedValue::i64(17)));
     assert_eq!(
         runtime.value_to_owned(&new_result),
-        Ok(OwnedValue::i64(125))
+        Ok(OwnedValue::i64(131))
     );
 
     let mut budgeted_args = CallArgs::from_values([old_closure]);
@@ -326,6 +396,14 @@ fn invoke(callback, value: i64) -> i64 { return callback(value); }
             limit: 1
         }
     ));
+}
+
+fn has_selected_scalar_loop(version: &ProgramVersion) -> bool {
+    version.linked_program().functions().any(|(_, code)| {
+        code.scalar_blocks
+            .iter()
+            .any(|plan| plan.range_loop.is_some())
+    })
 }
 
 #[test]
@@ -379,6 +457,7 @@ fn retained_old_closure_keeps_native_dispatch_and_rejected_reload_owner() {
             r#"
 fn make() { return |value: String| value.starts_with("old"); }
 fn invoke(callback, value: String) -> bool { return callback(value); }
+fn scalar_sum(limit: i64) -> i64 { let total = 0; for item in 0..limit { total += item + 1 - 1; } return total; }
 "#,
         )
         .expect("initial native closure generation should compile");
@@ -388,6 +467,15 @@ fn invoke(callback, value: String) -> bool { return callback(value); }
         .hot_reload_version()
         .expect("hot reload version")
         .executable_generation_id();
+    let old_artifact = runtime
+        .hot_reload_version()
+        .map(|version| Arc::clone(version.linked_artifact()))
+        .expect("old generation artifact");
+    assert!(old_artifact.program().functions().any(|(_, code)| {
+        code.scalar_blocks
+            .iter()
+            .any(|plan| plan.range_loop.is_some())
+    }));
     let old_closure = runtime
         .call("make", CallArgs::new(), CallOptions::unbounded())
         .expect("old closure should be retained");
@@ -397,6 +485,7 @@ fn invoke(callback, value: String) -> bool { return callback(value); }
             r#"
 fn make(extra) { return |value: String| value.ends_with("new"); }
 fn invoke(callback, value: String) -> bool { return callback(value); }
+fn scalar_sum(limit: i64) -> i64 { let total = 0; for item in 0..limit { total += item + 1 - 1; } return total; }
 "#,
         )
         .expect("ABI rejection should stage for a safe-point report");
@@ -412,6 +501,13 @@ fn invoke(callback, value: String) -> bool { return callback(value); }
             .executable_generation_id(),
         old_generation
     );
+    assert!(Arc::ptr_eq(
+        runtime
+            .hot_reload_version()
+            .expect("rejected reload keeps artifact")
+            .linked_artifact(),
+        &old_artifact
+    ));
 
     let mut args = CallArgs::from_values([old_closure]);
     args.push("old-generation".to_owned());
