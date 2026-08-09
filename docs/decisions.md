@@ -1976,6 +1976,23 @@ ordinary and preserves byte-for-byte canonical output; later batches may
 replace only units that pass this same proof. Selection consumes no HIR,
 source text, runtime values, or emitted-bytecode adjacency.
 
+### Selected Physical Units Retain Canonical Coverage In Artifact Version 5
+
+The first retained selected recipe is the verified-MIR i64
+compare-immediate plus conditional branch. Selection proves sole use, type,
+liveness, facts, safepoints, terminator shape, sources, exits, and logical
+budget coverage before emission; it never infers the recipe from adjacent
+bytecode. The selected instruction executes through the existing linked
+interpreter and canonical opcode helper, not a second frame driver.
+
+Every selected unit retains its physical instruction offset, recipe kind,
+covered operation count, logical budget units, source points, and CFG exits.
+Process-local MIR identities additionally seal source linking but are removed
+from the portable canonical form. Format version 5 carries the remaining
+coverage without portable MIR, and decode/link independently reject malformed
+coverage. Ordinary program, Service artifact, and deployment surfaces all
+reject versions 1-4; no compatibility reader or plan reconstruction exists.
+
 ### Package-Qualified Script Identity
 
 Script module identity is `PackageId + ModulePath`, and every stable script

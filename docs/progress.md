@@ -18,15 +18,19 @@ portable-size baselines. Earlier overloaded-machine data is excluded. Profiles
 and dynamic instruction counts select `I64CmpImmJumpIfFalse` as the first
 bounded MIR-native proof while identifying `range_iteration` scalar blocks and
 loops as the primary throughput lever. Artifact version 4 is already occupied,
-so portable selected plans will hard-switch all three surfaces to version 5.
+so portable selected plans hard-switch all three surfaces to version 5.
 Batch B is accepted: a deterministic `MirBackendHandoff`-only selector maps
 every function and block to dense ordinary units, and an independent verifier
 re-derives exact statement/terminator, budget/edge, safepoint/root, CFG exit,
 source, liveness, and debug coverage before unchanged bytecode lowering. The
 five-row runtime geometric mean is +0.302%, compile resources remain within
-noise, and portable bytes/checksums are unchanged. Batch C is next: retain the
-first measured MIR-native branch superinstruction only if it passes its 5%
-focused gate, and atomically hard-switch portable formats from v4 to v5.
+noise, and portable bytes/checksums are unchanged. Batch C is accepted: the
+first MIR-native i64 compare-immediate branch removes exactly 606 predicted
+outer dispatches, improves its focused scalar row by 8.86% and the complete
+scalar row by 10.30%, and leaves the five-row geometric mean 1.91% faster than
+Batch A. Portable program, Service artifact, and deployment formats are now v5
+and reject versions 1-4. Batch D is next: compact eligible three-or-more-op
+scalar regions through the same verified coverage boundary.
 
 The Rust/Vela interop checkpoint is complete under the
 [final interop and explicit-release hard switch](rust-vela-interop-final-shape-hard-switch-plan.md).
@@ -129,8 +133,9 @@ Phase status:
 - E5 accepted and superseded by M20.75 portability: its format version 2
   explicit-release gate passed the representative ordinary/Service fixtures,
   release/base benchmark rows, structural audits, and repository matrix. The
-  active artifact contract is now version 4; version 4 adds static HostRef
-  collection iteration shape to the accepted version 3 task contract.
+  active artifact contract is now version 5; version 4 added static HostRef
+  collection iteration shape to the accepted version 3 task contract, and
+  version 5 adds canonical selected physical-plan coverage.
 - S0 accepted: the migration inventory, executable fixture, and boundary
   baselines are frozen.
 - S1 accepted: the callable-level replacement model is deleted without aliases

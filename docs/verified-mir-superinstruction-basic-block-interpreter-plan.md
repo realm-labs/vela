@@ -813,6 +813,9 @@ ordinary workload bytecode, checksums, and performance remain within noise
 
 ### Batch C — MIR-native short superinstructions and artifact v5
 
+> Accepted in
+> [the Batch C acceptance report](archive/verified-mir-interpreter-batch-c-acceptance-2026-08-09.md).
+
 Deliverables:
 
 - select the first measured short recipe directly from MIR definition/use,
