@@ -1417,6 +1417,7 @@ dependencies = [
  "rhai",
  "serde",
  "serde_json",
+ "stats_alloc",
  "vela_bytecode",
  "vela_common",
  "vela_def",

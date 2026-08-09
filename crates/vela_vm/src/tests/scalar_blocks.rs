@@ -208,6 +208,133 @@ fn ordinary_branch_artifact() -> Arc<LinkedArtifact> {
     linked_test_owner(program)
 }
 
+fn selected_loop_control_artifact() -> Arc<LinkedArtifact> {
+    let plan = ScalarBlockPlan::new(
+        Box::new([
+            ScalarOp {
+                kind: ScalarOpKind::I64AddImm {
+                    dst: Register(0),
+                    lhs: Register(0),
+                    imm: 1,
+                },
+                source: source(0),
+                execution_units: 0,
+            },
+            ScalarOp {
+                kind: ScalarOpKind::I64AddImm {
+                    dst: Register(1),
+                    lhs: Register(1),
+                    imm: 10,
+                },
+                source: source(1),
+                execution_units: 0,
+            },
+            ScalarOp {
+                kind: ScalarOpKind::I64CompareImm {
+                    dst: Register(2),
+                    op: I64CompareOp::Less,
+                    lhs: Register(0),
+                    imm: 4,
+                },
+                source: source(2),
+                execution_units: 0,
+            },
+        ]),
+        ScalarExit {
+            kind: ScalarExitKind::BoolBranch {
+                condition: Register(2),
+                passed: target(2),
+                failed: target(3),
+            },
+            source: source(3),
+            execution_units: 0,
+        },
+        (2..6).map(span).collect::<Vec<_>>().into_boxed_slice(),
+    );
+    let mut program = LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 3);
+    for (register, source_index) in [(0, 0), (1, 1)] {
+        let zero = code.push_constant(Constant::i64(0));
+        code.push_instruction(
+            Instruction::new(InstructionKind::LoadConst {
+                dst: Register(register),
+                constant: zero,
+            })
+            .with_span(span(source_index)),
+        );
+    }
+    code.scalar_blocks.push(plan);
+    code.push_instruction(Instruction::new(InstructionKind::RunScalarBlock {
+        plan: ScalarBlockPlanId::new(0),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(1),
+    }));
+    code.verify().expect("selected loop fixture should verify");
+    let main = program.push_function(code);
+    program.set_entry_point(main_name, main);
+    linked_test_owner(program)
+}
+
+fn ordinary_loop_control_artifact() -> Arc<LinkedArtifact> {
+    let mut program = LinkedProgram::new();
+    let main_name = program.intern_debug_name("main");
+    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 3);
+    let zero = code.push_constant(Constant::i64(0));
+    for (register, source_index) in [(0, 0), (1, 1)] {
+        code.push_instruction(
+            Instruction::new(InstructionKind::LoadConst {
+                dst: Register(register),
+                constant: zero,
+            })
+            .with_span(span(source_index)),
+        );
+    }
+    code.push_instruction(
+        Instruction::new(InstructionKind::I64AddImm {
+            dst: Register(0),
+            lhs: Register(0),
+            imm: 1,
+        })
+        .with_span(span(2)),
+    );
+    code.push_instruction(
+        Instruction::new(InstructionKind::I64AddImm {
+            dst: Register(1),
+            lhs: Register(1),
+            imm: 10,
+        })
+        .with_span(span(3)),
+    );
+    code.push_instruction(
+        Instruction::new(InstructionKind::I64CmpImm {
+            dst: Register(2),
+            op: I64CompareOp::Less,
+            lhs: Register(0),
+            imm: 4,
+        })
+        .with_span(span(4)),
+    );
+    code.push_instruction(
+        Instruction::new(InstructionKind::JumpIfFalse {
+            condition: Register(2),
+            target: InstructionOffset(7),
+        })
+        .with_span(span(5)),
+    );
+    code.push_instruction(Instruction::new(InstructionKind::Jump {
+        target: InstructionOffset(2),
+    }));
+    code.push_instruction(Instruction::new(InstructionKind::Return {
+        src: Register(1),
+    }));
+    code.verify().expect("ordinary loop fixture should verify");
+    let main = program.push_function(code);
+    program.set_entry_point(main_name, main);
+    linked_test_owner(program)
+}
+
 #[test]
 fn linked_scalar_block_executes_checked_operations_and_exact_budget_units() {
     let artifact = scalar_artifact(arithmetic_plan(), 3);
@@ -407,6 +534,14 @@ fn linked_scalar_block_fused_branch_selects_the_exact_exit() {
     let ordinary = Vm::new().run_linked_program(&ordinary_branch_artifact(), "main", &[]);
     assert_eq!(selected, ordinary);
     assert_eq!(selected, Ok(OwnedValue::i64(10)));
+}
+
+#[test]
+fn linked_scalar_block_loop_matches_ordinary_continue_and_break_exits() {
+    let selected = Vm::new().run_linked_program(&selected_loop_control_artifact(), "main", &[]);
+    let ordinary = Vm::new().run_linked_program(&ordinary_loop_control_artifact(), "main", &[]);
+    assert_eq!(selected, ordinary);
+    assert_eq!(selected, Ok(OwnedValue::i64(40)));
 }
 
 #[derive(Default)]
