@@ -1965,6 +1965,17 @@ switch from version 4 to version 5 and rejects versions 1-4. Reusing version 4
 would make two incompatible payload contracts share one discriminator; adding
 a compatibility reader would violate the pre-release hard-switch policy.
 
+### Physical Selection Coverage Is Verified Before Bytecode Emission
+
+Every production MIR backend call first builds a deterministic plan from
+`MirBackendHandoff`, then a separate verifier re-derives its exact function,
+block, statement/terminator, budget/edge, safepoint/root, CFG exit, source,
+liveness, and debug coverage before physical emission. The verifier does not
+call the selector's manifest-construction helper. Batch B marks every unit
+ordinary and preserves byte-for-byte canonical output; later batches may
+replace only units that pass this same proof. Selection consumes no HIR,
+source text, runtime values, or emitted-bytecode adjacency.
+
 ### Package-Qualified Script Identity
 
 Script module identity is `PackageId + ModulePath`, and every stable script

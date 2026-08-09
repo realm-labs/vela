@@ -3,7 +3,7 @@
 > **Track:** post-M20 non-JIT interpreter structural optimization, before M22
 > Cranelift JIT
 >
-> **Status:** Batch A accepted on 2026-08-09; Batch B is next
+> **Status:** Batches A-B accepted on 2026-08-09; Batch C is next
 >
 > **Compatibility policy:** pre-release hard switch. Internal instruction,
 > verifier, artifact, profiler, and frame-location shapes may change without a
@@ -783,6 +783,9 @@ no runtime or artifact behavior has changed
 ```
 
 ### Batch B — Add selector and coverage verification with ordinary output
+
+> Accepted in
+> [the Batch B acceptance report](archive/verified-mir-interpreter-batch-b-acceptance-2026-08-09.md).
 
 Deliverables:
 

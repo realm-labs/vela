@@ -19,8 +19,14 @@ and dynamic instruction counts select `I64CmpImmJumpIfFalse` as the first
 bounded MIR-native proof while identifying `range_iteration` scalar blocks and
 loops as the primary throughput lever. Artifact version 4 is already occupied,
 so portable selected plans will hard-switch all three surfaces to version 5.
-Batch B is next: add a deterministic ordinary-output selector and independent
-coverage verifier without changing emitted code or runtime behavior.
+Batch B is accepted: a deterministic `MirBackendHandoff`-only selector maps
+every function and block to dense ordinary units, and an independent verifier
+re-derives exact statement/terminator, budget/edge, safepoint/root, CFG exit,
+source, liveness, and debug coverage before unchanged bytecode lowering. The
+five-row runtime geometric mean is +0.302%, compile resources remain within
+noise, and portable bytes/checksums are unchanged. Batch C is next: retain the
+first measured MIR-native branch superinstruction only if it passes its 5%
+focused gate, and atomically hard-switch portable formats from v4 to v5.
 
 The Rust/Vela interop checkpoint is complete under the
 [final interop and explicit-release hard switch](rust-vela-interop-final-shape-hard-switch-plan.md).
