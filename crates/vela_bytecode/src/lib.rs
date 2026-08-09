@@ -1081,9 +1081,6 @@ pub enum UnlinkedInstructionKind {
         imm: i64,
         target: InstructionOffset,
     },
-    RunScalarBlock {
-        plan: ScalarBlockPlanId,
-    },
     BinaryIntLiteral {
         dst: Register,
         op: BinaryLiteralOp,
@@ -1365,6 +1362,9 @@ pub enum UnlinkedInstructionKind {
     },
     Return {
         src: Register,
+    },
+    RunScalarBlock {
+        plan: ScalarBlockPlanId,
     },
 }
 

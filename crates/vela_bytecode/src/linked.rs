@@ -923,9 +923,6 @@ pub enum InstructionKind {
         imm: i64,
         target: InstructionOffset,
     },
-    RunScalarBlock {
-        plan: crate::ScalarBlockPlanId,
-    },
     BinaryIntLiteral {
         dst: Register,
         op: crate::BinaryLiteralOp,
@@ -1207,6 +1204,9 @@ pub enum InstructionKind {
     },
     Return {
         src: Register,
+    },
+    RunScalarBlock {
+        plan: crate::ScalarBlockPlanId,
     },
 }
 

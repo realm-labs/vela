@@ -2,10 +2,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 use vela_mir::{
-    MirBackendHandoff, MirBinaryOp, MirBlockId, MirBudgetPoint, MirBudgetSite, MirComparisonOp,
-    MirDebugLocalId, MirFunction, MirFunctionAnalyses, MirFunctionId, MirImmediate, MirLiveValue,
-    MirNumericBinaryOp, MirOperand, MirPlace, MirRvalue, MirSafepointId, MirSourceOrigin,
-    MirStatementId, MirStatementKind, MirTerminatorKind, MirUnaryOp, MirValueType,
+    MirBackendHandoff, MirBasicBlock, MirBinaryOp, MirBlockId, MirBudgetPoint, MirBudgetSite,
+    MirComparisonOp, MirDebugLocalId, MirFunction, MirFunctionAnalyses, MirFunctionId,
+    MirImmediate, MirLiveValue, MirNumericBinaryOp, MirOperand, MirPlace, MirRvalue,
+    MirSafepointId, MirSourceOrigin, MirStatementId, MirStatementKind, MirTerminatorKind,
+    MirUnaryOp, MirValueType,
 };
 
 mod verify;
@@ -396,6 +397,14 @@ fn scalar_block_candidate(
     analyses: &MirFunctionAnalyses,
     block_id: MirBlockId,
 ) -> Option<ScalarBlockSelection> {
+    // The first scalar-block tier is intentionally profile-backed: cold
+    // straight-line setup blocks add plan metadata and perturb unrelated
+    // dispatch without amortizing the extra physical dispatch. Batch E owns
+    // broader loop-region formation; Batch D selects only blocks in a CFG
+    // cycle after the shorter superinstruction recipes have had priority.
+    if !block_is_cyclic(function, block_id) {
+        return None;
+    }
     let block = function.block(block_id)?;
     if block.statements().len() < 3
         || block
@@ -426,6 +435,26 @@ fn scalar_block_candidate(
         block: block_id,
         statements: block.statements().to_vec().into_boxed_slice(),
     })
+}
+
+fn block_is_cyclic(function: &MirFunction, origin: MirBlockId) -> bool {
+    let Some(terminator) = function.block(origin).and_then(MirBasicBlock::terminator) else {
+        return false;
+    };
+    let mut pending = mir_successors(&terminator.kind);
+    let mut visited = BTreeSet::new();
+    while let Some(block) = pending.pop() {
+        if block == origin {
+            return true;
+        }
+        if !visited.insert(block) {
+            continue;
+        }
+        if let Some(terminator) = function.block(block).and_then(MirBasicBlock::terminator) {
+            pending.extend(mir_successors(&terminator.kind));
+        }
+    }
+    false
 }
 
 fn scalar_statement(

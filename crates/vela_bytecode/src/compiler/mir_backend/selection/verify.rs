@@ -7,10 +7,10 @@
 use std::collections::BTreeSet;
 
 use vela_mir::{
-    MirBackendHandoff, MirBinaryOp, MirBlockId, MirBudgetSite, MirComparisonOp, MirFunction,
-    MirFunctionAnalyses, MirFunctionId, MirImmediate, MirLiveValue, MirNumericBinaryOp, MirOperand,
-    MirPlace, MirRvalue, MirStatementId, MirStatementKind, MirTerminatorKind, MirUnaryOp,
-    MirValueType,
+    MirBackendHandoff, MirBasicBlock, MirBinaryOp, MirBlockId, MirBudgetSite, MirComparisonOp,
+    MirFunction, MirFunctionAnalyses, MirFunctionId, MirImmediate, MirLiveValue,
+    MirNumericBinaryOp, MirOperand, MirPlace, MirRvalue, MirStatementId, MirStatementKind,
+    MirTerminatorKind, MirUnaryOp, MirValueType,
 };
 
 use super::{
@@ -116,6 +116,15 @@ fn verify_scalar_block(
     analyses: &MirFunctionAnalyses,
     selected: &ScalarBlockSelection,
 ) -> Result<(), SelectionError> {
+    // Recompute the profitability boundary independently of the selector so a
+    // forged selection cannot smuggle a cold straight-line block into the
+    // physical plan.
+    if !block_is_cyclic(function, selected.block()) {
+        return Err(SelectionError::InvalidScalarBlock {
+            function: function_id,
+            block: selected.block(),
+        });
+    }
     let invalid = || SelectionError::InvalidScalarBlock {
         function: function_id,
         block: selected.block,
@@ -150,6 +159,26 @@ fn verify_scalar_block(
         }
         _ => Err(invalid()),
     }
+}
+
+fn block_is_cyclic(function: &MirFunction, origin: MirBlockId) -> bool {
+    let Some(terminator) = function.block(origin).and_then(MirBasicBlock::terminator) else {
+        return false;
+    };
+    let mut pending = mir_successors(&terminator.kind);
+    let mut visited = BTreeSet::new();
+    while let Some(block) = pending.pop() {
+        if block == origin {
+            return true;
+        }
+        if !visited.insert(block) {
+            continue;
+        }
+        if let Some(terminator) = function.block(block).and_then(MirBasicBlock::terminator) {
+            pending.extend(mir_successors(&terminator.kind));
+        }
+    }
+    false
 }
 
 fn verified_scalar_statement(
