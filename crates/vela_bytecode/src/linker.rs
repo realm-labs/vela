@@ -567,6 +567,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         linked.cache_sites = code.cache_sites.clone();
         linked.constants = code.constants.clone();
         linked.selected_units = code.selected_units.clone();
+        linked.scalar_blocks = code.scalar_blocks.clone();
         for guard in &code.param_guards {
             let linked_guard = self.link_type_guard(guard.guard.clone(), &mut linked)?;
             linked.push_param_guard(guard.parameter, linked_guard);

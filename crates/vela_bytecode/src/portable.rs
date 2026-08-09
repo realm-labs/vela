@@ -297,6 +297,12 @@ fn validate_selected_plans(payload: &PortableProgramPayload) -> Result<(), Porta
     fn validate(code: &UnlinkedCodeObject) -> Result<(), PortableArtifactError> {
         crate::selected_plan::verify_selected_physical_units(code)
             .map_err(|detail| PortableArtifactError::SelectedPlan(detail.to_owned()))?;
+        crate::scalar_plan::verify_scalar_block_plans(
+            &code.scalar_blocks,
+            code.register_count,
+            code.instructions.len(),
+        )
+        .map_err(|detail| PortableArtifactError::SelectedPlan(detail.to_owned()))?;
         for nested in &code.nested_functions {
             validate(nested)?;
         }
@@ -398,10 +404,52 @@ impl std::error::Error for PortableArtifactError {}
 
 #[cfg(test)]
 mod tests {
-    use vela_common::SourceId;
+    use vela_common::{SourceId, Span};
 
     use super::*;
-    use crate::InstructionOffset;
+    use crate::{
+        ChargedScalarTarget, InstructionOffset, Register, ScalarBlockPlan, ScalarConstant,
+        ScalarExit, ScalarExitKind, ScalarOp, ScalarOpKind, ScalarSourcePointId,
+    };
+
+    fn portable_scalar_plan() -> ScalarBlockPlan {
+        let source = SourceId::new(79);
+        ScalarBlockPlan {
+            operations: Box::new([
+                ScalarOp {
+                    kind: ScalarOpKind::LoadScalar {
+                        dst: Register(0),
+                        value: ScalarConstant::I64(1),
+                    },
+                    source: ScalarSourcePointId::new(0),
+                    execution_units: 1,
+                },
+                ScalarOp {
+                    kind: ScalarOpKind::I64AddImm {
+                        dst: Register(1),
+                        lhs: Register(0),
+                        imm: 2,
+                    },
+                    source: ScalarSourcePointId::new(1),
+                    execution_units: 0,
+                },
+            ]),
+            exit: ScalarExit {
+                kind: ScalarExitKind::Jump(ChargedScalarTarget {
+                    target: InstructionOffset(0),
+                    execution_units: 0,
+                    budget_source: None,
+                }),
+                source: ScalarSourcePointId::new(2),
+                execution_units: 1,
+            },
+            source_points: Box::new([
+                Span::new(source, 0, 1),
+                Span::new(source, 1, 2),
+                Span::new(source, 2, 3),
+            ]),
+        }
+    }
 
     fn portable_task_artifact() -> PortableProgramArtifact {
         let compiled = crate::compiler::compile_test_program(
@@ -518,6 +566,63 @@ fn main(value: Any) {
         assert!(matches!(
             PortableProgramArtifact::decode(&encoded),
             Err(PortableArtifactError::SelectedPlan(_))
+        ));
+    }
+
+    #[test]
+    fn portable_v5_round_trips_bounded_scalar_plan_tables() {
+        let compiled = crate::compiler::compile_test_program(
+            SourceId::new(79),
+            "fn main(value: i64) -> i64 { let next = value + 1; return next; }",
+        )
+        .expect("compile scalar program");
+        let mut artifact = PortableProgramArtifact::from_compiled(compiled)
+            .expect("portable scalar-plan artifact");
+        let main = artifact
+            .payload
+            .functions
+            .iter_mut()
+            .find(|code| code.name == "main")
+            .expect("main function");
+        main.scalar_blocks.push(portable_scalar_plan());
+
+        let encoded = artifact.encode().expect("encode scalar plan");
+        let decoded = PortableProgramArtifact::decode(&encoded).expect("decode scalar plan");
+        assert_eq!(decoded, artifact);
+        let linked = crate::Linker::new()
+            .link_portable_program(decoded.into_compiled())
+            .expect("link scalar plan");
+        assert!(
+            linked
+                .program()
+                .functions()
+                .any(|(_, code)| code.scalar_blocks.as_slice() == [portable_scalar_plan()])
+        );
+        let reencoded =
+            PortableProgramArtifact::from_linked(&linked).expect("re-encode scalar plan");
+        assert_eq!(reencoded, artifact);
+    }
+
+    #[test]
+    fn portable_v5_rejects_scalar_plan_count_above_format_limit() {
+        let compiled =
+            crate::compiler::compile_test_program(SourceId::new(80), "fn main() { return 1; }")
+                .expect("compile scalar program");
+        let mut artifact = PortableProgramArtifact::from_compiled(compiled)
+            .expect("portable scalar-plan artifact");
+        let main = artifact
+            .payload
+            .functions
+            .iter_mut()
+            .find(|code| code.name == "main")
+            .expect("main function");
+        main.register_count = 2;
+        main.scalar_blocks =
+            vec![portable_scalar_plan(); crate::scalar_plan::MAX_SCALAR_BLOCKS_PER_CODE + 1];
+        assert!(matches!(
+            artifact.encode(),
+            Err(PortableArtifactError::SelectedPlan(message))
+                if message.contains("count exceeds")
         ));
     }
 

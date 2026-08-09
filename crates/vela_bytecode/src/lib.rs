@@ -15,6 +15,7 @@ mod package_metadata;
 #[cfg(feature = "artifact-codec")]
 mod portable;
 pub mod program_image;
+mod scalar_plan;
 mod script_metadata;
 pub mod script_methods;
 mod selected_plan;
@@ -76,6 +77,10 @@ pub use portable::{
     PortableProgramArtifact,
 };
 pub use program_image::ProgramImage;
+pub use scalar_plan::{
+    ChargedScalarTarget, ScalarBlockPlan, ScalarBlockPlanId, ScalarConstant, ScalarExit,
+    ScalarExitKind, ScalarOp, ScalarOpKind, ScalarSourcePointId,
+};
 pub use script_metadata::{derived_linked_record_trait_fields, derived_record_trait_fields};
 pub use selected_plan::{SelectedPhysicalUnit, SelectedPhysicalUnitKind};
 pub use state::{LinkedStateDescriptor, StateDescriptor, StateStorage, StateVisibility};
@@ -407,6 +412,9 @@ pub struct UnlinkedCodeObject {
     /// Portable physical coverage for every verifier-selected instruction.
     #[cfg_attr(feature = "artifact-codec", serde(default))]
     pub selected_units: Vec<SelectedPhysicalUnit>,
+    /// Immutable compact scalar plans selected from verified MIR.
+    #[cfg_attr(feature = "artifact-codec", serde(default))]
+    pub scalar_blocks: Vec<ScalarBlockPlan>,
     pub(crate) stable_function: Option<FunctionId>,
     /// Capabilities observed by the verified compiler for this stable root,
     /// including transitive script calls. Portable artifacts retain this
@@ -436,6 +444,7 @@ impl UnlinkedCodeObject {
             return_guard: None,
             nested_functions: Vec::new(),
             selected_units: Vec::new(),
+            scalar_blocks: Vec::new(),
             stable_function: None,
             verified_capabilities: None,
             compiled_mir: None,

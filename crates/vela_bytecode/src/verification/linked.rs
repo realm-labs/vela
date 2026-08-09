@@ -215,6 +215,18 @@ fn verify_linked_code_object_with_context(
             VerificationErrorKind::InvalidSelectedPlan { detail },
         )
     })?;
+    crate::scalar_plan::verify_scalar_block_plans(
+        &code.scalar_blocks,
+        code.register_count,
+        code.instructions.len(),
+    )
+    .map_err(|detail| {
+        error(
+            function,
+            None,
+            VerificationErrorKind::InvalidSelectedPlan { detail },
+        )
+    })?;
     verify_linked_cache_site_layout(
         function,
         code,
