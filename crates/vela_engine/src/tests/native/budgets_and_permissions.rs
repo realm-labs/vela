@@ -1,6 +1,7 @@
 use super::*;
 
 use vela_bytecode::UnlinkedProgram;
+use vela_common::Span;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::VmResult;
 
@@ -226,6 +227,7 @@ fn main() {
             budget: ExecutionBudgetKind::ExecutionUnits,
             limit: 4
         })
+        .with_source_span(Some(Span::new(SourceId::new(1), 49, 56)))
         .with_call_stack(Arc::from([vela_vm::error::VmStackFrame {
             function: "main".to_owned(),
             call_site: None,
