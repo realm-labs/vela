@@ -3,7 +3,7 @@
 > **Track:** post-M20 non-JIT interpreter structural optimization, before M22
 > Cranelift JIT
 >
-> **Status:** Batches A-F accepted; Batch G is next
+> **Status:** Batches A-G accepted; track complete
 >
 > **Compatibility policy:** pre-release hard switch. Internal instruction,
 > verifier, artifact, profiler, and frame-location shapes may change without a
@@ -990,6 +990,13 @@ scalar_branch_loop and range_iteration each improve at least 35%
 no unexplained stable guardrail regression above 5% remains
 ordinary fallback covers every ineligible operation through the one VM
 ```
+
+Accepted on 2026-08-28 under the
+[final acceptance report](archive/verified-mir-interpreter-final-acceptance-2026-08-28.md).
+The frozen five-row geometric mean improves 32.215% from Batch A; scalar and
+range improve 37.634% and 75.796%. Semantic, artifact, reload, async, Service,
+memory, structural, and full-repository gates pass with ordinary instructions
+retained as the universal fallback in the one production VM.
 
 ## 12. Test And Acceptance Matrix
 

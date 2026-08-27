@@ -668,6 +668,25 @@ to 171, with 2,176 internal iterations/backedges still reported. One versus
 warmup. Detailed measurements and capture paths live in the
 [Batch E acceptance report](archive/verified-mir-interpreter-batch-e-acceptance-2026-08-09.md).
 
+## Verified-MIR Interpreter Exit Checkpoint
+
+The interpreter track is accepted through Batch G against the quiet-machine
+Batch A baseline. The final clean embedded comparison uses 500,000 iterations,
+five repeats, and two warmups. `scalar_branch_loop` improves 37.634%,
+`range_iteration` improves 75.796%, and the frozen five-row geometric mean
+improves 32.215%, passing the 35% lead-row and 25% suite gates. Function calls
+improve 0.528%, recursive countdown regresses 2.839%, and float math improves
+7.322%; all checksums match.
+
+On the same workloads, final Vela is 5.652x, 1.333x, 6.785x, 5.751x, and
+6.821x embedded Lua 5.4, with a five-row geometric ratio of 4.575x. These
+ratios remain reporting evidence, not a reason to change semantics or add a
+benchmark-specific path. Stable VM, Engine, Service, async, scoped-task,
+Actor-memory, and concurrency guardrails have no unexplained regression above
+5%. Detailed captures, the complete semantic matrix, structural audit, and
+repository validation live in the
+[final acceptance report](archive/verified-mir-interpreter-final-acceptance-2026-08-28.md).
+
 ## Current Conclusions
 
 M19 is complete enough for M19.5. The interpreter/heap phase delivered measured

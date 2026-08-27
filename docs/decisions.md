@@ -2074,6 +2074,24 @@ program, Service artifact, and Service deployment loaders reject versions 1-4
 without inference, compatibility readers, or expansion into a second
 instruction stream.
 
+### Verified-MIR Physical Families Are Retained In The Production Interpreter
+
+The accepted production families are the verified i64 compare-immediate
+branch, complete eligible Bool/i64 scalar blocks, and proven single-entry,
+single-latch i64 range-loop regions. They pass the final measurement-first
+gates: scalar and range improve 37.634%/75.796% from Batch A and the frozen
+five-row geometric mean improves 32.215%. Non-target stable guardrails remain
+within 5%, so no production optimization toggle or benchmark-specific path is
+needed.
+
+This is one physical specialization layer inside the existing frame driver,
+not a second VM. Ordinary instructions are the semantic fallback for every
+unsupported or unproven shape. Selection consumes sealed verified MIR, the
+independent verifier proves canonical coverage, exact-generation artifacts own
+plans and profiles, and portable version 5 carries the complete bounded plan.
+No selector may infer a family from emitted-bytecode adjacency, query HIR or
+source text, mutate plans from profiles, or add a compatibility reader.
+
 ### Package-Qualified Script Identity
 
 Script module identity is `PackageId + ModulePath`, and every stable script

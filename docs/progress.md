@@ -10,8 +10,9 @@ Completed execution plans and acceptance reports live under
 
 ## Current Focus
 
-The active execution track is the post-M20
-[Verified-MIR superinstruction and basic-block interpreter plan](verified-mir-superinstruction-basic-block-interpreter-plan.md).
+Current implementation focus is M20.5 incremental HIR re-lowering. The post-M20
+[Verified-MIR superinstruction and basic-block interpreter plan](verified-mir-superinstruction-basic-block-interpreter-plan.md)
+is complete.
 Batch A is accepted with newly captured quiet-machine scalar, VM, Host,
 Service, async, scoped-task, Actor memory/concurrency, compile-resource, and
 portable-size baselines. Earlier overloaded-machine data is excluded. Profiles
@@ -57,9 +58,13 @@ providers, detached workers, continuations, Snapshot/Delta/fold/rollback,
 generation-owned physical profiling, v5 corruption/round trips, and shared-plan
 memory are covered without a second execution path. The portable-plan fuzz
 target seeds plan handles, operands, coverage, exits, source points, and payload
-limits and runs in CI. Batch G is next: complete structural cleanup, stable
-performance and Lua 5.4 comparison, the semantic acceptance matrix, full
-repository validation, and the final archived report.
+limits and runs in CI. Batch G and the complete track are accepted under the
+[final acceptance report](archive/verified-mir-interpreter-final-acceptance-2026-08-28.md).
+The final scalar/range rows improve 37.634%/75.796% from Batch A and the frozen
+five-row geometric mean improves 32.215%; semantic, artifact, reload, async,
+Service, memory, structural, and repository gates pass. Production retains one
+frame driver, verified-MIR-owned selection, version 5 portable plans, exact-
+generation profiles, and ordinary instructions as the universal fallback.
 
 The Rust/Vela interop checkpoint is complete under the
 [final interop and explicit-release hard switch](rust-vela-interop-final-shape-hard-switch-plan.md).
@@ -77,8 +82,6 @@ All six batches, the complete acceptance matrix, structural audits, examples,
 benchmarks, and repository gates pass without a compatibility path or new
 unsafe boundary.
 
-After the verified-MIR interpreter track closes, implementation focus returns
-to M20.5 incremental HIR re-lowering.
 M20.75 host-scoped detached async execution is accepted. Its
 [execution plan](host-scoped-detached-async-execution-plan.md) hard-switches
 Vela and generated Service applications to a domain-neutral bounded host task
@@ -591,13 +594,11 @@ provides it.
 
 ## Next Up
 
-1. Complete verified-MIR Batch G cleanup, stable performance comparison,
-   semantic acceptance matrix, full repository validation, and final report.
-2. Resume M20.5 incremental HIR re-lowering with stable per-module HIR IDs and
+1. Resume M20.5 incremental HIR re-lowering with stable per-module HIR IDs and
    move `did_change` diagnostics off the message loop.
-3. Audit the parameterized container and value-keyed Map/Set plans against
+2. Audit the parameterized container and value-keyed Map/Set plans against
    their explicit acceptance matrices.
-4. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
+3. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
    post-S2 optimization follow-up.
 
 ## Update Rules
