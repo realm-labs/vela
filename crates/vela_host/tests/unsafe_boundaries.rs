@@ -18,6 +18,7 @@ const REVIEWED_UNSAFE_BOUNDARIES: &[&str] = &[
     "crates/vela_c_api/src/lib.rs",
     "crates/vela_host/src/erased_reborrow.rs",
     "crates/vela_host/src/erased_slice.rs",
+    "crates/vela_vm/src/scalar_blocks.rs",
 ];
 
 #[test]
