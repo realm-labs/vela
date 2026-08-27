@@ -50,9 +50,16 @@ header/edge/backedge budgets, later-iteration traps, portable metadata, and
 logical loop profile events. `range_iteration` profiled outer dispatch falls
 97.45% from Batch D, one versus 10,001 loop iterations adds zero allocations,
 and the quiet-machine five-row geometric mean is 34.401% faster than Batch A;
-scalar/range improve 38.347%/79.043%. Batch F is next: close reload, async,
-Service, generation-owned profiling, portability corruption, and shared-plan
-memory proofs around this accepted physical model.
+scalar/range improve 38.347%/79.043%. Batch F is accepted under its
+[archived report](archive/verified-mir-interpreter-batch-f-acceptance-2026-08-28.md).
+Old/new ordinary and Service generations, closures, ready/pending async roots,
+providers, detached workers, continuations, Snapshot/Delta/fold/rollback,
+generation-owned physical profiling, v5 corruption/round trips, and shared-plan
+memory are covered without a second execution path. The portable-plan fuzz
+target seeds plan handles, operands, coverage, exits, source points, and payload
+limits and runs in CI. Batch G is next: complete structural cleanup, stable
+performance and Lua 5.4 comparison, the semantic acceptance matrix, full
+repository validation, and the final archived report.
 
 The Rust/Vela interop checkpoint is complete under the
 [final interop and explicit-release hard switch](rust-vela-interop-final-shape-hard-switch-plan.md).
@@ -70,7 +77,8 @@ All six batches, the complete acceptance matrix, structural audits, examples,
 benchmarks, and repository gates pass without a compatibility path or new
 unsafe boundary.
 
-The active implementation focus returns to M20.5 incremental HIR re-lowering.
+After the verified-MIR interpreter track closes, implementation focus returns
+to M20.5 incremental HIR re-lowering.
 M20.75 host-scoped detached async execution is accepted. Its
 [execution plan](host-scoped-detached-async-execution-plan.md) hard-switches
 Vela and generated Service applications to a domain-neutral bounded host task
@@ -583,8 +591,8 @@ provides it.
 
 ## Next Up
 
-1. Complete verified-MIR Batch F reload, async, Service, profiling,
-   portability, and generation-sharing closure.
+1. Complete verified-MIR Batch G cleanup, stable performance comparison,
+   semantic acceptance matrix, full repository validation, and final report.
 2. Resume M20.5 incremental HIR re-lowering with stable per-module HIR IDs and
    move `did_change` diagnostics off the message loop.
 3. Audit the parameterized container and value-keyed Map/Set plans against

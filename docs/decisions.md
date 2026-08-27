@@ -2052,6 +2052,28 @@ portable, linked, source-link, and physical-reference verification must all
 accept the exact header/body/exit topology before private unchecked register
 slot access is reachable.
 
+### Selected Plans And Physical Profiles Are Exact-Generation Data
+
+Selected physical plans are immutable code-object content shared by every
+Runtime using one `LinkedArtifact`; they are never copied into actor-local
+state. Active frames, closures, pending async roots, provider calls, detached
+workers, continuations, and complete Service generations preserve plans by
+retaining that same artifact owner. Reload publishes a fresh plan/profile
+layout and never clears, rebases, or reuses generation-local plan handles.
+
+Physical profiling is opt-in generation execution data. Its stable report rows
+separate ordinary instruction hits, superinstruction hits and eliminated
+dispatches, scalar block entries and compact logical operations, and scalar
+loop entries, iterations, exits, and charged backedges. Counters saturate,
+default execution allocates none, pooled Runtime reset clears mutable counters,
+and no counter can select or rewrite a plan in this interpreter track.
+
+Portable format version 5 carries the bounded physical plan, coverage, source,
+exit, feature, and profile-layout metadata needed to link without MIR. Ordinary
+program, Service artifact, and Service deployment loaders reject versions 1-4
+without inference, compatibility readers, or expansion into a second
+instruction stream.
+
 ### Package-Qualified Script Identity
 
 Script module identity is `PackageId + ModulePath`, and every stable script

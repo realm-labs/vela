@@ -76,6 +76,15 @@ collects released retained values, then prunes dead generation entries and
 their old-only VM/extern state roots. The Engine's weak registry entry
 disappears when the last shared execution-data owner is gone.
 
+Selected superinstructions, scalar blocks, scalar range-loop metadata, and
+their physical profile layout follow the same owner. Active frames, retained
+closures, suspended async roots, detached workers, and Service generations keep
+their exact old plans through the artifact they already pin; new roots use the
+new artifact's plans. Rejected, stale, staged, and rolled-back candidates do not
+mutate active plans or counters. A compatible reload may select a different
+physical plan without changing semantic ABI, but the artifact checksum and
+executable generation necessarily change.
+
 The same immutable artifact also maps verified MIR functions to linked handles.
 Future M22 compilation may consume the read-only restricted-JIT input on a
 ProgramVersion without rebuilding HIR or analysis. Published machine code must

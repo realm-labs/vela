@@ -231,7 +231,8 @@ adapter vtable only when the receiver itself cannot provide a typed lease,
 without retrying other lease, permission, or invocation failures.
 
 Portable program, Service bundle, and detached Service metadata format version
-2 encode this explicit-release contract. Version 1 artifacts are rejected at
+5 encode the explicit-release, scoped-task, static HostRef iteration, and
+verified physical-plan contracts. Versions 1 through 4 are rejected at
 decode/load boundaries before staging or activation; there is no legacy
 interpreter or compatibility mode.
 
@@ -247,9 +248,10 @@ HostRef, PathProxy, scoped leases, closures, live iterators, and host contexts
 cannot cross admission. Vela exposes no TaskHandle, Future value, join, script
 cancellation, manual resume, unscoped spawn, or framework-specific task API.
 Portable program, Service bundle, and detached deployment metadata now use
-format version 4. It retains the M20.75 detached-task contract and adds static
-HostRef collection iteration shape; versions 1 through 3 are rejected rather
-than upgraded or interpreted through a compatibility path.
+format version 5. It retains the M20.75 detached-task and static HostRef
+collection-iteration contracts and adds canonical selected physical plans,
+coverage, source points, exits, and profile layouts. Versions 1 through 4 are
+rejected rather than upgraded or interpreted through a compatibility path.
 
 
 ## Detailed Contracts

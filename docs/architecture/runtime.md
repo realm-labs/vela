@@ -15,6 +15,22 @@ execution state, HostRef leases, and the actor's adopted generation. Per-call
 budget counters, capabilities, cancellation, and tracing belong to the active
 `ExecutionSession`.
 
+Verified-MIR-selected superinstructions, compact scalar blocks, and scalar
+range-loop metadata are immutable `LinkedCodeObject` content. Dense plan,
+source-point, exit, and operand handles are valid only with that exact linked
+artifact. Ordinary linked instructions remain the complete fallback for every
+ineligible operation. `drive_linked_frame` is the sole production frame driver:
+it either executes an ordinary instruction or enters the focused scalar
+executor and resumes at a verified ordinary instruction offset. Selected units
+do not own calls, HostAccess, reflection, heap work, suspension, or a second VM.
+
+Selected execution preserves MIR execution-unit sites and source points rather
+than deriving either from physical dispatch count. Initial scalar units contain
+no allocation or safepoint, so untouched register roots remain visible to the
+same frame and GC can run only after the unit returns to an ordinary boundary.
+Checked arithmetic, runtime entry tags, partial writes, traps, and conditional
+edge/backedge charges remain ordered exactly as in ordinary execution.
+
 Cache entries, profile counters, hotness, and tier selection are execution
 metadata rather than actor semantics. Their ownership is selected by what each
 entry depends on:
@@ -33,6 +49,15 @@ large shared program. Full instruction profiling is opt-in and is aggregated
 per generation or execution lane unless a concrete diagnostic explicitly
 requires actor-local counters.
 
+The linked artifact seals one immutable physical profile layout. Opt-in
+generation execution data owns saturating counters for ordinary instruction
+hits, superinstruction hits and eliminated dispatches, scalar block entries and
+logical subpoints, and scalar loop entries, iterations, exits, and charged
+backedges. Runtimes share that exact-generation data; default execution
+allocates no counter array, runtime-pool reset clears mutable counters without
+copying plans, and reload publishes fresh profile ownership instead of rebasing
+old counters.
+
 The linker emits one `LinkedArtifact`. Its canonical flattened records allocate
 `ProgramImage` indexes, linked function handles, generation-global cache IDs,
 and profile layout together. `RuntimeImage` references that artifact; it does
@@ -46,6 +71,13 @@ is never interpreted. Every runtime entry links first, then executes through
 the single linked instruction loop; frames and closures retain an
 `Arc<LinkedArtifact>` so nested calls and retained closures cannot resolve
 generation-local handles against a different program version.
+
+Portable program, Service artifact, and Service deployment formats use version
+5 for selected physical plans. The payload contains bounded compact operations,
+sources, exits, coverage, feature bits, and profile layout needed to link
+without MIR. Versions 1 through 4 reject before linking or activation; loaders
+do not infer plans, reconstruct MIR, or expand selected units into a legacy
+instruction stream.
 
 Stable semantic IDs (`FunctionId`, `MethodId`, `TypeId`, `FieldId`,
 `VariantId`, and schema/shape identities) may be compared across generations.
