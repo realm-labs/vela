@@ -60,7 +60,7 @@ pub(crate) fn build_gameplay_engine(options: GameEngineOptions) -> EngineResult<
         bindings.register_type(ItemStack::vela_type());
         builder = builder.register_type_spec(string_item_map_type());
     }
-    if options.schema.quest {
+    if options.schema.quest && !options.schema.player {
         builder = builder.register_type_desc(HostQuestProgress::vela_reflect_type_desc());
     }
     if options.schema.config {
@@ -189,7 +189,17 @@ enum HostQuestProgress {
     },
 }
 
-struct KillRewardConfig;
+#[derive(ScriptHost)]
+#[vela(path = "game::config::KillRewardConfig")]
+struct KillRewardConfig {}
+
+impl vela_engine::type_registration::VelaType for HostQuestProgress {
+    fn register(
+        builder: vela_engine::builder::EngineBuilder,
+    ) -> vela_engine::builder::EngineBuilder {
+        builder.register_type_desc(Self::vela_reflect_type_desc())
+    }
+}
 
 impl vela_host::object::ScriptHostFieldAccess for HostQuestProgress {
     fn script_host_type_id(&self) -> vela_common::HostTypeId {
@@ -226,54 +236,6 @@ impl vela_host::object::ScriptHostFieldAccess for HostQuestProgress {
 }
 
 impl vela_host::object::ScriptHostObject for HostQuestProgress {
-    fn host_type_id(&self) -> vela_common::HostTypeId {
-        vela_host::object::ScriptHostFieldAccess::script_host_type_id(self)
-    }
-
-    fn read_resolved_host(
-        &self,
-        _access: vela_host::resolved::ResolvedHostAccess,
-        target: vela_host::target::HostTargetInstance<'_>,
-    ) -> vela_host::error::HostResult<vela_host::value::HostValue> {
-        vela_host::object::ScriptHostFieldAccess::read_host_target_from(self, target, 0)
-    }
-}
-
-impl vela_host::object::ScriptHostFieldAccess for KillRewardConfig {
-    fn script_host_type_id(&self) -> vela_common::HostTypeId {
-        vela_common::HostTypeId::new(0)
-    }
-
-    fn read_host_target_from(
-        &self,
-        target: vela_host::target::HostTargetInstance<'_>,
-        _offset: usize,
-    ) -> vela_host::error::HostResult<vela_host::value::HostValue> {
-        Err(vela_host::error::HostError {
-            kind: vela_host::error::HostErrorKind::MissingPath {
-                path: target.to_diagnostic_path().to_host_path(),
-            },
-            source_span: None,
-        })
-    }
-
-    fn write_host_target_from(
-        &mut self,
-        target: vela_host::target::HostTargetInstance<'_>,
-        _offset: usize,
-        _value: vela_host::value::HostValue,
-    ) -> vela_host::error::HostResult<()> {
-        Err(vela_host::error::HostError {
-            kind: vela_host::error::HostErrorKind::PermissionDenied {
-                path: target.to_diagnostic_path().to_host_path(),
-                action: "write",
-            },
-            source_span: None,
-        })
-    }
-}
-
-impl vela_host::object::ScriptHostObject for KillRewardConfig {
     fn host_type_id(&self) -> vela_common::HostTypeId {
         vela_host::object::ScriptHostFieldAccess::script_host_type_id(self)
     }

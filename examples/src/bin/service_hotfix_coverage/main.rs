@@ -12,6 +12,7 @@ use vela_engine::args::FromScriptArg;
 use vela_engine::engine::Engine;
 use vela_engine::native::{EffectSet, NativeFunctionDesc, TypeHint};
 use vela_engine::permission::{Capability, CapabilitySet};
+use vela_engine::registration::{TypeRegistration, VelaBindings};
 use vela_engine::runtime::CallOptions;
 use vela_engine::service::{
     LinkedServiceSourceManifest, PatchEdit, Service, ServiceSourceManifest, ServiceUpdateBundle,

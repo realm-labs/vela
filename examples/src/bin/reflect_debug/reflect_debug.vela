@@ -500,8 +500,9 @@ fn main(ctx: Context, player: Player) {
         && set_exports.contains("set::from_array")
         && bytes_exports.len() == 1
         && bytes_exports.contains("bytes::from_hex")
-        && reflect::exports(i32_module).len() == 1
+        && reflect::exports(i32_module).len() == 2
         && reflect::exports(i32_module).contains("i32::from_i16")
+        && reflect::exports(i32_module).contains("i32::try_from_i64")
         && i64_exports.len() == 1
         && i64_exports.contains("i64::from_i32")
         && reflect::exports(i16_module).len() == 1
