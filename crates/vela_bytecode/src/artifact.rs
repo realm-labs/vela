@@ -7,7 +7,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use crate::linked::InstructionKind;
 use crate::{CacheSiteDesc, CacheSiteId, ExecutableGenerationId, LinkedProgram, ProgramImage};
 
+mod profile;
 mod task;
+
+use profile::profile_layout;
+pub use profile::{
+    ProfileFunctionLayout, ProfileLayout, ProfileScalarUnitLayout, ProfileSelectedUnitLayout,
+};
 
 #[cfg(feature = "artifact-codec")]
 pub(crate) use task::collect_compiled_task_targets;
@@ -68,36 +74,6 @@ pub(crate) struct UnboundLinkedProgram {
     image: ProgramImage,
     cache_layout: Box<[CacheSiteDesc]>,
     profile_layout: ProfileLayout,
-}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct ProfileLayout {
-    functions: Box<[ProfileFunctionLayout]>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ProfileFunctionLayout {
-    pub handle: crate::ScriptFunctionHandle,
-    pub debug_name: crate::DebugNameId,
-    pub instruction_count: usize,
-    pub selected_units: Box<[ProfileSelectedUnitLayout]>,
-    pub scalar_units: Box<[ProfileScalarUnitLayout]>,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct ProfileSelectedUnitLayout {
-    pub offset: crate::InstructionOffset,
-    pub kind: crate::SelectedPhysicalUnitKind,
-    pub covered_operations: u16,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ProfileScalarUnitLayout {
-    pub offset: crate::InstructionOffset,
-    pub plan: crate::ScalarBlockPlanId,
-    pub source_count: usize,
-    pub operation_sources: Box<[crate::ScalarSourcePointId]>,
-    pub has_range_loop: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1126,61 +1102,6 @@ fn instruction_matches_budget_class(
     }
 }
 
-impl ProfileLayout {
-    #[must_use]
-    pub fn functions(&self) -> &[ProfileFunctionLayout] {
-        &self.functions
-    }
-}
-
-fn profile_layout(program: &LinkedProgram) -> ProfileLayout {
-    ProfileLayout {
-        functions: program
-            .functions()
-            .map(|(handle, code)| ProfileFunctionLayout {
-                handle,
-                debug_name: code.debug_name,
-                instruction_count: code.instructions.len(),
-                selected_units: code
-                    .selected_units
-                    .iter()
-                    .map(|unit| ProfileSelectedUnitLayout {
-                        offset: unit.instruction(),
-                        kind: unit.kind(),
-                        covered_operations: unit.covered_operations(),
-                    })
-                    .collect::<Vec<_>>()
-                    .into_boxed_slice(),
-                scalar_units: code
-                    .instructions
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(offset, instruction)| {
-                        let InstructionKind::RunScalarBlock { plan } = instruction.kind else {
-                            return None;
-                        };
-                        let scalar = &code.scalar_blocks[plan.index()];
-                        Some(ProfileScalarUnitLayout {
-                            offset: crate::InstructionOffset(offset),
-                            plan,
-                            source_count: scalar.source_points.len(),
-                            operation_sources: scalar
-                                .operations
-                                .iter()
-                                .map(|operation| operation.source)
-                                .collect::<Vec<_>>()
-                                .into_boxed_slice(),
-                            has_range_loop: scalar.range_loop.is_some(),
-                        })
-                    })
-                    .collect::<Vec<_>>()
-                    .into_boxed_slice(),
-            })
-            .collect::<Vec<_>>()
-            .into_boxed_slice(),
-    }
-}
-
 impl Deref for LinkedArtifact {
     type Target = LinkedProgram;
 
@@ -1264,75 +1185,4 @@ fn verify_unbound_cache_correspondence(
 }
 
 #[cfg(test)]
-mod tests {
-    use vela_common::StateSlot;
-
-    use crate::{
-        CacheSiteKind, FunctionIndex, InstructionOffset, Linker, Register, UnlinkedCodeObject,
-        UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
-    };
-
-    #[test]
-    fn nested_local_cache_zero_sites_receive_distinct_generation_ids() {
-        let first = cached_state_lambda("first", "main::first", StateSlot::new(0));
-        let second = cached_state_lambda("second", "main::second", StateSlot::new(1));
-        let mut main = UnlinkedCodeObject::new("main", 2);
-        main.nested_functions = vec![first, second];
-        main.push_instruction(UnlinkedInstruction::new(
-            UnlinkedInstructionKind::MakeClosure {
-                dst: Register(0),
-                function: FunctionIndex(0),
-                captures: Vec::new(),
-            },
-        ));
-        main.push_instruction(UnlinkedInstruction::new(
-            UnlinkedInstructionKind::MakeClosure {
-                dst: Register(1),
-                function: FunctionIndex(1),
-                captures: Vec::new(),
-            },
-        ));
-        main.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
-            src: Register(1),
-        }));
-
-        let mut program = UnlinkedProgram::new();
-        program.set_states([
-            crate::StateDescriptor::test_extern(vela_def::StateId::new(1), "main::first"),
-            crate::StateDescriptor::test_extern(vela_def::StateId::new(2), "main::second"),
-        ]);
-        program.insert_function(main);
-        let artifact = Linker::new()
-            .link_test_program(&program)
-            .expect("artifact should link");
-
-        let first = artifact
-            .function(crate::ScriptFunctionHandle::new(1))
-            .expect("first lambda");
-        let second = artifact
-            .function(crate::ScriptFunctionHandle::new(2))
-            .expect("second lambda");
-        let first_site = first.cache_sites.sites()[0].id;
-        let second_site = second.cache_sites.sites()[0].id;
-        assert_ne!(first_site, second_site);
-        assert_eq!(artifact.cache_layout().len(), 2);
-        assert_eq!(artifact.profile_layout().functions().len(), 3);
-    }
-
-    fn cached_state_lambda(name: &str, state: &str, slot: StateSlot) -> UnlinkedCodeObject {
-        let mut code = UnlinkedCodeObject::new(name, 1);
-        let site = code.push_cache_site(CacheSiteKind::ExternStateRead, InstructionOffset(0));
-        code.push_instruction(UnlinkedInstruction::new(
-            UnlinkedInstructionKind::LoadExternState {
-                dst: Register(0),
-                state: state.to_owned(),
-                slot: Some(slot),
-                cache_site: Some(site),
-            },
-        ));
-        code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
-            src: Register(0),
-        }));
-        code
-    }
-}
+mod tests;
