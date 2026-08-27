@@ -8,13 +8,25 @@ edition = "2024"
 cargo-fuzz = true
 
 [dependencies]
+bincode = "1.3"
+blake3 = "1"
 libfuzzer-sys = "0.4"
+serde = { version = "1", features = ["derive"] }
+vela_bytecode = { path = "../crates/vela_bytecode", features = ["artifact-codec", "test-support"] }
 vela_common = { path = "../crates/vela_common" }
+vela_engine = { path = "../crates/vela_engine", features = ["artifact-codec"] }
 vela_syntax = { path = "../crates/vela_syntax" }
 
 [[bin]]
 name = "parser"
 path = "fuzz_targets/parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "portable_plan"
+path = "fuzz_targets/portable_plan.rs"
 test = false
 doc = false
 bench = false

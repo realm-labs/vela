@@ -129,3 +129,6 @@ jobs:
 
       - name: Run parser fuzz
         run: cargo fuzz run parser -- -max_total_time=300
+
+      - name: Run portable plan fuzz
+        run: cargo fuzz run portable_plan -- -max_total_time=300

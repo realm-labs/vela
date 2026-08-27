@@ -51,13 +51,14 @@ cargo run --manifest-path examples/Cargo.toml --bin hot_reload_function_swap_inv
 cargo run --manifest-path examples/Cargo.toml --bin host_type_methods
 ```
 
-Benchmark targets are optional until the related crates exist. The parser fuzz
-target is compile-checkable without installing `cargo-fuzz`:
+Benchmark targets are optional until the related crates exist. Fuzz targets are
+compile-checkable without installing `cargo-fuzz`:
 
 ```bash
 cargo bench --workspace
 cargo check --manifest-path fuzz/Cargo.toml --bins
 cargo fuzz run parser
+cargo fuzz run portable_plan
 ```
 
 When editor or documentation surfaces change, also run:

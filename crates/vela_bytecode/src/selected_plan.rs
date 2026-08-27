@@ -71,6 +71,12 @@ impl SelectedPhysicalUnit {
         self.covered_operations
     }
 
+    #[cfg(feature = "test-support")]
+    #[doc(hidden)]
+    pub fn set_covered_operations_for_test(&mut self, covered_operations: u16) {
+        self.covered_operations = covered_operations;
+    }
+
     #[must_use]
     pub const fn source_points(&self) -> &[Span] {
         &self.source_points
