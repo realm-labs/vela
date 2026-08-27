@@ -1,4 +1,3 @@
-
 use vela_common::StateSlot;
 
 use crate::{
