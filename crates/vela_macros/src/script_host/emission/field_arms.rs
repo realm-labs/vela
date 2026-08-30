@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use super::super::schema::FieldMeta;
+use super::FieldMeta;
 use super::access::{exclusive_field_access_tokens, shared_field_access_tokens};
 
 pub(super) fn direct_field_read_arm_tokens((slot, field): (usize, &FieldMeta)) -> TokenStream {

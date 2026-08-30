@@ -659,7 +659,7 @@ impl<'a> FunctionBackend<'a> {
 
     pub(super) fn superinstruction(
         &mut self,
-        selected: &super::super::selection::SuperinstructionPlan,
+        selected: &super::SuperinstructionPlan,
         terminator_span: vela_common::Span,
         next_block: Option<MirBlockId>,
     ) -> Result<(), MirBackendError> {

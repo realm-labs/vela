@@ -154,7 +154,7 @@ pub type NativeCallFuture<'call> =
 pub type AsyncNativeFunction =
     Arc<dyn for<'call> Fn(&'call [OwnedValue]) -> NativeCallFuture<'call> + Send + Sync + 'static>;
 pub type AsyncHostNativeFunction = Arc<
-    dyn for<'call, 'host, 'budget> Fn(
+    dyn for<'call, 'host> Fn(
             &'call [OwnedValue],
             &'call mut HostExecution<'host>,
             Option<&'call mut ExecutionBudget>,
@@ -174,7 +174,7 @@ pub type HostMethodFunction = Arc<
         + 'static,
 >;
 pub type AsyncHostMethodFunction = Arc<
-    dyn for<'call, 'host, 'budget> Fn(
+    dyn for<'call, 'host> Fn(
             &'call vela_host::path::HostPath,
             &'call [OwnedValue],
             &'call mut HostExecution<'host>,
@@ -806,7 +806,7 @@ impl Vm {
     pub fn register_async_host_native_with_id(
         &mut self,
         id: FunctionId,
-        function: impl for<'call, 'host, 'budget> Fn(
+        function: impl for<'call, 'host> Fn(
             &'call [OwnedValue],
             &'call mut HostExecution<'host>,
             Option<&'call mut ExecutionBudget>,
@@ -821,7 +821,7 @@ impl Vm {
     pub fn register_async_host_method_with_id(
         &mut self,
         id: HostMethodId,
-        function: impl for<'call, 'host, 'budget> Fn(
+        function: impl for<'call, 'host> Fn(
             &'call vela_host::path::HostPath,
             &'call [OwnedValue],
             &'call mut HostExecution<'host>,

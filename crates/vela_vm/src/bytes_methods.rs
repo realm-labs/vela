@@ -188,7 +188,9 @@ fn decode_hex(text: &str) -> Result<Vec<u8>, &'static str> {
         return Err("hex input must contain an even number of digits");
     }
     bytes
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|pair| {
             let high = hex_digit(pair[0]).ok_or("hex input contains a non-hex digit")?;
             let low = hex_digit(pair[1]).ok_or("hex input contains a non-hex digit")?;

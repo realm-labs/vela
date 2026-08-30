@@ -11,8 +11,7 @@ use crate::{
     UnlinkedInstructionKind, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
 
-use super::super::selection::mir_successors;
-use super::MirBackendError;
+use super::{MirBackendError, mir_successors};
 
 pub(super) fn binary_instruction(
     operation: MirBinaryOp,

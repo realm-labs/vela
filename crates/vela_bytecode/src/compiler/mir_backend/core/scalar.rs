@@ -12,7 +12,7 @@ use super::{
 impl FunctionBackend<'_> {
     pub(super) fn scalar_block(
         &mut self,
-        selected: &super::super::selection::ScalarBlockSelection,
+        selected: &super::ScalarBlockSelection,
         terminator: &MirTerminatorKind,
         terminator_span: vela_common::Span,
     ) -> Result<(), MirBackendError> {

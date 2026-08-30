@@ -596,7 +596,9 @@ fn semantic_tokens(response: &serde_json::Value) -> Vec<SemanticTokenRange> {
         .expect("semantic token response should include data");
     let mut line = 0;
     let mut character = 0;
-    data.chunks_exact(5)
+    data.as_chunks::<5>()
+        .0
+        .iter()
         .map(|chunk| {
             let delta_line = chunk[0].as_u64().expect("line delta should be numeric");
             let delta_start = chunk[1].as_u64().expect("start delta should be numeric");

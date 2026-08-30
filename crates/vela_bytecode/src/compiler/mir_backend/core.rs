@@ -28,7 +28,10 @@ mod physical;
 mod scalar;
 mod support;
 
-use super::selection::{SelectedFunctionPlan, SelectedProgramPlan, SelectionError, mir_successors};
+use super::selection::{
+    ScalarBlockSelection, SelectedFunctionPlan, SelectedProgramPlan, SelectionError,
+    SuperinstructionPlan, mir_successors,
+};
 use support::{dynamic_binary_instruction, guard_kind, guard_location, mir_reaches, type_guard};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
