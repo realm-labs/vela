@@ -1136,8 +1136,8 @@ pub unsafe extern "C" fn write_raw(
 ```
 
 The implementation may use quarantined unsafe code in a reviewed erased-borrow
-or C ABI module. This plan does not expose arbitrary unsafe preconditions, raw
-pointers, or extern ABI values to Vela. A future trusted-unsafe-native proposal
+module. This plan does not expose arbitrary unsafe preconditions or raw
+pointers to Vela. A future trusted-unsafe-native proposal
 must be a separate explicit capability model.
 
 ### 8.14 General generics and overloading

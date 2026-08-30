@@ -274,13 +274,14 @@ Vela source files use `.vela`. Future precompiled bytecode-only artifacts use
 schema metadata, source maps, or reload metadata, it should use a separate
 package extension rather than overloading `.vbc`.
 
-### External C ABI Boundary
+### Rust-Only Embedding Boundary
 
-External binary embedding uses a dedicated `vela_c_api` crate. It is separate
-from `vela_hot_reload`: hot-reload ABI describes script/module/schema
-compatibility, while `vela_c_api` owns opaque C handles, C-compatible value
-layouts, and future host adapter vtables. The C ABI must not expose Rust
-references or place Rust host state under script GC.
+Vela's supported embedding boundary is its Rust `Engine`, `Runtime`, and
+generated Service APIs. The repository does not ship a C ABI or a non-Rust
+embedding SDK. A downstream adapter may wrap the Rust API, but its ABI, memory
+ownership, async integration, and compatibility policy are not part of Vela's
+product contract. This keeps host registration, values, diagnostics, and
+execution lifecycle on one typed boundary.
 
 ### Record Field Assignment Roots
 
@@ -1210,8 +1211,8 @@ failures should use VM diagnostics rather than `Result::Err`.
 
 The core implementation names the no-value runtime concept `Unit` across
 `Value`, `OwnedValue`, `HostValue`, bytecode `Constant`, `PrimitiveTag`,
-reflection `TypeKind`, C API value kind, type facts, verifier names, hot-reload
-schema ABI, and standard metadata. Public script and type-hint spelling is
+reflection `TypeKind`, type facts, verifier names, hot-reload schema ABI, and
+standard metadata. Public script and type-hint spelling is
 `()`. Active protocol JSON `null` values remain allowed only as external
 JSON-RPC/LSP encoding, not as a Vela language value.
 
@@ -1470,13 +1471,6 @@ unsigned integers use JSON integer text and must round-trip through Rust
 `serde_json` as `u64` without precision loss; JavaScript-number-safe encodings
 would require an explicit future config rather than a hidden conversion.
 
-The C ABI value surface uses explicit primitive tags (`I8` through `U64`,
-`F32`, `F64`) instead of old `Int`/`Float` tags. C arguments are copied into
-Vela-owned `OwnedValue` values before execution; returned strings and bytes are
-ABI-owned buffers that callers must release with `vela_value_free`, or with
-the specific `vela_string_free` / `vela_bytes_free` helper when they own the
-raw pointer directly.
-
 Hot-reload function, method, trait, and schema compatibility checks normalize
 primitive type hints through `PrimitiveTag` before comparing contracts.
 Changing any primitive contract, such as `i32 -> i64`, `i64 -> u64`,
@@ -1649,8 +1643,8 @@ registered metadata return `Option::None`.
 
 `Value::Missing` and `CallArgument::Missing` are VM-internal call/default
 sentinels only. Public boundaries must not expose a Missing value or kind:
-`OwnedValue`, `HostValue`, C ABI values, serde conversion, playground JSON,
-reflection records, and user-visible no-result paths use `()`, `Option`,
+`OwnedValue`, `HostValue`, serde conversion, playground JSON, reflection
+records, and user-visible no-result paths use `()`, `Option`,
 `Result`, or typed structured data instead.
 
 ### HIR Default Expression Ownership
@@ -2568,9 +2562,8 @@ receiver boundary so completion can use the semantic awaited-result fact.
 
 Direct CLI execution remains synchronous by default. `vela_cli --async`
 explicitly opts into a small CLI-owned executor and calls `Runtime::call_async`;
-core crates still own no executor. The synchronous C ABI does not grow a
-poll/waker surface: an async entry returns the distinct
-`VelaStatus::AsyncEntry` status and a descriptive error string.
+core crates still own no executor. Rust hosts drive async entries through the
+scoped `Runtime::call_async` API.
 
 Restricted JIT input keeps using the single verified-MIR/linked-artifact
 contract. Declared async functions and any MIR function with an `AwaitCall`
@@ -3560,11 +3553,11 @@ all reconstructed references remain under the active lease, borrow group,
 parent lease, and lock guard, including across native async completion.
 
 Every other `vela_host` module forbids unsafe, as do the other Vela crates. A
-source audit permits unsafe syntax only in the reviewed erased-slice module
-and the pre-existing C ABI boundary. Raw pointers and reconstructed references
-never enter Value, GC, HostRef payloads, reflection, or persistent script
-state. Byte slices and fixed byte arrays use the same erased-slice/fixed-array
-lease path as other element types and project as fixed
+source audit permits unsafe syntax only in the reviewed erased-reborrow,
+erased-slice, and scalar-executor modules. Raw pointers and reconstructed
+references never enter Value, GC, HostRef payloads, reflection, or persistent
+script state. Byte slices and fixed byte arrays use the same
+erased-slice/fixed-array lease path as other element types and project as fixed
 `ArrayView<u8>`/`ArrayMut<u8>` views. The owned byte representation remains
 Vela `Bytes`; no reconstructed slice reference enters that owned value.
 

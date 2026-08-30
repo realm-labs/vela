@@ -151,7 +151,6 @@ export default defineConfig({
       items: [
         { label: "Grammar", translations: { 'zh-CN': "语法参考" }, link: '/reference/grammar/' },
         { label: "Engine API Reference", translations: { 'zh-CN': "Engine API 参考" }, link: '/reference/engine-api/' },
-        { label: "C API", translations: { 'zh-CN': "C API" }, link: '/reference/c-api/' },
         { label: "Error And Diagnostic Codes", translations: { 'zh-CN': "错误和诊断码" }, link: '/reference/error-diagnostic-codes/' },
         { label: "Non-Goals And Constraints", translations: { 'zh-CN': "非目标和约束" }, link: '/reference/non-goals-constraints/' },
       ],

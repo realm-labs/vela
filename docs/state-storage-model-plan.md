@@ -654,7 +654,7 @@ RuntimeScriptGlobalStore
 ScriptGlobalValues
 ```
 
-Rename errors, serde helpers, C ABI entries, prelude exports, docs, and examples
+Rename errors, serde helpers, prelude exports, docs, and examples
 to the new model. A missing extern binding and a missing VM state are distinct
 structured errors.
 
@@ -803,7 +803,6 @@ model. Do not rewrite archives as if the old implementation never existed.
 | metadata queries and permissioned reflection | `vela_reflect` |
 | static editor behavior | `vela_language_service`, `vela_lsp_server` |
 | Rust derives/registration helpers | `vela_macros`, `vela_registry` |
-| C-facing names when exposed | `vela_c_api` |
 | examples and end-to-end proof | `examples`, workspace fixtures |
 
 Do not concentrate the feature in `lib.rs`, the linked opcode loop, or one
@@ -881,7 +880,7 @@ Tasks:
 - add bounded per-Runtime initializer execution and transactional publication;
 - make Runtime construction fallible without partial initialization or panic;
 - replace global embedding APIs, traits, serde helpers, errors, prelude exports,
-  examples, and C ABI names with state-specific surfaces;
+  and examples with state-specific surfaces;
 - prove independent state for multiple runtimes sharing one image;
 - prove host state is not traced or owned by script GC.
 
@@ -891,7 +890,6 @@ Checkpoint:
 cargo fmt --all -- --check
 cargo test -p vela_vm
 cargo test -p vela_engine
-cargo test -p vela_c_api
 cargo test --manifest-path examples/Cargo.toml
 ```
 
@@ -1181,7 +1179,7 @@ generation liveness, and initializer fingerprinting in their owning modules.
 - rename warns that declaration rename is remove plus add;
 - formatter is idempotent and preserves comments/blank lines;
 - reflection reports storage/visibility/type without exposing host ownership;
-- Rust examples and C ABI use only state-specific APIs;
+- Rust examples use only state-specific APIs;
 - documentation contains no active claim that the old global model remains
   supported.
 
@@ -1241,7 +1239,7 @@ The goal is complete only when all of these are true:
 - [x] host state remains outside script GC and no Rust reference is exposed.
 - [x] the old global embedding API and production terminology are removed.
 - [x] reflection, language service, LSP, formatter, editor integrations,
-      examples, C ABI, site snippets, and active docs use the new model.
+      examples, site snippets, and active docs use the new model.
 - [x] focused Batch G regressions and full validation commands pass.
 - [x] docs/decisions.md records the implemented durable decision.
 - [x] Batch F landed exact embedding/extern contracts, state export ABI,

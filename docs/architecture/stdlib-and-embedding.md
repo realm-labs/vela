@@ -453,9 +453,8 @@ future enters the shared frame driver, executes awaited sync targets inline,
 and suspends through ordinary executor polling for registered Rust futures.
 
 The CLI owns a minimal executor only when `--async` is selected; its default
-path remains synchronous and reports that flag when `main` is async. The
-synchronous C ABI has no poll/waker protocol and returns
-`VelaStatus::AsyncEntry` plus a descriptive error string for async entries.
+path remains synchronous and reports that flag when `main` is async. Rust hosts
+drive async entries through the scoped `Runtime::call_async` API.
 
 Stateful async Rust methods may hold direct host leases across ordinary Rust
 await points and reenter Vela through their `NativeCallContext`. A mutable

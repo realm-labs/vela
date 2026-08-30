@@ -135,7 +135,7 @@ f(x)     // OK if x is dynamic; checked by a runtime guard
 Contract locations include function parameters and returns, lambda parameters,
 typed `let`, VM-state initialization/update, extern-state binding at embedding boundaries,
 script record and enum fields, later writes to typed fields, host/native
-function parameters and returns, and typed serde/C API decode boundaries.
+function parameters and returns, and typed serde decode boundaries.
 
 ## Numeric Operations
 
@@ -239,7 +239,7 @@ representation must support this distinction.
 ```text
 statically proven script call  -> unchecked body
 dynamic script call            -> checked entry
-reflection/host/C API call     -> checked entry
+reflection/host call           -> checked entry
 future inlined proven call     -> unchecked body
 ```
 

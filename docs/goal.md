@@ -50,6 +50,9 @@ The first phase does not include:
 - Function overloading by arity, type hint, or native signature.
 - A Rust-style borrow checker in the script language.
 - Real Rust references exposed to script code.
+- A built-in C ABI or non-Rust embedding SDK. Vela's supported embedding
+  contract is the Rust API; downstream adapters may wrap it outside the core
+  repository.
 - Arbitrary monkey patching of types or methods.
 - Per-callable Rust replacement slots or separate hotfix models for handlers,
   rules, events, providers, and functions. Hotfixable Rust operations cross the

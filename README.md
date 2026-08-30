@@ -102,7 +102,6 @@ semantics.
   and reload reports.
 - `crates/vela_cli`: final CLI binary for direct script execution.
 - `crates/vela_playground_wasm`: WASM wrapper used by the browser playground.
-- `crates/vela_c_api`: external C ABI surface with opaque engine/runtime handles.
 - `examples`: standalone runnable embedding examples.
 - `site`: GitHub Pages documentation and playground source.
 - `docs`: product goal, architecture, decisions, progress, validation, grammar,

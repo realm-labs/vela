@@ -230,8 +230,8 @@ pub enum Value {
 model at their boundaries. All non-scalar script objects live in `HeapValue`:
 `Value::Missing` is not a language value and must not cross public boundaries;
 it is reserved for VM and bytecode call/default plumbing such as omitted
-arguments before default substitution. Owned values, host values, C ABI values,
-serde conversion, playground JSON, reflection data, and user-visible results use
+arguments before default substitution. Owned values, host values, serde
+conversion, playground JSON, reflection data, and user-visible results use
 `()`, `Option`, `Result`, or a structured value instead.
 
 ```rust

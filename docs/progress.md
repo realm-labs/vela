@@ -135,6 +135,11 @@ contract directly. The former service-set registration/construction surface,
 Host/Value-specific builder aliases, and shape-specific `script_*` callable
 macros have been removed without compatibility shims.
 
+Vela's supported embedding surface is Rust-only. The former built-in C ABI
+crate and its duplicate value, ownership, error, and async boundaries are
+removed; downstream adapters may wrap the Rust API without becoming a core
+compatibility contract.
+
 Arbitrary concrete Rust types now participate in that same model without a
 business newtype or `ScriptHostObject` implementation.
 `TypeRegistration::<T>::host(path)` installs the opaque Host identity,

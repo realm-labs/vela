@@ -4,7 +4,6 @@ members = [
     "crates/vela_bytecode",
     "crates/vela_bindgen",
     "crates/vela_bindgen_compile_test",
-    "crates/vela_c_api",
     "crates/vela_cli",
     "crates/vela_common",
     "crates/vela_def",
@@ -56,7 +55,6 @@ toml_edit = "0.23"
 vela_analysis = { path = "crates/vela_analysis" }
 vela_bytecode = { path = "crates/vela_bytecode" }
 vela_bindgen = { path = "crates/vela_bindgen" }
-vela_c_api = { path = "crates/vela_c_api" }
 vela_cli = { path = "crates/vela_cli" }
 vela_common = { path = "crates/vela_common" }
 vela_def = { path = "crates/vela_def" }

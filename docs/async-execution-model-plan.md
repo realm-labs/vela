@@ -266,8 +266,6 @@ types:
 - Moving Runtime into a `'static` task as the normal embedding model.
 - Hot migration or patching of suspended frames. Old frames pin old code.
 - JIT compilation of async functions in the first async implementation.
-- Async C ABI. The synchronous C surface must reject async entries; a future
-  poll-based C ABI is a separate design.
 - Transactional rollback on error or cancellation.
 - Making opaque adapter-backed state downcastable merely to obtain `&mut T`.
 - `!Send` registered futures or a thread-bound/local Runtime mode. A real future
@@ -1120,14 +1118,12 @@ Required diagnostics include:
 - async callback in sync-only callback position;
 - public ABI asyncness change in reload reporting.
 
-### 14.4 CLI, Examples, And C ABI
+### 14.4 CLI And Examples
 
 - CLI execution of an async entry needs an explicit executor-owning command or
   must report that the selected entry is async; do not silently block with a
   homemade executor in core.
 - Add a small dev/test executor only in tests/examples if necessary.
-- The synchronous C API returns a structured async-entry error. A poll/waker C
-  design is not part of this plan.
 
 ---
 
