@@ -1368,6 +1368,14 @@ fn parser_parse_source_keeps_malformed_fragments_in_cst() {
 }
 
 #[test]
+fn parser_parse_source_handles_fuzzed_unclosed_type_argument() {
+    let source = "]const:\u{1}if<";
+    let parse = parse_source_with_id(SourceId::new(9), source);
+
+    assert_eq!(parse.tree().syntax().text().to_string(), source);
+}
+
+#[test]
 fn parser_parse_source_reports_restricted_type_hint_arguments() {
     for (source, code) in [
         (

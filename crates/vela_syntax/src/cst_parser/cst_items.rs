@@ -654,15 +654,16 @@ impl CstParser<'_, '_> {
     }
 
     fn type_arg_list(&mut self, start: usize, end: usize) {
-        let args_end = self
+        let matching_end = self
             .find_matching_delimiter_end(start, SyntaxKind::Less, SyntaxKind::Greater)
-            .filter(|candidate| *candidate <= end)
-            .unwrap_or(end);
+            .filter(|candidate| *candidate <= end);
+        let args_end =
+            matching_end.unwrap_or_else(|| end.max(start.saturating_add(1)).min(self.tokens.len()));
 
         self.builder.start_node(SyntaxKind::TypeArgList);
         self.emit_current_token();
-        let close = args_end.saturating_sub(1);
-        let mut arg_start = self.skip_trivia(self.pos);
+        let close = matching_end.map_or(args_end, |end| end.saturating_sub(1));
+        let mut arg_start = self.skip_trivia(self.pos).min(close);
         self.emit_until(arg_start);
 
         while self.pos < close {
@@ -672,7 +673,7 @@ impl CstParser<'_, '_> {
                 let arg_end = self.trim_trailing_trivia(arg_start, self.pos);
                 self.type_arg_range(arg_start, arg_end);
                 self.emit_current_token();
-                arg_start = self.skip_trivia(self.pos);
+                arg_start = self.skip_trivia(self.pos).min(close);
                 self.emit_until(arg_start);
             } else {
                 self.pos += 1;
