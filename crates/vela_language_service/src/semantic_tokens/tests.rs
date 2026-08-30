@@ -358,6 +358,32 @@ pub fn main() {
 }
 
 #[test]
+fn semantic_tokens_exclude_cr_from_crlf_comment_ranges() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "#!/usr/bin/env vela\r\n// setup\r\n/* outer\r\n   inner\r\n*/\r\nfn main() {}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let tokens = databases.semantic_tokens(&document);
+
+    for (line_number, expected) in [
+        (0, "#!/usr/bin/env vela"),
+        (1, "// setup"),
+        (2, "/* outer"),
+        (3, "   inner"),
+        (4, "*/"),
+    ] {
+        assert_token_at(
+            &tokens,
+            line_number,
+            0,
+            expected.len(),
+            SemanticTokenType::Comment,
+            SemanticTokenModifiers::NONE,
+        );
+    }
+}
+
+#[test]
 fn semantic_tokens_degrade_under_parse_errors() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\

@@ -1105,7 +1105,9 @@ fn push_semantic_token_slices(
     let mut offset = range.start;
 
     for part in slice.split_inclusive('\n') {
-        let line_end = offset + part.trim_end_matches('\n').len();
+        let line = part.strip_suffix('\n').unwrap_or(part);
+        let line = line.strip_suffix('\r').unwrap_or(line);
+        let line_end = offset + line.len();
         push_non_empty_token(
             line_index, line_start, line_end, token_type, modifiers, tokens,
         );
