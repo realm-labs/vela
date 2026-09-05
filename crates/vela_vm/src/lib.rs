@@ -52,6 +52,7 @@ mod option_result;
 mod option_result_methods;
 mod ordered_keyed;
 mod owned_contract;
+mod owned_export;
 pub mod owned_value;
 pub mod ranges;
 mod record_fields;

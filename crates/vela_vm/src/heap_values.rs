@@ -14,7 +14,7 @@ use crate::error::{VmError, VmErrorKind, VmResult};
 use crate::heap::{HeapValue, ScriptHeap};
 use crate::heap_execution::HeapExecution;
 use crate::option_result::std_enum_identity_for_names;
-use crate::owned_value::{OwnedClosureValue, OwnedIteratorState, OwnedMapEntry, OwnedValue};
+use crate::owned_value::OwnedValue;
 use crate::script_map::ScriptMap;
 use crate::script_object::ScriptFields;
 use crate::script_set::ScriptSet;
@@ -44,13 +44,16 @@ impl HostSlotConversion<'_> {
 }
 
 #[derive(Clone, Copy)]
-enum HostSlotResolver<'host> {
+pub(crate) enum HostSlotResolver<'host> {
     Adapter(&'host (dyn ScriptStateAdapter + Send)),
     Slots(&'host HostRefSlots),
 }
 
 impl HostSlotResolver<'_> {
-    fn resolve(self, handle: vela_host::path::HostSlotRef) -> VmResult<vela_host::path::HostRef> {
+    pub(crate) fn resolve(
+        self,
+        handle: vela_host::path::HostSlotRef,
+    ) -> VmResult<vela_host::path::HostRef> {
         match self {
             Self::Adapter(host) => host.resolve_host_ref(handle).map_err(Into::into),
             Self::Slots(slots) => slots
@@ -174,6 +177,9 @@ pub(crate) fn owned_values_to_linked_values(
         .collect()
 }
 
+/// Exports an owned tree, rejecting cycles and limiting export to 64 nested
+/// heap objects, 65,536 values, and 16 MiB of copied payload/backing storage.
+/// Shared immutable shapes/artifacts are retained by `Arc`, not copied.
 pub fn persistent_value_to_owned(value: &Value, heap: &mut ScriptHeap) -> VmResult<OwnedValue> {
     let heap_execution = HeapExecution::new(heap);
     value_to_owned(value, Some(&heap_execution), None)
@@ -194,7 +200,7 @@ pub fn persistent_value_to_owned_with_slots(
     slots: &HostRefSlots,
 ) -> VmResult<OwnedValue> {
     let heap_execution = HeapExecution::new(heap);
-    value_to_owned_inner(
+    crate::owned_export::export(
         value,
         Some(&heap_execution),
         Some(HostSlotResolver::Slots(slots)),
@@ -709,124 +715,7 @@ pub(crate) fn value_to_owned(
     heap: Option<&HeapExecution<'_>>,
     host: Option<&(dyn ScriptStateAdapter + Send)>,
 ) -> VmResult<OwnedValue> {
-    value_to_owned_inner(value, heap, host.map(HostSlotResolver::Adapter))
-}
-
-fn value_to_owned_inner(
-    value: &Value,
-    heap: Option<&HeapExecution<'_>>,
-    host: Option<HostSlotResolver<'_>>,
-) -> VmResult<OwnedValue> {
-    if let Some(value) = value.as_scalar() {
-        return Ok(OwnedValue::Scalar(value));
-    }
-    match value {
-        Value::Missing => Err(type_error("missing value")),
-        Value::Unit => Ok(OwnedValue::Unit),
-        Value::Bool(value) => Ok(OwnedValue::Bool(*value)),
-        Value::Char(value) => Ok(OwnedValue::Char(*value)),
-        Value::HostRef(value) => {
-            let host = host.ok_or_else(|| type_error("host ref requires active slot resolver"))?;
-            Ok(OwnedValue::HostRef(host.resolve(*value)?))
-        }
-        Value::HeapRef(reference) => {
-            let Some(heap_value) = heap.and_then(|heap| heap.heap.get(*reference)) else {
-                return Err(type_error("heap ref"));
-            };
-            heap_value_to_owned(heap_value, heap, host)
-        }
-        _ => unreachable!("scalar values return before owned conversion match"),
-    }
-}
-
-#[allow(dead_code)]
-fn heap_value_to_owned(
-    value: &HeapValue,
-    heap: Option<&HeapExecution<'_>>,
-    host: Option<HostSlotResolver<'_>>,
-) -> VmResult<OwnedValue> {
-    match value {
-        HeapValue::String(value) => Ok(OwnedValue::String(value.clone())),
-        HeapValue::Bytes(value) => Ok(OwnedValue::Bytes(value.clone())),
-        HeapValue::Range(value) => Ok(OwnedValue::Range(*value)),
-        HeapValue::Tuple(values) => values
-            .iter()
-            .map(|value| value_to_owned_inner(value, heap, host))
-            .collect::<VmResult<Vec<_>>>()
-            .map(OwnedValue::Tuple),
-        HeapValue::Array(values) => values
-            .iter()
-            .map(|value| value_to_owned_inner(value, heap, host))
-            .collect::<VmResult<Vec<_>>>()
-            .map(OwnedValue::Array),
-        HeapValue::Map(values) => values
-            .entries()
-            .map(|entry| {
-                let key = value_to_owned_inner(&entry.key, heap, host)?;
-                Ok(OwnedMapEntry::new(
-                    key,
-                    value_to_owned_inner(&entry.value, heap, host)?,
-                ))
-            })
-            .collect::<VmResult<Vec<_>>>()
-            .map(OwnedValue::Map),
-        HeapValue::Set(values) => values
-            .values()
-            .map(|value| value_to_owned_inner(value, heap, host))
-            .collect::<VmResult<Vec<_>>>()
-            .map(OwnedValue::Set),
-        HeapValue::Record { fields, .. } => fields
-            .iter()
-            .map(|(key, value)| Ok((key.to_owned(), value_to_owned_inner(value, heap, host)?)))
-            .collect::<VmResult<Vec<_>>>()
-            .map(|converted| OwnedValue::Record {
-                type_name: fields.owner_name().to_owned(),
-                fields: ScriptFields::from_pairs(fields.owner_name(), converted),
-            }),
-        HeapValue::Enum {
-            enum_name,
-            variant,
-            fields,
-            ..
-        } => fields
-            .iter()
-            .map(|(key, value)| Ok((key.to_owned(), value_to_owned_inner(value, heap, host)?)))
-            .collect::<VmResult<Vec<_>>>()
-            .map(|fields| OwnedValue::Enum {
-                enum_name: enum_name.clone(),
-                variant: variant.clone(),
-                fields: ScriptFields::from_pairs(&enum_variant_owner(enum_name, variant), fields),
-            }),
-        HeapValue::Closure(closure) => closure
-            .captures
-            .as_slice()
-            .iter()
-            .map(|capture| value_to_owned_inner(capture, heap, host))
-            .collect::<VmResult<Vec<_>>>()
-            .map(|captures| {
-                OwnedValue::Closure(OwnedClosureValue {
-                    owner: Arc::clone(&closure.owner),
-                    function: closure.function,
-                    captures,
-                })
-            }),
-        HeapValue::Iterator(iterator) => {
-            if iterator.is_host_backed() {
-                return Err(VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "host-backed iterator escape",
-                }));
-            }
-            iterator
-                .values()
-                .iter()
-                .map(|value| value_to_owned_inner(value, heap, host))
-                .collect::<VmResult<Vec<_>>>()
-                .map(|values| {
-                    OwnedValue::Iterator(OwnedIteratorState::from_runtime(iterator, values))
-                })
-        }
-        HeapValue::PathProxy(proxy) => Ok(OwnedValue::PathProxy(proxy.clone())),
-    }
+    crate::owned_export::export(value, heap, host.map(HostSlotResolver::Adapter))
 }
 
 #[allow(dead_code)]

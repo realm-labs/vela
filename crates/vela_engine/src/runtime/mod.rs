@@ -506,6 +506,8 @@ where
         })
     }
 
+    /// Materializes a bounded owned tree. Cycles and exports exceeding 64 nested
+    /// heap objects, 65,536 values, or 16 MiB of copied storage return a VM error.
     pub fn value_to_owned(&mut self, value: &VelaValue) -> VmResult<OwnedValue> {
         self.check_vela_value_runtime(value)?;
         persistent_value_to_owned_with_slots(

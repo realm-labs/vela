@@ -226,6 +226,11 @@ pub enum VmErrorKind {
     CollectionChangedDuringCallback {
         operation: &'static str,
     },
+    OwnedValueCycle,
+    OwnedValueLimitExceeded {
+        resource: &'static str,
+        limit: usize,
+    },
     AllocationFailed {
         operation: &'static str,
     },
@@ -277,6 +282,8 @@ impl VmErrorKind {
             Self::CollectionChangedDuringCallback { .. } => {
                 "vm::collection_changed_during_callback"
             }
+            Self::OwnedValueCycle => "vm::owned_value_cycle",
+            Self::OwnedValueLimitExceeded { .. } => "vm::owned_value_limit_exceeded",
             Self::AllocationFailed { .. } => "vm::allocation_failed",
             Self::InlineCacheLayoutMismatch { .. } => "vm::inline_cache_layout_mismatch",
             Self::ProgramNotLinked => "vm::program_not_linked",
@@ -405,6 +412,10 @@ impl VmErrorKind {
             }
             Self::CollectionChangedDuringCallback { operation } => {
                 format!("collection changed while executing `{operation}`")
+            }
+            Self::OwnedValueCycle => "cyclic value cannot be exported as an owned tree".to_owned(),
+            Self::OwnedValueLimitExceeded { resource, limit } => {
+                format!("owned value export exceeds {resource} limit {limit}")
             }
             Self::AllocationFailed { operation } => {
                 format!("allocation failed during `{operation}`")

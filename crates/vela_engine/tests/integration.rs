@@ -17,3 +17,4 @@ mod service_source;
 mod service_value_slice;
 mod support;
 mod task_stress;
+mod owned_export;

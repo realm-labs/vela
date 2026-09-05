@@ -356,6 +356,14 @@ and multiple 128-bit IDs.
 
 **Status: reproduced through the public Runtime API. Severity: Critical.**
 
+**Remediation, 2026-09-05:** ordinary export now uses a shared bounded converter
+(`crates/vela_vm/src/owned_export.rs`). It rejects active-path cycles, limits
+nesting to 64 heap objects and total output to 65,536 values, and charges copied
+payload/backing storage against a 16 MiB cap before allocation. Each alias is
+charged separately. Immutable shapes and closure artifacts remain shared.
+Typed errors distinguish cycles from depth/value/byte limits. The description
+below records the reviewed defect before this repair.
+
 Vela heap graphs intentionally support aliases and cycles, but
 `value_to_owned_inner` recursively follows every `HeapRef` without tracking the
 active path (`crates/vela_vm/src/heap_values.rs:707-829`). `OwnedValue` cannot

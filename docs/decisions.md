@@ -4102,6 +4102,15 @@ assembled through a static table of per-method factories, keeping each factory
 and the schema collector bounded as a Service grows. These tables are generated
 metadata, not an alternate dynamic registration or invocation path.
 
+### Ordinary Owned Export Is A Bounded Tree Boundary
+
+Ordinary heap-to-`OwnedValue` export rejects active-path cycles and limits one
+conversion to 64 nested heap objects, 65,536 values, and 16 MiB of copied payload
+and backing storage. Aliases consume the limits for each expanded occurrence;
+immutable shape/artifact `Arc`s remain shared. Limits are independent of script
+execution budgets, and failures are structured VM errors. Detached-task graph
+transport retains its separate graph-preserving contract.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:
