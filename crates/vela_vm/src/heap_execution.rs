@@ -254,7 +254,7 @@ mod tests {
         assert!(!execution.heap.contains(garbage));
         frame
             .write(vela_bytecode::Register(0), Value::HeapRef(active))
-            .unwrap();
+            .expect("fixture register should be writable");
         execution.protect_values(&[Value::HeapRef(protected)]);
         execution.collect_frame_at_safe_point(&frame, None);
         execution.collect_frame_at_safe_point(&frame, None);

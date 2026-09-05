@@ -8,7 +8,7 @@ fn new_children_of_an_already_swept_root_survive() {
     let garbage = heap.allocate(HeapValue::String("garbage".into()));
     assert!(!heap.step_gc(&[parent], GcBudget::sweep_slots(1)).complete);
     let child = heap.allocate(HeapValue::String("live".into()));
-    let HeapValue::Array(values) = heap.get_mut(parent).unwrap() else {
+    let HeapValue::Array(values) = heap.get_mut(parent).expect("parent should remain live") else {
         panic!()
     };
     values.push(Value::HeapRef(child));
@@ -31,7 +31,7 @@ fn each_slice_uses_current_roots_and_retraces_existing_containers() {
             .step_gc(&[parent, released], GcBudget::sweep_slots(1))
             .complete
     );
-    let HeapValue::Array(values) = heap.get_mut(parent).unwrap() else {
+    let HeapValue::Array(values) = heap.get_mut(parent).expect("parent should remain live") else {
         panic!()
     };
     values.push(Value::HeapRef(linked));
