@@ -2,9 +2,15 @@
 
 Date: 2026-09-04
 
-Reviewed revision: `d22121ed0004`
+Original reviewed revision: `d22121ed0004`
+
+Independent re-review: 2026-09-05, revision `5da258bfb9af4`. The only change
+between these revisions is this report; implementation findings refer to the
+same code. This edition corrects the original review in place.
 
 Toolchain: `rustc 1.98.0`, `cargo 1.98.0`
+
+Re-review host: `x86_64-pc-windows-msvc`.
 
 ## Executive assessment
 
@@ -14,29 +20,40 @@ generation-owned code, explicit host handles, deterministic collections, and
 extensive conformance tests are all good architectural choices. The project does
 not need a rewrite.
 
-It is not yet safe to describe the runtime as production-ready, however. Four
-correctness defects should block that claim:
+The re-review reproduces four correctness defects, with different exposure:
 
-1. finite-slot incremental GC can collect newly reachable objects because the
-   collector has neither a complete incremental mark state nor allocation/write
-   barriers;
-2. a hot update is not bound to the program generation against which it was
-   checked, so a stale update can bypass compatibility checking; and
+1. opt-in finite-slot incremental GC can collect newly reachable objects because
+   the collector has neither a complete incremental mark state nor
+   allocation/write barriers;
+2. an ordinary `HotUpdate` is not bound to the program generation against which
+   it was checked, so a stale update can bypass compatibility checking;
 3. reflection converts stable unsigned IDs to signed integers by saturation,
-   causing many distinct IDs to become the same value; and
+   causing many distinct reflected IDs to become the same value; and
 4. converting an ordinary cyclic heap value to `OwnedValue` recurses without
-   cycle detection and can overflow the host stack.
+   cycle detection and can overflow the host stack. Acyclic shared graphs can
+   also expand exponentially without an output-work or allocation budget.
 
-Fail-open host/reflection authority defaults are also release blockers for
-deployments that expose those paths.
+C-01 is critical when finite-slot collection is selected; the default
+microsecond configuration currently completes collection atomically and does
+not exhibit that inter-step failure. C-02 concerns ordinary Vela reload, not a
+demonstrated bypass of the separate whole-Service-generation checks. C-03 is a
+high-severity reflection identity defect, not a collision in internal compiler
+or runtime IDs. C-04 is critical on ordinary value export, including CLI and
+playground output. These boundaries should guide release gating.
 
-The dominant architectural problem after those defects is duplication, not a
-missing abstraction. Runtime artifacts retain several forms of the same program;
-the engine rebuilds VM dispatch and reflection state for each call; compiler and
-runtime layers share more dependencies than they need; type/schema information
-exists in several parallel models; and standard-library metadata is maintained
-in several hand-written tables. These choices make a carefully designed system
-look and behave more complicated than necessary.
+Host/reflection authority defaults also need correction for deployments that
+expose those paths. A reflection resource-budget setter currently enables
+reflection with all policy permissions; Engine reflection is disabled when no
+reflection configuration is supplied. This is a configuration hazard, not proof
+that every adapter, capability, or lease check can be bypassed.
+
+The main architecture opportunities are removing repeated work and clarifying
+ownership. Compiled artifacts retain several forms of the same program; ordinary
+Vela entries rebuild VM dispatch and reflection state; runtime dependencies
+reach compiler layers; and standard-library metadata has multiple hand-written
+tables. Different type/schema projections also repeat some metadata, although
+their layer-specific responsibilities are legitimate. Optimize demonstrated
+reconstruction and retention costs before introducing broader abstractions.
 
 The recommended direction is therefore:
 
@@ -78,6 +95,39 @@ This document uses:
 
 Line references describe the reviewed revision and will naturally drift.
 
+The independent re-review read the manifests, relevant implementations, and
+existing tests across all 23 crates, then traced findings through their callers
+and downstream validation. It also re-opened the primary reference documents
+below. This is targeted static review plus executable probes, not exhaustive
+line-by-line proof of every function or a production security certification.
+
+### Re-review evidence and corrections
+
+The following status overrides broader wording in the original edition.
+"Reproduced" means a small external consumer demonstrated the behavior;
+"source-confirmed" means the call path was inspected but no new workload
+measurement was made. Proposed reorganizations are recommendations, not defects
+merely because two layers have different representations.
+
+| Finding | Re-review result |
+|---|---|
+| C-01 GC | Reproduced live-child loss between finite-slot steps, even when the second call supplies the current roots. A zero-microsecond request still swept 100 slots. Default collection is atomic, with an unenforced time target. |
+| C-02 ordinary reload | Reproduced removal of a newly added function by a stale update that fresh compatibility checking rejects; replay was accepted. A cloned runtime consumed shared staging while the original stayed at version zero. |
+| C-03 reflection IDs | Reproduced distinct `TypeId`s `2^100` and `2^100 + 1` both appearing as `i64::MAX`. Internal IDs remain distinct. |
+| C-04 owned export | Reproduced `Runtime::value_to_owned` stack overflow after a script returns a self-containing array; also reproduced 13 shared heap arrays expanding into 8,191 owned arrays. |
+| H-01/H-02 runtime work and retention | Source-confirmed per-call VM/registry construction and compiled-artifact MIR retention. Existing cache/profile sidecars are already shared. Historical RSS and allocation figures were not remeasured or attributed solely to MIR. |
+| H-03/H-08 incremental tooling | Corrected: request snapshots already share database roots and facts are memoized per generation. Edits with a live snapshot can still deep-copy databases; HIR still rebuilds globally. Several handlers run synchronously, while completion, selected retryable queries, and formatting have actual worker lanes. |
+| H-04 reflection indexes | Reproduced an old function name resolving to the new descriptor after replacing its ID. Type registration instead permits two different `TypeKey`s with the same ID; it does not use the same name-to-ID index. |
+| H-05 policy configuration | Reproduced that `reflection_lookup_budget(1)` alone enables `reflect::types()`. The adapter receiver default is source-confirmed exclusive. |
+| H-07 macro hygiene | Corrected: `_value`/`value` normalize to duplicate labels, but ordinary Engine construction returns `DuplicateNativeFunctionParamName`. Silent wrong execution through that supported registration path was not reproduced. |
+| H-07 downstream lint policy | Reproduced E0453 with a scalar-only `#[service]` under `#![forbid(unsafe_code)]`; the unconditional generated `allow` already suffices to fail. |
+| Bindgen names | Reproduced successful generation of duplicate `foo` fields from valid `Foo`/`foo` fields, followed by Rust E0124/E0062. Module, callable, and top-level type collision checks already exist. |
+| Recommendations withdrawn or narrowed | Do not reverse the valid `vela_common -> vela_def` dependency, remove independent verifier proofs, treat bindgen's schema as an LSP DTO, or automatically release Host capabilities contrary to the current contract. |
+
+The existing suites pass because these reproductions exercise missing cases or
+confirm the protection supplied by another layer. No implementation or repository
+test files were changed for this review.
+
 ## Overall architecture
 
 ### What is already sound
@@ -115,13 +165,15 @@ unused machine code, but these dependencies still couple compilation,
 interfaces, build time, and artifact ownership to frontend models that should
 have been compiled into a neutral runtime snapshot.
 
-The retained artifact is the clearest example. `LinkedArtifact` contains a
+The retained artifact is a concrete example. `LinkedArtifact` contains a
 `LinkedProgram`, a `ProgramImage` with unlinked code and module graph data, and
 verified MIR. The portable artifact already proves that MIR is not required by
 the interpreter. Checked-in measurements report roughly 650--659 MB RSS for 16
 retained 200-function/lambda generations
-(`docs/performance.md:417-421,456-460,502`). Some of that is allocator and
-process overhead, but the representation overlap is structurally expensive.
+(`docs/performance.md:417-421,456-460,502`). These are historical process
+high-water RSS measurements, not incremental retained bytes or a measured
+MIR-only contribution. Allocator/process overhead and shared ownership prevent
+attributing that total to representation duplication alone.
 
 The same duplication appears in smaller forms:
 
@@ -164,8 +216,8 @@ The important ownership rules are:
    metadata;
 3. per-call sessions own budgets, stacks, temporary host leases, and GC roots;
 4. adapters own filesystem, network, URI, browser-worker, and protocol concerns;
-5. one neutral frozen schema feeds compiler validation, reflection, bindgen, and
-   tooling views.
+5. one authoritative host-type schema supplies immutable compiler, reflection,
+   binding, and tooling projections without duplicating registration authority.
 
 ## Comparison with mature implementations
 
@@ -174,11 +226,10 @@ reload and host write-through requirements are distinct. Several mature designs
 nevertheless provide useful pressure tests:
 
 - [rust-analyzer's architecture](https://rust-analyzer.github.io/book/contributing/architecture.html)
-  keeps protocol knowledge at the edge, uses immutable snapshots, and makes
-  per-file syntax/`ItemTree` data stable across unrelated body edits. Vela's
-  language service currently clones mutable database roots and rebuilds global
-  HIR structures, so its advertised incremental model is less incremental than
-  its API suggests.
+  keeps protocol knowledge at the edge, uses immutable snapshots, and keeps
+  `ItemTree` summaries stable across body edits. Vela already shares database
+  roots for snapshots, but edits can trigger copy-on-write and global HIR
+  reconstruction. The relevant next step is reuse across revisions.
 - [rustc's query model](https://rustc-dev-guide.rust-lang.org/query.html)
   demonstrates the value of keyed, memoized derivations and dependency tracking.
   Vela's analysis fixed points and HIR closure queries often rescan complete maps
@@ -188,16 +239,18 @@ nevertheless provide useful pressure tests:
   and avoiding allocation in hot loops. Vela already follows the first three,
   but recreating VM registries on every engine call and recomputing collection
   sizes defeats that work.
-- [Wren's embedding API](https://wren.io/embedding/) keeps the foreign boundary
-  small and session-oriented. [Rhai's embedding API](https://rhai.rs/book/start/features.html)
-  similarly makes common registration and calls direct. Vela's `HostRef` model
-  is safer for mutable game-server state than either project's simplest path,
-  but `ScriptStateAdapter`, `HostAccess`, proxy argument preparation, leases,
-  and explicit release expose too much of the machinery to ordinary embedders.
+- [Wren's embedding API](https://wren.io/embedding/) and
+  [Rhai's function registration](https://rhai.rs/book/rust/functions.html)
+  provide useful comparisons for a small foreign boundary and direct native
+  registration. They are usability references, not evidence of a comparative
+  safety ranking. Vela must retain its own host ownership, lease, and generation
+  guarantees while simplifying adapter authoring.
 
 ## Cross-cutting findings
 
 ### C-01: incremental GC is not correct across safe points
+
+**Status: reproduced. Severity: Critical for opt-in finite-slot collection.**
 
 `GcConfig::max_pause_micros` defaults to 500 μs
 (`crates/vela_vm/src/heap.rs:196-205`), but `GcBudget::micros` sets the sweep
@@ -213,6 +266,19 @@ unmarked (`heap.rs:744-770`), and there is no general allocation or container
 write barrier. A live object allocated into a frame or linked from a previously
 swept container can therefore be reclaimed by the next sweep step.
 
+The external probe allocates a parent array and one padding object, sweeps one
+slot with the parent rooted, then allocates a child and inserts it into the
+parent. Completing the cycle with both parent and child explicitly supplied as
+roots retains the parent but deletes the child: `step_gc_with_budget` ignores
+new roots while a cycle is active. Separately, `GcBudget::micros(0)` swept all
+100 unreachable probe objects. Neither reproduces Rust memory unsafety by
+itself; the demonstrated failure is loss of a live script object.
+
+The normal `HeapExecution::new` route uses `GcBudget::micros`, whose unlimited
+slot count finishes the cycle in one call. Do not describe default execution as
+incrementally corrupting its heap. Its separate defect is an unenforced pause
+target and an unbounded-in-time atomic mark/sweep.
+
 **Action:** immediately make collection atomic or disable the finite-slot API.
 Add a regression with an allocation and a new container/frame edge between
 sweep steps. Implement incremental marking only with a tri-color state,
@@ -220,6 +286,8 @@ allocation barrier, write barrier, root handling, and a real time deadline that
 also accounts for marking.
 
 ### C-02: hot updates lack compare-and-swap identity
+
+**Status: reproduced. Severity: Critical for ordinary precompiled/staged reload.**
 
 Compatibility is checked against a supplied previous version in
 `crates/vela_hot_reload/src/compile.rs:38-116`. `HotUpdate` then retains ABI,
@@ -233,12 +301,32 @@ followed by stale B. B was never checked against A. In addition,
 its current `Arc` field; one clone can consume the shared update and advance
 while the other remains on the old generation (`runtime.rs:41-55,85-117`).
 
-**Action:** store base `ProgramVersionId`, runtime identity, executable
-generation, and artifact checksum in every update, and reject a mismatch
-atomically. Remove `Clone` from the runtime; expose a cloneable staging handle,
-or deliberately share current state through one atomic generation owner.
+The probe builds A (adds `helper`) and B (changes only `main`) from v0. Checking
+B afresh against A rejects the removed function; applying the already-built B
+succeeds and deletes `helper`. Applying a clone of B again also succeeds.
+Through shared staging, one `HotReloadRuntime` clone advances to v1 while its
+sibling remains at v0 and has no pending update left to consume.
+
+The Engine route reaches the same unchecked application after
+`prepare_hot_update_state` (`runtime/reload_api.rs:196-222`), so a base check
+must precede initializer/state staging as well as publication. This finding
+does not establish a bypass in the unified Service controller: Service Delta
+composition already checks the expected generation (`service/selection.rs:196`)
+and deployment metadata carries base-generation/checksum facts. Preserve those
+checks rather than replacing the Service model with ordinary callable slots.
+
+**Action:** bind each update to an exact, validated base identity and reject
+stale/replayed updates before effects. Define whether identical-base runtimes
+may intentionally share an update; runtime ID, executable generation, and
+checksum are alternative/complementary identity components, not automatically
+four required fields. Remove split-state `Clone` behavior; the cloneable
+staging-only handle already exists. An exclusive `&mut self` owner can perform
+compare-and-apply without an additional atomic-pointer mechanism; concurrent
+shared publication needs an atomic owner.
 
 ### C-03: reflected stable IDs are lossy
+
+**Status: reproduced. Severity: High for the reflection identity API.**
 
 Reflection exposes unsigned 64- and 128-bit stable IDs as signed script
 integers by saturating them to `i64::MAX`
@@ -249,11 +337,19 @@ roughly half of uniformly distributed 64-bit hashes exceed `i64::MAX`, and
 almost every 128-bit ID does. Distinct types and members consequently collapse
 to the same reflected identity.
 
+Registering `TypeId::new(1_u128 << 100)` and the next ID under different names
+produces `ReflectType.id == i64::MAX` for both. The report's original reference
+to these type IDs as u64 was too broad: definition `TypeId` is 128-bit, while
+some host IDs and schema hashes are 64-bit. Internal registry/linker identities
+remain distinct; no compiler dispatch collision follows from this observation.
+
 **Action:** expose an opaque ID value, a tagged pair of unsigned words, or a
 canonical hexadecimal string. Round-trip tests must cover the top unsigned bit
 and multiple 128-bit IDs.
 
 ### C-04: ordinary owned-value egress can recurse forever on cyclic heaps
+
+**Status: reproduced through the public Runtime API. Severity: Critical.**
 
 Vela heap graphs intentionally support aliases and cycles, but
 `value_to_owned_inner` recursively follows every `HeapRef` without tracking the
@@ -262,48 +358,93 @@ represent cycles, so an ordinary host return/materialization through this path
 can overflow the Rust stack. Detached-task graph egress has separate cycle-safe
 handling; it does not make this converter safe.
 
-**Action:** return a typed non-detachable/cyclic-value error, or introduce an
-explicit graph representation. Never recursively materialize without an active
-node set and depth/budget accounting.
+The following source compiles and returns successfully under finite call
+limits (`10_000` execution units, 1 MiB, depth 64):
+
+```vela
+fn main() {
+    let values = [];
+    values.push(values);
+    return values;
+}
+```
+
+Calling `runtime.value_to_owned(&result)` then terminated the isolated Windows
+process with `STATUS_STACK_OVERFLOW` (`0xc00000fd`). CLI and playground output
+also call this public converter. This is not limited to raw-heap test fixtures.
+
+The re-review adds an acyclic case: start with an empty array and repeat
+`next = [previous, previous]` twelve times. Only 13 arrays exist in the heap,
+but conversion constructs 8,191 distinct owned arrays. An active-path cycle
+set alone does not bound this expansion. `persistent_value_to_owned` and the
+Runtime wrapper accept no egress budget, so finite script execution limits do
+not cap this materialization work or its Rust allocations.
+
+**Action:** return a typed cyclic-value/conversion-limit error, or provide a
+separate explicit graph export. Bound depth, visited edges, and output bytes
+for acyclic graphs too; do not merely add cycle detection. Keep owned-tree
+conversion distinct from detached-task graph transport.
 
 ### H-01: each script execution call rebuilds generation-wide runtime state
 
+**Status: source-confirmed for ordinary sync/async Vela entry.**
+
 Sync and async runtime calls construct a fresh VM
 (`crates/vela_engine/src/runtime/mod.rs:686-725,838-879`).
-`Engine::vm_for_artifact` clones/enriches reflection state and installs every
-function family (`engine.rs:1127-1170`); task reflection may clone it again.
+`Engine::vm_for_artifact` projects reflection state and installs every
+function family (`engine.rs:1127-1170`); the task-reflection helper unconditionally
+clones its input registry, even when the artifact has no task targets.
 Checked-in boundary results show about 285 allocations and 49 KB allocated for
 representative static field and collection calls
 (`docs/performance.md:156-177`).
 
+Both production call drivers invoke `runtime_vm` in
+`runtime/value_support.rs`, which creates this VM. Existing
+`SharedGenerationExecutionData` and `RuntimeGenerations` already share cache
+and profiling ownership; they do not currently contain a frozen VM dispatch
+registry. Same-session re-entry reuses the active VM, and Rust-selected Service
+defaults avoid VM entry entirely. The historical 285-allocation measurement is
+not proof that every call variant has that cost or that every allocation comes
+from metadata construction.
+
 **Action:** build one immutable `GenerationExecutionImage` at compile/reload
 time containing linked code, std/native/method dispatch, reflected schema, and
-cache layout. A call should create only mutable stack/heap/budget/host-session
-state.
+cache layout. Extend the existing generation ownership seam rather than adding
+a competing image. A call should create mutable stack/heap/budget/host-session
+state and its reflection lookup counters; do not accidentally share a
+per-call budget counter when freezing reflection dispatch.
 
 ### H-02: runtime artifacts retain compiler-only representations
 
 `LinkedArtifact` retains linked code, `ProgramImage` with unlinked code and a
 module graph, and verified MIR (`crates/vela_bytecode/src/artifact.rs:56-69`).
-MIR is retained beyond interpreter needs for JIT eligibility and source-side
-validation even though the JIT milestone is not implemented. The artifact
+Compiled MIR supports link-time selected-plan/budget verification and advanced
+inspection as well as JIT eligibility. Retaining it after linking is a distinct
+ownership question: `bind_portable` creates an empty MIR bundle, demonstrating
+that the interpreter can execute verified portable plans without the original
+MIR. Do not remove the compiled-path proofs or runtime contract types merely
+because the JIT milestone is not implemented. The artifact
 checksum also clones the full linked program and hashes its Rust `Debug` output
 (`artifact.rs:161-181,235-248`), which is costly and not a durable serialization
 contract.
 
-**Action:** make the runtime artifact compact and versioned. Put MIR and
+**Action:** compact the already-versioned runtime artifact. Put full MIR and
 unlinked compiler data in an optional compiler cache/diagnostic sidecar. Define
 a canonical fingerprint encoder over explicit fields. Split runtime code
 representation from code generation at least at the module/API boundary, and
-remove normal VM dependencies on HIR/MIR.
+separate compiler analysis from the MIR contract/value types that VM currently
+uses. Moving modules alone does not remove Cargo dependency edges.
 
 ### H-03: the frontend uses global mutable graphs for incremental work
 
 `ModuleGraph` owns many parallel maps and global counters
 (`crates/vela_hir/src/module_graph.rs:50-93`). Query helpers and dependency closure
 frequently scan all bodies/modules. `vela_analysis` clones fact maps and walks
-large expression sets during fixed points. The language service then clones
-database roots and still performs full HIR rebuilds for common changes.
+large expression sets during fixed points. However, `AnalysisFactsCache` already
+memoizes graph-only and schema-backed facts with `OnceLock<Arc<AnalysisFacts>>`,
+and LSP snapshots use `Arc::clone` for their database root. Remaining costs are
+whole-graph rebuild/invalidation after edits and copy-on-write when an old
+snapshot still holds that root (`global_state/project_state.rs:217,253-256`).
 
 **Action:** give each module/owner an immutable shard with local dense IDs and
 explicit reverse indexes. Derive global views from `Arc`-shared shards. Replace
@@ -314,17 +455,22 @@ whole-map fixed points with a dependency worklist and cache facts by
 
 Runtime/compiler type facts have legitimate layer-specific detail, but name,
 identity, fields, method signatures, permissions, and docs are re-encoded too
-often. Public registry mutation can silently overwrite some reflection indexes,
-and registry sealing uses assertions rather than changing the type of the
-object.
+often. Raw reflection registration can silently overwrite some indexes. Engine
+already shares its reflection and type-binding registries behind `Arc`; exposing
+an authoring registry's mutators is not proof scripts can mutate a live schema.
+`DefinitionRegistry::seal_type_bindings` records a binding checksum rather than
+promising to freeze the entire definition registry.
 
-**Action:** make an immutable, indexed `FrozenSchema` the sealed output and
-replacement for the overlapping definition/type registry state—not a fourth
-schema model. Compiler facts and MIR contracts remain separate, but refer to
-schema IDs instead of copying names and descriptors. Reflection and bindgen
-consume frozen projections; the engine shares them.
+**Action:** retain the sealed `TypeBinding` registry as host-type authority and
+derive immutable indexed projections once. Definition lookup, Rust codecs,
+compiler facts, reflection, and binding exports have legitimately different
+jobs; counting their types does not establish overdesign. A future
+`FrozenSchema` is a possible consolidation of duplicated identity/metadata, not
+an approved fourth authority or a requirement to merge every projection.
 
 ### H-05: some fail-open defaults cross capability boundaries
+
+**Status: budget-setter enablement reproduced; receiver default source-confirmed.**
 
 `ScriptStateAdapter::host_receiver_access` defaults to exclusive access
 (`crates/vela_host/src/adapter.rs:55-66`). A custom adapter that forgets to
@@ -332,27 +478,40 @@ override it can unintentionally authorize mutation. Separately,
 `EngineBuilder::reflection_lookup_budget` uses
 `unwrap_or_default` (`crates/vela_engine/src/builder.rs:281-287`), while the
 default reflection policy grants all permissions. Setting only a resource
-budget therefore enables reflection calls, private access, and host mutation.
+budget therefore selects a policy permitting reflection calls, private access,
+and host mutation. Registered reflect visibility/callability, adapter checks,
+leases, and other execution checks still apply. No reflection configuration
+leaves Engine reflection disabled; this is not the default for every Engine.
 
 **Action:** make receiver authority explicit or default to unsupported/shared.
-Require `enable_reflection(policy)`; budget setters must never grant
-permissions.
+Require an explicit reflection policy (the existing `reflection_policy` or
+permission setter can provide it); resource-budget setters must not grant
+permissions. A new API name is not required to fix this behavior.
 
-### H-07: proc macros can change meaning or break safety-policy compatibility
+### H-07: proc macro parameter hygiene and downstream lint compatibility
 
 Macro signature normalization removes all leading underscores and gives
 non-identifier patterns the same `arg` label
-(`crates/vela_macros/src/signature.rs:36-52`). Parameters such as `_value` and
-`value` can silently refer to the same generated binding; multiple destructuring
-patterns can produce invalid or duplicate generated bindings. Service/dispatch
-expansion also emits unsafe code with
-`#[allow(unsafe_code)]`; this fails in consumers using
-`#![forbid(unsafe_code)]`.
+(`crates/vela_macros/src/signature.rs:36-52`). The async exporter derives local
+identifiers from those labels. However, the `_value`/`value` probe is rejected
+by standard Engine construction with `DuplicateNativeFunctionParamName` before
+execution. The original unqualified claim of silent wrong execution is
+withdrawn for that path. Earlier, span-local macro validation and positional
+internal bindings remain useful ergonomics and defense in depth. Other
+signature/adapter combinations need their own proofs.
+
+Service expansion unconditionally emits `#[allow(unsafe_code)]`
+(`crates/vela_macros/src/service.rs:255,286`). Even a scalar-only service trait
+under `#![forbid(unsafe_code)]` fails with E0453. Certain non-static host
+dispatch arms actually need unsafe erased reborrowing; this is a downstream
+lint-compatibility defect, not evidence those operations are unsound.
 
 **Action:** use positional hygienic internal identifiers, validate unique public
-labels, and reject unsupported patterns with a span error. Keep erased-pointer
-unsafe operations behind a safe library function so generated downstream code
-contains no unsafe block.
+labels, and reject unsupported patterns with a span error. Avoid unconditional
+lint overrides in safe expansions. For borrowed host dispatch, investigate a
+safe library-owned invocation abstraction with enforced provenance/lifetime
+invariants. Merely moving an unchecked generic pointer cast into a public safe
+function would be unsound and is not an acceptable fix.
 
 ### H-08: language-server concurrency and URI boundaries do not match the model
 
@@ -364,6 +523,12 @@ layer also performs filesystem operations despite the architecture contract,
 and both service and server manually strip `file://` rather than correctly
 handling percent-encoding, Unicode, or UNC paths.
 
+Specifically, hover/signature-help and non-retryable worker-labelled requests
+call `dispatch_snapshot_messages_typed` synchronously. Completion, completion
+resolve, full semantic tokens, selected retryable workspace queries, and
+formatting do use task lanes. The absence of cooperative cancellation inside
+many queries must not be conflated with an absence of background execution.
+
 **Action:** keep all I/O and URI conversion in `vela_lsp_server`, using the URL
 library's file-path conversion. Use bounded/coalescing queues, a real worker
 pool, and cooperative cancellation tokens inside queries. The language service
@@ -371,10 +536,13 @@ should accept immutable text/path snapshots only.
 
 ### M-01: hot-path collection accounting rescans complete maps and sets
 
-Every tracked map/set mutation recomputes shallow size by scanning all entries
+Map/set mutations reaching `adjust_object_size_after_mutation` recompute
+shallow size by scanning all entries
 (`crates/vela_vm/src/script_map.rs:179-187`,
-`script_set.rs:105-113`, and `heap.rs:521-565`). With finite limits, repeated
-insertion is quadratic.
+`script_set.rs:105-113`, and `heap.rs:521-565`). Repeated growing insertions on
+this route have quadratic aggregate accounting work. This is a source-level
+complexity finding, not a claim that every map/set operation or every fast path
+is quadratic; finite limits bound the size but do not remove that cost.
 
 **Action:** maintain capacity and payload deltas incrementally, with occasional
 debug/test recomputation to verify accounting.
@@ -388,6 +556,12 @@ operation and panics when adding a 257th dynamic argument
 `crates/vela_host/src/access.rs:355-370`, and
 `proxy.rs:218-225`).
 
+These are specific `HostValue`/proxy routes, not a count for every direct typed
+Host/Service call. The overflow is in the public Rust proxy builder; source
+compiler path limits must be checked separately before claiming an ordinary
+script can trigger that panic. Existing scoped/borrowed adapters must retain
+lease and lifetime validation when reducing conversions.
+
 **Action:** convert once into borrowed/consuming call values, use
 `SmallVec` for the common proxy case, and make argument overflow fallible.
 
@@ -400,7 +574,8 @@ semver stabilization harder. The project currently has very little top-level
 rustdoc relative to that surface.
 
 **Action:** define supported facade modules and move implementation structures
-behind `pub(crate)` or an explicitly unstable `advanced` namespace. Enable
+behind `pub(crate)` where no cross-crate consumer needs them, or an explicitly
+unstable compiler/advanced namespace otherwise. Enable
 `missing_docs` on the facade first and add downstream compile tests for the
 intended embedding path.
 
@@ -426,14 +601,16 @@ Findings and recommendations:
 - stable IDs, shape IDs, and service IDs use separate ad-hoc hash encodings.
   Centralize a streaming, domain-separated stable-hash writer so callers cannot
   accidentally hash ambiguous byte sequences.
-- diagnostic rendering rebuilds line starts and allocates line strings
-  (`diagnostic_render.rs:146-169`). A shared `LineIndex` keyed by source revision
-  would reduce repeated CLI/LSP work.
+- diagnostic rendering scans the source prefix to count lines and allocates
+  displayed line strings (`diagnostic_render.rs:146-169`). Reusing a line index
+  could reduce repeated rendering cost; this function does not itself build a
+  complete line-start table, as the original wording suggested.
 - `vela_common` directly uses `vela_def::TypeId` and `FunctionId` in its
   interop contracts as well as re-exporting `stable_id`
-  (`interop_type.rs:3-88`). That makes “common” depend on a higher-level identity
-  crate. Move the minimal ID primitives/hash macro into the lower layer, or
-  rename/narrow this crate so its position in the dependency graph is explicit.
+  (`interop_type.rs:3-88`). This dependency direction is valid: `vela_def` is a
+  leaf identity crate depending only on BLAKE3 and optional serde. The original
+  recommendation to invert this edge is withdrawn. Keep higher-level host and
+  compiler behavior out of both foundational crates.
 
 ### `vela_def`
 
@@ -452,8 +629,11 @@ Findings and recommendations:
 - several IDs are built through temporary formatted strings
   (`crates/vela_def/src/script.rs:26-69`), and `DefPath::id` assembles temporary
   byte vectors. Feed typed components directly into a domain-separated encoder.
-- public fields allow values that were not produced by canonical construction.
-  Make durable identity fields private and expose checked constructors/accessors.
+- `DefPath` has public string/path fields, while typed IDs already have private
+  storage and explicit constructors. Validate external paths and collisions at
+  ingestion/registration boundaries; do not prohibit constructing stable IDs
+  needed for schemas, serialized artifacts, and collision tests merely to make
+  every intermediate DTO private.
 - names and path segments are commonly owned. Once a workspace-wide symbol
   policy exists, use interned/`Arc<str>` components while keeping serialized
   identity independent of process-local interning.
@@ -474,8 +654,10 @@ Findings and recommendations:
 
 - `ModulePath` silently removes empty components
   (`crates/vela_package/src/identity.rs:75-102`), so `a::::b` can normalize to
-  `a::b`. Construction should be fallible and validate every segment as a Vela
-  identifier.
+  `a::b`; the external probe confirms this. Keep a permissive internal path
+  representation if useful, but validate authored package/import paths at their
+  input boundary with a fallible parser. This observation alone does not show
+  that source import syntax or filesystem authorization accepts that spelling.
 - filesystem-derived segments and language module identifiers need one canonical
   validation rule. Do not accept a disk path that could not be written as a
   module path.
@@ -505,10 +687,12 @@ Findings and recommendations:
   `token.rs:12-30`). This is largely transient compile-time memory, but it
   amplifies large-file parsing and editor snapshots. Store ranges/kinds in the
   lexer and decode literal values on demand or once into an AST arena.
-- interpolation is scanned again; nested lexing uses a synthetic `SourceId(0)`
-  and drops nested diagnostics
-  (`crates/vela_syntax/src/cst_parser/cst_expr.rs:224-231`). Preserve the
-  original source/range mapping and merge diagnostics.
+- interpolation is scanned again; the nested CST helper uses `SourceId(0)` and
+  does not merge its lexer/parser diagnostics
+  (`crates/vela_syntax/src/cst_parser/cst_expr.rs:224-231`). Audit diagnostic
+  ownership across the outer lexer and parser before adding propagation: this
+  local omission is source-confirmed, but it is not yet a reproduced missing
+  user diagnostic or an incorrect emitted source span.
 - expression parsing repeatedly rescans subranges to find operators
   (`crates/vela_syntax/src/cst_parser/cst_expr.rs:10-88,787-815`), which can
   become quadratic for long expressions. A Pratt/event parser over one token
@@ -555,8 +739,9 @@ survive a revision.
 
 ### `vela_registry`
 
-**Assessment:** registration invariants are stronger than most early language
-projects, but “sealed” is not yet an immutable representation.
+**Assessment:** deterministic registration and collision validation form a
+coherent definition layer. Its binding-checksum seal and overall mutability
+should be described separately.
 
 Strengths:
 
@@ -568,18 +753,22 @@ Strengths:
 
 Findings and recommendations:
 
-- `seal_type_bindings` is an assertion on a still-mutable object
-  (`lib.rs:87-91`). Invalid builder order becomes a process panic and the type
-  system does not enforce frozen state.
+- `seal_type_bindings` records a checksum and asserts against repeated sealing
+  (`lib.rs:87-91`); it does not claim to freeze all definition insertion. The
+  production caller in `vela_engine/src/compiler_registry.rs:62` supplies the
+  already-sealed host binding checksum. A fallible repeated-seal API could
+  improve low-level misuse diagnostics, but this assertion is not a reproduced
+  production failure or proof that Engine's host bindings remain mutable.
 - module-root, host-field, runtime-method, and native-source queries may scan all
   definitions or allocate temporary keys (`lib.rs:242-296,420-472`).
 - debug names are stored as both `Vec<String>` and owned map keys
   (`lib.rs:506-542`).
 
-Replace this with
-`DefinitionRegistryBuilder -> Result<Arc<FrozenDefinitionRegistry>, Error>`.
-Construct all reverse indexes at freeze time, intern names, and make every
-post-freeze operation read-only and non-panicking.
+A builder-to-frozen representation is a possible API improvement after the
+mutation phases and consumers are mapped. More immediately, build the missing
+reverse indexes and share immutable compile views. Do not introduce a second
+sealing authority or change valid construction phases solely because the
+checksum setter is named `seal_type_bindings`.
 
 ### `vela_reflect`
 
@@ -597,16 +786,22 @@ Strengths:
 Findings and recommendations:
 
 - reflected stable IDs collapse through saturating signed conversion; see C-03.
-- registration methods overwrite primary/secondary indexes
-  (`crates/vela_reflect/src/registry.rs:725-812`). Inserting an existing ID under
-  another name can leave stale name mappings. All registration must validate
-  atomically and return a typed collision error.
+- function/state registration overwrites ID entries while retaining old name
+  mappings (`crates/vela_reflect/src/registry.rs:777-812`). Replacing function ID
+  1 named `Old` with ID 1 named `New` makes `function_by_name("Old")` return the
+  `New` descriptor. Type registration instead indexes `(id, name)` and accepts
+  two descriptors with one ID. Define replacement versus collision semantics
+  per registry, validate atomically, and avoid stale secondary indexes. The
+  sealed definition/type-binding registration path has additional checks;
+  this does not prove every Engine registration can create such corruption.
 - trait descriptors are embedded in type descriptors and also stored in a global
   map (`registry.rs:175-190,704-717`); lookup merges/deduplicates them on demand.
   Store each trait once and reference its ID.
-- lookup budgets charge one unit for an API call such as `reflect::types()` even
-  if it allocates and returns the complete schema. Charge returned records/bytes
-  or page enumeration.
+- the lookup budget counts API calls, not the size of `reflect::types()`'s
+  complete descriptor projection. The one-lookup probe returns a schema
+  successfully. Account for traversal and temporary descriptor allocations as
+  well as the VM's eventual result allocation; this is a gap in work accounting,
+  not evidence that every returned byte escapes the VM memory checks.
 - runtime reflection depends on HIR/package/syntax projection
   (`script_types.rs:1-18`). Emit a frozen runtime reflection table during
   linking, leaving compiler projection outside the runtime crate.
@@ -635,10 +830,11 @@ Findings and recommendations:
 - normal dependencies on package/syntax appear to serve mostly tests or
   adapters; keep the semantic core at the HIR/schema boundary.
 
-Use a worklist keyed by owner/expression with explicit dependency edges. Intern
-structural type facts and canonicalize unions. Cache a generation-level base
-fact set, then compute small executable deltas instead of rebuilding equivalent
-maps per root.
+Use a worklist keyed by owner/expression with explicit dependency edges where
+profiles justify it. The language service already caches generation-level base
+facts; extend reuse across changed owners/revisions instead of adding a second
+whole-generation cache. Intern structural type facts only with evidence that
+comparison/allocation costs justify the additional ownership mechanism.
 
 ### `vela_mir`
 
@@ -656,15 +852,20 @@ Strengths:
 
 Findings and recommendations:
 
-- liveness is computed during construction, recomputed by verification, and
-  compared; sealing also rebuilds control-flow/fact information
-  (`crates/vela_mir/src/verifier/mod.rs:394-438` and liveness modules).
-  Consolidate into one verifier result consumed by sealing.
+- builder-emitted liveness is independently recomputed and compared by the
+  verifier; that is an intentional correctness boundary, not redundant proof to
+  remove. After successful verification, `verify_owned_mir` recomputes facts,
+  CFG, and sealed analyses (`crates/vela_mir/src/verifier/mod.rs:394-438`).
+  Returning the verifier's independently derived analyses for sealing is a
+  potential optimization; trusting builder-provided analyses is not.
 - `CompileTargetSnapshot` is another broad parallel-map DTO. Prefer a view over
   frozen HIR/schema data with only MIR-specific derived facts.
-- public raw builders allow many invalid intermediate states that only the
-  compiler should create. Keep them `pub(crate)` and expose sealed MIR to other
-  crates.
+- the implementation `builder` module is already private and `build_mir` is a
+  public compiler seam. Cross-crate lowering inputs and model constructors are
+  also needed by the backend and corruption tests. Narrow/document supported
+  compiler and advanced APIs rather than making all of them `pub(crate)` and
+  breaking the existing crate boundary. Production VM entry still requires a
+  verified linked artifact.
 - nested-function/capture lookup scans or clones broader maps than necessary.
   Add owner and capture indexes.
 - JIT eligibility is public and retained even though there is no JIT. Keep the
@@ -689,22 +890,27 @@ Findings and recommendations:
 
 - `LinkedArtifact` and its dependency cone keep compiler representations in the
   runtime; see H-02.
-- unlinked and linked instruction enums duplicate approximately eighty opcode
-  families and their maintenance ladders. Generate both representations,
-  verifier dispatch, and metadata from one declarative opcode specification.
+- unlinked and linked instruction enums have parallel opcode families. A
+  declarative specification could generate operand structure, exhaustive
+  dispatch scaffolding, and metadata. Preserve independent semantic verifier
+  checks against source/MIR and malformed-input tests; generating both producer
+  and oracle from identical logic would hide common-mode bugs.
 - semantic preparation clones builder/probe placements and constructs validated
   lowering inputs that are later requested again
   (`crates/vela_bytecode/src/compiler/semantic_input/mod.rs:158-174,294-308`).
   Make one owned preparation result and consume it once.
 - sorted `insert_function` calls rebuild indexes repeatedly
-  (`lib.rs:111-139,296-322`), yielding quadratic construction. Accumulate,
+  (`lib.rs:111-139,296-322`), yielding at least quadratic aggregate traversal
+  plus ordered-index maintenance. Accumulate,
   stable-sort once, validate once, then freeze.
 - linked method lookup constructs owned strings
   (`linked.rs:181-189`). Index typed owner/name IDs and support borrowed probes.
 
-Keep `vela_bytecode` as the compact runtime representation and move codegen and
-compiler-only artifact assembly into an internal backend module or a future
-`vela_codegen` crate only if the dependency graph cannot otherwise be cut.
+Separate runtime representation from codegen ownership first. An internal
+module split helps reviewability but cannot cut normal Cargo dependencies;
+removing those edges requires a crate or feature boundary. Do not create a new
+codegen crate solely to satisfy a diagram without measuring build/retention
+benefits and preserving portable verification.
 
 ### `vela_host`
 
@@ -731,13 +937,17 @@ Findings and recommendations:
   (`adapter.rs:55-284`). `ScriptHostObject` mirrors much of it. Keep one sealed
   low-level adapter boundary, but move optional capability decomposition behind
   internal/advanced APIs and give ordinary users a small derive-driven facade.
-- `HostAccess` is zero-sized, yet APIs require a mutable reference to it. If it
-  represents authority/session state, make that state real; otherwise hide it
-  behind the session facade.
+- `HostAccess` is zero-sized and obtains authority from the adapter, resolved
+  target, and active lease/session. Its mutable parameter is API machinery, not
+  evidence that authority is absent. Hide it behind ordinary call facades where
+  possible; do not invent duplicate mutable authority state to justify a ZST.
 - host argument conversion clones structural values through multiple vectors;
   see M-02.
-- `HostPathParts` implements custom small storage while the crate already uses
-  `SmallVec`. Reusing one tested representation would remove substantial code.
+- `HostPathParts` in `target.rs` implements empty/one/two/three/four/heap storage
+  while the crate also uses `SmallVec`. Reuse could simplify code, but compare
+  plan size, clone/hash cost, and allocation profiles first. Existing storage
+  tests and specialized ownership may justify retaining it; no regression from
+  this representation was reproduced.
 
 The desired ordinary Rust path should remain: register a host type, pass a
 borrowed host object in `CallArgs`, and let Vela write through `player.level +=
@@ -818,7 +1028,8 @@ Strengths:
 
 Findings and recommendations:
 
-- finite-step collection is unsafe and its time budget is inert; see C-01.
+- opt-in finite-step collection violates liveness and its time budget is inert;
+  default safe-point collection is atomic; see C-01.
 - cyclic heap materialization can recursively overflow; see C-04.
 - finite-budget map/set mutation is quadratic; see M-01.
 - host call conversion performs redundant allocation/cloning; see M-02.
@@ -865,12 +1076,15 @@ Findings and recommendations:
   every contiguous instruction offset only to expose membership/count
   (`profile.rs:43-69`). Cache compact range/layout data per generation.
 
-The activation operation should be a clear compare-and-swap:
+The activation operation should compare an explicitly defined base identity:
 
-`apply(update) succeeds iff runtime_id and current_version equal update.base`.
+`apply(update) succeeds only if current_base_identity == update.expected_base`.
 
 That invariant should be tested with two updates built from one base, two
-runtimes, and staged updates observed by multiple handles.
+runtimes, and staged updates observed by multiple handles. Decide whether
+identical-base cross-runtime fan-out is supported; mismatched bases and replay
+must reject. The current whole-Service model already has its own publication
+checks and remains the sole Rust hotfix model.
 
 ### `vela_engine`
 
@@ -895,13 +1109,16 @@ Findings and recommendations:
   H-05.
 - `Engine` derives `Clone` while many native maps are direct owned fields
   (`engine.rs:42-67`). Make it a cheap `Arc<EngineInner>` after construction.
-- the engine retains three overlapping registry/schema stores
-  (`engine.rs:42-46`). Share views over one frozen schema.
+- the engine retains definition, reflection, and type-binding stores
+  (`engine.rs:42-46`). Their layer-specific duties are valid; reduce repeated
+  metadata construction and share immutable projections while keeping one
+  authoritative host-type registration model.
 - `RuntimeImage`, `OwnedImage`, `SharedImage`,
   `RuntimeImageStorage`, and `RuntimeImpl<I>` mainly encode inline versus `Arc`
-  storage (`runtime/image.rs:12-73`). A single `Arc<GenerationImage>` is easier
-  to teach and normally just as efficient; retain a distinct owned fast path
-  only if profiling demonstrates material allocation/refcount cost.
+  storage (`runtime/image.rs:12-73`). Consider hiding these storage policies from
+  ordinary embedders. A single shared image might simplify internals, but
+  equivalent performance is an unmeasured hypothesis; retain the accepted
+  ownership/lifetime guarantees and benchmark both forms before removing one.
 - compiler registry conversion reparses/copies type-hint strings between several
   models. Reference canonical schema/type-expression IDs instead.
 - optional schema artifact support depends on the full language-service crate
@@ -928,20 +1145,25 @@ Strengths:
 
 Findings and recommendations:
 
-- argument normalization can collide and alter bindings; see H-07.
+- argument normalization can collide; standard Engine construction rejects the
+  demonstrated duplicate labels. Move that diagnostic closer to the authored
+  parameter and use positional internal names; see H-07.
 - generated service/dispatch code contains unsafe blocks annotated with
   `#[allow(unsafe_code)]`. A downstream `#![forbid(unsafe_code)]` cannot be
-  overridden, so valid consumers fail to compile. Keep unsafe erased
-  reborrowing behind a safe function in `vela_host`.
+  overridden, so valid consumers fail to compile, even for scalar-only Services.
+  Remove unnecessary overrides and design any library-owned erased-reborrow
+  abstraction around enforced lifetime/provenance invariants; see H-07.
 - expansion hard-codes paths such as `::vela_engine`, `::vela_host`,
   `::vela_reflect`, and `::vela_vm`. Consumers must directly depend on all
-  internal crates under exact names. Emit through one documented
+  internal crates used by that particular expansion under exact names. A simple
+  export and a borrowed Service do not require the same set. Emit through one documented
   `vela_engine::__private`/facade path and resolve renamed crates with
   `proc_macro_crate` or an explicit crate option.
-- `#[methods]` can expose every representable instance method, including private
-  methods, unless configured otherwise. That conflicts with the documented
-  explicit-registration capability model. Default to explicit/public-only
-  export and require an annotation for additional methods.
+- `#[methods]` can expose representable private instance methods unless
+  `public_only` or method-level `skip` is selected. Applying the macro and
+  registering its bindings are themselves explicit opt-ins; Rust visibility is
+  not the same contract as script visibility. Document this choice and consider
+  a public-only default, but do not call it an established capability bypass.
 - type classification uses only the final path segment, so user-defined
   `my::Vec`/`Result`-named types can be mistaken for standard containers or
   context types. Accept only known canonical paths or require an annotation.
@@ -963,14 +1185,20 @@ Strengths:
 Findings and recommendations:
 
 - normalization is not validated consistently for record fields, variants, and
-  parameters. The renderer substitutes fallback identifiers and can discard
-  diagnostics (`crates/vela_bindgen/src/rust.rs:416-515`).
-- distinct source names can normalize to the same Rust identifier, producing
-  duplicate items after generation reports success.
+  parameters. `pub struct Item { Foo: i64, foo: i64 }` exposed by a typed public
+  function successfully generates two `pub foo: i64` fields; compiling the
+  generated consumer fails with E0124/E0062. This is a reproduced API defect.
+- module, callable, and top-level generated type collisions are already checked
+  by `collect_modules`/`validate_types`. Type validation also runs before
+  rendering, so passing a fresh diagnostic vector while rendering an already
+  validated type does not alone prove a lost type error. Extend the existing
+  validation to field/variant/parameter namespaces and invalid raw identifiers.
 - generated accessors expose long internal root-module names, which are correct
   but not pleasant as an application API.
-- schema DTO ownership currently pulls toward language-service types instead of
-  a neutral frozen schema.
+- Rust bindgen consumes compiler-owned `vela_bytecode::RustBindingSchema`, not
+  language-service DTOs. The coupling is to the broad bytecode crate, which
+  brings compiler dependencies. Move the binding schema to a smaller neutral
+  boundary only as part of a justified dependency split; do not duplicate it.
 
 Build a `RustNamingPlan` that validates keywords, raw identifiers, normalization
 collisions, namespaces, and stable disambiguation before rendering. Once that
@@ -1002,8 +1230,9 @@ for those four consumer constraints, keeping the crate `publish = false`.
 
 ### `vela_language_service`
 
-**Assessment:** feature coverage is impressive, but the internal ownership model
-does not yet deliver the cheap immutable snapshots suggested by the public API.
+**Assessment:** feature coverage is impressive and database snapshots already
+share immutable state. The remaining ownership problem is reuse across edits,
+especially while background snapshots remain live.
 
 Strengths:
 
@@ -1020,7 +1249,7 @@ Findings and recommendations:
   `ModuleSource::String`, then back into an `Arc`
   (`crates/vela_language_service/src/project.rs:300-366` and
   `incremental.rs:1011-1042`).
-- `ParseDb` begins updates by cloning the full record map, HIR commonly rebuilds
+- `ParseDb` begins updates by cloning the parse record map, HIR commonly rebuilds
   the full graph, and `LanguageServiceDatabases` deep-clones under
   `Arc::make_mut`. A concurrent snapshot can turn a small edit into a graph copy.
 - the project layer performs `load`, `exists`, and `canonicalize` filesystem
@@ -1037,7 +1266,8 @@ Use one immutable `SourceSnapshot { path, text: Arc<str>, revision }` supplied b
 the adapter. Reuse CST tokens/typed AST for cursor recovery. Attach structured
 repair data to diagnostics. Expose a narrow `LanguageServiceSnapshot` facade
 while keeping databases internal. The HIR shard/worklist changes in H-03 should
-then make snapshots cheap rather than cosmetically immutable.
+then make edits cheaper without losing the existing cheap database-root snapshot
+and per-generation analysis-fact cache.
 
 ### `vela_lsp_server`
 
@@ -1053,8 +1283,8 @@ Strengths:
 
 Findings and recommendations:
 
-- latency-sensitive and worker dispatch functions call the synchronous
-  dispatcher directly
+- non-retryable latency-sensitive and worker dispatch functions call the synchronous
+  dispatcher directly; retryable completion and several other requests use lanes
   (`crates/vela_lsp_server/src/handlers/dispatch.rs:71-123,387-421,482-507`).
 - normal completion is mostly non-cancellable; checks after a result do not save
   the work.
@@ -1101,7 +1331,7 @@ unused high-level dependencies.
 
 ### `vela_playground_wasm`
 
-**Assessment:** functional and deterministic. Its 11.5 MB unoptimized raw
+**Assessment:** functional and deterministic. Its 11.5 MB raw
 release baseline and synchronous compile/run model justify a measured
 browser-size/startup budget before the playground is treated as polished.
 
@@ -1116,12 +1346,21 @@ Findings and recommendations:
 - it links the full engine/compiler/bytecode/VM stack with no playground-focused
   feature profile. The reviewed release artifact was 11,536,532 bytes before
   `wasm-opt` or compression.
-- a new engine is constructed for every operation, and the “compile then run”
-  flow compiles the same source twice.
-- compilation is synchronous on the browser thread, with no source-size limit,
-  deadline, or cancellation.
+- a new engine is constructed for every operation. Choosing Compile and then
+  Run compiles the same source twice because no artifact is cached between
+  actions; a single Run action does not itself perform two compilations.
+- the checked-in `site/src/components/Playground.astro:209-220` calls the
+  synchronous exports on the browser thread, with no source-size or compilation
+  work limit. The WASM crate could be hosted in a worker; the existing UI does
+  not do so. Execution and initialization do have finite runtime budgets.
+- `compile_script` constructs a Runtime and therefore evaluates script-state
+  initializers before reporting success (`lib.rs:99-107`). This is broader than
+  parsing/linking alone. Either describe the operation as compile-and-initialize
+  or validate the artifact without initializing it.
 - JSON conversion is not type preserving: unit becomes the string `"()"` and
-  64-bit integers can exceed JavaScript's exact numeric range.
+  integer JSON text is parsed with ordinary `JSON.parse` in the UI, which loses
+  precision outside JavaScript's safe-integer range. The loss is at the consumer
+  numeric representation, not necessarily serde's emitted decimal text.
 - compiler diagnostic projection is duplicated with CLI logic.
 
 Provide a persistent worker-owned session keyed by source/options fingerprint.
@@ -1132,11 +1371,11 @@ and service facilities not used by the playground.
 
 ## Rust/Vela interoperation
 
-The fundamental model is good for game-server scripting. Script code uses
+The fundamental model fits host-owned game-server state. Script code uses
 ordinary member access and mutation, while Rust retains ownership and mediates
-all effects through stable handles and paths. This is safer than registering an
-arbitrary Rust closure over a real `&mut T` and is consistent with the product's
-hot-reload goals.
+effects through stable handles and paths. This makes lease and generation rules
+explicit without exposing Rust references to scripts. It is not a comparative
+proof that safely scoped Rust closures in other embedding designs are unsound.
 
 The current friction comes from exposing a linear-resource protocol:
 
@@ -1149,17 +1388,26 @@ The current friction comes from exposing a linear-resource protocol:
 
 Recommendations:
 
-1. prefer lexical lifetime analysis that inserts safe releases automatically;
-   if that cannot cover the common case, add a scoped `host::with` library
-   combinator before considering new language syntax. Keep explicit
-   `host::release` as the advanced escape hatch;
+1. preserve authored `host::release` / `host::try_release`, terminal Service
+   transfer, and root teardown. Improve diagnostics and examples for releasing
+   children before parents and releasing retained leases before `await`;
 2. make common host registration derive one schema plus one adapter and surface
    compile-time errors for unsupported fields/methods;
-3. expose `try_with_request`/fallible patch APIs rather than panicking inside
-   generated adapters;
+3. define a fallible outer-request failure channel for host-observed VM,
+   conversion, and cancellation failures where compatible with the authored
+   Service trait. A method returning plain `i64` cannot transparently start
+   returning `Result`; preserve the authored ABI and distinguish script
+   `Result` values from execution failure;
 4. make all authority declarations fail closed;
 5. measure and guarantee that a warmed scalar host call does not rebuild
    generation metadata or allocate proportional to the entire registry.
+
+The original recommendation for automatic lexical/last-use releases is
+withdrawn under the current contract. `docs/architecture.md:203-210` explicitly
+forbids compiler-inserted releases, including last-use and scope-edge releases.
+Changing that policy would require a deliberate language/interop design change,
+not an audit cleanup. It is reasonable to report the usability cost without
+treating the chosen lifetime semantics as an implementation bug.
 
 ## Additional repository-level findings
 
@@ -1203,16 +1451,17 @@ facade—rather than mechanically splitting by line count.
 
 1. Disable multi-step sweeping or conservatively run atomic GC; add allocation,
    frame-root, and container-write regressions between requested steps.
-2. Bind `HotUpdate` to runtime/base generation/checksum and make activation an
-   atomic compare-and-swap; remove split-brain `Clone` semantics.
+2. Bind `HotUpdate` to an exact base identity and compare before staging effects
+   or publication; remove split-state `Clone` semantics. See C-02 for the
+   ownership and cross-runtime fan-out policy choices.
 3. Replace all reflected stable-ID saturation with a lossless opaque format.
 4. Detect cycles and enforce depth/work budgets during heap-to-owned conversion.
 5. Make host receiver and reflection configuration fail closed.
-6. Fix macro argument hygiene and remove generated unsafe blocks from consumer
-   crates.
 
 These changes should precede new syntax, JIT preparation, or more reflection
-surface.
+surface. C-01's critical exposure requires the finite-slot API, and C-03 gates
+the public reflection identity promise; scope the acceptance criteria accordingly.
+This is a remediation recommendation, not a change to the active roadmap.
 
 ### P1: remove generation-wide work from request/call paths
 
@@ -1223,9 +1472,12 @@ surface.
 3. Keep MIR and duplicate unlinked code outside the retained runtime artifact.
 4. Replace map/set full-size scans and double host-argument conversions with
    incremental/borrowed paths.
-5. Move filesystem/URI concerns fully into the LSP adapter and make worker lanes,
-   cancellation, and coalescing real.
+5. Move filesystem/URI concerns fully into the LSP adapter; route the remaining
+   synchronous query handlers to suitable lanes and add cooperative cancellation
+   and bounded/coalescing queues.
 6. Generate stdlib semantic/runtime mappings from one table.
+7. Reject bindgen member/parameter naming collisions before returning generated
+   code; remove unconditional Service lint overrides that break safe consumers.
 
 Success criteria should include retained-generation RSS, warmed allocations per
 host call, reload activation latency, and edit-to-diagnostic p95.
@@ -1234,23 +1486,25 @@ host call, reload activation latency, and edit-to-diagnostic p95.
 
 1. Introduce immutable per-module HIR shards, local IDs, reverse indexes, and
    owner-keyed analysis worklists.
-2. Consolidate type/schema identity into a frozen neutral schema while keeping
-   analysis facts and MIR contracts layer-specific.
+2. Reduce repeated metadata projections from the sealed type-binding authority
+   while keeping definition lookup, analysis facts, MIR contracts, and export
+   schemas layer-specific where their consumers need that distinction.
 3. Replace expression rescanning/re-lexing with a single token/event/Pratt path
    and generated typed CST views.
 4. Narrow public facades, document them, and hide raw builders/cache layouts.
-5. Add automatic or safely scoped host-resource release for the common async
-   path.
+5. Improve explicit Host-release diagnostics and async examples; keep automatic
+   release outside this remediation plan. Use positional macro bindings and
+   report invalid/duplicate labels at their source spans.
 6. Add a cached browser-worker session and an explicit WASM size target.
 
 ### Work that should remain deferred
 
-The current product contract is right to defer a JIT, moving GC, coroutine hot
-reload, runtime type mutation/monkey patching, and a custom IDE beyond the native
-LSP server. In particular, retaining MIR and publishing JIT eligibility today
-imposes real cost for a feature that remains out of scope. First make the
-interpreter, artifacts, reload transaction, and embedding path small and
-predictable.
+The MVP contract excludes JIT, moving GC, suspended-frame hot migration,
+runtime type mutation/monkey patching, and a custom IDE beyond the native LSP.
+JIT remains an explicit later milestone. MIR already has a current role in
+verification and selected interpreter plans; optional JIT inspection does not
+justify every runtime retaining its complete compiler state indefinitely.
+Evaluate retention separately from the proof-producing compilation pipeline.
 
 ## Suggested measurable gates
 
@@ -1258,17 +1512,20 @@ Before calling the relevant milestones complete, add gates for:
 
 - **GC:** a live object created or linked after every incremental boundary
   survives; configured pause/work limits are measured, not merely stored.
-- **Reload:** a stale update, cross-runtime update, and double application are
-  rejected without partial host/program publication.
+- **Reload:** stale, mismatched-base cross-runtime, and replayed updates reject
+  before state initializers/effects and program publication. Specify separately
+  whether identical-base cross-runtime fan-out is supported.
 - **Reflection:** every stable ID round-trips losslessly and duplicate
   registration is atomic/fallible.
 - **Embedding:** the documented minimal Rust application compiles with only the
-  facade dependency, with dependency renaming and
+facade dependency, with dependency renaming and
   `#![forbid(unsafe_code)]`.
 - **Calls:** warmed scalar/native/host calls reuse generation-wide metadata;
   benchmark allocations are bounded by argument/result shape, not registry size.
-- **Retention:** 16 old generations retain only code/runtime schema/state layout,
-  with a stated memory target for the standard harness.
+- **Retention:** measure incremental live retained bytes and process RSS for
+  0/1/16 pinned generations separately, with shared ownership and allocator
+  high-water effects accounted for. Set a target after measuring the proposed
+  compact runtime representation.
 - **Editor:** a one-file body edit reuses unchanged parse/HIR shards; stale work
   is cancelled/coalesced; file URI round trips cover spaces, Unicode, `%`,
   Windows drives, and UNC.
@@ -1277,7 +1534,7 @@ Before calling the relevant milestones complete, add gates for:
 
 ## Validation and limitations
 
-Commands completed successfully during this review:
+Commands completed successfully during the original 2026-09-04 review:
 
 ```text
 cargo fmt --all -- --check
@@ -1301,7 +1558,49 @@ cargo test -p vela_macros -p vela_bindgen -p vela_bindgen_compile_test \
 cargo build -p vela_playground_wasm --target wasm32-unknown-unknown --release
 ```
 
-The audit did not rerun every long-duration benchmark. Performance conclusions
+The independent 2026-09-05 re-review reran these commands successfully:
+
+```text
+cargo test -p vela_vm -p vela_hot_reload -p vela_reflect
+cargo test --workspace --no-fail-fast
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo build -p vela_playground_wasm --target wasm32-unknown-unknown --release
+```
+
+Clippy exited successfully; Windows linking emitted the informational
+`linker_messages` warning about creation of the proc-macro import library.
+The raw release WASM artifact was again 11,536,532 bytes, before wasm-opt,
+compression, or browser startup measurements.
+
+Eleven behavioral probes ran in a temporary external Cargo consumer with local
+path dependencies and the repository's lockfile as the dependency baseline.
+They asserted observed behavior, including existing defects and the Engine's
+duplicate-parameter protection; passing probes do **not** mean fixes landed.
+The report preserves the important inputs/outcomes in its findings:
+
+- finite-slot allocation/root loss and zero-microsecond full sweep;
+- stale/replayed ordinary reload and shared-staging clone divergence;
+- two high-bit reflected IDs colliding;
+- duplicate type-ID acceptance and stale function-name indexing;
+- permissive `ModulePath` normalization;
+- reflection enabled by a budget setter;
+- duplicate macro parameters rejected by Engine;
+- acyclic alias expansion from 13 heap arrays to 8,191 owned arrays;
+- successful bindgen output containing colliding record fields.
+
+Two deliberately failing downstream compile probes confirmed E0453 for the
+scalar-only Service under `forbid(unsafe_code)` and E0124/E0062 for the generated
+`Foo`/`foo` record. Two isolated processes, one using the public heap converter
+and one the ordinary script/Runtime path, terminated with
+`STATUS_STACK_OVERFLOW` on cyclic export. These expected failures are separate
+from the passing repository suite. Reproduction code and logs were kept outside
+the repository; only this audit document is changed.
+
+The re-review did not run Miri, sanitizers, fuzz campaigns, a new interpreter
+performance matrix, or a live-editor latency experiment. Source inspection and
+existing test passes do not establish soundness of every unsafe boundary.
+Long-duration benchmarks were not rerun. Performance conclusions
 therefore distinguish source-proven complexity from checked-in measurements:
 per-call reconstruction and quadratic accounting are visible in code, while
 absolute latency/RSS figures come from `docs/performance.md` or the audit build.
@@ -1317,8 +1616,9 @@ form a solid language architecture. The project is more advanced than its
 public API and documentation currently communicate.
 
 The next improvement should not be another subsystem. It should be subtraction:
-repair the GC/reload/reflection invariants, freeze one schema and one execution
-image, stop retaining compiler state at runtime, and make one documented Rust
-embedding path fast and hard to misuse. Doing that would preserve the project's
-strongest engineering while making the implementation materially easier to
-reason about, benchmark, and evolve.
+repair the GC/reload/reflection invariants, share immutable execution metadata
+and schema projections, reduce retained compiler state, and make one documented
+Rust embedding path fast and hard to misuse. Preserve independent verification,
+explicit Host release, and the single Service-generation model. These changes
+can preserve the project's strongest engineering while making the implementation
+easier to reason about, benchmark, and evolve.
