@@ -51,6 +51,7 @@ pub struct EngineBuilder {
     async_native_methods: Vec<AsyncNativeMethodEntry>,
     capabilities: CapabilitySet,
     reflection_policy: Option<ReflectPolicy>,
+    reflection_lookup_limit: Option<u64>,
     hot_reload_policy: HotReloadPolicy,
     standard_natives: bool,
     time_clock: bool,
@@ -278,13 +279,11 @@ impl EngineBuilder {
     }
 
     #[must_use]
+    /// Sets a resource limit without enabling reflection. An explicit policy or
+    /// permission set is still required. This limit overrides the policy limit
+    /// at build time, independently of setter order.
     pub fn reflection_lookup_budget(mut self, limit: u64) -> Self {
-        let policy = self
-            .reflection_policy
-            .take()
-            .unwrap_or_default()
-            .with_lookup_limit(limit);
-        self.reflection_policy = Some(policy);
+        self.reflection_lookup_limit = Some(limit);
         self
     }
 
@@ -663,6 +662,11 @@ impl EngineBuilder {
     }
 
     pub fn build(mut self) -> EngineResult<Engine> {
+        if let Some(limit) = self.reflection_lookup_limit {
+            self.reflection_policy = self
+                .reflection_policy
+                .map(|policy| policy.with_lookup_limit(limit));
+        }
         let release_id = vela_def::host_release_function_id();
         self.host_native_functions
             .push(HostNativeFunctionEntry::new(

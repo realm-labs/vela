@@ -4130,6 +4130,15 @@ frame, protected, and dynamic roots. Sweep cursors survive between slices, marks
 do not. Slot budgets bound sweeping only; marking and the currently unenforced
 microsecond target are separate pause-budget follow-ups.
 
+### Resource Limits Do Not Grant Reflection Or Exclusive Host Authority
+
+`EngineBuilder::reflection_lookup_budget` stores only a resource limit; explicit
+reflection policy/permissions are required to enable reflection. The builder
+limit overrides a policy's lookup limit regardless of setter order. Custom
+ScriptStateAdapter receivers default to Shared; adapters admitting Exclusive
+receivers must say so explicitly. Generated scoped adapters continue reporting
+their actual Rust borrow capability, with ordinary access/lease checks intact.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

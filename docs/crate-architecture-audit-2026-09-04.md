@@ -12,6 +12,19 @@ Toolchain: `rustc 1.98.0`, `cargo 1.98.0`
 
 Re-review host: `x86_64-pc-windows-msvc`.
 
+Implementation status, 2026-09-05: P0 ranks 1-4 have been repaired with focused
+regressions: bounded owned export (C-04), exact-base ordinary reload (C-02),
+fresh reachability marking before every sweep slice (C-01), and explicit
+reflection/exclusive-receiver authority (H-05). Finding descriptions and evidence
+below preserve the reviewed baseline; remediation notes describe current code.
+P1-P3 remain open, including the separate GC pause-budget follow-up.
+
+P0 validation: focused cycle/limit, stale-base/fan-out/initializer-order,
+GC mutation/root-refresh, and authority-configuration regressions pass, as do
+`cargo test --workspace --no-fail-fast`, workspace formatting, Clippy with
+`--all-targets -- -D warnings`, and the release `wasm32-unknown-unknown`
+playground build. These gates validate the repairs, not closure of P1-P3.
+
 ## Executive assessment
 
 Vela has a stronger correctness foundation than its size and milestone status
@@ -496,6 +509,13 @@ jobs; counting their types does not establish overdesign. A future
 an approved fourth authority or a requirement to merge every projection.
 
 ### H-05: some fail-open defaults cross capability boundaries
+
+**Remediation, 2026-09-05:** the reflection budget setter no longer enables
+reflection. Explicit policy/permissions are required, and the separately stored
+budget is applied independent of setter order. Custom receiver access defaults
+to Shared; Exclusive requires an override. Generated scoped adapters retain
+their precise authority, while MockStateAdapter explicitly admits its mutable
+fixture storage. The following description records the original defaults.
 
 **Status: budget-setter enablement reproduced; receiver default source-confirmed.**
 

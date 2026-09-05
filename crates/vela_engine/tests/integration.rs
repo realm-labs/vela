@@ -7,6 +7,7 @@ mod method_family;
 mod owned_export;
 mod portable_artifact;
 mod prelude;
+mod reflection_configuration;
 mod reload_base;
 mod script_reflection;
 mod service_activation;

@@ -59,10 +59,10 @@ pub trait ScriptStateAdapter {
 
     /// Reports the strongest receiver access currently available for one root.
     ///
-    /// Legacy adapters default to exclusive access; call-scoped adapters
-    /// override this with the exact Rust `&T` or `&mut T` capability.
+    /// Adapters default to shared access. Exclusive receivers require an
+    /// explicit override; call-scoped adapters report the exact Rust capability.
     fn host_receiver_access(&self, _root: HostRef) -> HostLeaseKind {
-        HostLeaseKind::Exclusive
+        HostLeaseKind::Shared
     }
 
     /// Interns one canonical host reference into this root execution's dense

@@ -543,6 +543,11 @@ reflect::set(account, "balance", 10)  -> runtime FieldId lookup, slower but flex
 
 ### Reflection Permissions
 
+Engine reflection is disabled until an explicit policy or permission set is
+provided. `EngineBuilder::reflection_lookup_budget` sets only a resource limit
+and never enables reflection; that builder limit takes precedence over the
+policy's lookup limit regardless of setter order.
+
 ```rust
 pub enum ReflectPermission {
     ReadTypeInfo,

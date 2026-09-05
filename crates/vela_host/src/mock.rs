@@ -256,6 +256,11 @@ impl MockStateAdapter {
 }
 
 impl ScriptStateAdapter for MockStateAdapter {
+    fn host_receiver_access(&self, _root: HostRef) -> crate::lease::HostLeaseKind {
+        // This fixture owns mutable host storage and explicitly admits writes.
+        crate::lease::HostLeaseKind::Exclusive
+    }
+
     fn host_schema_epoch(&self) -> HostSchemaEpoch {
         self.schema_epoch
     }

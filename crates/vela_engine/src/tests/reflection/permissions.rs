@@ -30,6 +30,7 @@ fn run_linked_program_with_host(
 fn engine_installs_reflection_lookup_budget() {
     let engine = Engine::builder()
         .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
+        .reflection_policy(vela_reflect::permissions::ReflectPolicy::all())
         .reflection_lookup_budget(1)
         .build()
         .expect("engine should build");
