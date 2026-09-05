@@ -4111,6 +4111,16 @@ immutable shape/artifact `Arc`s remain shared. Limits are independent of script
 execution budgets, and failures are structured VM errors. Detached-task graph
 transport retains its separate graph-preserving contract.
 
+### Ordinary Hot Updates Require The Exact Checked Generation
+
+Each ordinary ProgramVersion and HotUpdate carries a process-local generation
+token. An update must match both its checked base token and version number
+before Runtime state initialization or publication. Clones of one initial
+generation and one update support multi-Runtime fan-out, including subsequent
+updates; independently compiled bases do not match. Tokens do not retain old
+artifacts. HotReloadRuntime has one owner and is not Clone; its staging producer
+remains cloneable. Whole-Service publication retains its separate existing checks.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

@@ -79,6 +79,7 @@ impl HotReloadDiagnosticDetail {
     #[must_use]
     pub fn from_error(error: &HotReloadError) -> Option<Self> {
         match &error.kind {
+            HotReloadErrorKind::UpdateBaseMismatch { .. } => None,
             HotReloadErrorKind::NewFunctionDenied { .. }
             | HotReloadErrorKind::RemovedFunction { .. }
             | HotReloadErrorKind::RemovedFunctionAbi { .. }

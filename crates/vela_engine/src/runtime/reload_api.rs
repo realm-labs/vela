@@ -203,6 +203,14 @@ where
             Ok(update) => update,
             Err(error) => return HotReloadReport::rejected(current.id, error),
         };
+        if let Err(error) = self
+            .hot_reload
+            .as_ref()
+            .expect("pending reload requires an enabled Runtime")
+            .validate_hot_update(&update)
+        {
+            return HotReloadReport::rejected(current.id, error);
+        }
         let staging = match self
             .prepare_hot_update_state(&update, super::RuntimeInitializationLimits::default())
         {
@@ -215,7 +223,9 @@ where
             .as_mut()
             .expect("pending reload requires an enabled Runtime")
             .apply_hot_update_report(update);
-        self.commit_hot_update_state(&next_states, staging);
+        if report.accepted {
+            self.commit_hot_update_state(&next_states, staging);
+        }
         self.rebind_image_from_reload_report(Some(&report));
         report
     }

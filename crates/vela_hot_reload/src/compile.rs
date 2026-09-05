@@ -113,7 +113,7 @@ pub fn update_from_linked_artifact(
         module_changes.impacted_packages,
         state_changes,
     );
-    let update = HotUpdate::new(abi, changes, artifact);
+    let update = HotUpdate::new(previous, abi, changes, artifact);
     Ok(update)
 }
 

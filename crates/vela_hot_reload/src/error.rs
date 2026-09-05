@@ -22,6 +22,7 @@ impl HotReloadError {
     #[must_use]
     pub const fn code(&self) -> &'static str {
         match &self.kind {
+            HotReloadErrorKind::UpdateBaseMismatch { .. } => "reload.update.base_mismatch",
             HotReloadErrorKind::DeletedFunctionParameters { .. } => {
                 "reload.function.deleted_parameters"
             }
@@ -86,6 +87,7 @@ impl HotReloadError {
     #[must_use]
     pub fn target(&self) -> Option<String> {
         match &self.kind {
+            HotReloadErrorKind::UpdateBaseMismatch { .. } => None,
             HotReloadErrorKind::DeletedFunctionParameters { function, .. }
             | HotReloadErrorKind::ChangedFunctionParameters { function, .. }
             | HotReloadErrorKind::ChangedFunctionParameterAbi { function, .. }
@@ -138,6 +140,12 @@ impl HotReloadError {
     #[must_use]
     pub fn reason(&self) -> String {
         match &self.kind {
+            HotReloadErrorKind::UpdateBaseMismatch { expected, actual } => {
+                format!(
+                    "update was checked against a different generation (base {}, current {})",
+                    expected.0, actual.0
+                )
+            }
             HotReloadErrorKind::DeletedFunctionParameters { function, .. } => {
                 format!("function `{function}` deleted existing parameters")
             }
@@ -262,6 +270,9 @@ impl HotReloadError {
     #[must_use]
     pub fn repair_hint(&self) -> Option<String> {
         match &self.kind {
+            HotReloadErrorKind::UpdateBaseMismatch { .. } => Some(
+                "compile the update against this runtime's current ProgramVersion".to_owned(),
+            ),
             HotReloadErrorKind::DeletedFunctionParameters { .. } => {
                 Some("restore the previous parameter prefix or add a compatibility wrapper".to_owned())
             }
@@ -364,6 +375,7 @@ impl HotReloadError {
     #[must_use]
     pub fn source_span(&self) -> Option<Span> {
         match &self.kind {
+            HotReloadErrorKind::UpdateBaseMismatch { .. } => None,
             HotReloadErrorKind::RemovedSchema { source_span, .. }
             | HotReloadErrorKind::ChangedSchema { source_span, .. }
             | HotReloadErrorKind::ChangedSchemaAbi { source_span, .. }
@@ -432,6 +444,10 @@ impl std::error::Error for HotReloadError {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum HotReloadErrorKind {
+    UpdateBaseMismatch {
+        expected: crate::symbol::ProgramVersionId,
+        actual: crate::symbol::ProgramVersionId,
+    },
     DeletedFunctionParameters {
         function: String,
         old: Vec<String>,

@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use crate::error::HotReloadResult;
+use crate::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 use crate::report::HotReloadReport;
 use crate::symbol::ProgramVersionId;
 use crate::version::{HotUpdate, ProgramVersion};
@@ -38,7 +38,7 @@ impl HotReloadStagingHandle {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct HotReloadRuntime {
     current: Arc<ProgramVersion>,
     staging: HotReloadStagingHandle,
@@ -94,22 +94,44 @@ impl HotReloadRuntime {
     }
 
     pub fn apply_hot_update(&mut self, update: HotUpdate) -> HotReloadResult<Arc<ProgramVersion>> {
+        self.validate_hot_update(&update)?;
         let report = self.apply_hot_update_report(update);
         Ok(report
             .version()
             .expect("accepted hot reload report should carry a version"))
     }
 
+    /// Checks the exact compilation base before embedding initializer effects.
+    /// Clones of one base may fan out to separate runtime owners; independently
+    /// compiled bases do not match, even when their version numbers are equal.
+    pub fn validate_hot_update(&self, update: &HotUpdate) -> HotReloadResult<()> {
+        if update.base_identity != self.current.identity || update.base_version != self.current.id {
+            return Err(HotReloadError::new(
+                HotReloadErrorKind::UpdateBaseMismatch {
+                    expected: update.base_version,
+                    actual: self.current.id,
+                },
+            ));
+        }
+        Ok(())
+    }
+
     #[must_use]
     pub fn apply_hot_update_report(&mut self, update: HotUpdate) -> HotReloadReport {
         let from_version = self.current.id;
+        if let Err(error) = self.validate_hot_update(&update) {
+            return HotReloadReport::rejected(from_version, error);
+        }
         let HotUpdate {
+            identity,
             abi,
             changes,
             artifact,
+            ..
         } = update;
         let next = Arc::new(ProgramVersion {
             id: ProgramVersionId(self.current.id.0.saturating_add(1)),
+            identity,
             abi: Arc::new(abi),
             artifact,
         });

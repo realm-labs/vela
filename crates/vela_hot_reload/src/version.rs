@@ -12,6 +12,22 @@ use crate::profile::{FunctionProfile, ProgramProfile};
 use crate::report::AcceptedHotReloadChanges;
 use crate::symbol::ProgramVersionId;
 
+/// Process-local identity retained by clones, without retaining an old artifact.
+#[derive(Clone, Debug)]
+pub(crate) struct GenerationToken(Arc<()>);
+
+impl GenerationToken {
+    pub(crate) fn new() -> Self {
+        Self(Arc::new(()))
+    }
+}
+
+impl PartialEq for GenerationToken {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct RestrictedJitInput<'a> {
     pub generation: vela_bytecode::ExecutableGenerationId,
@@ -25,6 +41,7 @@ pub struct RestrictedJitInput<'a> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProgramVersion {
     pub id: ProgramVersionId,
+    pub(crate) identity: GenerationToken,
     pub(crate) abi: Arc<HotReloadAbi>,
     pub(crate) artifact: Arc<LinkedArtifact>,
 }
@@ -37,6 +54,7 @@ impl ProgramVersion {
     ) -> Self {
         Self {
             id,
+            identity: GenerationToken::new(),
             abi: Arc::new(abi),
             artifact,
         }
@@ -178,6 +196,9 @@ impl ProgramVersion {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotUpdate {
+    pub(crate) identity: GenerationToken,
+    pub(crate) base_identity: GenerationToken,
+    pub(crate) base_version: ProgramVersionId,
     pub(crate) abi: HotReloadAbi,
     pub(crate) changes: AcceptedHotReloadChanges,
     pub(crate) artifact: Arc<LinkedArtifact>,
@@ -185,11 +206,15 @@ pub struct HotUpdate {
 
 impl HotUpdate {
     pub(crate) fn new(
+        previous: &ProgramVersion,
         abi: HotReloadAbi,
         changes: AcceptedHotReloadChanges,
         artifact: Arc<LinkedArtifact>,
     ) -> Self {
         Self {
+            base_identity: previous.identity.clone(),
+            base_version: previous.id,
+            identity: GenerationToken::new(),
             abi,
             changes,
             artifact,

@@ -292,6 +292,13 @@ also accounts for marking.
 
 ### C-02: hot updates lack compare-and-swap identity
 
+**Remediation, 2026-09-05:** updates now carry the exact checked base generation
+token and version number. Both raw hot-reload application and Engine activation
+validate them; Engine checks before state initialization. Replays and unrelated
+same-number bases reject without publication. Runtime ownership is non-Clone;
+staging handles remain cloneable. Exact-generation fan-out remains supported.
+The following description records the original defect.
+
 **Status: reproduced. Severity: Critical for ordinary precompiled/staged reload.**
 
 Compatibility is checked against a supplied previous version in
