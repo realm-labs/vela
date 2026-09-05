@@ -650,6 +650,10 @@ impl ScriptHeap {
         }
     }
 
+    /// Atomically marks the complete current root graph, then visits at most
+    /// `max_sweep_slots` slots. Every call requires the complete current roots.
+    /// Marking is repeated because mutation between calls has no write barrier;
+    /// the slot limit does not bound marking work or guarantee a time limit.
     pub fn step_gc(&mut self, roots: &[GcRef], budget: GcBudget) -> GcStepStats {
         self.step_gc_with_budget(roots, budget, None)
     }
@@ -660,14 +664,14 @@ impl ScriptHeap {
         budget: GcBudget,
         mut execution_budget: Option<&mut ExecutionBudget>,
     ) -> GcStepStats {
-        let marked = if self.incremental_gc.is_some() {
-            0
-        } else {
-            self.clear_marks();
-            let marked = self.mark_from_roots(roots);
+        // Mutators can allocate, change edges, and replace roots between steps.
+        // A fresh atomic mark makes this sweep slice safe without pretending
+        // that marks from the previous safe point describe the current graph.
+        self.clear_marks();
+        let marked = self.mark_from_roots(roots);
+        if self.incremental_gc.is_none() {
             self.incremental_gc = Some(IncrementalGc { sweep_index: 0 });
-            marked
-        };
+        }
 
         let mut sweep_slots_visited = 0;
         let mut swept = 0;
@@ -735,13 +739,6 @@ impl ScriptHeap {
             bytes_freed,
             complete,
         }
-    }
-
-    pub(crate) fn mark_incremental_roots(&mut self, roots: &[GcRef]) -> usize {
-        if self.incremental_gc.is_none() {
-            return 0;
-        }
-        self.mark_from_roots(roots)
     }
 
     fn allocate_object(&mut self, value: HeapValue, size_bytes: usize) -> GcRef {
@@ -1145,7 +1142,7 @@ mod tests {
         assert!(heap.contains(garbage));
 
         let second_step = heap.step_gc(&[root], GcBudget::unlimited());
-        assert_eq!(second_step.marked, 0);
+        assert_eq!(second_step.marked, 2);
         assert_eq!(second_step.swept, 1);
         assert!(second_step.complete);
         assert!(heap.contains(child));
@@ -1197,4 +1194,5 @@ mod tests {
     }
 
     mod config;
+    mod sweep_mutation;
 }

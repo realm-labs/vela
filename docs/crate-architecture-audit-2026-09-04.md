@@ -255,6 +255,13 @@ nevertheless provide useful pressure tests:
 
 ### C-01: incremental GC is not correct across safe points
 
+**Remediation, 2026-09-05:** finite-slot sweeping now performs a fresh atomic
+mark from complete current roots before each slice. VM safe points refresh
+frame, protected, and dynamic roots on every call. This conservative repair
+covers allocations and changed edges without introducing partial write barriers;
+it retains the sweep-slot limit but does not fix the unenforced time target or
+bound marking work. The following description records the original defect.
+
 **Status: reproduced. Severity: Critical for opt-in finite-slot collection.**
 
 `GcConfig::max_pause_micros` defaults to 500 μs

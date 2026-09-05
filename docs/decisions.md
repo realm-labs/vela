@@ -4121,6 +4121,15 @@ updates; independently compiled bases do not match. Tokens do not retain old
 artifacts. HotReloadRuntime has one owner and is not Clone; its staging producer
 remains cloneable. Whole-Service publication retains its separate existing checks.
 
+### Sweep Slices Rebuild Reachability Before Reclaiming Objects
+
+Until a complete allocation/write barrier protocol exists, each `step_gc` call
+atomically re-marks the entire current root graph before its bounded sweep
+slice. Callers provide complete current roots every time; VM safe points refresh
+frame, protected, and dynamic roots. Sweep cursors survive between slices, marks
+do not. Slot budgets bound sweeping only; marking and the currently unenforced
+microsecond target are separate pause-budget follow-ups.
+
 ## Validation Rules
 
 - Multi-level `super` scan must return no matches:

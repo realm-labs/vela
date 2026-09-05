@@ -371,8 +371,8 @@ remains busy while the exclusive lease is live.
 
 A heap value returned by reentry is admitted to the active `HeapExecution`
 before child frame roots are truncated. The VM creates its dynamic-root
-registry lazily on the first such return and marks the admitted roots
-immediately if incremental collection is already active. Runtime cross-call
+registry lazily on the first such return and includes admitted roots in the
+complete root set freshly marked before every sweep slice. Runtime cross-call
 retention stores the weak active-root guard in a sparse sidecar keyed by the
 existing `VelaValue` root ID; dropping the last shared handle removes the guard,
 and session teardown invalidates the registry. Ordinary calls allocate neither

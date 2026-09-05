@@ -125,9 +125,6 @@ impl<'heap> HeapExecution<'heap> {
     pub(crate) fn admit_dynamic_value(&mut self, value: Value) -> ActiveExecutionValue {
         let mut roots = Vec::new();
         value.trace_heap_refs(&mut roots);
-        if self.gc_in_progress {
-            self.heap.mark_incremental_roots(&roots);
-        }
         let registry = Arc::clone(
             self.dynamic_roots
                 .get_or_insert_with(|| Arc::new(Mutex::new(DynamicRootRegistry::default()))),
@@ -184,18 +181,16 @@ impl<'heap> HeapExecution<'heap> {
             return;
         }
 
-        let stats = if self.gc_in_progress {
-            self.heap
-                .step_gc_with_budget(&[], self.safe_point_gc_budget, budget)
-        } else {
-            self.safe_point_roots.clear();
-            self.safe_point_roots.extend(&self.protected_roots);
-            let dynamic_roots = self.dynamic_root_snapshot();
-            self.safe_point_roots.extend(dynamic_roots);
-            frame.extend_heap_roots(&mut self.safe_point_roots);
-            self.heap
-                .step_gc_with_budget(&self.safe_point_roots, self.safe_point_gc_budget, budget)
-        };
+        self.safe_point_roots.clear();
+        self.safe_point_roots.extend(&self.protected_roots);
+        let dynamic_roots = self.dynamic_root_snapshot();
+        self.safe_point_roots.extend(dynamic_roots);
+        frame.extend_heap_roots(&mut self.safe_point_roots);
+        let stats = self.heap.step_gc_with_budget(
+            &self.safe_point_roots,
+            self.safe_point_gc_budget,
+            budget,
+        );
         self.gc_in_progress = !stats.complete;
         self.last_gc_step = Some(stats);
     }
@@ -207,7 +202,7 @@ mod tests {
     use crate::{CallFrame, HeapExecution, Value};
 
     #[test]
-    fn dynamic_root_admission_marks_during_incremental_collection() {
+    fn dynamic_root_admission_survives_the_next_sweep_slice() {
         let mut heap = ScriptHeap::new();
         let first = heap.allocate(HeapValue::String("first".into()));
         let admitted = heap.allocate(HeapValue::String("admitted".into()));
@@ -244,5 +239,26 @@ mod tests {
 
         assert!(!execution.heap.contains(admitted));
         assert!(!execution.heap.contains(garbage));
+    }
+
+    #[test]
+    fn sweep_slices_refresh_frame_and_protected_roots() {
+        let mut heap = ScriptHeap::new();
+        let garbage = heap.allocate(HeapValue::String("garbage".into()));
+        let active = heap.allocate(HeapValue::String("active frame".into()));
+        let protected = heap.allocate(HeapValue::String("caller frame".into()));
+        let mut execution =
+            HeapExecution::new(&mut heap).with_safe_point_gc_budget(GcBudget::sweep_slots(1));
+        let mut frame = CallFrame::new(1);
+        execution.collect_frame_at_safe_point(&frame, None);
+        assert!(!execution.heap.contains(garbage));
+        frame
+            .write(vela_bytecode::Register(0), Value::HeapRef(active))
+            .unwrap();
+        execution.protect_values(&[Value::HeapRef(protected)]);
+        execution.collect_frame_at_safe_point(&frame, None);
+        execution.collect_frame_at_safe_point(&frame, None);
+        assert!(execution.heap.contains(active));
+        assert!(execution.heap.contains(protected));
     }
 }
