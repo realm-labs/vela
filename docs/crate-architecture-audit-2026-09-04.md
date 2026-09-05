@@ -41,6 +41,11 @@ high-severity reflection identity defect, not a collision in internal compiler
 or runtime IDs. C-04 is critical on ordinary value export, including CLI and
 playground output. These boundaries should guide release gating.
 
+For the implementation order, see the
+[prioritized remediation plan](#prioritized-remediation-plan): C-04, C-02,
+C-01 containment, then H-05 lead the queue. Finding numbers identify topics,
+not repair priority.
+
 Host/reflection authority defaults also need correction for deployments that
 expose those paths. A reflection resource-budget setter currently enables
 reflection with all policy permissions; Engine reflection is disabled when no
@@ -1447,55 +1452,74 @@ facade—rather than mechanically splitting by line count.
 
 ## Prioritized remediation plan
 
-### P0: restore correctness invariants
+The following is the recommended repair order as of the 2026-09-05 re-review.
+Ranks are global across the tables. Priority combines demonstrated consequences,
+exposure through supported/default paths, and repair dependencies; it is distinct
+from the severity labels above. Correctness repairs precede performance work,
+and measured bottlenecks precede speculative structural cleanup. This ordering
+does not change milestone status or the active roadmap.
 
-1. Disable multi-step sweeping or conservatively run atomic GC; add allocation,
-   frame-root, and container-write regressions between requested steps.
-2. Bind `HotUpdate` to an exact base identity and compare before staging effects
-   or publication; remove split-state `Clone` semantics. See C-02 for the
-   ownership and cross-runtime fan-out policy choices.
-3. Replace all reflected stable-ID saturation with a lossless opaque format.
-4. Detect cycles and enforce depth/work budgets during heap-to-owned conversion.
-5. Make host receiver and reflection configuration fail closed.
+### P0: contain process failure, invalid reload, and authority hazards
 
-These changes should precede new syntax, JIT preparation, or more reflection
-surface. C-01's critical exposure requires the finite-slot API, and C-03 gates
-the public reflection identity promise; scope the acceptance criteria accordingly.
-This is a remediation recommendation, not a change to the active roadmap.
+| Rank | Issue | Why this comes first | First deliverable and acceptance |
+|---|---|---|---|
+| 1 | **C-04: unbounded heap-to-owned export** | An ordinary script result can abort the host process through stack overflow, including CLI/playground output. Shared acyclic graphs can also expand exponentially. | Add cycle handling and depth, work, and output-allocation limits. Cyclic, deeply nested, and highly shared results must return a bounded result or structured error without aborting the process. |
+| 2 | **C-02: stale ordinary `HotUpdate` acceptance** | A stale or replayed update can bypass the compatibility check and remove code added by an intervening generation. Split-state runtime clones also make staging ownership ambiguous. | Bind updates to the checked base and reject mismatches before state initializer effects or publication; resolve clone ownership. Cover stale updates, replay, clone staging, and the explicitly chosen identical-base cross-runtime policy. |
+| 3 | **C-01: live-object loss during finite-slot GC** | This loses reachable script objects, but requires the opt-in finite-slot API; the default atomic path does not exhibit this inter-step defect. | Disable finite-slot stepping or use an atomic fallback first. Test allocations, changing roots, and container writes between steps before restoring incremental collection with complete barriers. |
+| 4 | **H-05: reflection/receiver authority defaults** | Setting only a reflection resource limit unexpectedly enables all reflection policy permissions; custom adapters also inherit exclusive receiver access unless overridden. | Require explicit reflection authority independently of its budget and explicit receiver access where needed. Budget-only configuration must leave reflection disabled; existing visibility, capability, and lease checks must remain enforced. |
 
-### P1: remove generation-wide work from request/call paths
+If finite-slot GC is enabled in a deployment, apply rank 3's containment
+immediately alongside rank 1. Rank 2 concerns ordinary Vela reload; the audit
+does not demonstrate a bypass of whole-Service-generation validation. Rank 4
+is a configuration hazard, not evidence of universal host-access bypass.
 
-1. Build and share one frozen execution/reflection/dispatch image per program
-   generation.
-2. Make `Engine` and frozen registries cheap `Arc` handles; create only
-   per-call mutable sessions.
-3. Keep MIR and duplicate unlinked code outside the retained runtime artifact.
-4. Replace map/set full-size scans and double host-argument conversions with
-   incremental/borrowed paths.
-5. Move filesystem/URI concerns fully into the LSP adapter; route the remaining
-   synchronous query handlers to suitable lanes and add cooperative cancellation
-   and bounded/coalescing queues.
-6. Generate stdlib semantic/runtime mappings from one table.
-7. Reject bindgen member/parameter naming collisions before returning generated
-   code; remove unconditional Service lint overrides that break safe consumers.
+### P1: repair identity, generated-code, and tool correctness
 
-Success criteria should include retained-generation RSS, warmed allocations per
-host call, reload activation latency, and edit-to-diagnostic p95.
+| Rank | Issue | Reason and acceptance |
+|---|---|---|
+| 5 | **C-03: lossy reflected stable IDs** | Distinct internal IDs become the same script-visible integer. Introduce a lossless representation and round-trip high-bit/u128 IDs before relying on public reflection identity. Internal compiler and dispatch IDs are not shown to collide. |
+| 6 | **H-04: inconsistent raw reflection registration** | Replacing a function ID leaves stale name lookup; type registration permits distinct keys sharing an ID. Define collision/replacement semantics and update all affected indexes atomically. Test rejected registration leaves the registry unchanged; do not assume sealed Engine admission has the same defect. |
+| 7 | **`vela_bindgen`: generated member-name collisions** | Valid Vela declarations can produce Rust that fails to compile. Validate normalized field, variant, and parameter namespaces before returning source; test `Foo`/`foo` and keyword cases in downstream consumers. Preserve existing module/callable/top-level checks. |
+| 8 | **H-08: LSP file URI handling** | Percent encoding and UNC handling can select the wrong path or make a document inaccessible. Use standards-aware URI/path conversion at the adapter boundary and test spaces, Unicode, literal `%`, Windows drives, and UNC round trips. |
+| 9 | **H-07: generated Service lint override** | Even scalar-only services fail under `#![forbid(unsafe_code)]` because of unconditional generated `allow(unsafe_code)`. Make that safe consumer compile; retain the enforced lifetime/provenance boundary for service signatures that actually require erased reborrowing. |
+| 10 | **`vela_playground_wasm`: execution and result fidelity** | Compile-only currently constructs a Runtime and runs state initializers; UI JSON parsing loses precision for large integers. Separate compilation from initialization and preserve 64-bit result values through the browser display. Validate a compile-only initializer fixture and integer boundary round trips. |
 
-### P2: make incrementality and APIs structurally simpler
+Ranks 5-6 gate reflection identity and registration contracts, rather than all
+embeddings with reflection disabled. Rank 9 must not be resolved by merely
+moving unchecked reference reconstruction behind a public safe helper.
 
-1. Introduce immutable per-module HIR shards, local IDs, reverse indexes, and
-   owner-keyed analysis worklists.
-2. Reduce repeated metadata projections from the sealed type-binding authority
-   while keeping definition lookup, analysis facts, MIR contracts, and export
-   schemas layer-specific where their consumers need that distinction.
-3. Replace expression rescanning/re-lexing with a single token/event/Pratt path
-   and generated typed CST views.
-4. Narrow public facades, document them, and hide raw builders/cache layouts.
-5. Improve explicit Host-release diagnostics and async examples; keep automatic
-   release outside this remediation plan. Use positional macro bindings and
-   report invalid/duplicate labels at their source spans.
-6. Add a cached browser-worker session and an explicit WASM size target.
+### P2: remove measured or source-confirmed scaling costs
+
+| Rank | Issue | First deliverable and measurement |
+|---|---|---|
+| 11 | **H-03/H-08: incremental HIR and synchronous editor work** | Resume the active M20.5 gap: stable per-module HIR IDs/shards and reverse indexes before cross-revision fact reuse; move `did_change` diagnostics and remaining blocking handlers to appropriate workers with bounded/coalesced queues and cooperative cancellation. Measure one-file edit-to-diagnostic p95 at 128/256 modules, including edits with live snapshots. |
+| 12 | **H-01: per-call VM/dispatch/reflection reconstruction** | Extend existing generation-owned execution data to share immutable dispatch and reflection metadata. Keep counters and mutable sessions call-local. Measure warmed call allocations against registry size; same-session re-entry and Rust-default Service dispatch already have different paths. |
+| 13 | **H-02: retained compiler and duplicate program representations** | Measure 0/1/16 pinned generations, then retain only the execution/proof data needed after verified linking. Preserve current MIR-based verification and selected interpreter plans. Report incremental live bytes, RSS, and activation latency without attributing all process high-water memory to MIR. |
+| 14 | **M-01/M-02: collection accounting and host conversion costs** | Replace full map/set accounting scans with incremental byte deltas, then remove demonstrated repeated host argument materialization. Check accounting against a full-scan oracle and measure growth scaling and allocations on the affected paths while preserving leases and validation. |
+| 15 | **C-01 follow-up: unenforced GC time target** | After live-object correctness is secured, define and enforce the supported work/pause contract. A `micros(0)` request currently still sweeps all slots. Measure marking as well as sweeping; do not restore unsafe multi-step collection just to meet a timing target. |
+| 16 | **`vela_playground_wasm`: main-thread work and artifact size** | Add a cached browser-worker session, avoid recompiling unchanged input, and impose source/work caps. Track browser responsiveness and optimized/compressed size separately from the current raw release WASM size. |
+
+Rank 11 leads this tier because it is the named active milestone gap with
+existing scaling evidence. Runtime-focused deployments can take rank 12 first
+within P2. Existing snapshots already share database roots and analysis facts
+are cached per generation; neither needs to be introduced from scratch.
+Performance acceptance requires fresh measurements of the changed path, not
+reuse of historical allocation/RSS figures as predicted savings.
+
+### P3: simplify ownership, APIs, and authoring after the above repairs
+
+| Rank | Issue | Bounded next step |
+|---|---|---|
+| 17 | **Stdlib tables and repeated metadata projections** | Consolidate semantic/runtime mappings where they express the same facts; reuse the sealed TypeBinding authority. Preserve layer-specific definition lookup, analysis, MIR, and export contracts rather than inventing another universal registry. |
+| 18 | **M-03: public API, dependency, and file ownership** | Document the supported embedding facade, narrow APIs with no external production consumer, and split files at real ownership boundaries. Any runtime/compiler dependency reduction needs a Cargo crate/feature boundary; a module move alone does not achieve it. |
+| 19 | **Syntax/parser rescanning and repeated compiler analysis** | First measure adversarial parsing and identify reusable verifier-derived results. Consolidate rescanning or redundant post-verification analysis only where proven useful; keep independently produced verifier proofs. |
+| 20 | **Macro diagnostics, Host authoring, CLI/docs, and packaging** | Use positional macro locals and source-span diagnostics for duplicate labels already rejected by Engine; improve explicit-release examples, CLI/schema diagnostics, compile-tested documentation, and publication metadata. These are smaller independent tasks, not prerequisites for a broad API rewrite. |
+
+Automatic Host release is excluded: authored release, terminal Service transfer,
+and root teardown are the current contract. The macro label case belongs in P3
+because supported Engine registration already rejects it; it is not a reproduced
+silent miscompilation. A small independent P3 documentation fix may land earlier,
+but must not displace the P0/P1 correctness work.
 
 ### Work that should remain deferred
 
@@ -1518,7 +1542,7 @@ Before calling the relevant milestones complete, add gates for:
 - **Reflection:** every stable ID round-trips losslessly and duplicate
   registration is atomic/fallible.
 - **Embedding:** the documented minimal Rust application compiles with only the
-facade dependency, with dependency renaming and
+  facade dependency, with dependency renaming and
   `#![forbid(unsafe_code)]`.
 - **Calls:** warmed scalar/native/host calls reuse generation-wide metadata;
   benchmark allocations are bounded by argument/result shape, not registry size.
