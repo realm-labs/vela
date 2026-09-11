@@ -170,7 +170,7 @@
     },
     {
       "id": "B02.3",
-      "revision": null,
+      "revision": "76680990d",
       "requirements": [
         "definition/environments/utf16/protocol",
         "definition/environments/crlf/protocol",
@@ -183,10 +183,41 @@
         "type-definition/environments/encoded_uri/protocol"
       ],
       "summary": "27 shared source-backed/schema-only navigation cases and five invalid-span/restore cases pass in both Rust layers, in LF and CRLF. Repair schema record/pattern variant ownership and reject invalid metadata source bounds. Exact UTF-16/CRLF/encoded-URI evidence is mapped. Parent B02 semantic/lifecycle/editor coverage remains open; find the commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B02.4",
+      "revision": null,
+      "requirements": [
+        "definition/states/dirty/protocol",
+        "definition/states/close_restore/protocol",
+        "definition/states/repeat/protocol",
+        "definition/states/recovery/protocol",
+        "definition/states/dependency_change/protocol",
+        "definition/states/missing_schema/protocol",
+        "definition/states/stale_schema/protocol",
+        "declaration/states/dirty/protocol",
+        "declaration/states/close_restore/protocol",
+        "declaration/states/repeat/protocol",
+        "declaration/states/recovery/protocol",
+        "declaration/states/dependency_change/protocol",
+        "declaration/states/missing_schema/protocol",
+        "declaration/states/stale_schema/protocol",
+        "type-definition/states/dirty/protocol",
+        "type-definition/states/close_restore/protocol",
+        "type-definition/states/repeat/protocol",
+        "type-definition/states/recovery/protocol",
+        "type-definition/states/dependency_change/protocol",
+        "type-definition/states/missing_schema/protocol",
+        "type-definition/states/stale_schema/protocol",
+        "definition/states/unresolved/protocol",
+        "declaration/states/unresolved/protocol",
+        "type-definition/states/unresolved/protocol"
+      ],
+      "summary": "Seven schema states and 15 source actions use independent exact navigation/null oracles, repeated requests and incremental/fresh parity in both Rust layers for LF/CRLF. Scope constructor owners to visible modules and resolve imported callable return types by actual binding. State evidence is mapped; dependency-deletion diagnostic proof, remaining semantic partitions, implementation rejection and installed workbench routes still require B02 completion. Find the commit by LSP-Batch trailer. Validation: workspace 4348 passed, 2 existing ignored; workspace Clippy and formatting passed; audit 33 verified, 3 editor mapped, 1289 unreviewed, 2 existing N/A, zero failed; 58 Node tests passed."
     }
   ],
-  "activeChild": "B02.4",
-  "nextTask": "B02.4",
+  "activeChild": "B02.5",
+  "nextTask": "B02.5",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -1683,7 +1714,13 @@
     "editors/vscode/test-results/run-GOkUph/results.json",
     "editors/vscode/test-results/input-spZMA1/results.json",
     "target/lsp-matrix/b01-stale-evidence-rejection.log",
-    "target/lsp-matrix/b01-final-self-tests.log"
+    "target/lsp-matrix/b01-final-self-tests.log",
+    "target/lsp-matrix/b02-source-lifecycle-current.log",
+    "target/lsp-matrix/b02-lifecycle-current.log",
+    "target/lsp-matrix/b02-lifecycle-workspace.log",
+    "target/lsp-matrix/b02-lifecycle-clippy.log",
+    "target/lsp-matrix/b02-lifecycle-node.log",
+    "target/lsp-matrix/run-P97H9u/report.json"
   ],
   "openIssues": [
     {

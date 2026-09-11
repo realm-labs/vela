@@ -150,7 +150,7 @@ pub(crate) fn source_callable_facts_by_path(
         .collect()
 }
 
-fn source_callable_facts_for_declaration(
+pub(crate) fn source_callable_facts_for_declaration(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     facts: &AnalysisFacts,

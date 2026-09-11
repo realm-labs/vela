@@ -1,3 +1,7 @@
+mod constructor_resolution;
+use constructor_resolution::{
+    constructor_target, source_enum_for_path, unit_variant_constructor_target,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 mod callbacks;
@@ -31,7 +35,7 @@ pub use targets::{
 use targets::{direct_lambda_body, registry_field_owner, source_field_fact};
 
 use vela_common::PrimitiveTag;
-use vela_hir::binding::{BindingResolution, ConstructorResolution};
+use vela_hir::binding::BindingResolution;
 use vela_hir::body::{
     HirBody, HirBodyRoot, HirElseBranch, HirExprKind, HirMatchArmBody, HirPathKind, HirPathOwner,
     HirPatternKind, HirStmtKind,
@@ -640,7 +644,8 @@ impl HirSemanticFacts {
                     return;
                 };
                 let resolution = base.resolution(id);
-                let Some(target) = unit_variant_constructor_target(graph, schema, path, resolution)
+                let Some(target) =
+                    unit_variant_constructor_target(graph, schema, body, path, resolution)
                 else {
                     return;
                 };
@@ -903,8 +908,7 @@ impl HirSemanticFacts {
             return CallTargetFact::Dynamic;
         };
         if let Some((variant, owner_path)) = path.split_last()
-            && let Some(declaration) = source_declaration_for_path(graph, owner_path)
-            && declaration.kind == DeclarationKind::Enum
+            && let Some(declaration) = source_enum_for_path(graph, body, owner_path)
         {
             return CallTargetFact::Variant {
                 enum_declaration: declaration.id,
@@ -1253,94 +1257,6 @@ fn iterable_item_fact(fact: &TypeFact) -> TypeFact {
         TypeFact::Any => TypeFact::Any,
         _ => TypeFact::Unknown,
     }
-}
-
-fn constructor_target(
-    graph: &ModuleGraph,
-    schema: Option<&RegistryFacts>,
-    path: &[String],
-    resolution: Option<ConstructorResolution>,
-) -> ConstructorTargetFact {
-    if path.is_empty() {
-        return ConstructorTargetFact::Unresolved;
-    }
-    if let Some(ConstructorResolution::Declaration(declaration)) = resolution {
-        let Some(metadata) = graph.declaration(declaration) else {
-            return ConstructorTargetFact::Unresolved;
-        };
-        return match metadata.kind {
-            DeclarationKind::Struct => ConstructorTargetFact::Declaration(declaration),
-            DeclarationKind::Enum if path.len() > 1 => ConstructorTargetFact::Variant {
-                enum_declaration: declaration,
-                variant: path.last().cloned().expect("non-empty constructor path"),
-            },
-            DeclarationKind::Enum => ConstructorTargetFact::Declaration(declaration),
-            DeclarationKind::Const
-            | DeclarationKind::State
-            | DeclarationKind::Function
-            | DeclarationKind::Trait
-            | DeclarationKind::Impl => ConstructorTargetFact::Unresolved,
-        };
-    }
-    let Some(ConstructorResolution::Dynamic(dynamic_path)) = resolution else {
-        return ConstructorTargetFact::Unresolved;
-    };
-    if dynamic_path.len() > 1 {
-        let (variant, owner_path) = dynamic_path
-            .split_last()
-            .expect("non-empty dynamic constructor path");
-        let owner = owner_path.join("::");
-        if let Some(target) =
-            schema.and_then(|schema| schema.variant_for_owner_or_unique_short_name(&owner, variant))
-        {
-            return ConstructorTargetFact::RegistryVariant {
-                owner: target.owner,
-                variant: target.name,
-            };
-        }
-    }
-    let qualified = dynamic_path.join("::");
-    if schema.is_some_and(|schema| {
-        schema.type_fact(&qualified).is_some()
-            || dynamic_path
-                .last()
-                .is_some_and(|name| schema.type_fact(name).is_some())
-    }) {
-        return ConstructorTargetFact::RegistryType { path: qualified };
-    }
-    ConstructorTargetFact::Dynamic
-}
-
-fn unit_variant_constructor_target(
-    graph: &ModuleGraph,
-    schema: Option<&RegistryFacts>,
-    path: &[String],
-    resolution: Option<&BindingResolution>,
-) -> Option<ConstructorTargetFact> {
-    let (variant, owner_path) = path.split_last()?;
-    if owner_path.is_empty() {
-        return None;
-    }
-    let declaration = match resolution {
-        Some(BindingResolution::Declaration(declaration)) => graph.declaration(*declaration),
-        _ => source_declaration_for_path(graph, owner_path),
-    };
-    if let Some(declaration) = declaration
-        && declaration.kind == DeclarationKind::Enum
-    {
-        return Some(ConstructorTargetFact::Variant {
-            enum_declaration: declaration.id,
-            variant: variant.clone(),
-        });
-    }
-    schema
-        .and_then(|schema| {
-            schema.variant_for_owner_or_unique_short_name(&owner_path.join("::"), variant)
-        })
-        .map(|target| ConstructorTargetFact::RegistryVariant {
-            owner: target.owner,
-            variant: target.name,
-        })
 }
 
 fn source_declaration_for_path<'a>(

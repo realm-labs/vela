@@ -77,45 +77,14 @@ fn assert_navigation_matrix(fixture_id: &str) {
             );
         }
         let mut id = 2;
-        for query in spec.oracle["queries"].as_array().expect("matrix") {
-            let file = query["file"].as_str().expect("file");
-            let document = fixture.document(file).expect("document");
-            let point = document.markers[query["cursor"].as_str().expect("cursor")].start;
-            for (key, method) in [
-                ("definition", "textDocument/definition"),
-                ("declaration", "textDocument/declaration"),
-                ("type-definition", "textDocument/typeDefinition"),
-            ] {
-                let response = response_value(navigation_request(
-                    &mut server,
-                    id,
-                    method,
-                    json!({
-                        "textDocument":{"uri":uri(file)},"position":{"line":point.line,"character":point.character}
-                    }),
-                ));
-                id += 1;
-                let expected = query.get(key).expect("explicit method oracle");
-                let result = if expected.is_null() {
-                    serde_json::Value::Null
-                } else {
-                    let target_file = query["target-file"].as_str().unwrap_or(file);
-                    let target = fixture.document(target_file).expect("target").markers
-                        [expected.as_str().expect("target marker or explicit null")];
-                    json!({"uri":uri(target_file),"range":{
-                        "start":{"line":target.start.line,"character":target.start.character},
-                        "end":{"line":target.end.line,"character":target.end.character}
-                    }})
-                };
-                assert!(response.get("error").is_none(), "{response}");
-                assert_eq!(
-                    response.get("result"),
-                    Some(&result),
-                    "{}: {method}, CRLF={crlf}",
-                    query["id"]
-                );
-            }
-        }
+        assert_queries(
+            &mut server,
+            &fixture,
+            &spec.oracle["queries"],
+            &root,
+            &mut id,
+            &format!("CRLF={crlf}"),
+        );
         if let Some(cases) = spec.oracle["invalidSchemaSpans"].as_array() {
             let artifact: serde_json::Value = serde_json::from_str(
                 &std::fs::read_to_string(root.join("target/schema.json")).expect("schema"),
@@ -173,5 +142,59 @@ fn assert_navigation_matrix(fixture_id: &str) {
             }
         }
         std::fs::remove_dir_all(temp).expect("fixture cleanup");
+    }
+}
+
+pub(super) fn assert_queries(
+    server: &mut TestServer,
+    fixture: &FixtureWorkspace,
+    queries: &serde_json::Value,
+    root: &std::path::Path,
+    id: &mut i32,
+    context: &str,
+) {
+    let uri = |file: &str| {
+        lsp_types::Url::from_file_path(root.join(file))
+            .expect("URI")
+            .to_string()
+    };
+    for query in queries.as_array().expect("matrix") {
+        let file = query["file"].as_str().expect("file");
+        let document = fixture.document(file).expect("document");
+        let point = document.markers[query["cursor"].as_str().expect("cursor")].start;
+        for (key, method) in [
+            ("definition", "textDocument/definition"),
+            ("declaration", "textDocument/declaration"),
+            ("type-definition", "textDocument/typeDefinition"),
+        ] {
+            let response = response_value(navigation_request(
+                server,
+                *id,
+                method,
+                json!({
+                    "textDocument":{"uri":uri(file)},"position":{"line":point.line,"character":point.character}
+                }),
+            ));
+            *id += 1;
+            let expected = query.get(key).expect("explicit method oracle");
+            let result = if expected.is_null() {
+                serde_json::Value::Null
+            } else {
+                let target_file = query["target-file"].as_str().unwrap_or(file);
+                let target = fixture.document(target_file).expect("target").markers
+                    [expected.as_str().expect("target marker or explicit null")];
+                json!({"uri":uri(target_file),"range":{
+                    "start":{"line":target.start.line,"character":target.start.character},
+                    "end":{"line":target.end.line,"character":target.end.character}
+                }})
+            };
+            assert!(response.get("error").is_none(), "{response}");
+            assert_eq!(
+                response.get("result"),
+                Some(&result),
+                "{}: {method}, {context}",
+                query["id"]
+            );
+        }
     }
 }

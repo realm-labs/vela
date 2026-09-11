@@ -530,6 +530,664 @@
           "end": 3
         }
       }
+    ],
+    "schemaLifecycle": [
+      {
+        "id": "initial",
+        "op": "restore",
+        "queries": [
+          {
+            "id": "box-hint",
+            "file": "scripts/main.vela",
+            "cursor": "box-hint",
+            "definition": "box",
+            "declaration": "box",
+            "type-definition": "box",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "field-use",
+            "file": "scripts/main.vela",
+            "cursor": "field-use",
+            "definition": "item",
+            "declaration": "item",
+            "type-definition": "cell",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "method-use",
+            "file": "scripts/main.vela",
+            "cursor": "method-use",
+            "definition": "get",
+            "declaration": "get",
+            "type-definition": "cell",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "trait-method",
+            "file": "scripts/main.vela",
+            "cursor": "trait-method",
+            "definition": "read",
+            "declaration": "read",
+            "type-definition": "cell",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "function-use",
+            "file": "scripts/main.vela",
+            "cursor": "function-use",
+            "definition": "make",
+            "declaration": "make",
+            "type-definition": "box",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "unit-variant",
+            "file": "scripts/main.vela",
+            "cursor": "unit-variant",
+            "definition": "empty",
+            "declaration": "empty",
+            "type-definition": "choice",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "source-hint",
+            "file": "scripts/local.vela",
+            "cursor": "source-hint",
+            "definition": "source-box",
+            "declaration": "source-box",
+            "type-definition": "source-box",
+            "target-file": "scripts/local.vela"
+          },
+          {
+            "id": "source-field",
+            "file": "scripts/local.vela",
+            "cursor": "source-field",
+            "definition": "source-item",
+            "declaration": "source-item",
+            "type-definition": null,
+            "target-file": "scripts/local.vela"
+          },
+          {
+            "id": "source-variant",
+            "file": "scripts/local.vela",
+            "cursor": "source-variant",
+            "definition": "source-empty",
+            "declaration": "source-empty",
+            "type-definition": "source-choice",
+            "target-file": "scripts/local.vela"
+          }
+        ]
+      },
+      {
+        "id": "retarget",
+        "op": "replace",
+        "patches": [
+          {
+            "path": "/types/0/sourceSpan",
+            "value": {
+              "file": "scripts/origins.vela",
+              "marker": "cell"
+            }
+          },
+          {
+            "path": "/fields/0/sourceSpan",
+            "value": {
+              "file": "scripts/origins.vela",
+              "marker": "level"
+            }
+          },
+          {
+            "path": "/fields/0/fact",
+            "value": {
+              "kind": "primitive",
+              "name": "i64"
+            }
+          }
+        ],
+        "queries": [
+          {
+            "id": "box-hint",
+            "file": "scripts/main.vela",
+            "cursor": "box-hint",
+            "definition": "cell",
+            "declaration": "cell",
+            "type-definition": "cell",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "field-use",
+            "file": "scripts/main.vela",
+            "cursor": "field-use",
+            "definition": "level",
+            "declaration": "level",
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "method-use",
+            "file": "scripts/main.vela",
+            "cursor": "method-use",
+            "definition": "get",
+            "declaration": "get",
+            "type-definition": "cell",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "trait-method",
+            "file": "scripts/main.vela",
+            "cursor": "trait-method",
+            "definition": "read",
+            "declaration": "read",
+            "type-definition": "cell",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "function-use",
+            "file": "scripts/main.vela",
+            "cursor": "function-use",
+            "definition": "make",
+            "declaration": "make",
+            "type-definition": "cell",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "unit-variant",
+            "file": "scripts/main.vela",
+            "cursor": "unit-variant",
+            "definition": "empty",
+            "declaration": "empty",
+            "type-definition": "choice",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "source-hint",
+            "file": "scripts/local.vela",
+            "cursor": "source-hint",
+            "definition": "source-box",
+            "declaration": "source-box",
+            "type-definition": "source-box",
+            "target-file": "scripts/local.vela"
+          },
+          {
+            "id": "source-field",
+            "file": "scripts/local.vela",
+            "cursor": "source-field",
+            "definition": "source-item",
+            "declaration": "source-item",
+            "type-definition": null,
+            "target-file": "scripts/local.vela"
+          },
+          {
+            "id": "source-variant",
+            "file": "scripts/local.vela",
+            "cursor": "source-variant",
+            "definition": "source-empty",
+            "declaration": "source-empty",
+            "type-definition": "source-choice",
+            "target-file": "scripts/local.vela"
+          }
+        ]
+      },
+      {
+        "id": "remove-members",
+        "op": "replace",
+        "patches": [
+          {
+            "path": "/fields",
+            "value": []
+          },
+          {
+            "path": "/methods",
+            "value": []
+          },
+          {
+            "path": "/traitMethods",
+            "value": []
+          },
+          {
+            "path": "/functions",
+            "value": []
+          },
+          {
+            "path": "/variants",
+            "value": []
+          }
+        ],
+        "queries": [
+          {
+            "id": "box-hint",
+            "file": "scripts/main.vela",
+            "cursor": "box-hint",
+            "definition": "box",
+            "declaration": "box",
+            "type-definition": "box",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "field-use",
+            "file": "scripts/main.vela",
+            "cursor": "field-use",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "method-use",
+            "file": "scripts/main.vela",
+            "cursor": "method-use",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "trait-method",
+            "file": "scripts/main.vela",
+            "cursor": "trait-method",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "function-use",
+            "file": "scripts/main.vela",
+            "cursor": "function-use",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "unit-variant",
+            "file": "scripts/main.vela",
+            "cursor": "unit-variant",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "source-hint",
+            "file": "scripts/local.vela",
+            "cursor": "source-hint",
+            "definition": "source-box",
+            "declaration": "source-box",
+            "type-definition": "source-box",
+            "target-file": "scripts/local.vela"
+          },
+          {
+            "id": "source-field",
+            "file": "scripts/local.vela",
+            "cursor": "source-field",
+            "definition": "source-item",
+            "declaration": "source-item",
+            "type-definition": null,
+            "target-file": "scripts/local.vela"
+          },
+          {
+            "id": "source-variant",
+            "file": "scripts/local.vela",
+            "cursor": "source-variant",
+            "definition": "source-empty",
+            "declaration": "source-empty",
+            "type-definition": "source-choice",
+            "target-file": "scripts/local.vela"
+          }
+        ]
+      },
+      {
+        "id": "invalid",
+        "op": "invalid",
+        "diagnostic": "invalid",
+        "queries": [
+          {
+            "id": "box-hint",
+            "file": "scripts/main.vela",
+            "cursor": "box-hint",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "field-use",
+            "file": "scripts/main.vela",
+            "cursor": "field-use",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "method-use",
+            "file": "scripts/main.vela",
+            "cursor": "method-use",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "trait-method",
+            "file": "scripts/main.vela",
+            "cursor": "trait-method",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "function-use",
+            "file": "scripts/main.vela",
+            "cursor": "function-use",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "unit-variant",
+            "file": "scripts/main.vela",
+            "cursor": "unit-variant",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "source-hint",
+            "file": "scripts/local.vela",
+            "cursor": "source-hint",
+            "definition": "source-box",
+            "declaration": "source-box",
+            "type-definition": "source-box",
+            "target-file": "scripts/local.vela"
+          },
+          {
+            "id": "source-field",
+            "file": "scripts/local.vela",
+            "cursor": "source-field",
+            "definition": "source-item",
+            "declaration": "source-item",
+            "type-definition": null,
+            "target-file": "scripts/local.vela"
+          },
+          {
+            "id": "source-variant",
+            "file": "scripts/local.vela",
+            "cursor": "source-variant",
+            "definition": "source-empty",
+            "declaration": "source-empty",
+            "type-definition": "source-choice",
+            "target-file": "scripts/local.vela"
+          }
+        ]
+      },
+      {
+        "id": "restore-invalid",
+        "op": "restore",
+        "queries": [
+          {
+            "id": "box-hint",
+            "file": "scripts/main.vela",
+            "cursor": "box-hint",
+            "definition": "box",
+            "declaration": "box",
+            "type-definition": "box",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "field-use",
+            "file": "scripts/main.vela",
+            "cursor": "field-use",
+            "definition": "item",
+            "declaration": "item",
+            "type-definition": "cell",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "method-use",
+            "file": "scripts/main.vela",
+            "cursor": "method-use",
+            "definition": "get",
+            "declaration": "get",
+            "type-definition": "cell",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "trait-method",
+            "file": "scripts/main.vela",
+            "cursor": "trait-method",
+            "definition": "read",
+            "declaration": "read",
+            "type-definition": "cell",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "function-use",
+            "file": "scripts/main.vela",
+            "cursor": "function-use",
+            "definition": "make",
+            "declaration": "make",
+            "type-definition": "box",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "unit-variant",
+            "file": "scripts/main.vela",
+            "cursor": "unit-variant",
+            "definition": "empty",
+            "declaration": "empty",
+            "type-definition": "choice",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "source-hint",
+            "file": "scripts/local.vela",
+            "cursor": "source-hint",
+            "definition": "source-box",
+            "declaration": "source-box",
+            "type-definition": "source-box",
+            "target-file": "scripts/local.vela"
+          },
+          {
+            "id": "source-field",
+            "file": "scripts/local.vela",
+            "cursor": "source-field",
+            "definition": "source-item",
+            "declaration": "source-item",
+            "type-definition": null,
+            "target-file": "scripts/local.vela"
+          },
+          {
+            "id": "source-variant",
+            "file": "scripts/local.vela",
+            "cursor": "source-variant",
+            "definition": "source-empty",
+            "declaration": "source-empty",
+            "type-definition": "source-choice",
+            "target-file": "scripts/local.vela"
+          }
+        ]
+      },
+      {
+        "id": "delete",
+        "op": "delete",
+        "diagnostic": "unavailable",
+        "queries": [
+          {
+            "id": "box-hint",
+            "file": "scripts/main.vela",
+            "cursor": "box-hint",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "field-use",
+            "file": "scripts/main.vela",
+            "cursor": "field-use",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "method-use",
+            "file": "scripts/main.vela",
+            "cursor": "method-use",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "trait-method",
+            "file": "scripts/main.vela",
+            "cursor": "trait-method",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "function-use",
+            "file": "scripts/main.vela",
+            "cursor": "function-use",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "unit-variant",
+            "file": "scripts/main.vela",
+            "cursor": "unit-variant",
+            "definition": null,
+            "declaration": null,
+            "type-definition": null,
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "source-hint",
+            "file": "scripts/local.vela",
+            "cursor": "source-hint",
+            "definition": "source-box",
+            "declaration": "source-box",
+            "type-definition": "source-box",
+            "target-file": "scripts/local.vela"
+          },
+          {
+            "id": "source-field",
+            "file": "scripts/local.vela",
+            "cursor": "source-field",
+            "definition": "source-item",
+            "declaration": "source-item",
+            "type-definition": null,
+            "target-file": "scripts/local.vela"
+          },
+          {
+            "id": "source-variant",
+            "file": "scripts/local.vela",
+            "cursor": "source-variant",
+            "definition": "source-empty",
+            "declaration": "source-empty",
+            "type-definition": "source-choice",
+            "target-file": "scripts/local.vela"
+          }
+        ]
+      },
+      {
+        "id": "recreate",
+        "op": "restore",
+        "queries": [
+          {
+            "id": "box-hint",
+            "file": "scripts/main.vela",
+            "cursor": "box-hint",
+            "definition": "box",
+            "declaration": "box",
+            "type-definition": "box",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "field-use",
+            "file": "scripts/main.vela",
+            "cursor": "field-use",
+            "definition": "item",
+            "declaration": "item",
+            "type-definition": "cell",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "method-use",
+            "file": "scripts/main.vela",
+            "cursor": "method-use",
+            "definition": "get",
+            "declaration": "get",
+            "type-definition": "cell",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "trait-method",
+            "file": "scripts/main.vela",
+            "cursor": "trait-method",
+            "definition": "read",
+            "declaration": "read",
+            "type-definition": "cell",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "function-use",
+            "file": "scripts/main.vela",
+            "cursor": "function-use",
+            "definition": "make",
+            "declaration": "make",
+            "type-definition": "box",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "unit-variant",
+            "file": "scripts/main.vela",
+            "cursor": "unit-variant",
+            "definition": "empty",
+            "declaration": "empty",
+            "type-definition": "choice",
+            "target-file": "scripts/origins.vela"
+          },
+          {
+            "id": "source-hint",
+            "file": "scripts/local.vela",
+            "cursor": "source-hint",
+            "definition": "source-box",
+            "declaration": "source-box",
+            "type-definition": "source-box",
+            "target-file": "scripts/local.vela"
+          },
+          {
+            "id": "source-field",
+            "file": "scripts/local.vela",
+            "cursor": "source-field",
+            "definition": "source-item",
+            "declaration": "source-item",
+            "type-definition": null,
+            "target-file": "scripts/local.vela"
+          },
+          {
+            "id": "source-variant",
+            "file": "scripts/local.vela",
+            "cursor": "source-variant",
+            "definition": "source-empty",
+            "declaration": "source-empty",
+            "type-definition": "source-choice",
+            "target-file": "scripts/local.vela"
+          }
+        ]
+      }
     ]
   }
 }

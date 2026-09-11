@@ -28,3 +28,15 @@ pub(crate) fn schema_artifact(
     }
     json!({"formatVersion":1,"facts":facts})
 }
+
+pub(crate) fn lifecycle_facts(base: &Value, step: &Value) -> Value {
+    let mut facts = base.clone();
+    if let Some(patches) = step["patches"].as_array() {
+        for patch in patches {
+            *facts
+                .pointer_mut(patch["path"].as_str().expect("fact path"))
+                .expect("existing fact to replace") = patch["value"].clone();
+        }
+    }
+    facts
+}

@@ -6,6 +6,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use super::{TestServer, navigation_request, notification_value, notify, request, response_value};
 
 mod matrix;
+mod schema_lifecycle;
+mod source_lifecycle;
 mod tasks;
 mod unicode;
 #[cfg(unix)]

@@ -269,6 +269,258 @@
           "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
         }
       ]
+    },
+    {
+      "requirement": "definition/states/dirty/protocol",
+      "assertion": "An unsaved defining-module overlay shifts declaration and return-type ranges; all three requests use explicit marker targets in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/states/close_restore/protocol",
+      "assertion": "Closing a dirty defining-module overlay restores watched disk targets; closing after a saved rename retains explicit nulls, with fresh-server parity.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/states/repeat/protocol",
+      "assertion": "Each unchanged request is repeated twice in every source/schema lifecycle state against exact independent URI/range/null oracles and a fresh server.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::schema_lifecycle::schema_navigation_lifecycle_clears_stale_targets_and_publishes_controlled_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/states/recovery/protocol",
+      "assertion": "An incomplete neighboring function in the dirty caller preserves the valid imported call target; repair and each intermediate state match fresh-server marker oracles.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/states/dependency_change/protocol",
+      "assertion": "A defining module changes while its importer is dirty; overlay shifts, disk writes, rename and recreation match independently marked current targets and fresh-server results.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/states/missing_schema/protocol",
+      "assertion": "Deleting or invalidating schema clears host navigation, retains source-owned targets, publishes one controlled schema diagnostic and recovers after restoration.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::schema_lifecycle::schema_navigation_lifecycle_clears_stale_targets_and_publishes_controlled_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/states/stale_schema/protocol",
+      "assertion": "Replacing source spans and removing schema fields/methods/functions/variants changes or clears all three navigation targets, including downstream return types, with fresh-server parity.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::schema_lifecycle::schema_navigation_lifecycle_clears_stale_targets_and_publishes_controlled_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/states/dirty/protocol",
+      "assertion": "An unsaved defining-module overlay shifts declaration and return-type ranges; all three requests use explicit marker targets in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/states/close_restore/protocol",
+      "assertion": "Closing a dirty defining-module overlay restores watched disk targets; closing after a saved rename retains explicit nulls, with fresh-server parity.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/states/repeat/protocol",
+      "assertion": "Each unchanged request is repeated twice in every source/schema lifecycle state against exact independent URI/range/null oracles and a fresh server.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::schema_lifecycle::schema_navigation_lifecycle_clears_stale_targets_and_publishes_controlled_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/states/recovery/protocol",
+      "assertion": "An incomplete neighboring function in the dirty caller preserves the valid imported call target; repair and each intermediate state match fresh-server marker oracles.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/states/dependency_change/protocol",
+      "assertion": "A defining module changes while its importer is dirty; overlay shifts, disk writes, rename and recreation match independently marked current targets and fresh-server results.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/states/missing_schema/protocol",
+      "assertion": "Deleting or invalidating schema clears host navigation, retains source-owned targets, publishes one controlled schema diagnostic and recovers after restoration.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::schema_lifecycle::schema_navigation_lifecycle_clears_stale_targets_and_publishes_controlled_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/states/stale_schema/protocol",
+      "assertion": "Replacing source spans and removing schema fields/methods/functions/variants changes or clears all three navigation targets, including downstream return types, with fresh-server parity.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::schema_lifecycle::schema_navigation_lifecycle_clears_stale_targets_and_publishes_controlled_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/states/dirty/protocol",
+      "assertion": "An unsaved defining-module overlay shifts declaration and return-type ranges; all three requests use explicit marker targets in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/states/close_restore/protocol",
+      "assertion": "Closing a dirty defining-module overlay restores watched disk targets; closing after a saved rename retains explicit nulls, with fresh-server parity.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/states/repeat/protocol",
+      "assertion": "Each unchanged request is repeated twice in every source/schema lifecycle state against exact independent URI/range/null oracles and a fresh server.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::schema_lifecycle::schema_navigation_lifecycle_clears_stale_targets_and_publishes_controlled_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/states/recovery/protocol",
+      "assertion": "An incomplete neighboring function in the dirty caller preserves the valid imported call target; repair and each intermediate state match fresh-server marker oracles.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/states/dependency_change/protocol",
+      "assertion": "A defining module changes while its importer is dirty; overlay shifts, disk writes, rename and recreation match independently marked current targets and fresh-server results.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/states/missing_schema/protocol",
+      "assertion": "Deleting or invalidating schema clears host navigation, retains source-owned targets, publishes one controlled schema diagnostic and recovers after restoration.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::schema_lifecycle::schema_navigation_lifecycle_clears_stale_targets_and_publishes_controlled_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/states/stale_schema/protocol",
+      "assertion": "Replacing source spans and removing schema fields/methods/functions/variants changes or clears all three navigation targets, including downstream return types, with fresh-server parity.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::schema_lifecycle::schema_navigation_lifecycle_clears_stale_targets_and_publishes_controlled_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/states/unresolved/protocol",
+      "assertion": "After the imported function is renamed or its defining file is deleted, all three navigation requests return explicit null despite an unimported same-name function with a different return type; recreation restores only the imported target.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/states/unresolved/protocol",
+      "assertion": "After the imported function is renamed or its defining file is deleted, all three navigation requests return explicit null despite an unimported same-name function with a different return type; recreation restores only the imported target.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/states/unresolved/protocol",
+      "assertion": "After the imported function is renamed or its defining file is deleted, all three navigation requests return explicit null despite an unimported same-name function with a different return type; recreation restores only the imported target.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
     }
   ],
   "featureFiles": [

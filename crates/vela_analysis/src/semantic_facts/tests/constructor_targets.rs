@@ -10,6 +10,74 @@ use crate::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
 use crate::semantic_facts::ConstructorTargetFact;
 
 #[test]
+fn unresolved_enum_owners_do_not_borrow_foreign_source_identity() {
+    use crate::semantic_facts::CallTargetFact;
+    use crate::{facts::AnalysisFacts, registry::RegistryFacts, type_fact::TypeFact};
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(ModuleSource::new(
+        SourceId::new(201),
+        vela_package::PackageId::anonymous(),
+        ModulePath::from_qualified("main"),
+        "fn inspect() { State::Idle; State::Ready(1); }",
+    ));
+    graph.add_source(ModuleSource::new(
+        SourceId::new(202),
+        vela_package::PackageId::anonymous(),
+        ModulePath::from_qualified("foreign"),
+        "pub enum State { Idle, Ready(value: i64) }",
+    ));
+    graph.resolve_imports();
+    let declaration = graph
+        .module(module)
+        .expect("module")
+        .get("inspect")
+        .expect("function");
+    let body = graph.function_body(declaration).expect("body");
+    let idle = body
+        .paths
+        .iter()
+        .find(|path| path.path == ["State", "Idle"])
+        .expect("unit path");
+    let vela_hir::body::HirPathOwner::Expression(idle) = idle.owner else {
+        panic!("expression path");
+    };
+    let (call, _) = body.calls().next().expect("tuple call");
+    for with_schema in [true, false] {
+        let mut schema = RegistryFacts::default();
+        if with_schema {
+            schema.insert_type("State", TypeFact::enum_type("State", None::<String>));
+            schema.insert_variant("State", "Idle", TypeFact::enum_type("State", Some("Idle")));
+            schema.insert_variant(
+                "State",
+                "Ready",
+                TypeFact::enum_type("State", Some("Ready")),
+            );
+            schema.insert_field("State::Ready", "0", TypeFact::I64);
+        }
+        let facts = AnalysisFacts::from_module_graph_and_schema(&graph, &schema);
+        if with_schema {
+            assert_eq!(
+                facts.constructor_target(idle),
+                Some(&ConstructorTargetFact::RegistryVariant {
+                    owner: "State".into(),
+                    variant: "Idle".into()
+                })
+            );
+            assert_eq!(
+                facts.call_target(call),
+                Some(&CallTargetFact::RegistryVariant {
+                    owner: "State".into(),
+                    variant: "Ready".into()
+                })
+            );
+        } else {
+            assert!(facts.constructor_target(idle).is_none());
+            assert_eq!(facts.call_target(call), Some(&CallTargetFact::Unresolved));
+        }
+    }
+}
+
+#[test]
 fn executable_constructor_targets_follow_imported_and_qualified_hir_resolutions() {
     let mut graph = ModuleGraph::new();
     let main = graph.add_source(ModuleSource::new(

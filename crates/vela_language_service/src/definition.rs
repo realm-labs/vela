@@ -8,7 +8,7 @@ use vela_hir::type_hint::ImplMetadataKind;
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
     SymbolRef, TextRange,
-    callable_context::callable_facts,
+    callable_context::{CallableOrigin, callable_facts, source_callable_facts_for_declaration},
     hir_path_sites,
     query_context::binding_resolution_for_source_range,
     symbol_ref::{
@@ -298,8 +298,41 @@ impl LanguageServiceDatabases {
             .filter_map(hir_path_sites::site)
             .find(|site| site.segment_range == target.range())?;
         let callee = call_site.path.join("::");
+        let graph = self.hir_db().graph();
+        if let Some(resolution) = query.bindings().and_then(|bindings| {
+            binding_resolution_for_source_range(graph, bindings, target.range())
+        }) {
+            match resolution {
+                BindingResolution::Declaration(id) => {
+                    let callable = source_callable_facts_for_declaration(
+                        graph,
+                        self.schema_db().facts(),
+                        self.graph_analysis_facts(),
+                        graph.declaration(*id)?,
+                    )?;
+                    return self.type_definition_for_fact(callable.returns());
+                }
+                BindingResolution::Local(_) => {
+                    let TypeFact::Function { returns, .. } =
+                        query.type_fact_for_range(self, target.range())?
+                    else {
+                        return None;
+                    };
+                    return self.type_definition_for_fact(&returns);
+                }
+                BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => {}
+            }
+        }
         callable_facts(self, &callee)
             .iter()
+            .filter(|callable| {
+                !matches!(
+                    callable.origin(),
+                    CallableOrigin::Source
+                        | CallableOrigin::SourceMethod
+                        | CallableOrigin::SourceVariant
+                )
+            })
             .find_map(|callable| self.type_definition_for_fact(callable.returns()))
     }
 
@@ -577,3 +610,7 @@ mod type_tests;
 
 #[cfg(test)]
 mod matrix_tests;
+#[cfg(test)]
+mod schema_lifecycle_tests;
+#[cfg(test)]
+mod source_lifecycle_tests;

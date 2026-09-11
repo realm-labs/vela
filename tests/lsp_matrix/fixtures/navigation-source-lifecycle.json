@@ -1,0 +1,260 @@
+{
+  "version": 1,
+  "id": "navigation-source-lifecycle",
+  "files": {
+    "scripts/main.vela": "use helper::make;\nfn main() { let text = \"中😀\"; return [[call]]make(); }\n",
+    "scripts/helper.vela": "/* 中😀 */ pub struct [[cell:start]]Cell[[cell:end]] { value: i64 }\npub fn [[make:start]]make[[make:end]]() -> Cell { return Cell { value: 1 }; }\n",
+    "scripts/decoy.vela": "pub struct Other {}\npub fn make() -> Other { return Other {}; }\n",
+    "vela.toml": "[package]\nid = 'dev.vela.navigation'\nname = 'navigation'\nversion = '0.1.0'\n[source]\nroots = ['scripts']\n"
+  },
+  "actions": [
+    {
+      "op": "open",
+      "file": "scripts/main.vela"
+    },
+    {
+      "op": "change",
+      "file": "scripts/main.vela",
+      "source": "// dirty caller😀\nuse helper::make;\nfn main() { let text = \"中😀\"; return [[call]]make(); }\n"
+    },
+    {
+      "op": "open",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "change",
+      "file": "scripts/helper.vela",
+      "source": "// 脏😀\n\n/* 中😀 */ pub struct [[cell:start]]Cell[[cell:end]] { value: i64 }\npub fn [[make:start]]make[[make:end]]() -> Cell { return Cell { value: 1 }; }\n"
+    },
+    {
+      "op": "write",
+      "file": "scripts/helper.vela",
+      "source": "// disk\n/* 中😀 */ pub struct [[cell:start]]Cell[[cell:end]] { value: i64 }\npub fn [[make:start]]make[[make:end]]() -> Cell { return Cell { value: 1 }; }\n"
+    },
+    {
+      "op": "close",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "open",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "change",
+      "file": "scripts/helper.vela",
+      "source": "/* 中😀 */ pub struct [[cell:start]]Cell[[cell:end]] { value: i64 }\npub fn renamed() -> Cell { return Cell { value: 1 }; }\n"
+    },
+    {
+      "op": "save",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "close",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "write",
+      "file": "scripts/helper.vela",
+      "source": "/* 中😀 */ pub struct [[cell:start]]Cell[[cell:end]] { value: i64 }\npub fn [[make:start]]make[[make:end]]() -> Cell { return Cell { value: 1 }; }\n"
+    },
+    {
+      "op": "delete",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "write",
+      "file": "scripts/helper.vela",
+      "source": "// 脏😀\n\n/* 中😀 */ pub struct [[cell:start]]Cell[[cell:end]] { value: i64 }\npub fn [[make:start]]make[[make:end]]() -> Cell { return Cell { value: 1 }; }\n"
+    },
+    {
+      "op": "change",
+      "file": "scripts/main.vela",
+      "source": "use helper::make;\nfn main() { let text = \"中😀\"; return [[call]]make(); }\nfn broken(\n"
+    },
+    {
+      "op": "change",
+      "file": "scripts/main.vela",
+      "source": "use helper::make;\nfn main() { let text = \"中😀\"; return [[call]]make(); }\n"
+    }
+  ],
+  "oracle": {
+    "initial": [
+      {
+        "id": "call",
+        "file": "scripts/main.vela",
+        "cursor": "call",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "cell",
+        "target-file": "scripts/helper.vela"
+      }
+    ],
+    "afterEachAction": [
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": null,
+          "declaration": null,
+          "type-definition": null,
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": null,
+          "declaration": null,
+          "type-definition": null,
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": null,
+          "declaration": null,
+          "type-definition": null,
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": null,
+          "declaration": null,
+          "type-definition": null,
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ]
+    ]
+  }
+}
