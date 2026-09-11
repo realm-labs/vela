@@ -3,6 +3,8 @@ use std::path::PathBuf;
 
 use super::{TestServer, notification_value, notify, request, response_value};
 
+mod matrix;
+
 #[test]
 fn lsp_completion_uses_short_type_labels_with_owner_details() {
     let root = temp_workspace();

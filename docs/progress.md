@@ -615,6 +615,15 @@ success or failure. The execution checkpoint records fresh strict batch
 acceptance. B14 still owns the later semantic
 partition completeness review.
 
+B03 completion work now verifies schema-documentation update, invalidation,
+deletion and recovery, malformed resolve payload rejection, and unchanged item
+fields. Type-position matrices exposed and corrected missing source/schema
+ownership, tuple-variant type-context classification, and completion edits
+projected as byte columns instead of UTF-16. Eighteen shared cases validate
+exact metadata, documentation, edits, resulting source and re-query under
+LF/CRLF. Broader completion semantics and UX04 remain open. The desktop locked
+again during the current native input regression; see [blocked.md](blocked.md).
+
 ### Deferred Tracks
 
 - M21 debugger/DAP work waits for stable runtime debug contracts.

@@ -980,7 +980,7 @@
     },
     {
       "id": "B03.1",
-      "revision": null,
+      "revision": "c6904fd8a",
       "requirements": [
         "completion-resolve/states/repeat/protocol",
         "completion-resolve/states/missing_schema/protocol",
@@ -990,10 +990,20 @@
         "completion-resolve/environments/client_capabilities/protocol"
       ],
       "summary": "Resolve an actual schema type candidate under minimal and documentation-capable client capability sets. Assert complete item equality except exact Markdown documentation, repeated results with no parser/HIR work, schema documentation update, invalid replacement, deletion and recovery on the original cached payload. Reject twelve malformed payload shapes and verify a valid request after each error. Unknown source/schema/builtin/local identities preserve all candidate fields including snippet and additional text edits without fabricated documentation. Initial fixture failure was a missing required package id and was corrected before verification. Focused resolve 6, protocol 570, service 574 with two historical ignored, Node 69, server Clippy and formatting passed. run-TVnstg verifies these six obligations; B03 remains open, with whole-batch remaining scope unchanged. Find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B03.2",
+      "revision": null,
+      "requirements": [
+        "completion/environments/utf16/protocol",
+        "completion/environments/crlf/protocol",
+        "completion/environments/encoded_uri/protocol"
+      ],
+      "summary": "An eighteen-query shared source/schema/trait type-position fixture exposed three production defects: source type-hint candidates lost symbol/resolve ownership, qualified paths discarded source-versus-schema origin, enum tuple and tuple hints were misclassified, and completion edits projected byte columns as UTF-16. Preserve item origin, recognize CST type/tuple-field contexts with value-context negative controls, and convert checked byte ranges through the protocol UTF-16 index. Both layers assert exact metadata/docs/ranges, apply edits and compare the entire resulting source and re-query. LF/CRLF and Chinese/emoji/space/percent URI cases pass. Service 576 plus two historical ignored, protocol 572, Node 69, relevant Clippy/fmt, and installed VSIX 9 passed. Final audit run-PZXtJI verifies three encoding/URI obligations. Broader S3/S13/S14 semantic cells remain unreviewed for additional builtin/dynamic partitions; do not treat this fixture as complete authoring coverage. Full input regression input-kwRRLd passed UX02/modifier-click but stopped before native Peek because the desktop locked again; user was asked to unlock. B02 historical acceptance is retained, but fresh whole-bundle proof is required before another strict gate. Continue semantic work in B03.3; no local requirement is deferred or subtracted from whole-batch remaining scope."
     }
   ],
-  "activeChild": "B03.2",
-  "nextTask": "B03.2",
+  "activeChild": "B03.3",
+  "nextTask": "B03.3",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -2480,7 +2490,15 @@
     "target/lsp-matrix/run-TVnstg/report.json",
     "target/lsp-matrix/b03-resolve-focused.log",
     "target/lsp-matrix/b03-resolve-clippy.log",
-    "target/lsp-matrix/b03-resolve-audit.log"
+    "target/lsp-matrix/b03-resolve-audit.log",
+    "target/lsp-matrix/run-PZXtJI/report.json",
+    "target/lsp-matrix/b03-type-service-all.log",
+    "target/lsp-matrix/b03-type-protocol-all.log",
+    "target/lsp-matrix/b03-type-clippy.log",
+    "target/lsp-matrix/b03-type-installed.log",
+    "target/lsp-matrix/b03-type-input.log",
+    "editors/vscode/test-results/run-aPWQbJ/results.json",
+    "editors/vscode/test-results/input-kwRRLd/results.json"
   ],
   "openIssues": [
     {

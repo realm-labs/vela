@@ -133,6 +133,25 @@ pub fn cursor_context_at(
     let identifier_range = identifier_range_at(text, offset);
     let prefix = text[prefix_start..offset].to_owned();
     let before_prefix = &text[..prefix_start];
+    let syntax_type_context = syntax_parse.is_some_and(|parse| {
+        u32::try_from(prefix_start).ok().is_some_and(|offset| {
+            let offset = TextSize::from(offset);
+            parse
+                .tree()
+                .syntax()
+                .token_at_offset(offset)
+                .into_iter()
+                .any(|token| {
+                    token.parent_ancestors().any(|node| {
+                        matches!(
+                            node.kind(),
+                            vela_syntax::SyntaxKind::TypeHint
+                                | vela_syntax::SyntaxKind::TupleFieldList
+                        ) && node.text_range().contains(offset)
+                    })
+                })
+        })
+    });
 
     if let Some(parameters) = lambda_parameter_range(text, offset) {
         let mut cursor = context(
@@ -174,7 +193,9 @@ pub fn cursor_context_at(
         );
     }
 
-    if is_type_context(text, prefix_start) {
+    if is_type_context(text, prefix_start)
+        || (syntax_type_context && !before_prefix.trim_end().ends_with("::"))
+    {
         return context(
             CursorContextKind::Type,
             prefix_start,
@@ -226,7 +247,11 @@ pub fn cursor_context_at(
             identifier_range,
         );
         cursor.module_base = Some(module_path.base);
-        cursor.module_path_role = module_path.role;
+        cursor.module_path_role = if syntax_type_context {
+            ModulePathRole::Type
+        } else {
+            module_path.role
+        };
         return cursor;
     }
 

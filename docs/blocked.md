@@ -1,10 +1,13 @@
 # Blocked Work
 
-No external blocker currently prevents local LSP coverage work.
+The desktop locked again during B03.2's native input regression. The driver
+reported a locked macOS session before operating Peek and stopped. The user
+has been asked to unlock it; semantic and protocol coverage work can continue.
 
-The desktop session is unlocked. The complete local input suite now exercises
-the native macOS Peek menu, target preview and exact selection, follow,
-dismissal, and unknown-target behavior. The driver verifies test-process focus
-before native pointer input and temporarily selects the pinned ABC keyboard
-layout, restoring the original input source when the run ends or fails.
-The execution checkpoint owns strict batch acceptance and the next local task.
+B02 was accepted on the unlocked desktop with all 139 obligations verified.
+After the current completion changes, the installed provider suite passes,
+but fresh complete native Input/Render evidence still requires an unlocked
+session. Keep the recorded B02 acceptance; do not claim its older input bundle
+as proof for the changed source. Recollect the complete local input and installed
+bundles before the next strict gate. The execution checkpoint owns the next
+task and local requirement inventory; this is not deferred B16 scope.

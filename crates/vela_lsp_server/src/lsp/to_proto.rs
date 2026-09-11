@@ -20,17 +20,23 @@ use crate::semantic_tokens::SemanticTokenProjection;
 
 pub(crate) fn completion_response(
     completions: &CompletionList,
-    line_index: &LineIndex,
-) -> lsp_types::CompletionResponse {
-    lsp_types::CompletionResponse::List(lsp_types::CompletionList {
-        is_incomplete: false,
-        items: completions
-            .items()
-            .iter()
-            .enumerate()
-            .map(|(index, item)| completion_item(item, line_index, index == 0))
-            .collect(),
-    })
+    text: &str,
+) -> Result<lsp_types::CompletionResponse, String> {
+    let line_index = LineIndex::new(text);
+    let wire_index = crate::line_index::LineIndex::new(text);
+    Ok(lsp_types::CompletionResponse::List(
+        lsp_types::CompletionList {
+            is_incomplete: false,
+            items: completions
+                .items()
+                .iter()
+                .enumerate()
+                .map(|(index, item)| {
+                    completion_item(item, text, &line_index, &wire_index, index == 0)
+                })
+                .collect::<Result<_, _>>()?,
+        },
+    ))
 }
 
 pub(crate) fn completion_item_resolved(
@@ -612,9 +618,11 @@ fn change_annotations(
 
 fn completion_item(
     item: &vela_language_service::CompletionItem,
+    text: &str,
     line_index: &LineIndex,
+    wire_index: &crate::line_index::LineIndex<'_>,
     preselect: bool,
-) -> lsp_types::CompletionItem {
+) -> Result<lsp_types::CompletionItem, String> {
     let mut data = json!({
         "source": "vela"
     });
@@ -624,19 +632,19 @@ fn completion_item(
 
     let text_edit = if let Some(text_edit) = item.text_edit() {
         Some(lsp_types::CompletionTextEdit::Edit(lsp_types::TextEdit {
-            range: range(text_edit.range(), line_index),
+            range: completion_range(text_edit.range(), text, line_index, wire_index)?,
             new_text: text_edit.new_text().to_owned(),
         }))
     } else if let (Some(edit_range), Some(insert_text)) = (item.edit_range(), item.insert_text()) {
         Some(lsp_types::CompletionTextEdit::Edit(lsp_types::TextEdit {
-            range: range(edit_range, line_index),
+            range: completion_range(edit_range, text, line_index, wire_index)?,
             new_text: insert_text.to_owned(),
         }))
     } else {
         None
     };
 
-    lsp_types::CompletionItem {
+    Ok(lsp_types::CompletionItem {
         label: item.label().to_owned(),
         label_details: label_details(item.label_details()),
         kind: Some(completion_kind(item.kind())),
@@ -665,7 +673,7 @@ fn completion_item(
             .deprecated()
             .then_some(vec![lsp_types::CompletionItemTag::DEPRECATED]),
         ..lsp_types::CompletionItem::default()
-    }
+    })
 }
 
 fn resolve_payload(payload: &CompletionResolvePayload) -> JsonValue {
@@ -808,19 +816,21 @@ fn label_details(
     })
 }
 
-fn range(range: TextRange, line_index: &LineIndex) -> lsp_types::Range {
+fn completion_range(
+    range: TextRange,
+    text: &str,
+    line_index: &LineIndex,
+    wire_index: &crate::line_index::LineIndex<'_>,
+) -> Result<lsp_types::Range, String> {
+    if text.get(range.start..range.end).is_none() {
+        return Err("completion range is outside the document or splits a character".to_owned());
+    }
     let start = line_index.position(range.start);
     let end = line_index.position(range.end);
-    lsp_types::Range {
-        start: lsp_types::Position {
-            line: u32::try_from(start.line).expect("line should fit in LSP u32"),
-            character: u32::try_from(start.character).expect("character should fit in LSP u32"),
-        },
-        end: lsp_types::Position {
-            line: u32::try_from(end.line).expect("line should fit in LSP u32"),
-            character: u32::try_from(end.character).expect("character should fit in LSP u32"),
-        },
-    }
+    Ok(lsp_types::Range::new(
+        wire_index.lsp_position(start)?,
+        wire_index.lsp_position(end)?,
+    ))
 }
 
 fn completion_kind(kind: CompletionKind) -> lsp_types::CompletionItemKind {

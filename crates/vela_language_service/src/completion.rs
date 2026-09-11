@@ -43,6 +43,8 @@ mod type_display;
 mod type_hint;
 #[cfg(test)]
 mod type_label_tests;
+#[cfg(test)]
+mod type_matrix_tests;
 
 pub use model::{
     CompletionContext, CompletionContextKind, CompletionInsertFormat, CompletionItem,

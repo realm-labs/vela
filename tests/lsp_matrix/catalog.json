@@ -2663,6 +2663,36 @@
           "name": "tests::completion_resolve::completion_resolve_unknown_symbols_preserve_every_existing_edit_and_label_field"
         }
       ]
+    },
+    {
+      "requirement": "completion/environments/utf16/protocol",
+      "assertion": "Eighteen type contexts run after Chinese/emoji with independent byte/UTF-16 markers. Exact protocol replacement ranges are asserted before applying each type edit, comparing the entire source and querying the inserted type again. Source/schema ownership and resolved docs remain exact.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/environments/crlf/protocol",
+      "assertion": "The complete eighteen-case type completion fixture runs with LF and CRLF; each projected edit matches independent markers, preserves surrounding source and newlines, and the edited document is queried again.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/environments/encoded_uri/protocol",
+      "assertion": "The type completion fixture uses client file URIs under a Chinese directory containing spaces and a literal percent sign. Queries and changes use the exact encoded URI and must resolve the expected source/schema candidates and apply exact edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source"
+        }
+      ]
     }
   ],
   "featureFiles": [

@@ -21,8 +21,8 @@ use lsp_types::{
     SignatureHelpParams, TextDocumentPositionParams, WorkspaceSymbolParams,
 };
 use vela_language_service::{
-    DocumentId, GenerationToken, LanguageServiceDatabases, LineIndex as ServiceLineIndex,
-    WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot, WorkspaceSnapshot,
+    DocumentId, GenerationToken, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration,
+    WorkspaceRoot, WorkspaceSnapshot,
 };
 
 use self::{
@@ -174,13 +174,18 @@ impl GlobalStateSnapshot {
         let completions = self
             .databases
             .completion_items(&input.document_id, input.position);
-        let line_index = ServiceLineIndex::new(&text);
+        let projected = match to_proto::completion_response(&completions, &text) {
+            Ok(response) => response,
+            Err(error) => {
+                return response_error_messages(
+                    id,
+                    ErrorCode::InternalError,
+                    format!("invalid completion edit: {error}"),
+                );
+            }
+        };
 
-        response_ok_typed_messages(
-            id,
-            to_proto::completion_response(&completions, &line_index),
-            "typed completion response",
-        )
+        response_ok_typed_messages(id, projected, "typed completion response")
     }
 
     pub(crate) fn completion_resolve(

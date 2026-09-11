@@ -1,9 +1,58 @@
 use vela_language_service::{
-    DocumentId, LanguageServiceDatabases, LineIndex, Position, SourceFileSnapshot, Workspace,
-    WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+    DocumentId, LanguageServiceDatabases, Position, SourceFileSnapshot, Workspace, WorkspaceConfig,
+    WorkspaceRoot, assemble_project_sources,
 };
 
 use super::*;
+
+#[test]
+fn completion_edit_projection_converts_unicode_and_rejects_invalid_byte_ranges() {
+    let text = "中😀 alpha\r\nnext";
+    let bytes = LineIndex::new(text);
+    let wire = crate::line_index::LineIndex::new(text);
+    for (start, end, expected) in [
+        (
+            0,
+            3,
+            lsp_types::Range::new(
+                lsp_types::Position::new(0, 0),
+                lsp_types::Position::new(0, 1),
+            ),
+        ),
+        (
+            3,
+            7,
+            lsp_types::Range::new(
+                lsp_types::Position::new(0, 1),
+                lsp_types::Position::new(0, 3),
+            ),
+        ),
+        (
+            8,
+            13,
+            lsp_types::Range::new(
+                lsp_types::Position::new(0, 4),
+                lsp_types::Position::new(0, 9),
+            ),
+        ),
+        (
+            13,
+            19,
+            lsp_types::Range::new(
+                lsp_types::Position::new(0, 9),
+                lsp_types::Position::new(1, 4),
+            ),
+        ),
+    ] {
+        assert_eq!(
+            completion_range(TextRange::new(start, end), text, &bytes, &wire).expect("range"),
+            expected
+        );
+    }
+    for (start, end) in [(1, 3), (3, 5), (13, 8), (0, 20), (14, 15)] {
+        assert!(completion_range(TextRange::new(start, end), text, &bytes, &wire).is_err());
+    }
+}
 
 #[test]
 fn completion_response_projects_typed_lsp_items() {
@@ -16,7 +65,7 @@ fn completion_response_projects_typed_lsp_items() {
     databases.update(&project);
 
     let completions = databases.completion_items(&document, Position::new(0, 7));
-    let response = completion_response(&completions, &LineIndex::new(source));
+    let response = completion_response(&completions, source).expect("valid completion edits");
 
     let lsp_types::CompletionResponse::List(list) = response else {
         panic!("completion response should be a list");

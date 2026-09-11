@@ -10,11 +10,14 @@ use vela_analysis::{
 use vela_hir::module_graph::ModuleGraph;
 use vela_package::{ModuleKey, ModulePath};
 
-use crate::{TextRange, symbol_ref::schema_symbol};
+use crate::{
+    TextRange,
+    symbol_ref::{schema_symbol, source_symbol},
+};
 
 use super::{
-    CompletionInsertFormat, CompletionItem, CompletionKind, display_type_detail_parts,
-    label_segment_matches, type_display::type_completion_item,
+    CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol,
+    display_type_detail_parts, label_segment_matches, type_display::type_completion_item,
 };
 
 pub(super) fn type_hint_completion_items(
@@ -57,6 +60,7 @@ pub(super) fn type_hint_completion_items(
             .map(|item| {
                 let qualified_name = item.label.clone();
                 type_completion_item(item, &qualified_name, prefix)
+                    .with_symbol(source_symbol(qualified_name))
             }),
     );
     items.extend(
@@ -89,7 +93,13 @@ fn qualified_type_hint_completion_items(
     prefix: &str,
     module_base: &str,
 ) -> Vec<CompletionItem> {
-    let mut items = type_completions(schema);
+    let mut items = type_completions(schema)
+        .into_iter()
+        .map(|item| {
+            let symbol = schema_symbol(&item.label);
+            (item, symbol)
+        })
+        .collect::<Vec<_>>();
     let module_path = ModulePath::from_qualified(module_base);
     let module_key = graph
         .resolve_module_path(current_module, module_path.segments())
@@ -100,7 +110,11 @@ fn qualified_type_hint_completion_items(
                 .declarations_in_module(module)
                 .into_iter()
                 .filter_map(|declaration| declaration_completion(graph, facts, declaration))
-                .filter(is_type_position_analysis_item),
+                .filter(is_type_position_analysis_item)
+                .map(|item| {
+                    let symbol = source_symbol(&item.label);
+                    (item, symbol)
+                }),
         );
     }
     items.extend(
@@ -111,12 +125,18 @@ fn qualified_type_hint_completion_items(
                 label: format!("{module_base}::{segment}"),
                 kind: AnalysisCompletionKind::Module,
                 fact: TypeFact::module(format!("{module_base}::{segment}")),
+            })
+            .map(|item| {
+                let symbol = source_symbol(&item.label);
+                (item, symbol)
             }),
     );
     super::dedupe_and_filter_service_items(
         items
             .into_iter()
-            .filter_map(|item| service_item_for_qualified_type_path(item, module_base, prefix))
+            .filter_map(|(item, symbol)| {
+                service_item_for_qualified_type_path(item, symbol, module_base, prefix)
+            })
             .collect(),
         replace_range,
         prefix,
@@ -126,6 +146,7 @@ fn qualified_type_hint_completion_items(
 
 fn service_item_for_qualified_type_path(
     item: AnalysisCompletionItem,
+    symbol: CompletionSymbol,
     module_base: &str,
     prefix: &str,
 ) -> Option<CompletionItem> {
@@ -144,7 +165,7 @@ fn service_item_for_qualified_type_path(
         .map_or(suffix, |(segment, _)| segment)
         .to_owned();
     let qualified_name = format!("{module_base}::{suffix}");
-    let mut completion = type_completion_item(item, &qualified_name, prefix);
+    let mut completion = type_completion_item(item, &qualified_name, prefix).with_symbol(symbol);
     completion.label = label;
     completion.insert_text = Some(completion.label.clone());
     Some(completion)
