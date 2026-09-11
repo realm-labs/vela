@@ -52,6 +52,11 @@ async function main() {
   fs.mkdirSync(resultsDir, { recursive: true });
   const root = fs.mkdtempSync(path.join(resultsDir, "input-"));
   console.log(`Input artifacts: ${root}`);
+  const nativeHelper = path.join(root, "native-menu");
+  const nativeBuild = spawnSync("swiftc", [path.join(__dirname, "native-menu.swift"), "-o", nativeHelper],
+    { stdio: "inherit", timeout: 120000 });
+  if (nativeBuild.error) throw nativeBuild.error;
+  if (nativeBuild.status !== 0) throw Error("native menu helper compilation failed");
   const trace = [];
   const record = (kind, id, details) => {
     trace.push({
@@ -358,6 +363,21 @@ async function main() {
     proofs.push(proof);
     await require("./navigation").runNavigation({
       page, bridge, record, root, workspace, contracts, until, onProof: (proof) => proofs.push(proof),
+    });
+    // A child may collect selected new proofs while preserving the shared
+    // driver/dirty-navigation prerequisites. Strict gates still require every
+    // owned route; absent proofs are never treated as passed or N/A.
+    const requestedProofs = [];
+    for (let index = 2; index < process.argv.length; index += 2) {
+      if (process.argv[index] !== "--proof" || !process.argv[index + 1]) throw Error("use --proof <ux03-proof-id>");
+      const id = process.argv[index + 1];
+      if (!id.startsWith("ux03-") || !contracts.some((item) => item.id === id) || requestedProofs.includes(id))
+        throw Error(`unknown or duplicate proof: ${id}`);
+      requestedProofs.push(id);
+    }
+    record("observation", "requested-proofs", { ids: requestedProofs.length ? requestedProofs : contracts.map((item) => item.id) });
+    await require("./peek").runPeek({
+      page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter((item) => requestedProofs.includes(item.id)) : contracts, until, pid: child.pid, onProof: (proof) => proofs.push(proof),
     });
     await bridge("finish");
     const completed = await until("workbench exit", () => exit, 15000);

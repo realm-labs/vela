@@ -32,7 +32,7 @@ async function runNavigation({ page, bridge, record, root, workspace, contracts,
     });
     return input;
   };
-  for (const contract of contracts.filter((item) => item.fixture === model.spec.id)) {
+  for (const contract of contracts.filter((item) => item.id.startsWith("ux02-"))) {
     const started = Date.now(), checks = [], actions = [];
     const receipt = (kind, id, details) => record(kind, id, { proof: contract.id, ...details });
     const check = (id, observed) => {

@@ -65,6 +65,7 @@ function localContracts(requirements, fixture) {
       ],
     },
     ...require("./navigation-contracts").navigationContracts(requirements),
+    ...require("./peek-contracts").peekContracts(requirements),
   ];
 }
 module.exports = { localContracts };

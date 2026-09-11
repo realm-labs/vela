@@ -597,15 +597,18 @@ later acceptance obligations, with contract/route drift self-tests. Scoped stric
 acceptance and the machine-readable checkpoint enforce fresh proof for accepted
 batches, explicit reopening and exact remaining scope. B01 shared Unicode,
 LF/CRLF, marker/edit and disk/overlay fixtures now feed both Rust layers and the
-installed VSIX (seven scenarios). The local Input/Render driver now proves keyboard, pointer, visible candidate and
+installed VSIX (nine scenarios). The local Input/Render driver now proves keyboard, pointer, visible candidate and
 exact final document/caret behavior. Evidence validation binds current source,
 profile, fixture, driver and installed VSIX/server bytes. B00 and B01 passed their combined
 strict acceptance. B02 has executable proof for all 120 currently registered
 service/protocol obligations. The installed local driver now covers all eight
 UX02 command/input obligations, including F12/back, declaration/type palettes,
 dirty Unicode source and unknown targets. Passive client logs bind these actions
-to exact request positions and response URI/ranges. Installed provider evidence
-and UX03 modifier-click/Peek workflows still require acceptance; no
+to exact request positions and response URI/ranges. Installed declaration and
+type-definition provider checks now cover exact dirty Unicode LF/CRLF ranges and
+unknown nulls. UX03 modifier-click reaches the rendered target; native Peek
+follow/dismiss/unknown workflows remain unverified while the desktop is locked
+(see [blocked.md](blocked.md)). No
 semantic feature batch is accepted yet. B14 still owns the later semantic
 partition completeness review.
 

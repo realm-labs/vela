@@ -2575,6 +2575,26 @@
           "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
         }
       ]
+    },
+    {
+      "requirement": "declaration/editor/smoke",
+      "assertion": "The installed VSIX declaration provider selects the independent exact target URI, UTF-16 start/end and identifier text through unsaved caller/target edits in LF and CRLF. Unknown names return no locations and querying never edits either document.",
+      "tests": [
+        {
+          "layer": "editor",
+          "name": "declaration provider preserves exact dirty Unicode LF CRLF targets and unknown nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/editor/smoke",
+      "assertion": "The installed VSIX provider selects the independent exact target URI, UTF-16 start/end and identifier text through unsaved caller/target edits in LF and CRLF. Unknown names return no locations; querying never edits either document. Type navigation covers both callable return and local declared type ownership.",
+      "tests": [
+        {
+          "layer": "editor",
+          "name": "type definition provider preserves exact dirty Unicode LF CRLF targets and unknown nulls"
+        }
+      ]
     }
   ],
   "featureFiles": [

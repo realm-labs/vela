@@ -11,6 +11,7 @@
     "dirtyPrefix": "// unsaved 中😀\n",
     "caller": "scripts/nav.vela",
     "definitionFile": "scripts/navigation/definitions.vela",
-    "typeFile": "scripts/navigation/types.vela"
+    "typeFile": "scripts/navigation/types.vela",
+    "renderedCallLine": "    let text: String = \"中😀\"; make();"
   }
 }

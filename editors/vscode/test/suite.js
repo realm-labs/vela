@@ -145,6 +145,10 @@ async function run() {
     });
     await check("shared fixtures preserve Unicode LF/CRLF dirty and restored target ranges", () =>
       runSharedFixture(vscode, workspace));
+    await check("declaration provider preserves exact dirty Unicode LF CRLF targets and unknown nulls", () =>
+      require("./navigation-providers").runNavigationProvider(vscode, workspace, "declaration"));
+    await check("type definition provider preserves exact dirty Unicode LF CRLF targets and unknown nulls", () =>
+      require("./navigation-providers").runNavigationProvider(vscode, workspace, "type"));
     await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
   } finally {
     const extension = vscode.extensions.getExtension("vela-lang.vela-vscode");

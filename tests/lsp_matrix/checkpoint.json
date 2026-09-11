@@ -360,7 +360,7 @@
     },
     {
       "id": "B02.13",
-      "revision": null,
+      "revision": "cf119d4d5",
       "requirements": [
         "vscode/UX02/definition-back/input/local",
         "vscode/UX02/declaration-palette/input/local",
@@ -372,10 +372,21 @@
         "vscode/UX02/unknown-target/command/local"
       ],
       "summary": "Implement all eight UX02 Input/Command obligations on the pinned local installed VSIX. Physical F12/back and declaration/type-definition command-palette routes use dirty Unicode source, an initially unopened target, exact editor text/caret and focus, and visible no-target messages. Independent command routes run separately. Passive verbose-client log pairs bind each actual action to request method/position and exact response URI/range/text or null; no navigation provider is invoked by readiness polling. Preserve screenshots plus client, server and extension-host logs. Add complete route/level checks and passive-log incomplete/mismatched pair tests; command receipts cannot masquerade as keyboard input. Node 64, existing installed suite 7 and local driver 9 proofs passed. Keep B02 open for remaining provider and UX03 modifier-click/Peek proof; find this commit by LSP-Batch trailer. Final run-YwnNiQ verifies 129/139 B02 obligations: 120 service/protocol, existing definition editor smoke, and eight UX02 routes. Ten obligations remain (declaration/type-definition provider smoke and eight UX03 routes). Service 574 passed with two existing ignored, protocol 567 passed, checkpoint 14 passed; formatting and JavaScript syntax checks passed. Initial failures were a transient absent active editor and duplicate editor/ARIA empty-message selectors, both fixed without retries of actions under acceptance."
+    },
+    {
+      "id": "B02.14",
+      "revision": null,
+      "requirements": [
+        "declaration/editor/smoke",
+        "type-definition/editor/smoke",
+        "vscode/UX03/modifier-click/input/local",
+        "vscode/UX03/modifier-click/render/local"
+      ],
+      "summary": "Installed declaration/type-definition providers assert exact URI, UTF-16 ranges, selected text and unknown nulls through dirty LF/CRLF edits. The modifier-click route uses rendered geometry including the visible String inlay, actual modifier/hover/click events, complete split link text, exact native client responses and rendered destination. Node 66, installed provider suite 9 and scoped local driver 10 proofs passed. Workspace tests passed 4370 with two historical ignored; workspace Clippy, Rust formatting and JavaScript checks passed. Native Peek follow/dismiss/unknown contracts and driver are prepared but remain unverified: CGSession reports screenLocked=1 and loginwindow retains foreground, so the driver refuses native menu input. User was asked to unlock; this is the first turn encountering that external blocker. Preserve all failed exploration artifacts; native menu/preview selectors and following/dismissal still need end-to-end validation after unlock. Scoped proof collection cannot close the missing six native obligations. Find this commit by LSP-Batch trailer. Final run-YWFP6P verifies 133/139 B02 obligations with the six native Peek requirements still unreviewed; no failed test commands. Screen lock was rechecked after validation and remained active. All 14 checkpoint tests passed."
     }
   ],
-  "activeChild": "B02.14",
-  "nextTask": "B02.14",
+  "activeChild": "B02.15",
+  "nextTask": "B02.15",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -1959,7 +1970,40 @@
     "editors/vscode/test-results/run-zpR3DZ/results.json",
     "editors/vscode/test-results/input-fdZksi/results.json",
     "target/lsp-matrix/run-YwnNiQ/report.json",
-    "target/lsp-matrix/b02-editor-navigation-checkpoint.log"
+    "target/lsp-matrix/b02-editor-navigation-checkpoint.log",
+    "target/lsp-matrix/b02-peek-baseline.log",
+    "target/lsp-matrix/b02-provider-installed.log",
+    "target/lsp-matrix/b02-provider-installed-final.log",
+    "target/lsp-matrix/b02-peek-first.log",
+    "target/lsp-matrix/b02-peek-rendered-lines.log",
+    "target/lsp-matrix/b02-peek-inlay-geometry.log",
+    "target/lsp-matrix/b02-peek-hover.log",
+    "target/lsp-matrix/b02-peek-pointer-hit.log",
+    "target/lsp-matrix/b02-peek-overlay.log",
+    "target/lsp-matrix/b02-peek-link-fragments.log",
+    "target/lsp-matrix/b02-peek-native-menu.log",
+    "target/lsp-matrix/b02-peek-native-focus.log",
+    "target/lsp-matrix/b02-peek-infrastructure.log",
+    "target/lsp-matrix/b02-peek-modifier-final.log",
+    "target/lsp-matrix/b02-peek-partial-audit.log",
+    "target/lsp-matrix/b02-navigation-workspace.log",
+    "target/lsp-matrix/b02-navigation-workspace-clippy.log",
+    "target/lsp-matrix/run-GoJD1p/report.json",
+    "target/lsp-matrix/run-jwYwME/report.json",
+    "editors/vscode/test-results/run-un1KWx/results.json",
+    "editors/vscode/test-results/run-2DFfck/results.json",
+    "editors/vscode/test-results/input-pLwr7T/results.json",
+    "editors/vscode/test-results/input-ODUwef/results.json",
+    "editors/vscode/test-results/input-ZpvOOS/results.json",
+    "editors/vscode/test-results/input-RDojzS/results.json",
+    "editors/vscode/test-results/input-gKjD9L/results.json",
+    "editors/vscode/test-results/input-A80hVE/results.json",
+    "editors/vscode/test-results/input-3hX524/results.json",
+    "editors/vscode/test-results/input-ZHRFNF/results.json",
+    "editors/vscode/test-results/input-bXROhF/results.json",
+    "target/lsp-matrix/run-YWFP6P/report.json",
+    "target/lsp-matrix/b02-native-preflight.log",
+    "target/lsp-matrix/b02-peek-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -1970,6 +2014,11 @@
       "id": "audit-failure-with-overwritten-detail",
       "owner": "B08",
       "summary": "The old runner lost one audit failure detail. A retained recurrence failed schema member completion; atomic fixture creation then proved identical-timestamp directory collisions. B00.4 fixes the collision, with a deterministic regression and 100 passing module runs. Preserve the unknown first failure and monitor during subsequent batches; close after lifecycle validation in B08. B01 reproduced the same risk in semantic-token schema fixtures and migrated all remaining unsequenced protocol fixture helpers to an atomic, counter-based allocator. A frozen-clock concurrent regression and 100 full protocol runs passed."
+    },
+    {
+      "id": "navigation-unicode-render-styles",
+      "owner": "B06",
+      "summary": "The retained input-navigation fixture renders make after Chinese/non-BMP text in split mtk13/mtk3/mtk17 spans. Navigation and source geometry are verified, but syntax/semantic style ownership was not assessed in B02. Review this rendered observation during B06 token-position/style coverage; preserve input-ODUwef/rendered-lines.json and the final modifier screenshot rather than treating navigation proof as styling proof."
     }
   ]
 }

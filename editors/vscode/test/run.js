@@ -21,6 +21,12 @@ async function main() {
   const { parseMarkers } = require("../../../scripts/lsp-matrix/fixtures");
   const shared = require("../../../tests/lsp_matrix/fixtures/shared-unicode-lifecycle.json");
   fs.writeFileSync(path.join(workspace, "scripts/helper.vela"), parseMarkers(shared.files["scripts/helper.vela"]).text);
+  const navigation = require("../../../tests/lsp_matrix/fixtures/input-navigation.json");
+  for (const [file, source] of Object.entries(navigation.files)) {
+    const destination = path.join(workspace, file);
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.writeFileSync(destination, parseMarkers(source).text);
+  }
   fs.mkdirSync(path.join(workspace, ".vscode"));
   fs.writeFileSync(path.join(workspace, ".vscode", "settings.json"), JSON.stringify({
     "vela.trace.server": "verbose",

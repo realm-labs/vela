@@ -2,10 +2,11 @@
 
 Status: feature interaction acceptance remains pending. B01 now supplies an
 installed-workbench input/render driver and strict local evidence validation. The current suite
-has seven installed-VSIX scenarios and invokes providers or editor commands. Its
+has nine installed-VSIX scenarios and invokes providers or editor commands. Its
 legacy F12 scenario invokes a command. The separate local driver now sends
 actual F12/back and palette input for UX02, with exact editor state and passive
-request/response checks; UX03 and the remaining local families are still pending. The current catalog has 27 feature-level `editor/smoke` cells.
+request/response checks. UX03 modifier-click also has input/render proof; its
+native Peek routes and the remaining local families are still pending. The current catalog has 27 feature-level `editor/smoke` cells.
 Neither those cells nor the 1327 initial requirements certify this matrix.
 
 This document extends [the strategy](lsp-test-strategy.md) and is executed through
@@ -129,7 +130,11 @@ and provenance below so B02 can submit Input/Render proof to the scoped gate.
 The pinned local command is `npm --prefix editors/vscode run test:input`. Its
 shared-fixture demonstration uses Playwright/CDP keyboard and pointer events,
 visible accessibility selectors and exact extension-host document observations.
-Feature route coverage remains the owning batches’ work.
+Feature route coverage remains the owning batches’ work. A child may use
+`npm --prefix editors/vscode run test:input -- --proof ux03-modifier-click`
+to collect that route with the driver/UX02 prerequisites. The default runs every
+implemented route, and strict acceptance still requires all owned obligations;
+a scoped run never certifies omitted native Peek routes.
 
 Use stable accessibility/automation selectors, explicit focus checks and bounded
 waits for state transitions instead of fixed sleeps or unbounded polling.
