@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const model = require("./model");
+const { validateManifest } = require("./execution");
 const { capabilities } = require("./stdio");
 const { provenance } = require("./provenance");
 
@@ -72,6 +73,13 @@ async function main() {
     protocol: read("docs/lsp-protocol-test-matrix.md"), grammar: read("docs/grammar.ebnf"),
     syntax: Object.fromEntries(Object.keys(catalog.syntaxSources).map((file) => [file, read(file)]))
   });
+  const manifest = JSON.parse(read("tests/lsp_matrix/execution-manifest.json"));
+  const interactions = JSON.parse(read("tests/lsp_matrix/interactions.json"));
+  if (interactions.version !== 1) throw new Error("unsupported interaction inventory version");
+  const executionRequirements = validateManifest(manifest,
+    JSON.parse(read("tests/lsp_matrix/execution-baseline.json")), catalog, requirements,
+    interactions.scenarios, { plan: read("docs/lsp-test-execution-plan.md"),
+      interactions: read("docs/lsp-vscode-interaction-matrix.md") });
   const available = {};
   const results = {};
   let failed = false;
@@ -125,12 +133,17 @@ async function main() {
     grammarGroups: catalog.grammarGroups, syntaxDimensions: catalog.syntaxDimensions,
     counts: Object.fromEntries(["verified", "mapped", "unreviewed", "failed", "not_applicable"].map((status) =>
       [status, assessed.filter((item) => item.status === status).length])),
-    actualCapabilities, features, requirements: assessed };
+    actualCapabilities, features, requirements: assessed,
+    execution: { version: manifest.version, scope: manifest.scope,
+      deferredBatches: manifest.batches.filter((batch) => batch.scope === "deferred").map((batch) => batch.id),
+      requirements: executionRequirements.map((requirement) => ({ ...requirement,
+        status: assessed.find((item) => item.id === requirement.id)?.status ?? "unreviewed" })) } };
   fs.writeFileSync(path.join(output, "report.json"), JSON.stringify(report, null, 2) + "\n");
   fs.writeFileSync(path.join(output, "report.md"), markdown(report));
   console.log(`${features.length} protocol rows; ${assessed.length} obligations: ${JSON.stringify(report.counts)}`);
   console.log(`Report: ${path.join(output, "report.md")}`);
-  if (failed || report.counts.failed || (args.includes("--strict") && assessed.some((item) => !["verified", "not_applicable"].includes(item.status)))) {
+  console.log(`Local execution inventory: ${executionRequirements.length} obligations; batch acceptance is not implemented yet.`);
+  if (failed || report.counts.failed || (args.includes("--strict") && report.execution.requirements.some((item) => !["verified", "not_applicable"].includes(item.status)))) {
     console.error("Matrix acceptance is incomplete or tests failed; see report and logs.");
     process.exitCode = 1;
   }

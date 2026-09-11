@@ -592,8 +592,10 @@ The active execution plan prioritizes complete coverage on one recorded local
 profile, including actual input/render proof and generated/scale checks. B16's
 additional environments are deferred follow-up work and do not block B19 local
 acceptance. B00 is in progress; no parent batch is accepted yet. The local
-package-path baseline is restored, while the batch manifest, scoped strict gate
-and machine-readable checkpoint remain the next infrastructure work.
+package-path baseline is restored. The versioned ownership inventory registers
+1327 semantic obligations, 136 local interaction obligations and 14 infrastructure/
+later acceptance obligations, with contract/route drift self-tests. Scoped strict
+acceptance and the machine-readable checkpoint remain the next infrastructure work.
 
 ### Deferred Tracks
 

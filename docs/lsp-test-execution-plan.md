@@ -174,7 +174,7 @@ VSIX tests when the batch owns editor obligations or changes fixtures, packaging
 provenance, or editor behavior. B19 also requires all workspace validation commands.
 
 ```bash
-node --test scripts/lsp-matrix/model.test.js
+node --test "scripts/lsp-matrix/*.test.js"
 node scripts/lsp-matrix/run.js --run
 npm --prefix editors/vscode test
 cargo fmt --all -- --check

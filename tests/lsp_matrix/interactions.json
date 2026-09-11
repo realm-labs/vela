@@ -1,0 +1,936 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "UX01",
+      "owner": "B08",
+      "scope": "local",
+      "contractHash": "afdb26a4df6217a755f7d32b08eea4e2a455cf6d3ea1c324c2de23875b1f4f25",
+      "routes": [
+        {
+          "id": "install-open",
+          "polarity": "positive",
+          "action": "Install the candidate VSIX in an isolated profile and open main.vela from the workbench.",
+          "assertion": "Vela language mode, candidate extension and bundled server activate before the deadline; the first query returns the expected result.",
+          "fixture": "ux01",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        },
+        {
+          "id": "unrelated-file",
+          "polarity": "negative",
+          "action": "Open a plain text file from the workbench.",
+          "assertion": "The file is not associated with Vela.",
+          "fixture": "ux01",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX02",
+      "owner": "B02",
+      "scope": "local",
+      "contractHash": "cbd5ec90784f9bec058e37499cee1bed1c31ec89df2cb73083be6de9bb211494",
+      "routes": [
+        {
+          "id": "definition-back",
+          "polarity": "positive",
+          "action": "Press the default definition keybinding in dirty Unicode source, then navigate back.",
+          "assertion": "An unopened target opens at the exact URI/identifier/UTF-16 range; back restores the original file and caret.",
+          "fixture": "ux02",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        },
+        {
+          "id": "declaration-palette",
+          "polarity": "positive",
+          "action": "Select Go to Declaration from the command palette.",
+          "assertion": "The expected declaration file and identifier range are selected.",
+          "fixture": "ux02",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        },
+        {
+          "id": "type-definition-palette",
+          "polarity": "positive",
+          "action": "Select Go to Type Definition from the command palette.",
+          "assertion": "The type declaration is selected, distinct from the value declaration.",
+          "fixture": "ux02",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        },
+        {
+          "id": "unknown-target",
+          "polarity": "negative",
+          "action": "Invoke each navigation route on an unresolved identifier.",
+          "assertion": "No route jumps to an unrelated symbol or enclosing function.",
+          "fixture": "ux02",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX03",
+      "owner": "B02",
+      "scope": "local",
+      "contractHash": "a07b95698e346721f4901a074485271ac0b507e332d4acaa42400ea3ee2cb64c",
+      "routes": [
+        {
+          "id": "modifier-click",
+          "polarity": "positive",
+          "action": "Modifier-click a resolvable reference.",
+          "assertion": "The exact target file and identifier are selected.",
+          "fixture": "ux03",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "peek-follow",
+          "polarity": "positive",
+          "action": "Open Peek Definition through the context menu and follow the target.",
+          "assertion": "The widget shows the expected target content and selection, and following it opens the exact file/range.",
+          "fixture": "ux03",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "peek-dismiss",
+          "polarity": "recovery",
+          "action": "Open Peek Definition and dismiss it.",
+          "assertion": "Focus returns to the source editor and source text is unchanged.",
+          "fixture": "ux03",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "unknown-target",
+          "polarity": "negative",
+          "action": "Use modifier-click and Peek Definition on an unknown target.",
+          "assertion": "No unrelated target or invented peek content appears; source remains unchanged.",
+          "fixture": "ux03",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX04",
+      "owner": "B03",
+      "scope": "local",
+      "contractHash": "c44660547e0dfca96c45a03d09ff1ea5f148a5cc5dcf16ece9dde3ba435c807d",
+      "routes": [
+        {
+          "id": "accept-enter",
+          "polarity": "positive",
+          "action": "Type a completion trigger at a mid-token Unicode prefix, move the suggestion selection, inspect resolved details and accept with Enter.",
+          "assertion": "The expected candidate and documentation appear; exact replacement text and caret match the fixture; undo restores source.",
+          "fixture": "ux04",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "accept-tab",
+          "polarity": "positive",
+          "action": "Type a completion trigger at a mid-token Unicode prefix, inspect the selected suggestion and accept with Tab.",
+          "assertion": "The expected candidate and documentation appear; exact replacement text and caret match the fixture; undo restores source.",
+          "fixture": "ux04",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "dismiss-escape",
+          "polarity": "negative",
+          "action": "Trigger suggestions and press Escape.",
+          "assertion": "The suggestion widget closes, focus returns and no completion edit is applied.",
+          "fixture": "ux04",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX05",
+      "owner": "B04",
+      "scope": "local",
+      "contractHash": "9de51300efc734eab5790f94a979ba45ec93a23b9b3e63d3bd30706813af9ed7",
+      "routes": [
+        {
+          "id": "rename-confirm",
+          "polarity": "positive",
+          "action": "Press the default rename shortcut, enter a valid name and confirm.",
+          "assertion": "Exact references change across open/unopened files while shadows stay unchanged; workspace undo/redo restores/reapplies the exact edit.",
+          "fixture": "ux05",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "rename-cancel",
+          "polarity": "negative",
+          "action": "Open Rename, enter a name and cancel.",
+          "assertion": "The widget closes with no edits to any file.",
+          "fixture": "ux05",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "invalid-name",
+          "polarity": "negative",
+          "action": "Submit an invalid identifier through Rename.",
+          "assertion": "The error is visible and no partial workspace edit is applied.",
+          "fixture": "ux05",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "colliding-name",
+          "polarity": "negative",
+          "action": "Submit a colliding name through Rename.",
+          "assertion": "The collision is visibly rejected and every document is unchanged.",
+          "fixture": "ux05",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX06",
+      "owner": "B04",
+      "scope": "local",
+      "contractHash": "1214ba4b7e3f23af50b45df404636cd5dc4a85da2696c7a7320b1b7ed91f83af",
+      "routes": [
+        {
+          "id": "references-select",
+          "polarity": "positive",
+          "action": "Open references and select each result.",
+          "assertion": "The panel contains the exact complete reference set and each entry navigates to the expected file/range.",
+          "fixture": "ux06",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "highlights-caret",
+          "polarity": "positive",
+          "action": "Move the caret between read and write occurrences.",
+          "assertion": "Visible highlights cover the expected ranges with configured read/write styles.",
+          "fixture": "ux06",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "shadow-exclusion",
+          "polarity": "negative",
+          "action": "Inspect references and highlights for a shadowed identifier.",
+          "assertion": "Unrelated scopes and their occurrences are excluded.",
+          "fixture": "ux06",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX07",
+      "owner": "B05",
+      "scope": "local",
+      "contractHash": "869b942eeafc97e85b3e75102319fbfc3d0dd154f19ca21edda558edb7985cfc",
+      "routes": [
+        {
+          "id": "problems-navigate",
+          "polarity": "positive",
+          "action": "Type a syntax error, open Problems and select its entry.",
+          "assertion": "The exact code, severity, message and location are visible; selection and decoration cover the expected source span.",
+          "fixture": "ux07",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "repair-unsaved",
+          "polarity": "recovery",
+          "action": "Repair the source without saving.",
+          "assertion": "The target problem and decoration disappear while unrelated errors remain.",
+          "fixture": "ux07",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "valid-location",
+          "polarity": "negative",
+          "action": "Inspect a valid neighboring location.",
+          "assertion": "No target-error decoration or incorrect Problems entry is attached to the valid source.",
+          "fixture": "ux07",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX08",
+      "owner": "B05",
+      "scope": "local",
+      "contractHash": "5f18426e32befa3f0b3ad72a6a15d6b1cfd958bd072b80c9f89600af70b8c75f",
+      "routes": [
+        {
+          "id": "shortcut-fix",
+          "polarity": "positive",
+          "action": "Open Quick Fix with the default shortcut, select the expected action and undo.",
+          "assertion": "Exact source change removes the target diagnostic and preserves unrelated text; undo restores source.",
+          "fixture": "ux08",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "lightbulb-fix",
+          "polarity": "positive",
+          "action": "Open the lightbulb menu, select the expected action and undo.",
+          "assertion": "The visible action and exact edit match the fixture; the target diagnostic clears and undo restores source.",
+          "fixture": "ux08",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "dismiss",
+          "polarity": "negative",
+          "action": "Open Quick Fix and dismiss the menu.",
+          "assertion": "No source edit is applied.",
+          "fixture": "ux08",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "no-fix",
+          "polarity": "negative",
+          "action": "Invoke Quick Fix where no repair is available.",
+          "assertion": "No unrelated or unsafe repair appears and the source is unchanged.",
+          "fixture": "ux08",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX09",
+      "owner": "B06",
+      "scope": "local",
+      "contractHash": "f0995369fb011a996aee81cbb6f347c2be3b43e144f8bccb98987ce677f29700",
+      "routes": [
+        {
+          "id": "edit-scroll",
+          "polarity": "positive",
+          "action": "Edit multiline Unicode token source and scroll out of view and back.",
+          "assertion": "Expected spans have the configured semantic styles with no stale coloring.",
+          "fixture": "ux09",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "toggle-off-on",
+          "polarity": "recovery",
+          "action": "Disable semantic highlighting, then enable it again.",
+          "assertion": "Semantic styles disappear and return on the expected spans without changing source.",
+          "fixture": "ux09",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "unresolved-token",
+          "polarity": "negative",
+          "action": "Edit a resolved reference into an unknown reference.",
+          "assertion": "The previous resolved semantic style is removed and no unrelated symbol style is guessed.",
+          "fixture": "ux09",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX10",
+      "owner": "B07",
+      "scope": "local",
+      "contractHash": "78b1b223f336b14135ac9a85e978e30dc95b75772913d2287f14b7b371c403f9",
+      "routes": [
+        {
+          "id": "pointer-hover",
+          "polarity": "positive",
+          "action": "Hover the pointer over the documented target.",
+          "assertion": "Visible documentation/type matches the fixture and correct source range.",
+          "fixture": "ux10",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "keyboard-hover",
+          "polarity": "positive",
+          "action": "Focus the target and invoke hover with the keyboard.",
+          "assertion": "Visible documentation/type matches the pointer route.",
+          "fixture": "ux10",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "signature-arguments",
+          "polarity": "positive",
+          "action": "Type calls and move between named/defaulted arguments.",
+          "assertion": "The visible callable and active parameter match each expected argument position.",
+          "fixture": "ux10",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "dismiss-hover",
+          "polarity": "recovery",
+          "action": "Leave the hover target and separately dismiss the keyboard hover.",
+          "assertion": "The widget clears and editor focus remains usable.",
+          "fixture": "ux10",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "unknown-receiver",
+          "polarity": "negative",
+          "action": "Invoke hover/signature help on an unknown receiver.",
+          "assertion": "No callable/type facts are invented.",
+          "fixture": "ux10",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX11",
+      "owner": "B10",
+      "scope": "local",
+      "contractHash": "12cabc09ddd0501015a9dc90c435f1ad9b2a0d4d79ac81c17e83282877d0d417",
+      "routes": [
+        {
+          "id": "outline",
+          "polarity": "positive",
+          "action": "Select symbols through Outline.",
+          "assertion": "Visible names, kinds and parent structure match the fixture and each selection reaches the exact range.",
+          "fixture": "ux11",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "document-picker",
+          "polarity": "positive",
+          "action": "Open the document symbol picker and select a symbol.",
+          "assertion": "The correct name/kind appears and selection reaches the exact range.",
+          "fixture": "ux11",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "workspace-picker",
+          "polarity": "positive",
+          "action": "Open workspace symbols and select an unopened-file target.",
+          "assertion": "The correct symbol appears and its exact file/range opens.",
+          "fixture": "ux11",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "no-match",
+          "polarity": "negative",
+          "action": "Use a no-match query in each symbol picker.",
+          "assertion": "No unrelated result is shown.",
+          "fixture": "ux11",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX12",
+      "owner": "B10",
+      "scope": "local",
+      "contractHash": "9bb9e91feaf677c1348ce4155ed22ba7737eba31b3a2aa0685c3f1d53a625a02",
+      "routes": [
+        {
+          "id": "gutter-fold",
+          "polarity": "positive",
+          "action": "Fold and unfold with gutter controls in Unicode source with a malformed neighbor.",
+          "assertion": "Exactly the expected lines hide/reappear and text is unchanged.",
+          "fixture": "ux12",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "keyboard-fold",
+          "polarity": "positive",
+          "action": "Fold and unfold with keyboard commands.",
+          "assertion": "Exactly the expected lines hide/reappear and text is unchanged.",
+          "fixture": "ux12",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "selection-expand-shrink",
+          "polarity": "positive",
+          "action": "Expand and shrink selection by keyboard.",
+          "assertion": "Selections follow the exact fixture nesting and Unicode boundaries.",
+          "fixture": "ux12",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "malformed-neighbor",
+          "polarity": "negative",
+          "action": "Fold and expand selection beside malformed syntax.",
+          "assertion": "No unrelated range or invalid Unicode boundary is selected or hidden.",
+          "fixture": "ux12",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX13",
+      "owner": "B11",
+      "scope": "local",
+      "contractHash": "0cc1f9ed8911640d4d8615b9f768cbd9e8fd61dd9dd5305f3119372129a81487",
+      "routes": [
+        {
+          "id": "incoming",
+          "polarity": "positive",
+          "action": "Open Call Hierarchy, expand an incoming edge and follow it.",
+          "assertion": "Visible incoming edges and destinations match exact owners and call-site ranges.",
+          "fixture": "ux13",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "outgoing",
+          "polarity": "positive",
+          "action": "Switch Call Hierarchy to outgoing, expand an edge and follow it.",
+          "assertion": "Visible outgoing edges and destinations match exact owners and call-site ranges.",
+          "fixture": "ux13",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "unknown-target",
+          "polarity": "negative",
+          "action": "Open Call Hierarchy for an unresolved call.",
+          "assertion": "No invented edge appears.",
+          "fixture": "ux13",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX14",
+      "owner": "B12",
+      "scope": "local",
+      "contractHash": "8f1d1b6ff12841c4bb4b9468f6b810f5bb0b461a9af9875627199aaaddb221d6",
+      "routes": [
+        {
+          "id": "document-format",
+          "polarity": "positive",
+          "action": "Format the document through the workbench, repeat formatting and undo.",
+          "assertion": "Exact text/caret matches the fixture, formatting is idempotent and undo restores source.",
+          "fixture": "ux14",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        },
+        {
+          "id": "selection-format",
+          "polarity": "positive",
+          "action": "Format a selected range through the workbench and undo.",
+          "assertion": "The exact text/caret changes only within the selection, and undo restores source.",
+          "fixture": "ux14",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        },
+        {
+          "id": "on-type",
+          "polarity": "positive",
+          "action": "Type a supported formatting trigger.",
+          "assertion": "The exact text and caret match the fixture; undo restores the prior source.",
+          "fixture": "ux14",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        },
+        {
+          "id": "trigger-disabled",
+          "polarity": "negative",
+          "action": "Disable on-type formatting and type its trigger.",
+          "assertion": "Only the typed input changes; no formatting edit is applied.",
+          "fixture": "ux14",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX15",
+      "owner": "B13",
+      "scope": "local",
+      "contractHash": "20fd05dae0ed0da2246ddfffcc82e66858ead3ad1fe3505f0b8f42000d1e7569",
+      "routes": [
+        {
+          "id": "edit-scroll",
+          "polarity": "positive",
+          "action": "Enable hints, edit a call and scroll it into view.",
+          "assertion": "Exact labels and positions refresh to match the edited parameter identities.",
+          "fixture": "ux15",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "disable",
+          "polarity": "recovery",
+          "action": "Disable inlay hints.",
+          "assertion": "All hints disappear without source changes.",
+          "fixture": "ux15",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "explicit-unknown",
+          "polarity": "negative",
+          "action": "Inspect calls with explicit or unknown facts.",
+          "assertion": "Hints obey the documented suppression policy and do not invent parameter facts.",
+          "fixture": "ux15",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX16",
+      "owner": "B15",
+      "scope": "local",
+      "contractHash": "4de5befeaa3e153bed09069e328e30965a508d0c82253c171e36dffc256b0aab",
+      "routes": [
+        {
+          "id": "dirty-switch",
+          "polarity": "positive",
+          "action": "Edit without saving and switch between importer and definition files.",
+          "assertion": "Navigation, completion and diagnostics match current buffers and fresh-workspace expectations.",
+          "fixture": "ux16",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        },
+        {
+          "id": "save-close-reopen",
+          "polarity": "positive",
+          "action": "Save, close and reopen the edited document.",
+          "assertion": "Queries match restored disk and the corresponding fresh workspace.",
+          "fixture": "ux16",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        },
+        {
+          "id": "undo-redo",
+          "polarity": "recovery",
+          "action": "Undo and redo edits through the workbench.",
+          "assertion": "Exact source and query results return to their expected states.",
+          "fixture": "ux16",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        },
+        {
+          "id": "rapid-malformed-repair",
+          "polarity": "negative",
+          "action": "Type rapid edits including a syntax error, query the neighbor, then repair.",
+          "assertion": "No stale generation or guessed result appears; repaired results match the fresh workspace.",
+          "fixture": "ux16",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX17",
+      "owner": "B09",
+      "scope": "local",
+      "contractHash": "7b2435d7b0f6ccad26b5aee5b062525eee0fb2baa54efa48ebc77478506f8e4b",
+      "routes": [
+        {
+          "id": "explorer-create",
+          "polarity": "positive",
+          "action": "Create a dependency through Explorer.",
+          "assertion": "Queries and diagnostics include the new file under the correct workspace owner.",
+          "fixture": "ux17",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        },
+        {
+          "id": "explorer-rename",
+          "polarity": "positive",
+          "action": "Rename a dependency through Explorer.",
+          "assertion": "Queries reflect the new module path and old locations disappear.",
+          "fixture": "ux17",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        },
+        {
+          "id": "explorer-delete",
+          "polarity": "negative",
+          "action": "Delete a dependency through Explorer.",
+          "assertion": "The missing dependency is diagnosed and no stale target remains.",
+          "fixture": "ux17",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        },
+        {
+          "id": "roots-settings",
+          "polarity": "positive",
+          "action": "Change workspace roots and Vela settings through the workbench.",
+          "assertion": "Queries reflect the current roots/configuration and correct ownership.",
+          "fixture": "ux17",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        },
+        {
+          "id": "schema-replace",
+          "polarity": "positive",
+          "action": "Replace a static host schema fixture.",
+          "assertion": "Queries use new metadata and removed schema facts disappear.",
+          "fixture": "ux17",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        },
+        {
+          "id": "invalid-config-schema",
+          "polarity": "negative",
+          "action": "Introduce missing/invalid configuration and static schema, then repair them.",
+          "assertion": "Documented diagnostics/degradation appear without stale facts; valid replacement restores permitted results.",
+          "fixture": "ux17",
+          "levels": [
+            "Command",
+            "Input"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX18",
+      "owner": "B08",
+      "scope": "local",
+      "contractHash": "8e6e71f4701c4cd775e5e33421dd993ba4db4dc0d11f27d0a56fdfc9ba2c3e6b",
+      "routes": [
+        {
+          "id": "server-stop-reload",
+          "polarity": "positive",
+          "action": "Stop only the test-owned server, inspect the failure and reload the window.",
+          "assertion": "Failure is visible and bounded, no duplicate server remains, queries recover and recoverable edits survive.",
+          "fixture": "ux18",
+          "levels": [
+            "Command",
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "invalid-server-path",
+          "polarity": "negative",
+          "action": "Configure an invalid server path and open a Vela document.",
+          "assertion": "Startup failure is visible and bounded; no request hangs or automatic restart loop occurs.",
+          "fixture": "ux18",
+          "levels": [
+            "Command",
+            "Input",
+            "Render"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX19",
+      "owner": "B16",
+      "scope": "deferred",
+      "contractHash": "02db2dbd846e7497c88a9d01c3f29e6b8ea3e25be66c3749b421c089e239f268",
+      "reason": "Environment expansion is deferred by the local coverage goal.",
+      "routes": []
+    },
+    {
+      "id": "UX20",
+      "owner": "B16",
+      "scope": "deferred",
+      "contractHash": "6a1aa8aef3e2a4f3525e978a408a390d90626c29d1adf5e0a974f453e4cdde23",
+      "reason": "Environment expansion is deferred by the local coverage goal.",
+      "routes": []
+    },
+    {
+      "id": "UX21",
+      "owner": "B09",
+      "scope": "local",
+      "contractHash": "c9bbbb4a37e3e2ef483652cb19a38cb2c3b6764d74c4c21aece9df79845c320a",
+      "routes": [
+        {
+          "id": "untrusted-open",
+          "polarity": "negative",
+          "action": "Open an untrusted workspace with trust enabled in the runner.",
+          "assertion": "Activation and configured-executable behavior match the declared trust policy.",
+          "fixture": "ux21",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        },
+        {
+          "id": "grant-trust",
+          "polarity": "positive",
+          "action": "Grant trust through the workbench and reload if required.",
+          "assertion": "Permitted Vela features recover and the intended executable policy is applied.",
+          "fixture": "ux21",
+          "levels": [
+            "Input",
+            "Render"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "UX22",
+      "owner": "B16",
+      "scope": "deferred",
+      "contractHash": "0bd604d80bf954286b109ae9546237d723b1c63cb9daf8f20001d222ece6a27d",
+      "reason": "Environment expansion is deferred by the local coverage goal.",
+      "routes": []
+    },
+    {
+      "id": "UX23",
+      "owner": "B16",
+      "scope": "deferred",
+      "contractHash": "d57b92fe459f6976745ac06201e7ba6e903695bb377e5fc92b0058f6fa74b0ba",
+      "reason": "Environment expansion is deferred by the local coverage goal.",
+      "routes": []
+    },
+    {
+      "id": "UX24",
+      "owner": "B16",
+      "scope": "deferred",
+      "contractHash": "35e44903faefbfcd1b19fd81db085fcc3bc06afa309620e98d0b663602a00295",
+      "reason": "Environment expansion is deferred by the local coverage goal.",
+      "routes": []
+    }
+  ]
+}
