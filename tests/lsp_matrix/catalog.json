@@ -2595,6 +2595,74 @@
           "name": "type definition provider preserves exact dirty Unicode LF CRLF targets and unknown nulls"
         }
       ]
+    },
+    {
+      "requirement": "completion-resolve/environments/client_capabilities/protocol",
+      "assertion": "Minimal and documentation-resolve-capable clients both receive resolveProvider; an actual schema type candidate resolves to exact Markdown docs while every other serialized item field is unchanged.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_resolve::lifecycle::resolve_preserves_actual_candidate_and_tracks_schema_docs_across_client_profiles"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/states/repeat/protocol",
+      "assertion": "Two resolutions of the same actual schema candidate return exact equal content, with unchanged parser and HIR counters.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_resolve::lifecycle::resolve_preserves_actual_candidate_and_tracks_schema_docs_across_client_profiles"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/states/missing_schema/protocol",
+      "assertion": "After deleting the configured schema and delivering its file event, the cached candidate resolves without documentation rather than retaining deleted schema docs.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_resolve::lifecycle::resolve_preserves_actual_candidate_and_tracks_schema_docs_across_client_profiles"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/states/stale_schema/protocol",
+      "assertion": "The original candidate observes exact updated schema documentation; an invalid schema replacement clears stale documentation.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_resolve::lifecycle::resolve_preserves_actual_candidate_and_tracks_schema_docs_across_client_profiles"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/states/recovery/protocol",
+      "assertion": "After invalid schema and deletion, a created valid schema restores exact documentation on the original resolve payload; malformed payloads reject without poisoning a subsequent well-formed request.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_resolve::lifecycle::resolve_preserves_actual_candidate_and_tracks_schema_docs_across_client_profiles"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_resolve::completion_resolve_rejects_malformed_payloads_without_poisoning_later_requests"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/states/unresolved/protocol",
+      "assertion": "Well-formed unknown source/schema/builtin/local documentation identities return no invented docs and preserve every label, sort/filter, snippet, textEdit and additionalTextEdits field; a previously real schema identity also loses docs after schema deletion.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_resolve::lifecycle::resolve_preserves_actual_candidate_and_tracks_schema_docs_across_client_profiles"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_resolve::completion_resolve_unknown_symbols_preserve_every_existing_edit_and_label_field"
+        }
+      ]
     }
   ],
   "featureFiles": [

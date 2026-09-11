@@ -967,7 +967,7 @@
     },
     {
       "id": "B02.15",
-      "revision": null,
+      "revision": "105cadd4d",
       "requirements": [
         "vscode/UX03/peek-follow/input/local",
         "vscode/UX03/peek-follow/render/local",
@@ -977,10 +977,23 @@
         "vscode/UX03/unknown-target/render/local"
       ],
       "summary": "Complete native macOS Peek context-menu, preview text/aligned highlight, exact full target selection, dismissal/focus restoration and unknown null/no-jump proof. Use focused-window geometry and physical HID pointer events; Peek title opens the target while tree double-click intentionally retains Peek. Temporarily select pinned ABC input and restore original source on success/failure, with fault-injection tests. Fix shared action-array mutation discovered by strict evidence validation; every route now has one setup action. Node 69, full local input bundle 13 proofs (17 obligations), installed suite 9, service 574 plus two historical ignored, protocol 567, formatting and JavaScript syntax checks passed. Strict run-KBuard accepts all 139 B02 obligations and revalidates B00/B01 against current source. Preserve failed exploration artifacts and the rejected run-UUQwTN; final passing input-2TSZ2K and installed run-Izhf7B are the accepted evidence. Desktop lock blocker resolved. B03 is next; B16 stays deferred. Find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B03.1",
+      "revision": null,
+      "requirements": [
+        "completion-resolve/states/repeat/protocol",
+        "completion-resolve/states/missing_schema/protocol",
+        "completion-resolve/states/stale_schema/protocol",
+        "completion-resolve/states/recovery/protocol",
+        "completion-resolve/states/unresolved/protocol",
+        "completion-resolve/environments/client_capabilities/protocol"
+      ],
+      "summary": "Resolve an actual schema type candidate under minimal and documentation-capable client capability sets. Assert complete item equality except exact Markdown documentation, repeated results with no parser/HIR work, schema documentation update, invalid replacement, deletion and recovery on the original cached payload. Reject twelve malformed payload shapes and verify a valid request after each error. Unknown source/schema/builtin/local identities preserve all candidate fields including snippet and additional text edits without fabricated documentation. Initial fixture failure was a missing required package id and was corrected before verification. Focused resolve 6, protocol 570, service 574 with two historical ignored, Node 69, server Clippy and formatting passed. run-TVnstg verifies these six obligations; B03 remains open, with whole-batch remaining scope unchanged. Find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": null,
-  "nextTask": "B03",
+  "activeChild": "B03.2",
+  "nextTask": "B03.2",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -2463,7 +2476,11 @@
     "target/lsp-matrix/b02-native-node-final.log",
     "target/lsp-matrix/b02-native-input-final2.log",
     "target/lsp-matrix/b02-native-installed-final2.log",
-    "target/lsp-matrix/b02-native-acceptance-final.log"
+    "target/lsp-matrix/b02-native-acceptance-final.log",
+    "target/lsp-matrix/run-TVnstg/report.json",
+    "target/lsp-matrix/b03-resolve-focused.log",
+    "target/lsp-matrix/b03-resolve-clippy.log",
+    "target/lsp-matrix/b03-resolve-audit.log"
   ],
   "openIssues": [
     {
