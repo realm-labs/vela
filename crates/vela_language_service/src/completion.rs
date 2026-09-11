@@ -19,6 +19,8 @@ mod member_index;
 #[cfg(test)]
 mod member_index_tests;
 #[cfg(test)]
+mod member_matrix_tests;
+#[cfg(test)]
 mod member_tests;
 mod model;
 mod module_path;

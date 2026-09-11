@@ -1,0 +1,652 @@
+{
+  "version": 1,
+  "id": "completion-members",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.completion_types\"\nname = \"completion_types\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "scripts/alpha.vela": "pub struct Cell { value: i64 }\npub struct Player { level: i64 child: Cell }\npub trait Rewardable { fn grant(self, amount: i64) -> bool; fn preview(self) -> bool { return true; } }\nimpl Player { fn level_up(self, amount: i64) -> bool { return true; } }\nimpl Rewardable for Player { fn grant(self, amount: i64) -> bool { return true; } }\npub fn make() -> Player { return Player { level: 1, child: Cell { value: 1 } }; }\npub fn erase() -> Any { return null; }\n",
+    "scripts/beta.vela": "pub struct Player { leak: String }\npub trait Rewardable { fn counterfeit(self) -> String; }\nimpl Player { fn counterfeit(self) -> String { return \"bad\"; } }\n",
+    "scripts/query_source_all.vela": "/* 中😀 */ fn main(p: alpha::Player) { p.[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/query_source_field.vela": "/* 中😀 */ fn main(p: alpha::Player) { p.[[replace:start]]le[[cursor]][[replace:end]]; }\n",
+    "scripts/query_source_method.vela": "/* 中😀 */ fn main(p: alpha::Player) { p.[[replace:start]]level_u[[cursor]][[replace:end]]; }\n",
+    "scripts/query_source_write.vela": "/* 中😀 */ fn main(p: alpha::Player) { p.[[replace:start]]le[[cursor]][[replace:end]] = 2; }\n",
+    "scripts/query_source_chain.vela": "/* 中😀 */ fn main(p: alpha::Player) { p.child.[[replace:start]]va[[cursor]][[replace:end]]; }\n",
+    "scripts/query_source_return.vela": "/* 中😀 */ fn main() { alpha::make().[[replace:start]]le[[cursor]][[replace:end]]; }\n",
+    "scripts/query_other_owner.vela": "/* 中😀 */ fn main(p: beta::Player) { p.[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/query_trait_owner.vela": "/* 中😀 */ fn main(p: alpha::Rewardable) { p.[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/query_other_trait.vela": "/* 中😀 */ fn main(p: beta::Rewardable) { p.[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/query_schema_all.vela": "/* 中😀 */ fn main(p: HostPlayer) { p.[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/query_schema_field.vela": "/* 中😀 */ fn main(p: HostPlayer) { p.[[replace:start]]le[[cursor]][[replace:end]]; }\n",
+    "scripts/query_schema_method.vela": "/* 中😀 */ fn main(p: HostPlayer) { p.[[replace:start]]level_u[[cursor]][[replace:end]]; }\n",
+    "scripts/query_schema_chain.vela": "/* 中😀 */ fn main(p: HostPlayer) { p.child.[[replace:start]]va[[cursor]][[replace:end]]; }\n",
+    "scripts/query_schema_return.vela": "/* 中😀 */ fn main() { host_make().[[replace:start]]le[[cursor]][[replace:end]]; }\n",
+    "scripts/query_any.vela": "/* 中😀 */ fn level_up() {} fn main(p: Any) { let level = 9; p.[[replace:start]]le[[cursor]][[replace:end]]; }\n",
+    "scripts/query_unknown.vela": "/* 中😀 */ fn level_up() {} fn main(p) { let level = 9; p.[[replace:start]]le[[cursor]][[replace:end]]; }\n",
+    "scripts/query_missing.vela": "/* 中😀 */ fn level_up() {} fn main(p: Missing) { let level = 9; p.[[replace:start]]le[[cursor]][[replace:end]]; }\n",
+    "scripts/query_source_erased.vela": "/* 中😀 */ fn level_up() {} fn main() { let level = 9; alpha::erase().[[replace:start]]le[[cursor]][[replace:end]]; }\n",
+    "scripts/query_schema_erased.vela": "/* 中😀 */ fn level_up() {} fn main() { let level = 9; host_erase().[[replace:start]]le[[cursor]][[replace:end]]; }\n",
+    "scripts/query_source_record.vela": "/* 中😀 */ fn main() { let level = 1; let p = alpha::Player { child: alpha::Cell { value: 1 }, [[replace:start]]le[[cursor]][[replace:end]] }; }\n",
+    "scripts/query_source_record_all.vela": "/* 中😀 */ fn main() { let p = alpha::Player { [[replace:start]][[cursor]][[replace:end]] }; }\n",
+    "scripts/query_schema_record.vela": "/* 中😀 */ fn main() { let level = 1; let p = HostPlayer { child: null, [[replace:start]]le[[cursor]][[replace:end]] }; }\n",
+    "scripts/query_unknown_record.vela": "/* 中😀 */ fn main() { let level = 1; let p = Missing { [[replace:start]]le[[cursor]][[replace:end]] }; }\n",
+    "scripts/query_used_record.vela": "/* 中😀 */ fn main() { let p = alpha::Player { level: 1, child: null, [[replace:start]][[cursor]][[replace:end]] }; }\n",
+    "scripts/query_unknown_qualified_record.vela": "/* 中😀 */ fn main() { let level = 1; let p = missing::HostPlayer { [[replace:start]]le[[cursor]][[replace:end]] }; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "schema": {
+      "types": [
+        {
+          "name": "HostPlayer",
+          "fact": {
+            "kind": "host",
+            "name": "HostPlayer"
+          }
+        },
+        {
+          "name": "HostCell",
+          "fact": {
+            "kind": "host",
+            "name": "HostCell"
+          }
+        },
+        {
+          "name": "alpha::Player",
+          "fact": {
+            "kind": "host",
+            "name": "alpha::Player"
+          }
+        }
+      ],
+      "fields": [
+        {
+          "owner": "HostPlayer",
+          "name": "level",
+          "fact": {
+            "kind": "primitive",
+            "name": "i64"
+          },
+          "docs": "Host level docs 中😀."
+        },
+        {
+          "owner": "HostPlayer",
+          "name": "child",
+          "fact": {
+            "kind": "host",
+            "name": "HostCell"
+          },
+          "docs": "Host child docs."
+        },
+        {
+          "owner": "HostCell",
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "i64"
+          },
+          "docs": "Host value docs."
+        },
+        {
+          "owner": "alpha::Player",
+          "name": "leaked_schema",
+          "fact": {
+            "kind": "primitive",
+            "name": "String"
+          },
+          "docs": "Must not leak into source type."
+        }
+      ],
+      "methods": [
+        {
+          "owner": "HostPlayer",
+          "name": "level_up",
+          "fact": {
+            "kind": "function",
+            "params": [
+              {
+                "kind": "primitive",
+                "name": "i64"
+              }
+            ],
+            "returns": {
+              "kind": "primitive",
+              "name": "bool"
+            }
+          },
+          "docs": "Host level_up docs."
+        }
+      ],
+      "functions": [
+        {
+          "name": "host_make",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "host",
+              "name": "HostPlayer"
+            }
+          }
+        },
+        {
+          "name": "host_erase",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "any"
+            }
+          }
+        }
+      ]
+    },
+    "queries": [
+      {
+        "id": "source_all",
+        "file": "scripts/query_source_all.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "child",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "alpha::Cell",
+            "symbolKind": "source",
+            "symbol": "alpha::Player.child",
+            "docs": null,
+            "insert": "child"
+          },
+          {
+            "label": "level",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "source",
+            "symbol": "alpha::Player.level",
+            "docs": null,
+            "insert": "level"
+          },
+          {
+            "label": "grant",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function(i64) -> bool",
+            "symbolKind": "source",
+            "symbol": "Rewardable for Player.grant",
+            "docs": null,
+            "insert": "grant($0)"
+          },
+          {
+            "label": "level_up",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function(i64) -> bool",
+            "symbolKind": "source",
+            "symbol": "alpha::Player.level_up",
+            "docs": null,
+            "insert": "level_up($0)"
+          },
+          {
+            "label": "preview",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function() -> bool",
+            "symbolKind": "source",
+            "symbol": "alpha::Rewardable.preview",
+            "docs": null,
+            "insert": "preview($0)"
+          }
+        ],
+        "apply": null
+      },
+      {
+        "id": "source_field",
+        "file": "scripts/query_source_field.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "level",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "source",
+            "symbol": "alpha::Player.level",
+            "docs": null,
+            "insert": "level"
+          },
+          {
+            "label": "level_up",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function(i64) -> bool",
+            "symbolKind": "source",
+            "symbol": "alpha::Player.level_up",
+            "docs": null,
+            "insert": "level_up($0)"
+          }
+        ],
+        "apply": "level"
+      },
+      {
+        "id": "source_method",
+        "file": "scripts/query_source_method.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "level_up",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function(i64) -> bool",
+            "symbolKind": "source",
+            "symbol": "alpha::Player.level_up",
+            "docs": null,
+            "insert": "level_up($0)"
+          }
+        ],
+        "apply": "level_up"
+      },
+      {
+        "id": "source_write",
+        "file": "scripts/query_source_write.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "level",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "source",
+            "symbol": "alpha::Player.level",
+            "docs": null,
+            "insert": "level"
+          },
+          {
+            "label": "level_up",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function(i64) -> bool",
+            "symbolKind": "source",
+            "symbol": "alpha::Player.level_up",
+            "docs": null,
+            "insert": "level_up($0)"
+          }
+        ],
+        "apply": "level"
+      },
+      {
+        "id": "source_chain",
+        "file": "scripts/query_source_chain.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "value",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "source",
+            "symbol": "alpha::Cell.value",
+            "docs": null,
+            "insert": "value"
+          }
+        ],
+        "apply": "value"
+      },
+      {
+        "id": "source_return",
+        "file": "scripts/query_source_return.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "level",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "source",
+            "symbol": "alpha::Player.level",
+            "docs": null,
+            "insert": "level"
+          },
+          {
+            "label": "level_up",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function(i64) -> bool",
+            "symbolKind": "source",
+            "symbol": "alpha::Player.level_up",
+            "docs": null,
+            "insert": "level_up($0)"
+          }
+        ],
+        "apply": "level"
+      },
+      {
+        "id": "other_owner",
+        "file": "scripts/query_other_owner.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "leak",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "String",
+            "symbolKind": "source",
+            "symbol": "beta::Player.leak",
+            "docs": null,
+            "insert": "leak"
+          },
+          {
+            "label": "counterfeit",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function() -> String",
+            "symbolKind": "source",
+            "symbol": "beta::Player.counterfeit",
+            "docs": null,
+            "insert": "counterfeit($0)"
+          }
+        ],
+        "apply": null
+      },
+      {
+        "id": "trait_owner",
+        "file": "scripts/query_trait_owner.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "grant",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function(i64) -> bool",
+            "symbolKind": "source",
+            "symbol": "alpha::Rewardable.grant",
+            "docs": null,
+            "insert": "grant($0)"
+          },
+          {
+            "label": "preview",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function() -> bool",
+            "symbolKind": "source",
+            "symbol": "alpha::Rewardable.preview",
+            "docs": null,
+            "insert": "preview($0)"
+          }
+        ],
+        "apply": null
+      },
+      {
+        "id": "other_trait",
+        "file": "scripts/query_other_trait.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "counterfeit",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function() -> String",
+            "symbolKind": "source",
+            "symbol": "beta::Rewardable.counterfeit",
+            "docs": null,
+            "insert": "counterfeit($0)"
+          }
+        ],
+        "apply": null
+      },
+      {
+        "id": "schema_all",
+        "file": "scripts/query_schema_all.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "child",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "HostCell",
+            "symbolKind": "schema",
+            "symbol": "HostPlayer.child",
+            "docs": "Host child docs.",
+            "insert": "child"
+          },
+          {
+            "label": "level",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "schema",
+            "symbol": "HostPlayer.level",
+            "docs": "Host level docs 中😀.",
+            "insert": "level"
+          },
+          {
+            "label": "level_up",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function(i64) -> bool",
+            "symbolKind": "schema",
+            "symbol": "HostPlayer.level_up",
+            "docs": "Host level_up docs.",
+            "insert": "level_up($0)"
+          }
+        ],
+        "apply": null
+      },
+      {
+        "id": "schema_field",
+        "file": "scripts/query_schema_field.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "level",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "schema",
+            "symbol": "HostPlayer.level",
+            "docs": "Host level docs 中😀.",
+            "insert": "level"
+          },
+          {
+            "label": "level_up",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function(i64) -> bool",
+            "symbolKind": "schema",
+            "symbol": "HostPlayer.level_up",
+            "docs": "Host level_up docs.",
+            "insert": "level_up($0)"
+          }
+        ],
+        "apply": "level"
+      },
+      {
+        "id": "schema_method",
+        "file": "scripts/query_schema_method.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "level_up",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function(i64) -> bool",
+            "symbolKind": "schema",
+            "symbol": "HostPlayer.level_up",
+            "docs": "Host level_up docs.",
+            "insert": "level_up($0)"
+          }
+        ],
+        "apply": "level_up"
+      },
+      {
+        "id": "schema_chain",
+        "file": "scripts/query_schema_chain.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "value",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "schema",
+            "symbol": "HostCell.value",
+            "docs": "Host value docs.",
+            "insert": "value"
+          }
+        ],
+        "apply": "value"
+      },
+      {
+        "id": "schema_return",
+        "file": "scripts/query_schema_return.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "level",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "schema",
+            "symbol": "HostPlayer.level",
+            "docs": "Host level docs 中😀.",
+            "insert": "level"
+          },
+          {
+            "label": "level_up",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function(i64) -> bool",
+            "symbolKind": "schema",
+            "symbol": "HostPlayer.level_up",
+            "docs": "Host level_up docs.",
+            "insert": "level_up($0)"
+          }
+        ],
+        "apply": "level"
+      },
+      {
+        "id": "any",
+        "file": "scripts/query_any.vela",
+        "context": "Member",
+        "items": [],
+        "apply": null,
+        "receiver": "Any"
+      },
+      {
+        "id": "unknown",
+        "file": "scripts/query_unknown.vela",
+        "context": "Member",
+        "items": [],
+        "apply": null,
+        "receiver": null
+      },
+      {
+        "id": "missing",
+        "file": "scripts/query_missing.vela",
+        "context": "Member",
+        "items": [],
+        "apply": null,
+        "receiver": "unknown"
+      },
+      {
+        "id": "source_erased",
+        "file": "scripts/query_source_erased.vela",
+        "context": "Member",
+        "items": [],
+        "apply": null,
+        "receiver": "Any"
+      },
+      {
+        "id": "schema_erased",
+        "file": "scripts/query_schema_erased.vela",
+        "context": "Member",
+        "items": [],
+        "apply": null,
+        "receiver": "Any"
+      },
+      {
+        "id": "source_record",
+        "file": "scripts/query_source_record.vela",
+        "context": "RecordField",
+        "items": [
+          {
+            "label": "level",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "source",
+            "symbol": "alpha::Player.level",
+            "docs": null,
+            "insert": "level"
+          }
+        ],
+        "apply": "level"
+      },
+      {
+        "id": "source_record_all",
+        "file": "scripts/query_source_record_all.vela",
+        "context": "RecordField",
+        "items": [
+          {
+            "label": "child",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "alpha::Cell",
+            "symbolKind": "source",
+            "symbol": "alpha::Player.child",
+            "docs": null,
+            "insert": "child"
+          },
+          {
+            "label": "level",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "source",
+            "symbol": "alpha::Player.level",
+            "docs": null,
+            "insert": "level"
+          }
+        ],
+        "apply": null
+      },
+      {
+        "id": "schema_record",
+        "file": "scripts/query_schema_record.vela",
+        "context": "RecordField",
+        "items": [
+          {
+            "label": "level",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "schema",
+            "symbol": "HostPlayer.level",
+            "docs": "Host level docs 中😀.",
+            "insert": "level"
+          }
+        ],
+        "apply": "level"
+      },
+      {
+        "id": "unknown_record",
+        "file": "scripts/query_unknown_record.vela",
+        "context": "RecordField",
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "used_record",
+        "file": "scripts/query_used_record.vela",
+        "context": "RecordField",
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "unknown_qualified_record",
+        "file": "scripts/query_unknown_qualified_record.vela",
+        "context": "RecordField",
+        "items": [],
+        "apply": null
+      }
+    ]
+  }
+}

@@ -1003,7 +1003,7 @@
     },
     {
       "id": "B03.3",
-      "revision": null,
+      "revision": "3a90b3cc6",
       "requirements": [
         "completion/syntax/S3/positive/service",
         "completion/syntax/S3/positive/protocol",
@@ -1015,10 +1015,20 @@
         "completion-resolve/syntax/S3/negative/protocol"
       ],
       "summary": "Add an independent 35-query builtin/erased-boundary fixture and source enum ownership to the existing eighteen type-position queries. The full public builtin inventory exposed missing Any, Range, Function and Closure candidates; restore them with explicit insertion edits and builtin resolve identity, retaining Function as an erased callable detail. Both layers verify all 25 public type spellings, old/internal-name exclusions, unknown type/member emptiness, exact metadata/docs/edits, applied source and re-query under LF/CRLF and Chinese/emoji. Unit punctuation uses an explicit complete-inventory re-query at its type start; identifier-only re-query assumptions do not apply after its closing parenthesis. Service 577 plus two historical ignored, protocol 573, Node 69, relevant Clippy/fmt and installed VSIX 9 passed. Final run-7FZbKi verifies eight S3 obligations with zero failed commands; installed artifact run-2hpeQN. The earlier run-OrWfOL included a test-generated root download cache; archive that cache under target and rerun from the editor directory so final proof matches the source tree. B03 remains unaccepted and whole-batch remaining scope stays 1332. No new full native input evidence was collected while the recorded desktop-lock prerequisite remains unresolved. Continue B03.4 with source/schema member and constructor ownership, edits, docs and negative receiver boundaries; broader syntax, lifecycle and UX04 are still required. Find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B03.4",
+      "revision": null,
+      "requirements": [
+        "completion/states/repeat/protocol",
+        "completion/states/dynamic/protocol",
+        "completion/states/unresolved/protocol"
+      ],
+      "summary": "Add 25 shared source/schema member and record-constructor queries in both layers. Exact candidate-set assertions exposed cross-module short-name field/method leakage, wrong trait owner lookup, same-named schema fields attached to source records, missing constructor field symbols/explicit edits, and missing qualified schema constructors falling back to bare owners. Resolve source/impl/trait identity within its module, preserve source versus Host schema boundaries, emit explicit member/constructor field edits, and require exact schema constructor owner. Replace the old mixed-source/schema index expectation with stronger source exclusion and Host-positive assertions; no tests were removed. Assert exact symbols, details, lazy docs, LF/CRLF UTF-16 edits, applied snippets/source, repeated result equality, used-field exclusion and known source/schema Any return facts with matching local/function negative controls. Service 578 plus two historical ignored, protocol 574, Node 69, relevant Clippy/fmt, installed VSIX 9 and checkpoint tests pass. Final run-uSOAgr verifies three state obligations with zero failed commands and matching source identity; installed run-pvSB0x. Preserve run-Wwk3Oq and first editor run as failed audit exploration: catalog initially linked a service test to a protocol-only obligation, corrected without changing validation policy. S4 remains unreviewed until enum variants/constructors and remaining semantic partitions are covered. Continue B03.5 with that scope; B03 remains unaccepted, whole-batch remaining scope stays 1332 and B16 remains deferred. Native input evidence still requires the recorded desktop-unlock prerequisite; no stale proof is promoted. Find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.4",
-  "nextTask": "B03.4",
+  "activeChild": "B03.5",
+  "nextTask": "B03.5",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",

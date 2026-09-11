@@ -624,7 +624,11 @@ exact metadata, documentation, edits, resulting source and re-query under
 LF/CRLF, including source enums and all 25 public builtin type hints. Missing
 `Any`, `Range`, `Function` and `Closure` completion candidates are restored;
 legacy/internal spellings and erased receiver member guesses are excluded.
-Broader completion semantics and UX04 remain open. The desktop locked
+Twenty-five additional member/constructor cases pin full candidate sets,
+source/schema identity, trait ownership, explicit field edits and lazy docs.
+Cross-module names and same-name schema types no longer leak members into
+source records; missing qualified constructors do not fall back to short names.
+Enum variant/constructor completion, broader authoring semantics and UX04 remain open. The desktop locked
 again during the latest native input regression; see [blocked.md](blocked.md).
 
 ### Deferred Tracks

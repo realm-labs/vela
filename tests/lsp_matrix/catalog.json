@@ -2805,6 +2805,36 @@
           "name": "tests::completion_type::matrix::builtin_type_completion_matrix_projects_public_spellings_edits_and_negative_boundaries"
         }
       ]
+    },
+    {
+      "requirement": "completion/states/repeat/protocol",
+      "assertion": "Repeat every request in the 25-query shared member/constructor fixture and assert identical full completion results before any edit. Exact candidate sets, ownership, details and resolved documentation are independently checked under LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/states/dynamic/protocol",
+      "assertion": "Known source and schema functions explicitly return Any. Their downstream member completions, and direct Any parameters, return an exact empty candidate set despite visible matching locals/functions. The service fixture asserts the receiver fact is Any; unhinted and missing-hint controls distinguish absent facts from Unknown.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/states/unresolved/protocol",
+      "assertion": "Unknown receiver hints and unhinted receivers, missing record constructors and a missing qualified schema constructor path produce exact empty completion sets. Nearby valid source/schema member and constructor queries prove the workspace remains usable; missing paths cannot fall back to unrelated short-name fields.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        }
+      ]
     }
   ],
   "featureFiles": [

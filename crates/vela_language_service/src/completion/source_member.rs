@@ -8,7 +8,10 @@ use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ImplMetadataKind};
 
 use crate::CompletionSymbol;
 use crate::callable_context::query_type_fact_from_hint;
-use crate::symbol_ref::{source_impl_method_symbol, source_member_symbol};
+use crate::symbol_ref::{
+    qualified_source_declaration_name, source_impl_method_symbol, source_impl_owner_matches,
+    source_member_symbol,
+};
 
 pub(super) fn source_member_completion_candidates(
     graph: &ModuleGraph,
@@ -85,7 +88,7 @@ fn source_impl_method_completion_items(
             let metadata = graph.impl_metadata(declaration.id)?;
             let matches_owner = owner_names
                 .iter()
-                .any(|owner| impl_target_matches(&metadata.target_path, owner));
+                .any(|owner| source_impl_owner_matches(graph, declaration.id, owner));
             matches_owner.then_some((declaration.id, metadata))
         })
         .flat_map(|(declaration, metadata)| {
@@ -155,11 +158,17 @@ fn source_trait_default_method_completion_items(
             };
             let matches_owner = owner_names
                 .iter()
-                .any(|owner| impl_target_matches(&metadata.target_path, owner));
+                .any(|owner| source_impl_owner_matches(graph, declaration.id, owner));
             if !matches_owner {
                 return None;
             }
-            let trait_declaration = trait_declaration_for_path(graph, trait_path)?;
+            let trait_declaration = graph
+                .resolve_visible_declaration_path(
+                    declaration.module,
+                    trait_path,
+                    DeclarationKind::Trait,
+                )?
+                .id;
             Some((metadata, trait_declaration))
         })
         .flat_map(|(metadata, trait_declaration)| {
@@ -228,7 +237,7 @@ fn type_fact_from_optional_hint(
     })
 }
 
-fn declaration_name_matches(
+pub(super) fn declaration_name_matches(
     graph: &ModuleGraph,
     declaration: vela_hir::ids::HirDeclId,
     owner: &str,
@@ -236,35 +245,14 @@ fn declaration_name_matches(
     let Some(declaration) = graph.declaration(declaration) else {
         return false;
     };
-    declaration.name == owner
-        || graph.module_path(declaration.module).is_some_and(|module| {
-            let qualified = module
-                .segments()
-                .iter()
-                .chain(std::iter::once(&declaration.name))
-                .cloned()
-                .collect::<Vec<_>>()
-                .join("::");
-            qualified == owner
-        })
-}
-
-fn trait_declaration_for_path(
-    graph: &ModuleGraph,
-    trait_path: &[String],
-) -> Option<vela_hir::ids::HirDeclId> {
-    let owner = trait_path.join("::");
-    graph
-        .declarations()
-        .find(|declaration| {
-            declaration.kind == DeclarationKind::Trait
-                && declaration_name_matches(graph, declaration.id, &owner)
-        })
-        .map(|declaration| declaration.id)
-}
-
-fn impl_target_matches(path: &[String], owner: &str) -> bool {
-    path.last().is_some_and(|name| name == owner) || path.join("::") == owner
+    qualified_source_declaration_name(graph, declaration) == owner
+        || (!owner.contains("::")
+            && declaration.name == owner
+            && graph
+                .declarations()
+                .filter(|candidate| candidate.kind == declaration.kind && candidate.name == owner)
+                .count()
+                == 1)
 }
 
 fn record_owner_names(receiver: &TypeFact) -> Vec<String> {
@@ -275,7 +263,7 @@ fn record_owner_names(receiver: &TypeFact) -> Vec<String> {
 
 fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
     match receiver {
-        TypeFact::Record { name } => push_owner_names(owners, name),
+        TypeFact::Record { name } => push_owner_name(owners, name),
         TypeFact::Union(facts) => {
             for fact in facts {
                 collect_record_owner_names(fact, owners);
@@ -293,22 +281,13 @@ fn trait_owner_names(receiver: &TypeFact) -> Vec<String> {
 
 fn collect_trait_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
     match receiver {
-        TypeFact::Trait { name } => push_owner_names(owners, name),
+        TypeFact::Trait { name } => push_owner_name(owners, name),
         TypeFact::Union(facts) => {
             for fact in facts {
                 collect_trait_owner_names(fact, owners);
             }
         }
         _ => {}
-    }
-}
-
-fn push_owner_names(owners: &mut Vec<String>, name: &str) {
-    push_owner_name(owners, name);
-    if let Some(short) = name.rsplit("::").next()
-        && short != name
-    {
-        push_owner_name(owners, short);
     }
 }
 

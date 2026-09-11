@@ -67,14 +67,24 @@ impl Rewardable for Player {
         player_index.surfaces_for_label("preview"),
         vec![MemberCompletionSurface::Source]
     );
-    assert_eq!(
-        player_index.surfaces_for_label("rank"),
-        vec![MemberCompletionSurface::Schema]
+    assert_eq!(player_index.surfaces_for_label("rank"), vec![]);
+    assert_eq!(player_index.surfaces_for_label("persist"), vec![]);
+
+    // Host facts retain these schema members; a source record cannot acquire them.
+    let host_index = MemberCompletionIndex::for_receiver(
+        databases.hir_db().graph(),
+        databases.schema_db().facts(),
+        &TypeFact::host("Player"),
+        TextRange::new(0, 0),
+        "",
     );
-    assert_eq!(
-        player_index.surfaces_for_label("persist"),
-        vec![MemberCompletionSurface::Schema]
-    );
+    for label in ["rank", "persist"] {
+        assert_eq!(
+            host_index.surfaces_for_label(label),
+            vec![MemberCompletionSurface::Schema]
+        );
+    }
+    assert!(host_index.surfaces_for_label("level").is_empty());
 
     let schema_trait_index = MemberCompletionIndex::for_receiver(
         databases.hir_db().graph(),

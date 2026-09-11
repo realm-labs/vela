@@ -4,14 +4,14 @@ use vela_analysis::completion::{
 use vela_analysis::registry::RegistryFacts;
 use vela_analysis::stdlib::stdlib_method_facts;
 use vela_analysis::type_fact::TypeFact;
-use vela_hir::module_graph::ModuleGraph;
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 
 use crate::symbol_ref::{builtin_member_symbol, schema_member_symbol, schema_variant_symbol};
 use crate::{CompletionSymbol, TextRange};
 
 use super::accumulator::CompletionAccumulator;
 use super::analysis_item::service_item_from_analysis_completion;
-use super::source_member::source_member_completion_candidates;
+use super::source_member::{declaration_name_matches, source_member_completion_candidates};
 use super::{CompletionItem, label_segment_matches};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -48,7 +48,7 @@ impl MemberCompletionIndex {
             prefix: prefix.to_owned(),
         };
         index.extend_source(graph, schema, receiver);
-        index.extend_schema(schema, receiver);
+        index.extend_schema(graph, schema, receiver);
         index.extend_builtin(receiver);
         index
     }
@@ -69,7 +69,20 @@ impl MemberCompletionIndex {
         }
     }
 
-    fn extend_schema(&mut self, schema: &RegistryFacts, receiver: &TypeFact) {
+    fn extend_schema(&mut self, graph: &ModuleGraph, schema: &RegistryFacts, receiver: &TypeFact) {
+        let source_owner = match receiver {
+            TypeFact::Record { name } => Some((name, DeclarationKind::Struct)),
+            TypeFact::Trait { name } => Some((name, DeclarationKind::Trait)),
+            TypeFact::Enum { name, .. } => Some((name, DeclarationKind::Enum)),
+            _ => None,
+        };
+        if source_owner.is_some_and(|(name, kind)| {
+            graph.declarations().any(|declaration| {
+                declaration.kind == kind && declaration_name_matches(graph, declaration.id, name)
+            })
+        }) {
+            return;
+        }
         for (item, symbol) in schema_member_completion_candidates(schema, receiver) {
             let resource = match receiver {
                 TypeFact::Host { name } | TypeFact::Record { name } => {
@@ -114,6 +127,7 @@ impl MemberCompletionIndex {
             _ => None,
         });
         let mut item = service_item_from_analysis_completion(item, &self.prefix);
+        item.insert_text.get_or_insert_with(|| item.label.clone());
         if let Some(detail) = scoped_detail {
             item = item.with_detail_parts(crate::DisplayParts::plain(detail));
         }

@@ -16,7 +16,7 @@ use super::{
     CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
     accumulator::CompletionAccumulator, display_type_detail_parts, model::RecordConstructor,
 };
-use crate::symbol_ref::schema_member_symbol;
+use crate::symbol_ref::{schema_member_symbol, source_member_symbol};
 
 pub(super) fn record_constructor_at(
     body: Option<&HirBody>,
@@ -120,8 +120,11 @@ pub(super) fn record_field_completion_items(
     let Some(constructor) = context.record_constructor.as_ref() else {
         return Vec::new();
     };
-    let mut items = script_record_field_completions(graph, constructor);
-    items.extend(schema_record_field_completions(schema, constructor));
+    let items = if script_record_constructor_declaration(graph, constructor).is_some() {
+        script_record_field_completions(graph, constructor)
+    } else {
+        schema_record_field_completions(schema, constructor)
+    };
     let existing_fields = constructor
         .field_names
         .iter()
@@ -436,7 +439,15 @@ fn script_record_field_completions(
     shape
         .fields
         .iter()
-        .map(|field| field_completion_from_hint(graph, field))
+        .filter_map(|field| {
+            Some(
+                field_completion_from_hint(graph, field).with_symbol(source_member_symbol(
+                    graph,
+                    declaration.id,
+                    &field.name,
+                )?),
+            )
+        })
         .collect()
 }
 
@@ -461,7 +472,7 @@ fn field_completion_from_hint(graph: &ModuleGraph, field: &StructFieldHint) -> C
         label: field.name.clone(),
         kind: CompletionKind::Field,
         detail: detail_parts.render(),
-        insert_text: None,
+        insert_text: Some(field.name.clone()),
         insert_format: CompletionInsertFormat::PlainText,
         sort_text: None,
         metadata: Default::default(),
@@ -475,7 +486,7 @@ fn schema_record_field_completions(
 ) -> Vec<CompletionItem> {
     let owner = constructor.path.join("::");
     schema
-        .fields_for_owner_or_short_name(&owner)
+        .fields_for_owner(&owner)
         .into_iter()
         .map(|field| {
             let owner = field.owner;
@@ -485,7 +496,7 @@ fn schema_record_field_completions(
                 label: name.clone(),
                 kind: CompletionKind::Field,
                 detail: detail_parts.render(),
-                insert_text: None,
+                insert_text: Some(name.clone()),
                 insert_format: CompletionInsertFormat::PlainText,
                 sort_text: None,
                 metadata: Default::default(),
