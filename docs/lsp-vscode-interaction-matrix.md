@@ -3,8 +3,9 @@
 Status: feature interaction acceptance remains pending. B01 now supplies an
 installed-workbench input/render driver and strict local evidence validation. The current suite
 has seven installed-VSIX scenarios and invokes providers or editor commands. Its
-F12 scenario invokes the command and observes the destination; it does not send
-a keyboard event. The current catalog has 27 feature-level `editor/smoke` cells.
+legacy F12 scenario invokes a command. The separate local driver now sends
+actual F12/back and palette input for UX02, with exact editor state and passive
+request/response checks; UX03 and the remaining local families are still pending. The current catalog has 27 feature-level `editor/smoke` cells.
 Neither those cells nor the 1327 initial requirements certify this matrix.
 
 This document extends [the strategy](lsp-test-strategy.md) and is executed through

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "input-navigation",
+  "files": {
+    "scripts/nav.vela": "use navigation::definitions::make;\nuse navigation::types::Item;\nfn nav_main(value: Item) {\n    let text = \"中😀\"; [[call]]make();\n    let local: Item = value; [[typed-use]]local;\n    [[unknown]]missing();\n}\n",
+    "scripts/navigation/definitions.vela": "use navigation::types::Item;\n/* 中😀 */ pub fn [[definition:start]]make[[definition:end]]() -> Item { return Item {}; }\n",
+    "scripts/navigation/types.vela": "/* 中😀 */ pub struct [[type:start]]Item[[type:end]] {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "dirtyPrefix": "// unsaved 中😀\n",
+    "caller": "scripts/nav.vela",
+    "definitionFile": "scripts/navigation/definitions.vela",
+    "typeFile": "scripts/navigation/types.vela"
+  }
+}

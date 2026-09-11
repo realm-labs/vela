@@ -68,6 +68,13 @@ async function main() {
   };
   const workspace = path.join(root, "中文 % workspace");
   new FixtureWorkspace(fixture).materialize(workspace);
+  const navigation = require("../../../../tests/lsp_matrix/fixtures/input-navigation.json");
+  for (const [file, document] of new FixtureWorkspace(navigation).disk) {
+    const target = path.join(workspace, file);
+    assert.ok(!fs.existsSync(target), "navigation fixture must not overwrite driver files");
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, document.text);
+  }
   fs.mkdirSync(path.join(workspace, ".vscode"));
   fs.writeFileSync(
     path.join(workspace, ".vscode/settings.json"),
@@ -163,6 +170,8 @@ async function main() {
     installedServer,
     proof,
     observedDisplay;
+  const proofs = [];
+  let contracts = [];
   const timer = setTimeout(() => child.kill("SIGTERM"), 180000);
   try {
     await until(
@@ -234,7 +243,8 @@ async function main() {
       inputs.serverSha256,
     );
     const requirements = loadInventory(repository).executionRequirements;
-    const contract = localContracts(requirements, fixture)[0];
+    contracts = localContracts(requirements, fixture);
+    const contract = contracts[0];
     const proofStarted = Date.now();
     assert.equal(
       before.active.text,
@@ -345,6 +355,10 @@ async function main() {
       ],
     };
     await page.screenshot({ path: path.join(root, "final.png") });
+    proofs.push(proof);
+    await require("./navigation").runNavigation({
+      page, bridge, record, root, workspace, contracts, until, onProof: (proof) => proofs.push(proof),
+    });
     await bridge("finish");
     const completed = await until("workbench exit", () => exit, 15000);
     assert.equal(completed.code, 0);
@@ -393,6 +407,10 @@ async function main() {
       child.stderr.destroy();
     }
     await new Promise((resolve) => log.end(resolve));
+    if (bridge) {
+      try { require("./logs").retainLogs(root, workspace); }
+      catch (failure) { error ??= failure; }
+    }
     const artifacts =
       fs.existsSync(path.join(root, "final.png")) && installedServer
         ? [
@@ -403,6 +421,8 @@ async function main() {
             "workbench.log",
             "vela.vsix",
             installedServer,
+            ...new Set(proofs.flatMap((proof) => contracts.find((item) => item.id === proof.id).artifacts)
+              .filter((file) => !["trace.json", "suggestions.png", "suggestions.aria.txt", "final.png", "workbench.log"].includes(file))),
           ].map((file) => evidence.artifact(root, file))
         : [];
     const result = {
@@ -411,7 +431,7 @@ async function main() {
       profile,
       observedDisplay,
       inputs,
-      proofs: proof ? [proof] : [],
+      proofs,
       exit,
       vsix: "vela.vsix",
       vsixSha256: evidence.fileHash(vsix),

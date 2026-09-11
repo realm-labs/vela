@@ -601,9 +601,11 @@ installed VSIX (seven scenarios). The local Input/Render driver now proves keybo
 exact final document/caret behavior. Evidence validation binds current source,
 profile, fixture, driver and installed VSIX/server bytes. B00 and B01 passed their combined
 strict acceptance. B02 has executable proof for all 120 currently registered
-service/protocol obligations. Its remaining 19 obligations cover installed
-providers and local command, keyboard, pointer and rendered navigation workflows
-(UX02/UX03). These require fresh installed evidence before B02 acceptance; no
+service/protocol obligations. The installed local driver now covers all eight
+UX02 command/input obligations, including F12/back, declaration/type palettes,
+dirty Unicode source and unknown targets. Passive client logs bind these actions
+to exact request positions and response URI/ranges. Installed provider evidence
+and UX03 modifier-click/Peek workflows still require acceptance; no
 semantic feature batch is accepted yet. B14 still owns the later semantic
 partition completeness review.
 

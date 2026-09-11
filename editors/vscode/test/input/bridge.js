@@ -138,6 +138,13 @@ async function run() {
           value = await inspect();
           break;
         }
+        case "command": {
+          const allowed = Object.values(require("../../../../scripts/lsp-matrix/navigation-contracts").commands);
+          if (!allowed.includes(message.command)) throw Error("unsupported navigation command");
+          await vscode.commands.executeCommand(message.command);
+          value = await inspect();
+          break;
+        }
         case "finish":
           value = { finished: true };
           setImmediate(finish);

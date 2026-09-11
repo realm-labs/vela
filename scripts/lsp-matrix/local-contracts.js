@@ -64,6 +64,7 @@ function localContracts(requirements, fixture) {
         "workbench.log",
       ],
     },
+    ...require("./navigation-contracts").navigationContracts(requirements),
   ];
 }
 module.exports = { localContracts };

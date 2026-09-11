@@ -256,3 +256,12 @@ test("local proof rejects trace omissions even when artifact hashes are recomput
       /trace does not match/,
     );
   }));
+
+test("local proof rejects command receipts relabeled as physical keyboard input", () =>
+  setup(({ root, bundle, contracts, expected }) => {
+    const trace = JSON.parse(fs.readFileSync(path.join(root, "trace.json"), "utf8"));
+    trace[0].kind = "command";
+    fs.writeFileSync(path.join(root, "trace.json"), JSON.stringify(trace));
+    bundle.artifacts = bundle.artifacts.map((item) => artifact(root, item.path));
+    assert.throws(() => validateBundle(bundle, expected, contracts, root), /cannot be interchanged/);
+  }));

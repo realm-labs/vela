@@ -155,11 +155,15 @@ function validateBundle(bundle, expected, contracts, root) {
     );
     assert.deepEqual(
       trace
-        .filter((item) => item.kind === "input" && item.proof === proof.id)
+        .filter((item) => ["input", "command"].includes(item.kind) && item.proof === proof.id)
         .map(({ kind, at, proof: owner, ...action }) => action),
       proof.actions,
       "action trace does not match proof receipts",
     );
+    for (const item of trace.filter((item) => ["input", "command"].includes(item.kind) && item.proof === proof.id)) {
+      const expectedKind = item.device === "command" ? "command" : "input";
+      if (item.kind !== expectedKind) throw new Error("command and physical input evidence cannot be interchanged");
+    }
     const checks = new Map();
     for (const check of proof.checks ?? []) {
       if (checks.has(check.id)) throw new Error("duplicate local assertion");
