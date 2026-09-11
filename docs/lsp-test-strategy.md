@@ -14,6 +14,14 @@ user workflows and input/render evidence to P4. Its UX01-UX24 scenarios cover
 widgets, keyboard/mouse routes, undo/recovery, remote hosts, upgrades and declared
 extension coexistence. They are planned requirements, not current test coverage.
 
+Current acceptance prioritizes complete coverage on one recorded local development
+profile. UX01-UX18 and UX21, all local semantic/state/range obligations, and P5
+generated/scale checks remain required. B16's additional OS/editor versions,
+remote hosts, upgrade/coexistence profiles, keyboard remaps and theme/zoom sweeps
+are deferred follow-up work and do not block local acceptance. Preserve those
+families separately; do not count them as verified or N/A. Existing CI remains
+in place, but expanding environments or scheduling is outside this goal.
+
 ## Source Of Requirements
 
 - [grammar.ebnf](grammar.ebnf) defines the documented grammar. The current
@@ -46,7 +54,8 @@ semantic review; a source inventory cannot infer every behavior change.
 | Lexical and recovery | All literal/token families, interpolation, comments/shebang/trivia, incomplete item/member/call/type/pattern, malformed neighbor, empty file, cursor start/middle/end and EOF. |
 | LSP feature | Every advertised method, resolve/delta/range variants, lifecycle/sync/watch/configuration, plus explicit rejection of unadvertised methods. |
 | Document lifecycle | Disk-only target, opening importer/definition, unsaved edit, save-independent operation, close-to-disk, reopen, create/change/delete/rename dependency, schema replacement, stale versions, cancellation. |
-| Position and environment | ASCII, Chinese, non-BMP characters, LF/CRLF, multiline prefix shifts, percent-encoded paths, spaces/percent signs, Windows drive spelling, minimal/editor-like client capabilities, supported OS and minimum/current VS Code. |
+| Position and client behavior | ASCII, Chinese, non-BMP characters, LF/CRLF, multiline prefix shifts, percent-encoded paths, spaces/percent signs, locally executable Windows drive-spelling fixtures, and minimal/editor-like client capabilities. |
+| Deferred execution environments | Additional supported OS and minimum/current VS Code profiles, plus the interaction matrix's B16 variants. These do not gate current local acceptance. |
 
 The current executable expansion contains 1327 obligations: applicable syntax
 dimensions in both polarities at their owning test layers, selected document
@@ -85,12 +94,13 @@ applicable negative requirement.
    returned receiver × dynamic boundary; cancellation × stale generation × edits;
    token full/delta × multiline edits × CRLF/non-BMP characters.
 3. Use constrained pairwise generation for other independent factors, such as
-   OS, line ending, cursor offset, and disk/open state. Record the seed and selected
+   line ending, cursor offset, and disk/open state. Record the seed and selected
    tuples, and prove every valid required pair is represented. Pairwise generation
    is a planned next stage, not a currently implemented generator.
-4. Run the same named editor scenarios on minimum/current versions and supported
-   platforms. Current CI runs Windows/Linux stable and Linux 1.90.0; macOS and
-   broader environment combinations remain acceptance gaps.
+4. Run all current local scenarios on one recorded OS and exact supported VS Code
+   version. Repeating them on minimum/current versions and other platforms belongs
+   to deferred B16. Current CI runs Windows/Linux stable and Linux 1.90.0; its
+   environment expansion is not a prerequisite for completing local coverage.
 
 The test oracle must remain independent from the implementation under test.
 Expected target/edit markers come from fixtures; never fill expected ranges by
@@ -193,8 +203,11 @@ states are:
 Ordinary CI rejects catalog drift, stale or wrong-layer references, invalid N/A
 entries, and failing tests. It currently allows unreviewed cells so the audit can
 land incrementally. `--strict` is the separate acceptance gate and requires every
-applicable cell to be verified for the current execution profile. A release must
-run that gate for all supported editor profiles, not only one developer machine.
+applicable cell to be verified for the current execution profile. B19 requires
+this full local gate and the added local interaction/generated/scale gates.
+Cross-environment release certification later requires B16 evidence; local
+acceptance does not claim that certification. Missing local tests or failures
+cannot be deferred under the environment follow-up.
 
 ## Execution Plan And Exit Gates
 
@@ -204,8 +217,8 @@ run that gate for all supported editor profiles, not only one developer machine.
 | P1 — semantic audit | Review existing service/protocol assertions by syntax partition; add missing cases before changing product behavior. | Every applicable positive/negative semantic obligation links exact independent assertions; no broad cell certified by one incidental test. |
 | P2 — ranges and edits | Run all range-bearing features through LF/CRLF and Unicode transformations, apply edits and decode tokens. | Every outgoing range/edit/token family has exact conversion and transformation proof. |
 | P3 — lifecycle/schema | Stateful disk/overlay/dependency/config/schema/cancellation sequences with fresh-workspace oracle. | All state obligations verified; no stale results, guessed facts, or unbounded waits. |
-| P4 — editor workflows | Shared scenarios for every advertised user-facing feature through installed VSIX. | Each editor obligation passes with current hashes on the supported OS/version profiles. |
-| P4 — user interaction | Execute the required UX01-UX24 routes through the workbench with exact resulting-state and rendering assertions. | Every mandatory scenario/route/profile has matching evidence at its required level; provider or command smoke cannot substitute for actual input. |
+| P4 — editor workflows | Shared scenarios for every advertised user-facing feature through installed VSIX. | Each editor obligation passes with current hashes on the recorded local profile. |
+| P4 — user interaction | Execute UX01-UX18 and UX21 routes through the local workbench with exact resulting-state and rendering assertions. | Every mandatory local route has matching evidence at its required level; provider or command smoke cannot substitute for actual input. B16-owned families remain deferred. |
 | P5 — generated/scale gates | Constrained pairwise generation, fixed-seed state machines, mutation checks, and dedicated scale budgets. | Recorded combination coverage, useful minimized failures, and strict acceptance without unexplained skips. |
 
 Start P1/P2 with navigation, completion, references/rename, diagnostics/actions,

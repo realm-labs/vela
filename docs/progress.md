@@ -585,6 +585,10 @@ references; reports distinguish candidate tests, mapped assertions, executed
 proof, and unreviewed requirements. P0 inventory is implemented; P1 semantic
 mapping and P2 range/edit transformation coverage remain open. Ordinary CI is
 not full acceptance while the separate strict gate reports unresolved cells.
+The prepared execution plan prioritizes complete coverage on one recorded local
+profile, including actual input/render proof and generated/scale checks. B16's
+additional environments are deferred follow-up work and do not block B19 local
+acceptance; no implementation batch is accepted yet.
 
 ### Deferred Tracks
 

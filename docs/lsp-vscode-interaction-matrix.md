@@ -7,10 +7,12 @@ a keyboard event. The current catalog has 27 feature-level `editor/smoke` cells.
 Neither those cells nor the 1327 initial requirements certify this matrix.
 
 This document extends [the strategy](lsp-test-strategy.md) and is executed through
-[B00-B19](lsp-test-execution-plan.md). Scenario IDs remain stable. Every row is a
-required scenario family; B00 expands its routes, negative cases, and profiles
-into explicit obligations. All rows start pending. Existing tests may supply
-evidence only for the exact assertions and interaction level they exercise.
+[execution plan](lsp-test-execution-plan.md). Scenario IDs remain stable.
+UX01-UX18 and UX21 are required on one recorded local development profile;
+B00 expands their routes and negative cases into explicit obligations. B16-owned
+UX19, UX20, UX22, UX23 and UX24 remain deferred follow-up families, without detailed
+environment expansion in this goal. Local rows start pending. Existing tests may
+supply evidence only for the exact assertions and interaction level they exercise.
 
 ## Evidence Levels
 
@@ -27,11 +29,13 @@ cannot prove a keybinding or mouse route. APIs may set up fixtures and inspect
 results, but must not perform the action under acceptance. Accepting a completion
 must use the suggestion widget, not apply the provider's edit directly.
 
-## Required Scenarios
+## Scenario Families And Scope
 
 Each row names its owning batch. B01 supplies shared input/render infrastructure;
-B16 runs environment variants without changing feature ownership. Explicit
-alternative routes in a row each require evidence, not a choice of one route.
+B16 is deferred environment work without changing feature ownership. Explicit
+alternative routes in each current local row require evidence, not a choice of
+one route. Local default keybindings and visible-widget assertions remain required
+even though the separate remap and rendering-variant families are deferred.
 
 | ID | Owner | User action and minimum evidence | Exact outcome and negative/recovery case |
 |---|---|---|---|
@@ -65,7 +69,23 @@ live application state. Failure injection affects only test-owned processes and
 profiles. UX18 tests the existing recovery policy, not a new automatic restart
 feature. Review the exact supported policy before writing each oracle.
 
-## Environment And Scheduling Contract
+## Current Local Acceptance
+
+Use the available local OS and one exact supported VS Code version, recorded
+with architecture, display backend, locale, keyboard layout, theme, zoom and
+settings. All UX01-UX18 and UX21 routes and negative/recovery cases are mandatory
+on this profile. Unicode, LF/CRLF, dirty buffers, disk lifecycle and schema/config
+changes remain functional coverage requirements. B19 closes these local workflows
+with the strategy's semantic, stateful, generated and scale gates.
+
+Additional environments, versions and configuration sweeps are deferred. Their
+availability is not a prerequisite for B00/B01 or local completion. Preserve
+existing CI; adding multi-environment lanes or scheduling is later B16 work.
+
+## Deferred B16 Environment And Scheduling Contract
+
+The following scope is retained for later execution and does not gate B19's
+current local acceptance. Activate and expand it in a separate follow-up.
 
 The local release matrix has six profiles: Windows, Linux and macOS, each on
 minimum supported and current stable VS Code. Resolve labels to exact versions
@@ -92,9 +112,9 @@ Two identical packages cannot prove an upgrade.
 |---|---|
 | Pull request | Existing Rust/provider gates and installed command tests; Input smoke for UX01, UX02, UX04, UX05, UX07 and UX08 on Windows/Linux stable. Scenario, driver, packaging or evidence changes also run affected scenarios. |
 | Nightly | Complete six-profile local suite, remote core suite, upgrade/coexistence checks and rendering variants. Preserve failures even if a later retry succeeds. |
-| Release / B19 | Every required scenario/route/profile tuple passes for the candidate revision/artifacts, together with all strategy gates. Reuse nightly evidence only when all relevant identities match. |
+| Future cross-environment release | Every required scenario/route/profile tuple passes for the candidate revision/artifacts, together with all strategy gates. Reuse nightly evidence only when all relevant identities match. |
 
-These lanes are planned B16 work. Current CI runs the six-scenario suite on
+These lanes are deferred B16 work. Current CI runs the six-scenario suite on
 Windows/Linux stable and Linux 1.90.0; it has no workbench input or remote lane.
 
 ## Driver, Evidence And Completion Rules
@@ -102,8 +122,10 @@ Windows/Linux stable and Linux 1.90.0; it has no workbench input or remote lane.
 B01 establishes a separate workbench input/render driver using the installed
 VSIX, isolated profiles and shared marker fixtures. Prove one keyboard action,
 pointer action, visible-widget assertion and final-document assertion before
-relying on the driver. Select and pin tooling during implementation; no new UI
-automation command is available today.
+relying on the driver. It also implements and validates the local result format
+and provenance below so B02 can submit Input/Render proof to the scoped gate.
+Select and pin tooling during implementation; no new UI automation command is
+available today.
 
 Use stable accessibility/automation selectors, explicit focus checks and bounded
 waits for state transitions instead of fixed sleeps or unbounded polling.
@@ -114,10 +136,12 @@ expectations. Record display/font inputs and review baseline changes; never
 auto-approve changed screenshots to pass a failure. Unsupported selectors or
 rendering backends leave a route pending/failed, not downgraded to provider proof.
 
-B00 registers every scenario's owner, required routes, evidence levels, fixture,
-positive/negative assertions and profiles. Use stable IDs such as
-`vscode/UX04/accept-tab/input/windows-current`; freeze the actual format in the
-versioned manifest. Families may split into children without dropping routes.
+B00 registers every local scenario's owner, required routes, evidence levels,
+fixture, positive/negative assertions and local profile. Use stable IDs such as
+`vscode/UX04/accept-tab/input/local`; freeze the actual format in the versioned
+manifest and bind `local` to the exact recorded profile. Register B16-owned
+families separately as deferred; their tuple expansion waits for B16. Local
+families may split into children without dropping routes.
 Add negative self-tests for missing scenarios/variants, wrong evidence levels,
 duplicate owners, stale artifacts and skipped actions.
 
@@ -125,14 +149,15 @@ Results record scenario/route ID, evidence level, driver/fixture hashes, VSIX an
 server hashes, source identity, exact environment, actual actions, expected and
 observed outcomes, timing and pass/fail/skip state. Preserve action traces,
 failure screenshots, extension-host/server logs and applicable protocol traces.
-Provenance includes driver, packaging, configuration and companion-extension
-inputs; the current format does not cover all these inputs yet.
+Provenance includes driver, packaging and configuration inputs; B16 later adds
+companion-extension inputs and multi-profile aggregation. The current format does
+not cover all required local inputs yet.
 
 Feature batches close their interaction requirements on the recorded local
-development profile alongside provider proof. B16 closes the complete six-profile
-and remote expansion; this does not defer the local workflows until B16.
-B19 requires both plus all strategy gates.
-A `feature/editor/smoke` pass cannot satisfy an Input route or this whole matrix.
-Unavailable infrastructure, flaky results, unexpected skips and missing artifacts
-remain acceptance gaps. Manual testing may supply new regressions; it is not the
-required evidence source for these automated scenarios.
+development profile alongside provider proof. B19 requires every local route
+plus all local strategy gates; B16 remains explicitly deferred, not accepted.
+A `feature/editor/smoke` pass cannot satisfy an Input route or the local matrix.
+Unavailable required local tooling, flaky results, unexpected local skips and
+missing local artifacts remain acceptance gaps. Deferred environment infrastructure
+does not block this goal. Manual testing may supply new regressions; it is not
+the required evidence source for these automated scenarios.

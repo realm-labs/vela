@@ -1,6 +1,6 @@
 # LSP Test Matrix Execution Plan
 
-Status: ready for a future goal; implementation batches have not started.
+Status: prepared for local coverage first; implementation batches have not started.
 The [strategy](lsp-test-strategy.md) owns required behavior and P0-P5 acceptance.
 This plan owns work boundaries and verification checkpoints. Follow
 [goal.md](goal.md), [architecture.md](architecture.md), and repository agent
@@ -9,43 +9,60 @@ instructions throughout. The implementation baseline is commit `33451ec80`.
 The [VS Code interaction matrix](lsp-vscode-interaction-matrix.md) is also a
 required acceptance contract. Its UX01-UX24 scenarios distinguish provider,
 command, actual input and rendered-output evidence; editor smoke alone cannot
-close their requirements. This extends planned scope without renumbering batches.
+close their requirements. Local feature workflows are required now; environment
+expansion remains a separate follow-up without renumbering batches.
 
 ## Goal Contract
 
 Build executable proof for the existing syntax and LSP contracts, repair defects
-that this proof exposes, and pass all strategy exit gates. Test queries must
+that this proof exposes, and pass all local strategy exit gates. Test queries must
 never execute scripts or access live host state. Preserve the service/server/
 editor boundaries; unrelated runtime optimization and new language or LSP
 features are outside this goal.
+
+The current goal uses one recorded local development profile: the available OS
+and one exact supported VS Code version. Complete syntax/semantic partitions,
+positive/negative assertions, ranges/edits, state machines, local installed-VSIX
+interactions, generated checks and scale gates on that profile. Unicode,
+LF/CRLF, URI fixtures and client-capability variants remain required wherever
+locally executable; they are correctness cases, not new execution environments.
+
+B16 environment expansion is deferred: additional OS/editor versions, remote
+hosts, upgrade/coexistence profiles, keyboard remaps, theme/zoom sweeps and new
+multi-environment CI scheduling do not block this goal. Preserve their scenario
+IDs as deferred scope, not verified or N/A. Do not require their infrastructure
+preflight or detailed tuple expansion before local coverage work. Existing CI
+remains in place. Local acceptance does not claim cross-environment acceptance.
 
 Use this prompt to start later in a client that supports `/goal`:
 
 ```text
 /goal Implement the LSP test matrix according to docs/lsp-test-execution-plan.md.
-Read the checkpoint, resume the first incomplete batch, and complete B00-B19
-in order. For each batch, add independent assertions, fix exposed defects,
-run its acceptance checks, and create small, coherent Conventional Commits.
+Read the checkpoint, resume the first incomplete local batch, and complete
+B00-B15, then B17-B19 in order; keep B16 deferred. Use one recorded local
+development profile. For each batch, add independent assertions, fix exposed
+defects, run its acceptance checks, and create small, coherent Conventional Commits.
 Record the LSP-Batch ID and validation results in each commit body.
 Do not pass acceptance by deleting requirements, weakening assertions,
-ignoring tests, or marking defects as N/A. Continue until full acceptance.
-If interrupted, preserve a resumable checkpoint and keep unexecuted
-environment checks pending.
+ignoring tests, or marking defects as N/A. Continue until full local acceptance.
+If interrupted, preserve a resumable checkpoint. Additional environments are
+deferred follow-up work and do not block this goal.
 ```
 
-For a bounded first goal, replace "complete B00-B19" with "complete only B00-B01".
-Completing that bounded goal does not complete the full strategy. A token/time
-limit is a resource boundary, not evidence of acceptance. Goal mode maintains
+For a bounded first goal, replace the batch sequence with "complete only B00-B01".
+Completing that bounded goal does not complete local strategy acceptance. A
+token/time limit is a resource boundary, not evidence of acceptance. Goal mode maintains
 the objective; repository checkpoints and Git provide the durable resume state.
 See OpenAI's [Follow a goal](https://learn.chatgpt.com/use-cases/follow-goals).
 
 ## Stable Batches
 
-Execute B00, then B01, then B02-B14 in order, followed by B15-B19. B02-B13 each
+Execute B00, then B01, then B02-B15 in order, followed by B17-B19. Skip the
+explicitly deferred B16 without marking it accepted. B02-B13 each
 own all existing obligations for the listed exact catalog feature IDs, including
 their syntax, state, environment, and local installed-editor cells. These are
 vertical slices across P1-P4, so range or negative assertions are not deferred
-until a later phase. B15-B18 add cross-feature and execution-lane acceptance;
+until a later phase. B15, B17 and B18 add cross-feature and local execution proof;
 they do not excuse gaps in earlier batches.
 
 | Batch | Scope | Batch-specific exit proof |
@@ -66,21 +83,22 @@ they do not excuse gaps in earlier batches.
 | B13 | `inlay` | Exact positions, labels/kinds, parameter identity, range containment and suppression rules. |
 | B14 | Semantic partition completeness review | Audit all S0-S14 groups against grammar/AST partitions and each feature contract; split broad cells where necessary and add missing assertions. Owns new partition obligations; existing cells retain B02-B13 ownership. |
 | B15 | Cross-feature state machines | Incremental versus fresh-workspace equivalence through disk/dirty/close/reopen, dependency and schema replacement, malformed neighbors, cancellation and stale generations. Add explicit obligations for required high-risk combinations. |
-| B16 | Installed-editor environment lanes | Run shared user workflows on Windows/Linux/macOS and minimum/current VS Code. Pin actual versions in results, enforce profile identity and complete profile aggregation, retain logs and provenance. Implement PR/nightly/release selection and scheduling. |
+| B16 | Deferred: installed-editor environment expansion | Future six-profile, remote, upgrade/coexistence, keybinding and rendering variants, profile aggregation and CI scheduling. Not executed or required for this local goal; retain the ID for later work. |
 | B17 | Constrained generation and oracle sensitivity | Fixed-seed valid pair coverage, finite state sequences, reproducible minimized failures, and bounded mutation checks that demonstrate wrong targets/ranges/stale results are detected. Add machine-checkable acceptance obligations. |
 | B18 | Scale budgets | Fixed workspace sizes and edit/query workloads, separate cold/warm runs, explicit latency/memory budgets and machine context. Calibrate and commit thresholds before acceptance measurement; report violations without relaxing thresholds to fit the result. |
-| B19 | Full acceptance | All batches accepted, whole-repository checks pass, full strict matrix passes for every required profile, generated/scale evidence passes, and a durable acceptance report records commands, revisions, profiles and artifacts. |
+| B19 | Full local acceptance | B00-B15 and B17-B18 accepted, whole-repository checks pass, full strict local matrix and mandatory local interaction routes pass on the recorded profile, generated/scale evidence passes, and a durable report records commands, revisions and artifacts with B16 explicitly deferred. |
 
 B00/B01 are infrastructure gates, not claims of semantic coverage. The current
 41 feature IDs are assigned once across B02-B13. The initial 1327 obligations
 are a starting inventory, not a frozen denominator or the final P5 workload.
-B14-B18 must register additional requirements before claiming their acceptance.
+B14, B15, B17 and B18 must register additional local requirements before claiming
+their acceptance.
 
-Interaction work follows the existing owners: B00 registers every UX scenario,
-route, evidence level and profile; B01 supplies the workbench input/render driver;
-B02-B13 and B15 implement their assigned local scenarios; B16 covers environment,
-upgrade, coexistence, keybinding and rendering variants, including remote hosts.
-B19 requires all mandatory interaction tuples as well as the full semantic matrix.
+Interaction work follows the existing owners: B00 expands UX01-UX18 and UX21
+into local routes and evidence levels, and records B16-owned families as deferred.
+B01 supplies the workbench input/render driver and validated local evidence
+format; B02-B13 and B15 implement their assigned local scenarios. B19 requires
+all mandatory local interaction tuples as well as the full local semantic matrix.
 Use child commits within these batches to keep driver, feature and CI work small.
 
 Batch numbers and completed scope remain stable. If a batch needs multiple
@@ -117,10 +135,12 @@ Missing Input/Render proof cannot be satisfied by provider or command evidence.
 Keep feature-batch local gates distinct from B16 environment expansion, and
 validate the required scenario/route/profile set before B19 can close.
 
-The manifest must also declare B14-B19 deliverables so accepting all initial
-feature cells cannot accidentally close the entire goal. B16 extends evidence
-identity to required profiles and aggregates them; current local provenance
-alone does not certify multiple OS/editor versions.
+The manifest must also declare B14-B19 scope and deliverables so accepting all
+initial feature cells cannot accidentally close the entire goal. Only the named
+B16 environment follow-up may be deferred by this scope decision; missing local
+proof cannot be reclassified as deferred to pass a gate. Self-tests must reject
+that reclassification. B01 validates the exact local profile and driver/fixture/
+VSIX/server identities; multi-profile aggregation belongs to the later B16.
 
 ## Commit And Validation Contract
 
@@ -163,22 +183,24 @@ cargo test --workspace
 ```
 
 For final acceptance, additionally run the strategy's full `--strict` command
-with explicit matching editor results for each required profile, plus generated
-and scale gates implemented by B17/B18. Local checks do not certify unavailable
-OS lanes. Retain their pending status until actual matching execution evidence
-exists. A recorded unrelated baseline failure is still an open final gate.
+with explicit matching editor results for the recorded local profile, plus
+generated and scale gates implemented by B17/B18. Deferred environments do not
+block B19 and must not be reported as verified. A recorded unrelated baseline
+failure is still an open local gate; repair local baseline failures in prerequisite
+child commits before closing B00, preserving their feature requirement ownership.
 
 ## Checkpoint And Resume Contract
 
 The initial checkpoint is: **no B batch accepted; next task B00; no active child;
-P0 implementation baseline `33451ec80`; full acceptance pending**. This is a
-prepared plan, not an active goal or a newly measured coverage result.
+P0 implementation baseline `33451ec80`; local acceptance pending; B16 deferred**.
+This is a prepared plan, not an active goal or a newly measured coverage result.
 
 B00 creates the machine-readable execution checkpoint alongside its manifest.
 Thereafter that checkpoint is the single source of batch status; keep this plan
 stable rather than appending a per-commit narrative. Each checkpoint records:
 
 - Accepted batches, active child, remaining exact requirement IDs, and next task.
+- Current local scope/profile and the separate deferred B16 follow-up.
 - Manifest version, tested source revision/tree identity, validation commands and
   results, editor profiles, and artifact locations/provenance.
 - Uncommitted work and reproducible failures when interrupted, with external
@@ -196,5 +218,6 @@ nearest incomplete/failing gate when inputs changed or evidence is missing.
 Continue the active child or first incomplete batch, preserving completed work.
 Update `progress.md` only for phase status/current-focus changes and
 `decisions.md` only for durable design decisions. Budget exhaustion, interruption,
-or unavailable CI keeps unverified work pending; only the requested goal's actual
-exit gates justify marking that goal complete.
+or unavailable required local tooling keeps local work pending. Deferred B16
+infrastructure does not block completion; only the local goal's actual exit gates
+justify marking it complete.

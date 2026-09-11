@@ -35,6 +35,14 @@ pointer and widget routes cannot be accepted from provider/command tests alone.
 The planned batch gate tracks these routes and their environment identities;
 installed feature smoke remains a separate, narrower proof.
 
+The current LSP coverage goal accepts one recorded local development profile.
+All local syntax, semantic, range/edit, lifecycle, Input/Render and generated/
+scale proof remains required. B16 environment expansion is a deferred follow-up,
+including other OS/editor versions, remote hosts and configuration sweeps; it
+does not block B19 local acceptance. Deferred families remain visible and are
+neither verified nor N/A. B01 owns local evidence identity and validation;
+multi-profile aggregation belongs to B16. Existing CI remains in place.
+
 ## Standing Constraints
 
 - Script-language generics are not supported.
