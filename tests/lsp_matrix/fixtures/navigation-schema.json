@@ -1,0 +1,535 @@
+{
+  "version": 1,
+  "id": "navigation-schema",
+  "files": {
+    "scripts/main.vela": "fn main(boxed: [[box-hint]]HostBox, cell: [[cell-hint]]HostCell, reader: [[trait-hint]]HostReader, metadata: [[metadata-hint]]MetadataOnly, unknown) {\n    let text = \"中😀\"; boxed.[[field-use]]item;\n    boxed.[[field-write]]item = cell;\n    boxed.[[primitive-field]]level;\n    boxed.[[method-use]]get();\n    reader.[[trait-method]]read();\n    [[function-use]]make_box().[[returned-field]]item;\n    boxed.get().[[nested-field]]value;\n    HostChoice::[[unit-variant]]Empty;\n    HostChoice::[[tuple-variant]]Number(1);\n    HostChoice::[[record-variant]]Record { cell: cell };\n    metadata.[[metadata-field]]value;\n    metadata.[[metadata-method]]get();\n    boxed.[[missing-field]]missing;\n    unknown.[[dynamic-field]]item;\n    unknown.[[dynamic-method]]get();\n    [[unknown-function]]missing_call();\n}\nfn variants(value) {\n    match value { HostChoice::[[pattern-variant]]Number(n) => n, _ => 0 };\n    HostChoice::[[missing-variant]]Missing;\n    MetadataChoice::[[metadata-variant]]Only;\n}\n",
+    "scripts/origins.vela": "/* 中😀 */ fn [[box:start]]box_origin[[box:end]]() {}\n/* 中😀 */ fn [[cell:start]]cell_origin[[cell:end]]() {}\n/* 中😀 */ fn [[reader:start]]reader_origin[[reader:end]]() {}\n/* 中😀 */ fn [[item:start]]item_origin[[item:end]]() {}\n/* 中😀 */ fn [[level:start]]level_origin[[level:end]]() {}\n/* 中😀 */ fn [[get:start]]get_origin[[get:end]]() {}\n/* 中😀 */ fn [[read:start]]read_origin[[read:end]]() {}\n/* 中😀 */ fn [[make:start]]make_origin[[make:end]]() {}\n/* 中😀 */ fn [[value:start]]value_origin[[value:end]]() {}\n/* 中😀 */ fn [[choice:start]]choice_origin[[choice:end]]() {}\n/* 中😀 */ fn [[empty:start]]empty_origin[[empty:end]]() {}\n/* 中😀 */ fn [[number:start]]number_origin[[number:end]]() {}\n/* 中😀 */ fn [[record:start]]record_origin[[record:end]]() {}\n",
+    "vela.toml": "[package]\nid = 'dev.vela.navigation'\nname = 'navigation'\nversion = '0.1.0'\n[source]\nroots = ['scripts']\n[host]\nschema = 'target/schema.json'\n",
+    "scripts/local.vela": "enum [[source-choice:start]]HostChoice[[source-choice:end]] { [[source-empty:start]]Empty[[source-empty:end]] }\nstruct [[source-box:start]]HostBox[[source-box:end]] { [[source-item:start]]item[[source-item:end]]: i64 }\nfn collisions(boxed: [[source-hint]]HostBox) { boxed.[[source-field]]item; HostChoice::[[source-variant]]Empty; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "box-hint",
+        "file": "scripts/main.vela",
+        "cursor": "box-hint",
+        "definition": "box",
+        "declaration": "box",
+        "type-definition": "box",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "cell-hint",
+        "file": "scripts/main.vela",
+        "cursor": "cell-hint",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "trait-hint",
+        "file": "scripts/main.vela",
+        "cursor": "trait-hint",
+        "definition": "reader",
+        "declaration": "reader",
+        "type-definition": "reader",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "metadata-hint",
+        "file": "scripts/main.vela",
+        "cursor": "metadata-hint",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null,
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "field-use",
+        "file": "scripts/main.vela",
+        "cursor": "field-use",
+        "definition": "item",
+        "declaration": "item",
+        "type-definition": "cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "field-write",
+        "file": "scripts/main.vela",
+        "cursor": "field-write",
+        "definition": "item",
+        "declaration": "item",
+        "type-definition": "cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "primitive-field",
+        "file": "scripts/main.vela",
+        "cursor": "primitive-field",
+        "definition": "level",
+        "declaration": "level",
+        "type-definition": null,
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "method-use",
+        "file": "scripts/main.vela",
+        "cursor": "method-use",
+        "definition": "get",
+        "declaration": "get",
+        "type-definition": "cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "trait-method",
+        "file": "scripts/main.vela",
+        "cursor": "trait-method",
+        "definition": "read",
+        "declaration": "read",
+        "type-definition": "cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "function-use",
+        "file": "scripts/main.vela",
+        "cursor": "function-use",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "box",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "returned-field",
+        "file": "scripts/main.vela",
+        "cursor": "returned-field",
+        "definition": "item",
+        "declaration": "item",
+        "type-definition": "cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "nested-field",
+        "file": "scripts/main.vela",
+        "cursor": "nested-field",
+        "definition": "value",
+        "declaration": "value",
+        "type-definition": null,
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "unit-variant",
+        "file": "scripts/main.vela",
+        "cursor": "unit-variant",
+        "definition": "empty",
+        "declaration": "empty",
+        "type-definition": "choice",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "tuple-variant",
+        "file": "scripts/main.vela",
+        "cursor": "tuple-variant",
+        "definition": "number",
+        "declaration": "number",
+        "type-definition": "choice",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "record-variant",
+        "file": "scripts/main.vela",
+        "cursor": "record-variant",
+        "definition": "record",
+        "declaration": "record",
+        "type-definition": "choice",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "metadata-field",
+        "file": "scripts/main.vela",
+        "cursor": "metadata-field",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null,
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "metadata-method",
+        "file": "scripts/main.vela",
+        "cursor": "metadata-method",
+        "definition": null,
+        "declaration": null,
+        "type-definition": "cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "missing-field",
+        "file": "scripts/main.vela",
+        "cursor": "missing-field",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null,
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "dynamic-field",
+        "file": "scripts/main.vela",
+        "cursor": "dynamic-field",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null,
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "dynamic-method",
+        "file": "scripts/main.vela",
+        "cursor": "dynamic-method",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null,
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "unknown-function",
+        "file": "scripts/main.vela",
+        "cursor": "unknown-function",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null,
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "pattern-variant",
+        "file": "scripts/main.vela",
+        "cursor": "pattern-variant",
+        "definition": "number",
+        "declaration": "number",
+        "type-definition": "choice",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "missing-variant",
+        "file": "scripts/main.vela",
+        "cursor": "missing-variant",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null,
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "metadata-variant",
+        "file": "scripts/main.vela",
+        "cursor": "metadata-variant",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null,
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "source-hint",
+        "file": "scripts/local.vela",
+        "cursor": "source-hint",
+        "definition": "source-box",
+        "declaration": "source-box",
+        "type-definition": "source-box",
+        "target-file": "scripts/local.vela"
+      },
+      {
+        "id": "source-field",
+        "file": "scripts/local.vela",
+        "cursor": "source-field",
+        "definition": "source-item",
+        "declaration": "source-item",
+        "type-definition": null,
+        "target-file": "scripts/local.vela"
+      },
+      {
+        "id": "source-variant",
+        "file": "scripts/local.vela",
+        "cursor": "source-variant",
+        "definition": "source-empty",
+        "declaration": "source-empty",
+        "type-definition": "source-choice",
+        "target-file": "scripts/local.vela"
+      }
+    ],
+    "schema": {
+      "types": [
+        {
+          "name": "HostBox",
+          "fact": {
+            "kind": "host",
+            "name": "HostBox"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "box"
+          }
+        },
+        {
+          "name": "HostCell",
+          "fact": {
+            "kind": "host",
+            "name": "HostCell"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "cell"
+          }
+        },
+        {
+          "name": "MetadataOnly",
+          "fact": {
+            "kind": "host",
+            "name": "MetadataOnly"
+          }
+        },
+        {
+          "name": "HostChoice",
+          "fact": {
+            "kind": "enum",
+            "name": "HostChoice"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "choice"
+          }
+        },
+        {
+          "name": "MetadataChoice",
+          "fact": {
+            "kind": "enum",
+            "name": "MetadataChoice"
+          }
+        }
+      ],
+      "traits": [
+        {
+          "name": "HostReader",
+          "fact": {
+            "kind": "trait",
+            "name": "HostReader"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "reader"
+          }
+        }
+      ],
+      "fields": [
+        {
+          "name": "item",
+          "fact": {
+            "kind": "host",
+            "name": "HostCell"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "item"
+          },
+          "owner": "HostBox"
+        },
+        {
+          "name": "level",
+          "fact": {
+            "kind": "primitive",
+            "name": "i64"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "level"
+          },
+          "owner": "HostBox"
+        },
+        {
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "i64"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "value"
+          },
+          "owner": "HostCell"
+        },
+        {
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "i64"
+          },
+          "owner": "MetadataOnly"
+        },
+        {
+          "owner": "HostChoice::Number",
+          "name": "0",
+          "fact": {
+            "kind": "primitive",
+            "name": "i64"
+          }
+        },
+        {
+          "owner": "HostChoice::Record",
+          "name": "cell",
+          "fact": {
+            "kind": "host",
+            "name": "HostCell"
+          }
+        }
+      ],
+      "methods": [
+        {
+          "name": "get",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "host",
+              "name": "HostCell"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "get"
+          },
+          "owner": "HostBox"
+        },
+        {
+          "name": "get",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "host",
+              "name": "HostCell"
+            }
+          },
+          "owner": "MetadataOnly"
+        }
+      ],
+      "traitMethods": [
+        {
+          "name": "read",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "host",
+              "name": "HostCell"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "read"
+          },
+          "owner": "HostReader"
+        }
+      ],
+      "functions": [
+        {
+          "name": "make_box",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "host",
+              "name": "HostBox"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "make"
+          }
+        }
+      ],
+      "variants": [
+        {
+          "name": "Empty",
+          "fact": {
+            "kind": "enum",
+            "name": "HostChoice",
+            "variant": "Empty"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "empty"
+          },
+          "owner": "HostChoice"
+        },
+        {
+          "name": "Number",
+          "fact": {
+            "kind": "enum",
+            "name": "HostChoice",
+            "variant": "Number"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "number"
+          },
+          "owner": "HostChoice"
+        },
+        {
+          "name": "Record",
+          "fact": {
+            "kind": "enum",
+            "name": "HostChoice",
+            "variant": "Record"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "record"
+          },
+          "owner": "HostChoice"
+        },
+        {
+          "owner": "MetadataChoice",
+          "name": "Only",
+          "fact": {
+            "kind": "enum",
+            "name": "MetadataChoice",
+            "variant": "Only"
+          }
+        }
+      ]
+    },
+    "invalidSchemaSpans": [
+      {
+        "id": "out-of-bounds",
+        "patch": {
+          "start": 900000,
+          "end": 900004
+        }
+      },
+      {
+        "id": "split-unicode-start",
+        "patch": {
+          "start": 4,
+          "end": 10
+        }
+      },
+      {
+        "id": "split-surrogate-source",
+        "patch": {
+          "start": 6,
+          "end": 8
+        }
+      },
+      {
+        "id": "unknown-source",
+        "patch": {
+          "source": 4294967295
+        }
+      },
+      {
+        "id": "reversed",
+        "patch": {
+          "start": 10,
+          "end": 3
+        }
+      }
+    ]
+  }
+}

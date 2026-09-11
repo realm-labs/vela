@@ -69,6 +69,18 @@
         {
           "layer": "protocol",
           "name": "tests::definition::unicode::navigation_projects_target_byte_columns_to_utf16_from_unsaved_cross_file_text"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
         }
       ]
     },
@@ -79,6 +91,18 @@
         {
           "layer": "protocol",
           "name": "tests::definition::unicode::navigation_projects_target_byte_columns_to_utf16_from_unsaved_cross_file_text"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
         }
       ]
     },
@@ -89,6 +113,18 @@
         {
           "layer": "protocol",
           "name": "tests::definition::unicode::navigation_projects_target_byte_columns_to_utf16_from_unsaved_cross_file_text"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
         }
       ]
     },
@@ -99,6 +135,18 @@
         {
           "layer": "protocol",
           "name": "tests::definition::unicode::navigation_projects_target_byte_columns_to_utf16_from_unsaved_cross_file_text"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
         }
       ]
     },
@@ -129,6 +177,96 @@
         {
           "layer": "editor",
           "name": "hover and completion reach the real language client"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/environments/encoded_uri/protocol",
+      "assertion": "Each matrix runs under a Chinese workspace directory with spaces and compares the entire returned encoded file URI with the client-visible target URI.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/environments/encoded_uri/protocol",
+      "assertion": "Each matrix runs under a Chinese workspace directory with spaces and compares the entire returned encoded file URI with the client-visible target URI.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/environments/utf16/protocol",
+      "assertion": "Hand-authored source/schema markers pin complete target ranges after Chinese and emoji; protocol queries preserve UTF-16 columns.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/environments/crlf/protocol",
+      "assertion": "The declaration, member and schema matrices execute both LF and CRLF sources and pin exact URI/start/end or null results.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/environments/encoded_uri/protocol",
+      "assertion": "Each matrix runs under a Chinese workspace directory with spaces and compares the entire returned encoded file URI with the client-visible target URI.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
         }
       ]
     }

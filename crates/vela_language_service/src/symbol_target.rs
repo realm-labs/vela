@@ -87,17 +87,16 @@ impl SymbolTarget {
             .or_else(|| locations.trait_method_span(&owner, &self.text))
     }
 
-    pub(crate) fn schema_variant_target(
+    pub(crate) fn schema_variant_identity(
         &self,
         databases: &LanguageServiceDatabases,
         query: &QueryContext<'_>,
-    ) -> Option<(Span, SymbolRef)> {
+    ) -> Option<(String, String)> {
         let source = query.source_record()?;
         for site in databases
             .hir_db()
             .graph()
             .paths_in_source(source.source_id())
-            .filter(|path| hir_path_sites::is_expression_path(path.kind))
             .filter_map(hir_path_sites::site)
         {
             if site.segment_range != self.range {
@@ -106,16 +105,14 @@ impl SymbolTarget {
             let Some((variant, owner_segments)) = site.path.split_last() else {
                 continue;
             };
-            let Some(owner) =
-                schema_variant_owner(databases.schema_db().facts(), owner_segments, variant)
-            else {
+            let schema = databases.schema_db().facts();
+            let Some(owner) = schema_variant_owner(schema, owner_segments, variant).or_else(|| {
+                let owner = owner_segments.join("::");
+                matches!(schema.type_fact(&owner), Some(TypeFact::Enum { .. })).then_some(owner)
+            }) else {
                 continue;
             };
-            let span = databases
-                .schema_db()
-                .source_locations()
-                .variant_span(&owner, variant)?;
-            return Some((span, schema_variant_symbol(&owner, variant)));
+            return Some((owner, variant.clone()));
         }
         None
     }

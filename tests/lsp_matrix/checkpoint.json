@@ -157,7 +157,7 @@
     },
     {
       "id": "B02.2",
-      "revision": null,
+      "revision": "7994c7c7c",
       "requirements": [
         "definition/syntax/S4/positive/service",
         "definition/syntax/S4/positive/protocol",
@@ -167,10 +167,26 @@
         "type-definition/syntax/S4/positive/protocol"
       ],
       "summary": "21 source member/variant queries in both Rust layers with LF/CRLF, Unicode, module collisions and exact target/null oracles. Repair trait implementation and enum pattern navigation; preserve module identity in type hints and member owners. Workspace tests (4341 passed, 2 existing ignored), workspace Clippy and formatting passed. Broad cells and B02 acceptance remain open; find the commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B02.3",
+      "revision": null,
+      "requirements": [
+        "definition/environments/utf16/protocol",
+        "definition/environments/crlf/protocol",
+        "definition/environments/encoded_uri/protocol",
+        "declaration/environments/utf16/protocol",
+        "declaration/environments/crlf/protocol",
+        "declaration/environments/encoded_uri/protocol",
+        "type-definition/environments/utf16/protocol",
+        "type-definition/environments/crlf/protocol",
+        "type-definition/environments/encoded_uri/protocol"
+      ],
+      "summary": "27 shared source-backed/schema-only navigation cases and five invalid-span/restore cases pass in both Rust layers, in LF and CRLF. Repair schema record/pattern variant ownership and reject invalid metadata source bounds. Exact UTF-16/CRLF/encoded-URI evidence is mapped. Parent B02 semantic/lifecycle/editor coverage remains open; find the commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B02.3",
-  "nextTask": "B02.3",
+  "activeChild": "B02.4",
+  "nextTask": "B02.4",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",

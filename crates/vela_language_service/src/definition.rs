@@ -63,6 +63,10 @@ impl LanguageServiceDatabases {
             return navigation.definition;
         }
 
+        if let Some(navigation) = self.source_variant_navigation(&query, &target) {
+            return navigation.definition;
+        }
+
         if target.is_schema_symbol()
             && let Some(definition) = target.schema_member_span(self).and_then(|span| {
                 self.definition_from_span_with_symbol(span, target.symbol().cloned())
@@ -71,20 +75,22 @@ impl LanguageServiceDatabases {
             return Some(definition);
         }
 
-        if let Some(definition) = target
-            .schema_variant_target(self, &query)
-            .and_then(|(span, symbol)| self.definition_from_span_with_symbol(span, Some(symbol)))
-        {
-            return Some(definition);
+        if let Some((owner, variant)) = target.schema_variant_identity(self, &query) {
+            return self
+                .schema_db()
+                .source_locations()
+                .variant_span(&owner, &variant)
+                .and_then(|span| {
+                    self.definition_from_span_with_symbol(
+                        span,
+                        Some(crate::symbol_ref::schema_variant_symbol(&owner, &variant)),
+                    )
+                });
         }
 
         if let Some(definition) = source_members::source_member_definition_for_target(self, &target)
         {
             return Some(definition);
-        }
-
-        if let Some(navigation) = self.source_variant_navigation(&query, &target) {
-            return navigation.definition;
         }
 
         if query.member_receiver_range().is_some() {
@@ -166,6 +172,14 @@ impl LanguageServiceDatabases {
             return navigation.type_definition;
         }
 
+        if let Some((owner, variant)) = target.schema_variant_identity(self, &query) {
+            return self
+                .schema_db()
+                .facts()
+                .variant_fact(&owner, &variant)
+                .and_then(|_| self.schema_type_definition_for_name(&owner));
+        }
+
         if let Some(fact) = self.member_type_fact_for_target(&target) {
             return self.type_definition_for_fact(&fact);
         }
@@ -207,6 +221,9 @@ impl LanguageServiceDatabases {
         let source = self.source_record_for(span.source)?;
         let start = usize::try_from(span.start).ok()?;
         let end = usize::try_from(span.end).ok()?;
+        // Metadata spans can outlive their source text. Reject invalid bounds
+        // and UTF-8 splits before projecting them to editor positions.
+        source.text().get(start..end)?;
         let range = diagnostic_range(source.text(), TextRange::new(start, end));
         Some(Definition {
             document_id: source.document_id().clone(),

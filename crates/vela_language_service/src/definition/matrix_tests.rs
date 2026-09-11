@@ -1,4 +1,4 @@
-use crate::matrix_fixture::{FixtureWorkspace, load};
+use crate::matrix_fixture::{FixtureWorkspace, load, schema_artifact};
 use crate::{
     DocumentId, LanguageServiceDatabases, Position, SourceFileSnapshot, Workspace, WorkspaceConfig,
     WorkspaceRoot, assemble_project_sources,
@@ -18,6 +18,13 @@ fn navigation_member_matrix_pins_source_ownership_and_negative_policy() {
     }
 }
 
+#[test]
+fn navigation_schema_matrix_distinguishes_source_spans_from_metadata_only() {
+    for crlf in [false, true] {
+        assert_navigation_matrix("navigation-schema", crlf);
+    }
+}
+
 fn assert_navigation_matrix(fixture_id: &str, crlf: bool) {
     let mut spec = load(fixture_id);
     if crlf {
@@ -30,6 +37,7 @@ fn assert_navigation_matrix(fixture_id: &str, crlf: bool) {
     let sources = fixture
         .disk
         .iter()
+        .filter(|(file, _)| file.ends_with(".vela"))
         .map(|(file, document)| SourceFileSnapshot::new(uri(file), document.text.as_str()))
         .collect::<Vec<_>>();
     let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
@@ -39,6 +47,14 @@ fn assert_navigation_matrix(fixture_id: &str, crlf: bool) {
         &sources,
         &Workspace::new().snapshot(),
     ));
+    if let Some(facts) = spec.oracle.get("schema") {
+        let artifact = schema_artifact(facts, &fixture, |file| {
+            databases.source_db().records()[&uri(file)]
+                .source_id()
+                .get()
+        });
+        databases.load_schema_artifact_json("/workspace/target/schema.json", &artifact.to_string());
+    }
     for query in spec.oracle["queries"].as_array().expect("query matrix") {
         let file = query["file"].as_str().expect("file");
         let document = fixture.document(file).expect("document");
@@ -70,6 +86,54 @@ fn assert_navigation_matrix(fixture_id: &str, crlf: bool) {
                 ],
                 "{label}"
             );
+        }
+    }
+    if let Some(cases) = spec.oracle["invalidSchemaSpans"].as_array() {
+        let artifact = schema_artifact(&spec.oracle["schema"], &fixture, |file| {
+            databases.source_db().records()[&uri(file)]
+                .source_id()
+                .get()
+        });
+        let document = fixture.document("scripts/main.vela").expect("caller");
+        let position = byte_position(&document.text, document.markers["box-hint"].start);
+        for case in cases {
+            let mut invalid = artifact.clone();
+            invalid["facts"]["types"][0]["sourceSpan"]
+                .as_object_mut()
+                .expect("span")
+                .extend(case["patch"].as_object().expect("span patch").clone());
+            databases
+                .load_schema_artifact_json("/workspace/target/schema.json", &invalid.to_string());
+            for actual in [
+                databases.definition(&uri("scripts/main.vela"), position),
+                databases.declaration(&uri("scripts/main.vela"), position),
+                databases.type_definition(&uri("scripts/main.vela"), position),
+            ] {
+                assert!(
+                    actual.is_none(),
+                    "{} CRLF={crlf}: invalid schema span must not navigate: {actual:?}",
+                    case["id"]
+                );
+            }
+            databases
+                .load_schema_artifact_json("/workspace/target/schema.json", &artifact.to_string());
+            let expected = fixture.document("scripts/origins.vela").expect("origin");
+            for actual in [
+                databases.definition(&uri("scripts/main.vela"), position),
+                databases.declaration(&uri("scripts/main.vela"), position),
+                databases.type_definition(&uri("scripts/main.vela"), position),
+            ] {
+                let actual = actual.expect("valid schema restoration must recover navigation");
+                assert_eq!(actual.document_id(), &uri("scripts/origins.vela"));
+                assert_eq!(
+                    actual.range().start(),
+                    byte_position(&expected.text, expected.markers["box"].start)
+                );
+                assert_eq!(
+                    actual.range().end(),
+                    byte_position(&expected.text, expected.markers["box"].end)
+                );
+            }
         }
     }
 }

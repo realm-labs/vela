@@ -5,6 +5,9 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+mod schema;
+pub(crate) use schema::schema_artifact;
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Point {
     pub byte: usize,

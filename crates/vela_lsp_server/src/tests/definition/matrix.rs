@@ -1,7 +1,7 @@
 use lsp_types::{notification as n, request as r};
 use serde_json::json;
 
-use crate::matrix_fixture::{FixtureWorkspace, load};
+use crate::matrix_fixture::{FixtureWorkspace, load, schema_artifact};
 use crate::tests::{TestServer, navigation_request, notify, request, response_value};
 
 #[test]
@@ -12,6 +12,11 @@ fn navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls() {
 #[test]
 fn navigation_member_matrix_projects_exact_source_member_targets_and_nulls() {
     assert_navigation_matrix("navigation-members");
+}
+
+#[test]
+fn navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls() {
+    assert_navigation_matrix("navigation-schema");
 }
 
 fn assert_navigation_matrix(fixture_id: &str) {
@@ -32,19 +37,43 @@ fn assert_navigation_matrix(fixture_id: &str) {
                 .to_string()
         };
         let mut server = TestServer::new();
+        let workspace_root = if fixture.disk.contains_key("vela.toml") {
+            ""
+        } else {
+            "scripts"
+        };
         let _ = request::<r::Initialize>(
             &mut server,
             1,
             json!({
-                "processId":null,"rootUri":uri("scripts"),"capabilities":{}
+                "processId":null,"rootUri":uri(workspace_root),"capabilities":{}
             }),
         );
         for (file, document) in &fixture.disk {
+            if !file.ends_with(".vela") {
+                continue;
+            }
             let _ = notify::<n::DidOpenTextDocument>(
                 &mut server,
                 json!({
                     "textDocument":{"uri":uri(file),"languageId":"vela","version":1,"text":document.text}
                 }),
+            );
+        }
+        if let Some(facts) = spec.oracle.get("schema") {
+            let snapshot = server.snapshot();
+            let artifact = schema_artifact(facts, &fixture, |file| {
+                snapshot.databases().source_db().records()
+                    [&vela_language_service::DocumentId::from(uri(file))]
+                    .source_id()
+                    .get()
+            });
+            std::fs::create_dir_all(root.join("target")).expect("schema directory");
+            std::fs::write(root.join("target/schema.json"), artifact.to_string())
+                .expect("schema artifact");
+            let _ = notify::<n::DidChangeWatchedFiles>(
+                &mut server,
+                json!({"changes":[{"uri":uri("target/schema.json"),"type":1}]}),
             );
         }
         let mut id = 2;
@@ -85,6 +114,62 @@ fn assert_navigation_matrix(fixture_id: &str) {
                     "{}: {method}, CRLF={crlf}",
                     query["id"]
                 );
+            }
+        }
+        if let Some(cases) = spec.oracle["invalidSchemaSpans"].as_array() {
+            let artifact: serde_json::Value = serde_json::from_str(
+                &std::fs::read_to_string(root.join("target/schema.json")).expect("schema"),
+            )
+            .expect("artifact");
+            let point = fixture
+                .document("scripts/main.vela")
+                .expect("caller")
+                .markers["box-hint"]
+                .start;
+            let marker = fixture
+                .document("scripts/origins.vela")
+                .expect("origin")
+                .markers["box"];
+            let healthy = json!({"uri":uri("scripts/origins.vela"),"range":{
+                "start":{"line":marker.start.line,"character":marker.start.character},
+                "end":{"line":marker.end.line,"character":marker.end.character}
+            }});
+            for case in cases {
+                let mut invalid = artifact.clone();
+                invalid["facts"]["types"][0]["sourceSpan"]
+                    .as_object_mut()
+                    .expect("span")
+                    .extend(case["patch"].as_object().expect("span patch").clone());
+                for (content, expected) in
+                    [(&invalid, &serde_json::Value::Null), (&artifact, &healthy)]
+                {
+                    std::fs::write(root.join("target/schema.json"), content.to_string())
+                        .expect("replace schema");
+                    let _ = notify::<n::DidChangeWatchedFiles>(
+                        &mut server,
+                        json!({"changes":[{"uri":uri("target/schema.json"),"type":2}]}),
+                    );
+                    for method in [
+                        "textDocument/definition",
+                        "textDocument/declaration",
+                        "textDocument/typeDefinition",
+                    ] {
+                        let response = response_value(navigation_request(
+                            &mut server,
+                            id,
+                            method,
+                            json!({"textDocument":{"uri":uri("scripts/main.vela")},"position":{"line":point.line,"character":point.character}}),
+                        ));
+                        id += 1;
+                        assert!(response.get("error").is_none(), "{response}");
+                        assert_eq!(
+                            response.get("result"),
+                            Some(expected),
+                            "{} {method} CRLF={crlf}",
+                            case["id"]
+                        );
+                    }
+                }
             }
         }
         std::fs::remove_dir_all(temp).expect("fixture cleanup");
