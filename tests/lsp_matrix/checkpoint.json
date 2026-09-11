@@ -84,6 +84,587 @@
           }
         ]
       }
+    },
+    {
+      "id": "B02",
+      "requirements": [
+        {
+          "id": "declaration/editor/smoke",
+          "contractHash": "b28530d5ea46d4c88889e38c97858494789d1bf5d49fbb55191631e20c769645"
+        },
+        {
+          "id": "declaration/environments/crlf/protocol",
+          "contractHash": "2a659e864ddc35685f649e620fcbe7af06d55246bd32e30b520110f672d372c3"
+        },
+        {
+          "id": "declaration/environments/encoded_uri/protocol",
+          "contractHash": "e4b3199a6422ff005b1dfb481f32c0beac9fd727b386ccedcdf68991bd2acb5e"
+        },
+        {
+          "id": "declaration/environments/utf16/protocol",
+          "contractHash": "c7f3df5cac4a3059446f35de13ecd61b6d8a16652745c49889caad1d3ff92c8d"
+        },
+        {
+          "id": "declaration/states/close_restore/protocol",
+          "contractHash": "74891da6cf031eb2a7d1d45c2960b4ebc039ecacbcb041585ddc54b414c58060"
+        },
+        {
+          "id": "declaration/states/dependency_change/protocol",
+          "contractHash": "540da1ac504602ea9456962f9e2f9d4dfb22c5b6532fddf815901dd82ac80780"
+        },
+        {
+          "id": "declaration/states/dependency_delete/protocol",
+          "contractHash": "30c0238ea5a2f909b6320e3cf3e97404855cacda3c786bde2fcfe795c43cf4e4"
+        },
+        {
+          "id": "declaration/states/dirty/protocol",
+          "contractHash": "940d369affa3702e2df90a0a368dd76f680c3ef324e5c5f2b79de6cd797286ac"
+        },
+        {
+          "id": "declaration/states/dynamic/protocol",
+          "contractHash": "cda2b6faa69423d4942cde2e0f87b9f5b165194df0cf5cfbf79c900e32d3d38e"
+        },
+        {
+          "id": "declaration/states/missing_schema/protocol",
+          "contractHash": "64e884a18315f2759819a2417b73653ef713c42f6a6ecd776c92aad95cfc5c36"
+        },
+        {
+          "id": "declaration/states/recovery/protocol",
+          "contractHash": "0a727f0ac34ab9cc9eb3b3404d927b4635bbe3ab6d10b50f97b212abbed1a0dd"
+        },
+        {
+          "id": "declaration/states/repeat/protocol",
+          "contractHash": "0977ebf50ccadcd1d1e774f1956f1550347a2c94f7fcd6b1e388cb14ce925c00"
+        },
+        {
+          "id": "declaration/states/stale_schema/protocol",
+          "contractHash": "86aaf8fed8acdf3e3c76100b091400d86b0f7f12b3913fc1f93c91a0bc8b84ae"
+        },
+        {
+          "id": "declaration/states/unresolved/protocol",
+          "contractHash": "bd7a82b2fbb7d767e54fa9e39cab499e70ba15991545ef2a2e854af7ec24354b"
+        },
+        {
+          "id": "declaration/syntax/S1/negative/protocol",
+          "contractHash": "c6e1ce1882183813f40874391bf088e05847bced6409ca3addb8cff233e6ece5"
+        },
+        {
+          "id": "declaration/syntax/S1/negative/service",
+          "contractHash": "115a9da8ab4c0b0ac849ffaa20b8d5eea354c2d9de89cd8cbed147cd1cccacc9"
+        },
+        {
+          "id": "declaration/syntax/S1/positive/protocol",
+          "contractHash": "a0c53748a67bf6cd5d3fafb63a7062933543c1a06945680b8c1a6ed397d02e20"
+        },
+        {
+          "id": "declaration/syntax/S1/positive/service",
+          "contractHash": "f69a7590b69b8bcc88e93d5b90936c79e7ab83ee84fd7cef8ec3bd38937387f7"
+        },
+        {
+          "id": "declaration/syntax/S10/negative/protocol",
+          "contractHash": "50e92171193afb7382875ae86198367b7f29ecc479db3abaca3332fbcb8a4b36"
+        },
+        {
+          "id": "declaration/syntax/S10/negative/service",
+          "contractHash": "35b6be57ae926a29c8ab3b5b7a2949268abb45901a9b697dfb812749cc5021b4"
+        },
+        {
+          "id": "declaration/syntax/S10/positive/protocol",
+          "contractHash": "18823349c7c32d898a92c0bf79eefbe212dee7a41fa6ebc0c269bbafbf73a011"
+        },
+        {
+          "id": "declaration/syntax/S10/positive/service",
+          "contractHash": "87fb0a1371a921de4f4d1a011215c9e20de067fba7300859f7c30aa07bcad570"
+        },
+        {
+          "id": "declaration/syntax/S3/negative/protocol",
+          "contractHash": "9a3cc6eed4afbafbdbf3bc8d8dbe361315c80b1f0f35aff7f81832c7f26bb344"
+        },
+        {
+          "id": "declaration/syntax/S3/negative/service",
+          "contractHash": "b363862bddf592fe7ef18eedc825306141891210e9af84c5a4e4c8c6f520760a"
+        },
+        {
+          "id": "declaration/syntax/S3/positive/protocol",
+          "contractHash": "be5f43abcd248e0baf256ed4b4f23e698d59106628f2e49b8aac5b6b125794e6"
+        },
+        {
+          "id": "declaration/syntax/S3/positive/service",
+          "contractHash": "285e09828326ac50b415a8907748683384283f74f45be8e79bf1599b64dba5d3"
+        },
+        {
+          "id": "declaration/syntax/S4/negative/protocol",
+          "contractHash": "88b1244e28e8caa6c94c0e74913be9737b0eda2e154a64a0e712e70157d5bfe9"
+        },
+        {
+          "id": "declaration/syntax/S4/negative/service",
+          "contractHash": "7978969239dedf1d4f9c310d404463a65340e40cc4bae9b9f6842aebfc47b16b"
+        },
+        {
+          "id": "declaration/syntax/S4/positive/protocol",
+          "contractHash": "c046a13b938062e7b8c2378ed773d2a62dfc7ba1f1dd385e5f1c6ea542a60e5c"
+        },
+        {
+          "id": "declaration/syntax/S4/positive/service",
+          "contractHash": "d99b786b4c7e602d60ded89032438bf8a138d73b8dcda0cf3accfd55c455952c"
+        },
+        {
+          "id": "declaration/syntax/S5/negative/protocol",
+          "contractHash": "9a98066b9116a75b750c05ba3f4215a61dba709d5670c808133588e7cdaec631"
+        },
+        {
+          "id": "declaration/syntax/S5/negative/service",
+          "contractHash": "e57ebb553e6e5cf4a56dc633d3670dbcb1d051281a557fe88d7771388372315e"
+        },
+        {
+          "id": "declaration/syntax/S5/positive/protocol",
+          "contractHash": "09d3bf9d6e04f90b24c2205815391f55cde1504dd8ce4c2a9c862bc1733ec6cf"
+        },
+        {
+          "id": "declaration/syntax/S5/positive/service",
+          "contractHash": "1d980f4171ec880ec97e1b083453b0bed6a0352ad5be0bfe5650a2e11ae7860b"
+        },
+        {
+          "id": "declaration/syntax/S8/negative/protocol",
+          "contractHash": "2797397ba210d2c58c374175e61150382db316a1804bbde1b03fc7d31a12bcc5"
+        },
+        {
+          "id": "declaration/syntax/S8/negative/service",
+          "contractHash": "f032e7bfdb64e4c82772630324849407e5e5ffc2728853c14ee59dac4090726c"
+        },
+        {
+          "id": "declaration/syntax/S8/positive/protocol",
+          "contractHash": "c5f4f21330861445792845886ff556e6d6e74c3ef5cddd268ae66499a278f58c"
+        },
+        {
+          "id": "declaration/syntax/S8/positive/service",
+          "contractHash": "a6ed0a681f85b25dada63d080c1c379fd84742d8addb12003570f3dc9f415c42"
+        },
+        {
+          "id": "declaration/syntax/S9/negative/protocol",
+          "contractHash": "7e32e663dfc7123c19eb5bd9b477aeb023a2bb21b6b1550b21e6fab6719ccff8"
+        },
+        {
+          "id": "declaration/syntax/S9/negative/service",
+          "contractHash": "2c667ce70ebe0002d489fa66061437baba609f0d4aa28e2ad199dfb75c1be110"
+        },
+        {
+          "id": "declaration/syntax/S9/positive/protocol",
+          "contractHash": "a25f9a82750b3a1e2594d749b4ab825fe8790f66f764a926e9664cda1de8a905"
+        },
+        {
+          "id": "declaration/syntax/S9/positive/service",
+          "contractHash": "aaf7350b73a059fd09e96893a65402a6cc76e776622dec7cad1192bdc282e3c9"
+        },
+        {
+          "id": "definition/editor/smoke",
+          "contractHash": "8c9b74a51e94a9d4a7de8c244190b648c790ce7703cbdd80fffaa4c22edf95d4"
+        },
+        {
+          "id": "definition/environments/crlf/protocol",
+          "contractHash": "65e0ab8b2e655b08578c9bcc8433c99a2007f5e40e69ab5a4524e38247dc338b"
+        },
+        {
+          "id": "definition/environments/encoded_uri/protocol",
+          "contractHash": "407e6734f97daca012922135c0e11b4eb8eb4c31939230e95851f81f7a2be6fe"
+        },
+        {
+          "id": "definition/environments/utf16/protocol",
+          "contractHash": "e541ae0ef43cbcb8f440cac9ccd929d1a4f5379f25af8487d3723b4f288f8265"
+        },
+        {
+          "id": "definition/states/close_restore/protocol",
+          "contractHash": "cef4cc47306517096929ebd45ba7354d77f319d7edfa630c39e2a2ecf1f61786"
+        },
+        {
+          "id": "definition/states/dependency_change/protocol",
+          "contractHash": "b99e59591d2d136615b1312f52371b956b5ab78c1c38688552e4ee02cd27c5c9"
+        },
+        {
+          "id": "definition/states/dependency_delete/protocol",
+          "contractHash": "d71e6a94e3ca4880273c06e0fedf3e3ddcc9debdb1e4bff33a2696c0e5b67a84"
+        },
+        {
+          "id": "definition/states/dirty/protocol",
+          "contractHash": "13493b78a7f11876916b0b217f695491a60d5508206c5d64e91e4273287b6d61"
+        },
+        {
+          "id": "definition/states/dynamic/protocol",
+          "contractHash": "74434081fc4a933db974afb08f2f434d5700384f70e259c255f71dbdd78dd5b1"
+        },
+        {
+          "id": "definition/states/missing_schema/protocol",
+          "contractHash": "acaaab01f6fadc6cb6ca60443532732a5f60bf4560181937a4ad6d45daa4f999"
+        },
+        {
+          "id": "definition/states/recovery/protocol",
+          "contractHash": "da5634e7542498b6cdf0088133dfd6ea61f6ffe73039ccff781673aba4c8e6a2"
+        },
+        {
+          "id": "definition/states/repeat/protocol",
+          "contractHash": "3b674efaf8645b0c07db9b3dcc03b83d0af7fb5de1dff2f37cc309280c3977a2"
+        },
+        {
+          "id": "definition/states/stale_schema/protocol",
+          "contractHash": "e121002e454cacd82e16ac9a5031c976659c5834c2f5776773d9d66141b541cf"
+        },
+        {
+          "id": "definition/states/unresolved/protocol",
+          "contractHash": "b70c23f33934a4c231f685f99c39a7db7f364e7c02eeb20d45b936759937814d"
+        },
+        {
+          "id": "definition/syntax/S1/negative/protocol",
+          "contractHash": "d3a67d77321dff6b559e4dd417fb1229bae42f04e2d082347cfc4e57f66151c0"
+        },
+        {
+          "id": "definition/syntax/S1/negative/service",
+          "contractHash": "851251270a273815d7afb4c830970e4484cc8ad827151ec90ba51e71da76fdca"
+        },
+        {
+          "id": "definition/syntax/S1/positive/protocol",
+          "contractHash": "29e5b7b034421f81861e7dcb4307909729acde2df05ca45cb893cb50f0acd3ad"
+        },
+        {
+          "id": "definition/syntax/S1/positive/service",
+          "contractHash": "eb20146b501c0c87b99c276db4504956d8e0fb2929c917517bda8398e77cb874"
+        },
+        {
+          "id": "definition/syntax/S10/negative/protocol",
+          "contractHash": "f4b0e2ce837a4f9f839a937e9193fdc0ae6610cd93ce954d5410e32c313e54b4"
+        },
+        {
+          "id": "definition/syntax/S10/negative/service",
+          "contractHash": "881804cb46b2814e2b602b19a4f55a42997a3acda1b89e3bb80315af379c5dde"
+        },
+        {
+          "id": "definition/syntax/S10/positive/protocol",
+          "contractHash": "0375f14cea92509a4acacf20cd6d043782c9601880951edf9c515db6da12a875"
+        },
+        {
+          "id": "definition/syntax/S10/positive/service",
+          "contractHash": "eb4009ad0c40d9433661e2ba2cd1dff71e239b5c34076bde34aa85d52c848ae3"
+        },
+        {
+          "id": "definition/syntax/S3/negative/protocol",
+          "contractHash": "bbad62f571adf4c1dd9b630428ad9b9435d70b4c1792e40b741e11a3bd0ba169"
+        },
+        {
+          "id": "definition/syntax/S3/negative/service",
+          "contractHash": "f01ee26e5a1e1873fb0aef4bd22206b6339281ea1e127e31ccc4ce0af846c4dc"
+        },
+        {
+          "id": "definition/syntax/S3/positive/protocol",
+          "contractHash": "1fc71dfa255d4029fe023d3de673ce23e58eaf0f232ee989d803cd90e943e775"
+        },
+        {
+          "id": "definition/syntax/S3/positive/service",
+          "contractHash": "2706d9b36d598987b5ed46364965eec56336ee09f8435ebe956f47933e867b51"
+        },
+        {
+          "id": "definition/syntax/S4/negative/protocol",
+          "contractHash": "635fabe4a7456348d6726374a8d3ffe3170cd7011256371dc5958baa326a8a4e"
+        },
+        {
+          "id": "definition/syntax/S4/negative/service",
+          "contractHash": "b3a5e9800c82608d4b3ab1fecd5dba29580c5756fb5e79a35b4b7104fa3cf8af"
+        },
+        {
+          "id": "definition/syntax/S4/positive/protocol",
+          "contractHash": "62805332034d4ff2d93ce314ed8b4d45cf5a103844c9b49a17c49a35d4a88401"
+        },
+        {
+          "id": "definition/syntax/S4/positive/service",
+          "contractHash": "dbfbea7500340aab78e2651143c5f4f1bfafa16aaaa4e184d5c5be2d451a61fd"
+        },
+        {
+          "id": "definition/syntax/S5/negative/protocol",
+          "contractHash": "37478c5ac86a1e8a4b4bfe7d7d2beeb7cc4e83d31e86017650dd558c2b6476fc"
+        },
+        {
+          "id": "definition/syntax/S5/negative/service",
+          "contractHash": "6bbe95f4f3194b65fded565499f4f8bbd984ddf36f0501f76ad29ce6e24b3753"
+        },
+        {
+          "id": "definition/syntax/S5/positive/protocol",
+          "contractHash": "ee6ce1c90ed64c76966d7f9b649b586f559ae4a3e7fa484975152588ec64b337"
+        },
+        {
+          "id": "definition/syntax/S5/positive/service",
+          "contractHash": "f557e3602619c4b9f8eb3a7e18b28e7500fc52c0f5167a955a3ca91c8c81b4d7"
+        },
+        {
+          "id": "definition/syntax/S8/negative/protocol",
+          "contractHash": "ae8bd27c41fc688352b0c65a7128e198a5e586b580562b9009e5367944c0a3f1"
+        },
+        {
+          "id": "definition/syntax/S8/negative/service",
+          "contractHash": "bb1009f4abbe20de32ad64323cd1a95a23638867a0d51c90249a02d5bf6b9ac6"
+        },
+        {
+          "id": "definition/syntax/S8/positive/protocol",
+          "contractHash": "94edf05c38e124eb321b5ac136f5de46c46df356d831a3bf010cefbff4873e96"
+        },
+        {
+          "id": "definition/syntax/S8/positive/service",
+          "contractHash": "a8075cc14c10652c666ecbd846ee51d0d427e52538b0a94d272c353e76719c0c"
+        },
+        {
+          "id": "definition/syntax/S9/negative/protocol",
+          "contractHash": "24f4719ae3f1b0df648038edf3ca6e513f0b387de3e8084aee9a993470a91151"
+        },
+        {
+          "id": "definition/syntax/S9/negative/service",
+          "contractHash": "9838ca7a7aa11baca73dac9544c5f66dcbff420aa3de88a7a70494207eb4e271"
+        },
+        {
+          "id": "definition/syntax/S9/positive/protocol",
+          "contractHash": "8a21eded4b9757c94aea522c23445ea083b920712d49120cb0424394b1f80aa4"
+        },
+        {
+          "id": "definition/syntax/S9/positive/service",
+          "contractHash": "d2f1f637e35b40d6088c3ed00d02b6f60f8fce3321989e7ae4ee21540b4bd409"
+        },
+        {
+          "id": "implementation/environments/client_capabilities/protocol",
+          "contractHash": "85ddf8581a65a5f69e4c607eec17067168a88b554399a51ef435a37040e4e708"
+        },
+        {
+          "id": "implementation/syntax/S1/negative/protocol",
+          "contractHash": "c49f87250ede3e673ad522f5eb077d616d6db461cfa1b66e1e30e6a72d7904f6"
+        },
+        {
+          "id": "implementation/syntax/S10/negative/protocol",
+          "contractHash": "ee33e516f6a6b0c926dcadecf37f10d53ace54f9615740d923e9252122e7bfc2"
+        },
+        {
+          "id": "implementation/syntax/S3/negative/protocol",
+          "contractHash": "b23456f3248cf6bf71f3c98637b9cb43437a5ded9187c8516bba115355e0d2de"
+        },
+        {
+          "id": "implementation/syntax/S4/negative/protocol",
+          "contractHash": "2141694a402f1aeebc8097591c1eb536cfc5835adf643798348f49ee2761a673"
+        },
+        {
+          "id": "type-definition/editor/smoke",
+          "contractHash": "16f8418a9d570aaeca58ae57692c3d3948d56961fc37e85a5b5f5fdf0d14c53e"
+        },
+        {
+          "id": "type-definition/environments/crlf/protocol",
+          "contractHash": "8b895d0418a3fff1c1da82ab627254f8bc060811750ddd4c9b183f957dee4df3"
+        },
+        {
+          "id": "type-definition/environments/encoded_uri/protocol",
+          "contractHash": "28650191ab67d59a8f3ffb612a5251f276629bb5a691a2f520584a8a54ca9a87"
+        },
+        {
+          "id": "type-definition/environments/utf16/protocol",
+          "contractHash": "606136ea56d1cdc3c32b8a435b3e3d3ac28d19ce909bc1b457dba0d0db47a28a"
+        },
+        {
+          "id": "type-definition/states/close_restore/protocol",
+          "contractHash": "77e35198cd5f206d357cc8892b8864d29fe787b0354c2737dbc87c0f06064246"
+        },
+        {
+          "id": "type-definition/states/dependency_change/protocol",
+          "contractHash": "b4814e419d081f24a202bd369737701cfad2174f286ae2a83f745f9126aca597"
+        },
+        {
+          "id": "type-definition/states/dependency_delete/protocol",
+          "contractHash": "e7b68dda45df70ca8fb32863f071d600405d39f670493fc4c76f6497fdbe8b62"
+        },
+        {
+          "id": "type-definition/states/dirty/protocol",
+          "contractHash": "ad4a1ffc8e0a4e12bd529a51be87436ef3b8b5bc478e03a636643e5f8ca8710a"
+        },
+        {
+          "id": "type-definition/states/dynamic/protocol",
+          "contractHash": "ba75143b57f998814f4d34c84aa6fc936c5aefe006d62b5e740b02789bee9748"
+        },
+        {
+          "id": "type-definition/states/missing_schema/protocol",
+          "contractHash": "9b5e618a4701173b2af9cb375186b47466fbebced81d9783a94fbd039d00a435"
+        },
+        {
+          "id": "type-definition/states/recovery/protocol",
+          "contractHash": "31bf1c5bd46399fa9969d042b0645c7ae7319d622214814a7105c6cb6917d706"
+        },
+        {
+          "id": "type-definition/states/repeat/protocol",
+          "contractHash": "962bea9b8ad0d1a66be0f671baa7c1f50ee43b7e320ee9f36488b3e69a1b4fbd"
+        },
+        {
+          "id": "type-definition/states/stale_schema/protocol",
+          "contractHash": "e889c67a428b5500b513ddfab9de785e5b4f3086fe4384205309b975de6091f7"
+        },
+        {
+          "id": "type-definition/states/unresolved/protocol",
+          "contractHash": "dd2e6b43b36fe1c5398a6c28e62d705659331b6e2015888966caf08ec9cc7de3"
+        },
+        {
+          "id": "type-definition/syntax/S1/negative/protocol",
+          "contractHash": "7042f5b5e6ba707f30bb82403e7caed5c872ed20227ecb571d06934f1822dc89"
+        },
+        {
+          "id": "type-definition/syntax/S1/negative/service",
+          "contractHash": "8d59093237315c96e856f8e22b8b0f985e77169845d30bcba2c4c32a20597ba4"
+        },
+        {
+          "id": "type-definition/syntax/S1/positive/protocol",
+          "contractHash": "1cdd9035950a0bf8e0e6f195ed4d2bf7698b5be2edbc6e94aafbd88abbca14aa"
+        },
+        {
+          "id": "type-definition/syntax/S1/positive/service",
+          "contractHash": "42f0b1b93628570a3fef8d6c97a8df62a42bb3a542c9359eb9f1cf548e3fa9be"
+        },
+        {
+          "id": "type-definition/syntax/S10/negative/protocol",
+          "contractHash": "3cdbde4d057055aa6105a9cce5faec7a71e01f7695da40f4da7bb9cef51dd4a9"
+        },
+        {
+          "id": "type-definition/syntax/S10/negative/service",
+          "contractHash": "7f978b8c4dacedde6a5a731d4490fa1947ca907ee83695bc52dc85be6f90abb0"
+        },
+        {
+          "id": "type-definition/syntax/S10/positive/protocol",
+          "contractHash": "65d9498352ccb2df9f9cf6326ce811fad6008067337837e14e17baccf6961e96"
+        },
+        {
+          "id": "type-definition/syntax/S10/positive/service",
+          "contractHash": "c489237762f46f3fa18941ff22b5fff8bc8938c47367e3c28ea978c769ffc98d"
+        },
+        {
+          "id": "type-definition/syntax/S3/negative/protocol",
+          "contractHash": "847250d01d0cc9be3d0f95dfe3a141506220b5c7f9e99d67a07329b69f63ffc9"
+        },
+        {
+          "id": "type-definition/syntax/S3/negative/service",
+          "contractHash": "f27a9b98819963b689ae3b468b97a504e78cb3f0e017806d5e37f15120847fcb"
+        },
+        {
+          "id": "type-definition/syntax/S3/positive/protocol",
+          "contractHash": "5cacd119d632a506d988302d252d3033fccff7b39a9d3a98f316b55cf851f05c"
+        },
+        {
+          "id": "type-definition/syntax/S3/positive/service",
+          "contractHash": "8a6de0f1692a4d1a5b06cdffc93163099e7070db9cd04b30fee630ddab493e61"
+        },
+        {
+          "id": "type-definition/syntax/S4/negative/protocol",
+          "contractHash": "a73a0880f72ea1034eb6d9c304e05fc60b94b3ff5b248de9b36ffe79f71e0ef7"
+        },
+        {
+          "id": "type-definition/syntax/S4/negative/service",
+          "contractHash": "5c3294b9755e0dc2a5c57576bf30a552fd142559acdf556da50e170f40dd4ab2"
+        },
+        {
+          "id": "type-definition/syntax/S4/positive/protocol",
+          "contractHash": "9dd975976f5a677a068378684a8136eccb3bc41f35fad03face996c271639d4c"
+        },
+        {
+          "id": "type-definition/syntax/S4/positive/service",
+          "contractHash": "e1895d98a06a527ea532e7dac886a097f0455c98400bd22424c4fe0f8f559136"
+        },
+        {
+          "id": "type-definition/syntax/S8/negative/protocol",
+          "contractHash": "85d36af1c4c816c4e342c64359582fdc9b16c1a9450b6f58dc7012bf85628e5d"
+        },
+        {
+          "id": "type-definition/syntax/S8/negative/service",
+          "contractHash": "cc092238deda72512eb0074183837ab29e4c0cdbcf448e3d60ca7424d5c84dae"
+        },
+        {
+          "id": "type-definition/syntax/S8/positive/protocol",
+          "contractHash": "91099691678792a41034db8947deb97e6c0a4891ab1537c6b22d949801a8d6a9"
+        },
+        {
+          "id": "type-definition/syntax/S8/positive/service",
+          "contractHash": "dd3508a25578ec1320c4dbd630dbdcfcc589b82416f38d8fabc1960e3b4b21f6"
+        },
+        {
+          "id": "vscode/UX02/declaration-palette/command/local",
+          "contractHash": "6ec7dac63a3632afb913d8302a0312431bb10c54510677c35eb46b7e8d500046"
+        },
+        {
+          "id": "vscode/UX02/declaration-palette/input/local",
+          "contractHash": "6ec7dac63a3632afb913d8302a0312431bb10c54510677c35eb46b7e8d500046"
+        },
+        {
+          "id": "vscode/UX02/definition-back/command/local",
+          "contractHash": "f27ff18b7c13ea15be41f34b25b1ebf791a48672f789df00a3ad7a4ea1fd79f4"
+        },
+        {
+          "id": "vscode/UX02/definition-back/input/local",
+          "contractHash": "f27ff18b7c13ea15be41f34b25b1ebf791a48672f789df00a3ad7a4ea1fd79f4"
+        },
+        {
+          "id": "vscode/UX02/type-definition-palette/command/local",
+          "contractHash": "8c2048226f859e819e23f7668f99fbb0eb66d018315e2042127cf34549f3bc63"
+        },
+        {
+          "id": "vscode/UX02/type-definition-palette/input/local",
+          "contractHash": "8c2048226f859e819e23f7668f99fbb0eb66d018315e2042127cf34549f3bc63"
+        },
+        {
+          "id": "vscode/UX02/unknown-target/command/local",
+          "contractHash": "fa510ef61af7ada62ecdd8d5dde2392d3097fe185013b9571f387a79bd1dee7b"
+        },
+        {
+          "id": "vscode/UX02/unknown-target/input/local",
+          "contractHash": "fa510ef61af7ada62ecdd8d5dde2392d3097fe185013b9571f387a79bd1dee7b"
+        },
+        {
+          "id": "vscode/UX03/modifier-click/input/local",
+          "contractHash": "1cb5c4e25cf7ef03feb89e102cf1d0ea834f3d236055e2cc75a34e222bdbc881"
+        },
+        {
+          "id": "vscode/UX03/modifier-click/render/local",
+          "contractHash": "1cb5c4e25cf7ef03feb89e102cf1d0ea834f3d236055e2cc75a34e222bdbc881"
+        },
+        {
+          "id": "vscode/UX03/peek-dismiss/input/local",
+          "contractHash": "e542f00aa77932098c10b83a635820cec91c9d3bf90cd54006b574b06ce11652"
+        },
+        {
+          "id": "vscode/UX03/peek-dismiss/render/local",
+          "contractHash": "e542f00aa77932098c10b83a635820cec91c9d3bf90cd54006b574b06ce11652"
+        },
+        {
+          "id": "vscode/UX03/peek-follow/input/local",
+          "contractHash": "297be86c8fa7a471e40cc4372295326d69c99f92967f7f0e66c7ae86cf06aca7"
+        },
+        {
+          "id": "vscode/UX03/peek-follow/render/local",
+          "contractHash": "297be86c8fa7a471e40cc4372295326d69c99f92967f7f0e66c7ae86cf06aca7"
+        },
+        {
+          "id": "vscode/UX03/unknown-target/input/local",
+          "contractHash": "5646e2e45a6cebbea674023e1cab2de8388a5a83470ec11b7fb77d37206222da"
+        },
+        {
+          "id": "vscode/UX03/unknown-target/render/local",
+          "contractHash": "5646e2e45a6cebbea674023e1cab2de8388a5a83470ec11b7fb77d37206222da"
+        }
+      ],
+      "validation": {
+        "source": {
+          "revision": "013daa2f1cbe464341d596fa09c0e29dc6765f46",
+          "treeSha256": "0d3f6672d0719811e1896bb59f4d9f5377bcf64dcc08a554c7948dac1ca65836"
+        },
+        "profile": {
+          "platform": "darwin",
+          "arch": "arm64",
+          "vscodeVersion": "1.137.0"
+        },
+        "artifacts": [
+          "target/lsp-matrix/run-KBuard/report.json"
+        ],
+        "commands": [
+          {
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-Izhf7B/results.json --local-results editors/vscode/test-results/input-2TSZ2K/results.json",
+            "exitCode": 0
+          }
+        ]
+      }
     }
   ],
   "reopenedBatches": [],
@@ -375,7 +956,7 @@
     },
     {
       "id": "B02.14",
-      "revision": null,
+      "revision": "013daa2f1cbe464341d596fa09c0e29dc6765f46",
       "requirements": [
         "declaration/editor/smoke",
         "type-definition/editor/smoke",
@@ -383,10 +964,23 @@
         "vscode/UX03/modifier-click/render/local"
       ],
       "summary": "Installed declaration/type-definition providers assert exact URI, UTF-16 ranges, selected text and unknown nulls through dirty LF/CRLF edits. The modifier-click route uses rendered geometry including the visible String inlay, actual modifier/hover/click events, complete split link text, exact native client responses and rendered destination. Node 66, installed provider suite 9 and scoped local driver 10 proofs passed. Workspace tests passed 4370 with two historical ignored; workspace Clippy, Rust formatting and JavaScript checks passed. Native Peek follow/dismiss/unknown contracts and driver are prepared but remain unverified: CGSession reports screenLocked=1 and loginwindow retains foreground, so the driver refuses native menu input. User was asked to unlock; this is the first turn encountering that external blocker. Preserve all failed exploration artifacts; native menu/preview selectors and following/dismissal still need end-to-end validation after unlock. Scoped proof collection cannot close the missing six native obligations. Find this commit by LSP-Batch trailer. Final run-YWFP6P verifies 133/139 B02 obligations with the six native Peek requirements still unreviewed; no failed test commands. Screen lock was rechecked after validation and remained active. All 14 checkpoint tests passed."
+    },
+    {
+      "id": "B02.15",
+      "revision": null,
+      "requirements": [
+        "vscode/UX03/peek-follow/input/local",
+        "vscode/UX03/peek-follow/render/local",
+        "vscode/UX03/peek-dismiss/input/local",
+        "vscode/UX03/peek-dismiss/render/local",
+        "vscode/UX03/unknown-target/input/local",
+        "vscode/UX03/unknown-target/render/local"
+      ],
+      "summary": "Complete native macOS Peek context-menu, preview text/aligned highlight, exact full target selection, dismissal/focus restoration and unknown null/no-jump proof. Use focused-window geometry and physical HID pointer events; Peek title opens the target while tree double-click intentionally retains Peek. Temporarily select pinned ABC input and restore original source on success/failure, with fault-injection tests. Fix shared action-array mutation discovered by strict evidence validation; every route now has one setup action. Node 69, full local input bundle 13 proofs (17 obligations), installed suite 9, service 574 plus two historical ignored, protocol 567, formatting and JavaScript syntax checks passed. Strict run-KBuard accepts all 139 B02 obligations and revalidates B00/B01 against current source. Preserve failed exploration artifacts and the rejected run-UUQwTN; final passing input-2TSZ2K and installed run-Izhf7B are the accepted evidence. Desktop lock blocker resolved. B03 is next; B16 stays deferred. Find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B02.15",
-  "nextTask": "B02.15",
+  "activeChild": null,
+  "nextTask": "B03",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -551,90 +1145,6 @@
     "configuration-request/syntax/S0/positive/protocol",
     "configuration-request/syntax/S11/negative/protocol",
     "configuration-request/syntax/S11/positive/protocol",
-    "declaration/editor/smoke",
-    "declaration/environments/crlf/protocol",
-    "declaration/environments/encoded_uri/protocol",
-    "declaration/environments/utf16/protocol",
-    "declaration/states/close_restore/protocol",
-    "declaration/states/dependency_change/protocol",
-    "declaration/states/dependency_delete/protocol",
-    "declaration/states/dirty/protocol",
-    "declaration/states/dynamic/protocol",
-    "declaration/states/missing_schema/protocol",
-    "declaration/states/recovery/protocol",
-    "declaration/states/repeat/protocol",
-    "declaration/states/stale_schema/protocol",
-    "declaration/states/unresolved/protocol",
-    "declaration/syntax/S1/negative/protocol",
-    "declaration/syntax/S1/negative/service",
-    "declaration/syntax/S1/positive/protocol",
-    "declaration/syntax/S1/positive/service",
-    "declaration/syntax/S10/negative/protocol",
-    "declaration/syntax/S10/negative/service",
-    "declaration/syntax/S10/positive/protocol",
-    "declaration/syntax/S10/positive/service",
-    "declaration/syntax/S3/negative/protocol",
-    "declaration/syntax/S3/negative/service",
-    "declaration/syntax/S3/positive/protocol",
-    "declaration/syntax/S3/positive/service",
-    "declaration/syntax/S4/negative/protocol",
-    "declaration/syntax/S4/negative/service",
-    "declaration/syntax/S4/positive/protocol",
-    "declaration/syntax/S4/positive/service",
-    "declaration/syntax/S5/negative/protocol",
-    "declaration/syntax/S5/negative/service",
-    "declaration/syntax/S5/positive/protocol",
-    "declaration/syntax/S5/positive/service",
-    "declaration/syntax/S8/negative/protocol",
-    "declaration/syntax/S8/negative/service",
-    "declaration/syntax/S8/positive/protocol",
-    "declaration/syntax/S8/positive/service",
-    "declaration/syntax/S9/negative/protocol",
-    "declaration/syntax/S9/negative/service",
-    "declaration/syntax/S9/positive/protocol",
-    "declaration/syntax/S9/positive/service",
-    "definition/editor/smoke",
-    "definition/environments/crlf/protocol",
-    "definition/environments/encoded_uri/protocol",
-    "definition/environments/utf16/protocol",
-    "definition/states/close_restore/protocol",
-    "definition/states/dependency_change/protocol",
-    "definition/states/dependency_delete/protocol",
-    "definition/states/dirty/protocol",
-    "definition/states/dynamic/protocol",
-    "definition/states/missing_schema/protocol",
-    "definition/states/recovery/protocol",
-    "definition/states/repeat/protocol",
-    "definition/states/stale_schema/protocol",
-    "definition/states/unresolved/protocol",
-    "definition/syntax/S1/negative/protocol",
-    "definition/syntax/S1/negative/service",
-    "definition/syntax/S1/positive/protocol",
-    "definition/syntax/S1/positive/service",
-    "definition/syntax/S10/negative/protocol",
-    "definition/syntax/S10/negative/service",
-    "definition/syntax/S10/positive/protocol",
-    "definition/syntax/S10/positive/service",
-    "definition/syntax/S3/negative/protocol",
-    "definition/syntax/S3/negative/service",
-    "definition/syntax/S3/positive/protocol",
-    "definition/syntax/S3/positive/service",
-    "definition/syntax/S4/negative/protocol",
-    "definition/syntax/S4/negative/service",
-    "definition/syntax/S4/positive/protocol",
-    "definition/syntax/S4/positive/service",
-    "definition/syntax/S5/negative/protocol",
-    "definition/syntax/S5/negative/service",
-    "definition/syntax/S5/positive/protocol",
-    "definition/syntax/S5/positive/service",
-    "definition/syntax/S8/negative/protocol",
-    "definition/syntax/S8/negative/service",
-    "definition/syntax/S8/positive/protocol",
-    "definition/syntax/S8/positive/service",
-    "definition/syntax/S9/negative/protocol",
-    "definition/syntax/S9/negative/service",
-    "definition/syntax/S9/positive/protocol",
-    "definition/syntax/S9/positive/service",
     "diagnostics/editor/smoke",
     "diagnostics/environments/crlf/protocol",
     "diagnostics/environments/encoded_uri/protocol",
@@ -941,11 +1451,6 @@
     "hover/syntax/S9/negative/service",
     "hover/syntax/S9/positive/protocol",
     "hover/syntax/S9/positive/service",
-    "implementation/environments/client_capabilities/protocol",
-    "implementation/syntax/S1/negative/protocol",
-    "implementation/syntax/S10/negative/protocol",
-    "implementation/syntax/S3/negative/protocol",
-    "implementation/syntax/S4/negative/protocol",
     "incoming-calls/editor/smoke",
     "incoming-calls/environments/crlf/protocol",
     "incoming-calls/environments/encoded_uri/protocol",
@@ -1625,60 +2130,10 @@
     "tokens-range/syntax/S9/negative/service",
     "tokens-range/syntax/S9/positive/protocol",
     "tokens-range/syntax/S9/positive/service",
-    "type-definition/editor/smoke",
-    "type-definition/environments/crlf/protocol",
-    "type-definition/environments/encoded_uri/protocol",
-    "type-definition/environments/utf16/protocol",
-    "type-definition/states/close_restore/protocol",
-    "type-definition/states/dependency_change/protocol",
-    "type-definition/states/dependency_delete/protocol",
-    "type-definition/states/dirty/protocol",
-    "type-definition/states/dynamic/protocol",
-    "type-definition/states/missing_schema/protocol",
-    "type-definition/states/recovery/protocol",
-    "type-definition/states/repeat/protocol",
-    "type-definition/states/stale_schema/protocol",
-    "type-definition/states/unresolved/protocol",
-    "type-definition/syntax/S1/negative/protocol",
-    "type-definition/syntax/S1/negative/service",
-    "type-definition/syntax/S1/positive/protocol",
-    "type-definition/syntax/S1/positive/service",
-    "type-definition/syntax/S10/negative/protocol",
-    "type-definition/syntax/S10/negative/service",
-    "type-definition/syntax/S10/positive/protocol",
-    "type-definition/syntax/S10/positive/service",
-    "type-definition/syntax/S3/negative/protocol",
-    "type-definition/syntax/S3/negative/service",
-    "type-definition/syntax/S3/positive/protocol",
-    "type-definition/syntax/S3/positive/service",
-    "type-definition/syntax/S4/negative/protocol",
-    "type-definition/syntax/S4/negative/service",
-    "type-definition/syntax/S4/positive/protocol",
-    "type-definition/syntax/S4/positive/service",
-    "type-definition/syntax/S8/negative/protocol",
-    "type-definition/syntax/S8/negative/service",
-    "type-definition/syntax/S8/positive/protocol",
-    "type-definition/syntax/S8/positive/service",
     "vscode/UX01/install-open/command/local",
     "vscode/UX01/install-open/input/local",
     "vscode/UX01/unrelated-file/command/local",
     "vscode/UX01/unrelated-file/input/local",
-    "vscode/UX02/declaration-palette/command/local",
-    "vscode/UX02/declaration-palette/input/local",
-    "vscode/UX02/definition-back/command/local",
-    "vscode/UX02/definition-back/input/local",
-    "vscode/UX02/type-definition-palette/command/local",
-    "vscode/UX02/type-definition-palette/input/local",
-    "vscode/UX02/unknown-target/command/local",
-    "vscode/UX02/unknown-target/input/local",
-    "vscode/UX03/modifier-click/input/local",
-    "vscode/UX03/modifier-click/render/local",
-    "vscode/UX03/peek-dismiss/input/local",
-    "vscode/UX03/peek-dismiss/render/local",
-    "vscode/UX03/peek-follow/input/local",
-    "vscode/UX03/peek-follow/render/local",
-    "vscode/UX03/unknown-target/input/local",
-    "vscode/UX03/unknown-target/render/local",
     "vscode/UX04/accept-enter/input/local",
     "vscode/UX04/accept-enter/render/local",
     "vscode/UX04/accept-tab/input/local",
@@ -2003,7 +2458,12 @@
     "editors/vscode/test-results/input-bXROhF/results.json",
     "target/lsp-matrix/run-YWFP6P/report.json",
     "target/lsp-matrix/b02-native-preflight.log",
-    "target/lsp-matrix/b02-peek-checkpoint.log"
+    "target/lsp-matrix/b02-peek-checkpoint.log",
+    "target/lsp-matrix/run-KBuard/report.json",
+    "target/lsp-matrix/b02-native-node-final.log",
+    "target/lsp-matrix/b02-native-input-final2.log",
+    "target/lsp-matrix/b02-native-installed-final2.log",
+    "target/lsp-matrix/b02-native-acceptance-final.log"
   ],
   "openIssues": [
     {

@@ -22,8 +22,8 @@ function peekContracts(requirements) {
       return { id: name, contractHash: item.contractHash };
     });
     const result = { id, fixture: model.spec.id, deadlineMs: 45000, requirements: refs,
-      actions: route === "modifier-click" ? modifier : unknown ? [...modifier, ...menu] :
-        [...menu, route === "peek-follow" ? click("follow-target", "peek-result", "left", 2) : key("dismiss-peek", "Escape")],
+      actions: route === "modifier-click" ? [...modifier] : unknown ? [...modifier, ...menu] :
+        [...menu, route === "peek-follow" ? click("follow-target", "peek-target-title") : key("dismiss-peek", "Escape")],
       checks: [check("origin", "Input", model.origin(unknown ? "unknown" : "call")),
         check("editor-focus", "Input", { focused: true }),
         check("source-line", "Render", { text: unknown ? model.caller.text.split("\n")[model.origin("unknown").selections[0].active.line] : model.spec.oracle.renderedCallLine, visible: true })],
@@ -48,7 +48,10 @@ function peekContracts(requirements) {
       }
       if (route === "peek-dismiss") result.checks.push(check("peek-hidden", "Render", { visible: false }),
         check("restored-focus", "Input", { focused: true }), check("final-origin", "Input", model.origin("call")));
-      else result.checks.push(check("destination", "Input", model.definition),
+      else result.checks.push(check("destination", "Input", route === "peek-follow" ? {
+        ...model.definition, selections: [{ anchor: model.wire("definition", "call").result.range.start,
+          active: model.wire("definition", "call").result.range.end }],
+      } : model.definition),
         check("destination-line", "Render", { text: model.definition.text.split("\n")[1], visible: true }));
     }
     result.actions.unshift(key("clear-prior-message", "Escape"));

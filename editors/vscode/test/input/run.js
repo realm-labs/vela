@@ -33,7 +33,7 @@ async function until(label, read, timeout = 15000) {
   throw Error(`${label}: timed out after ${timeout}ms`);
 }
 
-async function main() {
+async function run() {
   assert.equal(
     process.platform,
     profile.platform,
@@ -464,6 +464,11 @@ async function main() {
     );
   }
   if (error) throw error;
+}
+async function main() {
+  assert.equal(process.platform, profile.platform);
+  assert.equal(process.arch, profile.arch);
+  await require("./keyboard-layout").withKeyboardLayout(profile.keyboardLayout, run);
 }
 main().catch((error) => {
   console.error(error);

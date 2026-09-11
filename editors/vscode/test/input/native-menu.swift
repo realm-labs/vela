@@ -34,10 +34,10 @@ if let session = CGSessionCopyCurrentDictionary() as? [String: Any],
 }
 guard AXIsProcessTrusted() else { fail("native menu driver lacks Accessibility permission") }
 let operation = CommandLine.arguments[2], title = CommandLine.arguments[3]
-guard ["inspect", "hover", "click", "activate"].contains(operation) else { fail("unsupported native operation") }
+guard ["inspect", "hover", "click", "activate", "context-click"].contains(operation) else { fail("unsupported native operation") }
 if operation == "activate" {
     guard let application = NSRunningApplication(processIdentifier: pid) else { fail("test-owned application exited") }
-    application.activate(options: [.activateIgnoringOtherApps])
+    application.activate(options: [])
     let deadline = Date().addingTimeInterval(2)
     while NSWorkspace.shared.frontmostApplication?.processIdentifier != pid && Date() < deadline {
         RunLoop.current.run(until: Date().addingTimeInterval(0.01))
@@ -49,12 +49,50 @@ guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
 if operation == "activate" { print("{\"activated\":true}"); exit(0) }
 let app = AXUIElementCreateApplication(pid)
 AXUIElementSetMessagingTimeout(app, 2)
+if operation == "context-click" {
+    guard let data = title.data(using: .utf8),
+          let target = try JSONSerialization.jsonObject(with: data) as? [String: Double],
+          let x = target["x"], let y = target["y"], let width = target["width"], let height = target["height"],
+          let window = attribute(app, kAXFocusedWindowAttribute as CFString),
+          let bounds = rectangle(unsafeBitCast(window, to: AXUIElement.self)),
+          abs(bounds.width - width) < 2, bounds.height >= height,
+          x >= 0, x < width, y >= 0, y < height else { fail("context pointer does not match the focused test window") }
+    let point = CGPoint(x: bounds.minX + x, y: bounds.maxY - height + y)
+    for type in [CGEventType.mouseMoved, .rightMouseDown, .rightMouseUp] {
+        guard let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: .right) else {
+            fail("could not create native context click")
+        }
+        event.flags = []
+        event.setIntegerValueField(.mouseEventClickState, value: 1)
+        event.post(tap: .cghidEventTap)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.03))
+    }
+    let result: [String: Any] = ["pid": pid, "operation": operation, "point": ["x": point.x, "y": point.y]]
+    FileHandle.standardOutput.write(try JSONSerialization.data(withJSONObject: result)); exit(0)
+}
 var queue: [(AXUIElement, Int, Bool)] = [(app, 0, false)], matches: [AXUIElement] = []
-var visited = 0, seen: [String] = []
+var focusedDescription = "none"
+if let focused = attribute(app, kAXFocusedUIElementAttribute as CFString) {
+    let element = unsafeBitCast(focused, to: AXUIElement.self)
+    focusedDescription = string(element, kAXRoleAttribute as CFString) + ":" + string(element, kAXTitleAttribute as CFString)
+    queue.insert((element, 0, true), at: 0)
+    var parent = element
+    for _ in 0..<5 {
+        guard let value = attribute(parent, kAXParentAttribute as CFString) else { break }
+        parent = unsafeBitCast(value, to: AXUIElement.self)
+        if string(parent, kAXRoleAttribute as CFString) == "AXMenu" {
+            queue.insert((parent, 0, true), at: 0); break
+        }
+    }
+}
+var visited = 0, seen: [String] = [], roles: [String] = [], processed: [AXUIElement] = []
 while !queue.isEmpty && visited < 2500 {
     let (node, depth, menuParent) = queue.removeFirst(); visited += 1
+    if processed.contains(where: { CFEqual($0, node) }) { continue }
+    processed.append(node)
     let role = string(node, kAXRoleAttribute as CFString)
     let name = string(node, kAXTitleAttribute as CFString)
+    if depth < 4 { roles.append("\(depth):\(role):\(name)") }
     if role == "AXMenuItem" && menuParent {
         seen.append(name)
         if name == title { matches.append(node) }
@@ -66,7 +104,7 @@ while !queue.isEmpty && visited < 2500 {
     }
 }
 guard matches.count == 1, let rect = rectangle(matches[0]), rect.width > 0, rect.height > 0 else {
-    fail("expected one visible native menu item '\(title)'; found \(matches.count), menu items: \(seen)")
+    fail("expected one visible native menu item '\(title)'; found \(matches.count), menu items: \(seen), focused: \(focusedDescription), roots: \(roles)")
 }
 let item = matches[0]
 let enabled = attribute(item, kAXEnabledAttribute as CFString) as? Bool ?? false
@@ -78,7 +116,10 @@ if operation != "inspect" {
         guard let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: .left) else {
             fail("could not create native mouse event")
         }
-        event.postToPid(pid)
+        event.flags = []
+        event.setIntegerValueField(.mouseEventClickState, value: 1)
+        event.post(tap: .cghidEventTap)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.03))
     }
 }
 var menu = item

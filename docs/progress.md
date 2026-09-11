@@ -606,10 +606,13 @@ UX02 command/input obligations, including F12/back, declaration/type palettes,
 dirty Unicode source and unknown targets. Passive client logs bind these actions
 to exact request positions and response URI/ranges. Installed declaration and
 type-definition provider checks now cover exact dirty Unicode LF/CRLF ranges and
-unknown nulls. UX03 modifier-click reaches the rendered target; native Peek
-follow/dismiss/unknown workflows remain unverified while the desktop is locked
-(see [blocked.md](blocked.md)). No
-semantic feature batch is accepted yet. B14 still owns the later semantic
+unknown nulls. UX03 modifier-click reaches the rendered target. Native Peek
+follow/dismiss/unknown workflows now pass on the unlocked local desktop,
+including actual context-menu input, exact preview text and aligned highlight,
+full target selection, restored source focus, and null-response no-jump proof.
+The driver temporarily selects ABC and restores the original input source on
+success or failure. The execution checkpoint records fresh strict batch
+acceptance. B14 still owns the later semantic
 partition completeness review.
 
 ### Deferred Tracks

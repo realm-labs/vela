@@ -49,6 +49,7 @@ async function runPeek({ page, bridge, record, root, workspace, contracts, until
       const expected = contract.checks.find((item) => item.id === id).expected;
       check(id, await until(id, async () => {
         const value = await observe();
+        fs.writeFileSync(path.join(root, "peek-state.json"), JSON.stringify({ proof: contract.id, id, expected, observed: value }, null, 2));
         return JSON.stringify(value) === JSON.stringify(expected) && value;
       }));
     };
@@ -96,17 +97,23 @@ async function runPeek({ page, bridge, record, root, workspace, contracts, until
         else await page.keyboard.press(item.key);
       } else if (item.target === "source-identifier") {
         if (item.event === "hover") await page.mouse.move(pointer.x, pointer.y);
-        else await page.mouse.click(pointer.x, pointer.y, { button: item.button, clickCount: item.clickCount });
-      } else if (item.target === "peek-result") {
-        await peek.getByRole("treeitem").filter({ hasText: "pub fn make" }).dblclick();
+        else if (item.button === "right") {
+          const geometry = { ...pointer, ...await page.evaluate(() => ({ width: innerWidth, height: innerHeight })) };
+          const nativePointer = JSON.parse(require("node:child_process").execFileSync(path.join(root, "native-menu"),
+            [String(pid), "context-click", JSON.stringify(geometry)], { encoding: "utf8", timeout: 5000 }));
+          receipt("observation", `${id}-native-pointer`, nativePointer);
+        } else await page.mouse.click(pointer.x, pointer.y, { button: item.button, clickCount: item.clickCount });
+      } else if (item.target === "peek-target-title") {
+        await peek.locator(".head .peekview-title").click();
       } else {
         const { execFileSync } = require("node:child_process");
         const native = (operation) => JSON.parse(execFileSync(path.join(root, "native-menu"),
-          [String(pid), operation, item.target], { encoding: "utf8", timeout: 5000 }));
+          [String(pid), operation, item.target], { encoding: "utf8", timeout: 5000, stdio: ["ignore", "pipe", "pipe"] }));
         const visible = await until(`native ${item.target} menu`, () => {
           try { return native("inspect"); }
           catch (error) {
             if (!String(error.stderr).includes("expected one visible native menu item")) throw error;
+            fs.writeFileSync(path.join(root, "native-menu-inspection.txt"), String(error.stderr));
             return false;
           }
         });
@@ -119,7 +126,7 @@ async function runPeek({ page, bridge, record, root, workspace, contracts, until
         }
         native(item.event === "hover" ? "hover" : "click");
       }
-      /* Native menus are operated with process-targeted CGEvents, not AXPress. */
+      /* The native helper verifies test-process focus before physical menu input. */
 
       actions.push(item);
       receipt("input", id, Object.fromEntries(Object.entries(item).filter(([key]) => key !== "id")));
