@@ -7,6 +7,8 @@ use super::{TestServer, navigation_request, notification_value, notify, request,
 
 mod tasks;
 mod unicode;
+#[cfg(unix)]
+mod workspace_alias;
 
 #[test]
 fn lsp_definition_follows_open_overlay_local_binding() {

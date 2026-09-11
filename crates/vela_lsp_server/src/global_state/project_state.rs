@@ -13,7 +13,10 @@ use crate::{
     LaunchConfiguration,
     config::{EditorConfiguration, workspace_config_from_roots_and_editor_config},
     config_change::{ConfigChange, WorkspaceConfigChange},
-    paths::{CONFIG_FILE, SOURCE_EXTENSION, document_path_uri, document_uri_path, normalized_path},
+    paths::{
+        CONFIG_FILE, SOURCE_EXTENSION, document_path_uri, document_uri_path, normalized_path,
+        workspace_document_uri,
+    },
 };
 
 #[derive(Debug, Default)]
@@ -117,7 +120,10 @@ impl ProjectState {
             None
         } else if is_source_uri(uri) {
             let text = read_document_uri(uri)?;
-            let document_id = DocumentId::from(uri.to_owned());
+            let document_id = DocumentId::from(workspace_document_uri(
+                &document_uri_path(uri),
+                &self.workspace_roots,
+            ));
             self.disk_sources.insert(
                 document_id.clone(),
                 SourceFileSnapshot::new(document_id, text),
@@ -156,8 +162,10 @@ impl ProjectState {
                     .sources()
                     .iter()
                     .map(|source| {
-                        let document =
-                            DocumentId::from(document_path_uri(&source.path.display().to_string()));
+                        let document = DocumentId::from(workspace_document_uri(
+                            &source.path,
+                            &self.workspace_roots,
+                        ));
                         (
                             document.clone(),
                             SourceFileSnapshot::new(document, source.text.as_str()),
@@ -223,7 +231,10 @@ impl ProjectState {
         } else if is_source_uri(uri) {
             self.watched_project_changed |= self
                 .disk_sources
-                .remove(&DocumentId::from(uri.to_owned()))
+                .remove(&DocumentId::from(workspace_document_uri(
+                    &document_uri_path(uri),
+                    &self.workspace_roots,
+                )))
                 .is_some();
             None
         } else {

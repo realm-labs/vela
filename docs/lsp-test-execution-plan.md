@@ -1,6 +1,6 @@
 # LSP Test Matrix Execution Plan
 
-Status: prepared for local coverage first; implementation batches have not started.
+Status: local coverage goal active; B00 baseline repair and infrastructure in progress.
 The [strategy](lsp-test-strategy.md) owns required behavior and P0-P5 acceptance.
 This plan owns work boundaries and verification checkpoints. Follow
 [goal.md](goal.md), [architecture.md](architecture.md), and repository agent
@@ -193,7 +193,9 @@ child commits before closing B00, preserving their feature requirement ownership
 
 The initial checkpoint is: **no B batch accepted; next task B00; no active child;
 P0 implementation baseline `33451ec80`; local acceptance pending; B16 deferred**.
-This is a prepared plan, not an active goal or a newly measured coverage result.
+This records the starting state. Until B00 creates the checkpoint, child commits
+with `LSP-Batch` trailers and `progress.md` record active work; it is not a new
+coverage measurement.
 
 B00 creates the machine-readable execution checkpoint alongside its manifest.
 Thereafter that checkpoint is the single source of batch status; keep this plan

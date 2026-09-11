@@ -10,7 +10,10 @@ Completed execution plans and acceptance reports live under
 
 ## Current Focus
 
-Current implementation focus is M20.5 incremental HIR re-lowering. The post-M20
+Current implementation focus is the M20.5 local LSP coverage goal under the
+[execution plan](lsp-test-execution-plan.md), starting with B00 baseline repair
+and acceptance infrastructure. Incremental HIR re-lowering remains an open
+follow-up and may be required by the local scale gate. The post-M20
 [Verified-MIR superinstruction and basic-block interpreter plan](verified-mir-superinstruction-basic-block-interpreter-plan.md)
 is complete.
 Batch A is accepted with newly captured quiet-machine scalar, VM, Host,
@@ -585,10 +588,12 @@ references; reports distinguish candidate tests, mapped assertions, executed
 proof, and unreviewed requirements. P0 inventory is implemented; P1 semantic
 mapping and P2 range/edit transformation coverage remain open. Ordinary CI is
 not full acceptance while the separate strict gate reports unresolved cells.
-The prepared execution plan prioritizes complete coverage on one recorded local
+The active execution plan prioritizes complete coverage on one recorded local
 profile, including actual input/render proof and generated/scale checks. B16's
 additional environments are deferred follow-up work and do not block B19 local
-acceptance; no implementation batch is accepted yet.
+acceptance. B00 is in progress; no parent batch is accepted yet. The local
+package-path baseline is restored, while the batch manifest, scoped strict gate
+and machine-readable checkpoint remain the next infrastructure work.
 
 ### Deferred Tracks
 
@@ -621,11 +626,13 @@ provides it.
 
 ## Next Up
 
-1. Resume M20.5 incremental HIR re-lowering with stable per-module HIR IDs and
-   move `did_change` diagnostics off the message loop.
-2. Audit the parameterized container and value-keyed Map/Set plans against
+1. Complete LSP B00 acceptance infrastructure, then B01 shared local fixtures and
+   Input/Render proof. Continue B02-B15 and B17-B19; B16 stays deferred.
+2. Address incremental HIR re-lowering and moving `did_change` diagnostics off
+   the message loop when required by local state/scale acceptance.
+3. Audit the parameterized container and value-keyed Map/Set plans against
    their explicit acceptance matrices.
-3. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
+4. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
    post-S2 optimization follow-up.
 
 ## Update Rules

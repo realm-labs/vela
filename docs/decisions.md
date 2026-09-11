@@ -14,6 +14,9 @@ ranges; service/protocol fixtures retain broad syntax coverage. The
 the workflow and CI matrix. Package source discovery feeds the same
 `ProjectState` databases as open overlays; overlays supersede equivalent disk
 paths even when the client's URI encoding differs.
+Package discovery and source watcher events project physical paths back through
+the client's workspace roots at the server boundary, preserving symlink-root
+URI spelling and matching deletion events through existing ancestors.
 
 Proactive LSP coverage is requirement-driven under the
 [test strategy](lsp-test-strategy.md). The machine-readable catalog pins current
