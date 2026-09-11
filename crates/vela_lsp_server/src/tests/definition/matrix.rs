@@ -5,6 +5,11 @@ use crate::matrix_fixture::{FixtureWorkspace, load, schema_artifact};
 use crate::tests::{TestServer, navigation_request, notify, request, response_value};
 
 #[test]
+fn navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns() {
+    assert_navigation_matrix("navigation-dynamic");
+}
+
+#[test]
 fn navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls() {
     assert_navigation_matrix("navigation-declarations");
 }

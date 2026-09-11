@@ -5,6 +5,13 @@ use crate::{
 };
 
 #[test]
+fn navigation_dynamic_matrix_preserves_known_any_return_boundaries() {
+    for crlf in [false, true] {
+        assert_navigation_matrix("navigation-dynamic", crlf);
+    }
+}
+
+#[test]
 fn navigation_declaration_matrix_pins_all_three_targets_and_negative_policy() {
     for crlf in [false, true] {
         assert_navigation_matrix("navigation-declarations", crlf);

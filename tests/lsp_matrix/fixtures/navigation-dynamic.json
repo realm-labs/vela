@@ -1,0 +1,268 @@
+{
+  "version": 1,
+  "id": "navigation-dynamic",
+  "files": {
+    "vela.toml": "[package]\nid = 'dev.vela.navigation'\nname = 'navigation'\nversion = '0.1.0'\n[source]\nroots = ['scripts']\n[host]\nschema = 'target/schema.json'\n",
+    "scripts/main.vela": "use helper::source_any as imported_any;\nstruct [[cell:start]]Cell[[cell:end]] { value: i64 }\nstruct Holder { [[item:start]]item[[item:end]]: Cell }\nimpl Holder {\n    fn [[get:start]]get[[get:end]](self) -> Cell { return self.item; }\n    fn [[method:start]]opaque[[method:end]](self) -> Any { return self.item; }\n}\nfn [[source:start]]source_any[[source:end]]() -> Any { return Holder { item: Cell { value: 1 } }; }\nfn main(boxed: HostBox, holder: Holder) {\n    let text = \"中😀\"; [[source-call]]source_any().[[source-field]]item;\n    source_any().[[source-method]]get();\n    let value = source_any(); value.[[source-local-field]]item;\n    [[import-call]]imported_any().[[import-field]]item;\n    holder.[[source-method-call]]opaque().[[method-field]]item;\n    holder.opaque().[[method-method]]get();\n    [[schema-call]]schema_any().[[schema-field]]item;\n    schema_any().[[schema-method]]get();\n    let host = schema_any(); host.[[schema-local-field]]item;\n    boxed.[[schema-method-call]]opaque().[[host-method-field]]item;\n    boxed.opaque().[[host-method-method]]get();\n    holder.[[source-positive]]item;\n    boxed.[[schema-positive]]item;\n}\nfn shadowed(source_any: Any) { source_any().[[shadow-field]]item; }\n",
+    "scripts/helper.vela": "struct Holder { item: i64 }\npub fn [[imported:start]]source_any[[imported:end]]() -> Any { return Holder { item: 1 }; }\n",
+    "scripts/origins.vela": "/* 中😀 */ fn [[box:start]]box_origin[[box:end]]() {}\n/* 中😀 */ fn [[cell:start]]cell_origin[[cell:end]]() {}\n/* 中😀 */ fn [[reader:start]]reader_origin[[reader:end]]() {}\n/* 中😀 */ fn [[item:start]]item_origin[[item:end]]() {}\n/* 中😀 */ fn [[level:start]]level_origin[[level:end]]() {}\n/* 中😀 */ fn [[get:start]]get_origin[[get:end]]() {}\n/* 中😀 */ fn [[read:start]]read_origin[[read:end]]() {}\n/* 中😀 */ fn [[make:start]]make_origin[[make:end]]() {}\n/* 中😀 */ fn [[value:start]]value_origin[[value:end]]() {}\n/* 中😀 */ fn [[choice:start]]choice_origin[[choice:end]]() {}\n/* 中😀 */ fn [[empty:start]]empty_origin[[empty:end]]() {}\n/* 中😀 */ fn [[number:start]]number_origin[[number:end]]() {}\n/* 中😀 */ fn [[record:start]]record_origin[[record:end]]() {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "schema": {
+      "types": [
+        {
+          "name": "HostBox",
+          "fact": {
+            "kind": "host",
+            "name": "HostBox"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "box"
+          }
+        },
+        {
+          "name": "HostCell",
+          "fact": {
+            "kind": "host",
+            "name": "HostCell"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "cell"
+          }
+        }
+      ],
+      "fields": [
+        {
+          "name": "item",
+          "fact": {
+            "kind": "host",
+            "name": "HostCell"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "item"
+          },
+          "owner": "HostBox"
+        },
+        {
+          "name": "level",
+          "fact": {
+            "kind": "primitive",
+            "name": "i64"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "level"
+          },
+          "owner": "HostBox"
+        },
+        {
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "i64"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "value"
+          },
+          "owner": "HostCell"
+        }
+      ],
+      "methods": [
+        {
+          "name": "opaque",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "any"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "get"
+          },
+          "owner": "HostBox"
+        }
+      ],
+      "functions": [
+        {
+          "name": "schema_any",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "any"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "make"
+          }
+        }
+      ]
+    },
+    "queries": [
+      {
+        "id": "source-field",
+        "file": "scripts/main.vela",
+        "cursor": "source-field",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "source-method",
+        "file": "scripts/main.vela",
+        "cursor": "source-method",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "source-local-field",
+        "file": "scripts/main.vela",
+        "cursor": "source-local-field",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "import-field",
+        "file": "scripts/main.vela",
+        "cursor": "import-field",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "method-field",
+        "file": "scripts/main.vela",
+        "cursor": "method-field",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "method-method",
+        "file": "scripts/main.vela",
+        "cursor": "method-method",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "schema-field",
+        "file": "scripts/main.vela",
+        "cursor": "schema-field",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "schema-method",
+        "file": "scripts/main.vela",
+        "cursor": "schema-method",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "schema-local-field",
+        "file": "scripts/main.vela",
+        "cursor": "schema-local-field",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "host-method-field",
+        "file": "scripts/main.vela",
+        "cursor": "host-method-field",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "host-method-method",
+        "file": "scripts/main.vela",
+        "cursor": "host-method-method",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "shadow-field",
+        "file": "scripts/main.vela",
+        "cursor": "shadow-field",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "source-call",
+        "file": "scripts/main.vela",
+        "cursor": "source-call",
+        "definition": "source",
+        "declaration": "source",
+        "type-definition": null
+      },
+      {
+        "id": "import-call",
+        "file": "scripts/main.vela",
+        "cursor": "import-call",
+        "definition": "imported",
+        "declaration": "imported",
+        "type-definition": null,
+        "target-file": "scripts/helper.vela"
+      },
+      {
+        "id": "source-method-call",
+        "file": "scripts/main.vela",
+        "cursor": "source-method-call",
+        "definition": "method",
+        "declaration": "method",
+        "type-definition": null
+      },
+      {
+        "id": "schema-call",
+        "file": "scripts/main.vela",
+        "cursor": "schema-call",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": null,
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "schema-method-call",
+        "file": "scripts/main.vela",
+        "cursor": "schema-method-call",
+        "definition": "get",
+        "declaration": "get",
+        "type-definition": null,
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "source-positive",
+        "file": "scripts/main.vela",
+        "cursor": "source-positive",
+        "definition": "item",
+        "declaration": "item",
+        "type-definition": "cell"
+      },
+      {
+        "id": "schema-positive",
+        "file": "scripts/main.vela",
+        "cursor": "schema-positive",
+        "definition": "item",
+        "declaration": "item",
+        "type-definition": "cell",
+        "target-file": "scripts/origins.vela"
+      }
+    ]
+  }
+}

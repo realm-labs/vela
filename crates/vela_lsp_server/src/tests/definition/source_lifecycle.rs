@@ -1,6 +1,6 @@
 use super::matrix::assert_queries;
 use crate::matrix_fixture::{FixtureWorkspace, load};
-use crate::tests::{TestServer, notify, request};
+use crate::tests::{TestServer, notification_values, notify, request};
 use lsp_types::{notification as n, request as r};
 use serde_json::json;
 use std::{collections::BTreeMap, fs, path::Path};
@@ -37,41 +37,42 @@ fn source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependen
         for (index, action) in spec.actions.iter().enumerate() {
             fixture.apply(action).expect("action");
             let file_uri = uri(&root, &action.file);
+            let mut messages = Vec::new();
             match action.op.as_str() {
                 "open" => {
                     versions.insert(action.file.clone(), 1);
-                    let _ = notify::<n::DidOpenTextDocument>(
+                    messages.extend(notify::<n::DidOpenTextDocument>(
                         &mut server,
                         json!({"textDocument":{"uri":file_uri,"languageId":"vela","version":1,"text":fixture.open[&action.file].text}}),
-                    );
+                    ));
                 }
                 "change" => {
                     let version = versions.get_mut(&action.file).expect("open version");
                     *version += 1;
-                    let _ = notify::<n::DidChangeTextDocument>(
+                    messages.extend(notify::<n::DidChangeTextDocument>(
                         &mut server,
                         json!({"textDocument":{"uri":file_uri,"version":version},"contentChanges":[{"text":fixture.open[&action.file].text}]}),
-                    );
+                    ));
                 }
                 "close" => {
-                    let _ = notify::<n::DidCloseTextDocument>(
+                    messages.extend(notify::<n::DidCloseTextDocument>(
                         &mut server,
                         json!({"textDocument":{"uri":file_uri}}),
-                    );
+                    ));
                 }
                 "save" => {
                     fs::write(root.join(&action.file), &fixture.disk[&action.file].text)
                         .expect("save");
-                    let _ = notify::<n::DidSaveTextDocument>(
+                    messages.extend(notify::<n::DidSaveTextDocument>(
                         &mut server,
                         json!({"textDocument":{"uri":file_uri}}),
-                    );
+                    ));
                     // Save sync is not advertised; disk snapshots advance through
                     // the client's watched-file notification, including saves.
-                    let _ = notify::<n::DidChangeWatchedFiles>(
+                    messages.extend(notify::<n::DidChangeWatchedFiles>(
                         &mut server,
                         json!({"changes":[{"uri":file_uri,"type":2}]}),
-                    );
+                    ));
                 }
                 "write" | "delete" => {
                     let existed = root.join(&action.file).exists();
@@ -83,13 +84,20 @@ fn source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependen
                             .expect("write");
                         if existed { 2 } else { 1 }
                     };
-                    let _ = notify::<n::DidChangeWatchedFiles>(
+                    messages.extend(notify::<n::DidChangeWatchedFiles>(
                         &mut server,
                         json!({"changes":[{"uri":file_uri,"type":change}]}),
-                    );
+                    ));
                 }
                 _ => panic!("action"),
             }
+            assert_diagnostic_publications(
+                &fixture,
+                &root,
+                &notification_values(messages),
+                &spec.oracle["diagnosticsAfterEachAction"][index],
+                &format!("action {index} {} CRLF={crlf}", action.op),
+            );
             let mut fresh = start_server(&root, &fixture);
             let mut fresh_id = 2;
             for _ in 0..2 {
@@ -137,4 +145,54 @@ fn start_server(root: &Path, fixture: &FixtureWorkspace) -> TestServer {
         );
     }
     server
+}
+
+fn assert_diagnostic_publications(
+    fixture: &FixtureWorkspace,
+    root: &Path,
+    messages: &[serde_json::Value],
+    expected: &serde_json::Value,
+    context: &str,
+) {
+    for (file, entries) in expected.as_object().expect("diagnostic oracle").iter() {
+        let publications = messages
+            .iter()
+            .filter(|message| {
+                message["method"] == "textDocument/publishDiagnostics"
+                    && message["params"]["uri"] == uri(root, file)
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            publications.len(),
+            1,
+            "{context}: expected one diagnostic publication for {file}: {messages:?}"
+        );
+        let publication = publications[0];
+        let actual = publication["params"]["diagnostics"]
+            .as_array()
+            .expect("diagnostics");
+        let expected = entries.as_array().expect("entries");
+        assert_eq!(actual.len(), expected.len(), "{context}: {actual:?}");
+        for (actual, expected) in actual.iter().zip(expected) {
+            assert_eq!(actual["code"], expected["code"], "{context}");
+            assert!(
+                actual["message"]
+                    .as_str()
+                    .expect("message")
+                    .contains(expected["message"].as_str().expect("expected message")),
+                "{context}: {actual:?}"
+            );
+            if let Some(marker) = expected["marker"].as_str() {
+                let range = fixture.document(file).expect("diagnostic source").markers[marker];
+                assert_eq!(
+                    actual["range"],
+                    json!({
+                        "start":{"line":range.start.line,"character":range.start.character},
+                        "end":{"line":range.end.line,"character":range.end.character}
+                    }),
+                    "{context}"
+                );
+            }
+        }
+    }
 }

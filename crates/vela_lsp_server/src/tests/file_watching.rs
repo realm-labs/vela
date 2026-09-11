@@ -538,7 +538,13 @@ fn file_delete_reports_removed_imports() {
 
     assert_workspace_progress(&notifications);
     let published = publish_diagnostics_notifications(&notifications);
-    assert_eq!(published.len(), 1);
+    assert_eq!(published.len(), 2);
+    assert_eq!(
+        published[1]["params"],
+        serde_json::json!({
+            "uri":file_uri(&helper_path),"diagnostics":[]
+        })
+    );
     let Some(diagnostics) = published[0]["params"]["diagnostics"].as_array() else {
         panic!("file delete should publish diagnostics");
     };
@@ -576,10 +582,16 @@ fn lsp_progress_wraps_workspace_diagnostics() {
             }),
         ));
 
-    assert_eq!(notifications.len(), 3);
+    assert_eq!(notifications.len(), 4);
     assert_workspace_progress(&notifications);
     let published = publish_diagnostics_notifications(&notifications);
-    assert_eq!(published.len(), 1);
+    assert_eq!(published.len(), 2);
+    assert_eq!(
+        published[1]["params"],
+        serde_json::json!({
+            "uri":file_uri(&helper_path),"diagnostics":[]
+        })
+    );
     assert_eq!(
         published[0]["params"]["uri"],
         file_uri(&root.join("scripts").join("game").join("main.vela"))

@@ -58,6 +58,32 @@
       "source": "/* 中😀 */ pub struct [[cell:start]]Cell[[cell:end]] { value: i64 }\npub fn [[make:start]]make[[make:end]]() -> Cell { return Cell { value: 1 }; }\n"
     },
     {
+      "op": "open",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "change",
+      "file": "scripts/helper.vela",
+      "source": "/* 中😀 */ pub struct [[cell:start]]Cell[[cell:end]] { value: i64 }\npub fn [[make:start]]make[[make:end]]() -> Cell { return Cell { value: 1 }; }\nfn bad(values: Array<i64>) { values.[[bad-member:start]]frist[[bad-member:end]](); }\n"
+    },
+    {
+      "op": "save",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "delete",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "write",
+      "file": "scripts/helper.vela",
+      "source": "/* 中😀 */ pub struct [[cell:start]]Cell[[cell:end]] { value: i64 }\npub fn [[make:start]]make[[make:end]]() -> Cell { return Cell { value: 1 }; }\nfn bad(values: Array<i64>) { values.[[bad-member:start]]frist[[bad-member:end]](); }\n"
+    },
+    {
+      "op": "close",
+      "file": "scripts/helper.vela"
+    },
+    {
       "op": "delete",
       "file": "scripts/helper.vela"
     },
@@ -216,6 +242,72 @@
           "id": "call",
           "file": "scripts/main.vela",
           "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
+          "definition": "make",
+          "declaration": "make",
+          "type-definition": "cell",
+          "target-file": "scripts/helper.vela"
+        }
+      ],
+      [
+        {
+          "id": "call",
+          "file": "scripts/main.vela",
+          "cursor": "call",
           "definition": null,
           "declaration": null,
           "type-definition": null,
@@ -255,6 +347,83 @@
           "target-file": "scripts/helper.vela"
         }
       ]
+    ],
+    "diagnosticsAfterEachAction": [
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {
+        "scripts/helper.vela": [
+          {
+            "code": "analysis::unknown_method",
+            "marker": "bad-member",
+            "message": "unknown method `frist`"
+          }
+        ]
+      },
+      {
+        "scripts/helper.vela": [
+          {
+            "code": "analysis::unknown_method",
+            "marker": "bad-member",
+            "message": "unknown method `frist`"
+          }
+        ]
+      },
+      {
+        "scripts/helper.vela": [
+          {
+            "code": "analysis::unknown_method",
+            "marker": "bad-member",
+            "message": "unknown method `frist`"
+          }
+        ]
+      },
+      {
+        "scripts/helper.vela": [
+          {
+            "code": "analysis::unknown_method",
+            "marker": "bad-member",
+            "message": "unknown method `frist`"
+          }
+        ]
+      },
+      {
+        "scripts/helper.vela": [
+          {
+            "code": "analysis::unknown_method",
+            "marker": "bad-member",
+            "message": "unknown method `frist`"
+          }
+        ]
+      },
+      {
+        "scripts/helper.vela": [],
+        "scripts/main.vela": [
+          {
+            "code": "hir::unresolved_module",
+            "message": "unresolved module `helper`"
+          },
+          {
+            "code": "project::diagnostic",
+            "message": "unresolved module"
+          }
+        ]
+      },
+      {
+        "scripts/main.vela": []
+      },
+      {},
+      {}
     ]
   }
 }

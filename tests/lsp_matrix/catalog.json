@@ -571,6 +571,66 @@
           "name": "tests::definition::matrix::implementation_matrix_rejects_source_schema_dynamic_and_unresolved_targets_for_client_profiles"
         }
       ]
+    },
+    {
+      "requirement": "definition/states/dynamic/protocol",
+      "assertion": "Known source, imported source, source method, schema function and schema method returns annotated Any never acquire guessed field/method targets, directly or through locals. Exact positive callable and static-member controls prove the source/schema was loaded; all three methods assert explicit null across Unicode LF/CRLF fixtures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/states/dependency_delete/protocol",
+      "assertion": "Delete a defining file with previously published diagnostics after closing its overlay: all three targets become null despite a same-name decoy, the deleted URI receives an empty diagnostic array, and the dirty importer receives unresolved-module diagnostics. Recreation restores exact targets and clears importer diagnostics. Deleting the file while its overlay is open instead retains exact targets and marker-checked diagnostics; incremental and fresh navigation agree in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/states/dynamic/protocol",
+      "assertion": "Known source, imported source, source method, schema function and schema method returns annotated Any never acquire guessed field/method targets, directly or through locals. Exact positive callable and static-member controls prove the source/schema was loaded; all three methods assert explicit null across Unicode LF/CRLF fixtures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/states/dependency_delete/protocol",
+      "assertion": "Delete a defining file with previously published diagnostics after closing its overlay: all three targets become null despite a same-name decoy, the deleted URI receives an empty diagnostic array, and the dirty importer receives unresolved-module diagnostics. Recreation restores exact targets and clears importer diagnostics. Deleting the file while its overlay is open instead retains exact targets and marker-checked diagnostics; incremental and fresh navigation agree in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/states/dynamic/protocol",
+      "assertion": "Known source, imported source, source method, schema function and schema method returns annotated Any never acquire guessed field/method targets, directly or through locals. Exact positive callable and static-member controls prove the source/schema was loaded; all three methods assert explicit null across Unicode LF/CRLF fixtures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/states/dependency_delete/protocol",
+      "assertion": "Delete a defining file with previously published diagnostics after closing its overlay: all three targets become null despite a same-name decoy, the deleted URI receives an empty diagnostic array, and the dirty importer receives unresolved-module diagnostics. Recreation restores exact targets and clears importer diagnostics. Deleting the file while its overlay is open instead retains exact targets and marker-checked diagnostics; incremental and fresh navigation agree in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
     }
   ],
   "featureFiles": [

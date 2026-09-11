@@ -217,7 +217,7 @@
     },
     {
       "id": "B02.5",
-      "revision": null,
+      "revision": "33159277d",
       "requirements": [
         "implementation/syntax/S1/negative/protocol",
         "implementation/syntax/S3/negative/protocol",
@@ -226,10 +226,23 @@
         "implementation/environments/client_capabilities/protocol"
       ],
       "summary": "The unsupported implementation contract is verified across all shared source/member/schema navigation queries under minimal and rich client capabilities in LF/CRLF. Assert complete method-not-found responses, absent capability and exact supported navigation on the same server after rejection. B02 still needs remaining semantic partitions, Any-return boundaries, dependency-deletion diagnostic proof and installed workbench routes; find the commit by LSP-Batch trailer. Validation: service 566 passed with 2 existing ignored, protocol 559 passed, infrastructure 58 passed; relevant Clippy and formatting passed; audit 38 verified and zero failed."
+    },
+    {
+      "id": "B02.6",
+      "revision": null,
+      "requirements": [
+        "definition/states/dynamic/protocol",
+        "definition/states/dependency_delete/protocol",
+        "declaration/states/dynamic/protocol",
+        "declaration/states/dependency_delete/protocol",
+        "type-definition/states/dynamic/protocol",
+        "type-definition/states/dependency_delete/protocol"
+      ],
+      "summary": "19 shared Any-boundary queries and 21 source lifecycle actions cover the remaining navigation dynamic/dependency-delete states. Closed deleted source files now publish empty diagnostics; live overlays retain their targets and diagnostics. Independent source/schema positive controls and exact null/URI/range assertions feed both Rust layers in LF/CRLF. B02 semantic partition completeness and installed workbench routes remain open; find the commit by LSP-Batch trailer. Validation: service 567 passed with 2 existing ignored; protocol 560 passed; infrastructure 58 passed; relevant Clippy and formatting passed. Matrix audit: 44 verified, 3 editor mapped, 1278 unreviewed, 2 existing N/A, zero failures."
     }
   ],
-  "activeChild": "B02.6",
-  "nextTask": "B02.6",
+  "activeChild": "B02.7",
+  "nextTask": "B02.7",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -1735,7 +1748,11 @@
     "target/lsp-matrix/run-P97H9u/report.json",
     "target/lsp-matrix/b02-implementation-focused.log",
     "target/lsp-matrix/run-gTBdKb/report.json",
-    "target/lsp-matrix/b02-implementation-clippy.log"
+    "target/lsp-matrix/b02-implementation-clippy.log",
+    "target/lsp-matrix/b02-deletion-diagnostics.log",
+    "target/lsp-matrix/run-bHvxuV/report.json",
+    "target/lsp-matrix/run-el2L3J/report.json",
+    "target/lsp-matrix/b02-dynamic-deletion-final-clippy.log"
   ],
   "openIssues": [
     {

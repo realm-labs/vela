@@ -6,19 +6,19 @@ mod documents;
 mod project_state;
 mod request_queue;
 mod responses;
+mod watched_files;
 
 use crossbeam_channel::Sender;
 use lsp_server::{Message, RequestId};
 use lsp_types::{
     CallHierarchyIncomingCallsParams, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeActionParams, CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
-    DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, DocumentFormattingParams, DocumentHighlightParams,
-    DocumentOnTypeFormattingParams, DocumentRangeFormattingParams, DocumentSymbolParams,
-    FoldingRangeParams, HoverParams, InlayHintParams, ReferenceParams, RenameParams,
-    SelectionRangeParams, SemanticTokensDeltaParams, SemanticTokensParams,
-    SemanticTokensRangeParams, SignatureHelpParams, TextDocumentPositionParams,
-    WorkspaceSymbolParams,
+    DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
+    DocumentFormattingParams, DocumentHighlightParams, DocumentOnTypeFormattingParams,
+    DocumentRangeFormattingParams, DocumentSymbolParams, FoldingRangeParams, HoverParams,
+    InlayHintParams, ReferenceParams, RenameParams, SelectionRangeParams,
+    SemanticTokensDeltaParams, SemanticTokensParams, SemanticTokensRangeParams,
+    SignatureHelpParams, TextDocumentPositionParams, WorkspaceSymbolParams,
 };
 use vela_language_service::{
     DocumentId, GenerationToken, LanguageServiceDatabases, LineIndex as ServiceLineIndex,
@@ -1050,23 +1050,6 @@ impl GlobalState {
         self.publish_workspace_diagnostics()
     }
 
-    pub(crate) fn did_change_watched_files(
-        &mut self,
-        params: DidChangeWatchedFilesParams,
-    ) -> Vec<Message> {
-        let schema_path = self.project.schema_path().map(str::to_owned);
-        self.reload_scheduler.schedule_watched_files(
-            params.changes,
-            schema_path.as_deref(),
-            &self.project.open_documents,
-        );
-        for work in self.reload_scheduler.drain() {
-            self.apply_reload_work(work);
-        }
-        self.project.refresh_databases_after_watched_changes();
-        self.publish_workspace_diagnostics()
-    }
-
     pub(crate) fn did_open(&mut self, params: DidOpenTextDocumentParams) -> Vec<Message> {
         let uri = params.text_document.uri.to_string();
         let document_id = DocumentId::from(uri.clone());
@@ -1157,8 +1140,11 @@ impl GlobalState {
     }
 
     fn publish_workspace_diagnostics(&mut self) -> Vec<Message> {
+        self.wrap_workspace_diagnostics(self.project.publish_open_diagnostics())
+    }
+
+    fn wrap_workspace_diagnostics(&self, messages: Vec<Message>) -> Vec<Message> {
         let has_open_documents = !self.project.open_documents.is_empty();
-        let messages = self.project.publish_open_diagnostics();
         if has_open_documents && self.client_supports_work_done_progress {
             with_work_done_progress(messages, "Vela workspace diagnostics")
         } else {
