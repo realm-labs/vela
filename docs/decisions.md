@@ -23,6 +23,12 @@ never certifies coverage. Strict acceptance requires executed evidence or a
 reasoned N/A for every obligation; the ordinary CI audit may expose incomplete
 coverage while rejecting drift, stale references, and failing tests.
 
+The [LSP execution plan](lsp-test-execution-plan.md) defines stable batch IDs
+and resumable acceptance checkpoints. Its planned scoped gate must preserve
+whole-catalog validation and recheck accepted batches against current evidence;
+batch completion cannot weaken full strategy acceptance. The scoped gate and
+machine-readable checkpoint are B00 work, not existing runner capabilities.
+
 ## Standing Constraints
 
 - Script-language generics are not supported.

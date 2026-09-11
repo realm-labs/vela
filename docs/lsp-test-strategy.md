@@ -5,6 +5,10 @@ stateful, and installed-editor acceptance is still open. The protocol document's
 historical acceptance does not imply that every combination below has executable
 proof. A bug report is a final source of regression cases, not the test plan.
 
+For goal-driven implementation, follow the stable batches, commit gates, and
+resume contract in [lsp-test-execution-plan.md](lsp-test-execution-plan.md).
+P0-P5 below describe acceptance dimensions; they are not individual commit units.
+
 ## Source Of Requirements
 
 - [grammar.ebnf](grammar.ebnf) defines the documented grammar. The current
