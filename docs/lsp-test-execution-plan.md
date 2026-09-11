@@ -1,6 +1,6 @@
 # LSP Test Matrix Execution Plan
 
-Status: local coverage goal active; B00 baseline repair and infrastructure in progress.
+Status: local coverage goal active; the machine-readable checkpoint owns batch status.
 The [strategy](lsp-test-strategy.md) owns required behavior and P0-P5 acceptance.
 This plan owns work boundaries and verification checkpoints. Follow
 [goal.md](goal.md), [architecture.md](architecture.md), and repository agent
@@ -110,10 +110,11 @@ New requirements for an accepted batch reopen its affected scope explicitly.
 
 ## B00 Implementation Requirements
 
-The existing runner supports `--run`, `--strict`, and `--editor-results` only.
-Batch/profile selection and regression enforcement described here are planned
-work, not commands that work today. Until B00 lands, do not mark feature batches
-accepted using an ordinary successful audit.
+The runner supports full `--strict`, scoped `--batch <id>`, explicit `--accept`
+checkpoint updates, and `--reopen <id> --reason <text>`. Scoped gates require
+executed proof for the selected and already accepted batches. Ordinary successful
+audits do not accept a batch. Local Input/Render evidence ingestion is B01 work;
+until then those requirements remain unreviewed and block their feature gates.
 
 B00 must add a versioned manifest under `tests/lsp_matrix/` that records batch
 ownership and exact obligation IDs. Preserve IDs through normal edits; splits
@@ -176,6 +177,12 @@ provenance, or editor behavior. B19 also requires all workspace validation comma
 ```bash
 node --test "scripts/lsp-matrix/*.test.js"
 node scripts/lsp-matrix/run.js --run
+# Validate B00 and every already accepted batch against current inputs.
+node scripts/lsp-matrix/run.js --run --batch B00
+# Record acceptance only after that strict gate passes.
+node scripts/lsp-matrix/run.js --run --batch B00 --accept
+# Reopen changed accepted scope with an explicit reason before re-auditing.
+node scripts/lsp-matrix/run.js --reopen B02 --reason "reviewed scope expansion"
 npm --prefix editors/vscode test
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
@@ -197,8 +204,8 @@ This records the starting state. Until B00 creates the checkpoint, child commits
 with `LSP-Batch` trailers and `progress.md` record active work; it is not a new
 coverage measurement.
 
-B00 creates the machine-readable execution checkpoint alongside its manifest.
-Thereafter that checkpoint is the single source of batch status; keep this plan
+The [machine-readable execution checkpoint](../tests/lsp_matrix/checkpoint.json)
+is the single source of batch status alongside its manifest; keep this plan
 stable rather than appending a per-commit narrative. Each checkpoint records:
 
 - Accepted batches, active child, remaining exact requirement IDs, and next task.
@@ -207,6 +214,14 @@ stable rather than appending a per-commit narrative. Each checkpoint records:
   results, editor profiles, and artifact locations/provenance.
 - Uncommitted work and reproducible failures when interrupted, with external
   blockers distinguished from implementable failures.
+
+`remainingRequirements` lists obligations of batches not yet accepted, including
+any cells with individual proof in those batches. Accepted batch snapshots retain
+their exact requirement IDs/hashes and tested source identity. A changed accepted
+scope requires explicit reopening; other accepted batches retain their regression
+gates. Source identity includes uncommitted implementation files and excludes only
+the checkpoint itself to avoid a self-referential hash. Outstanding checkpoint
+issues block B19 even if mapped tests pass.
 
 Update the checkpoint with each accepted child commit. Its own commit can be
 found by Git history and the `LSP-Batch` trailer; do not store a self-referential

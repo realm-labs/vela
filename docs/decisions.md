@@ -27,15 +27,17 @@ reasoned N/A for every obligation; the ordinary CI audit may expose incomplete
 coverage while rejecting drift, stale references, and failing tests.
 
 The [LSP execution plan](lsp-test-execution-plan.md) defines stable batch IDs
-and resumable acceptance checkpoints. Its planned scoped gate must preserve
+and resumable acceptance checkpoints. Its scoped gate preserves
 whole-catalog validation and recheck accepted batches against current evidence;
-batch completion cannot weaken full strategy acceptance. The scoped gate and
-machine-readable checkpoint are B00 work, not existing runner capabilities.
+batch completion cannot weaken full strategy acceptance. Explicit acceptance
+records exact requirement contracts and source identity; changed accepted scope
+requires reopening before re-audit. Ordinary CI remains portable, while strict
+local gates require the recorded machine/editor profile.
 
 The [VS Code interaction matrix](lsp-vscode-interaction-matrix.md) separates
 provider, command, actual input and rendered-output evidence. Required keyboard,
 pointer and widget routes cannot be accepted from provider/command tests alone.
-The planned batch gate tracks these routes and their environment identities;
+The batch gate tracks these routes and their environment identities;
 installed feature smoke remains a separate, narrower proof.
 
 The current LSP coverage goal accepts one recorded local development profile.

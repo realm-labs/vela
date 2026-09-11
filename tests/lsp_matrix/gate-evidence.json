@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "evidence": [
+    {
+      "requirement": "batch/B00/ownership",
+      "assertion": "Complete ownership, preserved original contracts, explicit local interaction routes and rejection of missing, duplicate, misowned, downgraded or silently changed requirements.",
+      "tests": [
+        {
+          "layer": "gate",
+          "name": "every semantic, interaction and later deliverable has exactly one stable owner"
+        },
+        {
+          "layer": "gate",
+          "name": "missing and duplicate owners fail even in an unaccepted batch"
+        },
+        {
+          "layer": "gate",
+          "name": "moving an obligation to the wrong batch cannot satisfy ownership"
+        },
+        {
+          "layer": "gate",
+          "name": "empty semantic batches and missing late gates cannot disappear"
+        },
+        {
+          "layer": "gate",
+          "name": "only the named B16 families can be deferred"
+        },
+        {
+          "layer": "gate",
+          "name": "missing interaction families and explicit alternative routes fail"
+        },
+        {
+          "layer": "gate",
+          "name": "interaction evidence cannot be downgraded to provider or command"
+        },
+        {
+          "layer": "gate",
+          "name": "negative interaction routes and independent expectations are mandatory"
+        },
+        {
+          "layer": "gate",
+          "name": "changed interaction text requires reviewed contract and route migration"
+        },
+        {
+          "layer": "gate",
+          "name": "changed applicability and N/A reasons require explicit migration"
+        },
+        {
+          "layer": "gate",
+          "name": "new requirements must be explicitly assigned before they enter scope"
+        },
+        {
+          "layer": "gate",
+          "name": "splits name exact old/new contracts and preserved behavior"
+        }
+      ]
+    },
+    {
+      "requirement": "batch/B00/scoped-acceptance",
+      "assertion": "Selected and previously accepted requirements need current exact evidence; executed failures, missing editor proof, stale contracts and unsupported scopes cannot pass.",
+      "tests": [
+        {
+          "layer": "gate",
+          "name": "scoped acceptance permits pending future batches but requires selected proof"
+        },
+        {
+          "layer": "gate",
+          "name": "accepted batches must pass again with current evidence"
+        },
+        {
+          "layer": "gate",
+          "name": "any executed failure blocks acceptance even outside selected scope"
+        },
+        {
+          "layer": "gate",
+          "name": "missing editor results and deferred batch selection cannot pass"
+        },
+        {
+          "layer": "gate",
+          "name": "stale contracts and N/A cannot substitute for current gate or interaction proof"
+        },
+        {
+          "layer": "gate",
+          "name": "TAP evidence distinguishes success, failure, ignored and duplicate tests"
+        },
+        {
+          "layer": "gate",
+          "name": "gate evidence requires exact executed tests and cannot use candidate names"
+        },
+        {
+          "layer": "gate",
+          "name": "gate evidence rejects wrong layers, duplicate mappings and unknown obligations"
+        },
+        {
+          "layer": "gate",
+          "name": "stale contracts and N/A cannot substitute for current gate or interaction proof"
+        },
+        {
+          "layer": "gate",
+          "name": "final acceptance cannot silently drop unresolved baseline issues"
+        }
+      ]
+    },
+    {
+      "requirement": "batch/B00/checkpoint",
+      "assertion": "Checkpoint validation enforces batch prerequisites, exact remaining scope, current acceptance contracts, reopening, local profile and source provenance.",
+      "tests": [
+        {
+          "layer": "gate",
+          "name": "checkpoint acceptance advances exact remaining scope and retains provenance"
+        },
+        {
+          "layer": "gate",
+          "name": "forged order, duplicate acceptance and stale remaining IDs fail"
+        },
+        {
+          "layer": "gate",
+          "name": "new, removed or changed accepted scope requires explicit reopening"
+        },
+        {
+          "layer": "gate",
+          "name": "reopening records the prior acceptance and keeps later regression gates"
+        },
+        {
+          "layer": "gate",
+          "name": "checkpoint rejects missing source identity, failed commands and changed profiles"
+        },
+        {
+          "layer": "gate",
+          "name": "checkpoint rejects wrong active child and machine-specific artifact paths"
+        },
+        {
+          "layer": "gate",
+          "name": "source identity includes edits, new files and deletions but excludes its own checkpoint"
+        },
+        {
+          "layer": "gate",
+          "name": "local gates pin the execution profile while ordinary existing CI stays portable"
+        },
+        {
+          "layer": "gate",
+          "name": "later audits preserve earlier failure reports and logs"
+        }
+      ]
+    }
+  ]
+}

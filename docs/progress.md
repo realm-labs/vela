@@ -11,8 +11,8 @@ Completed execution plans and acceptance reports live under
 ## Current Focus
 
 Current implementation focus is the M20.5 local LSP coverage goal under the
-[execution plan](lsp-test-execution-plan.md), starting with B00 baseline repair
-and acceptance infrastructure. Incremental HIR re-lowering remains an open
+[execution plan](lsp-test-execution-plan.md). The execution checkpoint owns
+accepted batches and the next local task. Incremental HIR re-lowering remains an open
 follow-up and may be required by the local scale gate. The post-M20
 [Verified-MIR superinstruction and basic-block interpreter plan](verified-mir-superinstruction-basic-block-interpreter-plan.md)
 is complete.
@@ -591,11 +591,12 @@ not full acceptance while the separate strict gate reports unresolved cells.
 The active execution plan prioritizes complete coverage on one recorded local
 profile, including actual input/render proof and generated/scale checks. B16's
 additional environments are deferred follow-up work and do not block B19 local
-acceptance. B00 is in progress; no parent batch is accepted yet. The local
-package-path baseline is restored. The versioned ownership inventory registers
+acceptance. The local package-path baseline is restored. The versioned ownership inventory registers
 1327 semantic obligations, 136 local interaction obligations and 14 infrastructure/
 later acceptance obligations, with contract/route drift self-tests. Scoped strict
-acceptance and the machine-readable checkpoint remain the next infrastructure work.
+acceptance and the machine-readable checkpoint enforce fresh proof for accepted
+batches, explicit reopening and exact remaining scope. B01 shared fixtures and
+local Input/Render evidence are next; no semantic feature batch is accepted yet.
 
 ### Deferred Tracks
 
@@ -628,8 +629,8 @@ provides it.
 
 ## Next Up
 
-1. Complete LSP B00 acceptance infrastructure, then B01 shared local fixtures and
-   Input/Render proof. Continue B02-B15 and B17-B19; B16 stays deferred.
+1. Complete LSP B01 shared local fixtures and Input/Render proof, resuming the
+   execution checkpoint. Continue B02-B15 and B17-B19; B16 stays deferred.
 2. Address incremental HIR re-lowering and moving `did_change` diagnostics off
    the message loop when required by local state/scale acceptance.
 3. Audit the parameterized container and value-keyed Map/Set plans against

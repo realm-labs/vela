@@ -185,8 +185,9 @@ node scripts/lsp-matrix/run.js --run --editor-results <run-directory>/results.js
 node scripts/lsp-matrix/run.js --run --strict --editor-results <run-directory>/results.json
 ```
 
-The report is written to `target/lsp-matrix/report.md` and `report.json`, alongside
-Cargo execution logs. CI uploads it with editor/server failure logs. Evidence
+Each audit retains its report and Cargo/Node logs under a distinct
+`target/lsp-matrix/run-*` directory. `target/lsp-matrix/report.md` and `report.json`
+are copies of the latest report. CI uploads all runs with editor/server failure logs. Evidence
 states are:
 
 - `unreviewed`: no complete reviewed proof linked. Candidate test names aid the

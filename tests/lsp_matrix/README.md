@@ -15,10 +15,10 @@ requirement IDs or contract hashes. New requirements need explicit owners.
 
 B16 and its scenario families are deferred environment work. They have no local
 execution obligations and cannot absorb missing local proof. All other batches
-remain pending until their strict acceptance is implemented and passes. The
-current runner validates ownership and includes the expanded inventory in the
-JSON report; scoped acceptance and resumable checkpoint enforcement are the next
-B00 child. Full strict acceptance also rejects unverified interaction and later
+remain pending until their strict acceptance passes. The runner validates ownership
+and includes the expanded inventory in the JSON report. `gate-evidence.json` links
+infrastructure obligations to exact executed Node test identities. Full strict
+acceptance also rejects unverified interaction and later
 deliverables, even if all original semantic cells are verified.
 
 Run the inventory self-tests and live service/protocol audit:
@@ -26,8 +26,17 @@ Run the inventory self-tests and live service/protocol audit:
 ```bash
 node --test "scripts/lsp-matrix/*.test.js"
 node scripts/lsp-matrix/run.js --run
+node scripts/lsp-matrix/run.js --run --batch B00
+node scripts/lsp-matrix/run.js --run --batch B00 --accept
+node scripts/lsp-matrix/run.js --reopen B02 --reason "reviewed scope expansion"
 ```
 
-The generated report and logs under `target/lsp-matrix/` are regenerable artifacts,
-not the durable batch status. Child commits record `LSP-Batch`, exact requirements,
-validation and remaining work until the B00 checkpoint becomes authoritative.
+Each audit keeps its reports and command logs in a separate `target/lsp-matrix/run-*`
+directory. Root-level reports point readers to the latest run; retries never
+overwrite earlier command logs. These are regenerable artifacts,
+not the durable batch status. `checkpoint.json` owns accepted batches, source
+identities, exact remaining batch obligations, reopened scope and the next child.
+`--accept` requires a passing scoped gate and advances only the first incomplete
+local batch. Accepted batches need fresh proof in every later scoped run. Local
+Input/Render evidence support is B01 work; those rows stay unreviewed until then.
+Child commits record `LSP-Batch`, exact requirements, validation and remaining work.

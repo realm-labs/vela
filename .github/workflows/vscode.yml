@@ -61,7 +61,4 @@ jobs:
             editors/vscode/test-results/**/results.json
             editors/vscode/test-results/**/user-data/logs/**
             editors/vscode/test-results/**/.vela-lsp-trace.jsonl
-            target/lsp-matrix/report.json
-            target/lsp-matrix/report.md
-            target/lsp-matrix/*-run.log
-            target/lsp-matrix/*-list.log
+            target/lsp-matrix/**

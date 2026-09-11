@@ -5,11 +5,17 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const model = require("./model");
 const { validateManifest } = require("./execution");
+const checkpointModel = require("./checkpoint");
+const { sourceIdentity } = require("./source-identity");
+const { runInfrastructure, assessInfrastructure } = require("./infrastructure");
 const { capabilities } = require("./stdio");
 const { provenance } = require("./provenance");
+const { createAuditDirectory, writeReports } = require("./audit-files");
 
 const root = path.resolve(__dirname, "../..");
-const output = path.join(root, "target/lsp-matrix");
+const reportRoot = path.join(root, "target/lsp-matrix");
+let output;
+const failedCommands = [];
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 function cargo(args, log) {
@@ -19,6 +25,7 @@ function cargo(args, log) {
     env: { ...process.env, CARGO_TERM_COLOR: "never" }
   });
   fs.writeFileSync(path.join(output, log), (result.stdout || "") + (result.stderr || ""));
+  if (result.status !== 0) failedCommands.push({ command: `cargo ${args.join(" ")}`, exitCode: result.status, log });
   if (result.error) throw result.error;
   return result;
 }
@@ -31,6 +38,7 @@ function markdown(report) {
     `Requirements: ${report.requirements.length}. ${Object.entries(report.counts).map(([key, value]) => `${key}: ${value}`).join(", ")}.`, "",
     "Mapped = reviewed test linkage, not executed in this audit. Verified = all linked assertions passed in this invocation.",
     "Unreviewed = no complete proof mapped; existing tests may already cover part or all of the requirement.", "",
+    `Local execution requirements: ${report.execution.requirements.length}; accepted batches: ${report.execution.acceptedBatches.join(", ") || "none"}; B16 deferred.`, "",
     "| Feature | Requirements | Verified | Mapped | Unreviewed | N/A | Candidate service / protocol tests |",
     "|---|---:|---:|---:|---:|---:|---:|"];
   for (const feature of report.features) {
@@ -52,16 +60,29 @@ function markdown(report) {
 async function main() {
   const args = process.argv.slice(2);
   let editorResults;
+  let selectedBatch;
+  let reopen;
+  let reason;
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
     if (arg === "--editor-results") {
       editorResults = args[++index];
       if (!editorResults) throw new Error("--editor-results requires a results.json path");
-    } else if (!["--run", "--strict"].includes(arg)) {
-      throw new Error(`unknown option ${arg}; use --run, --strict, --editor-results <path>`);
+    } else if (["--batch", "--reopen", "--reason"].includes(arg)) {
+      const value = args[++index];
+      if (!value || value.startsWith("--")) throw new Error(`${arg} requires a value`);
+      if (arg === "--batch") selectedBatch = value;
+      else if (arg === "--reopen") reopen = value;
+      else reason = value;
+    } else if (!["--run", "--strict", "--accept"].includes(arg)) {
+      throw new Error(`unknown option ${arg}; use --run, --strict, --batch <id>, --accept, --editor-results <path>, --reopen <id> --reason <text>`);
     }
   }
-  fs.mkdirSync(output, { recursive: true });
+  if (selectedBatch && !checkpointModel.localOrder.includes(selectedBatch)) throw new Error("unknown or deferred batch selection");
+  if (args.includes("--accept") && (!selectedBatch || !args.includes("--run"))) throw new Error("--accept requires --run and --batch");
+  if (reopen && (selectedBatch || args.includes("--accept") || args.includes("--run") || args.includes("--strict"))) throw new Error("--reopen must be a separate checkpoint operation");
+  output = createAuditDirectory(reportRoot);
+  console.log(`Audit artifacts: ${output}`);
   const catalog = JSON.parse(read("tests/lsp_matrix/catalog.json"));
   catalog.protocolBaseline = JSON.parse(read("tests/lsp_matrix/protocol-baseline.json"));
   Object.assign(catalog, JSON.parse(read("tests/lsp_matrix/syntax-baseline.json")));
@@ -80,9 +101,27 @@ async function main() {
     JSON.parse(read("tests/lsp_matrix/execution-baseline.json")), catalog, requirements,
     interactions.scenarios, { plan: read("docs/lsp-test-execution-plan.md"),
       interactions: read("docs/lsp-vscode-interaction-matrix.md") });
+  const checkpointPath = path.join(root, "tests/lsp_matrix/checkpoint.json");
+  let checkpoint = JSON.parse(fs.readFileSync(checkpointPath, "utf8"));
+  if (reopen) {
+    checkpoint = checkpointModel.reopenBatch(checkpoint, executionRequirements, reopen, reason);
+    checkpointModel.validateCheckpoint(checkpoint, manifest, executionRequirements);
+    fs.writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2) + "\n");
+    console.log(`Reopened ${reopen}; next task ${checkpoint.nextTask}.`);
+    return;
+  }
+  checkpointModel.validateCheckpoint(checkpoint, manifest, executionRequirements);
+  checkpointModel.validateExecutionProfile(checkpoint.profile,
+    { platform: process.platform, arch: process.arch }, Boolean(selectedBatch) || args.includes("--strict"));
+  const source = sourceIdentity(root);
+  const infrastructure = runInfrastructure(root, output, args.includes("--run"));
+  if (infrastructure.failed) failedCommands.push({ command: "node --test scripts/lsp-matrix/*.test.js", log: "infrastructure.log" });
+  const gateEvidence = JSON.parse(read("tests/lsp_matrix/gate-evidence.json"));
+  if (gateEvidence.version !== 1) throw new Error("unsupported gate evidence version");
+  const gates = assessInfrastructure(executionRequirements, gateEvidence.evidence, infrastructure);
   const available = {};
   const results = {};
-  let failed = false;
+  let failed = infrastructure.failed;
   for (const [layer, crate] of Object.entries({ service: "vela_language_service", protocol: "vela_lsp_server" })) {
     const listed = cargo(["test", "-p", crate, "--lib", "--", "--list"], `${layer}-list.log`);
     if (listed.status !== 0) throw new Error(`${crate} test discovery failed; see ${output}`);
@@ -104,6 +143,9 @@ async function main() {
   const actualCapabilities = await capabilities(binary);
   if (editorResults) {
     const editor = JSON.parse(fs.readFileSync(path.resolve(editorResults), "utf8"));
+    checkpointModel.validateExecutionProfile(checkpoint.profile,
+      { platform: process.platform, arch: process.arch, vscodeVersion: editor.vscodeVersion },
+      Boolean(selectedBatch) || args.includes("--strict"));
     if (editor.version !== 1 || JSON.stringify(editor.provenance) !== JSON.stringify(provenance(root, binary))) {
       throw new Error("editor evidence is stale or from different sources/binary/platform; run npm test again");
     }
@@ -128,6 +170,8 @@ async function main() {
     ]))
   }));
   const report = { version: 1, generatedAt: new Date().toISOString(), platform: process.platform,
+    source,
+    failedCommands, artifactDirectory: path.relative(root, output),
     testCommandFailed: failed,
     executionRequested: args.includes("--run"), grammarProductions: catalog.grammarRules.length,
     grammarGroups: catalog.grammarGroups, syntaxDimensions: catalog.syntaxDimensions,
@@ -135,17 +179,33 @@ async function main() {
       [status, assessed.filter((item) => item.status === status).length])),
     actualCapabilities, features, requirements: assessed,
     execution: { version: manifest.version, scope: manifest.scope,
+      acceptedBatches: checkpoint.acceptedBatches.map((batch) => batch.id),
       deferredBatches: manifest.batches.filter((batch) => batch.scope === "deferred").map((batch) => batch.id),
       requirements: executionRequirements.map((requirement) => ({ ...requirement,
-        status: assessed.find((item) => item.id === requirement.id)?.status ?? "unreviewed" })) } };
-  fs.writeFileSync(path.join(output, "report.json"), JSON.stringify(report, null, 2) + "\n");
-  fs.writeFileSync(path.join(output, "report.md"), markdown(report));
+        status: [...assessed, ...gates].find((item) => item.id === requirement.id)?.status ?? "unreviewed" })) } };
+  if (sourceIdentity(root).treeSha256 !== source.treeSha256) throw new Error("source inputs changed during audit; rerun before acceptance");
+  writeReports(reportRoot, output, report, markdown(report));
   console.log(`${features.length} protocol rows; ${assessed.length} obligations: ${JSON.stringify(report.counts)}`);
   console.log(`Report: ${path.join(output, "report.md")}`);
-  console.log(`Local execution inventory: ${executionRequirements.length} obligations; batch acceptance is not implemented yet.`);
-  if (failed || report.counts.failed || (args.includes("--strict") && report.execution.requirements.some((item) => !["verified", "not_applicable"].includes(item.status)))) {
+  console.log(`Local execution inventory: ${executionRequirements.length} obligations; B16 deferred.`);
+  if (failed || report.execution.requirements.some((item) => item.status === "failed")) {
     console.error("Matrix acceptance is incomplete or tests failed; see report and logs.");
     process.exitCode = 1;
+    return;
+  }
+  if (selectedBatch || args.includes("--strict")) {
+    checkpointModel.gate(executionRequirements, report.execution.requirements, checkpoint,
+      args.includes("--strict") ? "all" : selectedBatch, failed);
+    console.log(`Strict ${args.includes("--strict") ? "local" : selectedBatch} acceptance passed.`);
+  }
+  if (args.includes("--accept")) {
+    const validation = { source, profile: checkpoint.profile,
+      artifacts: [path.relative(root, path.join(output, "report.json"))],
+      commands: [{ command: `node scripts/lsp-matrix/run.js ${args.filter((arg) => arg !== "--accept").join(" ")}`, exitCode: 0 }] };
+    checkpoint = checkpointModel.acceptBatch(checkpoint, manifest, executionRequirements,
+      report.execution.requirements, selectedBatch, validation, failed);
+    fs.writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2) + "\n");
+    console.log(`Recorded ${selectedBatch}; next task ${checkpoint.nextTask ?? "complete"}.`);
   }
 }
 
