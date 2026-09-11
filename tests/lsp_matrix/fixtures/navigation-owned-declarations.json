@@ -1,0 +1,553 @@
+{
+  "version": 1,
+  "id": "navigation-owned-declarations",
+  "files": {
+    "scripts/main.vela": "use [[kw-use]]api::Thing as Imported;\nuse api::Behavior as ForeignBehavior;\n/* \u4e2d\ud83d\ude00 */ [[kw-pub]]pub [[kw-struct]]struct [[cell:start]]Cell[[cell:end]] { [[primitive-field:start]]value[[primitive-field:end]]: i64 }\npub struct [[box:start]]Box[[box:end]] { [[field:start]]item[[field:end]]: Cell }\npub [[kw-enum]]enum [[choice:start]]Choice[[choice:end]] { [[unit:start]]Empty[[unit:end]], [[tuple:start]]Tuple[[tuple:end]]([[tuple-field:start]]item[[tuple-field:end]]: Cell), [[record:start]]Record[[record:end]] { [[record-field:start]]item[[record-field:end]]: Cell } }\npub [[kw-const]]const [[constant:start]]BASE[[constant:end]]: Cell = Cell { value: 1 };\npub [[kw-state]]state [[state:start]]shared[[state:end]]: Cell = Cell { value: 2 };\npub [[kw-extern]]extern state [[external:start]]external[[external:end]]: Cell;\npub [[kw-fn]]fn [[function:start]]make[[function:end]]([[parameter:start]]item[[parameter:end]]: Cell, [[default-parameter:start]]fallback[[default-parameter:end]]: Cell = Cell { value: 3 }) -> Cell { let [[local:start]]value[[local:end]]: Cell = item; return value; }\nasync fn [[async-function:start]]fetch[[async-function:end]]([[async-parameter:start]]item[[async-parameter:end]]: Cell) -> Cell { return item; }\npub [[kw-trait]]trait [[reader:start]]Reader[[reader:end]] {\n    fn [[interface:start]]read[[interface:end]](self, [[interface-parameter:start]]item[[interface-parameter:end]]: Cell) -> Cell;\n    fn [[default-method:start]]fallback[[default-method:end]]([[trait-self:start]]self[[trait-self:end]], [[trait-parameter:start]]item[[trait-parameter:end]]: Cell = Cell { value: 4 }) -> Cell { return [[trait-use]]item; }\n}\n[[kw-impl]]impl [[inherent-owner]]Box {\n    fn [[method:start]]get[[method:end]]([[method-self:start]]self[[method-self:end]], [[method-parameter:start]]item[[method-parameter:end]]: Cell) -> Cell { let [[method-local:start]]value[[method-local:end]] = item; return [[method-local-use]]value; }\n}\nimpl [[trait-owner]]Reader for [[trait-target]]Box {\n    fn [[override:start]]read[[override:end]](self, [[override-parameter:start]]item[[override-parameter:end]]: Cell) -> Cell { return [[override-use]]item; }\n    fn extra(self, [[shadow-trait:start]]Reader[[shadow-trait:end]]: Any) { [[shadow-trait-use]]Reader; }\n}\nfn untyped([[unknown-param:start]]item[[unknown-param:end]]) { let [[unknown-local:start]]value[[unknown-local:end]] = item; }\nfn dynamic([[any-param:start]]item[[any-param:end]]: Any) { let [[any-local:start]]value[[any-local:end]]: Any = item; }\n// [[comment]]Reader is mentioned here.\nfn trivia() { let text = \"[[string]]Reader\"; [[keyword]]return; }\nimpl [[missing-trait]]Absent for [[missing-owner]]Missing {}\nimpl [[foreign-trait]]ForeignBehavior for [[foreign-target]]Imported {}\nimpl [[qualified-trait-prefix]]api::[[qualified-trait]]Behavior for api::[[qualified-target]]Thing {}\nimpl api::[[private-trait]]Secret for Imported {}\nimpl api::[[private-target]]Hidden {}\nfn modules() { [[builtin-module]]math::abs(1); api::[[missing-member]]absent(); }\n",
+    "scripts/api.vela": "/* \u4e2d\ud83d\ude00 */ pub struct [[thing:start]]Thing[[thing:end]] {}\npub trait [[behavior:start]]Behavior[[behavior:end]] {}\ntrait Secret {}\nstruct Hidden {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "cell",
+        "file": "scripts/main.vela",
+        "cursor": "cell",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "box",
+        "file": "scripts/main.vela",
+        "cursor": "box",
+        "definition": "box",
+        "declaration": "box",
+        "type-definition": "box"
+      },
+      {
+        "id": "primitive-field",
+        "file": "scripts/main.vela",
+        "cursor": "primitive-field",
+        "definition": "primitive-field",
+        "declaration": "primitive-field",
+        "type-definition": null
+      },
+      {
+        "id": "field",
+        "file": "scripts/main.vela",
+        "cursor": "field",
+        "definition": "field",
+        "declaration": "field",
+        "type-definition": "cell"
+      },
+      {
+        "id": "choice",
+        "file": "scripts/main.vela",
+        "cursor": "choice",
+        "definition": "choice",
+        "declaration": "choice",
+        "type-definition": "choice"
+      },
+      {
+        "id": "unit",
+        "file": "scripts/main.vela",
+        "cursor": "unit",
+        "definition": "unit",
+        "declaration": "unit",
+        "type-definition": "choice"
+      },
+      {
+        "id": "tuple",
+        "file": "scripts/main.vela",
+        "cursor": "tuple",
+        "definition": "tuple",
+        "declaration": "tuple",
+        "type-definition": "choice"
+      },
+      {
+        "id": "record",
+        "file": "scripts/main.vela",
+        "cursor": "record",
+        "definition": "record",
+        "declaration": "record",
+        "type-definition": "choice"
+      },
+      {
+        "id": "tuple-field",
+        "file": "scripts/main.vela",
+        "cursor": "tuple-field",
+        "definition": "tuple-field",
+        "declaration": "tuple-field",
+        "type-definition": "cell"
+      },
+      {
+        "id": "record-field",
+        "file": "scripts/main.vela",
+        "cursor": "record-field",
+        "definition": "record-field",
+        "declaration": "record-field",
+        "type-definition": "cell"
+      },
+      {
+        "id": "constant",
+        "file": "scripts/main.vela",
+        "cursor": "constant",
+        "definition": "constant",
+        "declaration": "constant",
+        "type-definition": "cell"
+      },
+      {
+        "id": "state",
+        "file": "scripts/main.vela",
+        "cursor": "state",
+        "definition": "state",
+        "declaration": "state",
+        "type-definition": "cell"
+      },
+      {
+        "id": "external",
+        "file": "scripts/main.vela",
+        "cursor": "external",
+        "definition": "external",
+        "declaration": "external",
+        "type-definition": "cell"
+      },
+      {
+        "id": "function",
+        "file": "scripts/main.vela",
+        "cursor": "function",
+        "definition": "function",
+        "declaration": "function",
+        "type-definition": null
+      },
+      {
+        "id": "parameter",
+        "file": "scripts/main.vela",
+        "cursor": "parameter",
+        "definition": "parameter",
+        "declaration": "parameter",
+        "type-definition": "cell"
+      },
+      {
+        "id": "default-parameter",
+        "file": "scripts/main.vela",
+        "cursor": "default-parameter",
+        "definition": "default-parameter",
+        "declaration": "default-parameter",
+        "type-definition": "cell"
+      },
+      {
+        "id": "local",
+        "file": "scripts/main.vela",
+        "cursor": "local",
+        "definition": "local",
+        "declaration": "local",
+        "type-definition": "cell"
+      },
+      {
+        "id": "async-function",
+        "file": "scripts/main.vela",
+        "cursor": "async-function",
+        "definition": "async-function",
+        "declaration": "async-function",
+        "type-definition": null
+      },
+      {
+        "id": "async-parameter",
+        "file": "scripts/main.vela",
+        "cursor": "async-parameter",
+        "definition": "async-parameter",
+        "declaration": "async-parameter",
+        "type-definition": "cell"
+      },
+      {
+        "id": "reader",
+        "file": "scripts/main.vela",
+        "cursor": "reader",
+        "definition": "reader",
+        "declaration": "reader",
+        "type-definition": "reader"
+      },
+      {
+        "id": "interface",
+        "file": "scripts/main.vela",
+        "cursor": "interface",
+        "definition": "interface",
+        "declaration": "interface",
+        "type-definition": null
+      },
+      {
+        "id": "interface-parameter",
+        "file": "scripts/main.vela",
+        "cursor": "interface-parameter",
+        "definition": "interface-parameter",
+        "declaration": "interface-parameter",
+        "type-definition": "cell"
+      },
+      {
+        "id": "default-method",
+        "file": "scripts/main.vela",
+        "cursor": "default-method",
+        "definition": "default-method",
+        "declaration": "default-method",
+        "type-definition": null
+      },
+      {
+        "id": "trait-self",
+        "file": "scripts/main.vela",
+        "cursor": "trait-self",
+        "definition": "trait-self",
+        "declaration": "trait-self",
+        "type-definition": "reader"
+      },
+      {
+        "id": "trait-parameter",
+        "file": "scripts/main.vela",
+        "cursor": "trait-parameter",
+        "definition": "trait-parameter",
+        "declaration": "trait-parameter",
+        "type-definition": "cell"
+      },
+      {
+        "id": "method",
+        "file": "scripts/main.vela",
+        "cursor": "method",
+        "definition": "method",
+        "declaration": "method",
+        "type-definition": null
+      },
+      {
+        "id": "method-self",
+        "file": "scripts/main.vela",
+        "cursor": "method-self",
+        "definition": "method-self",
+        "declaration": "method-self",
+        "type-definition": "box"
+      },
+      {
+        "id": "method-parameter",
+        "file": "scripts/main.vela",
+        "cursor": "method-parameter",
+        "definition": "method-parameter",
+        "declaration": "method-parameter",
+        "type-definition": "cell"
+      },
+      {
+        "id": "method-local",
+        "file": "scripts/main.vela",
+        "cursor": "method-local",
+        "definition": "method-local",
+        "declaration": "method-local",
+        "type-definition": "cell"
+      },
+      {
+        "id": "override",
+        "file": "scripts/main.vela",
+        "cursor": "override",
+        "definition": "override",
+        "declaration": "override",
+        "type-definition": null
+      },
+      {
+        "id": "override-parameter",
+        "file": "scripts/main.vela",
+        "cursor": "override-parameter",
+        "definition": "override-parameter",
+        "declaration": "override-parameter",
+        "type-definition": "cell"
+      },
+      {
+        "id": "shadow-trait",
+        "file": "scripts/main.vela",
+        "cursor": "shadow-trait",
+        "definition": "shadow-trait",
+        "declaration": "shadow-trait",
+        "type-definition": null
+      },
+      {
+        "id": "unknown-param",
+        "file": "scripts/main.vela",
+        "cursor": "unknown-param",
+        "definition": "unknown-param",
+        "declaration": "unknown-param",
+        "type-definition": null
+      },
+      {
+        "id": "unknown-local",
+        "file": "scripts/main.vela",
+        "cursor": "unknown-local",
+        "definition": "unknown-local",
+        "declaration": "unknown-local",
+        "type-definition": null
+      },
+      {
+        "id": "any-param",
+        "file": "scripts/main.vela",
+        "cursor": "any-param",
+        "definition": "any-param",
+        "declaration": "any-param",
+        "type-definition": null
+      },
+      {
+        "id": "any-local",
+        "file": "scripts/main.vela",
+        "cursor": "any-local",
+        "definition": "any-local",
+        "declaration": "any-local",
+        "type-definition": null
+      },
+      {
+        "id": "trait-use",
+        "file": "scripts/main.vela",
+        "cursor": "trait-use",
+        "definition": "trait-parameter",
+        "declaration": "trait-parameter",
+        "type-definition": "cell"
+      },
+      {
+        "id": "method-local-use",
+        "file": "scripts/main.vela",
+        "cursor": "method-local-use",
+        "definition": "method-local",
+        "declaration": "method-local",
+        "type-definition": "cell"
+      },
+      {
+        "id": "override-use",
+        "file": "scripts/main.vela",
+        "cursor": "override-use",
+        "definition": "override-parameter",
+        "declaration": "override-parameter",
+        "type-definition": "cell"
+      },
+      {
+        "id": "shadow-trait-use",
+        "file": "scripts/main.vela",
+        "cursor": "shadow-trait-use",
+        "definition": "shadow-trait",
+        "declaration": "shadow-trait",
+        "type-definition": null
+      },
+      {
+        "id": "inherent-owner",
+        "file": "scripts/main.vela",
+        "cursor": "inherent-owner",
+        "definition": "box",
+        "declaration": "box",
+        "type-definition": "box"
+      },
+      {
+        "id": "trait-owner",
+        "file": "scripts/main.vela",
+        "cursor": "trait-owner",
+        "definition": "reader",
+        "declaration": "reader",
+        "type-definition": "reader"
+      },
+      {
+        "id": "trait-target",
+        "file": "scripts/main.vela",
+        "cursor": "trait-target",
+        "definition": "box",
+        "declaration": "box",
+        "type-definition": "box"
+      },
+      {
+        "id": "comment",
+        "file": "scripts/main.vela",
+        "cursor": "comment",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "string",
+        "file": "scripts/main.vela",
+        "cursor": "string",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "keyword",
+        "file": "scripts/main.vela",
+        "cursor": "keyword",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "missing-trait",
+        "file": "scripts/main.vela",
+        "cursor": "missing-trait",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "missing-owner",
+        "file": "scripts/main.vela",
+        "cursor": "missing-owner",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "kw-use",
+        "file": "scripts/main.vela",
+        "cursor": "kw-use",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "kw-pub",
+        "file": "scripts/main.vela",
+        "cursor": "kw-pub",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "kw-struct",
+        "file": "scripts/main.vela",
+        "cursor": "kw-struct",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "kw-enum",
+        "file": "scripts/main.vela",
+        "cursor": "kw-enum",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "kw-const",
+        "file": "scripts/main.vela",
+        "cursor": "kw-const",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "kw-state",
+        "file": "scripts/main.vela",
+        "cursor": "kw-state",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "kw-extern",
+        "file": "scripts/main.vela",
+        "cursor": "kw-extern",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "kw-fn",
+        "file": "scripts/main.vela",
+        "cursor": "kw-fn",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "kw-trait",
+        "file": "scripts/main.vela",
+        "cursor": "kw-trait",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "kw-impl",
+        "file": "scripts/main.vela",
+        "cursor": "kw-impl",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "qualified-trait-prefix",
+        "file": "scripts/main.vela",
+        "cursor": "qualified-trait-prefix",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "private-trait",
+        "file": "scripts/main.vela",
+        "cursor": "private-trait",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "private-target",
+        "file": "scripts/main.vela",
+        "cursor": "private-target",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-module",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-module",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "missing-member",
+        "file": "scripts/main.vela",
+        "cursor": "missing-member",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "foreign-trait",
+        "file": "scripts/main.vela",
+        "cursor": "foreign-trait",
+        "definition": "behavior",
+        "declaration": "behavior",
+        "type-definition": "behavior",
+        "target-file": "scripts/api.vela"
+      },
+      {
+        "id": "foreign-target",
+        "file": "scripts/main.vela",
+        "cursor": "foreign-target",
+        "definition": "thing",
+        "declaration": "thing",
+        "type-definition": "thing",
+        "target-file": "scripts/api.vela"
+      },
+      {
+        "id": "qualified-trait",
+        "file": "scripts/main.vela",
+        "cursor": "qualified-trait",
+        "definition": "behavior",
+        "declaration": "behavior",
+        "type-definition": "behavior",
+        "target-file": "scripts/api.vela"
+      },
+      {
+        "id": "qualified-target",
+        "file": "scripts/main.vela",
+        "cursor": "qualified-target",
+        "definition": "thing",
+        "declaration": "thing",
+        "type-definition": "thing",
+        "target-file": "scripts/api.vela"
+      }
+    ]
+  }
+}

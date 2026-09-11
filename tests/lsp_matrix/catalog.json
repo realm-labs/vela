@@ -1759,6 +1759,366 @@
           "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
         }
       ]
+    },
+    {
+      "requirement": "definition/syntax/S1/positive/service",
+      "assertion": "Exact authored names and uses of public/private functions, async functions, ordinary/defaulted parameters, locals/captures/shadows, const/state/extern state, structs/fields, enum unit/tuple/record variants and fields, traits, interface/default methods and inherent/trait implementation methods. Declaration names retain their own source locations and known declared types; self parameters retain the receiver type. Impl header traits/targets resolve local, aliased and qualified cross-file types; import-clause names and aliases preserve source ownership. Independent LF/CRLF URI/range oracles distinguish method-body bindings from headers.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_owned_declaration_matrix_preserves_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_constructor_matrix_preserves_field_label_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S1/positive/protocol",
+      "assertion": "Exact authored names and uses of public/private functions, async functions, ordinary/defaulted parameters, locals/captures/shadows, const/state/extern state, structs/fields, enum unit/tuple/record variants and fields, traits, interface/default methods and inherent/trait implementation methods. Declaration names retain their own source locations and known declared types; self parameters retain the receiver type. Impl header traits/targets resolve local, aliased and qualified cross-file types; import-clause names and aliases preserve source ownership. Independent LF/CRLF URI/range oracles distinguish method-body bindings from headers.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_owned_declaration_matrix_projects_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_constructor_matrix_projects_exact_field_and_binding_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S1/negative/service",
+      "assertion": "Declaration keywords, comments/string contents, unknown impl traits/targets and private cross-module header paths have explicit null targets. Module qualifiers cannot borrow types. Function/method declarations, primitive fields and untyped/Any bindings have no invented source type. Method locals matching trait names retain their own binding and never jump to the impl header; missing/invalid labels, unresolved imports and malformed declarations retain their explicit no-jump policy. Synthetic impl spans are never exposed as authored declaration names.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_owned_declaration_matrix_preserves_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_constructor_matrix_preserves_field_label_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S1/negative/protocol",
+      "assertion": "Declaration keywords, comments/string contents, unknown impl traits/targets and private cross-module header paths have explicit null targets. Module qualifiers cannot borrow types. Function/method declarations, primitive fields and untyped/Any bindings have no invented source type. Method locals matching trait names retain their own binding and never jump to the impl header; missing/invalid labels, unresolved imports and malformed declarations retain their explicit no-jump policy. Synthetic impl spans are never exposed as authored declaration names.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_owned_declaration_matrix_projects_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_constructor_matrix_projects_exact_field_and_binding_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S1/positive/service",
+      "assertion": "Exact authored names and uses of public/private functions, async functions, ordinary/defaulted parameters, locals/captures/shadows, const/state/extern state, structs/fields, enum unit/tuple/record variants and fields, traits, interface/default methods and inherent/trait implementation methods. Declaration names retain their own source locations and known declared types; self parameters retain the receiver type. Impl header traits/targets resolve local, aliased and qualified cross-file types; import-clause names and aliases preserve source ownership. Independent LF/CRLF URI/range oracles distinguish method-body bindings from headers.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_owned_declaration_matrix_preserves_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_constructor_matrix_preserves_field_label_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S1/positive/protocol",
+      "assertion": "Exact authored names and uses of public/private functions, async functions, ordinary/defaulted parameters, locals/captures/shadows, const/state/extern state, structs/fields, enum unit/tuple/record variants and fields, traits, interface/default methods and inherent/trait implementation methods. Declaration names retain their own source locations and known declared types; self parameters retain the receiver type. Impl header traits/targets resolve local, aliased and qualified cross-file types; import-clause names and aliases preserve source ownership. Independent LF/CRLF URI/range oracles distinguish method-body bindings from headers.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_owned_declaration_matrix_projects_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_constructor_matrix_projects_exact_field_and_binding_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S1/negative/service",
+      "assertion": "Declaration keywords, comments/string contents, unknown impl traits/targets and private cross-module header paths have explicit null targets. Module qualifiers cannot borrow types. Function/method declarations, primitive fields and untyped/Any bindings have no invented source type. Method locals matching trait names retain their own binding and never jump to the impl header; missing/invalid labels, unresolved imports and malformed declarations retain their explicit no-jump policy. Synthetic impl spans are never exposed as authored declaration names.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_owned_declaration_matrix_preserves_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_constructor_matrix_preserves_field_label_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S1/negative/protocol",
+      "assertion": "Declaration keywords, comments/string contents, unknown impl traits/targets and private cross-module header paths have explicit null targets. Module qualifiers cannot borrow types. Function/method declarations, primitive fields and untyped/Any bindings have no invented source type. Method locals matching trait names retain their own binding and never jump to the impl header; missing/invalid labels, unresolved imports and malformed declarations retain their explicit no-jump policy. Synthetic impl spans are never exposed as authored declaration names.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_owned_declaration_matrix_projects_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_constructor_matrix_projects_exact_field_and_binding_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S1/positive/service",
+      "assertion": "Exact authored names and uses of public/private functions, async functions, ordinary/defaulted parameters, locals/captures/shadows, const/state/extern state, structs/fields, enum unit/tuple/record variants and fields, traits, interface/default methods and inherent/trait implementation methods. Declaration names retain their own source locations and known declared types; self parameters retain the receiver type. Impl header traits/targets resolve local, aliased and qualified cross-file types; import-clause names and aliases preserve source ownership. Independent LF/CRLF URI/range oracles distinguish method-body bindings from headers.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_owned_declaration_matrix_preserves_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_constructor_matrix_preserves_field_label_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S1/positive/protocol",
+      "assertion": "Exact authored names and uses of public/private functions, async functions, ordinary/defaulted parameters, locals/captures/shadows, const/state/extern state, structs/fields, enum unit/tuple/record variants and fields, traits, interface/default methods and inherent/trait implementation methods. Declaration names retain their own source locations and known declared types; self parameters retain the receiver type. Impl header traits/targets resolve local, aliased and qualified cross-file types; import-clause names and aliases preserve source ownership. Independent LF/CRLF URI/range oracles distinguish method-body bindings from headers.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_owned_declaration_matrix_projects_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_constructor_matrix_projects_exact_field_and_binding_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S1/negative/service",
+      "assertion": "Declaration keywords, comments/string contents, unknown impl traits/targets and private cross-module header paths have explicit null targets. Module qualifiers cannot borrow types. Function/method declarations, primitive fields and untyped/Any bindings have no invented source type. Method locals matching trait names retain their own binding and never jump to the impl header; missing/invalid labels, unresolved imports and malformed declarations retain their explicit no-jump policy. Synthetic impl spans are never exposed as authored declaration names.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_owned_declaration_matrix_preserves_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_constructor_matrix_preserves_field_label_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S1/negative/protocol",
+      "assertion": "Declaration keywords, comments/string contents, unknown impl traits/targets and private cross-module header paths have explicit null targets. Module qualifiers cannot borrow types. Function/method declarations, primitive fields and untyped/Any bindings have no invented source type. Method locals matching trait names retain their own binding and never jump to the impl header; missing/invalid labels, unresolved imports and malformed declarations retain their explicit no-jump policy. Synthetic impl spans are never exposed as authored declaration names.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_owned_declaration_matrix_projects_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_constructor_matrix_projects_exact_field_and_binding_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
+        }
+      ]
     }
   ],
   "featureFiles": [

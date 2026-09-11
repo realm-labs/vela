@@ -3,7 +3,6 @@ use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::body::HirPathKind;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
-use vela_hir::type_hint::ImplMetadataKind;
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
@@ -18,8 +17,10 @@ use crate::{
     symbol_target::SymbolTarget,
 };
 
+mod impl_headers;
 mod imports;
 mod named_arguments;
+mod owned_declarations;
 mod record_fields;
 mod source_callables;
 mod source_members;
@@ -55,13 +56,16 @@ impl LanguageServiceDatabases {
     pub fn definition(&self, document_id: &DocumentId, position: Position) -> Option<Definition> {
         let query = QueryContext::from_databases(self, document_id, position)?;
         let target = SymbolTarget::from_query(self, &query)?;
-        let source_id = query.source_id()?;
-        let offset = u32::try_from(target.range().start).ok()?;
-        let graph = self.hir_db().graph();
 
+        if let Some(navigation) = self.source_declaration_navigation(&query, &target) {
+            return navigation.definition;
+        }
         if let Some(declaration) = self.source_import_declaration(&query, &target) {
             return declaration
                 .and_then(|declaration| self.definition_from_declaration(declaration));
+        }
+        if let Some(definition) = self.impl_header_definition(&query, &target) {
+            return definition;
         }
         if let Some(definition) = self.source_type_hint_definition(&query, &target) {
             return definition;
@@ -107,53 +111,17 @@ impl LanguageServiceDatabases {
             return None;
         }
 
-        for declaration in graph.declarations() {
-            if declaration.span.source != source_id || !declaration.span.contains(offset) {
-                continue;
-            }
-            if declaration.kind == DeclarationKind::Impl
-                && let Some(metadata) = graph.impl_metadata(declaration.id)
-                && let ImplMetadataKind::Trait { trait_path } = &metadata.kind
-                && trait_path.last().is_some_and(|name| name == target.text())
-                && let Some(service) = graph.resolve_visible_declaration_path(
-                    declaration.module,
-                    trait_path,
-                    DeclarationKind::Trait,
-                )
-            {
-                return self.definition_from_declaration(service);
-            }
-            let Some(bindings) = graph.bindings(declaration.id) else {
-                continue;
-            };
-            if let Some(definition) = definition_from_resolution_at_target(bindings, &target, self)
-            {
-                return Some(definition);
-            }
-            if let Some(binding) = local_declaration_at_target(bindings, &target) {
-                return self.definition_from_span_with_symbol(
-                    binding.span,
-                    Some(
-                        target
-                            .symbol()
-                            .cloned()
-                            .unwrap_or_else(|| self.definition_local_symbol_for_binding(binding)),
-                    ),
-                );
-            }
+        if let Some(bindings) = query.bindings()
+            && let Some(definition) = definition_from_resolution_at_target(bindings, &target, self)
+        {
+            return Some(definition);
         }
 
         if target.is_schema_symbol() {
             return self.schema_definition_for_target(&target);
         }
 
-        graph
-            .declarations()
-            .find(|declaration| {
-                declaration.span.source == source_id
-                    && self.declaration_name_contains_target(declaration, &target)
-            })
-            .and_then(|declaration| self.definition_from_declaration(declaration))
+        None
     }
 
     #[must_use]
@@ -170,6 +138,9 @@ impl LanguageServiceDatabases {
         let query = QueryContext::from_databases(self, document_id, position)?;
         let target = SymbolTarget::from_query(self, &query)?;
 
+        if let Some(navigation) = self.source_declaration_navigation(&query, &target) {
+            return navigation.type_definition;
+        }
         if let Some(declaration) = self.source_import_declaration(&query, &target) {
             let declaration = declaration?;
             return match declaration.kind {
@@ -181,6 +152,9 @@ impl LanguageServiceDatabases {
                     .declaration(declaration.id)
                     .and_then(|fact| self.type_definition_for_fact(fact)),
             };
+        }
+        if let Some(definition) = self.impl_header_definition(&query, &target) {
+            return definition;
         }
         if let Some(definition) = self.source_type_hint_definition(&query, &target) {
             return definition;
@@ -268,17 +242,6 @@ impl LanguageServiceDatabases {
                 declaration,
             )),
         })
-    }
-
-    fn declaration_name_contains_target(
-        &self,
-        declaration: &Declaration,
-        target: &SymbolTarget,
-    ) -> bool {
-        let Some(name_range) = text_range_for_span(declaration.name_span) else {
-            return false;
-        };
-        name_range.start <= target.range().start && target.range().end <= name_range.end
     }
 
     fn source_record_for(&self, source_id: SourceId) -> Option<&crate::SourceRecord> {
@@ -576,14 +539,6 @@ fn definition_from_resolution_at_target(
         }
         BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
     }
-}
-
-fn local_declaration_at_target<'a>(
-    bindings: &'a BindingMap,
-    target: &SymbolTarget,
-) -> Option<&'a LocalBinding> {
-    let local = bindings.local_containing_source_range(target.range().start, target.range().end)?;
-    bindings.local(local)
 }
 
 fn diagnostic_range(text: &str, range: TextRange) -> DiagnosticRange {

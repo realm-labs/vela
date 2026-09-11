@@ -5,6 +5,13 @@ use crate::{
 };
 
 #[test]
+fn navigation_owned_declaration_matrix_preserves_exact_names_and_body_bindings() {
+    for crlf in [false, true] {
+        assert_navigation_matrix("navigation-owned-declarations", crlf);
+    }
+}
+
+#[test]
 fn navigation_constructor_matrix_preserves_field_label_and_value_ownership() {
     for crlf in [false, true] {
         assert_navigation_matrix("navigation-constructors", crlf);

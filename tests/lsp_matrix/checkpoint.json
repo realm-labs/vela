@@ -303,7 +303,7 @@
     },
     {
       "id": "B02.10",
-      "revision": null,
+      "revision": "e362ad546",
       "requirements": [
         "definition/syntax/S4/positive/service",
         "definition/syntax/S4/positive/protocol",
@@ -319,10 +319,29 @@
         "type-definition/syntax/S4/negative/protocol"
       ],
       "summary": "40 independent constructor/field queries in both layers supplement existing source/schema/method/variant coverage to verify all 12 S4 cells. Explicit record and pattern labels target source/schema fields; shorthand/value uses retain binding ownership; tuple named labels retain source variant-field symbols. Private/missing owners and unknown labels cannot borrow enclosing constructors or locals. Missing-value/brace record and record-pattern CST recovery preserves final tokens and nested closing-delimiter ownership; three syntax tests assert lossless LF/CRLF shapes. No grammar, token or public AST API changed. Validation: workspace 4366 passed with 2 existing ignored; workspace Clippy and fmt passed; final audit service 572 passed with 2 existing ignored, protocol 565 passed, infrastructure 59 passed; run-pIP6ty has 96 verified, 3 editor mapped, 1226 unreviewed, 2 existing N/A, zero failures. B02 S1/S10 and installed workbench routes remain open; find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B02.11",
+      "revision": null,
+      "requirements": [
+        "definition/syntax/S1/positive/service",
+        "definition/syntax/S1/positive/protocol",
+        "definition/syntax/S1/negative/service",
+        "definition/syntax/S1/negative/protocol",
+        "declaration/syntax/S1/positive/service",
+        "declaration/syntax/S1/positive/protocol",
+        "declaration/syntax/S1/negative/service",
+        "declaration/syntax/S1/negative/protocol",
+        "type-definition/syntax/S1/positive/service",
+        "type-definition/syntax/S1/positive/protocol",
+        "type-definition/syntax/S1/negative/service",
+        "type-definition/syntax/S1/negative/protocol"
+      ],
+      "summary": "67 independent declaration/header/body queries in LF/CRLF supplement prior imports, constructors, calls, capture/shadowing and recovery evidence to verify the 12 S1 cells. Exact source metadata identifies owned names and known types across top-level declarations, fields, variants, callable parameters and methods; query-selected binding maps preserve method locals. Impl header paths use CST token ranges and visibility instead of name matching throughout a body. Remove broad synthetic impl-name fallback, which exposed whole implementation ranges for the impl keyword. Validation: service 573 passed with 2 existing ignored, protocol 566 passed, infrastructure 59 passed; relevant Clippy and formatting passed. Retain the initial lint and concurrent-format source-identity rejection; final run-X05YNx has 108 verified, 3 editor mapped, 1214 unreviewed, 2 existing N/A, zero failures. B02 S10 ownership review, including schema namespace origins, and installed workbench routes remain open; find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B02.11",
-  "nextTask": "B02.11",
+  "activeChild": "B02.12",
+  "nextTask": "B02.12",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -1865,7 +1884,17 @@
     "target/lsp-matrix/b02-constructors-workspace.log",
     "target/lsp-matrix/b02-constructors-clippy.log",
     "target/lsp-matrix/b02-constructors-audit.log",
-    "target/lsp-matrix/run-pIP6ty/report.json"
+    "target/lsp-matrix/run-pIP6ty/report.json",
+    "target/lsp-matrix/b02-owned-declarations-reproduction.log",
+    "target/lsp-matrix/b02-owned-declarations-metadata.log",
+    "target/lsp-matrix/b02-owned-declarations-expanded-service.log",
+    "target/lsp-matrix/b02-owned-declarations-exact-service.log",
+    "target/lsp-matrix/b02-owned-declarations-exact-protocol.log",
+    "target/lsp-matrix/b02-owned-declarations-clippy.log",
+    "target/lsp-matrix/b02-owned-declarations-audit.log",
+    "target/lsp-matrix/b02-owned-declarations-clippy-final.log",
+    "target/lsp-matrix/b02-owned-declarations-audit-final.log",
+    "target/lsp-matrix/run-X05YNx/report.json"
   ],
   "openIssues": [
     {
