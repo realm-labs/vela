@@ -113,7 +113,7 @@ New requirements for an accepted batch reopen its affected scope explicitly.
 The runner supports full `--strict`, scoped `--batch <id>`, explicit `--accept`
 checkpoint updates, and `--reopen <id> --reason <text>`. Scoped gates require
 executed proof for the selected and already accepted batches. Ordinary successful
-audits do not accept a batch. Local Input/Render evidence ingestion is B01 work;
+audits do not accept a batch. Local Input/Render evidence ingestion is provided by `--local-results`;
 until then those requirements remain unreviewed and block their feature gates.
 
 B00 must add a versioned manifest under `tests/lsp_matrix/` that records batch
@@ -181,6 +181,9 @@ node scripts/lsp-matrix/run.js --run
 node scripts/lsp-matrix/run.js --run --batch B00
 # Record acceptance only after that strict gate passes.
 node scripts/lsp-matrix/run.js --run --batch B00 --accept
+
+# Include current installed-workbench proof for B01 and feature batches.
+node scripts/lsp-matrix/run.js --run --batch B01 --local-results <input-results.json> --editor-results <provider-results.json>
 # Reopen changed accepted scope with an explicit reason before re-auditing.
 node scripts/lsp-matrix/run.js --reopen B02 --reason "reviewed scope expansion"
 npm --prefix editors/vscode test

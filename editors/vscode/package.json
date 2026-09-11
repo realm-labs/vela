@@ -23,7 +23,8 @@
     "validate": "node scripts/validate-package.js",
     "package": "node scripts/package-vsix.js",
     "package:release": "node scripts/package-vsix.js --release",
-    "package:no-server": "node scripts/package-vsix.js --no-bundle-server"
+    "package:no-server": "node scripts/package-vsix.js --no-bundle-server",
+    "test:input": "node test/input/run.js"
   },
   "contributes": {
     "commands": [
@@ -378,6 +379,8 @@
   "devDependencies": {
     "@types/vscode": "^1.90.0",
     "@vscode/test-electron": "3.1.0",
-    "@vscode/vsce": "3.9.2"
+    "@vscode/vsce": "3.9.2",
+    "playwright-core": "1.63.0",
+    "yauzl": "3.4.0"
   }
 }

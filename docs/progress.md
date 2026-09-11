@@ -597,8 +597,10 @@ later acceptance obligations, with contract/route drift self-tests. Scoped stric
 acceptance and the machine-readable checkpoint enforce fresh proof for accepted
 batches, explicit reopening and exact remaining scope. B01 shared Unicode,
 LF/CRLF, marker/edit and disk/overlay fixtures now feed both Rust layers and the
-installed VSIX (seven scenarios). The local Input/Render driver and evidence
-validation are next; no semantic feature batch is accepted yet.
+installed VSIX (seven scenarios). The local Input/Render driver now proves keyboard, pointer, visible candidate and
+exact final document/caret behavior. Evidence validation binds current source,
+profile, fixture, driver and installed VSIX/server bytes. The combined strict gate owns B01
+acceptance; no semantic feature batch is accepted yet.
 
 ### Deferred Tracks
 

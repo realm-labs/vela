@@ -228,6 +228,70 @@
           "name": "tests::support::parallel_fixture_roots_are_unique_with_a_frozen_clock"
         }
       ]
+    },
+    {
+      "requirement": "batch/B01/input-render-driver",
+      "assertion": "Driver validation requires exact keyboard/pointer receipts and independent rendered/document checks plus current actual workbench evidence; self-tests alone cannot accept the driver.",
+      "tests": [
+        {
+          "layer": "gate",
+          "name": "local input proof validates exact actions rendered outcome final document and artifact bytes"
+        },
+        {
+          "layer": "gate",
+          "name": "driver self-tests alone cannot certify actual input or replace missing interaction routes"
+        }
+      ]
+    },
+    {
+      "requirement": "batch/B01/local-evidence",
+      "assertion": "Local evidence rejects stale source/driver/fixture/package/server/profile identities, missing or changed artifacts, skipped/downgraded actions and assertions, mismatched traces and nonzero process exits.",
+      "tests": [
+        {
+          "layer": "gate",
+          "name": "local input proof validates exact actions rendered outcome final document and artifact bytes"
+        },
+        {
+          "layer": "gate",
+          "name": "local input proof rejects stale source driver fixture packaging server and exact profile"
+        },
+        {
+          "layer": "gate",
+          "name": "local input proof rejects skipped actions wrong devices missing or downgraded checks"
+        },
+        {
+          "layer": "gate",
+          "name": "local input proof rejects duplicate unknown stale routes and dirty process exits"
+        },
+        {
+          "layer": "gate",
+          "name": "local input proof rejects missing changed duplicate escaping and mismatched VSIX artifacts"
+        },
+        {
+          "layer": "gate",
+          "name": "local input identity hashes include driver fixture and packaging file changes"
+        },
+        {
+          "layer": "gate",
+          "name": "driver self-tests alone cannot certify actual input or replace missing interaction routes"
+        },
+        {
+          "layer": "gate",
+          "name": "local proof rejects trace omissions even when artifact hashes are recomputed"
+        },
+        {
+          "layer": "gate",
+          "name": "VSIX proof matches installed payload and candidate while allowing installer metadata"
+        },
+        {
+          "layer": "gate",
+          "name": "VSIX proof rejects stale or substituted extension manifest grammar and server bytes"
+        },
+        {
+          "layer": "gate",
+          "name": "VSIX proof rejects missing duplicate escaping and changed installed payloads"
+        }
+      ]
     }
   ]
 }

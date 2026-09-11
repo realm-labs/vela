@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "id": "input-driver",
+  "files": {
+    "vela.toml": "[package]\nid = 'dev.vela.input'\nname = 'input'\nversion = '0.1.0'\n[source]\nroots = ['scripts']\n",
+    "scripts/main.vela": "fn main() {\n    let value = 41;\n    // 中😀\n    [[cursor]]\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "typedText": "val",
+    "candidate": "value",
+    "finalText": "fn main() {\n    let value = 41;\n    // 中😀\n    value\n}\n",
+    "finalSelection": { "line": 3, "character": 9 }
+  }
+}

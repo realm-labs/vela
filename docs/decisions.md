@@ -4217,3 +4217,13 @@ Shared infrastructure acceptance requires exact Node, service, protocol and
 installed-editor assertions. Test roots use counters and atomic creation because
 parallel tests can receive identical clock timestamps. Isolated VS Code profiles
 hide the startup chat view so it cannot intercept editor navigation commands.
+
+### Local Workbench Input Evidence
+
+B01 uses pinned Playwright/CDP against an installed VSIX and an isolated native
+VS Code profile. A test-only extension bridge performs setup and observations;
+keyboard/pointer actions under acceptance remain outside it. Versioned results
+bind independent route checks to source, profile, driver, fixture, packaging,
+VSIX and server identities, with retained traces and artifact hashes. The audit
+also compares archive payloads with installed files and current extension sources.
+Gate self-tests alone cannot certify runtime Input/Render proof.

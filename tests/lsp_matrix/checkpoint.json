@@ -47,6 +47,43 @@
           }
         ]
       }
+    },
+    {
+      "id": "B01",
+      "requirements": [
+        {
+          "id": "batch/B01/input-render-driver",
+          "contractHash": "13abd615c52f7b49d8fdb45ab1d5525f5039c10afb90724ca41996c7ebaecab9"
+        },
+        {
+          "id": "batch/B01/local-evidence",
+          "contractHash": "c9accd8761a3a73711088b391f50200169db8ca0915a70b991c29cab70a9321f"
+        },
+        {
+          "id": "batch/B01/shared-fixtures",
+          "contractHash": "d08d279832b4a5c0d3dffd6632c244859cd1af473cdf0fb2190373fbb91c4d37"
+        }
+      ],
+      "validation": {
+        "source": {
+          "revision": "3201fbd61a111eb0ff155bb0c280e8b996ab6d5f",
+          "treeSha256": "2f43fd7a0312bb20df247243fcace30540b7ca9290adc8ae2e37796154b725f2"
+        },
+        "profile": {
+          "platform": "darwin",
+          "arch": "arm64",
+          "vscodeVersion": "1.137.0"
+        },
+        "artifacts": [
+          "target/lsp-matrix/run-THC0BR/report.json"
+        ],
+        "commands": [
+          {
+            "command": "node scripts/lsp-matrix/run.js --run --batch B01 --editor-results /Users/mikai/CLionProjects/vela/editors/vscode/test-results/run-GOkUph/results.json --local-results /Users/mikai/CLionProjects/vela/editors/vscode/test-results/input-spZMA1/results.json",
+            "exitCode": 0
+          }
+        ]
+      }
     }
   ],
   "reopenedBatches": [],
@@ -71,7 +108,7 @@
     },
     {
       "id": "B00.3",
-      "revision": null,
+      "revision": "ff3717f66",
       "requirements": [
         "batch/B00/checkpoint",
         "batch/B00/ownership",
@@ -89,19 +126,26 @@
     },
     {
       "id": "B01.1",
-      "revision": null,
+      "revision": "3201fbd61",
       "requirements": [
         "batch/B01/shared-fixtures"
       ],
       "summary": "Shared Unicode LF/CRLF fixture corpus and independent marker/edit/lifecycle oracles feed both Rust layers and installed VSIX. Exact cross-consumer evidence is mapped; full B01 still requires Input/Render driver and local evidence validation."
+    },
+    {
+      "id": "B01.2",
+      "revision": null,
+      "requirements": [
+        "batch/B01/input-render-driver",
+        "batch/B01/local-evidence",
+        "batch/B01/shared-fixtures"
+      ],
+      "summary": "Close B01 with the recorded strict validation; find this child's commit through its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B01.2",
-  "nextTask": "B01.2",
+  "activeChild": null,
+  "nextTask": "B02",
   "remainingRequirements": [
-    "batch/B01/input-render-driver",
-    "batch/B01/local-evidence",
-    "batch/B01/shared-fixtures",
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
     "batch/B17/minimization",
@@ -1592,7 +1636,12 @@
     "target/lsp-matrix/b01-debug2.png",
     "target/lsp-matrix/run-ycC829/report.json",
     "target/lsp-matrix/b01-fixture-isolation-sweep.log",
-    "target/lsp-matrix/run-d9cqtn/report.json"
+    "target/lsp-matrix/run-d9cqtn/report.json",
+    "target/lsp-matrix/run-THC0BR/report.json",
+    "editors/vscode/test-results/run-GOkUph/results.json",
+    "editors/vscode/test-results/input-spZMA1/results.json",
+    "target/lsp-matrix/b01-stale-evidence-rejection.log",
+    "target/lsp-matrix/b01-final-self-tests.log"
   ],
   "openIssues": [
     {

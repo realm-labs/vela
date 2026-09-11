@@ -37,6 +37,7 @@ overwrite earlier command logs. These are regenerable artifacts,
 not the durable batch status. `checkpoint.json` owns accepted batches, source
 identities, exact remaining batch obligations, reopened scope and the next child.
 `--accept` requires a passing scoped gate and advances only the first incomplete
-local batch. Accepted batches need fresh proof in every later scoped run. Local
-Input/Render evidence support is B01 work; those rows stay unreviewed until then.
+local batch. Accepted batches need fresh proof in every later scoped run. `--local-results <results.json>` ingests exact installed-workbench evidence with
+source/profile/driver/fixture/package integrity checks. Missing route results
+stay unreviewed; validator self-tests cannot replace actual input proof.
 Child commits record `LSP-Batch`, exact requirements, validation and remaining work.

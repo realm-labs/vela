@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "platform": "darwin",
+  "arch": "arm64",
+  "vscodeVersion": "1.137.0",
+  "locale": "en",
+  "keyboardLayout": "com.apple.keylayout.ABC",
+  "displayBackend": "macOS native Electron",
+  "theme": "Dark Modern",
+  "zoomLevel": 0,
+  "fontFamily": "Menlo",
+  "fontSize": 14,
+  "settings": {
+    "chat.disableAIFeatures": true,
+    "workbench.secondarySideBar.defaultVisibility": "hidden",
+    "workbench.startupEditor": "none",
+    "workbench.colorTheme": "Dark Modern",
+    "window.zoomLevel": 0,
+    "editor.fontFamily": "Menlo",
+    "editor.fontSize": 14,
+    "editor.fontLigatures": false,
+    "editor.accessibilitySupport": "on",
+    "editor.minimap.enabled": false,
+    "editor.wordBasedSuggestions": "off",
+    "editor.quickSuggestions": false,
+    "editor.suggest.showSnippets": false,
+    "editor.gotoLocation.multipleDefinitions": "goto",
+    "files.autoSave": "off",
+    "files.eol": "\n",
+    "vela.trace.server": "verbose",
+    "git.openRepositoryInParentFolders": "never"
+  },
+  "display": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 2,
+    "screenWidth": 1728,
+    "screenHeight": 1117
+  }
+}

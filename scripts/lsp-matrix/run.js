@@ -4,7 +4,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const model = require("./model");
-const { validateManifest } = require("./execution");
+const { loadInventory } = require("./inventory");
+const localEvidence = require("./local-evidence");
+const { localContracts } = require("./local-contracts");
+const { verifyInstalledPackage } = require("./archive-evidence");
 const checkpointModel = require("./checkpoint");
 const { sourceIdentity } = require("./source-identity");
 const { runInfrastructure, assessInfrastructure } = require("./infrastructure");
@@ -60,14 +63,17 @@ function markdown(report) {
 async function main() {
   const args = process.argv.slice(2);
   let editorResults;
+  let localResults;
   let selectedBatch;
   let reopen;
   let reason;
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
-    if (arg === "--editor-results") {
-      editorResults = args[++index];
-      if (!editorResults) throw new Error("--editor-results requires a results.json path");
+    if (["--editor-results", "--local-results"].includes(arg)) {
+      const value = args[++index];
+      if (!value || value.startsWith("--")) throw new Error(`${arg} requires a results.json path`);
+      if (arg === "--editor-results") editorResults = value;
+      else localResults = value;
     } else if (["--batch", "--reopen", "--reason"].includes(arg)) {
       const value = args[++index];
       if (!value || value.startsWith("--")) throw new Error(`${arg} requires a value`);
@@ -75,7 +81,7 @@ async function main() {
       else if (arg === "--reopen") reopen = value;
       else reason = value;
     } else if (!["--run", "--strict", "--accept"].includes(arg)) {
-      throw new Error(`unknown option ${arg}; use --run, --strict, --batch <id>, --accept, --editor-results <path>, --reopen <id> --reason <text>`);
+      throw new Error(`unknown option ${arg}; use --run, --strict, --batch <id>, --accept, --editor-results <path>, --local-results <path>, --reopen <id> --reason <text>`);
     }
   }
   if (selectedBatch && !checkpointModel.localOrder.includes(selectedBatch)) throw new Error("unknown or deferred batch selection");
@@ -83,24 +89,7 @@ async function main() {
   if (reopen && (selectedBatch || args.includes("--accept") || args.includes("--run") || args.includes("--strict"))) throw new Error("--reopen must be a separate checkpoint operation");
   output = createAuditDirectory(reportRoot);
   console.log(`Audit artifacts: ${output}`);
-  const catalog = JSON.parse(read("tests/lsp_matrix/catalog.json"));
-  catalog.protocolBaseline = JSON.parse(read("tests/lsp_matrix/protocol-baseline.json"));
-  Object.assign(catalog, JSON.parse(read("tests/lsp_matrix/syntax-baseline.json")));
-  catalog.features = catalog.featureFiles.flatMap((file) => {
-    if (!/^features\/[a-z-]+\.json$/.test(file)) throw new Error(`invalid matrix feature file ${file}`);
-    return JSON.parse(read(`tests/lsp_matrix/${file}`));
-  });
-  const requirements = model.validateCatalog(catalog, {
-    protocol: read("docs/lsp-protocol-test-matrix.md"), grammar: read("docs/grammar.ebnf"),
-    syntax: Object.fromEntries(Object.keys(catalog.syntaxSources).map((file) => [file, read(file)]))
-  });
-  const manifest = JSON.parse(read("tests/lsp_matrix/execution-manifest.json"));
-  const interactions = JSON.parse(read("tests/lsp_matrix/interactions.json"));
-  if (interactions.version !== 1) throw new Error("unsupported interaction inventory version");
-  const executionRequirements = validateManifest(manifest,
-    JSON.parse(read("tests/lsp_matrix/execution-baseline.json")), catalog, requirements,
-    interactions.scenarios, { plan: read("docs/lsp-test-execution-plan.md"),
-      interactions: read("docs/lsp-vscode-interaction-matrix.md") });
+  const { catalog, requirements, manifest, executionRequirements } = loadInventory(root);
   const checkpointPath = path.join(root, "tests/lsp_matrix/checkpoint.json");
   let checkpoint = JSON.parse(fs.readFileSync(checkpointPath, "utf8"));
   if (reopen) {
@@ -157,6 +146,19 @@ async function main() {
     }));
     failed ||= editor.results.some((test) => test.passed !== true);
   }
+  let localProofs = [];
+  if (localResults) {
+    const file = path.resolve(localResults);
+    const profile = JSON.parse(read("editors/vscode/test/input/profile.json"));
+    checkpointModel.validateExecutionProfile(checkpoint.profile, profile, true);
+    const inputs = localEvidence.currentInputs(root, binary, profile);
+    const contracts = localContracts(executionRequirements, JSON.parse(read("tests/lsp_matrix/fixtures/input-driver.json")));
+    const bundle = JSON.parse(fs.readFileSync(file, "utf8"));
+    localProofs = localEvidence.validateBundle(bundle, { inputs, profile }, contracts, path.dirname(file));
+    const installedServer = localEvidence.artifactPath(path.dirname(file), bundle.installedServer);
+    await verifyInstalledPackage(localEvidence.artifactPath(path.dirname(file), bundle.vsix),
+      path.dirname(path.dirname(installedServer)), path.join(root, "editors/vscode"), inputs.serverSha256);
+  }
   const keys = Object.keys(actualCapabilities).sort();
   if (JSON.stringify(keys) !== JSON.stringify(catalog.capabilityKeys)) {
     throw new Error(`advertised capability keys changed; update matrix applicability: ${keys.join(", ")}`);
@@ -182,7 +184,7 @@ async function main() {
       acceptedBatches: checkpoint.acceptedBatches.map((batch) => batch.id),
       deferredBatches: manifest.batches.filter((batch) => batch.scope === "deferred").map((batch) => batch.id),
       requirements: executionRequirements.map((requirement) => ({ ...requirement,
-        status: [...assessed, ...gates].find((item) => item.id === requirement.id)?.status ?? "unreviewed" })) } };
+        status: localEvidence.proofStatus(requirement, [...assessed, ...gates], localProofs) })) } };
   if (sourceIdentity(root).treeSha256 !== source.treeSha256) throw new Error("source inputs changed during audit; rerun before acceptance");
   writeReports(reportRoot, output, report, markdown(report));
   console.log(`${features.length} protocol rows; ${assessed.length} obligations: ${JSON.stringify(report.counts)}`);

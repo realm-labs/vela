@@ -1,6 +1,7 @@
 # VS Code User Interaction Acceptance Matrix
 
-Status: required future acceptance, not implemented coverage. The current suite
+Status: feature interaction acceptance remains pending. B01 now supplies an
+installed-workbench input/render driver and strict local evidence validation. The current suite
 has seven installed-VSIX scenarios and invokes providers or editor commands. Its
 F12 scenario invokes the command and observes the destination; it does not send
 a keyboard event. The current catalog has 27 feature-level `editor/smoke` cells.
@@ -124,8 +125,10 @@ VSIX, isolated profiles and shared marker fixtures. Prove one keyboard action,
 pointer action, visible-widget assertion and final-document assertion before
 relying on the driver. It also implements and validates the local result format
 and provenance below so B02 can submit Input/Render proof to the scoped gate.
-Select and pin tooling during implementation; no new UI automation command is
-available today.
+The pinned local command is `npm --prefix editors/vscode run test:input`. Its
+shared-fixture demonstration uses Playwright/CDP keyboard and pointer events,
+visible accessibility selectors and exact extension-host document observations.
+Feature route coverage remains the owning batches’ work.
 
 Use stable accessibility/automation selectors, explicit focus checks and bounded
 waits for state transitions instead of fixed sleeps or unbounded polling.
