@@ -7,6 +7,7 @@ mod analysis;
 mod analysis_item;
 #[cfg(test)]
 mod analysis_tests;
+mod builtin_type;
 mod builtin_value;
 mod context;
 mod expression;

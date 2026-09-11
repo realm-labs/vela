@@ -3,7 +3,7 @@
   "id": "completion-type-positions",
   "files": {
     "vela.toml": "[package]\nid = \"dev.vela.completion_types\"\nname = \"completion_types\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
-    "scripts/defs.vela": "pub struct Player {}\npub trait Play { fn act(self); }\npub fn Plague() {}\npub const Pluto = 1;\n",
+    "scripts/defs.vela": "pub struct Player {}\npub trait Play { fn act(self); }\npub fn Plague() {}\npub const Pluto = 1;\npub enum Plasma { Cold, Hot }\n",
     "scripts/parameter.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ fn main(value: [[replace:start]]Pl[[cursor]][[replace:end]]) {}\n",
     "scripts/return.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ fn main() -> [[replace:start]]Pl[[cursor]][[replace:end]] {}\n",
     "scripts/local.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ fn main() { let text = \"中😀\"; let value: [[replace:start]]Pl[[cursor]][[replace:end]]; }\n",
@@ -82,6 +82,17 @@
             "symbolKind": "schema",
             "symbol": "Planet",
             "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null
           }
         ],
         "exclude": [
@@ -132,6 +143,17 @@
             "symbolKind": "schema",
             "symbol": "Planet",
             "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null
           }
         ],
         "exclude": [
@@ -182,6 +204,17 @@
             "symbolKind": "schema",
             "symbol": "Planet",
             "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null
           }
         ],
         "exclude": [
@@ -232,6 +265,17 @@
             "symbolKind": "schema",
             "symbol": "Planet",
             "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null
           }
         ],
         "exclude": [
@@ -282,6 +326,17 @@
             "symbolKind": "schema",
             "symbol": "Planet",
             "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null
           }
         ],
         "exclude": [
@@ -332,6 +387,17 @@
             "symbolKind": "schema",
             "symbol": "Planet",
             "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null
           }
         ],
         "exclude": [
@@ -382,6 +448,17 @@
             "symbolKind": "schema",
             "symbol": "Planet",
             "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null
           }
         ],
         "exclude": [
@@ -432,6 +509,17 @@
             "symbolKind": "schema",
             "symbol": "Planet",
             "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null
           }
         ],
         "exclude": [
@@ -482,6 +570,17 @@
             "symbolKind": "schema",
             "symbol": "Planet",
             "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null
           }
         ],
         "exclude": [
@@ -532,6 +631,17 @@
             "symbolKind": "schema",
             "symbol": "Planet",
             "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null
           }
         ],
         "exclude": [
@@ -582,6 +692,17 @@
             "symbolKind": "schema",
             "symbol": "Planet",
             "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null
           }
         ],
         "exclude": [
@@ -632,6 +753,17 @@
             "symbolKind": "schema",
             "symbol": "Planet",
             "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null
           }
         ],
         "exclude": [
@@ -682,6 +814,17 @@
             "symbolKind": "schema",
             "symbol": "Planet",
             "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null
           }
         ],
         "exclude": [
@@ -733,6 +876,17 @@
             "symbolKind": "source",
             "symbol": "defs::Play",
             "docs": null
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null
           }
         ],
         "exclude": [
@@ -767,6 +921,17 @@
             "owner": "defs",
             "symbolKind": "source",
             "symbol": "defs::Play",
+            "docs": null
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
             "docs": null
           }
         ],

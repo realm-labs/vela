@@ -619,10 +619,13 @@ B03 completion work now verifies schema-documentation update, invalidation,
 deletion and recovery, malformed resolve payload rejection, and unchanged item
 fields. Type-position matrices exposed and corrected missing source/schema
 ownership, tuple-variant type-context classification, and completion edits
-projected as byte columns instead of UTF-16. Eighteen shared cases validate
+projected as byte columns instead of UTF-16. Fifty-three shared cases validate
 exact metadata, documentation, edits, resulting source and re-query under
-LF/CRLF. Broader completion semantics and UX04 remain open. The desktop locked
-again during the current native input regression; see [blocked.md](blocked.md).
+LF/CRLF, including source enums and all 25 public builtin type hints. Missing
+`Any`, `Range`, `Function` and `Closure` completion candidates are restored;
+legacy/internal spellings and erased receiver member guesses are excluded.
+Broader completion semantics and UX04 remain open. The desktop locked
+again during the latest native input regression; see [blocked.md](blocked.md).
 
 ### Deferred Tracks
 

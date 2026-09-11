@@ -1,0 +1,942 @@
+{
+  "version": 1,
+  "id": "completion-builtin-types",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.completion_types\"\nname = \"completion_types\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "scripts/builtin_unit.vela": "/* 中😀 */ fn main(value: [[replace:start]][[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_bool.vela": "/* 中😀 */ fn main(value: [[replace:start]]boo[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_char.vela": "/* 中😀 */ fn main(value: [[replace:start]]cha[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_i8.vela": "/* 中😀 */ fn main(value: [[replace:start]]i[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_i16.vela": "/* 中😀 */ fn main(value: [[replace:start]]i1[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_i32.vela": "/* 中😀 */ fn main(value: [[replace:start]]i3[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_i64.vela": "/* 中😀 */ fn main(value: [[replace:start]]i6[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_u8.vela": "/* 中😀 */ fn main(value: [[replace:start]]u[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_u16.vela": "/* 中😀 */ fn main(value: [[replace:start]]u1[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_u32.vela": "/* 中😀 */ fn main(value: [[replace:start]]u3[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_u64.vela": "/* 中😀 */ fn main(value: [[replace:start]]u6[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_f32.vela": "/* 中😀 */ fn main(value: [[replace:start]]f3[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_f64.vela": "/* 中😀 */ fn main(value: [[replace:start]]f6[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_any.vela": "/* 中😀 */ fn main(value: [[replace:start]]An[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_string.vela": "/* 中😀 */ fn main(value: [[replace:start]]Strin[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_bytes.vela": "/* 中😀 */ fn main(value: [[replace:start]]Byte[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_array.vela": "/* 中😀 */ fn main(value: [[replace:start]]Arra[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_map.vela": "/* 中😀 */ fn main(value: [[replace:start]]Ma[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_set.vela": "/* 中😀 */ fn main(value: [[replace:start]]Se[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_range.vela": "/* 中😀 */ fn main(value: [[replace:start]]Rang[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_iterator.vela": "/* 中😀 */ fn main(value: [[replace:start]]Iterato[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_function.vela": "/* 中😀 */ fn main(value: [[replace:start]]Functio[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_closure.vela": "/* 中😀 */ fn main(value: [[replace:start]]Closur[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_option.vela": "/* 中😀 */ fn main(value: [[replace:start]]Optio[[cursor]][[replace:end]]) {}\n",
+    "scripts/builtin_result.vela": "/* 中😀 */ fn main(value: [[replace:start]]Resul[[cursor]][[replace:end]]) {}\n",
+    "scripts/rejected_int.vela": "fn main(value: [[replace:start]]int[[cursor]][[replace:end]]) {}\n",
+    "scripts/rejected_float.vela": "fn main(value: [[replace:start]]float[[cursor]][[replace:end]]) {}\n",
+    "scripts/rejected_string.vela": "fn main(value: [[replace:start]]string[[cursor]][[replace:end]]) {}\n",
+    "scripts/rejected_bytes.vela": "fn main(value: [[replace:start]]bytes[[cursor]][[replace:end]]) {}\n",
+    "scripts/rejected_unknown.vela": "fn main(value: [[replace:start]]unknown[[cursor]][[replace:end]]) {}\n",
+    "scripts/rejected_pathproxy.vela": "fn main(value: [[replace:start]]PathProxy[[cursor]][[replace:end]]) {}\n",
+    "scripts/rejected_future.vela": "fn main(value: [[replace:start]]Future[[cursor]][[replace:end]]) {}\n",
+    "scripts/rejected_task.vela": "fn main(value: [[replace:start]]Task[[cursor]][[replace:end]]) {}\n",
+    "scripts/boundary_any_member.vela": "fn power() { return 1; }\nfn main(value: Any) { let powder = 1; value.[[replace:start]]pow[[cursor]][[replace:end]]; }\n",
+    "scripts/boundary_unknown_member.vela": "fn power() { return 1; }\nfn main(value) { let powder = 1; value.[[replace:start]]pow[[cursor]][[replace:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "schema": {},
+    "queries": [
+      {
+        "id": "unit",
+        "file": "scripts/builtin_unit.vela",
+        "items": [
+          {
+            "label": "()",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "()",
+            "lookup": "()",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "()",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "()",
+        "typeInventory": [
+          "()",
+          "Any",
+          "Array",
+          "Bytes",
+          "Closure",
+          "Function",
+          "Iterator",
+          "Map",
+          "Option",
+          "Range",
+          "Result",
+          "Set",
+          "String",
+          "bool",
+          "char",
+          "f32",
+          "f64",
+          "i16",
+          "i32",
+          "i64",
+          "i8",
+          "u16",
+          "u32",
+          "u64",
+          "u8"
+        ],
+        "requeryOffset": 0,
+        "requeryTypeInventory": [
+          "()",
+          "Any",
+          "Array",
+          "Bytes",
+          "Closure",
+          "Function",
+          "Iterator",
+          "Map",
+          "Option",
+          "Range",
+          "Result",
+          "Set",
+          "String",
+          "bool",
+          "char",
+          "f32",
+          "f64",
+          "i16",
+          "i32",
+          "i64",
+          "i8",
+          "u16",
+          "u32",
+          "u64",
+          "u8"
+        ]
+      },
+      {
+        "id": "bool",
+        "file": "scripts/builtin_bool.vela",
+        "items": [
+          {
+            "label": "bool",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "bool",
+            "lookup": "bool",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "bool",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "bool"
+      },
+      {
+        "id": "char",
+        "file": "scripts/builtin_char.vela",
+        "items": [
+          {
+            "label": "char",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "char",
+            "lookup": "char",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "char",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "char"
+      },
+      {
+        "id": "i8",
+        "file": "scripts/builtin_i8.vela",
+        "items": [
+          {
+            "label": "i8",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "i8",
+            "lookup": "i8",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "i8",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "i8"
+      },
+      {
+        "id": "i16",
+        "file": "scripts/builtin_i16.vela",
+        "items": [
+          {
+            "label": "i16",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "i16",
+            "lookup": "i16",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "i16",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "i16"
+      },
+      {
+        "id": "i32",
+        "file": "scripts/builtin_i32.vela",
+        "items": [
+          {
+            "label": "i32",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "i32",
+            "lookup": "i32",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "i32",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "i32"
+      },
+      {
+        "id": "i64",
+        "file": "scripts/builtin_i64.vela",
+        "items": [
+          {
+            "label": "i64",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "i64",
+            "lookup": "i64",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "i64",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "i64"
+      },
+      {
+        "id": "u8",
+        "file": "scripts/builtin_u8.vela",
+        "items": [
+          {
+            "label": "u8",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "u8",
+            "lookup": "u8",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "u8",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "u8"
+      },
+      {
+        "id": "u16",
+        "file": "scripts/builtin_u16.vela",
+        "items": [
+          {
+            "label": "u16",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "u16",
+            "lookup": "u16",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "u16",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "u16"
+      },
+      {
+        "id": "u32",
+        "file": "scripts/builtin_u32.vela",
+        "items": [
+          {
+            "label": "u32",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "u32",
+            "lookup": "u32",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "u32",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "u32"
+      },
+      {
+        "id": "u64",
+        "file": "scripts/builtin_u64.vela",
+        "items": [
+          {
+            "label": "u64",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "u64",
+            "lookup": "u64",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "u64",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "u64"
+      },
+      {
+        "id": "f32",
+        "file": "scripts/builtin_f32.vela",
+        "items": [
+          {
+            "label": "f32",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "f32",
+            "lookup": "f32",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "f32",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "f32"
+      },
+      {
+        "id": "f64",
+        "file": "scripts/builtin_f64.vela",
+        "items": [
+          {
+            "label": "f64",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "f64",
+            "lookup": "f64",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "f64",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "f64"
+      },
+      {
+        "id": "any",
+        "file": "scripts/builtin_any.vela",
+        "items": [
+          {
+            "label": "Any",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Any",
+            "lookup": "Any",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "Any",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "Any"
+      },
+      {
+        "id": "string",
+        "file": "scripts/builtin_string.vela",
+        "items": [
+          {
+            "label": "String",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "String",
+            "lookup": "String",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "String",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "String"
+      },
+      {
+        "id": "bytes",
+        "file": "scripts/builtin_bytes.vela",
+        "items": [
+          {
+            "label": "Bytes",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Bytes",
+            "lookup": "Bytes",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "Bytes",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "Bytes"
+      },
+      {
+        "id": "array",
+        "file": "scripts/builtin_array.vela",
+        "items": [
+          {
+            "label": "Array",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Array(unknown)",
+            "lookup": "Array",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "Array",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "Array"
+      },
+      {
+        "id": "map",
+        "file": "scripts/builtin_map.vela",
+        "items": [
+          {
+            "label": "Map",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Map(unknown, unknown)",
+            "lookup": "Map",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "Map",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "Map"
+      },
+      {
+        "id": "set",
+        "file": "scripts/builtin_set.vela",
+        "items": [
+          {
+            "label": "Set",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Set(unknown)",
+            "lookup": "Set",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "Set",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "Set"
+      },
+      {
+        "id": "range",
+        "file": "scripts/builtin_range.vela",
+        "items": [
+          {
+            "label": "Range",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Range",
+            "lookup": "Range",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "Range",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "Range"
+      },
+      {
+        "id": "iterator",
+        "file": "scripts/builtin_iterator.vela",
+        "items": [
+          {
+            "label": "Iterator",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Iterator",
+            "lookup": "Iterator",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "Iterator",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "Iterator"
+      },
+      {
+        "id": "function",
+        "file": "scripts/builtin_function.vela",
+        "items": [
+          {
+            "label": "Function",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Function",
+            "lookup": "Function",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "Function",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "Function"
+      },
+      {
+        "id": "closure",
+        "file": "scripts/builtin_closure.vela",
+        "items": [
+          {
+            "label": "Closure",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Closure",
+            "lookup": "Closure",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "Closure",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "Closure"
+      },
+      {
+        "id": "option",
+        "file": "scripts/builtin_option.vela",
+        "items": [
+          {
+            "label": "Option",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Option(unknown)",
+            "lookup": "Option",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "Option",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "Option"
+      },
+      {
+        "id": "result",
+        "file": "scripts/builtin_result.vela",
+        "items": [
+          {
+            "label": "Result",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Result(unknown, unknown)",
+            "lookup": "Result",
+            "owner": null,
+            "symbolKind": "builtin",
+            "symbol": "Result",
+            "docs": null
+          }
+        ],
+        "exclude": [
+          "int",
+          "float",
+          "string",
+          "bytes",
+          "unknown",
+          "false",
+          "true",
+          "null",
+          "PathProxy",
+          "Future",
+          "Task"
+        ],
+        "apply": "Result"
+      },
+      {
+        "id": "rejected-int",
+        "file": "scripts/rejected_int.vela",
+        "items": [],
+        "empty": true
+      },
+      {
+        "id": "rejected-float",
+        "file": "scripts/rejected_float.vela",
+        "items": [],
+        "empty": true
+      },
+      {
+        "id": "rejected-string",
+        "file": "scripts/rejected_string.vela",
+        "items": [],
+        "empty": true
+      },
+      {
+        "id": "rejected-bytes",
+        "file": "scripts/rejected_bytes.vela",
+        "items": [],
+        "empty": true
+      },
+      {
+        "id": "rejected-unknown",
+        "file": "scripts/rejected_unknown.vela",
+        "items": [],
+        "empty": true
+      },
+      {
+        "id": "rejected-pathproxy",
+        "file": "scripts/rejected_pathproxy.vela",
+        "items": [],
+        "empty": true
+      },
+      {
+        "id": "rejected-future",
+        "file": "scripts/rejected_future.vela",
+        "items": [],
+        "empty": true
+      },
+      {
+        "id": "rejected-task",
+        "file": "scripts/rejected_task.vela",
+        "items": [],
+        "empty": true
+      },
+      {
+        "id": "any-member",
+        "file": "scripts/boundary_any_member.vela",
+        "context": "Member",
+        "items": [],
+        "empty": true,
+        "receiver": "Any"
+      },
+      {
+        "id": "unknown-member",
+        "file": "scripts/boundary_unknown_member.vela",
+        "context": "Member",
+        "items": [],
+        "empty": true,
+        "receiver": null
+      }
+    ]
+  }
+}

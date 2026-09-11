@@ -15,6 +15,8 @@ use crate::{
     symbol_ref::{schema_symbol, source_symbol},
 };
 
+use super::builtin_type::builtin_type_hint_completions;
+
 use super::{
     CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol,
     display_type_detail_parts, label_segment_matches, type_display::type_completion_item,
@@ -178,50 +180,6 @@ fn is_type_position_analysis_item(item: &AnalysisCompletionItem) -> bool {
             | AnalysisCompletionKind::Trait
             | AnalysisCompletionKind::Module
     )
-}
-
-fn builtin_type_hint_completions() -> Vec<CompletionItem> {
-    [
-        ("()", TypeFact::UNIT),
-        ("bool", TypeFact::BOOL),
-        ("char", TypeFact::CHAR),
-        ("i8", TypeFact::I8),
-        ("i16", TypeFact::I16),
-        ("i32", TypeFact::I32),
-        ("i64", TypeFact::I64),
-        ("u8", TypeFact::U8),
-        ("u16", TypeFact::U16),
-        ("u32", TypeFact::U32),
-        ("u64", TypeFact::U64),
-        ("f32", TypeFact::F32),
-        ("f64", TypeFact::F64),
-        ("String", TypeFact::STRING),
-        ("Bytes", TypeFact::BYTES),
-        ("Array", TypeFact::array(TypeFact::Unknown)),
-        ("Map", TypeFact::map(TypeFact::Unknown, TypeFact::Unknown)),
-        ("Set", TypeFact::set(TypeFact::Unknown)),
-        ("Iterator", TypeFact::iterator(TypeFact::Unknown)),
-        ("Option", TypeFact::option(TypeFact::Unknown)),
-        (
-            "Result",
-            TypeFact::result(TypeFact::Unknown, TypeFact::Unknown),
-        ),
-    ]
-    .into_iter()
-    .map(|(label, fact)| {
-        let detail_parts = display_type_detail_parts(fact.display_name());
-        CompletionItem {
-            label: label.to_owned(),
-            kind: CompletionKind::Type,
-            detail: detail_parts.render(),
-            insert_text: None,
-            insert_format: CompletionInsertFormat::PlainText,
-            sort_text: None,
-            metadata: Default::default(),
-        }
-        .with_detail_parts(detail_parts)
-    })
-    .collect()
 }
 
 fn service_item_from_analysis(item: AnalysisCompletionItem) -> CompletionItem {

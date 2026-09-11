@@ -2693,6 +2693,118 @@
           "name": "tests::completion_type::matrix::type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source"
         }
       ]
+    },
+    {
+      "requirement": "completion/syntax/S3/positive/service",
+      "assertion": "Shared type-position fixtures cover primitive and all 25 public builtin spellings, nested containers/Option/Result, source structs/enums/traits and schema types in declaration and qualified contexts. Assert exact ownership, kind, detail, replacement and insertion text; apply candidates and re-query, with an explicit full-inventory oracle at the unit type start.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::type_completion_matrix_preserves_context_ownership_edits_and_resolved_documentation"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::builtin_type_completion_matrix_covers_public_spellings_and_erased_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S3/positive/protocol",
+      "assertion": "Shared type-position fixtures cover primitive and all 25 public builtin spellings, nested containers/Option/Result, source structs/enums/traits and schema types in declaration and qualified contexts. Assert exact ownership, kind, detail, replacement and insertion text; apply candidates and re-query, with an explicit full-inventory oracle at the unit type start.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::builtin_type_completion_matrix_projects_public_spellings_edits_and_negative_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S3/negative/service",
+      "assertion": "Type positions exclude functions/constants, legacy lowercase aliases and internal/unknown spellings. Missing and unresolved qualified types return empty. Any and unhinted member receivers cannot fall back to matching visible local or source function candidates; LF/CRLF share the same independent oracle.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::type_completion_matrix_preserves_context_ownership_edits_and_resolved_documentation"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::builtin_type_completion_matrix_covers_public_spellings_and_erased_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S3/negative/protocol",
+      "assertion": "Type positions exclude functions/constants, legacy lowercase aliases and internal/unknown spellings. Missing and unresolved qualified types return empty. Any and unhinted member receivers cannot fall back to matching visible local or source function candidates; LF/CRLF share the same independent oracle.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::builtin_type_completion_matrix_projects_public_spellings_edits_and_negative_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/syntax/S3/positive/service",
+      "assertion": "Resolve real source struct/enum/trait, schema and all public builtin type candidates. Schema documentation matches the independent fixture; payload identity and type ownership are exact. Protocol resolution preserves the complete candidate except its expected documentation.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::type_completion_matrix_preserves_context_ownership_edits_and_resolved_documentation"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::builtin_type_completion_matrix_covers_public_spellings_and_erased_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/syntax/S3/positive/protocol",
+      "assertion": "Resolve real source struct/enum/trait, schema and all public builtin type candidates. Schema documentation matches the independent fixture; payload identity and type ownership are exact. Protocol resolution preserves the complete candidate except its expected documentation.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::builtin_type_completion_matrix_projects_public_spellings_edits_and_negative_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/syntax/S3/negative/service",
+      "assertion": "Real source and builtin type candidates resolve without fabricated schema documentation; unknown type/member sites expose no candidate to resolve. Exact symbol kind/name distinguishes source, schema and builtin identities, with full protocol item equality for no-documentation results.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::type_completion_matrix_preserves_context_ownership_edits_and_resolved_documentation"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::builtin_type_completion_matrix_covers_public_spellings_and_erased_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/syntax/S3/negative/protocol",
+      "assertion": "Real source and builtin type candidates resolve without fabricated schema documentation; unknown type/member sites expose no candidate to resolve. Exact symbol kind/name distinguishes source, schema and builtin identities, with full protocol item equality for no-documentation results.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::builtin_type_completion_matrix_projects_public_spellings_edits_and_negative_boundaries"
+        }
+      ]
     }
   ],
   "featureFiles": [

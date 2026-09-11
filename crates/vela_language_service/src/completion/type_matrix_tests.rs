@@ -9,8 +9,17 @@ use crate::{
 
 #[test]
 fn type_completion_matrix_preserves_context_ownership_edits_and_resolved_documentation() {
+    assert_type_matrix("completion-type-positions");
+}
+
+#[test]
+fn builtin_type_completion_matrix_covers_public_spellings_and_erased_boundaries() {
+    assert_type_matrix("completion-builtin-types");
+}
+
+fn assert_type_matrix(fixture_id: &str) {
     for crlf in [false, true] {
-        let mut spec = load("completion-type-positions");
+        let mut spec = load(fixture_id);
         if crlf {
             for source in spec.files.values_mut() {
                 *source = source.replace('\n', "\r\n");
@@ -26,9 +35,29 @@ fn type_completion_matrix_preserves_context_ownership_edits_and_resolved_documen
             let completion = databases.completion_items(&uri(file), position);
             assert_eq!(
                 completion.context().kind(),
-                CompletionContextKind::TypeHint,
+                if query["context"] == "Member" {
+                    CompletionContextKind::Member
+                } else {
+                    CompletionContextKind::TypeHint
+                },
                 "{query}"
             );
+            if let Some(expected) = query.get("receiver") {
+                let crate::CompletionAnalysisKind::DotAccess(dot) = completion.analysis().kind()
+                else {
+                    panic!("expected dot analysis");
+                };
+                assert_eq!(
+                    json!(dot.receiver_fact().map(|fact| fact.display_name())),
+                    *expected
+                );
+                assert!(
+                    completion
+                        .analysis()
+                        .visible_scope()
+                        .contains(&"powder".to_owned())
+                );
+            }
             let range = source.markers["replace"];
             assert_eq!(
                 completion.context().replace_range(),
@@ -39,6 +68,16 @@ fn type_completion_matrix_preserves_context_ownership_edits_and_resolved_documen
                 databases.completion_items(&uri(file), position).items(),
                 completion.items()
             );
+            if let Some(expected) = query["typeInventory"].as_array() {
+                let mut actual = completion
+                    .items()
+                    .iter()
+                    .filter(|item| item.kind() == crate::CompletionKind::Type)
+                    .map(|item| item.label())
+                    .collect::<Vec<_>>();
+                actual.sort_unstable();
+                assert_eq!(json!(actual), json!(expected));
+            }
             if query["empty"] == true {
                 assert!(completion.items().is_empty(), "{query}: {completion:?}");
                 continue;
@@ -63,6 +102,7 @@ fn type_completion_matrix_preserves_context_ownership_edits_and_resolved_documen
                 let symbol = match item.symbol().expect("owned type") {
                     CompletionSymbol::Source(name) => json!({"kind":"source","name":name}),
                     CompletionSymbol::Schema(name) => json!({"kind":"schema","name":name}),
+                    CompletionSymbol::Builtin(name) => json!({"kind":"builtin","name":name}),
                     other => panic!("unexpected type owner: {other:?}"),
                 };
                 assert_eq!(format!("{:?}", item.kind()), expected["kind"]);
@@ -105,9 +145,34 @@ fn type_completion_matrix_preserves_context_ownership_edits_and_resolved_documen
                         &uri(file),
                         byte_position(
                             &edited,
-                            range.start.byte + query["apply"].as_str().expect("apply").len(),
+                            range.start.byte
+                                + query["requeryOffset"].as_u64().map_or_else(
+                                    || query["apply"].as_str().expect("apply").len(),
+                                    |offset| usize::try_from(offset).expect("offset"),
+                                ),
                         ),
                     );
+                    if let Some(expected) = query["requeryTypeInventory"].as_array() {
+                        assert_eq!(again.context().kind(), CompletionContextKind::TypeHint);
+                        let mut labels = again
+                            .items()
+                            .iter()
+                            .filter(|candidate| candidate.kind() == crate::CompletionKind::Type)
+                            .map(|candidate| candidate.label())
+                            .collect::<Vec<_>>();
+                        labels.sort_unstable();
+                        assert_eq!(json!(labels), json!(expected));
+                        assert_eq!(
+                            again
+                                .items()
+                                .iter()
+                                .find(|candidate| candidate.label() == item.label())
+                                .expect("applied unit")
+                                .symbol(),
+                            item.symbol()
+                        );
+                        continue;
+                    }
                     assert_eq!(
                         again
                             .items()

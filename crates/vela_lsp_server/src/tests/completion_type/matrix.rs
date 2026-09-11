@@ -6,8 +6,17 @@ use crate::tests::{TestServer, notify, request, response_value};
 
 #[test]
 fn type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source() {
+    assert_type_matrix("completion-type-positions");
+}
+
+#[test]
+fn builtin_type_completion_matrix_projects_public_spellings_edits_and_negative_boundaries() {
+    assert_type_matrix("completion-builtin-types");
+}
+
+fn assert_type_matrix(fixture_id: &str) {
     for crlf in [false, true] {
-        let mut spec = load("completion-type-positions");
+        let mut spec = load(fixture_id);
         if crlf {
             for source in spec.files.values_mut() {
                 *source = source.replace('\n', "\r\n");
@@ -70,6 +79,15 @@ fn type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source
             id += 1;
             assert_eq!(response["result"]["isIncomplete"], false);
             let items = response["result"]["items"].as_array().expect("items");
+            if let Some(expected) = query["typeInventory"].as_array() {
+                let mut actual = items
+                    .iter()
+                    .filter(|item| item["kind"] == 22)
+                    .map(|item| item["label"].as_str().expect("label"))
+                    .collect::<Vec<_>>();
+                actual.sort_unstable();
+                assert_eq!(json!(actual), json!(expected));
+            }
             if query["empty"] == true {
                 assert!(items.is_empty(), "{query}: {response}");
                 continue;
@@ -151,11 +169,28 @@ fn type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source
                         &mut server,
                         id,
                         json!({
-                            "textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":range.start.character + inserted.len()}
+                            "textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":range.start.character + query["requeryOffset"].as_u64().map_or(inserted.len(), |offset| usize::try_from(offset).expect("offset"))}
                         }),
                     ));
                     id += 1;
                     let again_items = again["result"]["items"].as_array().expect("requery items");
+                    if let Some(expected) = query["requeryTypeInventory"].as_array() {
+                        let mut labels = again_items
+                            .iter()
+                            .filter(|candidate| candidate["kind"] == 22)
+                            .map(|candidate| candidate["label"].as_str().expect("label"))
+                            .collect::<Vec<_>>();
+                        labels.sort_unstable();
+                        assert_eq!(json!(labels), json!(expected));
+                        assert_eq!(
+                            again_items
+                                .iter()
+                                .find(|candidate| candidate["label"] == query["apply"])
+                                .expect("applied unit")["data"],
+                            item["data"]
+                        );
+                        continue;
+                    }
                     assert_eq!(again_items.len(), 1, "{query}: {again}");
                     assert_eq!(again_items[0]["label"], query["apply"]);
                     assert_eq!(again_items[0]["data"], item["data"]);
