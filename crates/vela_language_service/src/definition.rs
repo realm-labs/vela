@@ -20,6 +20,7 @@ use crate::{
 
 mod imports;
 mod named_arguments;
+mod source_callables;
 mod source_members;
 mod source_variants;
 mod type_hints;
@@ -201,6 +202,10 @@ impl LanguageServiceDatabases {
             return self.type_definition_for_fact(&fact);
         }
 
+        if let Some(definition) = self.member_call_return_type_definition(&query, &target) {
+            return definition;
+        }
+
         if let Some(fact) = query.type_fact_for_range(self, target.range())
             && let Some(definition) = self.type_definition_for_fact(&fact)
         {
@@ -208,10 +213,6 @@ impl LanguageServiceDatabases {
         }
 
         if let Some(definition) = self.call_return_type_definition(&query, &target) {
-            return Some(definition);
-        }
-
-        if let Some(definition) = self.member_call_return_type_definition(&query, &target) {
             return Some(definition);
         }
 
@@ -357,7 +358,7 @@ impl LanguageServiceDatabases {
         &self,
         query: &QueryContext<'_>,
         target: &SymbolTarget,
-    ) -> Option<Definition> {
+    ) -> Option<Option<Definition>> {
         let source_id = query.source_id()?;
         let target_span = Span::new(
             source_id,
@@ -372,10 +373,33 @@ impl LanguageServiceDatabases {
             .expression_span(call_field.receiver)
             .and_then(text_range_for_span)?;
         let args_prefix = query.call_args_prefix_text().unwrap_or("");
-        query
-            .member_callable_facts(self, receiver_range, &call_field.name, args_prefix)
+        let callables =
+            query.member_callable_facts(self, receiver_range, &call_field.name, args_prefix);
+        if callables
             .iter()
-            .find_map(|callable| self.type_definition_for_fact(callable.returns()))
+            .any(|callable| callable.origin() == CallableOrigin::SourceMethod)
+        {
+            // Source method selection already applies inherent precedence and
+            // rejects ambiguous trait implementations. Reuse its exact target
+            // before consulting return facts, which may include all candidates.
+            let definition = (|| {
+                let callee = source_members::source_member_definition_for_target(self, target)?;
+                let (signature, _) = self.source_signature_for_navigation(&callee)?;
+                let hint = signature.return_type.as_ref()?;
+                let fact = crate::callable_context::query_type_fact_from_hint(
+                    graph,
+                    hint,
+                    self.schema_db().facts(),
+                );
+                self.type_definition_for_fact(&fact)
+            })();
+            return Some(definition);
+        }
+        Some(
+            callables
+                .iter()
+                .find_map(|callable| self.type_definition_for_fact(callable.returns())),
+        )
     }
 
     fn type_definition_for_fact(&self, fact: &TypeFact) -> Option<Definition> {

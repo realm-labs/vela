@@ -1,0 +1,519 @@
+{
+  "version": 1,
+  "id": "navigation-calls",
+  "files": {
+    "scripts/main.vela": "use api::Box as Foreign;\nuse api::Cell as ForeignCell;\nstruct [[cell:start]]Cell[[cell:end]] { value: i64 }\nstruct Box {}\nfn [[make:start]]make[[make:end]]([[first:start]]first[[first:end]]: Cell, [[second:start]]second[[second:end]]: Cell = Cell { value: 0 }) -> Cell { return first; }\nimpl Box {\n    fn [[put:start]]put[[put:end]](self, [[item:start]]item[[item:end]]: Cell = Cell { value: 0 }) -> Cell { return item; }\n}\ntrait Reader {\n    fn [[read:start]]read[[read:end]](self, [[interface-param:start]]item[[interface-param:end]]: Cell) -> Cell;\n    fn [[fallback:start]]fallback[[fallback:end]](self, [[default-param:start]]item[[default-param:end]]: Cell = Cell { value: 1 }) -> Cell { return item; }\n}\nimpl Reader for Box {\n    fn [[override:start]]read[[override:end]](self, [[override-param:start]]item[[override-param:end]]: Cell) -> Cell { return item; }\n}\nfn run(boxed: Box, reader: Reader, [[value:start]]value[[value:end]]: Cell, dynamic: Any) {\n    let text = \"\u4e2d\ud83d\ude00\"; [[function-call]]make([[positional-value]]value);\n    make([[second-label]]second = value, [[first-label]]first = [[named-value]]value);\n    make([[unknown-label]]missing = value);\n    boxed.[[method-call]]put();\n    boxed.put([[method-label]]item = value);\n    boxed.put([[method-unknown-label]]missing = value);\n    reader.[[interface-call]]read([[interface-label]]item = value);\n    boxed.[[default-call]]fallback([[default-label]]item = value);\n    boxed.[[override-call]]read([[override-label]]item = value);\n    dynamic.[[dynamic-call]]put([[dynamic-label]]item = value);\n    [[unknown-call]]absent([[unknown-call-label]]item = value);\n    math::[[stdlib-function]]abs([[stdlib-label]]value = -1);\n    let values = [1]; values.[[stdlib-method]]push([[stdlib-method-label]]value = 2);\n    boxed.[[missing-method]]absent([[missing-method-label]]item = value);\n}\nfn foreign(boxed: Foreign, value: ForeignCell) { boxed.[[foreign-call]]put([[foreign-label]]item = value); }\nfn nested(value: Cell) { make(first = make([[nested-label]]first = value), second = value); }\nfn schema_calls(boxed: HostBox, metadata: MetadataOnly, [[host-value:start]]value[[host-value:end]]: HostCell) {\n    [[schema-function]]host_make([[schema-function-label]]item = [[schema-value]]value);\n    boxed.[[schema-method]]put([[schema-method-label]]item = value);\n    [[metadata-function]]metadata_make([[metadata-function-label]]item = value);\n    metadata.[[metadata-method]]put([[metadata-method-label]]item = value);\n}\nstruct Ambiguous {}\nstruct OtherCell {}\ntrait Left { fn pick(self, item: Cell) -> Cell; }\ntrait Right { fn pick(self, item: OtherCell) -> OtherCell; }\nimpl Left for Ambiguous { fn pick(self, item: Cell) -> Cell { return item; } }\nimpl Right for Ambiguous { fn pick(self, item: OtherCell) -> OtherCell { return item; } }\nfn ambiguous(boxed: Ambiguous, value: Cell) { boxed.[[ambiguous-call]]pick([[ambiguous-label]]item = value); }\nasync fn [[async-function:start]]fetch[[async-function:end]]([[async-param:start]]item[[async-param:end]]: Cell = Cell { value: 0 }) -> Cell { return item; }\nasync fn caller(value: Cell) { [[async-call]]fetch([[async-label]]item = value).await; }\nstruct Preferred {}\nimpl Right for Preferred { fn pick(self, item: OtherCell) -> OtherCell { return item; } }\nimpl Preferred { fn [[preferred:start]]pick[[preferred:end]](self, [[preferred-param:start]]item[[preferred-param:end]]: Cell) -> Cell { return item; } }\nfn preferred(boxed: Preferred, value: Cell) { boxed.[[preferred-call]]pick([[preferred-label]]item = value); }\nfn foreign_trait(boxed: Foreign, value: ForeignCell) { boxed.[[foreign-trait-call]]read([[foreign-trait-label]]item = value); }\nfn incomplete(boxed: Box) { boxed.put([[incomplete-label]]item =\n",
+    "scripts/api.vela": "/* \u4e2d\ud83d\ude00 */ pub struct [[cell:start]]Cell[[cell:end]] { value: i64 }\npub struct Box {}\nimpl Box { fn [[put:start]]put[[put:end]](self, [[item:start]]item[[item:end]]: Cell) -> Cell { return item; } }\npub trait Reader { fn read(self, item: Cell) -> Cell; }\nimpl Reader for Box { fn [[override:start]]read[[override:end]](self, [[override-param:start]]item[[override-param:end]]: Cell) -> Cell { return item; } }\n",
+    "scripts/origins.vela": "/* \u4e2d\ud83d\ude00 */ fn [[host-cell:start]]host_cell_origin[[host-cell:end]]() {}\nfn [[host-box:start]]host_box_origin[[host-box:end]]() {}\nfn [[host-make:start]]host_make_origin[[host-make:end]](item: i64) {}\nfn [[host-put:start]]host_put_origin[[host-put:end]](item: i64) {}\n",
+    "vela.toml": "[package]\nid = 'dev.vela.navigation'\nname = 'navigation'\nversion = '0.1.0'\n[source]\nroots = ['scripts']\n[host]\nschema = 'target/schema.json'\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "function-call",
+        "file": "scripts/main.vela",
+        "cursor": "function-call",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "cell"
+      },
+      {
+        "id": "positional-value",
+        "file": "scripts/main.vela",
+        "cursor": "positional-value",
+        "definition": "value",
+        "declaration": "value",
+        "type-definition": "cell"
+      },
+      {
+        "id": "second-label",
+        "file": "scripts/main.vela",
+        "cursor": "second-label",
+        "definition": "second",
+        "declaration": "second",
+        "type-definition": "cell"
+      },
+      {
+        "id": "first-label",
+        "file": "scripts/main.vela",
+        "cursor": "first-label",
+        "definition": "first",
+        "declaration": "first",
+        "type-definition": "cell"
+      },
+      {
+        "id": "named-value",
+        "file": "scripts/main.vela",
+        "cursor": "named-value",
+        "definition": "value",
+        "declaration": "value",
+        "type-definition": "cell"
+      },
+      {
+        "id": "method-call",
+        "file": "scripts/main.vela",
+        "cursor": "method-call",
+        "definition": "put",
+        "declaration": "put",
+        "type-definition": "cell"
+      },
+      {
+        "id": "method-label",
+        "file": "scripts/main.vela",
+        "cursor": "method-label",
+        "definition": "item",
+        "declaration": "item",
+        "type-definition": "cell"
+      },
+      {
+        "id": "interface-call",
+        "file": "scripts/main.vela",
+        "cursor": "interface-call",
+        "definition": "read",
+        "declaration": "read",
+        "type-definition": "cell"
+      },
+      {
+        "id": "interface-label",
+        "file": "scripts/main.vela",
+        "cursor": "interface-label",
+        "definition": "interface-param",
+        "declaration": "interface-param",
+        "type-definition": "cell"
+      },
+      {
+        "id": "default-call",
+        "file": "scripts/main.vela",
+        "cursor": "default-call",
+        "definition": "fallback",
+        "declaration": "fallback",
+        "type-definition": "cell"
+      },
+      {
+        "id": "default-label",
+        "file": "scripts/main.vela",
+        "cursor": "default-label",
+        "definition": "default-param",
+        "declaration": "default-param",
+        "type-definition": "cell"
+      },
+      {
+        "id": "override-call",
+        "file": "scripts/main.vela",
+        "cursor": "override-call",
+        "definition": "override",
+        "declaration": "override",
+        "type-definition": "cell"
+      },
+      {
+        "id": "override-label",
+        "file": "scripts/main.vela",
+        "cursor": "override-label",
+        "definition": "override-param",
+        "declaration": "override-param",
+        "type-definition": "cell"
+      },
+      {
+        "id": "incomplete-label",
+        "file": "scripts/main.vela",
+        "cursor": "incomplete-label",
+        "definition": "item",
+        "declaration": "item",
+        "type-definition": "cell"
+      },
+      {
+        "id": "unknown-label",
+        "file": "scripts/main.vela",
+        "cursor": "unknown-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "method-unknown-label",
+        "file": "scripts/main.vela",
+        "cursor": "method-unknown-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "dynamic-call",
+        "file": "scripts/main.vela",
+        "cursor": "dynamic-call",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "dynamic-label",
+        "file": "scripts/main.vela",
+        "cursor": "dynamic-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "unknown-call",
+        "file": "scripts/main.vela",
+        "cursor": "unknown-call",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "unknown-call-label",
+        "file": "scripts/main.vela",
+        "cursor": "unknown-call-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "stdlib-function",
+        "file": "scripts/main.vela",
+        "cursor": "stdlib-function",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "stdlib-label",
+        "file": "scripts/main.vela",
+        "cursor": "stdlib-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "stdlib-method",
+        "file": "scripts/main.vela",
+        "cursor": "stdlib-method",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "stdlib-method-label",
+        "file": "scripts/main.vela",
+        "cursor": "stdlib-method-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "missing-method",
+        "file": "scripts/main.vela",
+        "cursor": "missing-method",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "missing-method-label",
+        "file": "scripts/main.vela",
+        "cursor": "missing-method-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "foreign-call",
+        "file": "scripts/main.vela",
+        "cursor": "foreign-call",
+        "definition": "put",
+        "declaration": "put",
+        "type-definition": "cell",
+        "target-file": "scripts/api.vela"
+      },
+      {
+        "id": "foreign-label",
+        "file": "scripts/main.vela",
+        "cursor": "foreign-label",
+        "definition": "item",
+        "declaration": "item",
+        "type-definition": "cell",
+        "target-file": "scripts/api.vela"
+      },
+      {
+        "id": "nested-label",
+        "file": "scripts/main.vela",
+        "cursor": "nested-label",
+        "definition": "first",
+        "declaration": "first",
+        "type-definition": "cell"
+      },
+      {
+        "id": "schema-function",
+        "file": "scripts/main.vela",
+        "cursor": "schema-function",
+        "definition": "host-make",
+        "declaration": "host-make",
+        "type-definition": "host-cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "schema-method",
+        "file": "scripts/main.vela",
+        "cursor": "schema-method",
+        "definition": "host-put",
+        "declaration": "host-put",
+        "type-definition": "host-cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "schema-function-label",
+        "file": "scripts/main.vela",
+        "cursor": "schema-function-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "schema-method-label",
+        "file": "scripts/main.vela",
+        "cursor": "schema-method-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "metadata-function",
+        "file": "scripts/main.vela",
+        "cursor": "metadata-function",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "metadata-function-label",
+        "file": "scripts/main.vela",
+        "cursor": "metadata-function-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "metadata-method",
+        "file": "scripts/main.vela",
+        "cursor": "metadata-method",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "metadata-method-label",
+        "file": "scripts/main.vela",
+        "cursor": "metadata-method-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "schema-value",
+        "file": "scripts/main.vela",
+        "cursor": "schema-value",
+        "definition": "host-value",
+        "declaration": "host-value",
+        "type-definition": "host-cell",
+        "target-files": {
+          "type-definition": "scripts/origins.vela"
+        }
+      },
+      {
+        "id": "ambiguous-call",
+        "file": "scripts/main.vela",
+        "cursor": "ambiguous-call",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "ambiguous-label",
+        "file": "scripts/main.vela",
+        "cursor": "ambiguous-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "async-call",
+        "file": "scripts/main.vela",
+        "cursor": "async-call",
+        "definition": "async-function",
+        "declaration": "async-function",
+        "type-definition": "cell"
+      },
+      {
+        "id": "async-label",
+        "file": "scripts/main.vela",
+        "cursor": "async-label",
+        "definition": "async-param",
+        "declaration": "async-param",
+        "type-definition": "cell"
+      },
+      {
+        "id": "preferred-call",
+        "file": "scripts/main.vela",
+        "cursor": "preferred-call",
+        "definition": "preferred",
+        "declaration": "preferred",
+        "type-definition": "cell",
+        "target-file": "scripts/main.vela"
+      },
+      {
+        "id": "preferred-label",
+        "file": "scripts/main.vela",
+        "cursor": "preferred-label",
+        "definition": "preferred-param",
+        "declaration": "preferred-param",
+        "type-definition": "cell",
+        "target-file": "scripts/main.vela"
+      },
+      {
+        "id": "foreign-trait-call",
+        "file": "scripts/main.vela",
+        "cursor": "foreign-trait-call",
+        "definition": "override",
+        "declaration": "override",
+        "type-definition": "cell",
+        "target-file": "scripts/api.vela"
+      },
+      {
+        "id": "foreign-trait-label",
+        "file": "scripts/main.vela",
+        "cursor": "foreign-trait-label",
+        "definition": "override-param",
+        "declaration": "override-param",
+        "type-definition": "cell",
+        "target-file": "scripts/api.vela"
+      }
+    ],
+    "schema": {
+      "types": [
+        {
+          "name": "HostBox",
+          "fact": {
+            "kind": "host",
+            "name": "HostBox"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "host-box"
+          }
+        },
+        {
+          "name": "HostCell",
+          "fact": {
+            "kind": "host",
+            "name": "HostCell"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "host-cell"
+          }
+        },
+        {
+          "name": "MetadataOnly",
+          "fact": {
+            "kind": "host",
+            "name": "MetadataOnly"
+          }
+        }
+      ],
+      "functions": [
+        {
+          "name": "host_make",
+          "fact": {
+            "kind": "function",
+            "params": [
+              {
+                "kind": "host",
+                "name": "HostCell"
+              }
+            ],
+            "returns": {
+              "kind": "host",
+              "name": "HostCell"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "host-make"
+          }
+        },
+        {
+          "name": "metadata_make",
+          "fact": {
+            "kind": "function",
+            "params": [
+              {
+                "kind": "host",
+                "name": "HostCell"
+              }
+            ],
+            "returns": {
+              "kind": "primitive",
+              "name": "i64"
+            }
+          }
+        }
+      ],
+      "methods": [
+        {
+          "owner": "HostBox",
+          "name": "put",
+          "fact": {
+            "kind": "function",
+            "params": [
+              {
+                "kind": "host",
+                "name": "HostCell"
+              }
+            ],
+            "returns": {
+              "kind": "host",
+              "name": "HostCell"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "host-put"
+          }
+        },
+        {
+          "owner": "MetadataOnly",
+          "name": "put",
+          "fact": {
+            "kind": "function",
+            "params": [
+              {
+                "kind": "host",
+                "name": "HostCell"
+              }
+            ],
+            "returns": {
+              "kind": "primitive",
+              "name": "i64"
+            }
+          }
+        }
+      ]
+    },
+    "knownCallables": [
+      {
+        "file": "scripts/main.vela",
+        "cursor": "stdlib-function",
+        "label": "math::abs",
+        "kind": "function"
+      },
+      {
+        "file": "scripts/main.vela",
+        "cursor": "stdlib-method",
+        "label": "Array(i64).push",
+        "kind": "method"
+      }
+    ]
+  }
+}

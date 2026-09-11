@@ -269,7 +269,7 @@
     },
     {
       "id": "B02.8",
-      "revision": null,
+      "revision": "0f3c5af60",
       "requirements": [
         "definition/syntax/S8/positive/service",
         "definition/syntax/S8/positive/protocol",
@@ -285,10 +285,25 @@
         "type-definition/syntax/S8/negative/protocol"
       ],
       "summary": "46 independent import queries cover multi-segment module paths, direct imports, all supported declaration aliases, public/private/missing targets, source identity collisions and local shadowing in both Rust layers with LF/CRLF. Import-clause names and aliases now use exact source spans and existing ImportResolution; recognized unresolved/prefix syntax owns a null result. Prior schema and lifecycle fixtures supply source-backed/metadata-only and dependency invalidation evidence for all 12 S8 cells. Validation: service 570 passed with 2 existing ignored; protocol 563 passed; infrastructure 58 passed; relevant Clippy and formatting passed; audit 76 verified, 3 editor mapped, 1246 unreviewed, 2 existing N/A, zero failures. B02 S1/S4/S5/S10 semantic partitions and installed workbench routes remain open; find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B02.9",
+      "revision": null,
+      "requirements": [
+        "definition/syntax/S5/positive/service",
+        "definition/syntax/S5/positive/protocol",
+        "definition/syntax/S5/negative/service",
+        "definition/syntax/S5/negative/protocol",
+        "declaration/syntax/S5/positive/service",
+        "declaration/syntax/S5/positive/protocol",
+        "declaration/syntax/S5/negative/service",
+        "declaration/syntax/S5/negative/protocol"
+      ],
+      "summary": "46 independent call queries in LF/CRLF cover source functions, inherent/interface/default/override methods, named/defaulted/reordered/nested/async calls, builtin resolution, source-backed and metadata-only schema callables, ambiguous trait methods and cross-module same-name ownership. Reuse exact resolved callable locations for parameter signatures and selected source method return types; reject ambiguous return targets before generic facts. Per-method target files assert local parameter versus foreign type ownership. Restore S8 IDs prematurely removed from the prior remaining list: obligations stay pending until whole-batch acceptance. A new live-repository checkpoint regression verifies this rule. Validation: service 571 passed with 2 existing ignored, protocol 564 passed, infrastructure 59 passed, relevant Clippy and formatting passed; run-n3hx5I has 84 verified, 3 editor mapped, 1238 unreviewed, 2 existing N/A, zero failures. B02 S1/S4/S10 and installed navigation remain open; find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B02.9",
-  "nextTask": "B02.9",
+  "activeChild": "B02.10",
+  "nextTask": "B02.10",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -487,6 +502,10 @@
     "declaration/syntax/S5/negative/service",
     "declaration/syntax/S5/positive/protocol",
     "declaration/syntax/S5/positive/service",
+    "declaration/syntax/S8/negative/protocol",
+    "declaration/syntax/S8/negative/service",
+    "declaration/syntax/S8/positive/protocol",
+    "declaration/syntax/S8/positive/service",
     "declaration/syntax/S9/negative/protocol",
     "declaration/syntax/S9/negative/service",
     "declaration/syntax/S9/positive/protocol",
@@ -525,6 +544,10 @@
     "definition/syntax/S5/negative/service",
     "definition/syntax/S5/positive/protocol",
     "definition/syntax/S5/positive/service",
+    "definition/syntax/S8/negative/protocol",
+    "definition/syntax/S8/negative/service",
+    "definition/syntax/S8/positive/protocol",
+    "definition/syntax/S8/positive/service",
     "definition/syntax/S9/negative/protocol",
     "definition/syntax/S9/negative/service",
     "definition/syntax/S9/positive/protocol",
@@ -1549,6 +1572,10 @@
     "type-definition/syntax/S4/negative/service",
     "type-definition/syntax/S4/positive/protocol",
     "type-definition/syntax/S4/positive/service",
+    "type-definition/syntax/S8/negative/protocol",
+    "type-definition/syntax/S8/negative/service",
+    "type-definition/syntax/S8/positive/protocol",
+    "type-definition/syntax/S8/positive/service",
     "vscode/UX01/install-open/command/local",
     "vscode/UX01/install-open/input/local",
     "vscode/UX01/unrelated-file/command/local",
@@ -1799,7 +1826,17 @@
     "target/lsp-matrix/b02-import-matrix-expanded.log",
     "target/lsp-matrix/b02-import-audit.log",
     "target/lsp-matrix/b02-import-clippy.log",
-    "target/lsp-matrix/run-5RtzAT/report.json"
+    "target/lsp-matrix/run-5RtzAT/report.json",
+    "target/lsp-matrix/b02-calls-reproduction.log",
+    "target/lsp-matrix/b02-calls-expanded-protocol.log",
+    "target/lsp-matrix/b02-calls-ambiguous-reproduction.log",
+    "target/lsp-matrix/b02-calls-navigation-service.log",
+    "target/lsp-matrix/b02-calls-navigation-protocol.log",
+    "target/lsp-matrix/b02-calls-audit.log",
+    "target/lsp-matrix/b02-calls-checkpoint-reproduction.log",
+    "target/lsp-matrix/b02-calls-audit-fixed-checkpoint.log",
+    "target/lsp-matrix/b02-calls-clippy.log",
+    "target/lsp-matrix/run-n3hx5I/report.json"
   ],
   "openIssues": [
     {

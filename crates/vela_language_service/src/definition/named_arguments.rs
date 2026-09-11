@@ -47,23 +47,17 @@ impl LanguageServiceDatabases {
                     query.document_id(),
                     LineIndex::new(query.text()).position(offset),
                 )?;
-                let SymbolRef::Source(symbol) = callee.symbol()? else {
-                    return None;
-                };
-                let declaration = graph.declarations().find(|declaration| {
-                    super::source_symbol_for_declaration(graph, declaration)
-                        == SymbolRef::Source(symbol.clone())
-                })?;
-                let (index, parameter) = graph
-                    .function_signature(declaration.id)?
+                let (signature, declaration) = self.source_signature_for_navigation(&callee)?;
+                let (index, parameter) = signature
                     .params
                     .iter()
                     .enumerate()
                     .find(|(_, parameter)| parameter.name == target.text())?;
-                let inferred = match self.graph_analysis_facts().declaration(declaration.id) {
-                    Some(TypeFact::Function { params, .. }) => params.get(index).cloned(),
-                    _ => None,
-                };
+                let inferred =
+                    match declaration.and_then(|id| self.graph_analysis_facts().declaration(id)) {
+                        Some(TypeFact::Function { params, .. }) => params.get(index).cloned(),
+                        _ => None,
+                    };
                 let fact = inferred
                     .filter(|fact| !matches!(fact, TypeFact::Unknown))
                     .or_else(|| {

@@ -157,3 +157,18 @@ test("local gates pin the execution profile while ordinary existing CI stays por
     { ...checkpoint.profile, vscodeVersion: "1.90.0" }, true), /local execution profile/);
   cp.validateExecutionProfile(checkpoint.profile, checkpoint.profile, true);
 });
+
+test("repository checkpoint retains every obligation until its whole batch is accepted", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const root = path.resolve(__dirname, "../..");
+  const { loadInventory } = require("./inventory");
+  const { manifest, executionRequirements } = loadInventory(root);
+  const checkpoint = JSON.parse(fs.readFileSync(path.join(root, "tests/lsp_matrix/checkpoint.json"), "utf8"));
+  cp.validateCheckpoint(checkpoint, manifest, executionRequirements);
+  if (checkpoint.remainingRequirements.length) {
+    const incomplete = structuredClone(checkpoint);
+    incomplete.remainingRequirements.pop();
+    assert.throws(() => cp.validateCheckpoint(incomplete, manifest, executionRequirements), /remaining requirement IDs are stale/);
+  }
+});

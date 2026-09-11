@@ -5,6 +5,11 @@ use crate::matrix_fixture::{FixtureWorkspace, load, schema_artifact};
 use crate::tests::{TestServer, navigation_request, notify, request, response_value};
 
 #[test]
+fn navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls() {
+    assert_navigation_matrix("navigation-calls");
+}
+
+#[test]
 fn navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls() {
     assert_navigation_matrix("navigation-imports");
 }
@@ -124,6 +129,35 @@ fn assert_navigation_matrix_for_client(
             );
         }
         let mut id = 2;
+        if let Some(cases) = spec.oracle["knownCallables"].as_array() {
+            for case in cases {
+                let file = case["file"].as_str().expect("file");
+                let point = fixture.document(file).expect("source").markers
+                    [case["cursor"].as_str().expect("cursor")]
+                .start;
+                let response = response_value(request::<r::HoverRequest>(
+                    &mut server,
+                    id,
+                    json!({"textDocument":{"uri":uri(file)},
+                        "position":{"line":point.line,"character":point.character}}),
+                ));
+                id += 1;
+                let value = response["result"]["contents"]["value"]
+                    .as_str()
+                    .expect("known callable must resolve before source-navigation null");
+                assert!(
+                    value.contains(case["label"].as_str().expect("label")),
+                    "{value}"
+                );
+                assert!(
+                    value.contains(&format!(
+                        "_{}_: Function",
+                        case["kind"].as_str().expect("kind")
+                    )),
+                    "{value}"
+                );
+            }
+        }
         if let Some(cases) = spec.oracle["diagnosticCandidates"].as_array() {
             for case in cases {
                 let file = case["file"].as_str().expect("file");
@@ -283,7 +317,10 @@ pub(super) fn assert_queries(
             let result = if expected.is_null() {
                 serde_json::Value::Null
             } else {
-                let target_file = query["target-file"].as_str().unwrap_or(file);
+                let target_file = query["target-files"][key]
+                    .as_str()
+                    .or_else(|| query["target-file"].as_str())
+                    .unwrap_or(file);
                 let target = fixture.document(target_file).expect("target").markers
                     [expected.as_str().expect("target marker or explicit null")];
                 json!({"uri":uri(target_file),"range":{

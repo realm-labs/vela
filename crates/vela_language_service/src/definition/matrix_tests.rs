@@ -5,6 +5,13 @@ use crate::{
 };
 
 #[test]
+fn navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries() {
+    for crlf in [false, true] {
+        assert_navigation_matrix("navigation-calls", crlf);
+    }
+}
+
+#[test]
 fn navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership() {
     for crlf in [false, true] {
         assert_navigation_matrix("navigation-imports", crlf);
@@ -69,6 +76,19 @@ fn assert_navigation_matrix(fixture_id: &str, crlf: bool) {
                 .get()
         });
         databases.load_schema_artifact_json("/workspace/target/schema.json", &artifact.to_string());
+    }
+    if let Some(cases) = spec.oracle["knownCallables"].as_array() {
+        for case in cases {
+            let file = case["file"].as_str().expect("file");
+            let document = fixture.document(file).expect("source");
+            let point = document.markers[case["cursor"].as_str().expect("cursor")].start;
+            let hover = databases
+                .hover(&uri(file), byte_position(&document.text, point))
+                .expect("known callable must resolve before asserting source-navigation null");
+            assert_eq!(hover.label(), case["label"].as_str().expect("label"));
+            assert!(matches!(hover.symbol(), Some(crate::SymbolRef::Builtin(_))));
+            assert_eq!(format!("{:?}", hover.kind()).to_lowercase(), case["kind"]);
+        }
     }
     if let Some(cases) = spec.oracle["diagnosticCandidates"].as_array() {
         for case in cases {
@@ -189,7 +209,10 @@ pub(super) fn assert_queries(
                 continue;
             }
             let target = expected.as_str().expect("target marker or explicit null");
-            let target_file = query["target-file"].as_str().unwrap_or(file);
+            let target_file = query["target-files"][method]
+                .as_str()
+                .or_else(|| query["target-file"].as_str())
+                .unwrap_or(file);
             let target_document = fixture.document(target_file).expect("target document");
             let marker = target_document.markers[target];
             let actual = actual.unwrap_or_else(|| panic!("{label}: target should exist"));

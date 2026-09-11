@@ -1271,6 +1271,182 @@
           "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
         }
       ]
+    },
+    {
+      "requirement": "definition/syntax/S5/positive/service",
+      "assertion": "Exact source function and inherent/interface/default/override method calls, direct/imported/qualified and async calls, named/defaulted/reordered and nested arguments resolve to the selected declaration or parameter. Parameter-value navigation stays independent of the callee; parameter definitions and type definitions may target different files. Multi-module same-name trait implementations and inherent precedence preserve ownership. Schema callables with authored origins retain exact targets; LF/CRLF byte and UTF-16 oracles assert both endpoints. Active-parameter selection belongs to signature-help; navigation asserts the named parameter at each queried label.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S5/positive/protocol",
+      "assertion": "Exact source function and inherent/interface/default/override method calls, direct/imported/qualified and async calls, named/defaulted/reordered and nested arguments resolve to the selected declaration or parameter. Parameter-value navigation stays independent of the callee; parameter definitions and type definitions may target different files. Multi-module same-name trait implementations and inherent precedence preserve ownership. Schema callables with authored origins retain exact targets; LF/CRLF byte and UTF-16 oracles assert both endpoints. Active-parameter selection belongs to signature-help; navigation asserts the named parameter at each queried label.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S5/negative/service",
+      "assertion": "Unknown named labels, dynamic/unknown/missing method calls and ambiguous trait calls return explicit null rather than a neighboring or first candidate. Known stdlib function/method resolution is asserted before checking source-navigation nulls. Source-backed schema callables do not lend their origin parameters to metadata-only argument labels; schema-only callables and labels have no fabricated source. Unknown/Any return boundaries and missing-value recovery supplement the call matrix.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S5/negative/protocol",
+      "assertion": "Unknown named labels, dynamic/unknown/missing method calls and ambiguous trait calls return explicit null rather than a neighboring or first candidate. Known stdlib function/method resolution is asserted before checking source-navigation nulls. Source-backed schema callables do not lend their origin parameters to metadata-only argument labels; schema-only callables and labels have no fabricated source. Unknown/Any return boundaries and missing-value recovery supplement the call matrix.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S5/positive/service",
+      "assertion": "Exact source function and inherent/interface/default/override method calls, direct/imported/qualified and async calls, named/defaulted/reordered and nested arguments resolve to the selected declaration or parameter. Parameter-value navigation stays independent of the callee; parameter definitions and type definitions may target different files. Multi-module same-name trait implementations and inherent precedence preserve ownership. Schema callables with authored origins retain exact targets; LF/CRLF byte and UTF-16 oracles assert both endpoints. Active-parameter selection belongs to signature-help; navigation asserts the named parameter at each queried label.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S5/positive/protocol",
+      "assertion": "Exact source function and inherent/interface/default/override method calls, direct/imported/qualified and async calls, named/defaulted/reordered and nested arguments resolve to the selected declaration or parameter. Parameter-value navigation stays independent of the callee; parameter definitions and type definitions may target different files. Multi-module same-name trait implementations and inherent precedence preserve ownership. Schema callables with authored origins retain exact targets; LF/CRLF byte and UTF-16 oracles assert both endpoints. Active-parameter selection belongs to signature-help; navigation asserts the named parameter at each queried label.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S5/negative/service",
+      "assertion": "Unknown named labels, dynamic/unknown/missing method calls and ambiguous trait calls return explicit null rather than a neighboring or first candidate. Known stdlib function/method resolution is asserted before checking source-navigation nulls. Source-backed schema callables do not lend their origin parameters to metadata-only argument labels; schema-only callables and labels have no fabricated source. Unknown/Any return boundaries and missing-value recovery supplement the call matrix.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S5/negative/protocol",
+      "assertion": "Unknown named labels, dynamic/unknown/missing method calls and ambiguous trait calls return explicit null rather than a neighboring or first candidate. Known stdlib function/method resolution is asserted before checking source-navigation nulls. Source-backed schema callables do not lend their origin parameters to metadata-only argument labels; schema-only callables and labels have no fabricated source. Unknown/Any return boundaries and missing-value recovery supplement the call matrix.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
+        }
+      ]
     }
   ],
   "featureFiles": [

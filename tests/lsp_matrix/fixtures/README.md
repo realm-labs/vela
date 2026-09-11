@@ -34,3 +34,11 @@ both LF and CRLF. Its exact target ranges are authored in `afterEachAction`.
 The installed extension also reads this corpus and checks initial, unsaved and
 close-restored target ranges and source text. These are fixture/provider proof;
 workbench Input/Render routes are separately required.
+
+Navigation query oracles name each method's exact marker (or explicit null).
+`target-file` defaults all methods to one file; optional `target-files` entries
+keyed by `definition`, `declaration`, or `type-definition` override it when a
+local parameter and its declared type live in different files. The service and
+protocol consumers independently project those targets. `knownCallables`
+checks builtin callable resolution before source-navigation null assertions,
+so an unresolved fixture cannot accidentally prove the builtin policy.
