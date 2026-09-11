@@ -307,7 +307,7 @@ impl HirSemanticFacts {
         match &expression.kind {
             HirExprKind::Literal(literal) => literal_fact(literal),
             HirExprKind::Path(_) => self
-                .unit_variant_fact(graph, schema, id)
+                .enum_variant_constructor_fact(graph, schema, id)
                 .or_else(|| match base.resolution(id) {
                     Some(BindingResolution::Local(local)) => self
                         .local_use_types
@@ -326,6 +326,7 @@ impl HirSemanticFacts {
                         self.fact(expression)
                     })
                 })
+                .or_else(|| self.enum_variant_constructor_fact(graph, schema, id))
                 .or_else(|| base.base_expression(id).cloned())
                 .unwrap_or(TypeFact::Unknown),
             HirExprKind::Paren { expression } => {
@@ -706,7 +707,7 @@ impl HirSemanticFacts {
         }
     }
 
-    fn unit_variant_fact(
+    fn enum_variant_constructor_fact(
         &self,
         graph: &ModuleGraph,
         schema: Option<&RegistryFacts>,

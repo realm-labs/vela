@@ -1,0 +1,711 @@
+{
+  "version": 1,
+  "id": "completion-enums",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.completion_types\"\nname = \"completion_types\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "scripts/alpha.vela": "pub enum Choice { Ready, Pair(i64, String), Data { value: i64 name: String } }\nenum Hidden { Secret }\n",
+    "scripts/beta.vela": "pub enum Choice { Wrong, Pair(String) }\n",
+    "scripts/query_source_all.vela": "/* 中😀 */ fn main() { alpha::Choice::[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/query_source_import.vela": "/* 中😀 */ use alpha::Choice; fn main() { Choice::[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/query_source_local.vela": "/* 中😀 */ enum Choice { Local } fn main() { Choice::[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/query_other_owner.vela": "/* 中😀 */ fn main() { beta::Choice::[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/query_source_ready.vela": "/* 中😀 */ fn main() { alpha::Choice::[[replace:start]]Re[[cursor]][[replace:end]]; }\n",
+    "scripts/query_source_pair.vela": "/* 中😀 */ fn main() { alpha::Choice::[[replace:start]]Pa[[cursor]][[replace:end]](1, \"x\"); }\n",
+    "scripts/query_source_data.vela": "/* 中😀 */ fn main() { alpha::Choice::[[replace:start]]Da[[cursor]][[replace:end]] { value: 1, name: \"x\" }; }\n",
+    "scripts/query_source_record.vela": "/* 中😀 */ fn main() { let name = \"x\"; let value = alpha::Choice::Data { value: 1, [[replace:start]]na[[cursor]][[replace:end]] }; }\n",
+    "scripts/query_source_record_all.vela": "/* 中😀 */ fn main() { let value = alpha::Choice::Data { [[replace:start]][[cursor]][[replace:end]] }; }\n",
+    "scripts/query_source_record_used.vela": "/* 中😀 */ fn main() { let value = alpha::Choice::Data { value: 1, name: \"x\", [[replace:start]][[cursor]][[replace:end]] }; }\n",
+    "scripts/query_source_record_missing.vela": "/* 中😀 */ fn main() { let value = alpha::Choice::Absent { [[replace:start]][[cursor]][[replace:end]] }; }\n",
+    "scripts/query_source_record_dot.vela": "/* 中😀 */ fn main() { let p = alpha::Choice::Data { value: 1, name: \"x\" }; p.[[replace:start]]na[[cursor]][[replace:end]]; }\n",
+    "scripts/query_source_unit_dot.vela": "/* 中😀 */ fn main() { let p = alpha::Choice::Ready; p.[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/query_schema_ready.vela": "/* 中😀 */ fn main() { HostChoice::[[replace:start]]Re[[cursor]][[replace:end]]; }\n",
+    "scripts/query_schema_pair.vela": "/* 中😀 */ fn main() { HostChoice::[[replace:start]]Pa[[cursor]][[replace:end]](1, \"x\"); }\n",
+    "scripts/query_schema_data.vela": "/* 中😀 */ fn main() { HostChoice::[[replace:start]]Da[[cursor]][[replace:end]] { value: 1, name: \"x\" }; }\n",
+    "scripts/query_schema_record.vela": "/* 中😀 */ fn main() { let name = \"x\"; let value = HostChoice::Data { value: 1, [[replace:start]]na[[cursor]][[replace:end]] }; }\n",
+    "scripts/query_schema_record_all.vela": "/* 中😀 */ fn main() { let value = HostChoice::Data { [[replace:start]][[cursor]][[replace:end]] }; }\n",
+    "scripts/query_schema_record_used.vela": "/* 中😀 */ fn main() { let value = HostChoice::Data { value: 1, name: \"x\", [[replace:start]][[cursor]][[replace:end]] }; }\n",
+    "scripts/query_schema_record_missing.vela": "/* 中😀 */ fn main() { let value = HostChoice::Absent { [[replace:start]][[cursor]][[replace:end]] }; }\n",
+    "scripts/query_schema_record_dot.vela": "/* 中😀 */ fn main() { let p = HostChoice::Data { value: 1, name: \"x\" }; p.[[replace:start]]na[[cursor]][[replace:end]]; }\n",
+    "scripts/query_schema_unit_dot.vela": "/* 中😀 */ fn main() { let p = HostChoice::Ready; p.[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/query_schema_all.vela": "/* 中😀 */ fn main() { HostChoice::[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/query_schema_qualified.vela": "/* 中😀 */ fn main() { remote::Choice::[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/query_missing_qualified.vela": "/* 中😀 */ fn main() { missing::HostChoice::[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/query_missing_source.vela": "/* 中😀 */ fn main() { missing::Choice::[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/query_unknown_variant.vela": "/* 中😀 */ fn main() { alpha::Choice::[[replace:start]]Absent[[cursor]][[replace:end]]; }\n",
+    "scripts/query_private_enum.vela": "/* 中😀 */ fn main() { alpha::Hidden::[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/query_source_invalid_record_pair.vela": "/* 中😀 */ fn main() { let p = alpha::Choice::Pair { [[replace:start]][[cursor]][[replace:end]] }; }\n",
+    "scripts/query_source_invalid_record_ready.vela": "/* 中😀 */ fn main() { let p = alpha::Choice::Ready { [[replace:start]][[cursor]][[replace:end]] }; }\n",
+    "scripts/query_source_record_label.vela": "/* 中😀 */ fn main() { let name = \"x\"; let value = alpha::Choice::Data { value: 1, [[replace:start]]na[[cursor]][[replace:end]]: \"x\" }; }\n",
+    "scripts/query_schema_invalid_record_pair.vela": "/* 中😀 */ fn main() { let p = HostChoice::Pair { [[replace:start]][[cursor]][[replace:end]] }; }\n",
+    "scripts/query_schema_invalid_record_ready.vela": "/* 中😀 */ fn main() { let p = HostChoice::Ready { [[replace:start]][[cursor]][[replace:end]] }; }\n",
+    "scripts/query_schema_record_label.vela": "/* 中😀 */ fn main() { let name = \"x\"; let value = HostChoice::Data { value: 1, [[replace:start]]na[[cursor]][[replace:end]]: \"x\" }; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "schema": {
+      "types": [
+        {
+          "name": "HostChoice",
+          "fact": {
+            "kind": "enum",
+            "name": "HostChoice"
+          }
+        },
+        {
+          "name": "alpha::Choice",
+          "fact": {
+            "kind": "enum",
+            "name": "alpha::Choice"
+          }
+        },
+        {
+          "name": "remote::Choice",
+          "fact": {
+            "kind": "enum",
+            "name": "remote::Choice"
+          }
+        }
+      ],
+      "variants": [
+        {
+          "owner": "HostChoice",
+          "name": "Ready",
+          "fact": {
+            "kind": "enum",
+            "name": "HostChoice",
+            "variant": "Ready"
+          },
+          "docs": "HostChoice::Ready docs."
+        },
+        {
+          "owner": "HostChoice",
+          "name": "Pair",
+          "fact": {
+            "kind": "enum",
+            "name": "HostChoice",
+            "variant": "Pair"
+          },
+          "docs": "HostChoice::Pair docs."
+        },
+        {
+          "owner": "HostChoice",
+          "name": "Data",
+          "fact": {
+            "kind": "enum",
+            "name": "HostChoice",
+            "variant": "Data"
+          },
+          "docs": "HostChoice::Data docs."
+        },
+        {
+          "owner": "alpha::Choice",
+          "name": "Leak",
+          "fact": {
+            "kind": "enum",
+            "name": "alpha::Choice",
+            "variant": "Leak"
+          },
+          "docs": "alpha::Choice::Leak docs."
+        },
+        {
+          "owner": "remote::Choice",
+          "name": "Remote",
+          "fact": {
+            "kind": "enum",
+            "name": "remote::Choice",
+            "variant": "Remote"
+          },
+          "docs": "remote::Choice::Remote docs."
+        }
+      ],
+      "fields": [
+        {
+          "owner": "HostChoice::Pair",
+          "name": "0",
+          "fact": {
+            "kind": "primitive",
+            "name": "i64"
+          },
+          "docs": "HostChoice::Pair.0 docs."
+        },
+        {
+          "owner": "HostChoice::Pair",
+          "name": "1",
+          "fact": {
+            "kind": "primitive",
+            "name": "string"
+          },
+          "docs": "HostChoice::Pair.1 docs."
+        },
+        {
+          "owner": "HostChoice::Data",
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "i64"
+          },
+          "docs": "HostChoice::Data.value docs."
+        },
+        {
+          "owner": "HostChoice::Data",
+          "name": "name",
+          "fact": {
+            "kind": "primitive",
+            "name": "string"
+          },
+          "docs": "HostChoice::Data.name docs."
+        }
+      ]
+    },
+    "queries": [
+      {
+        "id": "source_all",
+        "file": "scripts/query_source_all.vela",
+        "context": "ModulePath",
+        "items": [
+          {
+            "label": "Ready",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "alpha::Choice",
+            "symbolKind": "source",
+            "symbol": "alpha::Choice::Ready",
+            "docs": null,
+            "insert": "Ready"
+          },
+          {
+            "label": "Pair",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "alpha::Choice",
+            "symbolKind": "source",
+            "symbol": "alpha::Choice::Pair",
+            "docs": null,
+            "insert": "Pair"
+          },
+          {
+            "label": "Data",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "alpha::Choice",
+            "symbolKind": "source",
+            "symbol": "alpha::Choice::Data",
+            "docs": null,
+            "insert": "Data"
+          }
+        ],
+        "apply": null
+      },
+      {
+        "id": "source_import",
+        "file": "scripts/query_source_import.vela",
+        "context": "ModulePath",
+        "items": [
+          {
+            "label": "Ready",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "alpha::Choice",
+            "symbolKind": "source",
+            "symbol": "alpha::Choice::Ready",
+            "docs": null,
+            "insert": "Ready"
+          },
+          {
+            "label": "Pair",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "alpha::Choice",
+            "symbolKind": "source",
+            "symbol": "alpha::Choice::Pair",
+            "docs": null,
+            "insert": "Pair"
+          },
+          {
+            "label": "Data",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "alpha::Choice",
+            "symbolKind": "source",
+            "symbol": "alpha::Choice::Data",
+            "docs": null,
+            "insert": "Data"
+          }
+        ],
+        "apply": null
+      },
+      {
+        "id": "source_local",
+        "file": "scripts/query_source_local.vela",
+        "context": "ModulePath",
+        "items": [
+          {
+            "label": "Local",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "query_source_local::Choice",
+            "symbolKind": "source",
+            "symbol": "query_source_local::Choice::Local",
+            "docs": null,
+            "insert": "Local"
+          }
+        ],
+        "apply": null
+      },
+      {
+        "id": "other_owner",
+        "file": "scripts/query_other_owner.vela",
+        "context": "ModulePath",
+        "items": [
+          {
+            "label": "Wrong",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "beta::Choice",
+            "symbolKind": "source",
+            "symbol": "beta::Choice::Wrong",
+            "docs": null,
+            "insert": "Wrong"
+          },
+          {
+            "label": "Pair",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "beta::Choice",
+            "symbolKind": "source",
+            "symbol": "beta::Choice::Pair",
+            "docs": null,
+            "insert": "Pair"
+          }
+        ],
+        "apply": null
+      },
+      {
+        "id": "source_ready",
+        "file": "scripts/query_source_ready.vela",
+        "context": "ModulePath",
+        "items": [
+          {
+            "label": "Ready",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "alpha::Choice",
+            "symbolKind": "source",
+            "symbol": "alpha::Choice::Ready",
+            "docs": null,
+            "insert": "Ready"
+          }
+        ],
+        "apply": "Ready"
+      },
+      {
+        "id": "source_pair",
+        "file": "scripts/query_source_pair.vela",
+        "context": "ModulePath",
+        "items": [
+          {
+            "label": "Pair",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "alpha::Choice",
+            "symbolKind": "source",
+            "symbol": "alpha::Choice::Pair",
+            "docs": null,
+            "insert": "Pair"
+          }
+        ],
+        "apply": "Pair"
+      },
+      {
+        "id": "source_data",
+        "file": "scripts/query_source_data.vela",
+        "context": "ModulePath",
+        "items": [
+          {
+            "label": "Data",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "alpha::Choice",
+            "symbolKind": "source",
+            "symbol": "alpha::Choice::Data",
+            "docs": null,
+            "insert": "Data"
+          }
+        ],
+        "apply": "Data"
+      },
+      {
+        "id": "source_record",
+        "file": "scripts/query_source_record.vela",
+        "context": "RecordField",
+        "items": [
+          {
+            "label": "name",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "String",
+            "symbolKind": "source",
+            "symbol": "alpha::Choice::Data.name",
+            "docs": null,
+            "insert": "name"
+          }
+        ],
+        "apply": "name"
+      },
+      {
+        "id": "source_record_all",
+        "file": "scripts/query_source_record_all.vela",
+        "context": "RecordField",
+        "items": [
+          {
+            "label": "name",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "String",
+            "symbolKind": "source",
+            "symbol": "alpha::Choice::Data.name",
+            "docs": null,
+            "insert": "name"
+          },
+          {
+            "label": "value",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "source",
+            "symbol": "alpha::Choice::Data.value",
+            "docs": null,
+            "insert": "value"
+          }
+        ],
+        "apply": null
+      },
+      {
+        "id": "source_record_used",
+        "file": "scripts/query_source_record_used.vela",
+        "context": "RecordField",
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "source_record_missing",
+        "file": "scripts/query_source_record_missing.vela",
+        "context": "RecordField",
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "source_record_dot",
+        "file": "scripts/query_source_record_dot.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "name",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "String",
+            "symbolKind": "source",
+            "symbol": "alpha::Choice::Data.name",
+            "docs": null,
+            "insert": "name"
+          }
+        ],
+        "apply": "name"
+      },
+      {
+        "id": "source_unit_dot",
+        "file": "scripts/query_source_unit_dot.vela",
+        "context": "Member",
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "schema_ready",
+        "file": "scripts/query_schema_ready.vela",
+        "context": "ModulePath",
+        "items": [
+          {
+            "label": "Ready",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "HostChoice",
+            "symbolKind": "schema",
+            "symbol": "HostChoice::Ready",
+            "docs": "HostChoice::Ready docs.",
+            "insert": "Ready"
+          }
+        ],
+        "apply": "Ready"
+      },
+      {
+        "id": "schema_pair",
+        "file": "scripts/query_schema_pair.vela",
+        "context": "ModulePath",
+        "items": [
+          {
+            "label": "Pair",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "HostChoice",
+            "symbolKind": "schema",
+            "symbol": "HostChoice::Pair",
+            "docs": "HostChoice::Pair docs.",
+            "insert": "Pair"
+          }
+        ],
+        "apply": "Pair"
+      },
+      {
+        "id": "schema_data",
+        "file": "scripts/query_schema_data.vela",
+        "context": "ModulePath",
+        "items": [
+          {
+            "label": "Data",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "HostChoice",
+            "symbolKind": "schema",
+            "symbol": "HostChoice::Data",
+            "docs": "HostChoice::Data docs.",
+            "insert": "Data"
+          }
+        ],
+        "apply": "Data"
+      },
+      {
+        "id": "schema_record",
+        "file": "scripts/query_schema_record.vela",
+        "context": "RecordField",
+        "items": [
+          {
+            "label": "name",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "String",
+            "symbolKind": "schema",
+            "symbol": "HostChoice::Data.name",
+            "docs": "HostChoice::Data.name docs.",
+            "insert": "name"
+          }
+        ],
+        "apply": "name"
+      },
+      {
+        "id": "schema_record_all",
+        "file": "scripts/query_schema_record_all.vela",
+        "context": "RecordField",
+        "items": [
+          {
+            "label": "name",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "String",
+            "symbolKind": "schema",
+            "symbol": "HostChoice::Data.name",
+            "docs": "HostChoice::Data.name docs.",
+            "insert": "name"
+          },
+          {
+            "label": "value",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "schema",
+            "symbol": "HostChoice::Data.value",
+            "docs": "HostChoice::Data.value docs.",
+            "insert": "value"
+          }
+        ],
+        "apply": null
+      },
+      {
+        "id": "schema_record_used",
+        "file": "scripts/query_schema_record_used.vela",
+        "context": "RecordField",
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "schema_record_missing",
+        "file": "scripts/query_schema_record_missing.vela",
+        "context": "RecordField",
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "schema_record_dot",
+        "file": "scripts/query_schema_record_dot.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "name",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "String",
+            "symbolKind": "schema",
+            "symbol": "HostChoice::Data.name",
+            "docs": "HostChoice::Data.name docs.",
+            "insert": "name"
+          }
+        ],
+        "apply": "name"
+      },
+      {
+        "id": "schema_unit_dot",
+        "file": "scripts/query_schema_unit_dot.vela",
+        "context": "Member",
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "schema_all",
+        "file": "scripts/query_schema_all.vela",
+        "context": "ModulePath",
+        "items": [
+          {
+            "label": "Ready",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "HostChoice",
+            "symbolKind": "schema",
+            "symbol": "HostChoice::Ready",
+            "docs": "HostChoice::Ready docs.",
+            "insert": "Ready"
+          },
+          {
+            "label": "Pair",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "HostChoice",
+            "symbolKind": "schema",
+            "symbol": "HostChoice::Pair",
+            "docs": "HostChoice::Pair docs.",
+            "insert": "Pair"
+          },
+          {
+            "label": "Data",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "HostChoice",
+            "symbolKind": "schema",
+            "symbol": "HostChoice::Data",
+            "docs": "HostChoice::Data docs.",
+            "insert": "Data"
+          }
+        ],
+        "apply": null
+      },
+      {
+        "id": "schema_qualified",
+        "file": "scripts/query_schema_qualified.vela",
+        "context": "ModulePath",
+        "items": [
+          {
+            "label": "Remote",
+            "kind": "Variant",
+            "lspKind": 20,
+            "detail": "remote::Choice",
+            "symbolKind": "schema",
+            "symbol": "remote::Choice::Remote",
+            "docs": "remote::Choice::Remote docs.",
+            "insert": "Remote"
+          }
+        ],
+        "apply": null
+      },
+      {
+        "id": "missing_qualified",
+        "file": "scripts/query_missing_qualified.vela",
+        "context": "ModulePath",
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "missing_source",
+        "file": "scripts/query_missing_source.vela",
+        "context": "ModulePath",
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "unknown_variant",
+        "file": "scripts/query_unknown_variant.vela",
+        "context": "ModulePath",
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "private_enum",
+        "file": "scripts/query_private_enum.vela",
+        "context": "ModulePath",
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "source_invalid_record_pair",
+        "file": "scripts/query_source_invalid_record_pair.vela",
+        "context": "RecordField",
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "source_invalid_record_ready",
+        "file": "scripts/query_source_invalid_record_ready.vela",
+        "context": "RecordField",
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "source_record_label",
+        "file": "scripts/query_source_record_label.vela",
+        "context": "RecordField",
+        "items": [
+          {
+            "label": "name",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "String",
+            "symbolKind": "source",
+            "symbol": "alpha::Choice::Data.name",
+            "docs": null,
+            "insert": "name"
+          }
+        ],
+        "apply": "name"
+      },
+      {
+        "id": "schema_invalid_record_pair",
+        "file": "scripts/query_schema_invalid_record_pair.vela",
+        "context": "RecordField",
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "schema_invalid_record_ready",
+        "file": "scripts/query_schema_invalid_record_ready.vela",
+        "context": "RecordField",
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "schema_record_label",
+        "file": "scripts/query_schema_record_label.vela",
+        "context": "RecordField",
+        "items": [
+          {
+            "label": "name",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "String",
+            "symbolKind": "schema",
+            "symbol": "HostChoice::Data.name",
+            "docs": "HostChoice::Data.name docs.",
+            "insert": "name"
+          }
+        ],
+        "apply": "name"
+      }
+    ]
+  }
+}

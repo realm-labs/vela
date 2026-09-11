@@ -335,3 +335,31 @@ fn cursor_context_recovers_useful_roles_in_incomplete_source() {
     assert_eq!(call_cursor.kind(), CursorContextKind::CallArgument);
     assert_eq!(call_cursor.call_callee(), Some(TextRange::new(16, 21)));
 }
+
+#[test]
+fn record_completion_context_excludes_constructor_paths_and_field_values() {
+    for text in [
+        "fn main() { Choice::Da { value: 1 }; }",
+        "fn main() { Outer { nested: Choice::Da { value: 1 } }; }",
+        "fn main() { Outer { value: Choice::Da }; }",
+    ] {
+        assert_eq!(
+            classify(text, "Da").kind(),
+            CursorContextKind::ModulePath,
+            "{text}"
+        );
+        assert_eq!(
+            classify(text, "Da").module_path_role(),
+            ModulePathRole::Expression,
+            "{text}"
+        );
+    }
+    assert_eq!(
+        classify("fn main() { Outer { value: amo }; }", "amo").kind(),
+        CursorContextKind::Expression
+    );
+    assert_eq!(
+        classify("fn main() { Outer { nested: Inner { na } }; }", "na").kind(),
+        CursorContextKind::RecordExpressionField
+    );
+}

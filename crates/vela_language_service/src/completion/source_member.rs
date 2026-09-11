@@ -4,13 +4,15 @@ use vela_analysis::completion::{
 use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ImplMetadataKind};
+use vela_hir::type_hint::{
+    EnumVariantFieldsHint, FunctionSignature, HirTypeHint, ImplMetadataKind,
+};
 
 use crate::CompletionSymbol;
 use crate::callable_context::query_type_fact_from_hint;
 use crate::symbol_ref::{
     qualified_source_declaration_name, source_impl_method_symbol, source_impl_owner_matches,
-    source_member_symbol,
+    source_member_symbol, source_variant_field_symbol,
 };
 
 pub(super) fn source_member_completion_candidates(
@@ -20,7 +22,59 @@ pub(super) fn source_member_completion_candidates(
 ) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
     source_field_completion_items(graph, schema, receiver)
         .into_iter()
+        .chain(source_variant_field_completion_items(
+            graph, schema, receiver,
+        ))
         .chain(source_method_completion_items(graph, schema, receiver))
+        .collect()
+}
+
+fn source_variant_field_completion_items(
+    graph: &ModuleGraph,
+    schema: &RegistryFacts,
+    receiver: &TypeFact,
+) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
+    if let TypeFact::Union(facts) = receiver {
+        return facts
+            .iter()
+            .flat_map(|fact| source_variant_field_completion_items(graph, schema, fact))
+            .collect();
+    }
+    let TypeFact::Enum {
+        name,
+        variant: Some(variant),
+    } = receiver
+    else {
+        return Vec::new();
+    };
+    let Some(declaration) = graph.declarations().find(|declaration| {
+        declaration.kind == DeclarationKind::Enum
+            && declaration_name_matches(graph, declaration.id, name)
+    }) else {
+        return Vec::new();
+    };
+    let Some(fields) = graph
+        .enum_shape(declaration.id)
+        .and_then(|shape| shape.variants.iter().find(|entry| entry.name == *variant))
+        .and_then(|entry| match &entry.fields {
+            EnumVariantFieldsHint::Record(fields) => Some(fields),
+            _ => None,
+        })
+    else {
+        return Vec::new();
+    };
+    fields
+        .iter()
+        .filter_map(|field| {
+            Some((
+                AnalysisCompletionItem {
+                    label: field.name.clone(),
+                    kind: AnalysisCompletionKind::Field,
+                    fact: type_fact_from_optional_hint(graph, schema, field.type_hint.as_ref()),
+                },
+                source_variant_field_symbol(graph, declaration.id, variant, &field.name)?,
+            ))
+        })
         .collect()
 }
 

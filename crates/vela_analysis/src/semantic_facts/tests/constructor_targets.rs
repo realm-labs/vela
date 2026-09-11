@@ -133,6 +133,25 @@ pub enum State { Ready { amount: i64 }, Idle }
     .expect("executable analysis");
     let analysis = generation.view(function).expect("main analysis");
 
+    for expression in body
+        .expressions
+        .values()
+        .filter(|expression| matches!(expression.kind, HirExprKind::Record { .. }))
+    {
+        if matches!(
+            constructor_path(body, expression.id).as_str(),
+            "ImportedState::Ready" | "game::schema::State::Ready"
+        ) {
+            assert_eq!(
+                analysis.expression(expression.id),
+                Some(&crate::type_fact::TypeFact::enum_type(
+                    "game::schema::State",
+                    Some("Ready")
+                ))
+            );
+        }
+    }
+
     let constructors = body
         .expressions
         .values()

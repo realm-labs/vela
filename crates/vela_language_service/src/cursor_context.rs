@@ -13,7 +13,9 @@ mod record_expression_field;
 mod record_type_field;
 mod statement_boundary;
 use pattern::is_pattern_context;
-use record_expression_field::is_record_expression_field_context;
+use record_expression_field::{
+    is_record_expression_field_context, is_record_expression_value_context,
+};
 use record_type_field::is_record_type_field_context;
 use statement_boundary::{is_inside_item, is_statement_context};
 
@@ -193,7 +195,10 @@ pub fn cursor_context_at(
         );
     }
 
-    if is_type_context(text, prefix_start)
+    let record_value_context = syntax_parse
+        .as_ref()
+        .is_some_and(|parse| is_record_expression_value_context(&parse.tree(), prefix_start));
+    if (is_type_context(text, prefix_start) && !record_value_context)
         || (syntax_type_context && !before_prefix.trim_end().ends_with("::"))
     {
         return context(
@@ -249,6 +254,8 @@ pub fn cursor_context_at(
         cursor.module_base = Some(module_path.base);
         cursor.module_path_role = if syntax_type_context {
             ModulePathRole::Type
+        } else if record_value_context {
+            ModulePathRole::Expression
         } else {
             module_path.role
         };

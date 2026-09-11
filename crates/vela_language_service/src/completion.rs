@@ -27,6 +27,7 @@ mod module_path;
 mod named_argument;
 mod pattern;
 mod record_field;
+mod record_field_source;
 #[cfg(test)]
 mod record_field_tests;
 mod relevance;

@@ -6,7 +6,7 @@ use vela_analysis::{
     registry::RegistryFacts,
     type_fact::TypeFact,
 };
-use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
+use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph, Visibility};
 use vela_package::{ModuleKey, ModulePath};
 
 use super::{
@@ -52,17 +52,31 @@ pub(super) fn module_path_completion_items(
                 fact: TypeFact::module(format!("{base}::{segment}")),
             }),
     );
-    service_items.extend(script_enum_variant_path_completions(
-        graph,
-        &current_module.package,
-        base,
-        context.prefix(),
-    ));
-    service_items.extend(schema_enum_variant_path_completions(
-        schema,
-        base,
-        context.prefix(),
-    ));
+    let current_id = graph.module_id(current_module);
+    let source_enum = current_id
+        .and_then(|module| {
+            graph.resolve_visible_declaration_path(
+                module,
+                &base.split("::").map(str::to_owned).collect::<Vec<_>>(),
+                DeclarationKind::Enum,
+            )
+        })
+        .filter(|declaration| {
+            Some(declaration.module) == current_id || declaration.visibility == Visibility::Public
+        });
+    if let Some(declaration) = source_enum {
+        service_items.extend(script_enum_variant_path_completions(
+            graph,
+            declaration,
+            context.prefix(),
+        ));
+    } else {
+        service_items.extend(schema_enum_variant_path_completions(
+            schema,
+            base,
+            context.prefix(),
+        ));
+    }
     for item in analysis_items {
         if let Some(service_item) = service_item_for_module_path(item, base, context.prefix()) {
             service_items.push(service_item);
@@ -116,39 +130,39 @@ fn service_item_for_module_path(
 
 fn script_enum_variant_path_completions(
     graph: &ModuleGraph,
-    package: &vela_package::PackageId,
-    base: &str,
+    declaration: &Declaration,
     prefix: &str,
 ) -> Vec<CompletionItem> {
-    graph
-        .declarations_by_path_base(package, base, DeclarationKind::Enum)
-        .into_iter()
-        .filter_map(|declaration| {
-            let owner = declaration_owner_label(graph, declaration)?;
-            let shape = graph.enum_shape(declaration.id)?;
-            Some(shape.variants.iter().filter_map(move |variant| {
-                let symbol = source_enum_variant_symbol(graph, declaration.id, &variant.name)?;
-                let detail_parts = display_type_detail_parts(&owner);
-                Some(
-                    CompletionItem {
-                        label: variant.name.clone(),
-                        kind: CompletionKind::Variant,
-                        detail: detail_parts.render(),
-                        insert_text: None,
-                        insert_format: CompletionInsertFormat::PlainText,
-                        metadata: Default::default(),
-                        sort_text: Some(completion_sort_text(
-                            CompletionKind::Variant,
-                            &variant.name,
-                            prefix,
-                        )),
-                    }
-                    .with_detail_parts(detail_parts)
-                    .with_symbol(symbol),
-                )
-            }))
+    let Some(owner) = declaration_owner_label(graph, declaration) else {
+        return Vec::new();
+    };
+    let Some(shape) = graph.enum_shape(declaration.id) else {
+        return Vec::new();
+    };
+    shape
+        .variants
+        .iter()
+        .filter_map(|variant| {
+            let symbol = source_enum_variant_symbol(graph, declaration.id, &variant.name)?;
+            let detail_parts = display_type_detail_parts(&owner);
+            Some(
+                CompletionItem {
+                    label: variant.name.clone(),
+                    kind: CompletionKind::Variant,
+                    detail: detail_parts.render(),
+                    insert_text: Some(variant.name.clone()),
+                    insert_format: CompletionInsertFormat::PlainText,
+                    metadata: Default::default(),
+                    sort_text: Some(completion_sort_text(
+                        CompletionKind::Variant,
+                        &variant.name,
+                        prefix,
+                    )),
+                }
+                .with_detail_parts(detail_parts)
+                .with_symbol(symbol),
+            )
         })
-        .flatten()
         .collect()
 }
 
@@ -158,7 +172,7 @@ fn schema_enum_variant_path_completions(
     prefix: &str,
 ) -> Vec<CompletionItem> {
     schema
-        .variants_for_owner_or_short_name(base)
+        .variants_for_owner(base)
         .into_iter()
         .map(|variant| {
             let owner = variant.owner;
@@ -169,7 +183,7 @@ fn schema_enum_variant_path_completions(
                 label: name.clone(),
                 kind: CompletionKind::Variant,
                 detail: detail_parts.render(),
-                insert_text: None,
+                insert_text: Some(name.clone()),
                 insert_format: CompletionInsertFormat::PlainText,
                 sort_text: Some(sort_text),
                 metadata: Default::default(),

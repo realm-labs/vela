@@ -1,10 +1,7 @@
-use vela_analysis::hints::type_fact_from_hint;
 use vela_analysis::registry::RegistryFacts;
-use vela_analysis::type_fact::TypeFact;
 use vela_common::SourceId;
 use vela_hir::body::{HirBody, HirExprKind};
-use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_hir::type_hint::StructFieldHint;
+use vela_hir::module_graph::ModuleGraph;
 use vela_syntax::ast::{
     AstNode, SyntaxBlock, SyntaxConstItem, SyntaxExpression, SyntaxExpressionKind,
     SyntaxFunctionItem, SyntaxLambdaBody, SyntaxMatchArm, SyntaxMatchArmBody, SyntaxSourceFile,
@@ -12,11 +9,12 @@ use vela_syntax::ast::{
 };
 use vela_syntax::{SyntaxKind, TextSize};
 
+use super::record_field_source::source_record_field_completions;
 use super::{
     CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
     accumulator::CompletionAccumulator, display_type_detail_parts, model::RecordConstructor,
 };
-use crate::symbol_ref::{schema_member_symbol, source_member_symbol};
+use crate::symbol_ref::schema_member_symbol;
 
 pub(super) fn record_constructor_at(
     body: Option<&HirBody>,
@@ -120,11 +118,8 @@ pub(super) fn record_field_completion_items(
     let Some(constructor) = context.record_constructor.as_ref() else {
         return Vec::new();
     };
-    let items = if script_record_constructor_declaration(graph, constructor).is_some() {
-        script_record_field_completions(graph, constructor)
-    } else {
-        schema_record_field_completions(schema, constructor)
-    };
+    let items = source_record_field_completions(graph, schema, constructor)
+        .unwrap_or_else(|| schema_record_field_completions(schema, constructor));
     let existing_fields = constructor
         .field_names
         .iter()
@@ -426,60 +421,6 @@ fn syntax_offset(offset: usize) -> Option<TextSize> {
     Some(TextSize::from(offset))
 }
 
-fn script_record_field_completions(
-    graph: &ModuleGraph,
-    constructor: &RecordConstructor,
-) -> Vec<CompletionItem> {
-    let Some(declaration) = script_record_constructor_declaration(graph, constructor) else {
-        return Vec::new();
-    };
-    let Some(shape) = graph.struct_shape(declaration.id) else {
-        return Vec::new();
-    };
-    shape
-        .fields
-        .iter()
-        .filter_map(|field| {
-            Some(
-                field_completion_from_hint(graph, field).with_symbol(source_member_symbol(
-                    graph,
-                    declaration.id,
-                    &field.name,
-                )?),
-            )
-        })
-        .collect()
-}
-
-fn script_record_constructor_declaration<'a>(
-    graph: &'a ModuleGraph,
-    constructor: &RecordConstructor,
-) -> Option<&'a vela_hir::module_graph::Declaration> {
-    graph.declaration_by_type_path(
-        &constructor.path,
-        constructor.current_module.as_ref()?,
-        DeclarationKind::Struct,
-    )
-}
-
-fn field_completion_from_hint(graph: &ModuleGraph, field: &StructFieldHint) -> CompletionItem {
-    let fact = field
-        .type_hint
-        .as_ref()
-        .map_or(TypeFact::Unknown, |hint| type_fact_from_hint(graph, hint));
-    let detail_parts = display_type_detail_parts(fact.display_name());
-    CompletionItem {
-        label: field.name.clone(),
-        kind: CompletionKind::Field,
-        detail: detail_parts.render(),
-        insert_text: Some(field.name.clone()),
-        insert_format: CompletionInsertFormat::PlainText,
-        sort_text: None,
-        metadata: Default::default(),
-    }
-    .with_detail_parts(detail_parts)
-}
-
 fn schema_record_field_completions(
     schema: &RegistryFacts,
     constructor: &RecordConstructor,
@@ -488,6 +429,8 @@ fn schema_record_field_completions(
     schema
         .fields_for_owner(&owner)
         .into_iter()
+        // Numeric schema slots describe tuple variants, not record labels.
+        .filter(|field| field.name.parse::<usize>().is_err())
         .map(|field| {
             let owner = field.owner;
             let name = field.name;

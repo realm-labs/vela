@@ -8,8 +8,17 @@ use crate::{
 
 #[test]
 fn member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries() {
+    assert_member_matrix("completion-members");
+}
+
+#[test]
+fn enum_matrix_preserves_variant_identity_fields_edits_and_unknown_boundaries() {
+    assert_member_matrix("completion-enums");
+}
+
+fn assert_member_matrix(fixture_id: &str) {
     for crlf in [false, true] {
-        let mut spec = load("completion-members");
+        let mut spec = load(fixture_id);
         if crlf {
             for source in spec.files.values_mut() {
                 *source = source.replace('\n', "\r\n");
@@ -66,7 +75,13 @@ fn member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries() {
                 .map(|item| item["label"].as_str().expect("label"))
                 .collect::<Vec<_>>();
             expected.sort_unstable();
-            assert_eq!(actual, expected, "{}", query["id"]);
+            assert_eq!(
+                actual,
+                expected,
+                "{}: {:?}",
+                query["id"],
+                completion.analysis()
+            );
             for expected in query["items"].as_array().expect("items") {
                 let item = completion
                     .items()

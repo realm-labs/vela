@@ -1018,17 +1018,32 @@
     },
     {
       "id": "B03.4",
-      "revision": null,
+      "revision": "da0bf1a4b",
       "requirements": [
         "completion/states/repeat/protocol",
         "completion/states/dynamic/protocol",
         "completion/states/unresolved/protocol"
       ],
       "summary": "Add 25 shared source/schema member and record-constructor queries in both layers. Exact candidate-set assertions exposed cross-module short-name field/method leakage, wrong trait owner lookup, same-named schema fields attached to source records, missing constructor field symbols/explicit edits, and missing qualified schema constructors falling back to bare owners. Resolve source/impl/trait identity within its module, preserve source versus Host schema boundaries, emit explicit member/constructor field edits, and require exact schema constructor owner. Replace the old mixed-source/schema index expectation with stronger source exclusion and Host-positive assertions; no tests were removed. Assert exact symbols, details, lazy docs, LF/CRLF UTF-16 edits, applied snippets/source, repeated result equality, used-field exclusion and known source/schema Any return facts with matching local/function negative controls. Service 578 plus two historical ignored, protocol 574, Node 69, relevant Clippy/fmt, installed VSIX 9 and checkpoint tests pass. Final run-uSOAgr verifies three state obligations with zero failed commands and matching source identity; installed run-pvSB0x. Preserve run-Wwk3Oq and first editor run as failed audit exploration: catalog initially linked a service test to a protocol-only obligation, corrected without changing validation policy. S4 remains unreviewed until enum variants/constructors and remaining semantic partitions are covered. Continue B03.5 with that scope; B03 remains unaccepted, whole-batch remaining scope stays 1332 and B16 remains deferred. Native input evidence still requires the recorded desktop-unlock prerequisite; no stale proof is promoted. Find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B03.5",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S4/positive/service",
+        "completion/syntax/S4/positive/protocol",
+        "completion/syntax/S4/negative/service",
+        "completion/syntax/S4/negative/protocol",
+        "completion-resolve/syntax/S4/positive/service",
+        "completion-resolve/syntax/S4/positive/protocol",
+        "completion-resolve/syntax/S4/negative/service",
+        "completion-resolve/syntax/S4/negative/protocol"
+      ],
+      "summary": "Add 34 shared enum queries and extend the member fixture to 27 queries. Cover source/schema unit, tuple and record variant paths, imported/local/qualified/private owners, record labels/shorthand/used fields, known variant member fields, wrong constructor shapes and unknown targets. Fix source/schema enum leakage and broad name lookup with visible module resolution; emit explicit variant edits and preserve source record-variant field ownership. Extract source record-field production with owned empty results for invalid/private variants. Preserve known record-constructor variant TypeFacts in shared semantic analysis, with direct constructor-fact assertions. Fix CST field classification to exclude constructor paths and field values, including qualified expression role after a colon; suppress numeric schema tuple slots in record-label completion. Full workspace 4384 passed plus two historical ignored, workspace Clippy and formatting passed; Node 69, service 580 plus two historical ignored, protocol 575 and installed VSIX 9 passed. Final run-lAswh1 verifies all eight S4 syntax obligations against matching source identity; installed run-VCTMMf. Preserve the first workspace failure and focused reproduction logs. B03 remains unaccepted; whole-batch remaining scope stays 1332. Continue B03.6 callable/named-argument and S5 coverage, then remaining syntax/lifecycle/UX04. Fresh native input proof is still required before strict batch acceptance; the latest native attempt recorded a desktop-lock prerequisite, and no old evidence is promoted. B16 stays deferred. Find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.5",
-  "nextTask": "B03.5",
+  "activeChild": "B03.6",
+  "nextTask": "B03.6",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",

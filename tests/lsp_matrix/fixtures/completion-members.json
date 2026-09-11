@@ -29,7 +29,9 @@
     "scripts/query_schema_record.vela": "/* 中😀 */ fn main() { let level = 1; let p = HostPlayer { child: null, [[replace:start]]le[[cursor]][[replace:end]] }; }\n",
     "scripts/query_unknown_record.vela": "/* 中😀 */ fn main() { let level = 1; let p = Missing { [[replace:start]]le[[cursor]][[replace:end]] }; }\n",
     "scripts/query_used_record.vela": "/* 中😀 */ fn main() { let p = alpha::Player { level: 1, child: null, [[replace:start]][[cursor]][[replace:end]] }; }\n",
-    "scripts/query_unknown_qualified_record.vela": "/* 中😀 */ fn main() { let level = 1; let p = missing::HostPlayer { [[replace:start]]le[[cursor]][[replace:end]] }; }\n"
+    "scripts/query_unknown_qualified_record.vela": "/* 中😀 */ fn main() { let level = 1; let p = missing::HostPlayer { [[replace:start]]le[[cursor]][[replace:end]] }; }\n",
+    "scripts/query_schema_trait.vela": "/* 中😀 */ fn main(p: HostRewardable) { p.[[replace:start]]pre[[cursor]][[replace:end]]; }\n",
+    "scripts/query_schema_write.vela": "/* 中😀 */ fn main(p: HostPlayer) { p.[[replace:start]]le[[cursor]][[replace:end]] = 2; }\n"
   },
   "actions": [],
   "oracle": {
@@ -90,7 +92,7 @@
           "name": "leaked_schema",
           "fact": {
             "kind": "primitive",
-            "name": "String"
+            "name": "string"
           },
           "docs": "Must not leak into source type."
         }
@@ -136,6 +138,30 @@
               "kind": "any"
             }
           }
+        }
+      ],
+      "traits": [
+        {
+          "name": "HostRewardable",
+          "fact": {
+            "kind": "trait",
+            "name": "HostRewardable"
+          }
+        }
+      ],
+      "traitMethods": [
+        {
+          "owner": "HostRewardable",
+          "name": "preview",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "primitive",
+              "name": "bool"
+            }
+          },
+          "docs": "Host trait preview docs."
         }
       ]
     },
@@ -646,6 +672,52 @@
         "context": "RecordField",
         "items": [],
         "apply": null
+      },
+      {
+        "id": "schema_trait",
+        "file": "scripts/query_schema_trait.vela",
+        "context": "Member",
+        "apply": "preview",
+        "items": [
+          {
+            "label": "preview",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function() -> bool",
+            "symbolKind": "schema",
+            "symbol": "HostRewardable.preview",
+            "docs": "Host trait preview docs.",
+            "insert": "preview($0)"
+          }
+        ]
+      },
+      {
+        "id": "schema_write",
+        "file": "scripts/query_schema_write.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "level",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "schema",
+            "symbol": "HostPlayer.level",
+            "docs": "Host level docs 中😀.",
+            "insert": "level"
+          },
+          {
+            "label": "level_up",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function(i64) -> bool",
+            "symbolKind": "schema",
+            "symbol": "HostPlayer.level_up",
+            "docs": "Host level_up docs.",
+            "insert": "level_up($0)"
+          }
+        ],
+        "apply": "level"
       }
     ]
   }

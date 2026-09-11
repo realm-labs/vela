@@ -2835,6 +2835,118 @@
           "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
         }
       ]
+    },
+    {
+      "requirement": "completion/syntax/S4/positive/service",
+      "assertion": "Two shared fixtures cover exact source/schema field and method sets, source/default/schema trait methods, chained and returned receivers, field writes, source/schema unit/tuple/record variants, imported/local/qualified enum owners, and record constructor shorthand/explicit labels. Assert kind, detail, identity, explicit UTF-16 edit and applied source; re-query keeps member identity or removes used constructor fields.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::enum_matrix_preserves_variant_identity_fields_edits_and_unknown_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S4/positive/protocol",
+      "assertion": "Two shared fixtures cover exact source/schema field and method sets, source/default/schema trait methods, chained and returned receivers, field writes, source/schema unit/tuple/record variants, imported/local/qualified enum owners, and record constructor shorthand/explicit labels. Assert kind, detail, identity, explicit UTF-16 edit and applied source; re-query keeps member identity or removes used constructor fields.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::enum_matrix_projects_exact_variant_and_constructor_completion_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S4/negative/service",
+      "assertion": "Complete candidate-set oracles reject members/variants from same-named foreign modules or same-named schema types, inaccessible enums, missing owners/variants/qualified constructors, dynamic receivers and used fields. Tuple/unit variants used as record constructors expose no fields; schema numeric tuple slots cannot become record labels. Constructor paths remain module-path completion contexts even before record bodies.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::enum_matrix_preserves_variant_identity_fields_edits_and_unknown_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S4/negative/protocol",
+      "assertion": "Complete candidate-set oracles reject members/variants from same-named foreign modules or same-named schema types, inaccessible enums, missing owners/variants/qualified constructors, dynamic receivers and used fields. Tuple/unit variants used as record constructors expose no fields; schema numeric tuple slots cannot become record labels. Constructor paths remain module-path completion contexts even before record bodies.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::enum_matrix_projects_exact_variant_and_constructor_completion_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/syntax/S4/positive/service",
+      "assertion": "Resolve actual field, method, trait method, enum variant and record-constructor field candidates from both source and schema fixtures. Exact source/schema symbol ownership and independently declared schema Markdown docs are checked; protocol resolution preserves every candidate field except expected documentation.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::enum_matrix_preserves_variant_identity_fields_edits_and_unknown_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/syntax/S4/positive/protocol",
+      "assertion": "Resolve actual field, method, trait method, enum variant and record-constructor field candidates from both source and schema fixtures. Exact source/schema symbol ownership and independently declared schema Markdown docs are checked; protocol resolution preserves every candidate field except expected documentation.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::enum_matrix_projects_exact_variant_and_constructor_completion_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/syntax/S4/negative/service",
+      "assertion": "Real source member/trait/variant/record-field candidates receive no fabricated schema docs even with colliding schema owner names. Full item equality after resolution proves edit and ownership preservation. Unknown, inaccessible and wrong-shape constructor sites produce no candidate/payload to resolve.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::enum_matrix_preserves_variant_identity_fields_edits_and_unknown_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/syntax/S4/negative/protocol",
+      "assertion": "Real source member/trait/variant/record-field candidates receive no fabricated schema docs even with colliding schema owner names. Full item equality after resolution proves edit and ownership preservation. Unknown, inaccessible and wrong-shape constructor sites produce no candidate/payload to resolve.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::enum_matrix_projects_exact_variant_and_constructor_completion_edits"
+        }
+      ]
     }
   ],
   "featureFiles": [
