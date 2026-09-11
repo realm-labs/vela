@@ -86,46 +86,55 @@ fn initialize_loads_unopened_package_sources_from_encoded_workspace_uri() {
 #[test]
 fn navigation_projects_target_byte_columns_to_utf16_from_unsaved_cross_file_text() {
     for method in ["textDocument/definition", "textDocument/declaration"] {
-        let mut server = TestServer::new();
-        let _ = request::<lsp_types::request::Initialize>(
-            &mut server,
-            1,
-            serde_json::json!({
-                "processId": null,
-                "rootUri": "file:///workspace/scripts",
-                "capabilities": {}
-            }),
-        );
-        let target_uri = "file:///workspace/scripts/helpers.vela";
-        let target =
-            "// unsaved overlay\r\n/* 中文 😀 */ pub fn increment(value) { return value + 1; }\r\n";
-        let caller_uri = "file:///workspace/scripts/main.vela";
-        let caller = "use helpers::increment;\nfn main() { return increment(41); }\n";
-        for (uri, text) in [(target_uri, target), (caller_uri, caller)] {
-            let _ = notify::<lsp_types::notification::DidOpenTextDocument>(
-                &mut server,
-                serde_json::json!({
-                    "textDocument": { "uri": uri, "languageId": "vela", "version": 1, "text": text }
-                }),
-            );
+        for newline in ["\n", "\r\n"] {
+            assert_unicode_navigation(method, newline);
         }
-        let response = response_value(navigation_request(
+    }
+}
+
+fn assert_unicode_navigation(method: &str, newline: &str) {
+    let mut server = TestServer::new();
+    let _ = request::<lsp_types::request::Initialize>(
+        &mut server,
+        1,
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    );
+    let target_uri = "file:///workspace/scripts/helpers.vela";
+    let target = format!(
+        "// unsaved overlay{newline}/* 中文 😀 */ pub fn increment(value) {{ return value + 1; }}{newline}"
+    );
+    let caller_uri = "file:///workspace/scripts/main.vela";
+    let caller = format!(
+        "use helpers::increment;{newline}fn main() {{ /* 中文 😀 */ return increment(41); }}{newline}"
+    );
+    for (uri, text) in [(target_uri, target.as_str()), (caller_uri, caller.as_str())] {
+        let _ = notify::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
-            2,
-            method,
             serde_json::json!({
-                "textDocument": { "uri": caller_uri },
-                "position": { "line": 1, "character": 20 }
+                "textDocument": { "uri": uri, "languageId": "vela", "version": 1, "text": text }
             }),
-        ));
-        let start = "/* 中文 😀 */ pub fn ".encode_utf16().count();
-        assert_eq!(response["result"]["uri"], target_uri, "{response}");
-        assert_eq!(
-            response["result"]["range"],
-            serde_json::json!({
-                "start": { "line": 1, "character": start },
-                "end": { "line": 1, "character": start + "increment".len() }
-            })
         );
     }
+    let response = response_value(navigation_request(
+        &mut server,
+        2,
+        method,
+        serde_json::json!({
+            "textDocument": { "uri": caller_uri },
+            "position": { "line": 1, "character": "fn main() { /* 中文 😀 */ return ".encode_utf16().count() }
+        }),
+    ));
+    let start = "/* 中文 😀 */ pub fn ".encode_utf16().count();
+    assert_eq!(response["result"]["uri"], target_uri, "{response}");
+    assert_eq!(
+        response["result"]["range"],
+        serde_json::json!({
+            "start": { "line": 1, "character": start },
+            "end": { "line": 1, "character": start + "increment".len() }
+        })
+    );
 }
