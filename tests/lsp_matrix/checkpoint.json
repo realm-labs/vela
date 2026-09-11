@@ -322,7 +322,7 @@
     },
     {
       "id": "B02.11",
-      "revision": null,
+      "revision": "33deb0772",
       "requirements": [
         "definition/syntax/S1/positive/service",
         "definition/syntax/S1/positive/protocol",
@@ -338,10 +338,29 @@
         "type-definition/syntax/S1/negative/protocol"
       ],
       "summary": "67 independent declaration/header/body queries in LF/CRLF supplement prior imports, constructors, calls, capture/shadowing and recovery evidence to verify the 12 S1 cells. Exact source metadata identifies owned names and known types across top-level declarations, fields, variants, callable parameters and methods; query-selected binding maps preserve method locals. Impl header paths use CST token ranges and visibility instead of name matching throughout a body. Remove broad synthetic impl-name fallback, which exposed whole implementation ranges for the impl keyword. Validation: service 573 passed with 2 existing ignored, protocol 566 passed, infrastructure 59 passed; relevant Clippy and formatting passed. Retain the initial lint and concurrent-format source-identity rejection; final run-X05YNx has 108 verified, 3 editor mapped, 1214 unreviewed, 2 existing N/A, zero failures. B02 S10 ownership review, including schema namespace origins, and installed workbench routes remain open; find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B02.12",
+      "revision": null,
+      "requirements": [
+        "definition/syntax/S10/positive/service",
+        "definition/syntax/S10/positive/protocol",
+        "definition/syntax/S10/negative/service",
+        "definition/syntax/S10/negative/protocol",
+        "declaration/syntax/S10/positive/service",
+        "declaration/syntax/S10/positive/protocol",
+        "declaration/syntax/S10/negative/service",
+        "declaration/syntax/S10/negative/protocol",
+        "type-definition/syntax/S10/positive/service",
+        "type-definition/syntax/S10/positive/protocol",
+        "type-definition/syntax/S10/negative/service",
+        "type-definition/syntax/S10/negative/protocol"
+      ],
+      "summary": "24 independent namespace queries in LF/CRLF supplement source/local/parameter/member/variant, schema, stdlib, builtin and Any fixtures to verify the 12 S10 cells. Resolve schema paths and origin spans by qualified owner; honor source and local collisions, distinguish module prefixes from terminal bindings, and never borrow unqualified type/trait targets for missing qualified returns. Source-backed schema modules expose validated origins while source/stdlib/metadata-only modules have no invented target/type. Validation: service 574 passed with 2 existing ignored, protocol 567 passed, infrastructure 59 passed; relevant Clippy and formatting passed. Preserve namespace and missing-return reproductions. All 120 current B02 service/protocol obligations are verified; 19 installed provider/workbench obligations remain before parent acceptance. Find this commit by LSP-Batch trailer. Final audit run-QAlPye: 120 verified, 3 editor mapped, 1202 unreviewed, 2 existing N/A, zero failures; all 14 checkpoint tests passed."
     }
   ],
-  "activeChild": "B02.12",
-  "nextTask": "B02.12",
+  "activeChild": "B02.13",
+  "nextTask": "B02.13",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -1894,7 +1913,20 @@
     "target/lsp-matrix/b02-owned-declarations-audit.log",
     "target/lsp-matrix/b02-owned-declarations-clippy-final.log",
     "target/lsp-matrix/b02-owned-declarations-audit-final.log",
-    "target/lsp-matrix/run-X05YNx/report.json"
+    "target/lsp-matrix/run-X05YNx/report.json",
+    "target/lsp-matrix/b02-namespaces-baseline.log",
+    "target/lsp-matrix/b02-namespaces-reproduction.log",
+    "target/lsp-matrix/b02-namespaces-qualified.log",
+    "target/lsp-matrix/b02-namespaces-qualified-prefix.log",
+    "target/lsp-matrix/b02-namespaces-regression.log",
+    "target/lsp-matrix/b02-namespaces-missing-return.log",
+    "target/lsp-matrix/b02-namespaces-exact-returns.log",
+    "target/lsp-matrix/b02-namespaces-clippy.log",
+    "target/lsp-matrix/b02-namespaces-audit.log",
+    "target/lsp-matrix/run-UNeJdc/report.json",
+    "target/lsp-matrix/b02-namespaces-audit-final.log",
+    "target/lsp-matrix/run-QAlPye/report.json",
+    "target/lsp-matrix/b02-namespaces-checkpoint.log"
   ],
   "openIssues": [
     {

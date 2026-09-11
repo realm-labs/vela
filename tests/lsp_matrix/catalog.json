@@ -2119,6 +2119,462 @@
           "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
         }
       ]
+    },
+    {
+      "requirement": "definition/syntax/S10/positive/service",
+      "assertion": "Independent LF/CRLF marker oracles distinguish local/parameter bindings, exact source declarations/members/variants, source-backed schema host/trait/member/variant/function facts, and qualified namespace origins. Source and local ownership win over same-named schema facts; alpha/beta/nested schema paths keep distinct targets despite unqualified decoys. Navigation selects the owned declaration or validated schema source span; schema namespaces with origins navigate there, while filesystem modules expose no invented declaration range.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_namespace_matrix_preserves_qualified_schema_and_source_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_owned_declaration_matrix_preserves_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_type_position_matrix_covers_builtin_nested_and_declaration_hints"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_member_matrix_pins_source_ownership_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S10/positive/protocol",
+      "assertion": "Independent LF/CRLF marker oracles distinguish local/parameter bindings, exact source declarations/members/variants, source-backed schema host/trait/member/variant/function facts, and qualified namespace origins. Source and local ownership win over same-named schema facts; alpha/beta/nested schema paths keep distinct targets despite unqualified decoys. Navigation selects the owned declaration or validated schema source span; schema namespaces with origins navigate there, while filesystem modules expose no invented declaration range.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_namespace_matrix_projects_exact_qualified_origins_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_owned_declaration_matrix_projects_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_type_position_matrix_projects_exact_nested_targets_and_builtin_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S10/negative/service",
+      "assertion": "Exact null assertions cover known stdlib functions/methods (guarded by callable hover facts), builtin type hints, filesystem and stdlib modules, metadata-only schema modules/types/members, dynamic Any and unresolved paths. Qualified missing or metadata-only type/trait returns cannot borrow unqualified schema or source targets. Module prefixes cannot inherit a callee target/type; local shadowing and source/schema collisions retain the selected owner. Unresolved/member calls do not infer targets from spelling.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_namespace_matrix_preserves_qualified_schema_and_source_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_owned_declaration_matrix_preserves_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_type_position_matrix_covers_builtin_nested_and_declaration_hints"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_member_matrix_pins_source_ownership_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S10/negative/protocol",
+      "assertion": "Exact null assertions cover known stdlib functions/methods (guarded by callable hover facts), builtin type hints, filesystem and stdlib modules, metadata-only schema modules/types/members, dynamic Any and unresolved paths. Qualified missing or metadata-only type/trait returns cannot borrow unqualified schema or source targets. Module prefixes cannot inherit a callee target/type; local shadowing and source/schema collisions retain the selected owner. Unresolved/member calls do not infer targets from spelling.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_namespace_matrix_projects_exact_qualified_origins_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_owned_declaration_matrix_projects_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_type_position_matrix_projects_exact_nested_targets_and_builtin_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S10/positive/service",
+      "assertion": "Independent LF/CRLF marker oracles distinguish local/parameter bindings, exact source declarations/members/variants, source-backed schema host/trait/member/variant/function facts, and qualified namespace origins. Source and local ownership win over same-named schema facts; alpha/beta/nested schema paths keep distinct targets despite unqualified decoys. Navigation selects the owned declaration or validated schema source span; schema namespaces with origins navigate there, while filesystem modules expose no invented declaration range.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_namespace_matrix_preserves_qualified_schema_and_source_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_owned_declaration_matrix_preserves_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_type_position_matrix_covers_builtin_nested_and_declaration_hints"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_member_matrix_pins_source_ownership_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S10/positive/protocol",
+      "assertion": "Independent LF/CRLF marker oracles distinguish local/parameter bindings, exact source declarations/members/variants, source-backed schema host/trait/member/variant/function facts, and qualified namespace origins. Source and local ownership win over same-named schema facts; alpha/beta/nested schema paths keep distinct targets despite unqualified decoys. Navigation selects the owned declaration or validated schema source span; schema namespaces with origins navigate there, while filesystem modules expose no invented declaration range.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_namespace_matrix_projects_exact_qualified_origins_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_owned_declaration_matrix_projects_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_type_position_matrix_projects_exact_nested_targets_and_builtin_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S10/negative/service",
+      "assertion": "Exact null assertions cover known stdlib functions/methods (guarded by callable hover facts), builtin type hints, filesystem and stdlib modules, metadata-only schema modules/types/members, dynamic Any and unresolved paths. Qualified missing or metadata-only type/trait returns cannot borrow unqualified schema or source targets. Module prefixes cannot inherit a callee target/type; local shadowing and source/schema collisions retain the selected owner. Unresolved/member calls do not infer targets from spelling.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_namespace_matrix_preserves_qualified_schema_and_source_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_owned_declaration_matrix_preserves_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_type_position_matrix_covers_builtin_nested_and_declaration_hints"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_member_matrix_pins_source_ownership_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S10/negative/protocol",
+      "assertion": "Exact null assertions cover known stdlib functions/methods (guarded by callable hover facts), builtin type hints, filesystem and stdlib modules, metadata-only schema modules/types/members, dynamic Any and unresolved paths. Qualified missing or metadata-only type/trait returns cannot borrow unqualified schema or source targets. Module prefixes cannot inherit a callee target/type; local shadowing and source/schema collisions retain the selected owner. Unresolved/member calls do not infer targets from spelling.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_namespace_matrix_projects_exact_qualified_origins_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_owned_declaration_matrix_projects_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_type_position_matrix_projects_exact_nested_targets_and_builtin_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S10/positive/service",
+      "assertion": "Independent LF/CRLF marker oracles distinguish local/parameter bindings, exact source declarations/members/variants, source-backed schema host/trait/member/variant/function facts, and qualified namespace origins. Source and local ownership win over same-named schema facts; alpha/beta/nested schema paths keep distinct targets despite unqualified decoys. Type navigation selects the owned declared or inferred source/schema type, including qualified callable returns, rather than the value declaration. Namespace/module targets have no source type.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_namespace_matrix_preserves_qualified_schema_and_source_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_owned_declaration_matrix_preserves_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_type_position_matrix_covers_builtin_nested_and_declaration_hints"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_member_matrix_pins_source_ownership_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S10/positive/protocol",
+      "assertion": "Independent LF/CRLF marker oracles distinguish local/parameter bindings, exact source declarations/members/variants, source-backed schema host/trait/member/variant/function facts, and qualified namespace origins. Source and local ownership win over same-named schema facts; alpha/beta/nested schema paths keep distinct targets despite unqualified decoys. Type navigation selects the owned declared or inferred source/schema type, including qualified callable returns, rather than the value declaration. Namespace/module targets have no source type.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_namespace_matrix_projects_exact_qualified_origins_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_owned_declaration_matrix_projects_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_type_position_matrix_projects_exact_nested_targets_and_builtin_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S10/negative/service",
+      "assertion": "Exact null assertions cover known stdlib functions/methods (guarded by callable hover facts), builtin type hints, filesystem and stdlib modules, metadata-only schema modules/types/members, dynamic Any and unresolved paths. Qualified missing or metadata-only type/trait returns cannot borrow unqualified schema or source targets. Module prefixes cannot inherit a callee target/type; local shadowing and source/schema collisions retain the selected owner. Unresolved/member calls do not infer targets from spelling.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_namespace_matrix_preserves_qualified_schema_and_source_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_owned_declaration_matrix_preserves_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_type_position_matrix_covers_builtin_nested_and_declaration_hints"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_member_matrix_pins_source_ownership_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S10/negative/protocol",
+      "assertion": "Exact null assertions cover known stdlib functions/methods (guarded by callable hover facts), builtin type hints, filesystem and stdlib modules, metadata-only schema modules/types/members, dynamic Any and unresolved paths. Qualified missing or metadata-only type/trait returns cannot borrow unqualified schema or source targets. Module prefixes cannot inherit a callee target/type; local shadowing and source/schema collisions retain the selected owner. Unresolved/member calls do not infer targets from spelling.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_namespace_matrix_projects_exact_qualified_origins_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_owned_declaration_matrix_projects_exact_names_and_body_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_type_position_matrix_projects_exact_nested_targets_and_builtin_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        }
+      ]
     }
   ],
   "featureFiles": [

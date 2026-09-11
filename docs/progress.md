@@ -600,8 +600,12 @@ LF/CRLF, marker/edit and disk/overlay fixtures now feed both Rust layers and the
 installed VSIX (seven scenarios). The local Input/Render driver now proves keyboard, pointer, visible candidate and
 exact final document/caret behavior. Evidence validation binds current source,
 profile, fixture, driver and installed VSIX/server bytes. B00 and B01 passed their combined
-strict acceptance. B02 navigation coverage is active; no semantic feature batch
-is accepted yet.
+strict acceptance. B02 has executable proof for all 120 currently registered
+service/protocol obligations. Its remaining 19 obligations cover installed
+providers and local command, keyboard, pointer and rendered navigation workflows
+(UX02/UX03). These require fresh installed evidence before B02 acceptance; no
+semantic feature batch is accepted yet. B14 still owns the later semantic
+partition completeness review.
 
 ### Deferred Tracks
 

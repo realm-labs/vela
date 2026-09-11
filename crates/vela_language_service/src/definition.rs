@@ -57,6 +57,9 @@ impl LanguageServiceDatabases {
         let query = QueryContext::from_databases(self, document_id, position)?;
         let target = SymbolTarget::from_query(self, &query)?;
 
+        if target.is_module_symbol(self) {
+            return self.schema_definition_for_target(&target);
+        }
         if let Some(navigation) = self.source_declaration_navigation(&query, &target) {
             return navigation.definition;
         }
@@ -138,6 +141,9 @@ impl LanguageServiceDatabases {
         let query = QueryContext::from_databases(self, document_id, position)?;
         let target = SymbolTarget::from_query(self, &query)?;
 
+        if target.is_module_symbol(self) {
+            return None;
+        }
         if let Some(navigation) = self.source_declaration_navigation(&query, &target) {
             return navigation.type_definition;
         }
@@ -205,8 +211,8 @@ impl LanguageServiceDatabases {
             return Some(definition);
         }
 
-        if target.is_schema_symbol() {
-            return self.schema_type_definition_for_name(target.text());
+        if let Some(SymbolRef::Schema(name)) = target.symbol() {
+            return self.schema_type_definition_for_name(name);
         }
 
         None
@@ -481,10 +487,6 @@ impl LanguageServiceDatabases {
         self.schema_db()
             .source_locations()
             .type_span(name)
-            .or_else(|| {
-                short_name(name)
-                    .and_then(|short| self.schema_db().source_locations().type_span(short))
-            })
             .and_then(|span| {
                 self.definition_from_span_with_symbol(span, Some(SymbolRef::Schema(name.into())))
             })
@@ -494,10 +496,6 @@ impl LanguageServiceDatabases {
         self.schema_db()
             .source_locations()
             .trait_span(name)
-            .or_else(|| {
-                short_name(name)
-                    .and_then(|short| self.schema_db().source_locations().trait_span(short))
-            })
             .and_then(|span| {
                 self.definition_from_span_with_symbol(span, Some(SymbolRef::Schema(name.into())))
             })
@@ -585,17 +583,15 @@ fn source_declaration_for_fact_name<'a>(
                 && qualified_source_declaration_name(graph, declaration) == name
         })
         .or_else(|| {
-            let short = short_name(name).unwrap_or(name);
+            if name.contains("::") {
+                return None;
+            }
             let mut matches = graph
                 .declarations()
-                .filter(|declaration| declaration.kind == kind && declaration.name == short);
+                .filter(|declaration| declaration.kind == kind && declaration.name == name);
             let declaration = matches.next()?;
             matches.next().is_none().then_some(declaration)
         })
-}
-
-fn short_name(name: &str) -> Option<&str> {
-    name.rsplit("::").next().filter(|short| *short != name)
 }
 
 #[cfg(test)]

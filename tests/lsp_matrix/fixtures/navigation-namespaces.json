@@ -1,0 +1,452 @@
+{
+  "version": 1,
+  "id": "navigation-namespaces",
+  "files": {
+    "scripts/main.vela": "fn run(a: alpha::[[alpha-hint]]Cell, b: beta::[[beta-hint]]Cell, c: missing::[[missing-hint]]Cell) {\n    let text = \"中😀\"; [[alpha-module]]alpha;\n    [[metadata-module]]beta;\n    alpha::[[nested-module]]api;\n    [[module-prefix]]alpha::[[alpha-call]]build();\n    beta::[[beta-call]]build();\n    alpha::api::[[nested-call]]build();\n    missing::[[missing-call]]build();\n    alpha::[[missing-export]]absent();\n    [[source-call]]build();\n    local::[[local-call]]build();\n    [[source-module]]local::build();\n    [[unknown-module]]missing;\n}\nfn shadowed([[shadow:start]]alpha[[shadow:end]]: Any) { [[shadow-use]]alpha; alpha.[[dynamic-method]]build(); }\nstruct [[source-cell:start]]SourceCell[[source-cell:end]] {}\nfn [[source-build:start]]build[[source-build:end]]() -> SourceCell { return SourceCell {}; }\nfn source_type(value: local::[[local-type]]Cell) {}\nfn missing_types(value: gamma::[[metadata-hint]]Cell) {\n    alpha::[[missing-return]]unknown();\n    alpha::[[metadata-return]]opaque();\n    alpha::[[missing-trait-return]]unknown_trait();\n    [[stdlib-module]]math::abs(-1);\n}\ntrait Reader { fn read(self); }\n",
+    "scripts/origins.vela": "/* 中😀 */ fn [[alpha-module:start]]alpha_module_origin[[alpha-module:end]]() {}\n/* 中😀 */ fn [[nested-module:start]]nested_module_origin[[nested-module:end]]() {}\n/* 中😀 */ fn [[alpha-cell:start]]alpha_cell_origin[[alpha-cell:end]]() {}\n/* 中😀 */ fn [[beta-cell:start]]beta_cell_origin[[beta-cell:end]]() {}\n/* 中😀 */ fn [[root-cell:start]]root_cell_origin[[root-cell:end]]() {}\n/* 中😀 */ fn [[alpha-build:start]]alpha_build_origin[[alpha-build:end]]() {}\n/* 中😀 */ fn [[beta-build:start]]beta_build_origin[[beta-build:end]]() {}\n/* 中😀 */ fn [[nested-build:start]]nested_build_origin[[nested-build:end]]() {}\n/* 中😀 */ fn [[root-build:start]]root_build_origin[[root-build:end]]() {}\n/* 中😀 */ fn [[local-cell:start]]local_cell_origin[[local-cell:end]]() {}\n/* 中😀 */ fn [[local-build:start]]local_build_origin[[local-build:end]]() {}\n/* 中😀 */ fn [[fake-local-module:start]]fake_local_module_origin[[fake-local-module:end]]() {}\n",
+    "scripts/local.vela": "/* 中😀 */ pub struct [[cell:start]]Cell[[cell:end]] {}\npub fn [[build:start]]build[[build:end]]() -> Cell { return Cell {}; }\n",
+    "vela.toml": "[package]\nid = 'dev.vela.navigation'\nname = 'navigation'\nversion = '0.1.0'\n[source]\nroots = ['scripts']\n[host]\nschema = 'target/schema.json'\n"
+  },
+  "actions": [],
+  "oracle": {
+    "schema": {
+      "modules": [
+        {
+          "name": "alpha",
+          "fact": {
+            "kind": "module",
+            "name": "alpha"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "alpha-module"
+          }
+        },
+        {
+          "name": "alpha::api",
+          "fact": {
+            "kind": "module",
+            "name": "alpha::api"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "nested-module"
+          }
+        },
+        {
+          "name": "beta",
+          "fact": {
+            "kind": "module",
+            "name": "beta"
+          }
+        },
+        {
+          "name": "local",
+          "fact": {
+            "kind": "module",
+            "name": "local"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "fake-local-module"
+          }
+        }
+      ],
+      "types": [
+        {
+          "name": "alpha::Cell",
+          "fact": {
+            "kind": "host",
+            "name": "alpha::Cell"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "alpha-cell"
+          }
+        },
+        {
+          "name": "beta::Cell",
+          "fact": {
+            "kind": "host",
+            "name": "beta::Cell"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "beta-cell"
+          }
+        },
+        {
+          "name": "Cell",
+          "fact": {
+            "kind": "host",
+            "name": "Cell"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "root-cell"
+          }
+        },
+        {
+          "name": "local::Cell",
+          "fact": {
+            "kind": "host",
+            "name": "local::Cell"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "local-cell"
+          }
+        },
+        {
+          "name": "gamma::Cell",
+          "fact": {
+            "kind": "host",
+            "name": "gamma::Cell"
+          }
+        }
+      ],
+      "functions": [
+        {
+          "name": "alpha::build",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "host",
+              "name": "alpha::Cell"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "alpha-build"
+          }
+        },
+        {
+          "name": "beta::build",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "host",
+              "name": "beta::Cell"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "beta-build"
+          }
+        },
+        {
+          "name": "alpha::api::build",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "host",
+              "name": "alpha::Cell"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "nested-build"
+          }
+        },
+        {
+          "name": "build",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "host",
+              "name": "Cell"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "root-build"
+          }
+        },
+        {
+          "name": "local::build",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "host",
+              "name": "local::Cell"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "local-build"
+          }
+        },
+        {
+          "name": "alpha::unknown",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "host",
+              "name": "missing::Cell"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "alpha-build"
+          }
+        },
+        {
+          "name": "alpha::opaque",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "host",
+              "name": "gamma::Cell"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "alpha-build"
+          }
+        },
+        {
+          "name": "alpha::unknown_trait",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "trait",
+              "name": "missing::Reader"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "alpha-build"
+          }
+        }
+      ],
+      "traits": [
+        {
+          "name": "Reader",
+          "fact": {
+            "kind": "trait",
+            "name": "Reader"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "root-cell"
+          }
+        }
+      ]
+    },
+    "queries": [
+      {
+        "id": "alpha-module",
+        "file": "scripts/main.vela",
+        "cursor": "alpha-module",
+        "definition": "alpha-module",
+        "declaration": "alpha-module",
+        "type-definition": null,
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "module-prefix",
+        "file": "scripts/main.vela",
+        "cursor": "module-prefix",
+        "definition": "alpha-module",
+        "declaration": "alpha-module",
+        "type-definition": null,
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "nested-module",
+        "file": "scripts/main.vela",
+        "cursor": "nested-module",
+        "definition": "nested-module",
+        "declaration": "nested-module",
+        "type-definition": null,
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "alpha-hint",
+        "file": "scripts/main.vela",
+        "cursor": "alpha-hint",
+        "definition": "alpha-cell",
+        "declaration": "alpha-cell",
+        "type-definition": "alpha-cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "beta-hint",
+        "file": "scripts/main.vela",
+        "cursor": "beta-hint",
+        "definition": "beta-cell",
+        "declaration": "beta-cell",
+        "type-definition": "beta-cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "alpha-call",
+        "file": "scripts/main.vela",
+        "cursor": "alpha-call",
+        "definition": "alpha-build",
+        "declaration": "alpha-build",
+        "type-definition": "alpha-cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "beta-call",
+        "file": "scripts/main.vela",
+        "cursor": "beta-call",
+        "definition": "beta-build",
+        "declaration": "beta-build",
+        "type-definition": "beta-cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "nested-call",
+        "file": "scripts/main.vela",
+        "cursor": "nested-call",
+        "definition": "nested-build",
+        "declaration": "nested-build",
+        "type-definition": "alpha-cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "metadata-module",
+        "file": "scripts/main.vela",
+        "cursor": "metadata-module",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "missing-hint",
+        "file": "scripts/main.vela",
+        "cursor": "missing-hint",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "missing-call",
+        "file": "scripts/main.vela",
+        "cursor": "missing-call",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "missing-export",
+        "file": "scripts/main.vela",
+        "cursor": "missing-export",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "source-module",
+        "file": "scripts/main.vela",
+        "cursor": "source-module",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "unknown-module",
+        "file": "scripts/main.vela",
+        "cursor": "unknown-module",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "dynamic-method",
+        "file": "scripts/main.vela",
+        "cursor": "dynamic-method",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "source-call",
+        "file": "scripts/main.vela",
+        "cursor": "source-call",
+        "definition": "source-build",
+        "declaration": "source-build",
+        "type-definition": "source-cell"
+      },
+      {
+        "id": "shadow-use",
+        "file": "scripts/main.vela",
+        "cursor": "shadow-use",
+        "definition": "shadow",
+        "declaration": "shadow",
+        "type-definition": null
+      },
+      {
+        "id": "local-call",
+        "file": "scripts/main.vela",
+        "cursor": "local-call",
+        "definition": "build",
+        "declaration": "build",
+        "type-definition": "cell",
+        "target-file": "scripts/local.vela"
+      },
+      {
+        "id": "local-type",
+        "file": "scripts/main.vela",
+        "cursor": "local-type",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell",
+        "target-file": "scripts/local.vela"
+      },
+      {
+        "id": "missing-return",
+        "file": "scripts/main.vela",
+        "cursor": "missing-return",
+        "target-file": "scripts/origins.vela",
+        "definition": "alpha-build",
+        "declaration": "alpha-build",
+        "type-definition": null
+      },
+      {
+        "id": "metadata-return",
+        "file": "scripts/main.vela",
+        "cursor": "metadata-return",
+        "target-file": "scripts/origins.vela",
+        "definition": "alpha-build",
+        "declaration": "alpha-build",
+        "type-definition": null
+      },
+      {
+        "id": "missing-trait-return",
+        "file": "scripts/main.vela",
+        "cursor": "missing-trait-return",
+        "target-file": "scripts/origins.vela",
+        "definition": "alpha-build",
+        "declaration": "alpha-build",
+        "type-definition": null
+      },
+      {
+        "id": "metadata-hint",
+        "file": "scripts/main.vela",
+        "cursor": "metadata-hint",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "stdlib-module",
+        "file": "scripts/main.vela",
+        "cursor": "stdlib-module",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      }
+    ]
+  }
+}

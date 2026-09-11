@@ -20,6 +20,8 @@ use crate::{
     },
 };
 
+mod paths;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct SymbolTarget {
     text: String,
@@ -67,12 +69,35 @@ impl SymbolTarget {
         matches!(self.symbol, Some(SymbolRef::Schema(_)))
     }
 
+    pub(crate) fn is_module_symbol(&self, databases: &LanguageServiceDatabases) -> bool {
+        match self.symbol() {
+            Some(SymbolRef::Schema(name)) => {
+                databases.schema_db().facts().module_fact(name).is_some()
+            }
+            Some(symbol @ SymbolRef::Source(_)) => {
+                let graph = databases.hir_db().graph();
+                graph
+                    .module_ids()
+                    .filter_map(|id| graph.module_key(id))
+                    .any(|key| &source_module_symbol(key) == symbol)
+            }
+            Some(SymbolRef::Builtin(name)) => stdlib_function_completion_facts()
+                .iter()
+                .any(|function| function.name.starts_with(&format!("{name}::"))),
+            _ => false,
+        }
+    }
+
     pub(crate) fn schema_symbol_span(&self, databases: &LanguageServiceDatabases) -> Option<Span> {
+        let SymbolRef::Schema(name) = self.symbol.as_ref()? else {
+            return None;
+        };
         let locations = databases.schema_db().source_locations();
         locations
-            .type_span(&self.text)
-            .or_else(|| locations.trait_span(&self.text))
-            .or_else(|| locations.function_span(&self.text))
+            .type_span(name)
+            .or_else(|| locations.trait_span(name))
+            .or_else(|| locations.function_span(name))
+            .or_else(|| locations.module_span(name))
     }
 
     pub(crate) fn schema_member_span(&self, databases: &LanguageServiceDatabases) -> Option<Span> {
@@ -124,14 +149,17 @@ fn symbol_ref_for(
     text: &str,
     member_receiver_fact: Option<&TypeFact>,
 ) -> Option<SymbolRef> {
-    symbol_ref_from_bindings(databases, query, text)
+    let source = symbol_ref_from_bindings(databases, query, text)
         .or_else(|| symbol_ref_for_source_declaration(databases, query, text))
         .or_else(|| symbol_ref_for_import(databases, query, text))
         .or_else(|| {
             member_receiver_fact
                 .and_then(|receiver| script_member_symbol_ref(databases, text, receiver))
-        })
-        .or_else(|| fact_symbol_ref_for(databases, text, member_receiver_fact))
+        });
+    if let Some(symbol) = paths::path_symbol_ref(databases, query, source.as_ref()) {
+        return symbol;
+    }
+    source.or_else(|| fact_symbol_ref_for(databases, text, member_receiver_fact))
 }
 
 fn symbol_ref_from_bindings(
@@ -509,6 +537,7 @@ fn schema_symbol_ref(schema: &RegistryFacts, text: &str) -> Option<SymbolRef> {
     if schema.type_fact(text).is_some()
         || schema.trait_fact(text).is_some()
         || schema.function_fact(text).is_some()
+        || schema.module_fact(text).is_some()
     {
         return Some(schema_symbol(text));
     }
