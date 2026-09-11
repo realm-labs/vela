@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{TestServer, notification_value, notify, request, response_value};
@@ -958,14 +959,35 @@ fn temp_workspace() -> PathBuf {
         Ok(duration) => duration.as_nanos(),
         Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
     };
+    create_temp_workspace(suffix)
+}
+
+fn create_temp_workspace(timestamp: u128) -> PathBuf {
+    static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
+    let sequence = NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed);
     let root = std::env::temp_dir().join(format!(
-        "vela_lsp_server_member_{}_{}",
-        std::process::id(),
-        suffix
+        "vela_lsp_server_member_{}_{timestamp}_{sequence}",
+        std::process::id()
     ));
+    fs::create_dir(&root).unwrap_or_else(|error| panic!("unique fixture {root:?}: {error}"));
     fs::create_dir_all(root.join("scripts").join("game"))
         .expect("temporary workspace should be creatable");
     root
+}
+
+#[test]
+fn member_workspaces_remain_isolated_at_identical_timestamps() {
+    let first = create_temp_workspace(0);
+    let second = create_temp_workspace(0);
+    assert_ne!(first, second);
+    fs::write(first.join("schema.json"), "first schema").expect("write first schema");
+    fs::write(second.join("schema.json"), "second schema").expect("write second schema");
+    fs::remove_dir_all(first).expect("remove first fixture");
+    assert_eq!(
+        fs::read_to_string(second.join("schema.json")).expect("second fixture remains"),
+        "second schema"
+    );
+    fs::remove_dir_all(second).expect("remove second fixture");
 }
 
 fn file_uri(path: &Path) -> String {
