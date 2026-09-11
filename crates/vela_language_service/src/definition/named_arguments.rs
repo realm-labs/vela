@@ -1,0 +1,91 @@
+use vela_analysis::type_fact::TypeFact;
+use vela_hir::body::{HirPathKind, HirPathOwner};
+
+use crate::{
+    LanguageServiceDatabases, LineIndex, QueryContext, SymbolRef, symbol_target::SymbolTarget,
+};
+
+use super::{Definition, text_range_for_span};
+
+#[derive(Default)]
+pub(super) struct NamedArgumentNavigation {
+    pub(super) definition: Option<Definition>,
+    pub(super) type_definition: Option<Definition>,
+}
+
+impl LanguageServiceDatabases {
+    pub(super) fn named_argument_navigation(
+        &self,
+        query: &QueryContext<'_>,
+        target: &SymbolTarget,
+    ) -> Option<NamedArgumentNavigation> {
+        let graph = self.hir_db().graph();
+        for body in graph.bodies_in_source(query.source_id()?) {
+            for (_, call) in body.calls() {
+                if !call.arguments.iter().any(|argument| {
+                    argument
+                        .name_origin
+                        .and_then(|origin| text_range_for_span(origin.span))
+                        == Some(target.range())
+                }) {
+                    continue;
+                }
+                let definition = (|| {
+                    let path = body.paths.iter().find(|path| {
+                        path.kind == HirPathKind::Callee
+                            && path.owner == HirPathOwner::Expression(call.callee)
+                    })?;
+                    let offset = usize::try_from(path.segment_origin.span.start).ok()?;
+                    let callee = self.definition(
+                        query.document_id(),
+                        LineIndex::new(query.text()).position(offset),
+                    )?;
+                    let SymbolRef::Source(symbol) = callee.symbol()? else {
+                        return None;
+                    };
+                    let declaration = graph.declarations().find(|declaration| {
+                        super::source_symbol_for_declaration(graph, declaration)
+                            == SymbolRef::Source(symbol.clone())
+                    })?;
+                    let (index, parameter) = graph
+                        .function_signature(declaration.id)?
+                        .params
+                        .iter()
+                        .enumerate()
+                        .find(|(_, parameter)| parameter.name == target.text())?;
+                    let inferred = match self.graph_analysis_facts().declaration(declaration.id) {
+                        Some(TypeFact::Function { params, .. }) => params.get(index).cloned(),
+                        _ => None,
+                    };
+                    let fact = inferred
+                        .filter(|fact| !matches!(fact, TypeFact::Unknown))
+                        .or_else(|| {
+                            parameter.type_hint.as_ref().map(|hint| {
+                                crate::callable_context::query_type_fact_from_hint(
+                                    graph,
+                                    hint,
+                                    self.schema_db().facts(),
+                                )
+                            })
+                        });
+                    let source = self.source_record_for(parameter.span.source)?;
+                    let range = text_range_for_span(parameter.span)?;
+                    let definition = self.definition_from_span_with_symbol(
+                        parameter.span,
+                        Some(SymbolRef::local_at(
+                            &parameter.name,
+                            source.document_id().clone(),
+                            range,
+                        )),
+                    );
+                    Some(NamedArgumentNavigation {
+                        definition,
+                        type_definition: fact.and_then(|fact| self.type_definition_for_fact(&fact)),
+                    })
+                })();
+                return Some(definition.unwrap_or_default());
+            }
+        }
+        None
+    }
+}

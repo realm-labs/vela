@@ -134,17 +134,30 @@
     },
     {
       "id": "B01.2",
-      "revision": null,
+      "revision": "4e2caf367",
       "requirements": [
         "batch/B01/input-render-driver",
         "batch/B01/local-evidence",
         "batch/B01/shared-fixtures"
       ],
       "summary": "Close B01 with the recorded strict validation; find this child's commit through its LSP-Batch trailer."
+    },
+    {
+      "id": "B02.1",
+      "revision": null,
+      "requirements": [
+        "definition/syntax/S1/positive/service",
+        "definition/syntax/S1/positive/protocol",
+        "declaration/syntax/S1/positive/service",
+        "declaration/syntax/S1/positive/protocol",
+        "type-definition/syntax/S1/positive/service",
+        "type-definition/syntax/S1/positive/protocol"
+      ],
+      "summary": "34 explicit navigation cases in both Rust layers, with LF/CRLF and byte/UTF-16 target oracles. Repair source type-hint and named-argument targets and suppress private/dynamic/unresolved fallback. Focused tests, full Rust matrix audit, formatting and Clippy passed. Broad semantic cells and B02 acceptance remain open; find the commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": null,
-  "nextTask": "B02",
+  "activeChild": "B02.2",
+  "nextTask": "B02.2",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",

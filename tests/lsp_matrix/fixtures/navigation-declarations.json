@@ -1,0 +1,288 @@
+{
+  "version": 1,
+  "id": "navigation-declarations",
+  "files": {
+    "scripts/main.vela": "use types::consume;\nuse types::Remote as Imported;\npub struct [[cell:start]]Cell[[cell:end]] { value: i64 }\npub const [[base:start]]BASE[[base:end]] = 4;\nstate [[counter:start]]counter[[counter:end]] = 0;\nextern state [[external:start]]external[[external:end]]: i64;\npub fn [[factory:start]]factory[[factory:end]]([[parameter:start]]amount[[parameter:end]]: i64 = 1) -> Cell {\n    return Cell { value: [[parameter-use]]amount };\n}\nfn main([[typed-parameter:start]]cell[[typed-parameter:end]]: [[type-hint]]Cell) {\n    let [[outer:start]]local[[outer:end]] = 7;\n    { let [[inner:start]]local[[inner:end]] = 9; [[inner-use]]local; }\n    let [[callback:start]]callback[[callback:end]] = || [[capture]]local;\n    let [[typed-local:start]]item[[typed-local:end]]: Cell = [[factory-use]]factory([[named-argument]]amount = 2);\n    let text = \"中😀\"; [[outer-use]]local;\n    [[base-use]]BASE + [[state-use]]counter + [[extern-use]]external;\n    [[typed-parameter-use]]cell;\n    [[typed-local-use]]item;\n    [[callback-use]]callback();\n    [[unknown]]missing_name;\n    [[keyword]]return;\n}\nfn types(local: [[builtin-hint]]i64, missing: [[missing-hint]]Missing, remote: [[alias-hint]]Imported, nested: Option<[[nested-hint]]Cell>) -> [[return-hint]]Cell { return Cell { value: 1 }; }\nfn accept([[record-parameter:start]]record[[record-parameter:end]]: Cell) {}\nfn labels(dynamic) {\n    let amount = 0;\n    let record = 0;\n    factory([[shadow-label]]amount = 3);\n    accept([[record-label]]record = Cell { value: 1 });\n    factory([[invalid-label]]unknown = 2);\n    dynamic([[dynamic-label]]amount = 2);\n    missing([[missing-label]]record = 3);\n    { let factory = dynamic; factory([[shadow-callee-label]]amount = 2); }\n}\nfn qualified(a: types::[[qualified-hint]]Remote, b: types::[[private-hint]]Hidden, c: [[module-hint]]types::Remote) {}\nfn Missing() -> Cell { return Cell { value: 1 }; }\nfn shadow_type() { let Cell = 1; let item: [[shadow-type-hint]]Cell = 2; }\nfn imported_label() { consume([[imported-label]]remote = Imported { value: 1 }); }\nenum [[choice:start]]Choice[[choice:end]] { One }\ntrait [[reader:start]]Reader[[reader:end]] { fn read(self) -> i64; }\nstruct Holder { item: [[field-hint]]Cell }\nfn kinds(a: [[enum-hint]]Choice, b: [[trait-hint]]Reader) {}\n",
+    "scripts/types.vela": "/* 中😀 */ pub struct [[remote:start]]Remote[[remote:end]] { value: i64 }\nstruct Hidden { value: i64 }\n/* 中😀 */ pub fn consume([[remote-parameter:start]]remote[[remote-parameter:end]]: Remote) {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "parameter-use",
+        "file": "scripts/main.vela",
+        "cursor": "parameter-use",
+        "definition": "parameter",
+        "declaration": "parameter",
+        "type-definition": null
+      },
+      {
+        "id": "inner-use",
+        "file": "scripts/main.vela",
+        "cursor": "inner-use",
+        "definition": "inner",
+        "declaration": "inner",
+        "type-definition": null
+      },
+      {
+        "id": "capture",
+        "file": "scripts/main.vela",
+        "cursor": "capture",
+        "definition": "outer",
+        "declaration": "outer",
+        "type-definition": null
+      },
+      {
+        "id": "outer-use",
+        "file": "scripts/main.vela",
+        "cursor": "outer-use",
+        "definition": "outer",
+        "declaration": "outer",
+        "type-definition": null
+      },
+      {
+        "id": "base-use",
+        "file": "scripts/main.vela",
+        "cursor": "base-use",
+        "definition": "base",
+        "declaration": "base",
+        "type-definition": null
+      },
+      {
+        "id": "state-use",
+        "file": "scripts/main.vela",
+        "cursor": "state-use",
+        "definition": "counter",
+        "declaration": "counter",
+        "type-definition": null
+      },
+      {
+        "id": "extern-use",
+        "file": "scripts/main.vela",
+        "cursor": "extern-use",
+        "definition": "external",
+        "declaration": "external",
+        "type-definition": null
+      },
+      {
+        "id": "callback-use",
+        "file": "scripts/main.vela",
+        "cursor": "callback-use",
+        "definition": "callback",
+        "declaration": "callback",
+        "type-definition": null
+      },
+      {
+        "id": "typed-parameter-use",
+        "file": "scripts/main.vela",
+        "cursor": "typed-parameter-use",
+        "definition": "typed-parameter",
+        "declaration": "typed-parameter",
+        "type-definition": "cell"
+      },
+      {
+        "id": "typed-local-use",
+        "file": "scripts/main.vela",
+        "cursor": "typed-local-use",
+        "definition": "typed-local",
+        "declaration": "typed-local",
+        "type-definition": "cell"
+      },
+      {
+        "id": "type-hint",
+        "file": "scripts/main.vela",
+        "cursor": "type-hint",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "factory-use",
+        "file": "scripts/main.vela",
+        "cursor": "factory-use",
+        "definition": "factory",
+        "declaration": "factory",
+        "type-definition": "cell"
+      },
+      {
+        "id": "named-argument",
+        "file": "scripts/main.vela",
+        "cursor": "named-argument",
+        "definition": "parameter",
+        "declaration": "parameter",
+        "type-definition": null
+      },
+      {
+        "id": "unknown",
+        "file": "scripts/main.vela",
+        "cursor": "unknown",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "keyword",
+        "file": "scripts/main.vela",
+        "cursor": "keyword",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-hint",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-hint",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "missing-hint",
+        "file": "scripts/main.vela",
+        "cursor": "missing-hint",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "alias-hint",
+        "file": "scripts/main.vela",
+        "cursor": "alias-hint",
+        "definition": "remote",
+        "declaration": "remote",
+        "type-definition": "remote",
+        "target-file": "scripts/types.vela"
+      },
+      {
+        "id": "nested-hint",
+        "file": "scripts/main.vela",
+        "cursor": "nested-hint",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "return-hint",
+        "file": "scripts/main.vela",
+        "cursor": "return-hint",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "qualified-hint",
+        "file": "scripts/main.vela",
+        "cursor": "qualified-hint",
+        "definition": "remote",
+        "declaration": "remote",
+        "type-definition": "remote",
+        "target-file": "scripts/types.vela"
+      },
+      {
+        "id": "private-hint",
+        "file": "scripts/main.vela",
+        "cursor": "private-hint",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "module-hint",
+        "file": "scripts/main.vela",
+        "cursor": "module-hint",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "shadow-label",
+        "file": "scripts/main.vela",
+        "cursor": "shadow-label",
+        "definition": "parameter",
+        "declaration": "parameter",
+        "type-definition": null
+      },
+      {
+        "id": "record-label",
+        "file": "scripts/main.vela",
+        "cursor": "record-label",
+        "definition": "record-parameter",
+        "declaration": "record-parameter",
+        "type-definition": "cell"
+      },
+      {
+        "id": "invalid-label",
+        "file": "scripts/main.vela",
+        "cursor": "invalid-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "dynamic-label",
+        "file": "scripts/main.vela",
+        "cursor": "dynamic-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "missing-label",
+        "file": "scripts/main.vela",
+        "cursor": "missing-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "shadow-callee-label",
+        "file": "scripts/main.vela",
+        "cursor": "shadow-callee-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "shadow-type-hint",
+        "file": "scripts/main.vela",
+        "cursor": "shadow-type-hint",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "field-hint",
+        "file": "scripts/main.vela",
+        "cursor": "field-hint",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "enum-hint",
+        "file": "scripts/main.vela",
+        "cursor": "enum-hint",
+        "definition": "choice",
+        "declaration": "choice",
+        "type-definition": "choice"
+      },
+      {
+        "id": "trait-hint",
+        "file": "scripts/main.vela",
+        "cursor": "trait-hint",
+        "definition": "reader",
+        "declaration": "reader",
+        "type-definition": "reader"
+      },
+      {
+        "id": "imported-label",
+        "file": "scripts/main.vela",
+        "cursor": "imported-label",
+        "definition": "remote-parameter",
+        "declaration": "remote-parameter",
+        "type-definition": "remote",
+        "target-file": "scripts/types.vela"
+      }
+    ]
+  }
+}

@@ -18,7 +18,9 @@ use crate::{
     symbol_target::SymbolTarget,
 };
 
+mod named_arguments;
 mod source_members;
+mod type_hints;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Definition {
@@ -52,6 +54,13 @@ impl LanguageServiceDatabases {
         let source_id = query.source_id()?;
         let offset = u32::try_from(target.range().start).ok()?;
         let graph = self.hir_db().graph();
+
+        if let Some(definition) = self.source_type_hint_definition(&query, &target) {
+            return definition;
+        }
+        if let Some(navigation) = self.named_argument_navigation(&query, &target) {
+            return navigation.definition;
+        }
 
         if target.is_schema_symbol()
             && let Some(definition) = target.schema_member_span(self).and_then(|span| {
@@ -139,6 +148,14 @@ impl LanguageServiceDatabases {
     ) -> Option<Definition> {
         let query = QueryContext::from_databases(self, document_id, position)?;
         let target = SymbolTarget::from_query(self, &query)?;
+
+        if let Some(definition) = self.source_type_hint_definition(&query, &target) {
+            return definition;
+        }
+
+        if let Some(navigation) = self.named_argument_navigation(&query, &target) {
+            return navigation.type_definition;
+        }
 
         if let Some(fact) = self.member_type_fact_for_target(&target) {
             return self.type_definition_for_fact(&fact);
@@ -531,3 +548,6 @@ mod tests;
 mod tuple_destructuring_tests;
 #[cfg(test)]
 mod type_tests;
+
+#[cfg(test)]
+mod matrix_tests;

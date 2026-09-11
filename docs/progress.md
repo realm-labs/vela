@@ -599,8 +599,9 @@ batches, explicit reopening and exact remaining scope. B01 shared Unicode,
 LF/CRLF, marker/edit and disk/overlay fixtures now feed both Rust layers and the
 installed VSIX (seven scenarios). The local Input/Render driver now proves keyboard, pointer, visible candidate and
 exact final document/caret behavior. Evidence validation binds current source,
-profile, fixture, driver and installed VSIX/server bytes. The combined strict gate owns B01
-acceptance; no semantic feature batch is accepted yet.
+profile, fixture, driver and installed VSIX/server bytes. B00 and B01 passed their combined
+strict acceptance. B02 navigation coverage is active; no semantic feature batch
+is accepted yet.
 
 ### Deferred Tracks
 
@@ -633,8 +634,8 @@ provides it.
 
 ## Next Up
 
-1. Complete LSP B01 shared local fixtures and Input/Render proof, resuming the
-   execution checkpoint. Continue B02-B15 and B17-B19; B16 stays deferred.
+1. Complete LSP B02 navigation semantic/range/lifecycle and workbench routes,
+   resuming the execution checkpoint. Continue B03-B15 and B17-B19; B16 stays deferred.
 2. Address incremental HIR re-lowering and moving `did_change` diagnostics off
    the message loop when required by local state/scale acceptance.
 3. Audit the parameterized container and value-keyed Map/Set plans against
