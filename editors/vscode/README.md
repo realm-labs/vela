@@ -49,6 +49,15 @@ Each run prints its `test-results/run-*` directory, preserving `results.json`,
 the VSIX, workspace server trace, and `user-data/logs`. CI uploads results and
 logs even on failure. These ignored directories can be removed after diagnosis.
 
+The command also runs the Rust language-service/protocol matrix audit and writes
+`target/lsp-matrix/report.md` and `report.json` at repository root. `results.json`
+includes test/launcher/dependency and server hashes so stale editor results
+cannot certify the current build. For the audit without launching VS Code, run
+`npm run test:matrix`. A successful ordinary audit does not imply every required
+combination is covered: the separate strict gate rejects unreviewed cells.
+See `docs/lsp-test-strategy.md` in the repository for the full
+syntax/feature/state/environment matrix and staged acceptance plan.
+
 Add regression scenarios in `test/suite.js` and small source fixtures in
 `test/fixture`. Assert the target URI, exact source range, and target text;
 checking only that a command succeeds does not prove navigation works.

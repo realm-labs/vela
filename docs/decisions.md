@@ -15,6 +15,14 @@ the workflow and CI matrix. Package source discovery feeds the same
 `ProjectState` databases as open overlays; overlays supersede equivalent disk
 paths even when the client's URI encoding differs.
 
+Proactive LSP coverage is requirement-driven under the
+[test strategy](lsp-test-strategy.md). The machine-readable catalog pins current
+syntax/protocol contracts, expands applicable layers and states, and binds
+reviewed assertions to exact compiled test identities. Candidate test discovery
+never certifies coverage. Strict acceptance requires executed evidence or a
+reasoned N/A for every obligation; the ordinary CI audit may expose incomplete
+coverage while rejecting drift, stale references, and failing tests.
+
 ## Standing Constraints
 
 - Script-language generics are not supported.

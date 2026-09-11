@@ -1,0 +1,680 @@
+[
+  {
+    "id": "code-action",
+    "row": 21,
+    "support": "supported",
+    "syntax": [
+      "S1",
+      "S3",
+      "S4",
+      "S6",
+      "S8",
+      "S9",
+      "S10"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [
+      "dirty",
+      "close_restore",
+      "repeat",
+      "recovery",
+      "unresolved",
+      "dynamic",
+      "missing_schema",
+      "stale_schema",
+      "dependency_change",
+      "dependency_delete"
+    ],
+    "environments": [
+      "utf16",
+      "crlf",
+      "encoded_uri"
+    ],
+    "environmentRationale": "Source positions or edits cross the protocol boundary; both document encoding and URI identity apply.",
+    "editor": true,
+    "candidatePrefixes": {
+      "service": [
+        "code_action::"
+      ],
+      "protocol": [
+        "tests::code_action"
+      ]
+    }
+  },
+  {
+    "id": "prepare-call-hierarchy",
+    "row": 22,
+    "support": "supported",
+    "syntax": [
+      "S1",
+      "S4",
+      "S5",
+      "S8",
+      "S9",
+      "S10"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [
+      "dirty",
+      "close_restore",
+      "repeat",
+      "recovery",
+      "unresolved",
+      "dynamic",
+      "missing_schema",
+      "stale_schema",
+      "dependency_change",
+      "dependency_delete"
+    ],
+    "environments": [
+      "utf16",
+      "crlf",
+      "encoded_uri"
+    ],
+    "environmentRationale": "Source positions or edits cross the protocol boundary; both document encoding and URI identity apply.",
+    "editor": true,
+    "candidatePrefixes": {
+      "service": [
+        "call_hierarchy::"
+      ],
+      "protocol": [
+        "tests::call_hierarchy"
+      ]
+    }
+  },
+  {
+    "id": "incoming-calls",
+    "row": 23,
+    "support": "supported",
+    "syntax": [
+      "S1",
+      "S4",
+      "S5",
+      "S8",
+      "S9",
+      "S10",
+      "S11"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [
+      "dirty",
+      "close_restore",
+      "repeat",
+      "recovery",
+      "unresolved",
+      "dynamic",
+      "missing_schema",
+      "stale_schema",
+      "dependency_change",
+      "dependency_delete",
+      "stale_version",
+      "cancellation"
+    ],
+    "environments": [
+      "utf16",
+      "crlf",
+      "encoded_uri"
+    ],
+    "environmentRationale": "Source positions or edits cross the protocol boundary; both document encoding and URI identity apply.",
+    "editor": true,
+    "candidatePrefixes": {
+      "service": [
+        "call_hierarchy::"
+      ],
+      "protocol": [
+        "tests::call_hierarchy"
+      ]
+    }
+  },
+  {
+    "id": "outgoing-calls",
+    "row": 24,
+    "support": "supported",
+    "syntax": [
+      "S1",
+      "S4",
+      "S5",
+      "S8",
+      "S9",
+      "S10",
+      "S11"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [
+      "dirty",
+      "close_restore",
+      "repeat",
+      "recovery",
+      "unresolved",
+      "dynamic",
+      "missing_schema",
+      "stale_schema",
+      "dependency_change",
+      "dependency_delete"
+    ],
+    "environments": [
+      "utf16",
+      "crlf",
+      "encoded_uri"
+    ],
+    "environmentRationale": "Source positions or edits cross the protocol boundary; both document encoding and URI identity apply.",
+    "editor": true,
+    "candidatePrefixes": {
+      "service": [
+        "call_hierarchy::"
+      ],
+      "protocol": [
+        "tests::call_hierarchy"
+      ]
+    }
+  },
+  {
+    "id": "document-symbol",
+    "row": 25,
+    "support": "supported",
+    "syntax": [
+      "S1",
+      "S4",
+      "S8",
+      "S9"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [
+      "dirty",
+      "close_restore",
+      "repeat",
+      "recovery",
+      "unresolved",
+      "dynamic",
+      "missing_schema",
+      "stale_schema",
+      "dependency_change",
+      "dependency_delete"
+    ],
+    "environments": [
+      "utf16",
+      "crlf",
+      "encoded_uri"
+    ],
+    "environmentRationale": "Source positions or edits cross the protocol boundary; both document encoding and URI identity apply.",
+    "editor": true,
+    "candidatePrefixes": {
+      "service": [
+        "symbols::"
+      ],
+      "protocol": [
+        "tests::symbols"
+      ]
+    }
+  },
+  {
+    "id": "workspace-symbol",
+    "row": 26,
+    "support": "supported",
+    "syntax": [
+      "S0",
+      "S1",
+      "S3",
+      "S4",
+      "S8",
+      "S10",
+      "S11"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [
+      "dirty",
+      "close_restore",
+      "repeat",
+      "recovery",
+      "unresolved",
+      "dynamic",
+      "missing_schema",
+      "stale_schema",
+      "dependency_change",
+      "dependency_delete",
+      "stale_version",
+      "cancellation"
+    ],
+    "environments": [
+      "utf16",
+      "crlf",
+      "encoded_uri"
+    ],
+    "environmentRationale": "Source positions or edits cross the protocol boundary; both document encoding and URI identity apply.",
+    "editor": true,
+    "candidatePrefixes": {
+      "service": [
+        "symbols::"
+      ],
+      "protocol": [
+        "tests::symbols"
+      ]
+    }
+  },
+  {
+    "id": "folding",
+    "row": 27,
+    "support": "supported",
+    "syntax": [
+      "S1",
+      "S2",
+      "S4",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S12"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [
+      "dirty",
+      "repeat",
+      "recovery"
+    ],
+    "environments": [
+      "utf16",
+      "crlf",
+      "encoded_uri"
+    ],
+    "environmentRationale": "Source positions or edits cross the protocol boundary; both document encoding and URI identity apply.",
+    "editor": true,
+    "candidatePrefixes": {
+      "service": [
+        "folding::"
+      ],
+      "protocol": [
+        "tests::folding"
+      ]
+    }
+  },
+  {
+    "id": "selection",
+    "row": 28,
+    "support": "supported",
+    "syntax": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S12"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [
+      "dirty",
+      "repeat",
+      "recovery"
+    ],
+    "environments": [
+      "utf16",
+      "crlf",
+      "encoded_uri"
+    ],
+    "environmentRationale": "Source positions or edits cross the protocol boundary; both document encoding and URI identity apply.",
+    "editor": true,
+    "candidatePrefixes": {
+      "service": [
+        "selection::"
+      ],
+      "protocol": [
+        "tests::selection"
+      ]
+    }
+  },
+  {
+    "id": "tokens-full",
+    "row": 29,
+    "support": "supported",
+    "syntax": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S10"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [
+      "dirty",
+      "close_restore",
+      "repeat",
+      "recovery",
+      "unresolved",
+      "dynamic",
+      "missing_schema",
+      "stale_schema",
+      "dependency_change",
+      "dependency_delete"
+    ],
+    "environments": [
+      "utf16",
+      "crlf",
+      "encoded_uri"
+    ],
+    "environmentRationale": "Source positions or edits cross the protocol boundary; both document encoding and URI identity apply.",
+    "editor": true,
+    "candidatePrefixes": {
+      "service": [
+        "semantic_tokens::"
+      ],
+      "protocol": [
+        "tests::semantic_tokens"
+      ]
+    }
+  },
+  {
+    "id": "tokens-delta",
+    "row": 30,
+    "support": "supported",
+    "syntax": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S10",
+      "S11"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [
+      "dirty",
+      "close_restore",
+      "repeat",
+      "recovery",
+      "unresolved",
+      "dynamic",
+      "missing_schema",
+      "stale_schema",
+      "dependency_change",
+      "dependency_delete",
+      "stale_version",
+      "cancellation"
+    ],
+    "environments": [
+      "utf16",
+      "crlf",
+      "encoded_uri"
+    ],
+    "environmentRationale": "Source positions or edits cross the protocol boundary; both document encoding and URI identity apply.",
+    "editor": true,
+    "candidatePrefixes": {
+      "service": [
+        "semantic_tokens::"
+      ],
+      "protocol": [
+        "tests::semantic_tokens"
+      ]
+    }
+  },
+  {
+    "id": "tokens-range",
+    "row": 31,
+    "support": "supported",
+    "syntax": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S10",
+      "S11"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [
+      "dirty",
+      "close_restore",
+      "repeat",
+      "recovery",
+      "unresolved",
+      "dynamic",
+      "missing_schema",
+      "stale_schema",
+      "dependency_change",
+      "dependency_delete"
+    ],
+    "environments": [
+      "utf16",
+      "crlf",
+      "encoded_uri"
+    ],
+    "environmentRationale": "Source positions or edits cross the protocol boundary; both document encoding and URI identity apply.",
+    "editor": true,
+    "candidatePrefixes": {
+      "service": [
+        "semantic_tokens::"
+      ],
+      "protocol": [
+        "tests::semantic_tokens"
+      ]
+    }
+  },
+  {
+    "id": "formatting",
+    "row": 32,
+    "support": "supported",
+    "syntax": [
+      "S1",
+      "S2",
+      "S4",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S12",
+      "S13"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [
+      "dirty",
+      "repeat",
+      "recovery"
+    ],
+    "environments": [
+      "utf16",
+      "crlf",
+      "encoded_uri"
+    ],
+    "environmentRationale": "Source positions or edits cross the protocol boundary; both document encoding and URI identity apply.",
+    "editor": true,
+    "candidatePrefixes": {
+      "service": [
+        "formatting::"
+      ],
+      "protocol": [
+        "tests::formatting"
+      ]
+    }
+  },
+  {
+    "id": "range-formatting",
+    "row": 33,
+    "support": "supported",
+    "syntax": [
+      "S1",
+      "S2",
+      "S4",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S12"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [
+      "dirty",
+      "repeat",
+      "recovery"
+    ],
+    "environments": [
+      "utf16",
+      "crlf",
+      "encoded_uri"
+    ],
+    "environmentRationale": "Source positions or edits cross the protocol boundary; both document encoding and URI identity apply.",
+    "editor": true,
+    "candidatePrefixes": {
+      "service": [
+        "formatting::"
+      ],
+      "protocol": [
+        "tests::formatting"
+      ]
+    }
+  },
+  {
+    "id": "on-type-formatting",
+    "row": 34,
+    "support": "supported",
+    "syntax": [
+      "S1",
+      "S2",
+      "S4",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S12",
+      "S13"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [
+      "dirty",
+      "repeat",
+      "recovery"
+    ],
+    "environments": [
+      "utf16",
+      "crlf",
+      "encoded_uri"
+    ],
+    "environmentRationale": "Source positions or edits cross the protocol boundary; both document encoding and URI identity apply.",
+    "editor": true,
+    "candidatePrefixes": {
+      "service": [
+        "formatting::"
+      ],
+      "protocol": [
+        "tests::formatting"
+      ]
+    }
+  },
+  {
+    "id": "inlay",
+    "row": 35,
+    "support": "supported",
+    "syntax": [
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S9",
+      "S10",
+      "S11"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [
+      "dirty",
+      "close_restore",
+      "repeat",
+      "recovery",
+      "unresolved",
+      "dynamic",
+      "missing_schema",
+      "stale_schema",
+      "dependency_change",
+      "dependency_delete"
+    ],
+    "environments": [
+      "utf16",
+      "crlf",
+      "encoded_uri"
+    ],
+    "environmentRationale": "Source positions or edits cross the protocol boundary; both document encoding and URI identity apply.",
+    "editor": true,
+    "candidatePrefixes": {
+      "service": [
+        "inlay::"
+      ],
+      "protocol": [
+        "tests::inlay"
+      ]
+    }
+  }
+]

@@ -1,0 +1,219 @@
+[
+  {
+    "id": "initialize",
+    "row": 0,
+    "support": "supported",
+    "syntax": [
+      "S0",
+      "S11"
+    ],
+    "layers": [
+      "protocol"
+    ],
+    "layerRationale": "Transport/lifecycle policy is protocol-owned; no independent service implementation is required.",
+    "states": [],
+    "environments": [
+      "client_capabilities"
+    ],
+    "environmentRationale": "No source range payload; audit capability or process behavior instead of inventing cursor cases.",
+    "editor": false,
+    "candidatePrefixes": {
+      "service": [],
+      "protocol": [
+        "tests::lifecycle"
+      ]
+    }
+  },
+  {
+    "id": "initialized",
+    "row": 1,
+    "support": "supported",
+    "syntax": [
+      "S0"
+    ],
+    "layers": [
+      "protocol"
+    ],
+    "layerRationale": "Transport/lifecycle policy is protocol-owned; no independent service implementation is required.",
+    "states": [],
+    "environments": [
+      "client_capabilities"
+    ],
+    "environmentRationale": "No source range payload; audit capability or process behavior instead of inventing cursor cases.",
+    "editor": false,
+    "candidatePrefixes": {
+      "service": [],
+      "protocol": [
+        "tests::lifecycle"
+      ]
+    }
+  },
+  {
+    "id": "shutdown-exit",
+    "row": 2,
+    "support": "supported",
+    "syntax": [
+      "S0",
+      "S11"
+    ],
+    "layers": [
+      "protocol"
+    ],
+    "layerRationale": "Transport/lifecycle policy is protocol-owned; no independent service implementation is required.",
+    "states": [],
+    "environments": [
+      "client_capabilities"
+    ],
+    "environmentRationale": "No source range payload; audit capability or process behavior instead of inventing cursor cases.",
+    "editor": false,
+    "candidatePrefixes": {
+      "service": [],
+      "protocol": [
+        "tests::lifecycle"
+      ]
+    }
+  },
+  {
+    "id": "cancel",
+    "row": 3,
+    "support": "supported",
+    "syntax": [
+      "S11"
+    ],
+    "layers": [
+      "protocol"
+    ],
+    "layerRationale": "Transport/lifecycle policy is protocol-owned; no independent service implementation is required.",
+    "states": [
+      "stale_version",
+      "cancellation"
+    ],
+    "environments": [
+      "client_capabilities"
+    ],
+    "environmentRationale": "No source range payload; audit capability or process behavior instead of inventing cursor cases.",
+    "editor": false,
+    "candidatePrefixes": {
+      "service": [],
+      "protocol": [
+        "tests::lifecycle"
+      ]
+    }
+  },
+  {
+    "id": "did-open",
+    "row": 4,
+    "support": "supported",
+    "syntax": [
+      "S0",
+      "S1",
+      "S9",
+      "S11"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [],
+    "environments": [
+      "client_capabilities"
+    ],
+    "environmentRationale": "No source range payload; audit capability or process behavior instead of inventing cursor cases.",
+    "editor": false,
+    "candidatePrefixes": {
+      "service": [
+        "workspace::"
+      ],
+      "protocol": [
+        "tests::document_sync"
+      ]
+    }
+  },
+  {
+    "id": "did-change",
+    "row": 5,
+    "support": "supported",
+    "syntax": [
+      "S0",
+      "S1",
+      "S2",
+      "S9",
+      "S11"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [
+      "stale_version",
+      "cancellation"
+    ],
+    "environments": [
+      "client_capabilities"
+    ],
+    "environmentRationale": "No source range payload; audit capability or process behavior instead of inventing cursor cases.",
+    "editor": false,
+    "candidatePrefixes": {
+      "service": [
+        "workspace::"
+      ],
+      "protocol": [
+        "tests::document_sync"
+      ]
+    }
+  },
+  {
+    "id": "did-close",
+    "row": 6,
+    "support": "supported",
+    "syntax": [
+      "S0",
+      "S11"
+    ],
+    "layers": [
+      "service",
+      "protocol"
+    ],
+    "layerRationale": "Service owns syntax/semantic behavior; protocol owns projection and lifecycle.",
+    "states": [],
+    "environments": [
+      "client_capabilities"
+    ],
+    "environmentRationale": "No source range payload; audit capability or process behavior instead of inventing cursor cases.",
+    "editor": false,
+    "candidatePrefixes": {
+      "service": [
+        "workspace::"
+      ],
+      "protocol": [
+        "tests::close_overlay"
+      ]
+    }
+  },
+  {
+    "id": "did-save",
+    "row": 7,
+    "support": "supported",
+    "syntax": [
+      "S0"
+    ],
+    "layers": [
+      "protocol"
+    ],
+    "layerRationale": "Transport/lifecycle policy is protocol-owned; no independent service implementation is required.",
+    "states": [],
+    "environments": [
+      "client_capabilities"
+    ],
+    "environmentRationale": "No source range payload; audit capability or process behavior instead of inventing cursor cases.",
+    "editor": false,
+    "candidatePrefixes": {
+      "service": [],
+      "protocol": [
+        "tests::lifecycle"
+      ]
+    }
+  }
+]

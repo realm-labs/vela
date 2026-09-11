@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vscode = require("vscode");
+const { provenance } = require("../../../scripts/lsp-matrix/provenance");
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -138,7 +139,15 @@ async function run() {
     });
     await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
   } finally {
-    fs.writeFileSync(path.join(process.env.VELA_TEST_RESULT_DIR, "results.json"), JSON.stringify(results, null, 2));
+    const extension = vscode.extensions.getExtension("vela-lang.vela-vscode");
+    const binary = extension && path.join(extension.extensionPath, "server",
+      process.platform === "win32" ? "vela_lsp_server.exe" : "vela_lsp_server");
+    fs.writeFileSync(path.join(process.env.VELA_TEST_RESULT_DIR, "results.json"), JSON.stringify({
+      version: 1,
+      vscodeVersion: vscode.version,
+      provenance: binary && fs.existsSync(binary) ? provenance(path.resolve(__dirname, "../../.."), binary) : null,
+      results
+    }, null, 2));
   }
 }
 

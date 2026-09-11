@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "description": "Required coverage inventory. Unmapped cells are unreviewed, not presumed absent or passing. Candidate prefixes never certify a requirement.",
+  "capabilityKeys": [
+    "callHierarchyProvider",
+    "codeActionProvider",
+    "completionProvider",
+    "declarationProvider",
+    "definitionProvider",
+    "documentFormattingProvider",
+    "documentHighlightProvider",
+    "documentOnTypeFormattingProvider",
+    "documentRangeFormattingProvider",
+    "documentSymbolProvider",
+    "foldingRangeProvider",
+    "hoverProvider",
+    "inlayHintProvider",
+    "referencesProvider",
+    "renameProvider",
+    "selectionRangeProvider",
+    "semanticTokensProvider",
+    "signatureHelpProvider",
+    "textDocumentSync",
+    "typeDefinitionProvider",
+    "workDoneProgress",
+    "workspace",
+    "workspaceSymbolProvider"
+  ],
+  "states": {
+    "dirty": "Query after a didChange that shifts the referenced declaration; the result uses unsaved source and the new range.",
+    "close_restore": "Close a dirty overlay, query the same symbol again, and verify restored disk facts or explicit missing-file behavior.",
+    "repeat": "Repeat an unchanged request and assert deterministic content; token result IDs follow their specified policy.",
+    "recovery": "Introduce an incomplete construct, query valid neighboring syntax, then repair it and compare with a fresh analysis.",
+    "unresolved": "Query a missing target and assert the documented null/empty/diagnostic policy, never a guessed unrelated symbol.",
+    "dynamic": "Known source/schema callable returning Any must not gain guessed member facts downstream.",
+    "missing_schema": "Remove the schema and assert documented source-only behavior and controlled diagnostics.",
+    "stale_schema": "Replace a schema and assert that removed or changed metadata no longer appears in results.",
+    "dependency_change": "Change a defining module, then query its unopened/dirty importer and compare current facts with a fresh workspace.",
+    "dependency_delete": "Delete or rename a dependency and assert that stale locations and diagnostics are removed.",
+    "cancellation": "Cancel a queued request and verify that a later valid request still succeeds without publication from cancelled work.",
+    "stale_version": "Deliver an old document version or generation and verify it cannot replace current facts."
+  },
+  "environments": {
+    "utf16": "Chinese and a non-BMP character precede the target on its line; assert exact UTF-16 ranges in request and target documents.",
+    "crlf": "Repeat the representative range workflow with CRLF; assert line/column equivalence to LF and no carriage-return overrun.",
+    "encoded_uri": "Use percent-encoded Chinese, spaces, percent signs and Windows drive syntax; opened/disk sources retain one identity.",
+    "client_capabilities": "Minimal versus VS Code-like capabilities preserve service semantics and honor optional provider/legend negotiation.",
+    "process_transport": "Exercise initialize, request traffic, shutdown and exit through the real binary with deadlines and bounded frames."
+  },
+  "executionProfiles": [
+    {
+      "id": "pr",
+      "scope": "Contract integrity, focused/full Rust service and protocol suites, installed editor smoke."
+    },
+    {
+      "id": "nightly",
+      "scope": "All required valid pairwise combinations; exhaustive dangerous triples; fixed-seed stateful/property fuzzing; scale tests."
+    },
+    {
+      "id": "release",
+      "scope": "Zero pending strict obligations; supported Windows/Linux/macOS and minimum/current VS Code acceptance; installation and trace artifacts."
+    }
+  ],
+  "evidence": [
+    {
+      "requirement": "definition/environments/utf16/protocol",
+      "assertion": "Cross-file declaration start/end are measured in UTF-16 after Chinese and emoji in target overlay.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::unicode::navigation_projects_target_byte_columns_to_utf16_from_unsaved_cross_file_text"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/environments/crlf/protocol",
+      "assertion": "CRLF target overlay retains the expected target line and exact UTF-16 name range.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::unicode::navigation_projects_target_byte_columns_to_utf16_from_unsaved_cross_file_text"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/environments/utf16/protocol",
+      "assertion": "Cross-file declaration start/end are measured in UTF-16 after Chinese and emoji in target overlay.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::unicode::navigation_projects_target_byte_columns_to_utf16_from_unsaved_cross_file_text"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/environments/crlf/protocol",
+      "assertion": "CRLF target overlay retains the expected target line and exact UTF-16 name range.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::unicode::navigation_projects_target_byte_columns_to_utf16_from_unsaved_cross_file_text"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/editor/smoke",
+      "assertion": "Installed VSIX drives the real VS Code command/provider; exact assertions live in suite.js.",
+      "tests": [
+        {
+          "layer": "editor",
+          "name": "F12 command opens the definition in the editor"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/editor/smoke",
+      "assertion": "Installed VSIX drives the real VS Code command/provider; exact assertions live in suite.js.",
+      "tests": [
+        {
+          "layer": "editor",
+          "name": "hover and completion reach the real language client"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/editor/smoke",
+      "assertion": "Installed VSIX drives the real VS Code command/provider; exact assertions live in suite.js.",
+      "tests": [
+        {
+          "layer": "editor",
+          "name": "hover and completion reach the real language client"
+        }
+      ]
+    }
+  ],
+  "featureFiles": [
+    "features/lifecycle.json",
+    "features/navigation.json",
+    "features/authoring.json",
+    "features/workspace.json"
+  ],
+  "exemptions": [
+    {
+      "requirement": "configuration-request/syntax/S0/positive/protocol",
+      "reason": "The current server does not issue workspace/configuration requests. Settings arrive through initialization options and didChangeConfiguration. This conditional positive contract becomes applicable when server-initiated configuration is implemented; unsolicited client replies still require negative tests."
+    },
+    {
+      "requirement": "configuration-request/syntax/S11/positive/protocol",
+      "reason": "The current server does not issue workspace/configuration requests. Settings arrive through initialization options and didChangeConfiguration. This conditional positive contract becomes applicable when server-initiated configuration is implemented; unsolicited client replies still require negative tests."
+    }
+  ]
+}

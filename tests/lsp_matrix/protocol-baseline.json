@@ -1,0 +1,582 @@
+[
+  {
+    "name": "`initialize`",
+    "capability": "Server lifecycle and capability object",
+    "syntax": [
+      "S0",
+      "S11"
+    ],
+    "positive": "Exact advertised capability keys, provider options, trigger characters, semantic-token legend, server info, workspace folder support.",
+    "negative": "Unsupported providers are absent or protocol JSON null; unsupported provider requests return method-not-found and unsupported notifications are no-response no-ops; client capability variations do not change service semantics; notification-shaped initialize messages do not initialize; malformed params reject without initializing; feature requests before `initialize` return server-not-initialized; repeated `initialize` requests are rejected without resetting server state."
+  },
+  {
+    "name": "`initialized`",
+    "capability": "Lifecycle notification",
+    "syntax": [
+      "S0"
+    ],
+    "positive": "Notification has no response and may trigger watcher/config setup.",
+    "negative": "Repeated initialization stays stable without duplicate watcher registration; minimal initialization stays stable."
+  },
+  {
+    "name": "`shutdown`, `exit`",
+    "capability": "Lifecycle termination",
+    "syntax": [
+      "S0",
+      "S11"
+    ],
+    "positive": "Shutdown response after initialization, clean exit behavior, no pending background publication after shutdown; `exit` remains allowed after shutdown.",
+    "negative": "`shutdown` before `initialize` returns server-not-initialized without closing the server; notification-shaped `shutdown` does not close the server; request-shaped `exit` reports invalid-request but still exits; requests after shutdown are rejected consistently with invalid-request errors; messages after `exit` are ignored because the server lifecycle has ended."
+  },
+  {
+    "name": "`$/cancelRequest`",
+    "capability": "Cancellation",
+    "syntax": [
+      "S11"
+    ],
+    "positive": "Stale queued or expensive requests are discarded by generation/cancellation tokens.",
+    "negative": "Unknown, malformed, or already-completed request IDs are no-response no-ops and do not poison later requests; request-shaped cancel messages are rejected without cancelling the target ID."
+  },
+  {
+    "name": "`textDocument/didOpen`",
+    "capability": "Text document sync",
+    "syntax": [
+      "S0",
+      "S1",
+      "S9",
+      "S11"
+    ],
+    "positive": "Open overlay wins over disk and publishes diagnostics for syntax/HIR/analysis/schema facts.",
+    "negative": "Missing workspace config, scratch file mode, malformed source, missing schema."
+  },
+  {
+    "name": "`textDocument/didChange`",
+    "capability": "Incremental text sync",
+    "syntax": [
+      "S0",
+      "S1",
+      "S2",
+      "S9",
+      "S11"
+    ],
+    "positive": "Full and incremental edits update overlays, versions, line indexes, diagnostics, completions, hovers, semantic tokens.",
+    "negative": "Out-of-order or stale versions do not publish stale facts; malformed incremental edits reject cleanly."
+  },
+  {
+    "name": "`textDocument/didClose`",
+    "capability": "`textDocumentSync.openClose`",
+    "syntax": [
+      "S0",
+      "S11"
+    ],
+    "positive": "Closing removes overlay or restores disk snapshot, clears or refreshes diagnostics, and restores disk-backed query behavior for features such as definition, completion, hover, type definition, semantic tokens, and inlay hints.",
+    "negative": "If unsupported, stop advertising `openClose`; otherwise add a protocol fixture."
+  },
+  {
+    "name": "`textDocument/didSave`",
+    "capability": "`textDocumentSync.save` is false",
+    "syntax": [
+      "S0"
+    ],
+    "positive": "Capability pins `save: false`; save notifications are no-response no-ops.",
+    "negative": "Save notifications are not required for correctness while `save` is false."
+  },
+  {
+    "name": "`textDocument/publishDiagnostics`",
+    "capability": "Server notification",
+    "syntax": [
+      "S0",
+      "S1",
+      "S3",
+      "S8",
+      "S9",
+      "S11"
+    ],
+    "positive": "Parser, HIR, analysis, schema, config, missing import, unused import, and structured repair metadata project to LSP diagnostics.",
+    "negative": "One-file syntax errors do not block unrelated modules; stale schema degrades to `Any`; deleted files clear diagnostics."
+  },
+  {
+    "name": "`textDocument/completion`",
+    "capability": "`completionProvider`",
+    "syntax": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S10",
+      "S11",
+      "S13",
+      "S14"
+    ],
+    "positive": "Item, statement, expression, type, member, record field, map key, module path, call argument, lambda parameter, schema, stdlib, builtin, and cross-file imported declaration completions. Must prove structured authoring contexts before item rendering, then include empty-prefix typed receiver `.` completions for source/schema/builtin methods and fields, struct-field declaration body contexts, readable label/detail separation for source and schema types, and `for in`/`match` snippets.",
+    "negative": "Dynamic receivers suppress member guesses; unknown constructors suppress record fields; struct declaration bodies suppress value/constructor fallback; labels and insert text must not contain unrelated fully qualified path suffixes; stale/cancelled queries discard; malformed cursor contexts recover."
+  },
+  {
+    "name": "`completionItem/resolve`",
+    "capability": "Completion resolve",
+    "syntax": [
+      "S3",
+      "S4",
+      "S5",
+      "S10"
+    ],
+    "positive": "Lazy docs/details for schema, stdlib, and source-backed items where supported; items without lazy payloads pass through unchanged.",
+    "negative": "Unknown resolve payloads return an invalid-request error without panics; initial completion list stays lightweight."
+  },
+  {
+    "name": "`textDocument/signatureHelp`",
+    "capability": "`signatureHelpProvider`",
+    "syntax": [
+      "S3",
+      "S5",
+      "S8",
+      "S9",
+      "S10"
+    ],
+    "positive": "Source functions, source methods, schema functions/methods, trait methods, stdlib functions/methods, active parameter, named/default args, and imported function/method calls.",
+    "negative": "Unknown calls and dynamic `Any` receiver calls return protocol JSON null; incomplete calls resolve only when target facts exist; stale schema."
+  },
+  {
+    "name": "`textDocument/hover`",
+    "capability": "`hoverProvider`",
+    "syntax": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S10"
+    ],
+    "positive": "Locals, params, declarations, fields, methods, variants, modules, type hints, schema facts, stdlib facts, docs, effects, permissions, and imported source facts.",
+    "negative": "Unresolved names and dynamic `Any` member targets return protocol JSON null; missing-schema type hints degrade to `Any`; schema facts without source spans and parser recovery remain explicit audits."
+  },
+  {
+    "name": "`textDocument/definition`",
+    "capability": "`definitionProvider`",
+    "syntax": [
+      "S1",
+      "S3",
+      "S4",
+      "S5",
+      "S8",
+      "S9",
+      "S10"
+    ],
+    "positive": "Local bindings, source declarations, cross-file imported declarations, imported const/state uses, imported function calls, source fields/methods/variants, schema facts with source spans.",
+    "negative": "Schema facts without source spans return no false enclosing declaration; dynamic/unresolved targets return no location."
+  },
+  {
+    "name": "`textDocument/declaration`",
+    "capability": "`declarationProvider`",
+    "syntax": [
+      "S1",
+      "S3",
+      "S4",
+      "S5",
+      "S8",
+      "S9",
+      "S10"
+    ],
+    "positive": "Source declaration targets, including cross-file imported declarations, where declaration and definition are the same or explicitly distinct.",
+    "negative": "Must not silently alias unrelated definition behavior for members or type facts; dynamic/unresolved targets return no location."
+  },
+  {
+    "name": "`textDocument/typeDefinition`",
+    "capability": "`typeDefinitionProvider`",
+    "syntax": [
+      "S1",
+      "S3",
+      "S4",
+      "S8",
+      "S10"
+    ],
+    "positive": "Variables, parameters, and member expressions with source/schema type facts jump to source/schema type declarations when source-backed, including imported source types.",
+    "negative": "Field values such as `cell.value` must not jump to the enclosing function by fallback; builtin/dynamic/unknown types use an explicit protocol JSON null policy."
+  },
+  {
+    "name": "`textDocument/implementation`",
+    "capability": "Not advertised",
+    "syntax": [
+      "S1",
+      "S3",
+      "S4",
+      "S10"
+    ],
+    "positive": "No positive coverage until trait/impl implementation semantics are specified.",
+    "negative": "Capability remains absent or protocol JSON null and direct requests return method-not-found or an explicit unsupported response."
+  },
+  {
+    "name": "`textDocument/references`",
+    "capability": "`referencesProvider`",
+    "syntax": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S8",
+      "S9",
+      "S10",
+      "S11"
+    ],
+    "positive": "Locals, parameters, source declarations, imports, functions, const/state uses, fields, methods, variants, schema-backed source spans, read/write classification, and cross-file uses.",
+    "negative": "Shadowed locals stay separate; schema-only, builtin, dynamic, unresolved, and missing-schema targets are classified or rejected consistently."
+  },
+  {
+    "name": "`textDocument/documentHighlight`",
+    "capability": "`documentHighlightProvider`",
+    "syntax": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S8",
+      "S9",
+      "S10"
+    ],
+    "positive": "Same-document highlights for locals, params, functions, fields, methods, variants, schema member calls, read/write/text kind.",
+    "negative": "Parser recovery, dynamic members, unresolved names, shadowing."
+  },
+  {
+    "name": "`textDocument/prepareRename`",
+    "capability": "`renameProvider.prepareProvider`",
+    "syntax": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S8",
+      "S9",
+      "S10"
+    ],
+    "positive": "Editable ranges for source-owned locals, private declarations, source members, variants, and source-backed schema spans where allowed.",
+    "negative": "Reject keywords, literals, schema-only host facts, builtin facts, dynamic `Any`, unresolved names, public ABI risk without metadata, collisions."
+  },
+  {
+    "name": "`textDocument/rename`",
+    "capability": "`renameProvider`",
+    "syntax": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S8",
+      "S9",
+      "S10",
+      "S11"
+    ],
+    "positive": "Versioned workspace edits for all references of an editable source-owned symbol across defining and importing files, conflict checks, hot-reload risk metadata.",
+    "negative": "Overlapping edits, stale versions, visibility conflicts, name collisions, schema-only/builtin/dynamic/unresolved targets."
+  },
+  {
+    "name": "`textDocument/codeAction`",
+    "capability": "`codeActionProvider.quickfix`",
+    "syntax": [
+      "S1",
+      "S3",
+      "S4",
+      "S6",
+      "S8",
+      "S9",
+      "S10"
+    ],
+    "positive": "Diagnostic-backed typo fixes, missing imports, unused import removal, missing match arms, missing record fields.",
+    "negative": "Ambiguous imports, dynamic receiver typo fixes, speculative semantic rewrites, stale ranges."
+  },
+  {
+    "name": "`textDocument/prepareCallHierarchy`",
+    "capability": "`callHierarchyProvider`",
+    "syntax": [
+      "S1",
+      "S4",
+      "S5",
+      "S8",
+      "S9",
+      "S10"
+    ],
+    "positive": "Source functions, source methods, trait defaults/interface methods, schema-backed methods with source spans where available.",
+    "negative": "Non-callable targets, dynamic calls, unresolved targets, schema-only targets without source spans."
+  },
+  {
+    "name": "`callHierarchy/incomingCalls`",
+    "capability": "`callHierarchyProvider`",
+    "syntax": [
+      "S1",
+      "S4",
+      "S5",
+      "S8",
+      "S9",
+      "S10",
+      "S11"
+    ],
+    "positive": "Incoming source and typed receiver method calls across modules, source/schema method call ranges.",
+    "negative": "Dynamic/unresolved calls are not guessed; stale indexes are rejected."
+  },
+  {
+    "name": "`callHierarchy/outgoingCalls`",
+    "capability": "`callHierarchyProvider`",
+    "syntax": [
+      "S1",
+      "S4",
+      "S5",
+      "S8",
+      "S9",
+      "S10",
+      "S11"
+    ],
+    "positive": "Outgoing source function/method/schema method calls from selected callable body.",
+    "negative": "Parser recovery, dynamic calls, incomplete bodies."
+  },
+  {
+    "name": "`textDocument/documentSymbol`",
+    "capability": "`documentSymbolProvider`",
+    "syntax": [
+      "S1",
+      "S4",
+      "S8",
+      "S9"
+    ],
+    "positive": "Top-level declarations and nested type/impl/trait members with names, kinds, details, ranges, selection ranges.",
+    "negative": "Malformed declarations recover where possible without bogus symbol ranges."
+  },
+  {
+    "name": "`workspace/symbol`",
+    "capability": "`workspaceSymbolProvider`",
+    "syntax": [
+      "S0",
+      "S1",
+      "S3",
+      "S4",
+      "S8",
+      "S10",
+      "S11"
+    ],
+    "positive": "Module-qualified source declarations and schema facts, query filtering, workspace roots.",
+    "negative": "Deleted files, stale indexes, missing schema, duplicate short names."
+  },
+  {
+    "name": "`textDocument/foldingRange`",
+    "capability": "`foldingRangeProvider`",
+    "syntax": [
+      "S1",
+      "S2",
+      "S4",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S12"
+    ],
+    "positive": "Imports, declarations, functions, blocks, match arms, multiline literals, nested members.",
+    "negative": "Malformed braces or incomplete items degrade without panics."
+  },
+  {
+    "name": "`textDocument/selectionRange`",
+    "capability": "`selectionRangeProvider`",
+    "syntax": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S12"
+    ],
+    "positive": "Syntax ancestry ranges for declarations, expressions, members, calls, types, patterns, literals.",
+    "negative": "Parser recovery and incomplete nodes still return stable parent chains where possible."
+  },
+  {
+    "name": "`textDocument/semanticTokens/full`",
+    "capability": "`semanticTokensProvider.full`",
+    "syntax": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S10"
+    ],
+    "positive": "Lexical and resolved tokens for declarations, uses, literals, operators, punctuation, provenance modifiers, unresolved references.",
+    "negative": "Parser recovery, missing schema fallback, client token/modifier fallback projection."
+  },
+  {
+    "name": "`textDocument/semanticTokens/full/delta`",
+    "capability": "Semantic-token delta",
+    "syntax": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S10",
+      "S11"
+    ],
+    "positive": "Stable result IDs and deterministic full-replacement or delta behavior after edits.",
+    "negative": "Stale result IDs, edits that change line indexes, cancelled/stale generations."
+  },
+  {
+    "name": "`textDocument/semanticTokens/range`",
+    "capability": "Semantic-token range",
+    "syntax": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S10",
+      "S11"
+    ],
+    "positive": "Requested range filters full service tokens and encodes valid relative ranges; empty requested ranges return an empty token stream.",
+    "negative": "Malformed sources and client capability fallback."
+  },
+  {
+    "name": "`textDocument/formatting`",
+    "capability": "`documentFormattingProvider`",
+    "syntax": [
+      "S1",
+      "S2",
+      "S4",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S12",
+      "S13"
+    ],
+    "positive": "Full-document deterministic formatting, comment/blank-line preservation, final newline, idempotence, compact builtin container type arguments, nested `Option`/`Result` type hints, function signatures, local annotations, and map/set/array examples without formatter-invented type-argument line breaks.",
+    "negative": "Malformed source, unresolved HIR, syntax-only fallback, incomplete type argument lists, and long lines without an explicit line-width policy."
+  },
+  {
+    "name": "`textDocument/rangeFormatting`",
+    "capability": "`documentRangeFormattingProvider`",
+    "syntax": [
+      "S1",
+      "S2",
+      "S4",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S12"
+    ],
+    "positive": "Selected top-level item, nested members, field groups, whitespace-padded selections, trailing whitespace cleanup.",
+    "negative": "Partial unsupported ranges return conservative edits only."
+  },
+  {
+    "name": "`textDocument/onTypeFormatting`",
+    "capability": "`documentOnTypeFormattingProvider`",
+    "syntax": [
+      "S1",
+      "S2",
+      "S4",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S12",
+      "S13"
+    ],
+    "positive": "`}` and newline triggers for completed items, methods, enum record variants, current construct cleanup, and preserving the same compact type-argument spacing as full-document formatting.",
+    "negative": "Unsupported triggers, incomplete constructs, and incomplete type argument lists fall back safely."
+  },
+  {
+    "name": "`textDocument/inlayHint`",
+    "capability": "`inlayHintProvider`",
+    "syntax": [
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S9",
+      "S10",
+      "S11"
+    ],
+    "positive": "Parameter names, local type facts, lambda parameter facts, host-path type facts, tuple-variant payload names, requested range.",
+    "negative": "Explicit annotations, unknown/Any facts, dynamic boundaries, missing schema suppress hints."
+  },
+  {
+    "name": "`workspace/didChangeWatchedFiles`",
+    "capability": "Watched files",
+    "syntax": [
+      "S0",
+      "S8",
+      "S9",
+      "S11"
+    ],
+    "positive": "Create/change/delete/rename `.vela`, `vela.toml`, and schema artifact events update project/schema state and diagnostics.",
+    "negative": "Coalesced duplicate events, missing files, invalid config/schema, deleted schema."
+  },
+  {
+    "name": "`workspace/didChangeConfiguration`",
+    "capability": "Configuration",
+    "syntax": [
+      "S0",
+      "S9",
+      "S11"
+    ],
+    "positive": "Editor settings map to service-owned workspace config, roots, schema path, reload behavior.",
+    "negative": "Invalid settings degrade to diagnostics; no protocol types leak into service APIs."
+  },
+  {
+    "name": "`workspace/didChangeWorkspaceFolders`",
+    "capability": "Workspace folders",
+    "syntax": [
+      "S0",
+      "S8",
+      "S11"
+    ],
+    "positive": "Added/removed roots reindex modules and republish open diagnostics.",
+    "negative": "Removed roots clear stale disk facts; open overlays remain authoritative where applicable."
+  },
+  {
+    "name": "`workspace/configuration`",
+    "capability": "Server request to client, when used",
+    "syntax": [
+      "S0",
+      "S11"
+    ],
+    "positive": "Settings request/response is projected only in `vela_lsp_server` and maps to `WorkspaceConfig`.",
+    "negative": "Missing or malformed client response falls back to launch/config defaults."
+  },
+  {
+    "name": "Native stdio transport",
+    "capability": "Launch/transport smoke",
+    "syntax": [
+      "S0"
+    ],
+    "positive": "`--stdio`, default stdio, `--root`, `--schema`, `--version`, server info.",
+    "negative": "Broken args, missing schema path, package launchers remain behavior-free."
+  }
+]

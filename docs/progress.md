@@ -578,6 +578,14 @@ all editor features or schema/remote workflows. Initial discovery currently
 loads package manifests at workspace roots; manifest-free disk discovery and
 broader multi-root lifecycle coverage remain follow-ups.
 
+The [LSP test strategy](lsp-test-strategy.md) now owns proactive coverage work:
+41 protocol rows and the current grammar/token/AST contracts expand into an
+executable requirement inventory. CI checks contract drift and exact evidence
+references; reports distinguish candidate tests, mapped assertions, executed
+proof, and unreviewed requirements. P0 inventory is implemented; P1 semantic
+mapping and P2 range/edit transformation coverage remain open. Ordinary CI is
+not full acceptance while the separate strict gate reports unresolved cells.
+
 ### Deferred Tracks
 
 - M21 debugger/DAP work waits for stable runtime debug contracts.

@@ -19,6 +19,7 @@
   "main": "./extension.js",
   "scripts": {
     "test": "node test/run.js",
+    "test:matrix": "node ../../scripts/lsp-matrix/run.js --run",
     "validate": "node scripts/validate-package.js",
     "package": "node scripts/package-vsix.js",
     "package:release": "node scripts/package-vsix.js --release",

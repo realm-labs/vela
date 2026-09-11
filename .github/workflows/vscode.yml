@@ -43,6 +43,8 @@ jobs:
         run: rustup default stable
       - name: Install extension dependencies
         run: npm ci
+      - name: Test matrix audit safeguards
+        run: node --test ../../scripts/lsp-matrix/model.test.js
       - name: Test installed VSIX on Linux
         if: runner.os == 'Linux'
         run: xvfb-run -a npm test
@@ -59,3 +61,7 @@ jobs:
             editors/vscode/test-results/**/results.json
             editors/vscode/test-results/**/user-data/logs/**
             editors/vscode/test-results/**/.vela-lsp-trace.jsonl
+            target/lsp-matrix/report.json
+            target/lsp-matrix/report.md
+            target/lsp-matrix/*-run.log
+            target/lsp-matrix/*-list.log

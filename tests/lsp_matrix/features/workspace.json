@@ -1,0 +1,136 @@
+[
+  {
+    "id": "watched-files",
+    "row": 36,
+    "support": "supported",
+    "syntax": [
+      "S0",
+      "S8",
+      "S9",
+      "S11"
+    ],
+    "layers": [
+      "protocol"
+    ],
+    "layerRationale": "Transport/lifecycle policy is protocol-owned; no independent service implementation is required.",
+    "states": [
+      "stale_version",
+      "cancellation"
+    ],
+    "environments": [
+      "client_capabilities"
+    ],
+    "environmentRationale": "No source range payload; audit capability or process behavior instead of inventing cursor cases.",
+    "editor": false,
+    "candidatePrefixes": {
+      "service": [],
+      "protocol": [
+        "tests::file_watching"
+      ]
+    }
+  },
+  {
+    "id": "configuration-change",
+    "row": 37,
+    "support": "supported",
+    "syntax": [
+      "S0",
+      "S9",
+      "S11"
+    ],
+    "layers": [
+      "protocol"
+    ],
+    "layerRationale": "Transport/lifecycle policy is protocol-owned; no independent service implementation is required.",
+    "states": [],
+    "environments": [
+      "client_capabilities"
+    ],
+    "environmentRationale": "No source range payload; audit capability or process behavior instead of inventing cursor cases.",
+    "editor": false,
+    "candidatePrefixes": {
+      "service": [],
+      "protocol": [
+        "tests::lifecycle"
+      ]
+    }
+  },
+  {
+    "id": "workspace-folders",
+    "row": 38,
+    "support": "supported",
+    "syntax": [
+      "S0",
+      "S8",
+      "S11"
+    ],
+    "layers": [
+      "protocol"
+    ],
+    "layerRationale": "Transport/lifecycle policy is protocol-owned; no independent service implementation is required.",
+    "states": [
+      "stale_version",
+      "cancellation"
+    ],
+    "environments": [
+      "client_capabilities"
+    ],
+    "environmentRationale": "No source range payload; audit capability or process behavior instead of inventing cursor cases.",
+    "editor": false,
+    "candidatePrefixes": {
+      "service": [],
+      "protocol": [
+        "tests::workspace_folders"
+      ]
+    }
+  },
+  {
+    "id": "configuration-request",
+    "row": 39,
+    "support": "conditional",
+    "syntax": [
+      "S0",
+      "S11"
+    ],
+    "layers": [
+      "protocol"
+    ],
+    "layerRationale": "Transport/lifecycle policy is protocol-owned; no independent service implementation is required.",
+    "states": [],
+    "environments": [
+      "client_capabilities"
+    ],
+    "environmentRationale": "No source range payload; audit capability or process behavior instead of inventing cursor cases.",
+    "editor": false,
+    "candidatePrefixes": {
+      "service": [],
+      "protocol": [
+        "tests::lifecycle"
+      ]
+    }
+  },
+  {
+    "id": "stdio",
+    "row": 40,
+    "support": "supported",
+    "syntax": [
+      "S0"
+    ],
+    "layers": [
+      "protocol"
+    ],
+    "layerRationale": "Transport/lifecycle policy is protocol-owned; no independent service implementation is required.",
+    "states": [],
+    "environments": [
+      "process_transport"
+    ],
+    "environmentRationale": "No source range payload; audit capability or process behavior instead of inventing cursor cases.",
+    "editor": false,
+    "candidatePrefixes": {
+      "service": [],
+      "protocol": [
+        "transport::"
+      ]
+    }
+  }
+]

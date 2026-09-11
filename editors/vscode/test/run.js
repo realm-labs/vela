@@ -40,20 +40,33 @@ async function main() {
     version, spawn: { timeout: 120000, windowsHide: true }
   });
   console.log(installed.stdout);
-  await runTests({
-    vscodeExecutablePath,
-    // Only this empty driver is loaded as a development extension. Vela must
-    // come from the VSIX installed above, including its production dependencies.
-    extensionDevelopmentPath: path.join(__dirname, "driver"),
-    extensionTestsPath: path.join(__dirname, "suite.js"),
-    extensionTestsEnv: {
-      ELECTRON_RUN_AS_NODE: undefined,
-      VELA_TEST_EXTENSIONS_DIR: extensionsDir,
-      VELA_TEST_RESULT_DIR: resultRoot
-    },
-    launchArgs: [workspace, ...isolatedArgs, "--skip-welcome", "--skip-release-notes",
-      "--disable-workspace-trust", "--disable-updates", "--disable-gpu", "--no-sandbox"]
+  let editorFailure;
+  try {
+    await runTests({
+      vscodeExecutablePath,
+      // Only this empty driver is loaded as a development extension. Vela must
+      // come from the VSIX installed above, including its production dependencies.
+      extensionDevelopmentPath: path.join(__dirname, "driver"),
+      extensionTestsPath: path.join(__dirname, "suite.js"),
+      extensionTestsEnv: {
+        ELECTRON_RUN_AS_NODE: undefined,
+        VELA_TEST_EXTENSIONS_DIR: extensionsDir,
+        VELA_TEST_RESULT_DIR: resultRoot
+      },
+      launchArgs: [workspace, ...isolatedArgs, "--skip-welcome", "--skip-release-notes",
+        "--disable-workspace-trust", "--disable-updates", "--disable-gpu", "--no-sandbox"]
+    });
+  } catch (error) {
+    editorFailure = error;
+  }
+  const resultFile = path.join(resultRoot, "results.json");
+  const audit = spawnSync(process.execPath, [path.join(extensionRoot, "../../scripts/lsp-matrix/run.js"),
+    "--run", ...(fs.existsSync(resultFile) ? ["--editor-results", resultFile] : [])], {
+    cwd: extensionRoot, stdio: "inherit", timeout: 600000, windowsHide: true
   });
+  if (editorFailure) throw editorFailure;
+  if (audit.error) throw audit.error;
+  if (audit.status !== 0) throw new Error(`LSP matrix audit failed: ${audit.status}`);
 }
 
 main().catch((error) => {

@@ -1,7 +1,7 @@
 # Native LSP Protocol Test Matrix
 
-> **Document status:** accepted matrix for the current advertised native LSP
-> capability surface.
+> **Document status:** protocol requirement baseline. Historical feature tests
+> exist; complete combination coverage requires the executable evidence audit.
 > **Scope:** advertised LSP protocol behavior plus the Vela syntax and symbol
 > surface each protocol must cover before it is considered complete.
 
@@ -9,6 +9,12 @@ This document records the protocol-first matrix used to accept the current
 native LSP coverage. Future LSP tests should start from this matrix, choose one
 protocol row, then preserve both `vela_language_service` tests and
 `vela_lsp_server` JSON-RPC fixtures for the applicable Vela syntax dimensions.
+
+The [executable test strategy](lsp-test-strategy.md) extends these rows with
+positive/negative layer obligations, document states, environments, exact test
+evidence, and CI drift checks. Run `node scripts/lsp-matrix/run.js --run` for the
+current report. Candidate tests and historically accepted rows do not certify
+all of their syntax/state combinations; unmapped obligations remain unreviewed.
 
 Execution progress for auditing and filling this matrix is tracked in
 [lsp-implementation-plan.md](archive/lsp-implementation-plan.md), section
@@ -369,10 +375,11 @@ A protocol row is complete when:
   explicit.
 - The relevant focused command passes.
 
-The LSP protocol matrix is accepted for the current advertised native LSP
-surface: every advertised row above has service/protocol proof, every
-unsupported row is negatively pinned, and the full validation set for LSP docs
-or implementation changes passes:
+The historical baseline supplied service/protocol tests for advertised features
+and negative tests for unsupported behavior. Full matrix acceptance additionally
+requires the executable audit's strict gate, with every applicable obligation
+verified under the required editor profiles. The ordinary validation commands
+below are necessary but do not establish combination coverage by themselves:
 
 ```bash
 cargo test -p vela_language_service

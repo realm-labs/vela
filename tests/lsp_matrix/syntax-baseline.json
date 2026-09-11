@@ -1,0 +1,420 @@
+{
+  "grammarRules": [
+    "CHAR",
+    "FLOAT",
+    "IDENT",
+    "INT",
+    "INTERPOLATED_STRING",
+    "STRING",
+    "additive",
+    "argument",
+    "argument_list",
+    "arm_term",
+    "array_literal",
+    "assign_op",
+    "assignment",
+    "attr_arg",
+    "attr_args",
+    "attr_array",
+    "attr_map",
+    "attr_map_entry",
+    "attr_path",
+    "attr_value",
+    "attribute",
+    "await_suffix",
+    "binary_int",
+    "binding_pattern",
+    "block",
+    "block_comment",
+    "block_expr",
+    "break_stmt",
+    "call_suffix",
+    "char_char",
+    "comparison",
+    "conditional",
+    "const_decl",
+    "contextual_state_kw",
+    "continue_stmt",
+    "decimal_int",
+    "default_value",
+    "enum_decl",
+    "enum_variant",
+    "equality",
+    "escape",
+    "exponent",
+    "expr",
+    "expr_stmt",
+    "extern_state_decl",
+    "field_sep",
+    "field_suffix",
+    "for_binding",
+    "for_stmt",
+    "function_decl",
+    "hex_int",
+    "horizontal_ws",
+    "ident_continue",
+    "ident_start",
+    "if_expr",
+    "if_stmt",
+    "impl_decl",
+    "impl_item",
+    "index_suffix",
+    "interpolated_multiline_string",
+    "interpolated_single_line_string",
+    "interpolated_text",
+    "interpolation",
+    "item",
+    "item_kind",
+    "item_term",
+    "keyword",
+    "lambda_expr",
+    "lambda_param",
+    "let_stmt",
+    "line_comment",
+    "line_ws",
+    "literal",
+    "literal_pattern",
+    "logical_and",
+    "logical_or",
+    "map_entry",
+    "map_literal",
+    "match_arm",
+    "match_expr",
+    "match_stmt",
+    "multiline_string",
+    "multiline_string_char",
+    "multiplicative",
+    "newline",
+    "parameter",
+    "parameter_list",
+    "path",
+    "path_or_record_expr",
+    "path_pattern",
+    "pattern",
+    "postfix",
+    "postfix_op",
+    "primary",
+    "range",
+    "record_field_value",
+    "record_fields",
+    "record_literal_body",
+    "record_pattern_field",
+    "record_variant_pattern",
+    "return_stmt",
+    "return_type",
+    "shebang",
+    "single_line_string",
+    "source_file",
+    "state_decl",
+    "statement",
+    "statement_kind",
+    "stmt_term",
+    "string_char",
+    "struct_decl",
+    "struct_field",
+    "trait_decl",
+    "trait_item",
+    "try_suffix",
+    "tuple_expr",
+    "tuple_fields",
+    "tuple_pattern",
+    "tuple_type",
+    "tuple_variant_pattern",
+    "type_annotation",
+    "type_arguments",
+    "type_hint",
+    "type_path",
+    "unary",
+    "unicode_escape",
+    "unit_expr",
+    "unit_type",
+    "use_decl",
+    "use_path",
+    "visibility",
+    "wildcard_pattern",
+    "ws"
+  ],
+  "syntaxSources": {
+    "docs/grammar.ebnf": "bea64bde444fa2294f06ddbf307f8ebaa890d06ecdd52d871c6933f453bce833",
+    "crates/vela_syntax/src/syntax_kind.rs": "c94e2920778c978c924913d71ed5052bd5dd8a4b285e1b314ffd587f289a1b04",
+    "crates/vela_syntax/src/token.rs": "5c2b585b0648e3b9d314eef50647bcf971d540dd0f2c452bcb3e2348616d8a5f",
+    "crates/vela_syntax/src/ast.rs": "99d34d6fce56364462040425b28e0367aa8a9d486a1028d6dfe739a8a4635caa"
+  },
+  "grammarGroups": [
+    {
+      "id": "lexical",
+      "syntax": [
+        "S7",
+        "S12"
+      ],
+      "productions": [
+        "CHAR",
+        "FLOAT",
+        "IDENT",
+        "INT",
+        "INTERPOLATED_STRING",
+        "STRING",
+        "binary_int",
+        "block_comment",
+        "char_char",
+        "decimal_int",
+        "escape",
+        "exponent",
+        "hex_int",
+        "horizontal_ws",
+        "ident_continue",
+        "ident_start",
+        "interpolated_multiline_string",
+        "interpolated_single_line_string",
+        "interpolated_text",
+        "interpolation",
+        "keyword",
+        "line_comment",
+        "line_ws",
+        "multiline_string",
+        "multiline_string_char",
+        "newline",
+        "shebang",
+        "single_line_string",
+        "source_file",
+        "string_char",
+        "unicode_escape",
+        "ws"
+      ]
+    },
+    {
+      "id": "items",
+      "syntax": [
+        "S1",
+        "S4",
+        "S8"
+      ],
+      "productions": [
+        "attr_arg",
+        "attr_args",
+        "attr_array",
+        "attr_map",
+        "attr_map_entry",
+        "attr_path",
+        "attr_value",
+        "attribute",
+        "const_decl",
+        "contextual_state_kw",
+        "default_value",
+        "enum_decl",
+        "enum_variant",
+        "extern_state_decl",
+        "field_sep",
+        "function_decl",
+        "impl_decl",
+        "impl_item",
+        "item",
+        "item_kind",
+        "item_term",
+        "parameter",
+        "parameter_list",
+        "record_fields",
+        "return_type",
+        "state_decl",
+        "struct_decl",
+        "struct_field",
+        "trait_decl",
+        "trait_item",
+        "tuple_fields",
+        "use_decl",
+        "use_path",
+        "visibility"
+      ]
+    },
+    {
+      "id": "types",
+      "syntax": [
+        "S3",
+        "S14"
+      ],
+      "productions": [
+        "tuple_type",
+        "type_annotation",
+        "type_arguments",
+        "type_hint",
+        "type_path",
+        "unit_type"
+      ]
+    },
+    {
+      "id": "statements",
+      "syntax": [
+        "S2",
+        "S6"
+      ],
+      "productions": [
+        "block",
+        "break_stmt",
+        "continue_stmt",
+        "expr_stmt",
+        "for_binding",
+        "for_stmt",
+        "if_stmt",
+        "let_stmt",
+        "match_stmt",
+        "return_stmt",
+        "statement",
+        "statement_kind",
+        "stmt_term"
+      ]
+    },
+    {
+      "id": "expressions",
+      "syntax": [
+        "S2",
+        "S4",
+        "S5",
+        "S7",
+        "S14"
+      ],
+      "productions": [
+        "additive",
+        "argument",
+        "argument_list",
+        "arm_term",
+        "array_literal",
+        "assign_op",
+        "assignment",
+        "await_suffix",
+        "block_expr",
+        "call_suffix",
+        "comparison",
+        "conditional",
+        "equality",
+        "expr",
+        "field_suffix",
+        "if_expr",
+        "index_suffix",
+        "lambda_expr",
+        "lambda_param",
+        "literal",
+        "logical_and",
+        "logical_or",
+        "map_entry",
+        "map_literal",
+        "match_arm",
+        "match_expr",
+        "multiplicative",
+        "path_or_record_expr",
+        "postfix",
+        "postfix_op",
+        "primary",
+        "range",
+        "record_field_value",
+        "record_literal_body",
+        "try_suffix",
+        "tuple_expr",
+        "unary",
+        "unit_expr"
+      ]
+    },
+    {
+      "id": "patterns",
+      "syntax": [
+        "S6"
+      ],
+      "productions": [
+        "binding_pattern",
+        "literal_pattern",
+        "path_pattern",
+        "pattern",
+        "record_pattern_field",
+        "record_variant_pattern",
+        "tuple_pattern",
+        "tuple_variant_pattern",
+        "wildcard_pattern"
+      ]
+    },
+    {
+      "id": "paths",
+      "syntax": [
+        "S8"
+      ],
+      "productions": [
+        "path"
+      ]
+    }
+  ],
+  "syntaxDimensions": [
+    {
+      "id": "S0",
+      "name": "Workspace/source state",
+      "surface": "Open overlay, disk snapshot, scratch file, configured roots, multi-file modules, missing/deleted/renamed files, schema absent/stale/invalid."
+    },
+    {
+      "id": "S1",
+      "name": "Top-level declarations",
+      "surface": "`pub`, `use`, `const`, contextual `state`, `extern state`, `fn`, parameters, default parameters, `struct`, fields, `enum`, variants, `trait`, default/interface methods, inherent and trait `impl`."
+    },
+    {
+      "id": "S2",
+      "name": "Function and method bodies",
+      "surface": "Locals, explicit type hints, assignments, compound assignments, returns, nested blocks, `if`, `match`, loops, lambdas, closures, callbacks."
+    },
+    {
+      "id": "S3",
+      "name": "Type positions",
+      "surface": "Primitive hints, builtin containers, `Option`/`Result`, source types, schema host types, traits, missing type facts, dynamic `Any` and unknown."
+    },
+    {
+      "id": "S4",
+      "name": "Members and constructors",
+      "surface": "Source/schema fields, methods, trait methods, enum variants, tuple/record/unit variants, record constructors, shorthand fields, field labels, member writes."
+    },
+    {
+      "id": "S5",
+      "name": "Calls and arguments",
+      "surface": "Source functions, source methods, stdlib functions/methods, schema functions/methods, named arguments, defaulted parameters, active parameter tracking, dynamic or unresolved calls."
+    },
+    {
+      "id": "S6",
+      "name": "Patterns and control flow",
+      "surface": "`match` enum patterns, record-variant fields, binding patterns, guards where supported, `for` iteration, `break`, `continue`, control-flow keywords."
+    },
+    {
+      "id": "S7",
+      "name": "Literals and operators",
+      "surface": "Strings, bytes, numbers, booleans, unit, tuples, arrays, maps, sets, records, unary/binary/logical operators, ranges, indexing, punctuation families."
+    },
+    {
+      "id": "S8",
+      "name": "Modules and imports",
+      "surface": "Qualified module paths, imported declarations, import aliases if supported, private/public visibility, source-backed schema spans, unresolved imports."
+    },
+    {
+      "id": "S9",
+      "name": "Error recovery",
+      "surface": "Parser recovery, incomplete member/call/type contexts, malformed declarations, unresolved names, diagnostics with candidates, partial stale facts."
+    },
+    {
+      "id": "S10",
+      "name": "Symbol ownership",
+      "surface": "Local, parameter, source declaration, source member, source variant, schema/host fact, stdlib fact, builtin fact, module, dynamic `Any`, unresolved."
+    },
+    {
+      "id": "S11",
+      "name": "Incrementality and cancellation",
+      "surface": "Repeated queries, body-only edits, declaration/import fingerprint changes, reverse dependency invalidation, request cancellation, generation rejection."
+    },
+    {
+      "id": "S12",
+      "name": "Trivia and formatting",
+      "surface": "Comments, shebang trivia, blank-line groups, indentation, top-level item spans, nested member spans, malformed-source fallback."
+    },
+    {
+      "id": "S13",
+      "name": "Rust-analyzer-aligned authoring UX",
+      "surface": "Compact generic-like type formatting, typed receiver dot completion, field-declaration contexts, completion label/detail separation, and statement snippets for Rust-like constructs."
+    },
+    {
+      "id": "S14",
+      "name": "Rust-analyzer-style authoring core",
+      "surface": "Structured `CompletionAnalysis`, path/type/dot/declaration/call/pattern/statement contexts, expected type/name, unified member index, and editor-neutral item rendering before LSP projection."
+    }
+  ]
+}

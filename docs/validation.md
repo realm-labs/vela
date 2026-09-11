@@ -82,3 +82,9 @@ npm --prefix editors/vscode test
 Linux CI uses `xvfb-run -a npm --prefix editors/vscode test`. See the
 [editor test guide](../editors/vscode/README.md#automated-editor-tests) for the
 version matrix, bounded assertions, and retained logs.
+
+For proactive matrix work, run `node --test scripts/lsp-matrix/model.test.js`
+and `node scripts/lsp-matrix/run.js --run`. The installed editor command also
+runs this audit with fresh editor evidence. `--strict` is the full coverage
+acceptance gate and is expected to fail while required cells remain unreviewed;
+see [lsp-test-strategy.md](lsp-test-strategy.md) for the obligations and exit gates.
