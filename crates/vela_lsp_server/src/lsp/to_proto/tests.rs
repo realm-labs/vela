@@ -202,7 +202,7 @@ fn definition_location_projects_typed_location() {
         .definition(&document, position)
         .expect("call should have definition");
 
-    let location = definition_location(&definition);
+    let location = definition_location(&definition, source).expect("valid target location");
 
     assert_eq!(location.uri.as_str(), document.as_str());
     assert_eq!(

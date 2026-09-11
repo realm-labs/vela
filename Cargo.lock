@@ -1278,6 +1278,7 @@ dependencies = [
 name = "vela_language_service"
 version = "0.1.0"
 dependencies = [
+ "percent-encoding",
  "serde",
  "serde_json",
  "vela_analysis",

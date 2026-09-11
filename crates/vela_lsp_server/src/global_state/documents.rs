@@ -1,6 +1,25 @@
-use vela_language_service::SourceVersion;
+use vela_language_service::{DocumentId, SourceVersion};
 
 use crate::{line_index::LineIndex, protocol::LspPosition};
+
+pub(super) fn snapshot_document_text(
+    snapshot: &super::GlobalStateSnapshot,
+    document_id: &DocumentId,
+) -> String {
+    snapshot
+        .workspace
+        .document_text(document_id)
+        .map(std::borrow::ToOwned::to_owned)
+        .or_else(|| {
+            snapshot
+                .databases
+                .source_db()
+                .records()
+                .get(document_id)
+                .map(|source| source.text().to_owned())
+        })
+        .unwrap_or_default()
+}
 
 impl super::GlobalState {
     pub(crate) fn did_save(

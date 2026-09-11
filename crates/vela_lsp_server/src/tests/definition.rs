@@ -6,6 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use super::{TestServer, navigation_request, notification_value, notify, request, response_value};
 
 mod tasks;
+mod unicode;
 
 #[test]
 fn lsp_definition_follows_open_overlay_local_binding() {

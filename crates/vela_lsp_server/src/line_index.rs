@@ -31,6 +31,20 @@ impl<'a> LineIndex<'a> {
         Ok(ServiceLineIndex::new(self.text).position(offset))
     }
 
+    pub(crate) fn lsp_position(&self, position: Position) -> Result<lsp_types::Position, String> {
+        let (start, end) = self.line_bounds(position.line)?;
+        let prefix = self.text[start..end]
+            .get(..position.character)
+            .ok_or_else(|| {
+                "service position is outside the line or splits a character".to_owned()
+            })?;
+        Ok(lsp_types::Position::new(
+            u32::try_from(position.line).map_err(|_| "line is too large".to_owned())?,
+            u32::try_from(prefix.encode_utf16().count())
+                .map_err(|_| "character is too large".to_owned())?,
+        ))
+    }
+
     pub(crate) fn service_range(&self, range: LspRange) -> Result<DiagnosticRange, String> {
         let start_offset = self.offset_clamped(range.start)?;
         let end_offset = self.offset_clamped(range.end)?;

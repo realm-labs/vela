@@ -124,8 +124,18 @@ pub(crate) fn schema_diagnostics(diagnostics: &[SchemaDiagnostic]) -> Vec<lsp_ty
         .collect()
 }
 
-pub(crate) fn definition_location(definition: &Definition) -> lsp_types::Location {
-    location(definition.document_id(), definition.range())
+pub(crate) fn definition_location(
+    definition: &Definition,
+    target_text: &str,
+) -> Option<lsp_types::Location> {
+    let index = crate::line_index::LineIndex::new(target_text);
+    Some(lsp_types::Location {
+        uri: lsp_types::Url::parse(definition.document_id().as_str()).ok()?,
+        range: lsp_types::Range::new(
+            index.lsp_position(definition.range().start()).ok()?,
+            index.lsp_position(definition.range().end()).ok()?,
+        ),
+    })
 }
 
 pub(crate) fn reference_locations(references: &[Reference]) -> Vec<lsp_types::Location> {

@@ -47,6 +47,22 @@ impl ProjectState {
         self.workspace.snapshot()
     }
 
+    pub(super) fn load_initial_project(&mut self) {
+        let manifests = self
+            .workspace_roots
+            .iter()
+            .map(|root| document_uri_path(root).join(CONFIG_FILE))
+            .filter(|path| path.is_file())
+            .collect::<Vec<_>>();
+        for manifest in manifests {
+            if let Some(change) =
+                self.reload_package_project(&document_path_uri(&manifest.display().to_string()))
+            {
+                self.apply_config_change(change);
+            }
+        }
+    }
+
     #[cfg(test)]
     pub(super) fn package_graph(&self) -> Option<&PackageGraph> {
         self.package_graph.as_ref()
@@ -135,6 +151,19 @@ impl ProjectState {
         let had_valid_graph = self.package_graph.is_some();
         let loaded = match load_package_project(&root_manifest, &authorized_roots) {
             Ok(graph) => {
+                self.disk_sources = graph
+                    .sources()
+                    .sources()
+                    .iter()
+                    .map(|source| {
+                        let document =
+                            DocumentId::from(document_path_uri(&source.path.display().to_string()));
+                        (
+                            document.clone(),
+                            SourceFileSnapshot::new(document, source.text.as_str()),
+                        )
+                    })
+                    .collect();
                 result.config =
                     WorkspaceConfig::from_package_graph(&graph, result.config.schema().clone());
                 self.package_graph = Some(graph);

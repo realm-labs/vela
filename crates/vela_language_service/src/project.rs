@@ -304,8 +304,14 @@ fn assemble_workspace_sources(
 ) -> ProjectSources {
     let mut inputs = BTreeMap::<DocumentId, Arc<str>>::new();
     let mut document_versions = BTreeMap::<DocumentId, SourceVersion>::new();
+    let overlay_paths = snapshot
+        .open_document_ids()
+        .map(|document| document_path_key(document.as_str()))
+        .collect::<BTreeSet<_>>();
     for file in files {
-        if is_vela_source(file.document_id.as_str()) {
+        if is_vela_source(file.document_id.as_str())
+            && !overlay_paths.contains(&document_path_key(file.document_id.as_str()))
+        {
             inputs.insert(file.document_id.clone(), Arc::clone(&file.text));
             document_versions.insert(file.document_id.clone(), SourceVersion::INITIAL);
         }
@@ -550,7 +556,10 @@ fn strip_root<'a>(root: &str, path: &'a str) -> Option<&'a str> {
 }
 
 fn normalize_document_path(path: &str) -> String {
-    let mut path = path.trim_start_matches("file://").replace('\\', "/");
+    let decoded = path
+        .strip_prefix("file://")
+        .map(|uri_path| percent_encoding::percent_decode_str(uri_path).decode_utf8_lossy());
+    let mut path = decoded.as_deref().unwrap_or(path).replace('\\', "/");
     if cfg!(windows)
         && path.as_bytes().first() == Some(&b'/')
         && path.as_bytes().get(2) == Some(&b':')
@@ -570,6 +579,15 @@ fn normalize_document_path(path: &str) -> String {
         }
     }
     normalized.display().to_string().replace('\\', "/")
+}
+
+fn document_path_key(path: &str) -> String {
+    let path = normalize_document_path(path);
+    if cfg!(windows) {
+        path.to_ascii_lowercase()
+    } else {
+        path
+    }
 }
 
 fn canonicalize_existing_ancestor(path: &Path) -> Option<PathBuf> {

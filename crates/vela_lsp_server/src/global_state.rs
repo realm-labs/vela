@@ -27,7 +27,7 @@ use vela_language_service::{
 
 use self::{
     diagnostics::{publish_diagnostics_notification, with_work_done_progress},
-    documents::{apply_document_changes, source_version},
+    documents::{apply_document_changes, snapshot_document_text, source_version},
     project_state::ProjectState,
     request_queue::RequestQueue,
     responses::{
@@ -783,7 +783,10 @@ impl GlobalStateSnapshot {
 
         response_ok_typed_messages(
             id,
-            definition.as_ref().map(to_proto::definition_location),
+            definition.as_ref().and_then(|definition| {
+                let target_text = snapshot_document_text(&self, definition.document_id());
+                to_proto::definition_location(definition, &target_text)
+            }),
             "typed navigation response",
         )
     }
@@ -793,22 +796,6 @@ enum SnapshotNavigationLocationQuery {
     Definition,
     Declaration,
     TypeDefinition,
-}
-
-fn snapshot_document_text(snapshot: &GlobalStateSnapshot, document_id: &DocumentId) -> String {
-    snapshot
-        .workspace
-        .document_text(document_id)
-        .map(std::borrow::ToOwned::to_owned)
-        .or_else(|| {
-            snapshot
-                .databases
-                .source_db()
-                .records()
-                .get(document_id)
-                .map(|source| source.text().to_owned())
-        })
-        .unwrap_or_default()
 }
 
 impl GlobalState {
@@ -992,6 +979,7 @@ impl GlobalState {
             workspace_roots_from_lsp_initialize(&params),
             editor_config,
         ));
+        self.project.load_initial_project();
         self.project.refresh_databases();
         self.client_supports_work_done_progress = lsp_supports_work_done_progress(&params);
         self.client_supports_watched_file_registration =

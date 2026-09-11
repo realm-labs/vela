@@ -10,13 +10,19 @@ pub(crate) fn workspace_roots_from_lsp_initialize(
         .workspace_folders
         .iter()
         .flatten()
-        .map(|folder| WorkspaceRoot::from(folder.uri.to_string()))
+        .map(|folder| {
+            WorkspaceRoot::from(crate::paths::normalized_path(
+                crate::paths::document_uri_path(folder.uri.as_str()),
+            ))
+        })
         .chain(
             #[allow(deprecated)]
             params
                 .root_uri
                 .iter()
-                .map(ToString::to_string)
+                .map(|uri| {
+                    crate::paths::normalized_path(crate::paths::document_uri_path(uri.as_str()))
+                })
                 .map(WorkspaceRoot::from),
         )
         .map(|root| root.path().to_owned())
