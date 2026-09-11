@@ -6,6 +6,11 @@ This plan owns work boundaries and verification checkpoints. Follow
 [goal.md](goal.md), [architecture.md](architecture.md), and repository agent
 instructions throughout. The implementation baseline is commit `33451ec80`.
 
+The [VS Code interaction matrix](lsp-vscode-interaction-matrix.md) is also a
+required acceptance contract. Its UX01-UX24 scenarios distinguish provider,
+command, actual input and rendered-output evidence; editor smoke alone cannot
+close their requirements. This extends planned scope without renumbering batches.
+
 ## Goal Contract
 
 Build executable proof for the existing syntax and LSP contracts, repair defects
@@ -71,6 +76,13 @@ B00/B01 are infrastructure gates, not claims of semantic coverage. The current
 are a starting inventory, not a frozen denominator or the final P5 workload.
 B14-B18 must register additional requirements before claiming their acceptance.
 
+Interaction work follows the existing owners: B00 registers every UX scenario,
+route, evidence level and profile; B01 supplies the workbench input/render driver;
+B02-B13 and B15 implement their assigned local scenarios; B16 covers environment,
+upgrade, coexistence, keybinding and rendering variants, including remote hosts.
+B19 requires all mandatory interaction tuples as well as the full semantic matrix.
+Use child commits within these batches to keep driver, feature and CI work small.
+
 Batch numbers and completed scope remain stable. If a batch needs multiple
 independently verifiable changes, use child IDs such as `B04.1`, `B04.2`, and
 record their exact obligation IDs before editing. Do not renumber later batches.
@@ -99,6 +111,11 @@ may remain open. A missing editor result is pending evidence, not a pass.
 Completed cells cannot silently become unreviewed, mapped-only, removed, or N/A.
 Legitimate contract changes require an explicit recorded migration and re-audit.
 Include negative self-tests for each way these gates could falsely report success.
+
+Register the interaction matrix's required scenarios and evidence levels too.
+Missing Input/Render proof cannot be satisfied by provider or command evidence.
+Keep feature-batch local gates distinct from B16 environment expansion, and
+validate the required scenario/route/profile set before B19 can close.
 
 The manifest must also declare B14-B19 deliverables so accepting all initial
 feature cells cannot accidentally close the entire goal. B16 extends evidence

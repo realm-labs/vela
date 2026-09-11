@@ -29,6 +29,12 @@ whole-catalog validation and recheck accepted batches against current evidence;
 batch completion cannot weaken full strategy acceptance. The scoped gate and
 machine-readable checkpoint are B00 work, not existing runner capabilities.
 
+The [VS Code interaction matrix](lsp-vscode-interaction-matrix.md) separates
+provider, command, actual input and rendered-output evidence. Required keyboard,
+pointer and widget routes cannot be accepted from provider/command tests alone.
+The planned batch gate tracks these routes and their environment identities;
+installed feature smoke remains a separate, narrower proof.
+
 ## Standing Constraints
 
 - Script-language generics are not supported.

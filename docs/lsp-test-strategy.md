@@ -9,6 +9,11 @@ For goal-driven implementation, follow the stable batches, commit gates, and
 resume contract in [lsp-test-execution-plan.md](lsp-test-execution-plan.md).
 P0-P5 below describe acceptance dimensions; they are not individual commit units.
 
+The [VS Code interaction matrix](lsp-vscode-interaction-matrix.md) adds mandatory
+user workflows and input/render evidence to P4. Its UX01-UX24 scenarios cover
+widgets, keyboard/mouse routes, undo/recovery, remote hosts, upgrades and declared
+extension coexistence. They are planned requirements, not current test coverage.
+
 ## Source Of Requirements
 
 - [grammar.ebnf](grammar.ebnf) defines the documented grammar. The current
@@ -200,6 +205,7 @@ run that gate for all supported editor profiles, not only one developer machine.
 | P2 — ranges and edits | Run all range-bearing features through LF/CRLF and Unicode transformations, apply edits and decode tokens. | Every outgoing range/edit/token family has exact conversion and transformation proof. |
 | P3 — lifecycle/schema | Stateful disk/overlay/dependency/config/schema/cancellation sequences with fresh-workspace oracle. | All state obligations verified; no stale results, guessed facts, or unbounded waits. |
 | P4 — editor workflows | Shared scenarios for every advertised user-facing feature through installed VSIX. | Each editor obligation passes with current hashes on the supported OS/version profiles. |
+| P4 — user interaction | Execute the required UX01-UX24 routes through the workbench with exact resulting-state and rendering assertions. | Every mandatory scenario/route/profile has matching evidence at its required level; provider or command smoke cannot substitute for actual input. |
 | P5 — generated/scale gates | Constrained pairwise generation, fixed-seed state machines, mutation checks, and dedicated scale budgets. | Recorded combination coverage, useful minimized failures, and strict acceptance without unexplained skips. |
 
 Start P1/P2 with navigation, completion, references/rename, diagnostics/actions,
