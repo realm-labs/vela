@@ -270,9 +270,9 @@ fn script_method_symbol_ref(
         }
         let metadata = graph.impl_metadata(declaration.id)?;
         if !matches!(metadata.kind, ImplMetadataKind::Inherent)
-            || !owner_names
-                .iter()
-                .any(|owner| impl_target_matches(&metadata.target_path, owner))
+            || !owner_names.iter().any(|owner| {
+                crate::symbol_ref::source_impl_owner_matches(graph, declaration.id, owner)
+            })
         {
             return None;
         }
@@ -487,12 +487,6 @@ fn push_owner_names(names: &mut Vec<String>, name: &str) {
     if !names.iter().any(|owner| owner == name) {
         names.push(name.to_owned());
     }
-    if let Some(short) = name.rsplit("::").next()
-        && short != name
-        && !names.iter().any(|owner| owner == short)
-    {
-        names.push(short.to_owned());
-    }
 }
 
 fn declaration_name_matches(
@@ -512,10 +506,6 @@ fn declaration_name_matches(
                 }
             })
             .is_some_and(|qualified| qualified == owner)
-}
-
-fn impl_target_matches(path: &[String], owner: &str) -> bool {
-    path.last().is_some_and(|name| name == owner) || path.join("::") == owner
 }
 
 fn schema_symbol_ref(schema: &RegistryFacts, text: &str) -> Option<SymbolRef> {

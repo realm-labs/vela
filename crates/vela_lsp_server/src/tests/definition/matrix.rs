@@ -6,8 +6,17 @@ use crate::tests::{TestServer, navigation_request, notify, request, response_val
 
 #[test]
 fn navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls() {
+    assert_navigation_matrix("navigation-declarations");
+}
+
+#[test]
+fn navigation_member_matrix_projects_exact_source_member_targets_and_nulls() {
+    assert_navigation_matrix("navigation-members");
+}
+
+fn assert_navigation_matrix(fixture_id: &str) {
     for crlf in [false, true] {
-        let mut spec = load("navigation-declarations");
+        let mut spec = load(fixture_id);
         if crlf {
             for source in spec.files.values_mut() {
                 *source = source.replace('\n', "\r\n");

@@ -1,7 +1,7 @@
 use vela_common::Span;
 use vela_hir::binding::LocalBinding;
 use vela_hir::ids::HirDeclId;
-use vela_hir::module_graph::{Declaration, ModuleGraph};
+use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
 use vela_package::ModuleKey;
 
@@ -177,6 +177,33 @@ pub(crate) fn source_impl_method_symbol(
         }
     };
     Some(source_child_symbol(&owner, method))
+}
+
+pub(crate) fn source_impl_owner_matches(graph: &ModuleGraph, id: HirDeclId, owner: &str) -> bool {
+    let Some(declaration) = graph.declaration(id) else {
+        return false;
+    };
+    let Some(metadata) = graph.impl_metadata(id) else {
+        return false;
+    };
+    let Some(target) = graph.resolve_visible_declaration_path(
+        declaration.module,
+        &metadata.target_path,
+        DeclarationKind::Struct,
+    ) else {
+        return false;
+    };
+    if qualified_source_declaration_name(graph, target) == owner {
+        return true;
+    }
+    target.name == owner
+        && graph
+            .declarations()
+            .filter(|candidate| {
+                candidate.kind == DeclarationKind::Struct && candidate.name == owner
+            })
+            .count()
+            == 1
 }
 
 pub(crate) fn source_enum_variant_symbol(

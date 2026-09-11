@@ -7,12 +7,19 @@ use crate::{
 #[test]
 fn navigation_declaration_matrix_pins_all_three_targets_and_negative_policy() {
     for crlf in [false, true] {
-        assert_navigation_matrix(crlf);
+        assert_navigation_matrix("navigation-declarations", crlf);
     }
 }
 
-fn assert_navigation_matrix(crlf: bool) {
-    let mut spec = load("navigation-declarations");
+#[test]
+fn navigation_member_matrix_pins_source_ownership_and_negative_policy() {
+    for crlf in [false, true] {
+        assert_navigation_matrix("navigation-members", crlf);
+    }
+}
+
+fn assert_navigation_matrix(fixture_id: &str, crlf: bool) {
+    let mut spec = load(fixture_id);
     if crlf {
         for source in spec.files.values_mut() {
             *source = source.replace('\n', "\r\n");

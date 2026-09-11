@@ -20,6 +20,7 @@ use crate::{
 
 mod named_arguments;
 mod source_members;
+mod source_variants;
 mod type_hints;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -80,6 +81,10 @@ impl LanguageServiceDatabases {
         if let Some(definition) = source_members::source_member_definition_for_target(self, &target)
         {
             return Some(definition);
+        }
+
+        if let Some(navigation) = self.source_variant_navigation(&query, &target) {
+            return navigation.definition;
         }
 
         if query.member_receiver_range().is_some() {
@@ -154,6 +159,10 @@ impl LanguageServiceDatabases {
         }
 
         if let Some(navigation) = self.named_argument_navigation(&query, &target) {
+            return navigation.type_definition;
+        }
+
+        if let Some(navigation) = self.source_variant_navigation(&query, &target) {
             return navigation.type_definition;
         }
 

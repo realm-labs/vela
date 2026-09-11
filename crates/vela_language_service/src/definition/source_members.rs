@@ -1,4 +1,4 @@
-use vela_analysis::{hints::type_fact_from_hint_in_module, type_fact::TypeFact};
+use vela_analysis::type_fact::TypeFact;
 use vela_common::Span;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
@@ -43,10 +43,13 @@ pub(super) fn source_field_type_fact_for_target(
             .fields
             .iter()
             .find(|field| field.name == target.text())?;
-        field
-            .type_hint
-            .as_ref()
-            .map(|hint| type_fact_from_hint_in_module(graph, declaration.module, hint))
+        field.type_hint.as_ref().map(|hint| {
+            crate::callable_context::query_type_fact_from_hint(
+                graph,
+                hint,
+                databases.schema_db().facts(),
+            )
+        })
     })
 }
 
@@ -86,29 +89,37 @@ fn source_impl_method_definition_for_target(
     receiver: &TypeFact,
 ) -> Option<Definition> {
     let owner_names = record_owner_names(receiver);
-    graph.declarations().find_map(|declaration| {
-        if declaration.kind != DeclarationKind::Impl {
-            return None;
-        }
-        let metadata = graph.impl_metadata(declaration.id)?;
-        if !matches!(metadata.kind, ImplMetadataKind::Inherent)
-            || !owner_names
+    // Inherent methods take precedence; multiple trait implementations must
+    // not select a target based on declaration iteration order.
+    for inherent in [true, false] {
+        let mut candidates = graph.declarations().filter_map(|declaration| {
+            if declaration.kind != DeclarationKind::Impl {
+                return None;
+            }
+            let metadata = graph.impl_metadata(declaration.id)?;
+            if matches!(metadata.kind, ImplMetadataKind::Inherent) != inherent
+                || !owner_names.iter().any(|owner| {
+                    crate::symbol_ref::source_impl_owner_matches(graph, declaration.id, owner)
+                })
+            {
+                return None;
+            }
+            let method = metadata
+                .methods
                 .iter()
-                .any(|owner| impl_target_matches(&metadata.target_path, owner))
-        {
-            return None;
+                .find(|method| method.name == target.text())?;
+            definition_from_named_span_with_symbol(
+                databases,
+                method.name_span,
+                &method.name,
+                source_impl_method_symbol(graph, declaration.id, &method.name),
+            )
+        });
+        if let Some(definition) = candidates.next() {
+            return candidates.next().is_none().then_some(definition);
         }
-        let method = metadata
-            .methods
-            .iter()
-            .find(|method| method.name == target.text())?;
-        definition_from_named_span_with_symbol(
-            databases,
-            method.name_span,
-            &method.name,
-            source_impl_method_symbol(graph, declaration.id, &method.name),
-        )
-    })
+    }
+    None
 }
 
 fn source_trait_method_definition_for_target(
@@ -157,7 +168,7 @@ fn source_trait_default_method_definition_for_target(
         };
         if !owner_names
             .iter()
-            .any(|owner| impl_target_matches(&metadata.target_path, owner))
+            .any(|owner| crate::symbol_ref::source_impl_owner_matches(graph, declaration.id, owner))
             || metadata
                 .methods
                 .iter()
@@ -165,7 +176,11 @@ fn source_trait_default_method_definition_for_target(
         {
             return None;
         }
-        let trait_declaration = trait_declaration_for_path(graph, trait_path)?;
+        let trait_declaration = graph.resolve_visible_declaration_path(
+            declaration.module,
+            trait_path,
+            DeclarationKind::Trait,
+        )?;
         let method = graph
             .trait_shape(trait_declaration.id)?
             .methods
@@ -180,7 +195,7 @@ fn source_trait_default_method_definition_for_target(
     })
 }
 
-fn definition_from_named_span_with_symbol(
+pub(super) fn definition_from_named_span_with_symbol(
     databases: &LanguageServiceDatabases,
     span: Span,
     name: &str,
@@ -300,12 +315,6 @@ fn push_owner_names(names: &mut Vec<String>, name: &str) {
     if !names.iter().any(|owner| owner == name) {
         names.push(name.to_owned());
     }
-    if let Some(short) = name.rsplit("::").next()
-        && short != name
-        && !names.iter().any(|owner| owner == short)
-    {
-        names.push(short.to_owned());
-    }
 }
 
 fn declaration_name_matches(graph: &ModuleGraph, declaration: &Declaration, owner: &str) -> bool {
@@ -321,19 +330,4 @@ fn declaration_name_matches(graph: &ModuleGraph, declaration: &Declaration, owne
                 }
             })
             .is_some_and(|qualified| qualified == owner)
-}
-
-fn trait_declaration_for_path<'a>(
-    graph: &'a ModuleGraph,
-    trait_path: &[String],
-) -> Option<&'a Declaration> {
-    let owner = trait_path.join("::");
-    graph.declarations().find(|declaration| {
-        declaration.kind == DeclarationKind::Trait
-            && (declaration.name == owner || declaration_name_matches(graph, declaration, &owner))
-    })
-}
-
-fn impl_target_matches(path: &[String], owner: &str) -> bool {
-    path.last().is_some_and(|name| name == owner) || path.join("::") == owner
 }

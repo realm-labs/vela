@@ -286,11 +286,7 @@ fn source_impl_method_callable_facts(
             }
             let metadata = graph.impl_metadata(declaration.id)?;
             let matches_owner = owner_names.iter().any(|owner| {
-                metadata
-                    .target_path
-                    .last()
-                    .is_some_and(|name| name == owner)
-                    || metadata.target_path.join("::") == *owner
+                crate::symbol_ref::source_impl_owner_matches(graph, declaration.id, owner)
             });
             if !matches_owner {
                 return None;
@@ -380,13 +376,19 @@ fn source_trait_impl_default_callable_facts(
             if metadata.methods.iter().any(|entry| entry.name == method) {
                 return None;
             }
-            let matches_owner = owner_names
-                .iter()
-                .any(|owner| impl_target_matches(&metadata.target_path, owner));
+            let matches_owner = owner_names.iter().any(|owner| {
+                crate::symbol_ref::source_impl_owner_matches(graph, declaration.id, owner)
+            });
             if !matches_owner {
                 return None;
             }
-            let trait_declaration = trait_declaration_for_path(graph, trait_path)?;
+            let trait_declaration = graph
+                .resolve_visible_declaration_path(
+                    declaration.module,
+                    trait_path,
+                    DeclarationKind::Trait,
+                )?
+                .id;
             let owner = qualified_declaration_label(graph, trait_declaration);
             let method = graph
                 .trait_shape(trait_declaration)?
@@ -801,20 +803,6 @@ fn impl_method_owner_label(metadata: &vela_hir::type_hint::ImplMetadata) -> Stri
     }
 }
 
-fn trait_declaration_for_path(
-    graph: &ModuleGraph,
-    trait_path: &[String],
-) -> Option<vela_hir::ids::HirDeclId> {
-    let owner = trait_path.join("::");
-    graph
-        .declarations()
-        .find(|declaration| {
-            declaration.kind == DeclarationKind::Trait
-                && declaration_name_matches(graph, declaration.id, &owner)
-        })
-        .map(|declaration| declaration.id)
-}
-
 fn declaration_name_matches(
     graph: &ModuleGraph,
     declaration: vela_hir::ids::HirDeclId,
@@ -824,10 +812,6 @@ fn declaration_name_matches(
         return false;
     };
     declaration.name == owner || qualified_declaration_label(graph, declaration.id) == owner
-}
-
-fn impl_target_matches(path: &[String], owner: &str) -> bool {
-    path.last().is_some_and(|name| name == owner) || path.join("::") == owner
 }
 
 fn owner_names(receiver: &TypeFact) -> Vec<String> {
@@ -859,11 +843,6 @@ fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
     match receiver {
         TypeFact::Record { name } => {
             push_owner_name(owners, name);
-            if let Some(short) = name.rsplit("::").next()
-                && short != name
-            {
-                push_owner_name(owners, short);
-            }
         }
         TypeFact::Union(facts) => {
             for fact in facts {
@@ -907,11 +886,6 @@ fn collect_trait_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
     match receiver {
         TypeFact::Trait { name } => {
             push_owner_name(owners, name);
-            if let Some(short) = name.rsplit("::").next()
-                && short != name
-            {
-                push_owner_name(owners, short);
-            }
         }
         TypeFact::Union(facts) => {
             for fact in facts {
@@ -986,7 +960,18 @@ pub(crate) fn query_type_fact_from_hint(
     hint: &HirTypeHint,
     schema: &RegistryFacts,
 ) -> TypeFact {
-    let fact = type_fact_from_hint(graph, hint);
+    let module = graph
+        .declarations()
+        .find(|declaration| {
+            declaration.span.source == hint.span.source
+                && declaration.span.start <= hint.span.start
+                && hint.span.end <= declaration.span.end
+        })
+        .map(|declaration| declaration.module);
+    let fact = module.map_or_else(
+        || type_fact_from_hint(graph, hint),
+        |module| vela_analysis::hints::type_fact_from_hint_in_module(graph, module, hint),
+    );
     if matches!(fact, TypeFact::Unknown) {
         schema_fact_for_hint(hint, schema).unwrap_or(TypeFact::Unknown)
     } else {

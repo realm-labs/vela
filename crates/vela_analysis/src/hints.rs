@@ -1,9 +1,12 @@
 use vela_common::{CollectionViewMutation, PrimitiveTag};
 use vela_hir::ids::{HirDeclId, ModuleId};
-use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
+use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph, Visibility};
 use vela_hir::type_hint::HirTypeHint;
 
 use crate::type_fact::TypeFact;
+
+#[cfg(test)]
+mod scope_tests;
 
 pub fn type_fact_from_hint(graph: &ModuleGraph, hint: &HirTypeHint) -> TypeFact {
     type_fact_from_hir_hint(graph, None, hint)
@@ -17,8 +20,12 @@ pub fn type_fact_from_hint_in_module(
     if let Some(fact) = builtin_type_fact_from_hir_hint(graph, Some(module), hint) {
         return fact;
     }
-    imported_schema_fact(graph, module, &hint.path)
-        .unwrap_or_else(|| type_fact_from_hint(graph, hint))
+    if hint.path.as_slice() == ["task", "Error"] && hint.args.is_empty() {
+        return TypeFact::record("task::Error");
+    }
+    schema_declaration_from_hint_in_module(graph, module, hint)
+        .and_then(|id| declaration_schema_fact(graph, graph.declaration(id)?))
+        .unwrap_or(TypeFact::Unknown)
 }
 
 pub(crate) fn schema_declaration_from_hint_in_module(
@@ -26,8 +33,20 @@ pub(crate) fn schema_declaration_from_hint_in_module(
     module: ModuleId,
     hint: &HirTypeHint,
 ) -> Option<HirDeclId> {
-    imported_schema_declaration(graph, module, &hint.path)
-        .or_else(|| resolved_schema_declaration(graph, &hint.path))
+    [
+        DeclarationKind::Struct,
+        DeclarationKind::Enum,
+        DeclarationKind::Trait,
+    ]
+    .into_iter()
+    .find_map(|kind| {
+        graph
+            .resolve_visible_declaration_path(module, &hint.path, kind)
+            .filter(|declaration| {
+                declaration.module == module || declaration.visibility == Visibility::Public
+            })
+            .map(|declaration| declaration.id)
+    })
 }
 
 pub fn type_fact_from_path(graph: &ModuleGraph, path: &[String]) -> TypeFact {
@@ -206,17 +225,6 @@ fn resolved_schema_fact(graph: &ModuleGraph, path: &[String]) -> Option<TypeFact
     )
 }
 
-fn imported_schema_fact(
-    graph: &ModuleGraph,
-    module: ModuleId,
-    path: &[String],
-) -> Option<TypeFact> {
-    declaration_schema_fact(
-        graph,
-        graph.declaration(imported_schema_declaration(graph, module, path)?)?,
-    )
-}
-
 fn resolved_schema_declaration(graph: &ModuleGraph, path: &[String]) -> Option<HirDeclId> {
     let matches = graph
         .declarations()
@@ -227,27 +235,6 @@ fn resolved_schema_declaration(graph: &ModuleGraph, path: &[String]) -> Option<H
         return None;
     };
     Some(*declaration)
-}
-
-fn imported_schema_declaration(
-    graph: &ModuleGraph,
-    module: ModuleId,
-    path: &[String],
-) -> Option<HirDeclId> {
-    let [name] = path else {
-        return None;
-    };
-    graph.imports(module)?.iter().find_map(|import| {
-        let imported_name = import.alias.as_ref().or_else(|| import.path.last())?;
-        if imported_name != name {
-            return None;
-        }
-        let Some(ImportResolution::Declaration(declaration)) = import.resolution else {
-            return None;
-        };
-        declaration_schema_fact(graph, graph.declaration(declaration)?)?;
-        Some(declaration)
-    })
 }
 
 fn schema_path_matches(graph: &ModuleGraph, declaration: &Declaration, path: &[String]) -> bool {

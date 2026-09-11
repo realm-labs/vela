@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "id": "navigation-members",
+  "files": {
+    "scripts/main.vela": "use beta::Box as Foreign;\nuse beta::Choice as ForeignChoice;\nstruct [[cell:start]]Cell[[cell:end]] { [[value:start]]value[[value:end]]: i64 }\nstruct [[holder:start]]Holder[[holder:end]] { [[item:start]]item[[item:end]]: Cell }\nimpl Holder {\n    fn [[get:start]]get[[get:end]](self) -> Cell { return self.item; }\n}\ntrait [[readable:start]]Readable[[readable:end]] {\n    fn [[read:start]]read[[read:end]](self) -> Cell;\n    fn [[default:start]]default_cell[[default:end]](self) -> Cell { return Cell { value: 0 }; }\n}\nimpl Readable for Holder {\n    fn [[override:start]]read[[override:end]](self) -> Cell { return self.item; }\n}\nenum [[choice:start]]Choice[[choice:end]] {\n    [[unit:start]]Empty[[unit:end]],\n    [[tuple:start]]Number[[tuple:end]](value: i64),\n    [[record:start]]Record[[record:end]] { cell: Cell },\n}\nfn main(holder: Holder, reader: Readable, unknown) {\n    let text = \"中😀\"; holder.[[field-use]]item;\n    holder.[[field-write]]item = Cell { value: 1 };\n    holder.item.[[primitive-field]]value;\n    holder.[[method-use]]get();\n    holder.get().[[returned-field]]value;\n    reader.[[trait-use]]read();\n    holder.[[default-use]]default_cell();\n    holder.[[override-use]]read();\n    let a = Choice::[[unit-use]]Empty;\n    let b = Choice::[[tuple-use]]Number(1);\n    let c = Choice::[[record-use]]Record { cell: Cell { value: 2 } };\n    match b { Choice::[[pattern-use]]Number(value) => value, _ => 0 };\n    holder.[[unknown-field]]missing;\n    unknown.[[dynamic-field]]item;\n    unknown.[[dynamic-method]]get();\n    let primitive = 2; primitive.[[primitive-member]]item;\n}\nfn foreign(boxed: Foreign) {\n    boxed.[[foreign-field]]item;\n    boxed.[[foreign-method]]get();\n    ForeignChoice::[[foreign-variant]]Empty;\n    ForeignChoice::[[missing-variant]]Missing;\n}\nfn foreign_default(boxed: Foreign) { boxed.[[foreign-default]]fallback(); }\n",
+    "scripts/alpha.vela": "pub struct Box { item: i64 }\nimpl Box { fn get(self) -> i64 { return self.item; } }\npub enum Choice { Empty }\npub trait Readable { fn fallback(self) -> i64 { return 1; } }\nimpl Readable for Box {}\n",
+    "scripts/beta.vela": "/* 中😀 */ pub struct [[foreign-cell:start]]Cell[[foreign-cell:end]] { value: i64 }\npub struct Box { [[foreign-item:start]]item[[foreign-item:end]]: Cell }\nimpl Box { fn [[foreign-get:start]]get[[foreign-get:end]](self) -> Cell { return self.item; } }\npub enum [[foreign-choice:start]]Choice[[foreign-choice:end]] { [[foreign-empty:start]]Empty[[foreign-empty:end]] }\npub trait Readable { fn [[foreign-fallback:start]]fallback[[foreign-fallback:end]](self) -> Cell { return Cell { value: 1 }; } }\nimpl Readable for Box {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "field-use",
+        "file": "scripts/main.vela",
+        "cursor": "field-use",
+        "definition": "item",
+        "declaration": "item",
+        "type-definition": "cell"
+      },
+      {
+        "id": "field-write",
+        "file": "scripts/main.vela",
+        "cursor": "field-write",
+        "definition": "item",
+        "declaration": "item",
+        "type-definition": "cell"
+      },
+      {
+        "id": "primitive-field",
+        "file": "scripts/main.vela",
+        "cursor": "primitive-field",
+        "definition": "value",
+        "declaration": "value",
+        "type-definition": null
+      },
+      {
+        "id": "method-use",
+        "file": "scripts/main.vela",
+        "cursor": "method-use",
+        "definition": "get",
+        "declaration": "get",
+        "type-definition": "cell"
+      },
+      {
+        "id": "returned-field",
+        "file": "scripts/main.vela",
+        "cursor": "returned-field",
+        "definition": "value",
+        "declaration": "value",
+        "type-definition": null
+      },
+      {
+        "id": "trait-use",
+        "file": "scripts/main.vela",
+        "cursor": "trait-use",
+        "definition": "read",
+        "declaration": "read",
+        "type-definition": "cell"
+      },
+      {
+        "id": "default-use",
+        "file": "scripts/main.vela",
+        "cursor": "default-use",
+        "definition": "default",
+        "declaration": "default",
+        "type-definition": "cell"
+      },
+      {
+        "id": "override-use",
+        "file": "scripts/main.vela",
+        "cursor": "override-use",
+        "definition": "override",
+        "declaration": "override",
+        "type-definition": "cell"
+      },
+      {
+        "id": "unit-use",
+        "file": "scripts/main.vela",
+        "cursor": "unit-use",
+        "definition": "unit",
+        "declaration": "unit",
+        "type-definition": "choice"
+      },
+      {
+        "id": "tuple-use",
+        "file": "scripts/main.vela",
+        "cursor": "tuple-use",
+        "definition": "tuple",
+        "declaration": "tuple",
+        "type-definition": "choice"
+      },
+      {
+        "id": "record-use",
+        "file": "scripts/main.vela",
+        "cursor": "record-use",
+        "definition": "record",
+        "declaration": "record",
+        "type-definition": "choice"
+      },
+      {
+        "id": "pattern-use",
+        "file": "scripts/main.vela",
+        "cursor": "pattern-use",
+        "definition": "tuple",
+        "declaration": "tuple",
+        "type-definition": "choice"
+      },
+      {
+        "id": "unknown-field",
+        "file": "scripts/main.vela",
+        "cursor": "unknown-field",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "dynamic-field",
+        "file": "scripts/main.vela",
+        "cursor": "dynamic-field",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "dynamic-method",
+        "file": "scripts/main.vela",
+        "cursor": "dynamic-method",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "primitive-member",
+        "file": "scripts/main.vela",
+        "cursor": "primitive-member",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "foreign-field",
+        "file": "scripts/main.vela",
+        "cursor": "foreign-field",
+        "definition": "foreign-item",
+        "declaration": "foreign-item",
+        "type-definition": "foreign-cell",
+        "target-file": "scripts/beta.vela"
+      },
+      {
+        "id": "foreign-method",
+        "file": "scripts/main.vela",
+        "cursor": "foreign-method",
+        "definition": "foreign-get",
+        "declaration": "foreign-get",
+        "type-definition": "foreign-cell",
+        "target-file": "scripts/beta.vela"
+      },
+      {
+        "id": "foreign-variant",
+        "file": "scripts/main.vela",
+        "cursor": "foreign-variant",
+        "definition": "foreign-empty",
+        "declaration": "foreign-empty",
+        "type-definition": "foreign-choice",
+        "target-file": "scripts/beta.vela"
+      },
+      {
+        "id": "missing-variant",
+        "file": "scripts/main.vela",
+        "cursor": "missing-variant",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null,
+        "target-file": "scripts/beta.vela"
+      },
+      {
+        "id": "foreign-default",
+        "file": "scripts/main.vela",
+        "cursor": "foreign-default",
+        "definition": "foreign-fallback",
+        "declaration": "foreign-fallback",
+        "type-definition": "foreign-cell",
+        "target-file": "scripts/beta.vela"
+      }
+    ]
+  }
+}

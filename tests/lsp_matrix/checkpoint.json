@@ -144,7 +144,7 @@
     },
     {
       "id": "B02.1",
-      "revision": null,
+      "revision": "1c1877f0c",
       "requirements": [
         "definition/syntax/S1/positive/service",
         "definition/syntax/S1/positive/protocol",
@@ -154,10 +154,23 @@
         "type-definition/syntax/S1/positive/protocol"
       ],
       "summary": "34 explicit navigation cases in both Rust layers, with LF/CRLF and byte/UTF-16 target oracles. Repair source type-hint and named-argument targets and suppress private/dynamic/unresolved fallback. Focused tests, full Rust matrix audit, formatting and Clippy passed. Broad semantic cells and B02 acceptance remain open; find the commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B02.2",
+      "revision": null,
+      "requirements": [
+        "definition/syntax/S4/positive/service",
+        "definition/syntax/S4/positive/protocol",
+        "declaration/syntax/S4/positive/service",
+        "declaration/syntax/S4/positive/protocol",
+        "type-definition/syntax/S4/positive/service",
+        "type-definition/syntax/S4/positive/protocol"
+      ],
+      "summary": "21 source member/variant queries in both Rust layers with LF/CRLF, Unicode, module collisions and exact target/null oracles. Repair trait implementation and enum pattern navigation; preserve module identity in type hints and member owners. Workspace tests (4341 passed, 2 existing ignored), workspace Clippy and formatting passed. Broad cells and B02 acceptance remain open; find the commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B02.2",
-  "nextTask": "B02.2",
+  "activeChild": "B02.3",
+  "nextTask": "B02.3",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
