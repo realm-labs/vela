@@ -521,6 +521,56 @@
           "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
         }
       ]
+    },
+    {
+      "requirement": "implementation/syntax/S1/negative/protocol",
+      "assertion": "Across source declarations/calls/members/variants, source-backed and metadata-only schema, dynamic and unresolved query sites, implementation is unadvertised and every direct request returns the complete method-not-found response. Minimal and rich implementation/definition client capabilities preserve this rejection and the same server subsequently passes exact supported-navigation oracles in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::implementation_matrix_rejects_source_schema_dynamic_and_unresolved_targets_for_client_profiles"
+        }
+      ]
+    },
+    {
+      "requirement": "implementation/syntax/S3/negative/protocol",
+      "assertion": "Across source declarations/calls/members/variants, source-backed and metadata-only schema, dynamic and unresolved query sites, implementation is unadvertised and every direct request returns the complete method-not-found response. Minimal and rich implementation/definition client capabilities preserve this rejection and the same server subsequently passes exact supported-navigation oracles in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::implementation_matrix_rejects_source_schema_dynamic_and_unresolved_targets_for_client_profiles"
+        }
+      ]
+    },
+    {
+      "requirement": "implementation/syntax/S4/negative/protocol",
+      "assertion": "Across source declarations/calls/members/variants, source-backed and metadata-only schema, dynamic and unresolved query sites, implementation is unadvertised and every direct request returns the complete method-not-found response. Minimal and rich implementation/definition client capabilities preserve this rejection and the same server subsequently passes exact supported-navigation oracles in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::implementation_matrix_rejects_source_schema_dynamic_and_unresolved_targets_for_client_profiles"
+        }
+      ]
+    },
+    {
+      "requirement": "implementation/syntax/S10/negative/protocol",
+      "assertion": "Across source declarations/calls/members/variants, source-backed and metadata-only schema, dynamic and unresolved query sites, implementation is unadvertised and every direct request returns the complete method-not-found response. Minimal and rich implementation/definition client capabilities preserve this rejection and the same server subsequently passes exact supported-navigation oracles in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::implementation_matrix_rejects_source_schema_dynamic_and_unresolved_targets_for_client_profiles"
+        }
+      ]
+    },
+    {
+      "requirement": "implementation/environments/client_capabilities/protocol",
+      "assertion": "Across source declarations/calls/members/variants, source-backed and metadata-only schema, dynamic and unresolved query sites, implementation is unadvertised and every direct request returns the complete method-not-found response. Minimal and rich implementation/definition client capabilities preserve this rejection and the same server subsequently passes exact supported-navigation oracles in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::implementation_matrix_rejects_source_schema_dynamic_and_unresolved_targets_for_client_profiles"
+        }
+      ]
     }
   ],
   "featureFiles": [

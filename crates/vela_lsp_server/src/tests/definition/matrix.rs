@@ -19,7 +19,33 @@ fn navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls() {
     assert_navigation_matrix("navigation-schema");
 }
 
+#[test]
+fn implementation_matrix_rejects_source_schema_dynamic_and_unresolved_targets_for_client_profiles()
+{
+    for capabilities in [
+        json!({}),
+        json!({"textDocument":{"implementation":{"dynamicRegistration":true,"linkSupport":true},
+            "definition":{"dynamicRegistration":true,"linkSupport":true}}}),
+    ] {
+        for fixture in [
+            "navigation-declarations",
+            "navigation-members",
+            "navigation-schema",
+        ] {
+            assert_navigation_matrix_for_client(fixture, &capabilities, true);
+        }
+    }
+}
+
 fn assert_navigation_matrix(fixture_id: &str) {
+    assert_navigation_matrix_for_client(fixture_id, &json!({}), false);
+}
+
+fn assert_navigation_matrix_for_client(
+    fixture_id: &str,
+    capabilities: &serde_json::Value,
+    reject_implementation: bool,
+) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
         if crlf {
@@ -42,13 +68,14 @@ fn assert_navigation_matrix(fixture_id: &str) {
         } else {
             "scripts"
         };
-        let _ = request::<r::Initialize>(
+        let initialized = response_value(request::<r::Initialize>(
             &mut server,
             1,
             json!({
-                "processId":null,"rootUri":uri(workspace_root),"capabilities":{}
+                "processId":null,"rootUri":uri(workspace_root),"capabilities":capabilities
             }),
-        );
+        ));
+        assert!(initialized["result"]["capabilities"]["implementationProvider"].is_null());
         for (file, document) in &fixture.disk {
             if !file.ends_with(".vela") {
                 continue;
@@ -77,6 +104,30 @@ fn assert_navigation_matrix(fixture_id: &str) {
             );
         }
         let mut id = 2;
+        if reject_implementation {
+            for query in spec.oracle["queries"].as_array().expect("queries") {
+                let file = query["file"].as_str().expect("query file");
+                let point = fixture.document(file).expect("source").markers
+                    [query["cursor"].as_str().expect("cursor")]
+                .start;
+                let response = response_value(request::<r::GotoImplementation>(
+                    &mut server,
+                    id,
+                    json!({"textDocument":{"uri":uri(file)},
+                        "position":{"line":point.line,"character":point.character}}),
+                ));
+                assert_eq!(
+                    response,
+                    json!({"jsonrpc":"2.0","id":id,"error":{
+                        "code":-32601,"message":"method `textDocument/implementation` is not implemented"
+                    }}),
+                    "{fixture_id}: {}",
+                    query["id"]
+                );
+                id += 1;
+            }
+        }
+        // The same server must still answer supported requests after rejection.
         assert_queries(
             &mut server,
             &fixture,

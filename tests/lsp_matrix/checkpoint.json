@@ -186,7 +186,7 @@
     },
     {
       "id": "B02.4",
-      "revision": null,
+      "revision": "c9612817b",
       "requirements": [
         "definition/states/dirty/protocol",
         "definition/states/close_restore/protocol",
@@ -214,10 +214,22 @@
         "type-definition/states/unresolved/protocol"
       ],
       "summary": "Seven schema states and 15 source actions use independent exact navigation/null oracles, repeated requests and incremental/fresh parity in both Rust layers for LF/CRLF. Scope constructor owners to visible modules and resolve imported callable return types by actual binding. State evidence is mapped; dependency-deletion diagnostic proof, remaining semantic partitions, implementation rejection and installed workbench routes still require B02 completion. Find the commit by LSP-Batch trailer. Validation: workspace 4348 passed, 2 existing ignored; workspace Clippy and formatting passed; audit 33 verified, 3 editor mapped, 1289 unreviewed, 2 existing N/A, zero failed; 58 Node tests passed."
+    },
+    {
+      "id": "B02.5",
+      "revision": null,
+      "requirements": [
+        "implementation/syntax/S1/negative/protocol",
+        "implementation/syntax/S3/negative/protocol",
+        "implementation/syntax/S4/negative/protocol",
+        "implementation/syntax/S10/negative/protocol",
+        "implementation/environments/client_capabilities/protocol"
+      ],
+      "summary": "The unsupported implementation contract is verified across all shared source/member/schema navigation queries under minimal and rich client capabilities in LF/CRLF. Assert complete method-not-found responses, absent capability and exact supported navigation on the same server after rejection. B02 still needs remaining semantic partitions, Any-return boundaries, dependency-deletion diagnostic proof and installed workbench routes; find the commit by LSP-Batch trailer. Validation: service 566 passed with 2 existing ignored, protocol 559 passed, infrastructure 58 passed; relevant Clippy and formatting passed; audit 38 verified and zero failed."
     }
   ],
-  "activeChild": "B02.5",
-  "nextTask": "B02.5",
+  "activeChild": "B02.6",
+  "nextTask": "B02.6",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -1720,7 +1732,10 @@
     "target/lsp-matrix/b02-lifecycle-workspace.log",
     "target/lsp-matrix/b02-lifecycle-clippy.log",
     "target/lsp-matrix/b02-lifecycle-node.log",
-    "target/lsp-matrix/run-P97H9u/report.json"
+    "target/lsp-matrix/run-P97H9u/report.json",
+    "target/lsp-matrix/b02-implementation-focused.log",
+    "target/lsp-matrix/run-gTBdKb/report.json",
+    "target/lsp-matrix/b02-implementation-clippy.log"
   ],
   "openIssues": [
     {
