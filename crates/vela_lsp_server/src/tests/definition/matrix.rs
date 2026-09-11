@@ -5,6 +5,11 @@ use crate::matrix_fixture::{FixtureWorkspace, load, schema_artifact};
 use crate::tests::{TestServer, navigation_request, notify, request, response_value};
 
 #[test]
+fn navigation_constructor_matrix_projects_exact_field_and_binding_targets() {
+    assert_navigation_matrix("navigation-constructors");
+}
+
+#[test]
 fn navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls() {
     assert_navigation_matrix("navigation-calls");
 }

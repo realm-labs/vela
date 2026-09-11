@@ -1,0 +1,437 @@
+{
+  "version": 1,
+  "id": "navigation-constructors",
+  "files": {
+    "scripts/main.vela": "use api::Box as Foreign;\nuse api::Choice as ForeignChoice;\nstruct [[cell:start]]Cell[[cell:end]] { [[value-field:start]]value[[value-field:end]]: i64 }\nstruct [[box:start]]Box[[box:end]] { [[item-field:start]]item[[item-field:end]]: Cell }\nenum [[choice:start]]Choice[[choice:end]] {\n    [[unit:start]]Empty[[unit:end]],\n    [[tuple:start]]Tuple[[tuple:end]]([[tuple-field:start]]item[[tuple-field:end]]: Cell),\n    [[record:start]]Record[[record:end]] { [[record-field:start]]item[[record-field:end]]: Cell },\n}\nfn run([[item-param:start]]item[[item-param:end]]: Cell, boxed: Box, unknown: Any) {\n    let text = \"\u4e2d\ud83d\ude00\"; [[constructor]]Box { [[field-label]]item: [[field-value]]item };\n    Box { [[shorthand]]item };\n    Box { [[missing-label]]missing: item };\n    Missing { [[missing-owner-label]]item: item };\n    Choice::[[tuple-constructor]]Tuple([[tuple-value]]item);\n    Choice::Tuple([[tuple-label]]item = item);\n    Choice::Tuple([[tuple-unknown-label]]missing = item);\n    Choice::[[record-constructor]]Record { [[variant-field-label]]item: item };\n    Choice::Record { [[variant-shorthand]]item };\n    Choice::Record { [[variant-unknown-label]]missing: item };\n    Choice::Missing { [[unknown-variant-label]]item: item };\n    Choice::[[unit-constructor]]Empty;\n    boxed.[[field-set]]item = item;\n    boxed.item.[[field-add]]value += 1;\n    boxed.item.[[field-subtract]]value -= 1;\n    unknown.[[dynamic-write]]item = item;\n    unknown.[[dynamic-add]]value += 1;\n    Foreign { [[foreign-label]]item: item };\n    ForeignChoice::Record { [[foreign-variant-label]]item: item };\n    ForeignChoice::Tuple([[foreign-tuple-label]]item = item);\n}\nfn patterns(value: Choice) {\n    match value { Choice::[[record-pattern]]Record { [[pattern-label]]item: [[binding:start]]bound[[binding:end]] } => [[binding-use]]bound, _ => Cell { value: 0 } };\n    match value { Choice::Tuple([[tuple-binding:start]]bound[[tuple-binding:end]]) => [[tuple-binding-use]]bound, _ => Cell { value: 0 } };\n    match value { Choice::Record { [[shorthand-binding:start]]item[[shorthand-binding:end]] } => [[shorthand-binding-use]]item, _ => Cell { value: 0 } };\n}\nfn schema_fields(value: HostCell, boxed: HostBox, metadata: MetadataOnly) {\n    [[host-constructor]]HostBox { [[host-label]]item: value };\n    HostChoice::Record { [[host-variant-label]]item: value };\n    HostBox { [[host-unknown-label]]missing: value };\n    MetadataOnly { [[metadata-label]]item: value };\n    boxed.[[host-write]]item = value;\n    metadata.[[metadata-write]]item = value;\n}\nfn no_binding() { Box { [[unbound-shorthand]]item }; }\nfn private_owner(value: Cell) { api::Hidden { [[private-owner-label]]item: value }; }\nfn incomplete() { Box { [[incomplete-label]]item:",
+    "scripts/api.vela": "/* \u4e2d\ud83d\ude00 */ pub struct [[cell:start]]Cell[[cell:end]] { value: i64 }\npub struct Box { [[item-field:start]]item[[item-field:end]]: Cell }\npub enum Choice { Tuple([[tuple-field:start]]item[[tuple-field:end]]: Cell), Record { [[record-field:start]]item[[record-field:end]]: Cell } }\nstruct Hidden { item: Cell }\n",
+    "vela.toml": "[package]\nid = 'dev.vela.navigation'\nname = 'navigation'\nversion = '0.1.0'\n[source]\nroots = ['scripts']\n[host]\nschema = 'target/schema.json'\n",
+    "scripts/origins.vela": "/* \u4e2d\ud83d\ude00 */ fn [[cell:start]]cell_origin[[cell:end]]() {}\nfn [[box:start]]box_origin[[box:end]]() {}\nfn [[field:start]]field_origin[[field:end]]() {}\nfn [[variant-field:start]]variant_field_origin[[variant-field:end]]() {}\n",
+    "scripts/incomplete_pattern.vela": "/* \u4e2d\ud83d\ude00 */ struct [[cell:start]]Cell[[cell:end]] {}\nenum Choice { Record { [[field:start]]item[[field:end]]: Cell } }\nfn run(value) { match value { Choice::Record { [[label]]item:"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "constructor",
+        "file": "scripts/main.vela",
+        "cursor": "constructor",
+        "definition": "box",
+        "declaration": "box",
+        "type-definition": "box"
+      },
+      {
+        "id": "field-label",
+        "file": "scripts/main.vela",
+        "cursor": "field-label",
+        "definition": "item-field",
+        "declaration": "item-field",
+        "type-definition": "cell",
+        "source-symbol": "main::Box.item"
+      },
+      {
+        "id": "field-value",
+        "file": "scripts/main.vela",
+        "cursor": "field-value",
+        "definition": "item-param",
+        "declaration": "item-param",
+        "type-definition": "cell"
+      },
+      {
+        "id": "shorthand",
+        "file": "scripts/main.vela",
+        "cursor": "shorthand",
+        "definition": "item-param",
+        "declaration": "item-param",
+        "type-definition": "cell"
+      },
+      {
+        "id": "tuple-constructor",
+        "file": "scripts/main.vela",
+        "cursor": "tuple-constructor",
+        "definition": "tuple",
+        "declaration": "tuple",
+        "type-definition": "choice"
+      },
+      {
+        "id": "tuple-value",
+        "file": "scripts/main.vela",
+        "cursor": "tuple-value",
+        "definition": "item-param",
+        "declaration": "item-param",
+        "type-definition": "cell"
+      },
+      {
+        "id": "tuple-label",
+        "file": "scripts/main.vela",
+        "cursor": "tuple-label",
+        "definition": "tuple-field",
+        "declaration": "tuple-field",
+        "type-definition": "cell",
+        "source-symbol": "main::Choice::Tuple.item"
+      },
+      {
+        "id": "record-constructor",
+        "file": "scripts/main.vela",
+        "cursor": "record-constructor",
+        "definition": "record",
+        "declaration": "record",
+        "type-definition": "choice"
+      },
+      {
+        "id": "variant-field-label",
+        "file": "scripts/main.vela",
+        "cursor": "variant-field-label",
+        "definition": "record-field",
+        "declaration": "record-field",
+        "type-definition": "cell",
+        "source-symbol": "main::Choice::Record.item"
+      },
+      {
+        "id": "variant-shorthand",
+        "file": "scripts/main.vela",
+        "cursor": "variant-shorthand",
+        "definition": "item-param",
+        "declaration": "item-param",
+        "type-definition": "cell"
+      },
+      {
+        "id": "unit-constructor",
+        "file": "scripts/main.vela",
+        "cursor": "unit-constructor",
+        "definition": "unit",
+        "declaration": "unit",
+        "type-definition": "choice"
+      },
+      {
+        "id": "field-set",
+        "file": "scripts/main.vela",
+        "cursor": "field-set",
+        "definition": "item-field",
+        "declaration": "item-field",
+        "type-definition": "cell"
+      },
+      {
+        "id": "field-add",
+        "file": "scripts/main.vela",
+        "cursor": "field-add",
+        "definition": "value-field",
+        "declaration": "value-field",
+        "type-definition": null
+      },
+      {
+        "id": "field-subtract",
+        "file": "scripts/main.vela",
+        "cursor": "field-subtract",
+        "definition": "value-field",
+        "declaration": "value-field",
+        "type-definition": null
+      },
+      {
+        "id": "record-pattern",
+        "file": "scripts/main.vela",
+        "cursor": "record-pattern",
+        "definition": "record",
+        "declaration": "record",
+        "type-definition": "choice"
+      },
+      {
+        "id": "pattern-label",
+        "file": "scripts/main.vela",
+        "cursor": "pattern-label",
+        "definition": "record-field",
+        "declaration": "record-field",
+        "type-definition": "cell"
+      },
+      {
+        "id": "binding-use",
+        "file": "scripts/main.vela",
+        "cursor": "binding-use",
+        "definition": "binding",
+        "declaration": "binding",
+        "type-definition": "cell"
+      },
+      {
+        "id": "tuple-binding-use",
+        "file": "scripts/main.vela",
+        "cursor": "tuple-binding-use",
+        "definition": "tuple-binding",
+        "declaration": "tuple-binding",
+        "type-definition": "cell"
+      },
+      {
+        "id": "shorthand-binding-use",
+        "file": "scripts/main.vela",
+        "cursor": "shorthand-binding-use",
+        "definition": "shorthand-binding",
+        "declaration": "shorthand-binding",
+        "type-definition": "cell"
+      },
+      {
+        "id": "missing-label",
+        "file": "scripts/main.vela",
+        "cursor": "missing-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "missing-owner-label",
+        "file": "scripts/main.vela",
+        "cursor": "missing-owner-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "tuple-unknown-label",
+        "file": "scripts/main.vela",
+        "cursor": "tuple-unknown-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "variant-unknown-label",
+        "file": "scripts/main.vela",
+        "cursor": "variant-unknown-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "unknown-variant-label",
+        "file": "scripts/main.vela",
+        "cursor": "unknown-variant-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "dynamic-write",
+        "file": "scripts/main.vela",
+        "cursor": "dynamic-write",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "dynamic-add",
+        "file": "scripts/main.vela",
+        "cursor": "dynamic-add",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "foreign-label",
+        "file": "scripts/main.vela",
+        "cursor": "foreign-label",
+        "definition": "item-field",
+        "declaration": "item-field",
+        "type-definition": "cell",
+        "target-file": "scripts/api.vela",
+        "source-symbol": "api::Box.item"
+      },
+      {
+        "id": "foreign-variant-label",
+        "file": "scripts/main.vela",
+        "cursor": "foreign-variant-label",
+        "definition": "record-field",
+        "declaration": "record-field",
+        "type-definition": "cell",
+        "target-file": "scripts/api.vela",
+        "source-symbol": "api::Choice::Record.item"
+      },
+      {
+        "id": "foreign-tuple-label",
+        "file": "scripts/main.vela",
+        "cursor": "foreign-tuple-label",
+        "definition": "tuple-field",
+        "declaration": "tuple-field",
+        "type-definition": "cell",
+        "target-file": "scripts/api.vela",
+        "source-symbol": "api::Choice::Tuple.item"
+      },
+      {
+        "id": "host-constructor",
+        "file": "scripts/main.vela",
+        "cursor": "host-constructor",
+        "definition": "box",
+        "declaration": "box",
+        "type-definition": "box",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "host-label",
+        "file": "scripts/main.vela",
+        "cursor": "host-label",
+        "definition": "field",
+        "declaration": "field",
+        "type-definition": "cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "host-variant-label",
+        "file": "scripts/main.vela",
+        "cursor": "host-variant-label",
+        "definition": "variant-field",
+        "declaration": "variant-field",
+        "type-definition": "cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "host-unknown-label",
+        "file": "scripts/main.vela",
+        "cursor": "host-unknown-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null,
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "metadata-label",
+        "file": "scripts/main.vela",
+        "cursor": "metadata-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": "cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "host-write",
+        "file": "scripts/main.vela",
+        "cursor": "host-write",
+        "definition": "field",
+        "declaration": "field",
+        "type-definition": "cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "metadata-write",
+        "file": "scripts/main.vela",
+        "cursor": "metadata-write",
+        "definition": null,
+        "declaration": null,
+        "type-definition": "cell",
+        "target-file": "scripts/origins.vela"
+      },
+      {
+        "id": "incomplete-label",
+        "file": "scripts/main.vela",
+        "cursor": "incomplete-label",
+        "definition": "item-field",
+        "declaration": "item-field",
+        "type-definition": "cell"
+      },
+      {
+        "id": "unbound-shorthand",
+        "file": "scripts/main.vela",
+        "cursor": "unbound-shorthand",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "private-owner-label",
+        "file": "scripts/main.vela",
+        "cursor": "private-owner-label",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "incomplete-pattern-label",
+        "file": "scripts/incomplete_pattern.vela",
+        "cursor": "label",
+        "definition": "field",
+        "declaration": "field",
+        "type-definition": "cell"
+      }
+    ],
+    "schema": {
+      "types": [
+        {
+          "name": "HostCell",
+          "fact": {
+            "kind": "host",
+            "name": "HostCell"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "cell"
+          }
+        },
+        {
+          "name": "HostBox",
+          "fact": {
+            "kind": "host",
+            "name": "HostBox"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "box"
+          }
+        },
+        {
+          "name": "HostChoice",
+          "fact": {
+            "kind": "enum",
+            "name": "HostChoice"
+          }
+        },
+        {
+          "name": "MetadataOnly",
+          "fact": {
+            "kind": "host",
+            "name": "MetadataOnly"
+          }
+        }
+      ],
+      "fields": [
+        {
+          "owner": "HostBox",
+          "name": "item",
+          "fact": {
+            "kind": "host",
+            "name": "HostCell"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "field"
+          }
+        },
+        {
+          "owner": "HostChoice::Record",
+          "name": "item",
+          "fact": {
+            "kind": "host",
+            "name": "HostCell"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "variant-field"
+          }
+        },
+        {
+          "owner": "MetadataOnly",
+          "name": "item",
+          "fact": {
+            "kind": "host",
+            "name": "HostCell"
+          }
+        }
+      ],
+      "variants": [
+        {
+          "owner": "HostChoice",
+          "name": "Record",
+          "fact": {
+            "kind": "enum",
+            "name": "HostChoice",
+            "variant": "Record"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -5,6 +5,13 @@ use crate::{
 };
 
 #[test]
+fn navigation_constructor_matrix_preserves_field_label_and_value_ownership() {
+    for crlf in [false, true] {
+        assert_navigation_matrix("navigation-constructors", crlf);
+    }
+}
+
+#[test]
 fn navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries() {
     for crlf in [false, true] {
         assert_navigation_matrix("navigation-calls", crlf);
@@ -216,6 +223,15 @@ pub(super) fn assert_queries(
             let target_document = fixture.document(target_file).expect("target document");
             let marker = target_document.markers[target];
             let actual = actual.unwrap_or_else(|| panic!("{label}: target should exist"));
+            if method != "type-definition"
+                && let Some(symbol) = query["source-symbol"].as_str()
+            {
+                assert_eq!(
+                    actual.symbol(),
+                    Some(&crate::SymbolRef::Source(symbol.to_owned())),
+                    "{label}"
+                );
+            }
             assert_eq!(actual.document_id(), &uri(target_file), "{label}");
             assert_eq!(
                 [actual.range().start(), actual.range().end(),],

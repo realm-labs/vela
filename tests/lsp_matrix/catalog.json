@@ -1447,6 +1447,318 @@
           "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
         }
       ]
+    },
+    {
+      "requirement": "definition/syntax/S4/positive/service",
+      "assertion": "Exact source/schema field and method ownership, inherent/interface/default/override selection, nested/returned receivers and member writes. Unit/tuple/record variants, constructor names, explicit record labels, tuple named labels and pattern labels target their owned declarations; shorthand/value expressions and pattern-bound uses target local bindings. Cross-module aliases and schema source spans use independent URI/range endpoints and source member symbols. Metadata-only fields may retain a source-backed type target independently of their missing field origin. LF/CRLF and missing-value/brace record recovery are asserted.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_constructor_matrix_preserves_field_label_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_member_matrix_pins_source_ownership_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S4/positive/protocol",
+      "assertion": "Exact source/schema field and method ownership, inherent/interface/default/override selection, nested/returned receivers and member writes. Unit/tuple/record variants, constructor names, explicit record labels, tuple named labels and pattern labels target their owned declarations; shorthand/value expressions and pattern-bound uses target local bindings. Cross-module aliases and schema source spans use independent URI/range endpoints and source member symbols. Metadata-only fields may retain a source-backed type target independently of their missing field origin. LF/CRLF and missing-value/brace record recovery are asserted.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_constructor_matrix_projects_exact_field_and_binding_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S4/negative/service",
+      "assertion": "Missing/private constructor owners, missing fields/variants, unknown tuple labels and unbound shorthand return explicit null. Dynamic/Any, primitive and unknown receivers cannot borrow source or schema members; ambiguous trait methods cannot select a return target. Source labels never navigate to the enclosing constructor or a same-name local. Schema-only members without origins have no fabricated definition, primitive/unknown types have no source type target, and invalid schema ranges are rejected. Recovery retains known labels while unresolved labels preserve null.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_constructor_matrix_preserves_field_label_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_member_matrix_pins_source_ownership_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S4/negative/protocol",
+      "assertion": "Missing/private constructor owners, missing fields/variants, unknown tuple labels and unbound shorthand return explicit null. Dynamic/Any, primitive and unknown receivers cannot borrow source or schema members; ambiguous trait methods cannot select a return target. Source labels never navigate to the enclosing constructor or a same-name local. Schema-only members without origins have no fabricated definition, primitive/unknown types have no source type target, and invalid schema ranges are rejected. Recovery retains known labels while unresolved labels preserve null.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_constructor_matrix_projects_exact_field_and_binding_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S4/positive/service",
+      "assertion": "Exact source/schema field and method ownership, inherent/interface/default/override selection, nested/returned receivers and member writes. Unit/tuple/record variants, constructor names, explicit record labels, tuple named labels and pattern labels target their owned declarations; shorthand/value expressions and pattern-bound uses target local bindings. Cross-module aliases and schema source spans use independent URI/range endpoints and source member symbols. Metadata-only fields may retain a source-backed type target independently of their missing field origin. LF/CRLF and missing-value/brace record recovery are asserted.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_constructor_matrix_preserves_field_label_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_member_matrix_pins_source_ownership_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S4/positive/protocol",
+      "assertion": "Exact source/schema field and method ownership, inherent/interface/default/override selection, nested/returned receivers and member writes. Unit/tuple/record variants, constructor names, explicit record labels, tuple named labels and pattern labels target their owned declarations; shorthand/value expressions and pattern-bound uses target local bindings. Cross-module aliases and schema source spans use independent URI/range endpoints and source member symbols. Metadata-only fields may retain a source-backed type target independently of their missing field origin. LF/CRLF and missing-value/brace record recovery are asserted.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_constructor_matrix_projects_exact_field_and_binding_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S4/negative/service",
+      "assertion": "Missing/private constructor owners, missing fields/variants, unknown tuple labels and unbound shorthand return explicit null. Dynamic/Any, primitive and unknown receivers cannot borrow source or schema members; ambiguous trait methods cannot select a return target. Source labels never navigate to the enclosing constructor or a same-name local. Schema-only members without origins have no fabricated definition, primitive/unknown types have no source type target, and invalid schema ranges are rejected. Recovery retains known labels while unresolved labels preserve null.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_constructor_matrix_preserves_field_label_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_member_matrix_pins_source_ownership_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S4/negative/protocol",
+      "assertion": "Missing/private constructor owners, missing fields/variants, unknown tuple labels and unbound shorthand return explicit null. Dynamic/Any, primitive and unknown receivers cannot borrow source or schema members; ambiguous trait methods cannot select a return target. Source labels never navigate to the enclosing constructor or a same-name local. Schema-only members without origins have no fabricated definition, primitive/unknown types have no source type target, and invalid schema ranges are rejected. Recovery retains known labels while unresolved labels preserve null.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_constructor_matrix_projects_exact_field_and_binding_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S4/positive/service",
+      "assertion": "Exact source/schema field and method ownership, inherent/interface/default/override selection, nested/returned receivers and member writes. Unit/tuple/record variants, constructor names, explicit record labels, tuple named labels and pattern labels target their owned declarations; shorthand/value expressions and pattern-bound uses target local bindings. Cross-module aliases and schema source spans use independent URI/range endpoints and source member symbols. Metadata-only fields may retain a source-backed type target independently of their missing field origin. LF/CRLF and missing-value/brace record recovery are asserted.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_constructor_matrix_preserves_field_label_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_member_matrix_pins_source_ownership_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S4/positive/protocol",
+      "assertion": "Exact source/schema field and method ownership, inherent/interface/default/override selection, nested/returned receivers and member writes. Unit/tuple/record variants, constructor names, explicit record labels, tuple named labels and pattern labels target their owned declarations; shorthand/value expressions and pattern-bound uses target local bindings. Cross-module aliases and schema source spans use independent URI/range endpoints and source member symbols. Metadata-only fields may retain a source-backed type target independently of their missing field origin. LF/CRLF and missing-value/brace record recovery are asserted.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_constructor_matrix_projects_exact_field_and_binding_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S4/negative/service",
+      "assertion": "Missing/private constructor owners, missing fields/variants, unknown tuple labels and unbound shorthand return explicit null. Dynamic/Any, primitive and unknown receivers cannot borrow source or schema members; ambiguous trait methods cannot select a return target. Source labels never navigate to the enclosing constructor or a same-name local. Schema-only members without origins have no fabricated definition, primitive/unknown types have no source type target, and invalid schema ranges are rejected. Recovery retains known labels while unresolved labels preserve null.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_constructor_matrix_preserves_field_label_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_member_matrix_pins_source_ownership_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_call_matrix_preserves_parameter_ownership_and_unknown_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S4/negative/protocol",
+      "assertion": "Missing/private constructor owners, missing fields/variants, unknown tuple labels and unbound shorthand return explicit null. Dynamic/Any, primitive and unknown receivers cannot borrow source or schema members; ambiguous trait methods cannot select a return target. Source labels never navigate to the enclosing constructor or a same-name local. Schema-only members without origins have no fabricated definition, primitive/unknown types have no source type target, and invalid schema ranges are rejected. Recovery retains known labels while unresolved labels preserve null.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_constructor_matrix_projects_exact_field_and_binding_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_member_matrix_projects_exact_source_member_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_call_matrix_projects_exact_parameters_and_explicit_unknown_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        }
+      ]
     }
   ],
   "featureFiles": [

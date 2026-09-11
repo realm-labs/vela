@@ -288,7 +288,7 @@
     },
     {
       "id": "B02.9",
-      "revision": null,
+      "revision": "a47fc764c",
       "requirements": [
         "definition/syntax/S5/positive/service",
         "definition/syntax/S5/positive/protocol",
@@ -300,10 +300,29 @@
         "declaration/syntax/S5/negative/protocol"
       ],
       "summary": "46 independent call queries in LF/CRLF cover source functions, inherent/interface/default/override methods, named/defaulted/reordered/nested/async calls, builtin resolution, source-backed and metadata-only schema callables, ambiguous trait methods and cross-module same-name ownership. Reuse exact resolved callable locations for parameter signatures and selected source method return types; reject ambiguous return targets before generic facts. Per-method target files assert local parameter versus foreign type ownership. Restore S8 IDs prematurely removed from the prior remaining list: obligations stay pending until whole-batch acceptance. A new live-repository checkpoint regression verifies this rule. Validation: service 571 passed with 2 existing ignored, protocol 564 passed, infrastructure 59 passed, relevant Clippy and formatting passed; run-n3hx5I has 84 verified, 3 editor mapped, 1238 unreviewed, 2 existing N/A, zero failures. B02 S1/S4/S10 and installed navigation remain open; find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B02.10",
+      "revision": null,
+      "requirements": [
+        "definition/syntax/S4/positive/service",
+        "definition/syntax/S4/positive/protocol",
+        "definition/syntax/S4/negative/service",
+        "definition/syntax/S4/negative/protocol",
+        "declaration/syntax/S4/positive/service",
+        "declaration/syntax/S4/positive/protocol",
+        "declaration/syntax/S4/negative/service",
+        "declaration/syntax/S4/negative/protocol",
+        "type-definition/syntax/S4/positive/service",
+        "type-definition/syntax/S4/positive/protocol",
+        "type-definition/syntax/S4/negative/service",
+        "type-definition/syntax/S4/negative/protocol"
+      ],
+      "summary": "40 independent constructor/field queries in both layers supplement existing source/schema/method/variant coverage to verify all 12 S4 cells. Explicit record and pattern labels target source/schema fields; shorthand/value uses retain binding ownership; tuple named labels retain source variant-field symbols. Private/missing owners and unknown labels cannot borrow enclosing constructors or locals. Missing-value/brace record and record-pattern CST recovery preserves final tokens and nested closing-delimiter ownership; three syntax tests assert lossless LF/CRLF shapes. No grammar, token or public AST API changed. Validation: workspace 4366 passed with 2 existing ignored; workspace Clippy and fmt passed; final audit service 572 passed with 2 existing ignored, protocol 565 passed, infrastructure 59 passed; run-pIP6ty has 96 verified, 3 editor mapped, 1226 unreviewed, 2 existing N/A, zero failures. B02 S1/S10 and installed workbench routes remain open; find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B02.10",
-  "nextTask": "B02.10",
+  "activeChild": "B02.11",
+  "nextTask": "B02.11",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -1836,7 +1855,17 @@
     "target/lsp-matrix/b02-calls-checkpoint-reproduction.log",
     "target/lsp-matrix/b02-calls-audit-fixed-checkpoint.log",
     "target/lsp-matrix/b02-calls-clippy.log",
-    "target/lsp-matrix/run-n3hx5I/report.json"
+    "target/lsp-matrix/run-n3hx5I/report.json",
+    "target/lsp-matrix/b02-constructors-reproduction.log",
+    "target/lsp-matrix/b02-constructors-labels.log",
+    "target/lsp-matrix/b02-constructors-schema.log",
+    "target/lsp-matrix/b02-record-pattern-recovery.log",
+    "target/lsp-matrix/b02-constructors-complete-service.log",
+    "target/lsp-matrix/b02-constructors-complete-protocol.log",
+    "target/lsp-matrix/b02-constructors-workspace.log",
+    "target/lsp-matrix/b02-constructors-clippy.log",
+    "target/lsp-matrix/b02-constructors-audit.log",
+    "target/lsp-matrix/run-pIP6ty/report.json"
   ],
   "openIssues": [
     {

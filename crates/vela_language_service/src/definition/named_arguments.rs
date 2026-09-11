@@ -47,17 +47,19 @@ impl LanguageServiceDatabases {
                     query.document_id(),
                     LineIndex::new(query.text()).position(offset),
                 )?;
-                let (signature, declaration) = self.source_signature_for_navigation(&callee)?;
-                let (index, parameter) = signature
+                let parameters = self.source_parameters_for_navigation(&callee)?;
+                let (index, parameter) = parameters
                     .params
                     .iter()
                     .enumerate()
                     .find(|(_, parameter)| parameter.name == target.text())?;
-                let inferred =
-                    match declaration.and_then(|id| self.graph_analysis_facts().declaration(id)) {
-                        Some(TypeFact::Function { params, .. }) => params.get(index).cloned(),
-                        _ => None,
-                    };
+                let inferred = match parameters
+                    .declaration
+                    .and_then(|id| self.graph_analysis_facts().declaration(id))
+                {
+                    Some(TypeFact::Function { params, .. }) => params.get(index).cloned(),
+                    _ => None,
+                };
                 let fact = inferred
                     .filter(|fact| !matches!(fact, TypeFact::Unknown))
                     .or_else(|| {
@@ -71,14 +73,21 @@ impl LanguageServiceDatabases {
                     });
                 let source = self.source_record_for(parameter.span.source)?;
                 let range = text_range_for_span(parameter.span)?;
-                let definition = self.definition_from_span_with_symbol(
-                    parameter.span,
+                let symbol = if let Some((owner, variant)) = parameters.variant {
+                    crate::symbol_ref::source_variant_field_symbol(
+                        graph,
+                        owner,
+                        variant,
+                        &parameter.name,
+                    )
+                } else {
                     Some(SymbolRef::local_at(
                         &parameter.name,
                         source.document_id().clone(),
                         range,
-                    )),
-                );
+                    ))
+                };
+                let definition = self.definition_from_span_with_symbol(parameter.span, symbol);
                 Some(NamedArgumentNavigation {
                     definition,
                     type_definition: fact.and_then(|fact| self.type_definition_for_fact(&fact)),

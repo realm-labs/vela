@@ -42,3 +42,8 @@ local parameter and its declared type live in different files. The service and
 protocol consumers independently project those targets. `knownCallables`
 checks builtin callable resolution before source-navigation null assertions,
 so an unresolved fixture cannot accidentally prove the builtin policy.
+
+An optional `source-symbol` checks the independently authored qualified member
+identity on service definition/declaration results, alongside exact locations.
+Protocol navigation has no symbol field and continues to assert its full URI
+and range response.

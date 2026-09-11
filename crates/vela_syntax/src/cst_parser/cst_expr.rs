@@ -6,6 +6,7 @@ use crate::lexer::lex;
 
 mod await_expr;
 mod calls;
+mod records;
 
 impl CstParser<'_, '_> {
     pub(super) fn expression_range(&mut self, start: usize, end: usize) {
@@ -262,58 +263,6 @@ impl CstParser<'_, '_> {
         self.builder.finish_node();
     }
 
-    fn record_expression_body(&mut self, start: usize, end: usize) {
-        let Some(fields_start) = self.find_outer_record_field_list_start(start, end) else {
-            self.emit_until(end);
-            return;
-        };
-        self.expression_range(start, fields_start);
-        self.record_expr_field_list(fields_start, end);
-        self.emit_until(end);
-    }
-
-    fn record_expr_field_list(&mut self, start: usize, end: usize) {
-        let fields_end = self
-            .find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
-            .filter(|candidate| *candidate <= end)
-            .unwrap_or(end);
-        let close = fields_end.saturating_sub(1);
-        self.builder.start_node(SyntaxKind::RecordExprFieldList);
-        self.emit_until(start + 1);
-        while self.pos < close {
-            let field_start = self.skip_trivia(self.pos);
-            self.emit_until(field_start);
-            if field_start >= close {
-                break;
-            }
-            if self.at_kind(field_start, SyntaxKind::Comma) {
-                self.emit_current_token();
-                continue;
-            }
-
-            let field_end = self.find_argument_end(field_start, close);
-            self.record_expr_field_range(field_start, field_end);
-            if self.pos < close && self.at_kind(self.pos, SyntaxKind::Comma) {
-                self.emit_current_token();
-            }
-        }
-        self.emit_until(fields_end);
-        self.builder.finish_node();
-    }
-
-    fn record_expr_field_range(&mut self, start: usize, end: usize) {
-        self.builder.start_node(SyntaxKind::RecordExprField);
-        if let Some(colon) = self.find_root_kind_before(SyntaxKind::Colon, start, end) {
-            self.emit_until(colon + 1);
-            let value_start = self.skip_trivia(colon + 1);
-            self.expression_range(value_start, end);
-        } else {
-            self.emit_until(end);
-        }
-        self.emit_until(end);
-        self.builder.finish_node();
-    }
-
     fn lambda_expression_body(&mut self, start: usize, end: usize) {
         let Some(params_end) = self.find_lambda_param_list_end(start, end) else {
             self.emit_until(end);
@@ -380,7 +329,14 @@ impl CstParser<'_, '_> {
     }
 
     fn match_arm_list(&mut self, start: usize, end: usize) {
-        let close = end.saturating_sub(1);
+        let close =
+            if self.find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
+                == Some(end)
+            {
+                end.saturating_sub(1)
+            } else {
+                end
+            };
         self.builder.start_node(SyntaxKind::MatchArmList);
         self.emit_until(start + 1);
         while self.pos < close {
@@ -499,46 +455,6 @@ impl CstParser<'_, '_> {
             }
         }
         self.emit_until(end);
-    }
-
-    fn record_pattern_body(&mut self, start: usize, end: usize) {
-        let Some(fields_start) = self.find_outer_record_field_list_start(start, end) else {
-            self.emit_until(end);
-            return;
-        };
-        self.emit_until(fields_start + 1);
-        let close = end.saturating_sub(1);
-        while self.pos < close {
-            let field_start = self.skip_trivia(self.pos);
-            self.emit_until(field_start);
-            if field_start >= close {
-                break;
-            }
-            if self.at_kind(field_start, SyntaxKind::Comma) {
-                self.emit_current_token();
-                continue;
-            }
-
-            let field_end = self.find_argument_end(field_start, close);
-            self.record_pattern_field_range(field_start, field_end);
-            if self.pos < close && self.at_kind(self.pos, SyntaxKind::Comma) {
-                self.emit_current_token();
-            }
-        }
-        self.emit_until(end);
-    }
-
-    fn record_pattern_field_range(&mut self, start: usize, end: usize) {
-        self.builder.start_node(SyntaxKind::RecordPatternField);
-        if let Some(colon) = self.find_root_kind_before(SyntaxKind::Colon, start, end) {
-            self.emit_until(colon + 1);
-            let value_start = self.skip_trivia(colon + 1);
-            self.pattern_range(value_start, end);
-        } else {
-            self.emit_until(end);
-        }
-        self.emit_until(end);
-        self.builder.finish_node();
     }
 
     fn comma_separated_expressions(&mut self, close: usize) {
@@ -767,25 +683,6 @@ impl CstParser<'_, '_> {
     fn root_binary_operator_has_left_operand(&self, start: usize, operator: usize) -> bool {
         self.previous_significant_before(start, operator)
             .is_some_and(|left| Self::can_end_expression(self.tokens[left].kind))
-    }
-
-    fn find_outer_record_field_list_start(&self, start: usize, end: usize) -> Option<usize> {
-        let mut depth = DelimiterDepth::default();
-        for cursor in start..end {
-            let Some(current) = self.kind_at(cursor) else {
-                break;
-            };
-            if depth.is_root()
-                && current == SyntaxKind::LBrace
-                && cursor > start
-                && self.find_matching_delimiter_end(cursor, SyntaxKind::LBrace, SyntaxKind::RBrace)
-                    == Some(end)
-            {
-                return Some(cursor);
-            }
-            depth.bump(current);
-        }
-        None
     }
 
     fn can_start_record_expression(&self, start: usize) -> bool {

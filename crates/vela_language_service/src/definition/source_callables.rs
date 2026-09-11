@@ -1,9 +1,61 @@
 use vela_common::Span;
-use vela_hir::{ids::HirDeclId, module_graph::DeclarationKind, type_hint::FunctionSignature};
+use vela_hir::{
+    ids::HirDeclId,
+    module_graph::DeclarationKind,
+    type_hint::{EnumVariantFieldsHint, FunctionSignature, ParamHint},
+};
 
 use crate::{Definition, LanguageServiceDatabases, SymbolRef};
 
+pub(super) struct SourceParameters<'a> {
+    pub(super) params: &'a [ParamHint],
+    pub(super) declaration: Option<HirDeclId>,
+    pub(super) variant: Option<(HirDeclId, &'a str)>,
+}
+
 impl LanguageServiceDatabases {
+    pub(super) fn source_parameters_for_navigation(
+        &self,
+        callee: &Definition,
+    ) -> Option<SourceParameters<'_>> {
+        if let Some((signature, declaration)) = self.source_signature_for_navigation(callee) {
+            return Some(SourceParameters {
+                params: &signature.params,
+                declaration,
+                variant: None,
+            });
+        }
+        let graph = self.hir_db().graph();
+        for declaration in graph.declarations() {
+            let Some(shape) = graph.enum_shape(declaration.id) else {
+                continue;
+            };
+            for variant in &shape.variants {
+                let EnumVariantFieldsHint::Tuple(parameters) = &variant.fields else {
+                    continue;
+                };
+                let candidate = super::source_members::definition_from_named_span_with_symbol(
+                    self,
+                    variant.span,
+                    &variant.name,
+                    crate::symbol_ref::source_enum_variant_symbol(
+                        graph,
+                        declaration.id,
+                        &variant.name,
+                    ),
+                );
+                if candidate.as_ref() == Some(callee) {
+                    return Some(SourceParameters {
+                        params: parameters,
+                        declaration: None,
+                        variant: Some((declaration.id, &variant.name)),
+                    });
+                }
+            }
+        }
+        None
+    }
+
     pub(super) fn source_signature_for_navigation(
         &self,
         callee: &Definition,
