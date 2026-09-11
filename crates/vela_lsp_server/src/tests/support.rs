@@ -219,3 +219,42 @@ mod tests {
         assert!(server.state().is_exited());
     }
 }
+
+/// Test roots must not rely on wall-clock resolution for isolation.
+pub(crate) fn unique_temp_root(label: &str) -> std::path::PathBuf {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("clock after epoch")
+        .as_nanos();
+    unique_temp_root_at(label, timestamp)
+}
+
+fn unique_temp_root_at(label: &str, timestamp: u128) -> std::path::PathBuf {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT_ROOT: AtomicU64 = AtomicU64::new(0);
+    let sequence = NEXT_ROOT.fetch_add(1, Ordering::Relaxed);
+    let root = std::env::temp_dir().join(format!(
+        "vela-lsp-{label}-{}-{timestamp}-{sequence}",
+        std::process::id()
+    ));
+    std::fs::create_dir(&root).expect("unique fixture root must be new");
+    root
+}
+
+#[test]
+fn parallel_fixture_roots_are_unique_with_a_frozen_clock() {
+    let roots = std::thread::scope(|scope| {
+        let tasks = (0..32)
+            .map(|_| scope.spawn(|| unique_temp_root_at("frozen", 0)))
+            .collect::<Vec<_>>();
+        tasks
+            .into_iter()
+            .map(|task| task.join().expect("fixture allocation"))
+            .collect::<Vec<_>>()
+    });
+    let unique = roots.iter().collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(unique.len(), 32);
+    for root in roots {
+        std::fs::remove_dir(root).expect("remove fixture root");
+    }
+}

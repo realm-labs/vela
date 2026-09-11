@@ -28,17 +28,18 @@ function runInfrastructure(root, output, execute) {
   return { available: [...results.keys()], results: execute ? results : new Map(), failed: run.status !== 0 };
 }
 
-function assessInfrastructure(requirements, evidence, run) {
+function assessInfrastructure(requirements, evidence, run, other = { available: {}, results: {} }) {
   const gates = requirements.filter((item) => item.layer === "gate");
+  const available = { ...other.available, gate: run.available };
   const keys = new Set();
   for (const proof of evidence) {
     if (keys.has(proof.requirement) || !gates.some((item) => item.id === proof.requirement) ||
-        !proof.assertion?.trim() || !proof.tests?.length || proof.tests.some((test) => test.layer !== "gate" || !test.name)) {
+        !proof.assertion?.trim() || !proof.tests?.length || proof.tests.some((test) => !Object.hasOwn(available, test.layer) || !test.name)) {
       throw new Error(`invalid infrastructure evidence ${proof.requirement}`);
     }
     keys.add(proof.requirement);
   }
-  return assess(gates, evidence, { gate: run.available }, { gate: run.results });
+  return assess(gates, evidence, available, { ...other.results, gate: run.results });
 }
 
 module.exports = { nodeResults, runInfrastructure, assessInfrastructure };

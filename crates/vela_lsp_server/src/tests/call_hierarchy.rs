@@ -1,7 +1,6 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    time::{SystemTime, UNIX_EPOCH},
 };
 
 use super::{TestServer, notification_value, notify, request, response_value};
@@ -1015,17 +1014,7 @@ fn line(text: &str, line: usize) -> &str {
 }
 
 fn temp_workspace() -> PathBuf {
-    let nonce = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system clock should be after unix epoch")
-        .as_nanos();
-    let path = std::env::temp_dir().join(format!(
-        "vela_lsp_call_hierarchy_schema_{}_{}",
-        std::process::id(),
-        nonce
-    ));
-    fs::create_dir_all(&path).expect("temporary workspace should be creatable");
-    path
+    crate::tests::support::unique_temp_root("call_hierarchy")
 }
 
 fn file_uri(path: &Path) -> String {

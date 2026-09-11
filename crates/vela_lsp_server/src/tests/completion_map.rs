@@ -1,6 +1,5 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{TestServer, notification_value, notify, request, response_value};
 
@@ -126,15 +125,7 @@ fn lsp_map_key_completion_suggests_schema_enum_variants() {
 }
 
 fn temp_workspace() -> PathBuf {
-    let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(duration) => duration.as_nanos(),
-        Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
-    };
-    let root = std::env::temp_dir().join(format!(
-        "vela_lsp_server_completion_map_{}_{}",
-        std::process::id(),
-        suffix
-    ));
+    let root = crate::tests::support::unique_temp_root("completion_map");
     fs::create_dir_all(root.join("scripts").join("game"))
         .expect("temporary workspace should be creatable");
     root

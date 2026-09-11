@@ -1,6 +1,5 @@
 use std::fs;
 use std::path::PathBuf;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{TestServer, notification_value, notify, request, response_value};
 
@@ -174,13 +173,7 @@ fn assert_no_completion(response: &serde_json::Value, label: &str) {
 }
 
 fn temp_workspace() -> PathBuf {
-    let mut path = std::env::temp_dir();
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("clock should be after epoch")
-        .as_nanos();
-    path.push(format!("vela_lsp_completion_type_{nanos}"));
-    path
+    crate::tests::support::unique_temp_root("completion_type")
 }
 
 fn file_uri(path: &std::path::Path) -> String {

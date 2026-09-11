@@ -1,7 +1,6 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    time::{SystemTime, UNIX_EPOCH},
 };
 
 use crate::tests::{
@@ -218,15 +217,7 @@ fn line(text: &str, line: usize) -> &str {
 }
 
 fn temp_workspace() -> PathBuf {
-    let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(duration) => duration.as_nanos(),
-        Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
-    };
-    let root = std::env::temp_dir().join(format!(
-        "vela_lsp_semantic_tokens_missing_schema_{}_{}",
-        std::process::id(),
-        suffix
-    ));
+    let root = crate::tests::support::unique_temp_root("semantic_tokens_degradation");
     fs::create_dir_all(root.join("scripts").join("game"))
         .expect("temporary workspace should be creatable");
     root

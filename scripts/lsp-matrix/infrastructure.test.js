@@ -36,3 +36,21 @@ test("gate evidence rejects wrong layers, duplicate mappings and unknown obligat
   proof.requirement = "unknown";
   assert.throws(() => assessInfrastructure(requirements, [proof], run), /invalid infrastructure evidence/);
 });
+
+test("shared infrastructure proof requires executed Rust and installed editor assertions", () => {
+  const requirements = [{ id: "batch/B01/shared-fixtures", layer: "gate" }];
+  const proof = { requirement: requirements[0].id, assertion: "shared fixture crosses actual consumers",
+    tests: ["gate", "service", "protocol", "editor"].map((layer) => ({layer,name:`${layer}-test`})) };
+  const run = {available:["gate-test"],results:new Map([["gate-test","ok"]])};
+  const other = {available:{},results:{}};
+  for (const layer of ["service","protocol","editor"]) {
+    other.available[layer] = [`${layer}-test`]; other.results[layer] = new Map([[`${layer}-test`,"ok"]]);
+  }
+  assert.equal(assessInfrastructure(requirements,[proof],run,other)[0].status,"verified");
+  other.results.editor.clear();
+  assert.equal(assessInfrastructure(requirements,[proof],run,other)[0].status,"mapped");
+  other.results.protocol.set("protocol-test","ignored");
+  assert.equal(assessInfrastructure(requirements,[proof],run,other)[0].status,"failed");
+  other.available.service = [];
+  assert.throws(() => assessInfrastructure(requirements,[proof],run,other),/stale test reference/);
+});

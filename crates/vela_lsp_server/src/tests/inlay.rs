@@ -2,7 +2,6 @@ use super::{TestServer, notification_value, notify, request, response_value};
 use std::{
     fs,
     path::{Path, PathBuf},
-    time::{SystemTime, UNIX_EPOCH},
 };
 
 mod imported;
@@ -886,12 +885,7 @@ fn open_document(server: &mut TestServer, uri: &str, text: &str) {
 }
 
 fn temp_workspace() -> PathBuf {
-    let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(duration) => duration.as_nanos(),
-        Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
-    };
-    let root =
-        std::env::temp_dir().join(format!("vela_lsp_inlay_{}_{}", std::process::id(), suffix));
+    let root = crate::tests::support::unique_temp_root("inlay");
     fs::create_dir_all(root.join("scripts").join("game"))
         .expect("temporary workspace should be creatable");
     root

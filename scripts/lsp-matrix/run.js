@@ -118,7 +118,6 @@ async function main() {
   if (infrastructure.failed) failedCommands.push({ command: "node --test scripts/lsp-matrix/*.test.js", log: "infrastructure.log" });
   const gateEvidence = JSON.parse(read("tests/lsp_matrix/gate-evidence.json"));
   if (gateEvidence.version !== 1) throw new Error("unsupported gate evidence version");
-  const gates = assessInfrastructure(executionRequirements, gateEvidence.evidence, infrastructure);
   const available = {};
   const results = {};
   let failed = infrastructure.failed;
@@ -163,6 +162,7 @@ async function main() {
     throw new Error(`advertised capability keys changed; update matrix applicability: ${keys.join(", ")}`);
   }
   const assessed = model.assess(requirements, catalog.evidence, available, results, catalog.exemptions);
+  const gates = assessInfrastructure(executionRequirements, gateEvidence.evidence, infrastructure, { available, results });
   const features = catalog.features.map((feature) => ({ ...feature,
     contract: catalog.protocolBaseline[feature.row],
     candidates: Object.fromEntries(["service", "protocol"].map((layer) => [layer,

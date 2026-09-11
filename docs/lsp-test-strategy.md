@@ -112,8 +112,9 @@ Use small multi-file fixtures with named markers for declarations, references,
 cursor positions, ranges, and edits. Strip markers before analysis and derive
 byte/UTF-16 positions from the stripped source. Give scenarios stable IDs and
 record the grammar/symbol partitions, feature, initial state, actions, and exact
-oracle. A future common fixture runner should feed both the Rust protocol harness
-and the installed VSIX suite; the current suites are not yet driven by one corpus.
+oracle. The shared corpus under `tests/lsp_matrix/fixtures/` now feeds both Rust layers
+and the installed VSIX suite. Its independent marker/edit/lifecycle self-tests
+are implemented; expanding semantic coverage remains the feature batches’ work.
 
 | Feature family | Required oracle |
 |---|---|

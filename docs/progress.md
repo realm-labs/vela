@@ -595,8 +595,10 @@ acceptance. The local package-path baseline is restored. The versioned ownership
 1327 semantic obligations, 136 local interaction obligations and 14 infrastructure/
 later acceptance obligations, with contract/route drift self-tests. Scoped strict
 acceptance and the machine-readable checkpoint enforce fresh proof for accepted
-batches, explicit reopening and exact remaining scope. B01 shared fixtures and
-local Input/Render evidence are next; no semantic feature batch is accepted yet.
+batches, explicit reopening and exact remaining scope. B01 shared Unicode,
+LF/CRLF, marker/edit and disk/overlay fixtures now feed both Rust layers and the
+installed VSIX (seven scenarios). The local Input/Render driver and evidence
+validation are next; no semantic feature batch is accepted yet.
 
 ### Deferred Tracks
 

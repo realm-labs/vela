@@ -17,7 +17,7 @@ B16 and its scenario families are deferred environment work. They have no local
 execution obligations and cannot absorb missing local proof. All other batches
 remain pending until their strict acceptance passes. The runner validates ownership
 and includes the expanded inventory in the JSON report. `gate-evidence.json` links
-infrastructure obligations to exact executed Node test identities. Full strict
+infrastructure obligations to exact executed Node, Rust and installed-editor test identities. Full strict
 acceptance also rejects unverified interaction and later
 deliverables, even if all original semantic cells are verified.
 

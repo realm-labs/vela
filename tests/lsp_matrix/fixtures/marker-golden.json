@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "valid": [
+    {
+      "id": "unicode-lf",
+      "source": "中😀 [[target:start]]x[[target:end]]\n[[cursor]]尾",
+      "text": "中😀 x\n尾",
+      "markers": {
+        "target": {
+          "start": {
+            "byte": 8,
+            "line": 0,
+            "character": 4
+          },
+          "end": {
+            "byte": 9,
+            "line": 0,
+            "character": 5
+          }
+        },
+        "cursor": {
+          "start": {
+            "byte": 10,
+            "line": 1,
+            "character": 0
+          },
+          "end": {
+            "byte": 10,
+            "line": 1,
+            "character": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "unicode-crlf",
+      "source": "中😀 [[target:start]]x[[target:end]]\r\n[[cursor]]尾",
+      "text": "中😀 x\r\n尾",
+      "markers": {
+        "target": {
+          "start": {
+            "byte": 8,
+            "line": 0,
+            "character": 4
+          },
+          "end": {
+            "byte": 9,
+            "line": 0,
+            "character": 5
+          }
+        },
+        "cursor": {
+          "start": {
+            "byte": 11,
+            "line": 1,
+            "character": 0
+          },
+          "end": {
+            "byte": 11,
+            "line": 1,
+            "character": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "nested-multiline-eof",
+      "source": "[[outer:start]][[inner:start]]😀[[inner:end]]\r\n中[[outer:end]][[eof]]",
+      "text": "😀\r\n中",
+      "markers": {
+        "inner": {
+          "start": {
+            "byte": 0,
+            "line": 0,
+            "character": 0
+          },
+          "end": {
+            "byte": 4,
+            "line": 0,
+            "character": 2
+          }
+        },
+        "outer": {
+          "start": {
+            "byte": 0,
+            "line": 0,
+            "character": 0
+          },
+          "end": {
+            "byte": 9,
+            "line": 1,
+            "character": 1
+          }
+        },
+        "eof": {
+          "start": {
+            "byte": 9,
+            "line": 1,
+            "character": 1
+          },
+          "end": {
+            "byte": 9,
+            "line": 1,
+            "character": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "empty",
+      "source": "[[empty]]",
+      "text": "",
+      "markers": {
+        "empty": {
+          "start": {
+            "byte": 0,
+            "line": 0,
+            "character": 0
+          },
+          "end": {
+            "byte": 0,
+            "line": 0,
+            "character": 0
+          }
+        }
+      }
+    }
+  ],
+  "invalid": [
+    "[[",
+    "[[bad space]]",
+    "[[x:bad]]",
+    "[[x:end]]",
+    "[[x:start]]x",
+    "[[x]][[x]]",
+    "[[x:start]][[x]]",
+    "[[a:start]][[b:start]][[a:end]][[b:end]]",
+    "[[x:start]][[x:end]][[x:start]][[x:end]]",
+    "x]]",
+    "\r[[between]]\n"
+  ]
+}

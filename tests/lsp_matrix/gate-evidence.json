@@ -142,6 +142,92 @@
           "name": "later audits preserve earlier failure reports and logs"
         }
       ]
+    },
+    {
+      "requirement": "batch/B01/shared-fixtures",
+      "assertion": "Both Rust layers and the installed VSIX consume the same corpus, with hand-authored Unicode LF/CRLF coordinates, disk/overlay lifecycle, exact target ranges, invalid markers, containment and edit checks.",
+      "tests": [
+        {
+          "layer": "gate",
+          "name": "shared fixture markers match independent byte and UTF-16 LF/CRLF golden positions"
+        },
+        {
+          "layer": "gate",
+          "name": "shared fixture parser rejects malformed duplicate crossing and split-CRLF markers"
+        },
+        {
+          "layer": "gate",
+          "name": "shared multi-file actions retain overlays and restore independent disk oracles"
+        },
+        {
+          "layer": "gate",
+          "name": "fixture paths actions and materialization cannot overwrite unrelated files"
+        },
+        {
+          "layer": "gate",
+          "name": "independent edit oracle handles Unicode ranges and rejects unsafe or overlapping edits"
+        },
+        {
+          "layer": "gate",
+          "name": "shared infrastructure proof requires executed Rust and installed editor assertions"
+        },
+        {
+          "layer": "service",
+          "name": "matrix_fixture::tests::shared_markers_match_independent_unicode_lf_crlf_goldens"
+        },
+        {
+          "layer": "service",
+          "name": "matrix_fixture::tests::shared_markers_reject_malformed_duplicates_crossing_and_split_crlf"
+        },
+        {
+          "layer": "service",
+          "name": "matrix_fixture::tests::shared_multifile_actions_preserve_overlays_and_restore_disk_oracles"
+        },
+        {
+          "layer": "service",
+          "name": "matrix_fixture::tests::shared_fixture_paths_actions_and_materialization_are_isolated"
+        },
+        {
+          "layer": "service",
+          "name": "matrix_fixture::tests::shared_edit_oracle_validates_unicode_containment_and_overlap"
+        },
+        {
+          "layer": "protocol",
+          "name": "matrix_fixture::tests::shared_markers_match_independent_unicode_lf_crlf_goldens"
+        },
+        {
+          "layer": "protocol",
+          "name": "matrix_fixture::tests::shared_markers_reject_malformed_duplicates_crossing_and_split_crlf"
+        },
+        {
+          "layer": "protocol",
+          "name": "matrix_fixture::tests::shared_multifile_actions_preserve_overlays_and_restore_disk_oracles"
+        },
+        {
+          "layer": "protocol",
+          "name": "matrix_fixture::tests::shared_fixture_paths_actions_and_materialization_are_isolated"
+        },
+        {
+          "layer": "protocol",
+          "name": "matrix_fixture::tests::shared_edit_oracle_validates_unicode_containment_and_overlap"
+        },
+        {
+          "layer": "service",
+          "name": "shared_fixture_tests::shared_fixture_service_queries_use_independent_unicode_lifecycle_ranges"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::shared_fixture::shared_fixture_protocol_queries_follow_unicode_disk_overlay_lifecycle"
+        },
+        {
+          "layer": "editor",
+          "name": "shared fixtures preserve Unicode LF/CRLF dirty and restored target ranges"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::support::parallel_fixture_roots_are_unique_with_a_frozen_clock"
+        }
+      ]
     }
   ]
 }

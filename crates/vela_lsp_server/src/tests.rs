@@ -174,6 +174,7 @@ mod semantic_tokens_degradation;
 mod semantic_tokens_schema;
 mod semantic_tokens_schema_trait;
 mod semantic_tokens_source;
+mod shared_fixture;
 mod signature;
 mod symbols;
 mod workspace_folders;

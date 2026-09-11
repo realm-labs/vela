@@ -2,7 +2,6 @@ use super::{TestServer, notification_value, notify, request, response_value};
 use std::{
     fs,
     path::{Path, PathBuf},
-    time::{SystemTime, UNIX_EPOCH},
 };
 
 #[test]
@@ -604,15 +603,7 @@ fn schema_with_player_level_field() -> &'static str {
 }
 
 fn temp_workspace() -> PathBuf {
-    let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(duration) => duration.as_nanos(),
-        Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
-    };
-    let root = std::env::temp_dir().join(format!(
-        "vela_lsp_code_action_{}_{}",
-        std::process::id(),
-        suffix
-    ));
+    let root = crate::tests::support::unique_temp_root("code_action");
     fs::create_dir_all(root.join("scripts").join("game"))
         .expect("temporary workspace should be creatable");
     root

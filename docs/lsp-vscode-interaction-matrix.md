@@ -1,7 +1,7 @@
 # VS Code User Interaction Acceptance Matrix
 
 Status: required future acceptance, not implemented coverage. The current suite
-has six installed-VSIX scenarios and invokes providers or editor commands. Its
+has seven installed-VSIX scenarios and invokes providers or editor commands. Its
 F12 scenario invokes the command and observes the destination; it does not send
 a keyboard event. The current catalog has 27 feature-level `editor/smoke` cells.
 Neither those cells nor the 1327 initial requirements certify this matrix.
@@ -114,7 +114,7 @@ Two identical packages cannot prove an upgrade.
 | Nightly | Complete six-profile local suite, remote core suite, upgrade/coexistence checks and rendering variants. Preserve failures even if a later retry succeeds. |
 | Future cross-environment release | Every required scenario/route/profile tuple passes for the candidate revision/artifacts, together with all strategy gates. Reuse nightly evidence only when all relevant identities match. |
 
-These lanes are deferred B16 work. Current CI runs the six-scenario suite on
+These lanes are deferred B16 work. Current CI runs the seven-scenario suite on
 Windows/Linux stable and Linux 1.90.0; it has no workbench input or remote lane.
 
 ## Driver, Evidence And Completion Rules

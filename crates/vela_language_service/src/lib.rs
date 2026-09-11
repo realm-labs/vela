@@ -106,3 +106,10 @@ mod boundary_tests {
 
 #[cfg(test)]
 mod provider_tooling_tests;
+
+#[cfg(test)]
+#[path = "../../../tests/lsp_matrix/support/mod.rs"]
+mod matrix_fixture;
+
+#[cfg(test)]
+mod shared_fixture_tests;

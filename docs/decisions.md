@@ -4206,3 +4206,14 @@ rg -n '^\s*pub use\b' crates --glob '*.rs'
   details here.
 - Keep active entries concise. Move detailed historical rationale to
   `docs/archive/` when this file stops being quick to scan.
+
+### Shared Local LSP Fixture Oracles
+
+B01's shared JSON corpus is consumed by test-only Rust modules and the installed
+VSIX runner. Markers provide absolute UTF-8 offsets and UTF-16 positions; the
+service consumer derives byte columns independently. Hand-authored golden ranges
+and lifecycle outcomes remain separate from production providers and indexing.
+Shared infrastructure acceptance requires exact Node, service, protocol and
+installed-editor assertions. Test roots use counters and atomic creation because
+parallel tests can receive identical clock timestamps. Isolated VS Code profiles
+hide the startup chat view so it cannot intercept editor navigation commands.

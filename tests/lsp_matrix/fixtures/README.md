@@ -1,0 +1,36 @@
+# Shared fixture corpus
+
+JSON strings preserve line endings and Unicode. `marker-golden.json` contains
+hand-authored stripped text, byte offsets, UTF-16 positions and malformed cases;
+neither parser generates its expected coordinates. The Rust support module is
+included under `cfg(test)` in both LSP crates. The installed VSIX runner imports
+`scripts/lsp-matrix/fixtures.js` and consumes the same lifecycle JSON.
+
+Marker syntax is reserved in fixture input:
+
+- `[[name]]` identifies a zero-width cursor.
+- `[[name:start]]text[[name:end]]` identifies an exact range.
+- Names use lowercase ASCII letters, digits and hyphens, starting with a letter.
+- Names are unique within each document. Proper nesting is allowed; duplicates,
+  unclosed/crossing ranges, invalid names and markers splitting CRLF are errors.
+
+Positions are computed after stripping markers. `byte` is an absolute UTF-8
+offset; `line` and `character` are zero-based UTF-16 coordinates. Service APIs
+use byte columns, derived independently from the same absolute offset; protocol
+and editor APIs use the UTF-16 position. Oracles never call production LineIndex
+or providers to obtain expected ranges. Edit helpers reject reversed/overlapping
+ranges, split surrogate pairs and out-of-bounds positions before applying edits.
+
+A workspace has `version`, `id`, `files`, ordered `actions`, and an independent
+`oracle`. Each relative file path rejects traversal, absolute/drive paths and
+backslashes. `open`, `change`, `save`, `close`, disk `write`, and disk `delete`
+actions distinguish overlays from disk state. A disk change cannot replace an
+open overlay; close restores current disk, and save writes the current overlay.
+Missing or invalid action preconditions fail. Materialization requires a new
+isolated root and refuses to overwrite an existing directory.
+
+`shared-unicode-lifecycle.json` drives eleven service/protocol transitions for
+both LF and CRLF. Its exact target ranges are authored in `afterEachAction`.
+The installed extension also reads this corpus and checks initial, unsaved and
+close-restored target ranges and source text. These are fixture/provider proof;
+workbench Input/Render routes are separately required.

@@ -1,7 +1,6 @@
 use super::{TestServer, notification_value, notification_values, notify, request, response_value};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
 fn lsp_document_symbols_include_nested_script_members() {
@@ -520,15 +519,7 @@ fn workspace_symbols(server: &mut TestServer, id: i32, query: &str) -> Vec<serde
 }
 
 fn temp_workspace() -> PathBuf {
-    let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(duration) => duration.as_nanos(),
-        Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
-    };
-    let root = std::env::temp_dir().join(format!(
-        "vela_lsp_symbols_{}_{}",
-        std::process::id(),
-        suffix
-    ));
+    let root = crate::tests::support::unique_temp_root("symbols");
     fs::create_dir_all(root.join("scripts").join("game"))
         .expect("temporary workspace should be creatable");
     root

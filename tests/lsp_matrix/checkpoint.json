@@ -86,10 +86,18 @@
         "batch/B00/scoped-acceptance"
       ],
       "summary": "Repair confirmed identical-timestamp fixture collisions; fixed-timestamp regression, 100 module runs, 546 protocol tests, formatting and Clippy passed."
+    },
+    {
+      "id": "B01.1",
+      "revision": null,
+      "requirements": [
+        "batch/B01/shared-fixtures"
+      ],
+      "summary": "Shared Unicode LF/CRLF fixture corpus and independent marker/edit/lifecycle oracles feed both Rust layers and installed VSIX. Exact cross-consumer evidence is mapped; full B01 still requires Input/Render driver and local evidence validation."
     }
   ],
-  "activeChild": null,
-  "nextTask": "B01",
+  "activeChild": "B01.2",
+  "nextTask": "B01.2",
   "remainingRequirements": [
     "batch/B01/input-render-driver",
     "batch/B01/local-evidence",
@@ -1577,7 +1585,14 @@
     "target/lsp-matrix/member-collision-reproduction.log",
     "target/lsp-matrix/member-isolation-validation.log",
     "editors/vscode/test-results/run-87behd/results.json",
-    "target/lsp-matrix/run-Gst6mX/report.json"
+    "target/lsp-matrix/run-Gst6mX/report.json",
+    "editors/vscode/test-results/run-q3Jeyn/results.json",
+    "editors/vscode/test-results/run-DVTb2U/results.json",
+    "editors/vscode/test-results/run-K5FHd3/results.json",
+    "target/lsp-matrix/b01-debug2.png",
+    "target/lsp-matrix/run-ycC829/report.json",
+    "target/lsp-matrix/b01-fixture-isolation-sweep.log",
+    "target/lsp-matrix/run-d9cqtn/report.json"
   ],
   "openIssues": [
     {
@@ -1587,7 +1602,7 @@
     {
       "id": "audit-failure-with-overwritten-detail",
       "owner": "B08",
-      "summary": "The old runner lost one audit failure detail. A retained recurrence failed schema member completion; atomic fixture creation then proved identical-timestamp directory collisions. B00.4 fixes the collision, with a deterministic regression and 100 passing module runs. Preserve the unknown first failure and monitor during subsequent batches; close after lifecycle validation in B08."
+      "summary": "The old runner lost one audit failure detail. A retained recurrence failed schema member completion; atomic fixture creation then proved identical-timestamp directory collisions. B00.4 fixes the collision, with a deterministic regression and 100 passing module runs. Preserve the unknown first failure and monitor during subsequent batches; close after lifecycle validation in B08. B01 reproduced the same risk in semantic-token schema fixtures and migrated all remaining unsequenced protocol fixture helpers to an atomic, counter-based allocator. A frozen-clock concurrent regression and 100 full protocol runs passed."
     }
   ]
 }

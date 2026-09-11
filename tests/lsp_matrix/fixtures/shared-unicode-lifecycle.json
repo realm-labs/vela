@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "id": "shared-unicode-lifecycle",
+  "files": {
+    "vela.toml": "[package]\nid = 'dev.vela.fixture'\nname = 'fixture'\nversion = '0.1.0'\n[source]\nroots = ['scripts']\n",
+    "scripts/main.vela": "use helper::increment;\nfn main() { let text = \"中😀\"; return [[call]]increment(41); }\n",
+    "scripts/helper.vela": "pub fn [[definition:start]]increment[[definition:end]](value) { return value + 1; }\n"
+  },
+  "actions": [
+    {
+      "op": "open",
+      "file": "scripts/main.vela"
+    },
+    {
+      "op": "open",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "change",
+      "file": "scripts/helper.vela",
+      "source": "// 未保存😀\n// shifted\npub fn [[definition:start]]increment[[definition:end]](value) { return value + 2; }\n"
+    },
+    {
+      "op": "write",
+      "file": "scripts/helper.vela",
+      "source": "// changed disk\npub fn [[definition:start]]increment[[definition:end]](value) { return value + 3; }\n"
+    },
+    {
+      "op": "close",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "open",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "change",
+      "file": "scripts/helper.vela",
+      "source": "// 保存😀\npub fn [[definition:start]]increment[[definition:end]](value) { return value + 4; }\n"
+    },
+    {
+      "op": "save",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "close",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "delete",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "write",
+      "file": "scripts/helper.vela",
+      "source": "pub fn [[definition:start]]increment[[definition:end]](value) { return value + 1; }\n"
+    }
+  ],
+  "oracle": {
+    "file": "scripts/helper.vela",
+    "marker": "definition",
+    "selectedText": "increment",
+    "afterEachAction": [
+      {
+        "line": 0,
+        "character": 7,
+        "endCharacter": 16,
+        "tail": "1; }\n"
+      },
+      {
+        "line": 0,
+        "character": 7,
+        "endCharacter": 16,
+        "tail": "1; }\n"
+      },
+      {
+        "line": 2,
+        "character": 7,
+        "endCharacter": 16,
+        "tail": "2; }\n"
+      },
+      {
+        "line": 2,
+        "character": 7,
+        "endCharacter": 16,
+        "tail": "2; }\n"
+      },
+      {
+        "line": 1,
+        "character": 7,
+        "endCharacter": 16,
+        "tail": "3; }\n"
+      },
+      {
+        "line": 1,
+        "character": 7,
+        "endCharacter": 16,
+        "tail": "3; }\n"
+      },
+      {
+        "line": 1,
+        "character": 7,
+        "endCharacter": 16,
+        "tail": "4; }\n"
+      },
+      {
+        "line": 1,
+        "character": 7,
+        "endCharacter": 16,
+        "tail": "4; }\n"
+      },
+      {
+        "line": 1,
+        "character": 7,
+        "endCharacter": 16,
+        "tail": "4; }\n"
+      },
+      null,
+      {
+        "line": 0,
+        "character": 7,
+        "endCharacter": 16,
+        "tail": "1; }\n"
+      }
+    ]
+  }
+}

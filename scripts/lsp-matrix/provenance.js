@@ -5,7 +5,8 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 
 function provenance(root, binary) {
-  const files = ["editors/vscode/extension.js", "editors/vscode/package.json", "editors/vscode/package-lock.json"];
+  const files = ["editors/vscode/extension.js", "editors/vscode/package.json", "editors/vscode/package-lock.json",
+    "scripts/lsp-matrix/fixtures.js"];
   function collect(relative) {
     for (const entry of fs.readdirSync(path.join(root, relative), { withFileTypes: true })) {
       const file = `${relative}/${entry.name}`;
@@ -14,6 +15,7 @@ function provenance(root, binary) {
     }
   }
   collect("editors/vscode/test");
+  collect("tests/lsp_matrix/fixtures");
   const inputs = crypto.createHash("sha256");
   for (const file of files.sort()) inputs.update(file + "\0").update(fs.readFileSync(path.join(root, file)));
   return {

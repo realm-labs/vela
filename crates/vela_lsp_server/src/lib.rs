@@ -30,3 +30,7 @@ pub(crate) use crate::rpc::ErrorCode;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "../../../tests/lsp_matrix/support/mod.rs"]
+mod matrix_fixture;

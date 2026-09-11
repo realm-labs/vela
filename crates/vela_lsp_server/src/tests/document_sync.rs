@@ -1,22 +1,12 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{TestServer, assert_no_messages, notification_value, notify, request, response_value};
 
 fn temp_workspace() -> PathBuf {
-    let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(duration) => duration.as_nanos(),
-        Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
-    };
-    let root = std::env::temp_dir().join(format!(
-        "vela_lsp_server_sync_{}_{}",
-        std::process::id(),
-        suffix
-    ));
-    if let Err(error) = fs::create_dir_all(root.join("scripts").join("game")) {
-        panic!("temporary workspace should be creatable: {error}");
-    }
+    let root = crate::tests::support::unique_temp_root("document_sync");
+    fs::create_dir_all(root.join("scripts").join("game"))
+        .expect("temporary workspace should be creatable");
     root
 }
 

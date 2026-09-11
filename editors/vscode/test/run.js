@@ -18,10 +18,16 @@ async function main() {
   for (const file of ["vela.toml", "scripts/main.vela", "scripts/helpers.vela"]) {
     fs.writeFileSync(path.join(workspace, file), fs.readFileSync(path.join(__dirname, "fixture", file)));
   }
+  const { parseMarkers } = require("../../../scripts/lsp-matrix/fixtures");
+  const shared = require("../../../tests/lsp_matrix/fixtures/shared-unicode-lifecycle.json");
+  fs.writeFileSync(path.join(workspace, "scripts/helper.vela"), parseMarkers(shared.files["scripts/helper.vela"]).text);
   fs.mkdirSync(path.join(workspace, ".vscode"));
   fs.writeFileSync(path.join(workspace, ".vscode", "settings.json"), JSON.stringify({
     "vela.trace.server": "verbose",
     "editor.gotoLocation.multipleDefinitions": "goto",
+    "chat.disableAIFeatures": true,
+    "workbench.secondarySideBar.defaultVisibility": "hidden",
+    "workbench.startupEditor": "none",
     "files.autoSave": "off"
   }));
   const vsix = path.join(resultRoot, "vela.vsix");

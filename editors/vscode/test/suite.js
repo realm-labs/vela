@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vscode = require("vscode");
 const { provenance } = require("../../../scripts/lsp-matrix/provenance");
+const { runSharedFixture } = require("./shared-fixture");
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -99,25 +100,30 @@ async function run() {
       assert.equal(helper.getText(range), "increment");
     });
     await check("F12 command opens the definition in the editor", async () => {
-      const editor = await vscode.window.showTextDocument(document);
       const cursor = position(document, "increment(local)");
-      editor.selection = new vscode.Selection(cursor, cursor);
-      const arrived = new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-          subscription.dispose();
-          reject(new Error("F12 did not move the editor selection to the definition"));
-        }, 10000);
-        const subscription = vscode.window.onDidChangeTextEditorSelection((event) => {
-          if (event.textEditor.document.uri.path.endsWith("/helpers.vela") &&
-              event.selections[0].active.line === 0 && event.selections[0].active.character === 7) {
-            subscription.dispose();
-            clearTimeout(timer);
-            resolve();
-          }
-        });
-      });
+      const editor = await vscode.window.showTextDocument(document);
+      if (!editor.selection.active.isEqual(cursor)) {
+        await bounded("renderer selection acknowledgement", () => new Promise((resolve, reject) => {
+          const timer = setTimeout(() => { subscription.dispose(); reject(new Error("selection was not acknowledged")); }, 5000);
+          const subscription = vscode.window.onDidChangeTextEditorSelection((event) => {
+            if (event.textEditor.document === document && event.selections[0].active.isEqual(cursor)) {
+              clearTimeout(timer); subscription.dispose(); resolve();
+            }
+          });
+          editor.selection = new vscode.Selection(cursor, cursor);
+        }));
+      }
+      await vscode.commands.executeCommand("workbench.action.focusActiveEditorGroup");
       await vscode.commands.executeCommand("editor.action.revealDefinition");
-      await arrived;
+      // A reused editor may already have the destination selection, so VS Code
+      // need not emit a selection-change event. Observe final state as well.
+      const deadline = Date.now() + 10000;
+      while (Date.now() < deadline) {
+        const active = vscode.window.activeTextEditor;
+        if (active?.document.uri.toString() === vscode.Uri.joinPath(workspace, "scripts/helpers.vela").toString() &&
+            active.selection.active.line === 0 && active.selection.active.character === 7) break;
+        await delay(50);
+      }
       assert.equal(vscode.window.activeTextEditor.document.uri.toString(),
         vscode.Uri.joinPath(workspace, "scripts/helpers.vela").toString());
       assert.equal(vscode.window.activeTextEditor.selection.active.line, 0);
@@ -137,6 +143,8 @@ async function run() {
       assert.ok(completion?.items.some((item) => (item.label.label ?? item.label) === "helpers::increment"),
         "completion must contain imported function");
     });
+    await check("shared fixtures preserve Unicode LF/CRLF dirty and restored target ranges", () =>
+      runSharedFixture(vscode, workspace));
     await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
   } finally {
     const extension = vscode.extensions.getExtension("vela-lang.vela-vscode");
