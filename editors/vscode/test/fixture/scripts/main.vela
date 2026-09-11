@@ -1,0 +1,6 @@
+use helpers::increment;
+
+fn main() {
+    let message = "中文 😀"; let local = 41;
+    return increment(local);
+}

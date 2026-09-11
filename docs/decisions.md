@@ -4,6 +4,17 @@ This file is the active architecture decision index. Full pre-compaction
 decision history lives in
 [archive/decisions-full-2026-06-01.md](archive/decisions-full-2026-06-01.md).
 
+## Installed Editor Acceptance
+
+Installed editor acceptance uses a separately installed VSIX and a test-only
+driver extension, with an isolated profile and the bundled native server.
+Feature checks call VS Code providers/commands and assert destinations and
+ranges; service/protocol fixtures retain broad syntax coverage. The
+[editor test guide](../editors/vscode/README.md#automated-editor-tests) defines
+the workflow and CI matrix. Package source discovery feeds the same
+`ProjectState` databases as open overlays; overlays supersede equivalent disk
+paths even when the client's URI encoding differs.
+
 ## Standing Constraints
 
 - Script-language generics are not supported.

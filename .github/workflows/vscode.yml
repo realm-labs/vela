@@ -1,0 +1,61 @@
+name: VS Code integration
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vscode-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  installed-extension:
+    name: ${{ matrix.os }} / VS Code ${{ matrix.vscode }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        vscode: [stable]
+        include:
+          - os: ubuntu-latest
+            vscode: '1.90.0'
+    env:
+      VSCODE_TEST_VERSION: ${{ matrix.vscode }}
+    defaults:
+      run:
+        working-directory: editors/vscode
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: editors/vscode/package-lock.json
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal
+      - name: Select Rust
+        run: rustup default stable
+      - name: Install extension dependencies
+        run: npm ci
+      - name: Test installed VSIX on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm test
+      - name: Test installed VSIX on Windows
+        if: runner.os == 'Windows'
+        run: npm test
+      - name: Upload test results and editor/server logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-${{ matrix.os }}-${{ matrix.vscode }}
+          include-hidden-files: true
+          path: |
+            editors/vscode/test-results/**/results.json
+            editors/vscode/test-results/**/user-data/logs/**
+            editors/vscode/test-results/**/.vela-lsp-trace.jsonl

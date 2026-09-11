@@ -3,3 +3,5 @@
 /node_modules
 /server
 /*.vsix
+/.vscode-test
+/test-results

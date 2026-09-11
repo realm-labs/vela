@@ -1,0 +1,7 @@
+[package]
+id = "dev.vela.editor-test"
+name = "editor_test"
+version = "0.1.0"
+
+[source]
+roots = ["scripts"]

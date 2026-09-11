@@ -29,6 +29,17 @@ The matrix preserves the standing LSP constraints:
 
 ## Coverage Rules
 
+Protocol acceptance is distinct from installed editor acceptance. The VS Code
+suite (`npm ci && npm test` in `editors/vscode`) builds and installs the real
+VSIX, then checks activation, bundled-server startup, local/cross-file
+navigation, F12's editor destination, Unicode paths/ranges, unsaved changes,
+hover, and completion through VS Code commands. The
+[editor test guide](../editors/vscode/README.md#automated-editor-tests) documents
+the Windows/Linux CI matrix and retained failure artifacts. Expand this small
+workflow suite for editor regressions while keeping syntax combinations in the
+service and protocol fixtures below. A passing protocol matrix alone does not
+establish that the packaged editor integration works.
+
 Every advertised protocol capability needs these proofs:
 
 1. Capability advertisement is pinned in lifecycle tests, including trigger

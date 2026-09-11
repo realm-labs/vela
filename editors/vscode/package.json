@@ -18,6 +18,7 @@
   ],
   "main": "./extension.js",
   "scripts": {
+    "test": "node test/run.js",
     "validate": "node scripts/validate-package.js",
     "package": "node scripts/package-vsix.js",
     "package:release": "node scripts/package-vsix.js --release",
@@ -374,6 +375,8 @@
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
-    "@types/vscode": "^1.90.0"
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "3.9.2"
   }
 }

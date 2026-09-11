@@ -1,0 +1,6 @@
+{
+  "name": "vela-test-driver",
+  "publisher": "vela-tests",
+  "version": "0.0.1",
+  "engines": { "vscode": "^1.90.0" }
+}

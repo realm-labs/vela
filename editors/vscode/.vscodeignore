@@ -4,3 +4,6 @@ dist/**
 scripts/**
 *.vsix
 package-lock.json
+.vscode-test/**
+test/**
+test-results/**

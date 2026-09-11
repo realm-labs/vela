@@ -71,3 +71,14 @@ npm --prefix site run test:syntax
 npm --prefix site run test:docs
 npm --prefix site run build
 ```
+
+For LSP/editor changes, also run the installed VS Code integration suite:
+
+```bash
+npm --prefix editors/vscode ci
+npm --prefix editors/vscode test
+```
+
+Linux CI uses `xvfb-run -a npm --prefix editors/vscode test`. See the
+[editor test guide](../editors/vscode/README.md#automated-editor-tests) for the
+version matrix, bounded assertions, and retained logs.

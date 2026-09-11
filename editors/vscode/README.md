@@ -23,6 +23,40 @@ The extension passes `vela.workspace.roots` and `vela.host.schema` both as
 native launch flags and initialization options. A project `vela.toml` remains
 the authoritative workspace configuration when present.
 
+## Automated Editor Tests
+
+```bash
+npm ci
+npm test
+```
+
+`npm test` builds the native server, packages the extension, downloads VS Code
+(cached under `.vscode-test`), and installs the VSIX into a fresh isolated
+extension directory. A separate empty test driver runs assertions through the
+real VS Code API; Vela itself is loaded from the installed package with its
+bundled server and production dependencies. The user's editor profile is not
+used. Linux requires a display; in headless environments use `xvfb-run -a npm test`.
+
+The suite covers language activation, local and cross-file definitions, the
+actual F12 command's destination, UTF-16 ranges after Chinese/emoji text,
+workspace paths containing Chinese and spaces, unsaved source changes, hover,
+and completion. Readiness has a bounded wait; feature assertions are not
+retried to hide stale responses. Each check has a 15-second timeout.
+
+Set `VSCODE_TEST_VERSION` to test a specific version; the default is `stable`.
+CI runs stable on Windows/Linux and the declared minimum 1.90.0 on Linux.
+Each run prints its `test-results/run-*` directory, preserving `results.json`,
+the VSIX, workspace server trace, and `user-data/logs`. CI uploads results and
+logs even on failure. These ignored directories can be removed after diagnosis.
+
+Add regression scenarios in `test/suite.js` and small source fixtures in
+`test/fixture`. Assert the target URI, exact source range, and target text;
+checking only that a command succeeds does not prove navigation works.
+Keep broad syntax/schema combinations in the faster Rust service/protocol
+tests; editor tests cover a small set of real user workflows. This suite does
+not yet cover schema navigation, remote workspaces, keybinding conflicts, or
+every UI interaction.
+
 ## Language Server Profiling
 
 To diagnose editor stalls caused by the native language server, enable request

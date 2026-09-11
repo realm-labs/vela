@@ -568,6 +568,16 @@ loop rather than a worker lane.
 Other known follow-ups are broader method/schema call-site classification and
 suppression of future hints across dynamic `Any` boundaries.
 
+Installed VSIX smoke coverage now exercises activation, bundled-server startup,
+package discovery, local/cross-file navigation, F12, unsaved edits, Unicode
+paths/ranges, hover, and completion. The Windows/Linux CI gate and logs are
+documented in the [editor test guide](../editors/vscode/README.md#automated-editor-tests).
+Navigation projects target byte columns to UTF-16. Other outgoing protocol
+ranges still need a Unicode projection audit; this checkpoint does not accept
+all editor features or schema/remote workflows. Initial discovery currently
+loads package manifests at workspace roots; manifest-free disk discovery and
+broader multi-root lifecycle coverage remain follow-ups.
+
 ### Deferred Tracks
 
 - M21 debugger/DAP work waits for stable runtime debug contracts.

@@ -1,0 +1,62 @@
+"use strict";
+
+const fs = require("node:fs");
+const path = require("node:path");
+const { spawnSync } = require("node:child_process");
+const { downloadAndUnzipVSCode, runVSCodeCommand, runTests } = require("@vscode/test-electron");
+
+const extensionRoot = path.resolve(__dirname, "..");
+
+async function main() {
+  const resultsDir = path.join(extensionRoot, "test-results");
+  fs.mkdirSync(resultsDir, { recursive: true });
+  const resultRoot = fs.mkdtempSync(path.join(resultsDir, "run-"));
+  console.log(`Test artifacts: ${resultRoot}`);
+  // Preserve every run, including failures, without touching the user's profile.
+  const workspace = path.join(resultRoot, "中文 workspace");
+  fs.mkdirSync(path.join(workspace, "scripts"), { recursive: true });
+  for (const file of ["vela.toml", "scripts/main.vela", "scripts/helpers.vela"]) {
+    fs.writeFileSync(path.join(workspace, file), fs.readFileSync(path.join(__dirname, "fixture", file)));
+  }
+  fs.mkdirSync(path.join(workspace, ".vscode"));
+  fs.writeFileSync(path.join(workspace, ".vscode", "settings.json"), JSON.stringify({
+    "vela.trace.server": "verbose",
+    "editor.gotoLocation.multipleDefinitions": "goto",
+    "files.autoSave": "off"
+  }));
+  const vsix = path.join(resultRoot, "vela.vsix");
+  const packaged = spawnSync(process.execPath, [path.join(extensionRoot, "scripts", "package-vsix.js"), "--out", vsix], {
+    cwd: extensionRoot, stdio: "inherit", timeout: 300000
+  });
+  if (packaged.error) throw packaged.error;
+  if (packaged.status !== 0) throw new Error(`VSIX packaging failed: ${packaged.status}`);
+
+  const version = process.env.VSCODE_TEST_VERSION || "stable";
+  const vscodeExecutablePath = await downloadAndUnzipVSCode(version);
+  const extensionsDir = path.join(resultRoot, "extensions");
+  const userDataDir = path.join(resultRoot, "user-data");
+  const isolatedArgs = ["--extensions-dir", extensionsDir, "--user-data-dir", userDataDir];
+  const installed = await runVSCodeCommand(["--install-extension", vsix, "--force", ...isolatedArgs], {
+    version, spawn: { timeout: 120000, windowsHide: true }
+  });
+  console.log(installed.stdout);
+  await runTests({
+    vscodeExecutablePath,
+    // Only this empty driver is loaded as a development extension. Vela must
+    // come from the VSIX installed above, including its production dependencies.
+    extensionDevelopmentPath: path.join(__dirname, "driver"),
+    extensionTestsPath: path.join(__dirname, "suite.js"),
+    extensionTestsEnv: {
+      ELECTRON_RUN_AS_NODE: undefined,
+      VELA_TEST_EXTENSIONS_DIR: extensionsDir,
+      VELA_TEST_RESULT_DIR: resultRoot
+    },
+    launchArgs: [workspace, ...isolatedArgs, "--skip-welcome", "--skip-release-notes",
+      "--disable-workspace-trust", "--disable-updates", "--disable-gpu", "--no-sandbox"]
+  });
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
