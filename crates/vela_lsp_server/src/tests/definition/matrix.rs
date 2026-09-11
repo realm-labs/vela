@@ -5,6 +5,16 @@ use crate::matrix_fixture::{FixtureWorkspace, load, schema_artifact};
 use crate::tests::{TestServer, navigation_request, notify, request, response_value};
 
 #[test]
+fn navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls() {
+    assert_navigation_matrix("navigation-recovery");
+}
+
+#[test]
+fn navigation_type_position_matrix_projects_exact_nested_targets_and_builtin_nulls() {
+    assert_navigation_matrix("navigation-type-positions");
+}
+
+#[test]
 fn navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns() {
     assert_navigation_matrix("navigation-dynamic");
 }
@@ -109,6 +119,38 @@ fn assert_navigation_matrix_for_client(
             );
         }
         let mut id = 2;
+        if let Some(cases) = spec.oracle["diagnosticCandidates"].as_array() {
+            for case in cases {
+                let file = case["file"].as_str().expect("file");
+                let messages =
+                    crate::tests::notification_values(notify::<n::DidChangeTextDocument>(
+                        &mut server,
+                        json!({"textDocument":{"uri":uri(file),"version":2},
+                        "contentChanges":[{"text":fixture.document(file).expect("source").text}]}),
+                    ));
+                assert!(
+                    messages.iter().any(|message| {
+                        message["params"]["uri"] == uri(file)
+                            && message["params"]["diagnostics"].as_array().is_some_and(
+                                |diagnostics| {
+                                    diagnostics.iter().any(|diagnostic| {
+                                        diagnostic["code"] == case["code"]
+                                            && diagnostic["data"]["candidates"]
+                                                .as_array()
+                                                .is_some_and(|candidates| {
+                                                    candidates.iter().any(|candidate| {
+                                                        candidate["replacement"]
+                                                            == case["replacement"]
+                                                    })
+                                                })
+                                    })
+                                },
+                            )
+                    }),
+                    "expected a real diagnostic candidate before rejecting its navigation: {messages:?}"
+                );
+            }
+        }
         if reject_implementation {
             for query in spec.oracle["queries"].as_array().expect("queries") {
                 let file = query["file"].as_str().expect("query file");

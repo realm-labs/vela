@@ -5,6 +5,7 @@ use crate::SyntaxKind;
 use crate::lexer::lex;
 
 mod await_expr;
+mod calls;
 
 impl CstParser<'_, '_> {
     pub(super) fn expression_range(&mut self, start: usize, end: usize) {
@@ -118,20 +119,6 @@ impl CstParser<'_, '_> {
             return;
         };
         self.expression_range(start, dot);
-        self.emit_until(end);
-    }
-
-    fn call_expression_body(&mut self, start: usize, end: usize) {
-        let Some(args_start) = self.find_outer_call_arg_list_start(start, end) else {
-            self.emit_until(end);
-            return;
-        };
-        self.expression_range(start, args_start);
-        let args_end = self
-            .find_matching_delimiter_end(args_start, SyntaxKind::LParen, SyntaxKind::RParen)
-            .filter(|candidate| *candidate <= end)
-            .unwrap_or(end);
-        self.arg_list(args_start, args_end);
         self.emit_until(end);
     }
 
@@ -574,44 +561,6 @@ impl CstParser<'_, '_> {
         }
     }
 
-    fn arg_list(&mut self, start: usize, end: usize) {
-        self.builder.start_node(SyntaxKind::ArgList);
-        self.emit_until(start + 1);
-        let close = end.saturating_sub(1);
-        while self.pos < close {
-            let argument_start = self.skip_trivia(self.pos);
-            self.emit_until(argument_start);
-            if argument_start >= close {
-                break;
-            }
-            if self.at_kind(argument_start, SyntaxKind::Comma) {
-                self.emit_current_token();
-                continue;
-            }
-
-            let argument_end = self.find_argument_end(argument_start, close);
-            self.argument_range(argument_start, argument_end);
-            if self.pos < close && self.at_kind(self.pos, SyntaxKind::Comma) {
-                self.emit_current_token();
-            }
-        }
-        self.emit_until(end);
-        self.builder.finish_node();
-    }
-
-    fn argument_range(&mut self, start: usize, end: usize) {
-        self.builder.start_node(SyntaxKind::Argument);
-        if let Some(equal) = self.find_root_kind_before(SyntaxKind::Equal, start, end) {
-            let value_start = self.skip_trivia(equal + 1);
-            self.emit_until(value_start);
-            self.expression_range(value_start, end);
-        } else {
-            self.expression_range(start, end);
-        }
-        self.emit_until(end);
-        self.builder.finish_node();
-    }
-
     fn expression_kind(&self, start: usize, end: usize) -> SyntaxKind {
         if self.find_root_assign_op_before(start, end).is_some() {
             return SyntaxKind::AssignExpr;
@@ -818,25 +767,6 @@ impl CstParser<'_, '_> {
     fn root_binary_operator_has_left_operand(&self, start: usize, operator: usize) -> bool {
         self.previous_significant_before(start, operator)
             .is_some_and(|left| Self::can_end_expression(self.tokens[left].kind))
-    }
-
-    fn find_outer_call_arg_list_start(&self, start: usize, end: usize) -> Option<usize> {
-        let mut depth = DelimiterDepth::default();
-        for cursor in start..end {
-            let Some(current) = self.kind_at(cursor) else {
-                break;
-            };
-            if depth.is_root()
-                && current == SyntaxKind::LParen
-                && cursor > start
-                && self.find_matching_delimiter_end(cursor, SyntaxKind::LParen, SyntaxKind::RParen)
-                    == Some(end)
-            {
-                return Some(cursor);
-            }
-            depth.bump(current);
-        }
-        None
     }
 
     fn find_outer_record_field_list_start(&self, start: usize, end: usize) -> Option<usize> {

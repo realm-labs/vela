@@ -5,6 +5,20 @@ use crate::{
 };
 
 #[test]
+fn navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets() {
+    for crlf in [false, true] {
+        assert_navigation_matrix("navigation-recovery", crlf);
+    }
+}
+
+#[test]
+fn navigation_type_position_matrix_covers_builtin_nested_and_declaration_hints() {
+    for crlf in [false, true] {
+        assert_navigation_matrix("navigation-type-positions", crlf);
+    }
+}
+
+#[test]
 fn navigation_dynamic_matrix_preserves_known_any_return_boundaries() {
     for crlf in [false, true] {
         assert_navigation_matrix("navigation-dynamic", crlf);
@@ -48,6 +62,21 @@ fn assert_navigation_matrix(fixture_id: &str, crlf: bool) {
                 .get()
         });
         databases.load_schema_artifact_json("/workspace/target/schema.json", &artifact.to_string());
+    }
+    if let Some(cases) = spec.oracle["diagnosticCandidates"].as_array() {
+        for case in cases {
+            let diagnostics =
+                databases.diagnostics_for_document(&uri(case["file"].as_str().expect("file")));
+            assert!(
+                diagnostics.diagnostics().iter().any(|diagnostic| {
+                    diagnostic.code() == case["code"].as_str()
+                        && diagnostic.candidates().iter().any(|candidate| {
+                            Some(candidate.replacement()) == case["replacement"].as_str()
+                        })
+                }),
+                "expected a real diagnostic candidate before rejecting its navigation: {diagnostics:?}"
+            );
+        }
     }
     assert_queries(
         &databases,

@@ -229,7 +229,7 @@
     },
     {
       "id": "B02.6",
-      "revision": null,
+      "revision": "953ad0289",
       "requirements": [
         "definition/states/dynamic/protocol",
         "definition/states/dependency_delete/protocol",
@@ -239,10 +239,37 @@
         "type-definition/states/dependency_delete/protocol"
       ],
       "summary": "19 shared Any-boundary queries and 21 source lifecycle actions cover the remaining navigation dynamic/dependency-delete states. Closed deleted source files now publish empty diagnostics; live overlays retain their targets and diagnostics. Independent source/schema positive controls and exact null/URI/range assertions feed both Rust layers in LF/CRLF. B02 semantic partition completeness and installed workbench routes remain open; find the commit by LSP-Batch trailer. Validation: service 567 passed with 2 existing ignored; protocol 560 passed; infrastructure 58 passed; relevant Clippy and formatting passed. Matrix audit: 44 verified, 3 editor mapped, 1278 unreviewed, 2 existing N/A, zero failures."
+    },
+    {
+      "id": "B02.7",
+      "revision": null,
+      "requirements": [
+        "definition/syntax/S3/positive/service",
+        "definition/syntax/S3/positive/protocol",
+        "definition/syntax/S3/negative/service",
+        "definition/syntax/S3/negative/protocol",
+        "definition/syntax/S9/positive/service",
+        "definition/syntax/S9/positive/protocol",
+        "definition/syntax/S9/negative/service",
+        "definition/syntax/S9/negative/protocol",
+        "declaration/syntax/S3/positive/service",
+        "declaration/syntax/S3/positive/protocol",
+        "declaration/syntax/S3/negative/service",
+        "declaration/syntax/S3/negative/protocol",
+        "declaration/syntax/S9/positive/service",
+        "declaration/syntax/S9/positive/protocol",
+        "declaration/syntax/S9/negative/service",
+        "declaration/syntax/S9/negative/protocol",
+        "type-definition/syntax/S3/positive/service",
+        "type-definition/syntax/S3/positive/protocol",
+        "type-definition/syntax/S3/negative/service",
+        "type-definition/syntax/S3/negative/protocol"
+      ],
+      "summary": "51 type-position queries and 20 recovery queries supplement prior source/schema facts to cover S3 and applicable S9 partitions in both layers. Recover unterminated call/argument CST nodes without dropping the final block token; named labels use CST ownership and actual callee binding, including missing values. AST fingerprint review: only a cfg(test) module registration changed the tracked ast.rs surface, no public AST/token/grammar API changed. Remaining B02 S1/S4/S5/S8/S10 semantic partitions and installed workbench routes stay open; find the commit by LSP-Batch trailer. Validation: workspace 4357 passed with 2 existing ignored; workspace Clippy and formatting passed; final audit service 569 passed with 2 existing ignored, protocol 562 passed and infrastructure 58 passed; 64 verified, 3 editor mapped, 1258 unreviewed, 2 existing N/A, zero failures."
     }
   ],
-  "activeChild": "B02.7",
-  "nextTask": "B02.7",
+  "activeChild": "B02.8",
+  "nextTask": "B02.8",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -1752,7 +1779,14 @@
     "target/lsp-matrix/b02-deletion-diagnostics.log",
     "target/lsp-matrix/run-bHvxuV/report.json",
     "target/lsp-matrix/run-el2L3J/report.json",
-    "target/lsp-matrix/b02-dynamic-deletion-final-clippy.log"
+    "target/lsp-matrix/b02-dynamic-deletion-final-clippy.log",
+    "target/lsp-matrix/b02-recovery-focused.log",
+    "target/lsp-matrix/b02-call-recovery-syntax-detail.log",
+    "target/lsp-matrix/b02-types-recovery-workspace.log",
+    "target/lsp-matrix/b02-types-recovery-workspace-final.log",
+    "target/lsp-matrix/b02-types-recovery-clippy-final.log",
+    "target/lsp-matrix/b02-call-recovery-final.log",
+    "target/lsp-matrix/run-VdkrVP/report.json"
   ],
   "openIssues": [
     {

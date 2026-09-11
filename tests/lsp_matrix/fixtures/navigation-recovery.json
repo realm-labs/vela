@@ -1,0 +1,201 @@
+{
+  "version": 1,
+  "id": "navigation-recovery",
+  "files": {
+    "scripts/helper.vela": "/* 中😀 */ pub struct [[cell:start]]Cell[[cell:end]] { item: i64 }\npub fn [[make:start]]make[[make:end]]() -> Cell { return Cell { item: 1 }; }\npub fn consume([[parameter:start]]value[[parameter:end]]: Cell) -> Cell { return value; }",
+    "scripts/decoy.vela": "pub fn mi() -> i64 { return 1; }\npub struct Missing {}",
+    "scripts/member.vela": "use helper::make;\n/* 中😀 */ fn run(value: helper::Cell) { [[good]]make(); value.[[bad]]mi",
+    "scripts/call.vela": "use helper::make;\n/* 中😀 */ fn run() { [[good]]make(); [[bad]]mi(",
+    "scripts/named.vela": "use helper::make;\n/* 中😀 */ fn run() { [[good]]make(); make([[bad]]mi =",
+    "scripts/type.vela": "use helper::make;\n/* 中😀 */ fn run() { [[good]]make(); let value: Array<[[bad]]Missing",
+    "scripts/pattern.vela": "use helper::make;\n/* 中😀 */ fn run(value) { [[good]]make(); match value { Missing::[[bad]]mi(",
+    "scripts/declaration.vela": "use helper::make;\n/* 中😀 */ fn run() { [[good]]make(); }\nfn broken(value: [[bad]]Missing",
+    "scripts/before.vela": "use helper::make;\n/* 中😀 */ fn broken(\nfn run() { [[good]]make(); [[bad]]mi(); }",
+    "scripts/member_gap.vela": "use helper::make;\n/* 中😀 */ fn run(value: helper::Cell) { [[good]]make(); value.[[bad]]",
+    "scripts/named_valid.vela": "use helper::make;\n/* 中😀 */ fn run() { [[good]]make(); helper::consume([[label]]value =",
+    "scripts/candidate.vela": "use helper::make;\n/* 中😀 */ fn run(value: Array<helper::Cell>) { [[good]]make(); value.[[bad:start]]frist[[bad:end]](); }"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "member-valid-neighbor",
+        "file": "scripts/member.vela",
+        "cursor": "good",
+        "target-file": "scripts/helper.vela",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "cell"
+      },
+      {
+        "id": "member-incomplete",
+        "file": "scripts/member.vela",
+        "cursor": "bad",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "call-valid-neighbor",
+        "file": "scripts/call.vela",
+        "cursor": "good",
+        "target-file": "scripts/helper.vela",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "cell"
+      },
+      {
+        "id": "call-incomplete",
+        "file": "scripts/call.vela",
+        "cursor": "bad",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "named-valid-neighbor",
+        "file": "scripts/named.vela",
+        "cursor": "good",
+        "target-file": "scripts/helper.vela",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "cell"
+      },
+      {
+        "id": "named-incomplete",
+        "file": "scripts/named.vela",
+        "cursor": "bad",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "type-valid-neighbor",
+        "file": "scripts/type.vela",
+        "cursor": "good",
+        "target-file": "scripts/helper.vela",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "cell"
+      },
+      {
+        "id": "type-incomplete",
+        "file": "scripts/type.vela",
+        "cursor": "bad",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "pattern-valid-neighbor",
+        "file": "scripts/pattern.vela",
+        "cursor": "good",
+        "target-file": "scripts/helper.vela",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "cell"
+      },
+      {
+        "id": "pattern-incomplete",
+        "file": "scripts/pattern.vela",
+        "cursor": "bad",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "declaration-valid-neighbor",
+        "file": "scripts/declaration.vela",
+        "cursor": "good",
+        "target-file": "scripts/helper.vela",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "cell"
+      },
+      {
+        "id": "declaration-incomplete",
+        "file": "scripts/declaration.vela",
+        "cursor": "bad",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "before-valid-neighbor",
+        "file": "scripts/before.vela",
+        "cursor": "good",
+        "target-file": "scripts/helper.vela",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "cell"
+      },
+      {
+        "id": "before-incomplete",
+        "file": "scripts/before.vela",
+        "cursor": "bad",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "member-gap-valid-neighbor",
+        "file": "scripts/member_gap.vela",
+        "cursor": "good",
+        "target-file": "scripts/helper.vela",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "cell"
+      },
+      {
+        "id": "member-gap-incomplete",
+        "file": "scripts/member_gap.vela",
+        "cursor": "bad",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "named-valid-neighbor",
+        "file": "scripts/named_valid.vela",
+        "cursor": "good",
+        "target-file": "scripts/helper.vela",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "cell"
+      },
+      {
+        "id": "named-valid-incomplete-value",
+        "file": "scripts/named_valid.vela",
+        "cursor": "label",
+        "target-file": "scripts/helper.vela",
+        "definition": "parameter",
+        "declaration": "parameter",
+        "type-definition": "cell"
+      },
+      {
+        "id": "candidate-valid-neighbor",
+        "file": "scripts/candidate.vela",
+        "cursor": "good",
+        "target-file": "scripts/helper.vela",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "cell"
+      },
+      {
+        "id": "candidate-no-automatic-jump",
+        "file": "scripts/candidate.vela",
+        "cursor": "bad",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      }
+    ],
+    "diagnosticCandidates": [
+      {
+        "file": "scripts/candidate.vela",
+        "code": "analysis::unknown_method",
+        "replacement": "first"
+      }
+    ]
+  }
+}

@@ -64,7 +64,14 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
 
     pub(super) fn block_body(&mut self, start: usize, end: usize) {
         self.emit_until(start + 1);
-        let close = end.saturating_sub(1);
+        let close =
+            if self.find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
+                == Some(end)
+            {
+                end.saturating_sub(1)
+            } else {
+                end
+            };
         while self.pos < close {
             let statement_start = self.skip_trivia(self.pos);
             self.emit_until(statement_start);

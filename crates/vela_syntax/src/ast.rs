@@ -1,4 +1,6 @@
 mod attributes;
+#[cfg(test)]
+mod call_recovery_tests;
 mod control;
 mod expr;
 #[cfg(test)]

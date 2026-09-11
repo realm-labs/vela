@@ -631,6 +631,382 @@
           "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
         }
       ]
+    },
+    {
+      "requirement": "definition/syntax/S3/positive/service",
+      "assertion": "Exact source/alias/schema-backed struct, enum and trait type targets across parameters, local/const/state/extern annotations, struct and tuple/record enum fields, trait/impl signatures and returns. Cover inner arguments of Array/Map/Set/Iterator/Option/Result, nested containers and tuples, cross-module identity and value-name shadowing; LF/CRLF markers independently define both endpoints.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_type_position_matrix_covers_builtin_nested_and_declaration_hints"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S3/positive/protocol",
+      "assertion": "Exact source/alias/schema-backed struct, enum and trait type targets across parameters, local/const/state/extern annotations, struct and tuple/record enum fields, trait/impl signatures and returns. Cover inner arguments of Array/Map/Set/Iterator/Option/Result, nested containers and tuples, cross-module identity and value-name shadowing; LF/CRLF markers independently define both endpoints.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_type_position_matrix_projects_exact_nested_targets_and_builtin_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S3/negative/service",
+      "assertion": "All 24 builtin/primitive type spellings and unit syntax have no source target. Unknown nested hints, missing/private qualified types, module qualifiers, schema-only types and Any-return member facts produce explicit null, without borrowing same-name values or unrelated source declarations. Shared per-method oracles distinguish source-backed schema targets from metadata-only facts.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_type_position_matrix_covers_builtin_nested_and_declaration_hints"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S3/negative/protocol",
+      "assertion": "All 24 builtin/primitive type spellings and unit syntax have no source target. Unknown nested hints, missing/private qualified types, module qualifiers, schema-only types and Any-return member facts produce explicit null, without borrowing same-name values or unrelated source declarations. Shared per-method oracles distinguish source-backed schema targets from metadata-only facts.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_type_position_matrix_projects_exact_nested_targets_and_builtin_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S9/positive/service",
+      "assertion": "Valid imported calls neighboring incomplete members, calls, named arguments, type hints, patterns and malformed declarations retain exact targets, including a valid item after a malformed declaration. A known named parameter with its value still missing navigates to that parameter and its type. EOF without trailing newline, LF/CRLF and edit/repair fresh-analysis equivalence are explicit assertions.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
+        },
+        {
+          "layer": "service",
+          "name": "definition::source_lifecycle_tests::source_navigation_lifecycle_matches_markers_and_fresh_disk_overlay_analysis"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S9/positive/protocol",
+      "assertion": "Valid imported calls neighboring incomplete members, calls, named arguments, type hints, patterns and malformed declarations retain exact targets, including a valid item after a malformed declaration. A known named parameter with its value still missing navigates to that parameter and its type. EOF without trailing newline, LF/CRLF and edit/repair fresh-analysis equivalence are explicit assertions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S9/negative/service",
+      "assertion": "Incomplete member/call/argument/type/pattern/declaration targets and bare member-dot EOF return explicit null despite similarly named foreign declarations. Missing values cannot borrow enclosing call targets; lifecycle rename/deletion and malformed-neighbor repair reject stale targets and agree with fresh analysis.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
+        },
+        {
+          "layer": "service",
+          "name": "definition::source_lifecycle_tests::source_navigation_lifecycle_matches_markers_and_fresh_disk_overlay_analysis"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S9/negative/protocol",
+      "assertion": "Incomplete member/call/argument/type/pattern/declaration targets and bare member-dot EOF return explicit null despite similarly named foreign declarations. Missing values cannot borrow enclosing call targets; lifecycle rename/deletion and malformed-neighbor repair reject stale targets and agree with fresh analysis.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S3/positive/service",
+      "assertion": "Exact source/alias/schema-backed struct, enum and trait type targets across parameters, local/const/state/extern annotations, struct and tuple/record enum fields, trait/impl signatures and returns. Cover inner arguments of Array/Map/Set/Iterator/Option/Result, nested containers and tuples, cross-module identity and value-name shadowing; LF/CRLF markers independently define both endpoints.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_type_position_matrix_covers_builtin_nested_and_declaration_hints"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S3/positive/protocol",
+      "assertion": "Exact source/alias/schema-backed struct, enum and trait type targets across parameters, local/const/state/extern annotations, struct and tuple/record enum fields, trait/impl signatures and returns. Cover inner arguments of Array/Map/Set/Iterator/Option/Result, nested containers and tuples, cross-module identity and value-name shadowing; LF/CRLF markers independently define both endpoints.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_type_position_matrix_projects_exact_nested_targets_and_builtin_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S3/negative/service",
+      "assertion": "All 24 builtin/primitive type spellings and unit syntax have no source target. Unknown nested hints, missing/private qualified types, module qualifiers, schema-only types and Any-return member facts produce explicit null, without borrowing same-name values or unrelated source declarations. Shared per-method oracles distinguish source-backed schema targets from metadata-only facts.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_type_position_matrix_covers_builtin_nested_and_declaration_hints"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S3/negative/protocol",
+      "assertion": "All 24 builtin/primitive type spellings and unit syntax have no source target. Unknown nested hints, missing/private qualified types, module qualifiers, schema-only types and Any-return member facts produce explicit null, without borrowing same-name values or unrelated source declarations. Shared per-method oracles distinguish source-backed schema targets from metadata-only facts.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_type_position_matrix_projects_exact_nested_targets_and_builtin_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S9/positive/service",
+      "assertion": "Valid imported calls neighboring incomplete members, calls, named arguments, type hints, patterns and malformed declarations retain exact targets, including a valid item after a malformed declaration. A known named parameter with its value still missing navigates to that parameter and its type. EOF without trailing newline, LF/CRLF and edit/repair fresh-analysis equivalence are explicit assertions.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
+        },
+        {
+          "layer": "service",
+          "name": "definition::source_lifecycle_tests::source_navigation_lifecycle_matches_markers_and_fresh_disk_overlay_analysis"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S9/positive/protocol",
+      "assertion": "Valid imported calls neighboring incomplete members, calls, named arguments, type hints, patterns and malformed declarations retain exact targets, including a valid item after a malformed declaration. A known named parameter with its value still missing navigates to that parameter and its type. EOF without trailing newline, LF/CRLF and edit/repair fresh-analysis equivalence are explicit assertions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S9/negative/service",
+      "assertion": "Incomplete member/call/argument/type/pattern/declaration targets and bare member-dot EOF return explicit null despite similarly named foreign declarations. Missing values cannot borrow enclosing call targets; lifecycle rename/deletion and malformed-neighbor repair reject stale targets and agree with fresh analysis.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
+        },
+        {
+          "layer": "service",
+          "name": "definition::source_lifecycle_tests::source_navigation_lifecycle_matches_markers_and_fresh_disk_overlay_analysis"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S9/negative/protocol",
+      "assertion": "Incomplete member/call/argument/type/pattern/declaration targets and bare member-dot EOF return explicit null despite similarly named foreign declarations. Missing values cannot borrow enclosing call targets; lifecycle rename/deletion and malformed-neighbor repair reject stale targets and agree with fresh analysis.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S3/positive/service",
+      "assertion": "Exact source/alias/schema-backed struct, enum and trait type targets across parameters, local/const/state/extern annotations, struct and tuple/record enum fields, trait/impl signatures and returns. Cover inner arguments of Array/Map/Set/Iterator/Option/Result, nested containers and tuples, cross-module identity and value-name shadowing; LF/CRLF markers independently define both endpoints.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_type_position_matrix_covers_builtin_nested_and_declaration_hints"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S3/positive/protocol",
+      "assertion": "Exact source/alias/schema-backed struct, enum and trait type targets across parameters, local/const/state/extern annotations, struct and tuple/record enum fields, trait/impl signatures and returns. Cover inner arguments of Array/Map/Set/Iterator/Option/Result, nested containers and tuples, cross-module identity and value-name shadowing; LF/CRLF markers independently define both endpoints.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_type_position_matrix_projects_exact_nested_targets_and_builtin_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S3/negative/service",
+      "assertion": "All 24 builtin/primitive type spellings and unit syntax have no source target. Unknown nested hints, missing/private qualified types, module qualifiers, schema-only types and Any-return member facts produce explicit null, without borrowing same-name values or unrelated source declarations. Shared per-method oracles distinguish source-backed schema targets from metadata-only facts.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_type_position_matrix_covers_builtin_nested_and_declaration_hints"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S3/negative/protocol",
+      "assertion": "All 24 builtin/primitive type spellings and unit syntax have no source target. Unknown nested hints, missing/private qualified types, module qualifiers, schema-only types and Any-return member facts produce explicit null, without borrowing same-name values or unrelated source declarations. Shared per-method oracles distinguish source-backed schema targets from metadata-only facts.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_type_position_matrix_projects_exact_nested_targets_and_builtin_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        }
+      ]
     }
   ],
   "featureFiles": [

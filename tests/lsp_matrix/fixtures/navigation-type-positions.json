@@ -1,0 +1,423 @@
+{
+  "version": 1,
+  "id": "navigation-type-positions",
+  "files": {
+    "scripts/main.vela": "use foreign::Remote as Imported;\n/* 中😀 */ struct [[cell:start]]Cell[[cell:end]] { value: i64 }\nenum [[choice:start]]Choice[[choice:end]] { Empty }\ntrait [[reader:start]]Reader[[reader:end]] { fn read(self) -> Cell; }\nfn builtin_0(value: [[builtin-any]]Any) {}\nfn builtin_1(value: [[builtin-bool]]bool) {}\nfn builtin_2(value: [[builtin-char]]char) {}\nfn builtin_3(value: [[builtin-i8]]i8) {}\nfn builtin_4(value: [[builtin-i16]]i16) {}\nfn builtin_5(value: [[builtin-i32]]i32) {}\nfn builtin_6(value: [[builtin-i64]]i64) {}\nfn builtin_7(value: [[builtin-u8]]u8) {}\nfn builtin_8(value: [[builtin-u16]]u16) {}\nfn builtin_9(value: [[builtin-u32]]u32) {}\nfn builtin_10(value: [[builtin-u64]]u64) {}\nfn builtin_11(value: [[builtin-f32]]f32) {}\nfn builtin_12(value: [[builtin-f64]]f64) {}\nfn builtin_13(value: [[builtin-string]]String) {}\nfn builtin_14(value: [[builtin-bytes]]Bytes) {}\nfn builtin_15(value: [[builtin-array]]Array) {}\nfn builtin_16(value: [[builtin-map]]Map) {}\nfn builtin_17(value: [[builtin-set]]Set) {}\nfn builtin_18(value: [[builtin-range]]Range) {}\nfn builtin_19(value: [[builtin-iterator]]Iterator) {}\nfn builtin_20(value: [[builtin-function]]Function) {}\nfn builtin_21(value: [[builtin-closure]]Closure) {}\nfn builtin_22(value: [[builtin-option]]Option) {}\nfn builtin_23(value: [[builtin-result]]Result) {}\nfn container_Array(value: Array<[[inner-array]]Cell>) {}\nfn container_Set(value: Set<[[inner-set]]Cell>) {}\nfn container_Map(value: Map<String, [[inner-map]]Cell>) {}\nfn container_Iterator(value: Iterator<[[inner-iterator]]Cell>) {}\nfn container_Option(value: Option<[[inner-option]]Cell>) {}\nfn container_Result(value: Result<[[inner-result]]Cell, String>) {}\nfn tuple(value: ([[tuple-cell]]Cell, Option<[[tuple-import]]Imported>), unit: [[unit]]()) {}\nfn deep(value: Array<Map<String, Result<Option<[[deep-import]]Imported>, [[deep-unknown]]Missing>>>) {}\nfn unknown(value: [[unknown]]Missing, private: foreign::[[private]]Hidden, module: [[module]]foreign::Remote) {}\nfn Missing() -> Cell { return Cell { value: 1 }; }\nstruct Container { field: Option<[[struct-field]]Cell> }\nenum Wrapped { Tuple(value: Array<[[tuple-field]]Cell>), Record { value: Result<[[record-field]]Cell, String> } }\nconst CONST_VALUE: [[const-hint]]Cell = Cell { value: 1 };\nstate shared: [[state-hint]]Cell = Cell { value: 2 };\nextern state external: [[extern-hint]]Cell;\ntrait Other { fn transform(self, value: [[trait-param]]Cell) -> [[trait-return]]Cell; }\nimpl Other for Cell { fn transform(self, value: [[impl-param]]Cell) -> [[impl-return]]Cell { return value; } }\nfn local() { let Cell = 7; let value: [[local-hint]]Cell = 8; }\nfn returns() -> Result<[[return-enum]]Choice, [[return-trait]]Reader> { return Result::Ok(Choice::Empty); }\n",
+    "scripts/foreign.vela": "/* 中😀 */ pub struct [[remote:start]]Remote[[remote:end]] { value: i64 }\nstruct Hidden {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "builtin-any",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-any",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-bool",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-bool",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-char",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-char",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-i8",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-i8",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-i16",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-i16",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-i32",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-i32",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-i64",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-i64",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-u8",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-u8",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-u16",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-u16",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-u32",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-u32",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-u64",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-u64",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-f32",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-f32",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-f64",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-f64",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-string",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-string",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-bytes",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-bytes",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-array",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-array",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-map",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-map",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-set",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-set",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-range",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-range",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-iterator",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-iterator",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-function",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-function",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-closure",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-closure",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-option",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-option",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "builtin-result",
+        "file": "scripts/main.vela",
+        "cursor": "builtin-result",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "inner-array",
+        "file": "scripts/main.vela",
+        "cursor": "inner-array",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "inner-set",
+        "file": "scripts/main.vela",
+        "cursor": "inner-set",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "inner-map",
+        "file": "scripts/main.vela",
+        "cursor": "inner-map",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "inner-iterator",
+        "file": "scripts/main.vela",
+        "cursor": "inner-iterator",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "inner-option",
+        "file": "scripts/main.vela",
+        "cursor": "inner-option",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "inner-result",
+        "file": "scripts/main.vela",
+        "cursor": "inner-result",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "tuple-cell",
+        "file": "scripts/main.vela",
+        "cursor": "tuple-cell",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "struct-field",
+        "file": "scripts/main.vela",
+        "cursor": "struct-field",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "tuple-field",
+        "file": "scripts/main.vela",
+        "cursor": "tuple-field",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "record-field",
+        "file": "scripts/main.vela",
+        "cursor": "record-field",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "const-hint",
+        "file": "scripts/main.vela",
+        "cursor": "const-hint",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "state-hint",
+        "file": "scripts/main.vela",
+        "cursor": "state-hint",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "extern-hint",
+        "file": "scripts/main.vela",
+        "cursor": "extern-hint",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "trait-param",
+        "file": "scripts/main.vela",
+        "cursor": "trait-param",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "trait-return",
+        "file": "scripts/main.vela",
+        "cursor": "trait-return",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "impl-param",
+        "file": "scripts/main.vela",
+        "cursor": "impl-param",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "impl-return",
+        "file": "scripts/main.vela",
+        "cursor": "impl-return",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "local-hint",
+        "file": "scripts/main.vela",
+        "cursor": "local-hint",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell"
+      },
+      {
+        "id": "tuple-import",
+        "file": "scripts/main.vela",
+        "cursor": "tuple-import",
+        "definition": "remote",
+        "declaration": "remote",
+        "type-definition": "remote",
+        "target-file": "scripts/foreign.vela"
+      },
+      {
+        "id": "deep-import",
+        "file": "scripts/main.vela",
+        "cursor": "deep-import",
+        "definition": "remote",
+        "declaration": "remote",
+        "type-definition": "remote",
+        "target-file": "scripts/foreign.vela"
+      },
+      {
+        "id": "unit",
+        "file": "scripts/main.vela",
+        "cursor": "unit",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "deep-unknown",
+        "file": "scripts/main.vela",
+        "cursor": "deep-unknown",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "unknown",
+        "file": "scripts/main.vela",
+        "cursor": "unknown",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "private",
+        "file": "scripts/main.vela",
+        "cursor": "private",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "module",
+        "file": "scripts/main.vela",
+        "cursor": "module",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "return-enum",
+        "file": "scripts/main.vela",
+        "cursor": "return-enum",
+        "definition": "choice",
+        "declaration": "choice",
+        "type-definition": "choice"
+      },
+      {
+        "id": "return-trait",
+        "file": "scripts/main.vela",
+        "cursor": "return-trait",
+        "definition": "reader",
+        "declaration": "reader",
+        "type-definition": "reader"
+      }
+    ]
+  }
+}

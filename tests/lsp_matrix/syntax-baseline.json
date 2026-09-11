@@ -138,7 +138,7 @@
     "docs/grammar.ebnf": "bea64bde444fa2294f06ddbf307f8ebaa890d06ecdd52d871c6933f453bce833",
     "crates/vela_syntax/src/syntax_kind.rs": "c94e2920778c978c924913d71ed5052bd5dd8a4b285e1b314ffd587f289a1b04",
     "crates/vela_syntax/src/token.rs": "5c2b585b0648e3b9d314eef50647bcf971d540dd0f2c452bcb3e2348616d8a5f",
-    "crates/vela_syntax/src/ast.rs": "99d34d6fce56364462040425b28e0367aa8a9d486a1028d6dfe739a8a4635caa"
+    "crates/vela_syntax/src/ast.rs": "fe3d932081c8a8d7832104c55554982dc3dbb1a717d809c0c43b54a8f619b9da"
   },
   "grammarGroups": [
     {
