@@ -18,6 +18,7 @@ use crate::{
     symbol_target::SymbolTarget,
 };
 
+mod imports;
 mod named_arguments;
 mod source_members;
 mod source_variants;
@@ -56,6 +57,10 @@ impl LanguageServiceDatabases {
         let offset = u32::try_from(target.range().start).ok()?;
         let graph = self.hir_db().graph();
 
+        if let Some(declaration) = self.source_import_declaration(&query, &target) {
+            return declaration
+                .and_then(|declaration| self.definition_from_declaration(declaration));
+        }
         if let Some(definition) = self.source_type_hint_definition(&query, &target) {
             return definition;
         }
@@ -160,6 +165,18 @@ impl LanguageServiceDatabases {
         let query = QueryContext::from_databases(self, document_id, position)?;
         let target = SymbolTarget::from_query(self, &query)?;
 
+        if let Some(declaration) = self.source_import_declaration(&query, &target) {
+            let declaration = declaration?;
+            return match declaration.kind {
+                DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait => {
+                    self.definition_from_declaration(declaration)
+                }
+                _ => self
+                    .graph_analysis_facts()
+                    .declaration(declaration.id)
+                    .and_then(|fact| self.type_definition_for_fact(fact)),
+            };
+        }
         if let Some(definition) = self.source_type_hint_definition(&query, &target) {
             return definition;
         }

@@ -5,6 +5,11 @@ use crate::matrix_fixture::{FixtureWorkspace, load, schema_artifact};
 use crate::tests::{TestServer, navigation_request, notify, request, response_value};
 
 #[test]
+fn navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls() {
+    assert_navigation_matrix("navigation-imports");
+}
+
+#[test]
 fn navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls() {
     assert_navigation_matrix("navigation-recovery");
 }

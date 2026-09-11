@@ -1,0 +1,413 @@
+{
+  "version": 1,
+  "id": "navigation-imports",
+  "files": {
+    "scripts/main.vela": "use [[import-root]]alpha::[[import-module]]api::[[import-function]]make as [[function-alias]]create;\nuse alpha::api::Cell as [[type-alias]]Imported;\nuse alpha::api::[[import-const]]BASE as [[const-alias]]DEFAULT;\nuse alpha::api::[[import-state]]shared as [[state-alias]]shared_alias;\nuse alpha::api::[[import-extern]]external as [[extern-alias]]external_alias;\nuse alpha::api::[[import-enum]]Choice as [[enum-import-alias]]Pick;\nuse alpha::api::[[import-trait]]Reader as [[trait-import-alias]]Read;\nuse alpha::api::[[private-import]]hidden as [[private-import-alias]]unavailable;\nuse missing::[[missing-import]]make as [[missing-import-alias]]missing_factory;\nfn run(value: Imported) {\n    let text = \"中😀\"; [[alias-call]]create();\n    alpha::api::[[qualified-call]]make();\n    [[imported-const]]DEFAULT;\n    [[imported-state]]shared_alias;\n    [[imported-extern]]external_alias;\n    alpha::api::[[qualified-const]]BASE;\n    alpha::api::[[qualified-state]]shared;\n    alpha::api::[[qualified-extern]]external;\n    [[constructor-alias]]Imported { value: 1 };\n    alpha::api::[[qualified-constructor]]Cell { value: 2 };\n    Pick::[[alias-variant]]Empty;\n    alpha::api::Choice::[[qualified-variant]]Empty;\n    create([[named-label]]value = value);\n    [[private-call]]unavailable();\n    alpha::api::[[qualified-private]]hidden();\n    [[missing-call]]missing_factory();\n    missing::[[unresolved-qualified]]make();\n    beta::api::[[other-module-call]]make();\n}\nfn shadowed([[shadow-param:start]]create[[shadow-param:end]]: Any) { [[shadow-call]]create(); }\nfn shadowed_type([[shadow-type-param:start]]Imported[[shadow-type-param:end]]: Any) { [[shadow-value]]Imported; }\nfn hinted(a: [[enum-alias]]Pick, b: [[trait-alias]]Read) {}\nuse alpha::api::[[missing-export]]absent as [[missing-export-alias]]Absent;\nuse alpha::api::[[direct-import]]make;\nfn direct() { [[direct-call]]make(); [[foreign-short]]foreign(); }\n",
+    "scripts/alpha/api.vela": "/* 中😀 */ pub struct [[cell:start]]Cell[[cell:end]] { value: i64 }\npub fn [[make:start]]make[[make:end]]([[parameter:start]]value[[parameter:end]]: Cell = Cell { value: 1 }) -> Cell { return value; }\npub const [[base:start]]BASE[[base:end]]: Cell = Cell { value: 2 };\npub state [[shared:start]]shared[[shared:end]]: Cell = Cell { value: 3 };\npub extern state [[external:start]]external[[external:end]]: Cell;\npub enum [[choice:start]]Choice[[choice:end]] { [[empty:start]]Empty[[empty:end]] }\npub trait [[reader:start]]Reader[[reader:end]] { fn read(self) -> Cell; }\nfn hidden() -> Cell { return Cell { value: 4 }; }\n",
+    "scripts/beta/api.vela": "/* 中😀 */ pub struct [[other:start]]Other[[other:end]] {}\npub fn [[make:start]]make[[make:end]]() -> Other { return Other {}; }\npub fn foreign() -> Other { return Other {}; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "import-root",
+        "file": "scripts/main.vela",
+        "cursor": "import-root",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "import-module",
+        "file": "scripts/main.vela",
+        "cursor": "import-module",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "private-import",
+        "file": "scripts/main.vela",
+        "cursor": "private-import",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "missing-import",
+        "file": "scripts/main.vela",
+        "cursor": "missing-import",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "private-call",
+        "file": "scripts/main.vela",
+        "cursor": "private-call",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "qualified-private",
+        "file": "scripts/main.vela",
+        "cursor": "qualified-private",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "missing-call",
+        "file": "scripts/main.vela",
+        "cursor": "missing-call",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "unresolved-qualified",
+        "file": "scripts/main.vela",
+        "cursor": "unresolved-qualified",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "import-function",
+        "file": "scripts/main.vela",
+        "cursor": "import-function",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": null,
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "function-alias",
+        "file": "scripts/main.vela",
+        "cursor": "function-alias",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": null,
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "type-alias",
+        "file": "scripts/main.vela",
+        "cursor": "type-alias",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "constructor-alias",
+        "file": "scripts/main.vela",
+        "cursor": "constructor-alias",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "qualified-constructor",
+        "file": "scripts/main.vela",
+        "cursor": "qualified-constructor",
+        "definition": "cell",
+        "declaration": "cell",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "alias-call",
+        "file": "scripts/main.vela",
+        "cursor": "alias-call",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "qualified-call",
+        "file": "scripts/main.vela",
+        "cursor": "qualified-call",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "imported-const",
+        "file": "scripts/main.vela",
+        "cursor": "imported-const",
+        "definition": "base",
+        "declaration": "base",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "qualified-const",
+        "file": "scripts/main.vela",
+        "cursor": "qualified-const",
+        "definition": "base",
+        "declaration": "base",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "imported-state",
+        "file": "scripts/main.vela",
+        "cursor": "imported-state",
+        "definition": "shared",
+        "declaration": "shared",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "qualified-state",
+        "file": "scripts/main.vela",
+        "cursor": "qualified-state",
+        "definition": "shared",
+        "declaration": "shared",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "imported-extern",
+        "file": "scripts/main.vela",
+        "cursor": "imported-extern",
+        "definition": "external",
+        "declaration": "external",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "qualified-extern",
+        "file": "scripts/main.vela",
+        "cursor": "qualified-extern",
+        "definition": "external",
+        "declaration": "external",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "alias-variant",
+        "file": "scripts/main.vela",
+        "cursor": "alias-variant",
+        "definition": "empty",
+        "declaration": "empty",
+        "type-definition": "choice",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "qualified-variant",
+        "file": "scripts/main.vela",
+        "cursor": "qualified-variant",
+        "definition": "empty",
+        "declaration": "empty",
+        "type-definition": "choice",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "named-label",
+        "file": "scripts/main.vela",
+        "cursor": "named-label",
+        "definition": "parameter",
+        "declaration": "parameter",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "other-module-call",
+        "file": "scripts/main.vela",
+        "cursor": "other-module-call",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "other",
+        "target-file": "scripts/beta/api.vela"
+      },
+      {
+        "id": "shadow-call",
+        "file": "scripts/main.vela",
+        "cursor": "shadow-call",
+        "definition": "shadow-param",
+        "declaration": "shadow-param",
+        "type-definition": null
+      },
+      {
+        "id": "shadow-value",
+        "file": "scripts/main.vela",
+        "cursor": "shadow-value",
+        "definition": "shadow-type-param",
+        "declaration": "shadow-type-param",
+        "type-definition": null
+      },
+      {
+        "id": "enum-alias",
+        "file": "scripts/main.vela",
+        "cursor": "enum-alias",
+        "definition": "choice",
+        "declaration": "choice",
+        "type-definition": "choice",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "trait-alias",
+        "file": "scripts/main.vela",
+        "cursor": "trait-alias",
+        "definition": "reader",
+        "declaration": "reader",
+        "type-definition": "reader",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "import-const",
+        "file": "scripts/main.vela",
+        "cursor": "import-const",
+        "definition": "base",
+        "declaration": "base",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "const-alias",
+        "file": "scripts/main.vela",
+        "cursor": "const-alias",
+        "definition": "base",
+        "declaration": "base",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "import-state",
+        "file": "scripts/main.vela",
+        "cursor": "import-state",
+        "definition": "shared",
+        "declaration": "shared",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "state-alias",
+        "file": "scripts/main.vela",
+        "cursor": "state-alias",
+        "definition": "shared",
+        "declaration": "shared",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "import-extern",
+        "file": "scripts/main.vela",
+        "cursor": "import-extern",
+        "definition": "external",
+        "declaration": "external",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "extern-alias",
+        "file": "scripts/main.vela",
+        "cursor": "extern-alias",
+        "definition": "external",
+        "declaration": "external",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "import-enum",
+        "file": "scripts/main.vela",
+        "cursor": "import-enum",
+        "definition": "choice",
+        "declaration": "choice",
+        "type-definition": "choice",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "enum-import-alias",
+        "file": "scripts/main.vela",
+        "cursor": "enum-import-alias",
+        "definition": "choice",
+        "declaration": "choice",
+        "type-definition": "choice",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "import-trait",
+        "file": "scripts/main.vela",
+        "cursor": "import-trait",
+        "definition": "reader",
+        "declaration": "reader",
+        "type-definition": "reader",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "trait-import-alias",
+        "file": "scripts/main.vela",
+        "cursor": "trait-import-alias",
+        "definition": "reader",
+        "declaration": "reader",
+        "type-definition": "reader",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "private-import-alias",
+        "file": "scripts/main.vela",
+        "cursor": "private-import-alias",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "missing-import-alias",
+        "file": "scripts/main.vela",
+        "cursor": "missing-import-alias",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "missing-export",
+        "file": "scripts/main.vela",
+        "cursor": "missing-export",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "missing-export-alias",
+        "file": "scripts/main.vela",
+        "cursor": "missing-export-alias",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      },
+      {
+        "id": "direct-import",
+        "file": "scripts/main.vela",
+        "cursor": "direct-import",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": null,
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "direct-call",
+        "file": "scripts/main.vela",
+        "cursor": "direct-call",
+        "definition": "make",
+        "declaration": "make",
+        "type-definition": "cell",
+        "target-file": "scripts/alpha/api.vela"
+      },
+      {
+        "id": "foreign-short",
+        "file": "scripts/main.vela",
+        "cursor": "foreign-short",
+        "definition": null,
+        "declaration": null,
+        "type-definition": null
+      }
+    ]
+  }
+}

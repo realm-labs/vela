@@ -1007,6 +1007,270 @@
           "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
         }
       ]
+    },
+    {
+      "requirement": "definition/syntax/S8/positive/service",
+      "assertion": "Qualified multi-segment paths and direct/aliased imports preserve actual source ownership for functions, const/state/extern state, structs, enums and traits. Import-clause names and aliases, call sites, constructors, variants and named arguments have independent exact URI/range oracles. Same-name exports in another module and local value shadowing cannot change ownership. Source-backed schema spans and source dependency edit/restore sequences supplement the import fixture; both LF/CRLF layouts are asserted.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::source_lifecycle_tests::source_navigation_lifecycle_matches_markers_and_fresh_disk_overlay_analysis"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S8/positive/protocol",
+      "assertion": "Qualified multi-segment paths and direct/aliased imports preserve actual source ownership for functions, const/state/extern state, structs, enums and traits. Import-clause names and aliases, call sites, constructors, variants and named arguments have independent exact URI/range oracles. Same-name exports in another module and local value shadowing cannot change ownership. Source-backed schema spans and source dependency edit/restore sequences supplement the import fixture; both LF/CRLF layouts are asserted.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S8/negative/service",
+      "assertion": "Private declarations, their import aliases, missing modules/exports, unresolved qualified calls and unimported public short names return explicit null; module prefixes cannot borrow source declarations. Source types remain distinct from shadowing Any values. Function import names have no invented return-type navigation; call expressions retain their real return type. Metadata-only/invalid schema spans and deleted or unresolved dependencies have no guessed or stale targets.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::source_lifecycle_tests::source_navigation_lifecycle_matches_markers_and_fresh_disk_overlay_analysis"
+        }
+      ]
+    },
+    {
+      "requirement": "definition/syntax/S8/negative/protocol",
+      "assertion": "Private declarations, their import aliases, missing modules/exports, unresolved qualified calls and unimported public short names return explicit null; module prefixes cannot borrow source declarations. Source types remain distinct from shadowing Any values. Function import names have no invented return-type navigation; call expressions retain their real return type. Metadata-only/invalid schema spans and deleted or unresolved dependencies have no guessed or stale targets.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S8/positive/service",
+      "assertion": "Qualified multi-segment paths and direct/aliased imports preserve actual source ownership for functions, const/state/extern state, structs, enums and traits. Import-clause names and aliases, call sites, constructors, variants and named arguments have independent exact URI/range oracles. Same-name exports in another module and local value shadowing cannot change ownership. Source-backed schema spans and source dependency edit/restore sequences supplement the import fixture; both LF/CRLF layouts are asserted.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::source_lifecycle_tests::source_navigation_lifecycle_matches_markers_and_fresh_disk_overlay_analysis"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S8/positive/protocol",
+      "assertion": "Qualified multi-segment paths and direct/aliased imports preserve actual source ownership for functions, const/state/extern state, structs, enums and traits. Import-clause names and aliases, call sites, constructors, variants and named arguments have independent exact URI/range oracles. Same-name exports in another module and local value shadowing cannot change ownership. Source-backed schema spans and source dependency edit/restore sequences supplement the import fixture; both LF/CRLF layouts are asserted.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S8/negative/service",
+      "assertion": "Private declarations, their import aliases, missing modules/exports, unresolved qualified calls and unimported public short names return explicit null; module prefixes cannot borrow source declarations. Source types remain distinct from shadowing Any values. Function import names have no invented return-type navigation; call expressions retain their real return type. Metadata-only/invalid schema spans and deleted or unresolved dependencies have no guessed or stale targets.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::source_lifecycle_tests::source_navigation_lifecycle_matches_markers_and_fresh_disk_overlay_analysis"
+        }
+      ]
+    },
+    {
+      "requirement": "declaration/syntax/S8/negative/protocol",
+      "assertion": "Private declarations, their import aliases, missing modules/exports, unresolved qualified calls and unimported public short names return explicit null; module prefixes cannot borrow source declarations. Source types remain distinct from shadowing Any values. Function import names have no invented return-type navigation; call expressions retain their real return type. Metadata-only/invalid schema spans and deleted or unresolved dependencies have no guessed or stale targets.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S8/positive/service",
+      "assertion": "Qualified multi-segment paths and direct/aliased imports preserve actual source ownership for functions, const/state/extern state, structs, enums and traits. Import-clause names and aliases, call sites, constructors, variants and named arguments have independent exact URI/range oracles. Same-name exports in another module and local value shadowing cannot change ownership. Source-backed schema spans and source dependency edit/restore sequences supplement the import fixture; both LF/CRLF layouts are asserted.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::source_lifecycle_tests::source_navigation_lifecycle_matches_markers_and_fresh_disk_overlay_analysis"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S8/positive/protocol",
+      "assertion": "Qualified multi-segment paths and direct/aliased imports preserve actual source ownership for functions, const/state/extern state, structs, enums and traits. Import-clause names and aliases, call sites, constructors, variants and named arguments have independent exact URI/range oracles. Same-name exports in another module and local value shadowing cannot change ownership. Source-backed schema spans and source dependency edit/restore sequences supplement the import fixture; both LF/CRLF layouts are asserted.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S8/negative/service",
+      "assertion": "Private declarations, their import aliases, missing modules/exports, unresolved qualified calls and unimported public short names return explicit null; module prefixes cannot borrow source declarations. Source types remain distinct from shadowing Any values. Function import names have no invented return-type navigation; call expressions retain their real return type. Metadata-only/invalid schema spans and deleted or unresolved dependencies have no guessed or stale targets.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_declaration_matrix_pins_all_three_targets_and_negative_policy"
+        },
+        {
+          "layer": "service",
+          "name": "definition::matrix_tests::navigation_schema_matrix_distinguishes_source_spans_from_metadata_only"
+        },
+        {
+          "layer": "service",
+          "name": "definition::source_lifecycle_tests::source_navigation_lifecycle_matches_markers_and_fresh_disk_overlay_analysis"
+        }
+      ]
+    },
+    {
+      "requirement": "type-definition/syntax/S8/negative/protocol",
+      "assertion": "Private declarations, their import aliases, missing modules/exports, unresolved qualified calls and unimported public short names return explicit null; module prefixes cannot borrow source declarations. Source types remain distinct from shadowing Any values. Function import names have no invented return-type navigation; call expressions retain their real return type. Metadata-only/invalid schema spans and deleted or unresolved dependencies have no guessed or stale targets.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_import_matrix_projects_exact_alias_targets_and_visibility_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_declaration_matrix_projects_exact_utf16_targets_and_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_schema_matrix_projects_exact_source_spans_and_metadata_nulls"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::definition::source_lifecycle::source_navigation_lifecycle_preserves_dirty_ranges_and_drops_deleted_dependency_targets"
+        }
+      ]
     }
   ],
   "featureFiles": [

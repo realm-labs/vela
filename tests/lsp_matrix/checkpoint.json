@@ -242,7 +242,7 @@
     },
     {
       "id": "B02.7",
-      "revision": null,
+      "revision": "b8b0ce0be",
       "requirements": [
         "definition/syntax/S3/positive/service",
         "definition/syntax/S3/positive/protocol",
@@ -266,10 +266,29 @@
         "type-definition/syntax/S3/negative/protocol"
       ],
       "summary": "51 type-position queries and 20 recovery queries supplement prior source/schema facts to cover S3 and applicable S9 partitions in both layers. Recover unterminated call/argument CST nodes without dropping the final block token; named labels use CST ownership and actual callee binding, including missing values. AST fingerprint review: only a cfg(test) module registration changed the tracked ast.rs surface, no public AST/token/grammar API changed. Remaining B02 S1/S4/S5/S8/S10 semantic partitions and installed workbench routes stay open; find the commit by LSP-Batch trailer. Validation: workspace 4357 passed with 2 existing ignored; workspace Clippy and formatting passed; final audit service 569 passed with 2 existing ignored, protocol 562 passed and infrastructure 58 passed; 64 verified, 3 editor mapped, 1258 unreviewed, 2 existing N/A, zero failures."
+    },
+    {
+      "id": "B02.8",
+      "revision": null,
+      "requirements": [
+        "definition/syntax/S8/positive/service",
+        "definition/syntax/S8/positive/protocol",
+        "definition/syntax/S8/negative/service",
+        "definition/syntax/S8/negative/protocol",
+        "declaration/syntax/S8/positive/service",
+        "declaration/syntax/S8/positive/protocol",
+        "declaration/syntax/S8/negative/service",
+        "declaration/syntax/S8/negative/protocol",
+        "type-definition/syntax/S8/positive/service",
+        "type-definition/syntax/S8/positive/protocol",
+        "type-definition/syntax/S8/negative/service",
+        "type-definition/syntax/S8/negative/protocol"
+      ],
+      "summary": "46 independent import queries cover multi-segment module paths, direct imports, all supported declaration aliases, public/private/missing targets, source identity collisions and local shadowing in both Rust layers with LF/CRLF. Import-clause names and aliases now use exact source spans and existing ImportResolution; recognized unresolved/prefix syntax owns a null result. Prior schema and lifecycle fixtures supply source-backed/metadata-only and dependency invalidation evidence for all 12 S8 cells. Validation: service 570 passed with 2 existing ignored; protocol 563 passed; infrastructure 58 passed; relevant Clippy and formatting passed; audit 76 verified, 3 editor mapped, 1246 unreviewed, 2 existing N/A, zero failures. B02 S1/S4/S5/S10 semantic partitions and installed workbench routes remain open; find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B02.8",
-  "nextTask": "B02.8",
+  "activeChild": "B02.9",
+  "nextTask": "B02.9",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -468,10 +487,6 @@
     "declaration/syntax/S5/negative/service",
     "declaration/syntax/S5/positive/protocol",
     "declaration/syntax/S5/positive/service",
-    "declaration/syntax/S8/negative/protocol",
-    "declaration/syntax/S8/negative/service",
-    "declaration/syntax/S8/positive/protocol",
-    "declaration/syntax/S8/positive/service",
     "declaration/syntax/S9/negative/protocol",
     "declaration/syntax/S9/negative/service",
     "declaration/syntax/S9/positive/protocol",
@@ -510,10 +525,6 @@
     "definition/syntax/S5/negative/service",
     "definition/syntax/S5/positive/protocol",
     "definition/syntax/S5/positive/service",
-    "definition/syntax/S8/negative/protocol",
-    "definition/syntax/S8/negative/service",
-    "definition/syntax/S8/positive/protocol",
-    "definition/syntax/S8/positive/service",
     "definition/syntax/S9/negative/protocol",
     "definition/syntax/S9/negative/service",
     "definition/syntax/S9/positive/protocol",
@@ -1538,10 +1549,6 @@
     "type-definition/syntax/S4/negative/service",
     "type-definition/syntax/S4/positive/protocol",
     "type-definition/syntax/S4/positive/service",
-    "type-definition/syntax/S8/negative/protocol",
-    "type-definition/syntax/S8/negative/service",
-    "type-definition/syntax/S8/positive/protocol",
-    "type-definition/syntax/S8/positive/service",
     "vscode/UX01/install-open/command/local",
     "vscode/UX01/install-open/input/local",
     "vscode/UX01/unrelated-file/command/local",
@@ -1786,7 +1793,13 @@
     "target/lsp-matrix/b02-types-recovery-workspace-final.log",
     "target/lsp-matrix/b02-types-recovery-clippy-final.log",
     "target/lsp-matrix/b02-call-recovery-final.log",
-    "target/lsp-matrix/run-VdkrVP/report.json"
+    "target/lsp-matrix/run-VdkrVP/report.json",
+    "target/lsp-matrix/b02-import-matrix-markers.log",
+    "target/lsp-matrix/b02-import-spans-fixed.log",
+    "target/lsp-matrix/b02-import-matrix-expanded.log",
+    "target/lsp-matrix/b02-import-audit.log",
+    "target/lsp-matrix/b02-import-clippy.log",
+    "target/lsp-matrix/run-5RtzAT/report.json"
   ],
   "openIssues": [
     {

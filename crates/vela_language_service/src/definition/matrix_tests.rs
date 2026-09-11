@@ -5,6 +5,13 @@ use crate::{
 };
 
 #[test]
+fn navigation_import_matrix_preserves_path_alias_visibility_and_value_ownership() {
+    for crlf in [false, true] {
+        assert_navigation_matrix("navigation-imports", crlf);
+    }
+}
+
+#[test]
 fn navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets() {
     for crlf in [false, true] {
         assert_navigation_matrix("navigation-recovery", crlf);
