@@ -718,9 +718,18 @@ keep ordinary call insertion. Same-owner reflection signature alternatives remai
 one callable, while compiler-owned task operations cannot become callback values.
 Global stdlib candidates now carry explicit builtin ownership for resolve queries.
 
+Thirty-six shared task-admission cases apply completion edits and check complete
+candidate sets plus exact diagnostic codes, messages, ranges and related labels.
+Owned and erased arguments remain available; nested callable/iterator/HostRef
+values retain their admission errors. Worker parameter and result errors keep
+distinct source ranges. Registered effect ceilings cover individual capabilities,
+recursive worker/continuation calls, denied TaskSpawn and absent-ceiling metadata.
+Trailing continuation parameters remain a host-resume contract. Both test layers
+run Unicode LF/CRLF cases; these static queries do not prove runtime admission.
+
 The [completion coverage review](lsp-completion-coverage-review.md) indexes S5
-proof and the remaining acceptance work. Resume B03.31 with remaining task
-value/effect restrictions and S5 review, then the remaining
+proof and the remaining acceptance work. Resume B03.32 with the S5 partition
+review and remaining async/callback boundaries, then the remaining
 semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

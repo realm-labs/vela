@@ -1,0 +1,581 @@
+{
+  "version": 1,
+  "id": "completion-task-values",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.task_eligibility\"\nname = \"task_eligibility\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"executionEffectCeiling\":{\"readsHost\":true,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":true},\"types\":[{\"name\":\"host::Handle\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Handle\"}}]}}",
+    "scripts/scalar.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: i64) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/scalar.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: i64) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/erased.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Any) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/erased.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Any) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/string.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: String) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/string.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: String) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/owned-array.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Array<i64>) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/owned-array.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Array<i64>) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/owned-map.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Map<String, i64>) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/owned-map.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Map<String, i64>) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/owned-option.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Option<Array<i64>>) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/owned-option.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Option<Array<i64>>) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/owned-result.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Result<i64, String>) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/owned-result.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Result<i64, String>) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/closure.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Closure) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/closure.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Closure) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/function.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Function) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/function.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Function) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/host-reference.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: host::Handle) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/host-reference.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: host::Handle) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/nested-host.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Array<Option<host::Handle>>) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/nested-host.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Array<Option<host::Handle>>) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/iterator.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Iterator<i64>) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/iterator.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Iterator<i64>) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/array-closure.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Array<Closure>) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/array-closure.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Array<Closure>) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/map-closure.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Map<String, Closure>) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/map-closure.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Map<String, Closure>) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/option-closure.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Option<Closure>) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/option-closure.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Option<Closure>) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/result-closure.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Result<i64, Closure>) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/result-closure.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Result<i64, Closure>) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/nested-closure.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Array<Option<Closure>>) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/nested-closure.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Array<Option<Closure>>) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/named.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Closure) { task::spawn_scoped(worker(value = [[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/named.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Closure) { task::spawn_scoped(worker(value = [[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/middle.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Closure) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]]wrong[[replace:end]])); }\n",
+    "expected/middle.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Closure) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/declared-closure.vela": "/* 中😀 */ async fn worker(value: Closure) -> i64 { return 1; } fn main(zz_value: Closure) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
+    "expected/declared-closure.txt": "/* 中😀 */ async fn worker([[parameter:start]]value[[parameter:end]]: Closure) -> i64 { return 1; } fn main(zz_value: Closure) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
+    "scripts/returned-closure.vela": "/* 中😀 */ async fn zz_worker() -> Array<Closure> { return []; } fn main() { task::spawn_scoped([[replace:start]]zz_w[[cursor]][[replace:end]]()); }\n",
+    "expected/returned-closure.txt": "/* 中😀 */ async fn zz_worker() -> Array<Closure> { return []; } fn main() { task::spawn_scoped([[failure:start]]zz_worker()[[failure:end]]); }\n",
+    "scripts/resume-parameter.vela": "/* 中😀 */ async fn worker() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>, context: Closure) -> () {} fn main() { task::spawn_scoped_then(worker(), [[replace:start]]zz_d[[cursor]][[replace:end]]); }\n",
+    "expected/resume-parameter.txt": "/* 中😀 */ async fn worker() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>, context: Closure) -> () {} fn main() { task::spawn_scoped_then(worker(), zz_done); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "scalar",
+        "file": "scripts/scalar.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "i64",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/scalar.txt",
+            "diagnostics": []
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "erased",
+        "file": "scripts/erased.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Any",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/erased.txt",
+            "diagnostics": []
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "string",
+        "file": "scripts/string.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "String",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/string.txt",
+            "diagnostics": []
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "owned-array",
+        "file": "scripts/owned-array.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Array(i64)",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/owned-array.txt",
+            "diagnostics": []
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "owned-map",
+        "file": "scripts/owned-map.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Map(String, i64)",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/owned-map.txt",
+            "diagnostics": []
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "owned-option",
+        "file": "scripts/owned-option.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Option(Array(i64))",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/owned-option.txt",
+            "diagnostics": []
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "owned-result",
+        "file": "scripts/owned-result.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Result(i64, String)",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/owned-result.txt",
+            "diagnostics": []
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "closure",
+        "file": "scripts/closure.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Closure",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/closure.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_value_not_detachable",
+                "message": "detached target `worker` rejects argument for parameter `value`: callable is not detachable",
+                "marker": "failure",
+                "label": "rejected value path: argument for parameter `value`"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "function",
+        "file": "scripts/function.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Function() -> unknown",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/function.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_value_not_detachable",
+                "message": "detached target `worker` rejects argument for parameter `value`: callable is not detachable",
+                "marker": "failure",
+                "label": "rejected value path: argument for parameter `value`"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "host-reference",
+        "file": "scripts/host-reference.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "host::Handle",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/host-reference.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_value_not_detachable",
+                "message": "detached target `worker` rejects argument for parameter `value`: host reference is not detachable",
+                "marker": "failure",
+                "label": "rejected value path: argument for parameter `value`"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "nested-host",
+        "file": "scripts/nested-host.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Array(Option(host::Handle))",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/nested-host.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_value_not_detachable",
+                "message": "detached target `worker` rejects argument.element.some for parameter `value`: host reference is not detachable",
+                "marker": "failure",
+                "label": "rejected value path: argument.element.some for parameter `value`"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "iterator",
+        "file": "scripts/iterator.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Iterator",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/iterator.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_value_not_detachable",
+                "message": "detached target `worker` rejects argument for parameter `value`: iterator is not detachable",
+                "marker": "failure",
+                "label": "rejected value path: argument for parameter `value`"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "array-closure",
+        "file": "scripts/array-closure.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Array(Closure)",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/array-closure.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_value_not_detachable",
+                "message": "detached target `worker` rejects argument.element for parameter `value`: callable is not detachable",
+                "marker": "failure",
+                "label": "rejected value path: argument.element for parameter `value`"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "map-closure",
+        "file": "scripts/map-closure.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Map(String, Closure)",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/map-closure.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_value_not_detachable",
+                "message": "detached target `worker` rejects argument.value for parameter `value`: callable is not detachable",
+                "marker": "failure",
+                "label": "rejected value path: argument.value for parameter `value`"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "option-closure",
+        "file": "scripts/option-closure.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Option(Closure)",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/option-closure.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_value_not_detachable",
+                "message": "detached target `worker` rejects argument.some for parameter `value`: callable is not detachable",
+                "marker": "failure",
+                "label": "rejected value path: argument.some for parameter `value`"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "result-closure",
+        "file": "scripts/result-closure.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Result(i64, Closure)",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/result-closure.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_value_not_detachable",
+                "message": "detached target `worker` rejects argument.err for parameter `value`: callable is not detachable",
+                "marker": "failure",
+                "label": "rejected value path: argument.err for parameter `value`"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "nested-closure",
+        "file": "scripts/nested-closure.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Array(Option(Closure))",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/nested-closure.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_value_not_detachable",
+                "message": "detached target `worker` rejects argument.element.some for parameter `value`: callable is not detachable",
+                "marker": "failure",
+                "label": "rejected value path: argument.element.some for parameter `value`"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "named",
+        "file": "scripts/named.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Closure",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/named.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_value_not_detachable",
+                "message": "detached target `worker` rejects argument for parameter `value`: callable is not detachable",
+                "marker": "failure",
+                "label": "rejected value path: argument for parameter `value`"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "middle",
+        "file": "scripts/middle.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Closure",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/middle.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_value_not_detachable",
+                "message": "detached target `worker` rejects argument for parameter `value`: callable is not detachable",
+                "marker": "failure",
+                "label": "rejected value path: argument for parameter `value`"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "declared-closure",
+        "file": "scripts/declared-closure.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_value",
+            "kind": "Parameter",
+            "detail": "Closure",
+            "insert": "zz_value",
+            "format": "PlainText",
+            "appliedFile": "expected/declared-closure.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_value_not_detachable",
+                "message": "detached target `worker` rejects parameter `value`: callable is not detachable",
+                "marker": "parameter",
+                "label": "rejected value path: parameter `value`"
+              },
+              {
+                "code": "analysis::task_value_not_detachable",
+                "message": "detached target `worker` rejects argument for parameter `value`: callable is not detachable",
+                "marker": "failure",
+                "label": "rejected value path: argument for parameter `value`"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "returned-closure",
+        "file": "scripts/returned-closure.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_worker",
+            "kind": "Function",
+            "detail": "async Function() -> Array(Closure)",
+            "insert": "zz_worker",
+            "format": "PlainText",
+            "symbol": "returned-closure::zz_worker",
+            "appliedFile": "expected/returned-closure.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_value_not_detachable",
+                "message": "detached target `zz_worker` rejects return value.element: callable is not detachable",
+                "marker": "failure",
+                "label": "rejected value path: return value.element"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "resume-parameter",
+        "file": "scripts/resume-parameter.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error), Closure) -> ()",
+            "insert": "zz_done",
+            "format": "PlainText",
+            "symbol": "resume-parameter::zz_done",
+            "appliedFile": "expected/resume-parameter.txt",
+            "diagnostics": []
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      }
+    ]
+  }
+}

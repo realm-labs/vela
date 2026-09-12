@@ -24,6 +24,18 @@ fn sync_callback_matrix_inserts_owned_function_values_and_excludes_async_targets
     verify_fixture("completion-sync-callbacks");
 }
 
+#[test]
+fn task_value_matrix_preserves_argument_choices_and_exact_admission_diagnostics() {
+    verify_fixture("completion-task-values");
+}
+
+#[test]
+fn task_effect_matrix_preserves_choices_and_reports_transitive_denials() {
+    verify_fixture("completion-task-effects");
+    verify_fixture("completion-task-spawn-ceiling");
+    verify_fixture("completion-task-unknown-ceiling");
+}
+
 fn verify_fixture(name: &str) {
     for crlf in [false, true] {
         let mut spec = load(name);
@@ -135,6 +147,43 @@ fn verify_fixture(name: &str) {
                     "{case}: {:?}",
                     parsed.diagnostics()
                 );
+                if let Some(applied_file) = expected["appliedFile"].as_str() {
+                    let applied = fixture.document(applied_file).expect("applied oracle");
+                    assert_eq!(text, applied.text, "{case}");
+                    let mut fresh = FixtureWorkspace::new(&spec).expect("fresh fixture");
+                    fresh.disk.get_mut(file).expect("file").text = text.clone();
+                    let diagnostics = databases(&fresh).diagnostics_for_document(&uri(file));
+                    let actual = diagnostics
+                        .diagnostics()
+                        .iter()
+                        .filter(|d| {
+                            d.code().is_some_and(|code| {
+                                code.starts_with("analysis::task_")
+                                    || code.starts_with("hir::task_")
+                                    || code == "analysis::async_call_requires_await"
+                            })
+                        })
+                        .collect::<Vec<_>>();
+                    let oracle = expected["diagnostics"].as_array().expect("diagnostics");
+                    assert_eq!(actual.len(), oracle.len(), "{case}: {actual:?}");
+                    for (actual, expected) in actual.iter().zip(oracle) {
+                        assert_eq!(actual.code(), expected["code"].as_str());
+                        assert_eq!(
+                            actual.message(),
+                            expected["message"].as_str().expect("message")
+                        );
+                        assert_eq!(actual.severity(), crate::ServiceDiagnosticSeverity::Error);
+                        let range = applied.markers[expected["marker"].as_str().expect("marker")];
+                        let actual_range = actual.range().expect("diagnostic range");
+                        assert_eq!(actual_range.start(), byte_position(&text, range.start.byte));
+                        assert_eq!(actual_range.end(), byte_position(&text, range.end.byte));
+                        assert_eq!(actual.labels().len(), 1);
+                        let label = &actual.labels()[0];
+                        assert_eq!(label.message(), expected["label"].as_str().expect("label"));
+                        assert_eq!(label.document_id(), &uri(file));
+                        assert_eq!(label.range(), actual_range);
+                    }
+                }
                 if case["checkTask"] == true {
                     let mut fresh = FixtureWorkspace::new(&spec).expect("fresh fixture");
                     fresh.disk.get_mut(file).expect("file").text = text.clone();
@@ -227,7 +276,11 @@ fn databases(fixture: &FixtureWorkspace) -> LanguageServiceDatabases {
         &Workspace::new().snapshot(),
     ));
     db.load_schema_artifact_json("/workspace/schema.json", &fixture.disk["schema.json"].text);
-    assert!(db.schema_db().diagnostics().is_empty());
+    assert!(
+        db.schema_db().diagnostics().is_empty(),
+        "{:?}",
+        db.schema_db().diagnostics()
+    );
     db
 }
 

@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "id": "completion-task-spawn-ceiling",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.task_eligibility\"\nname = \"task_eligibility\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"executionEffectCeiling\":{\"readsHost\":true,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false},\"functions\":[{\"name\":\"native::readsHost\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::writesHost\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::emitsEvents\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::readsTime\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::usesRandom\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::readsIo\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::writesIo\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::readsReflection\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::writesReflection\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::callsReflection\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}}],\"functionEffects\":[{\"name\":\"native::readsHost\",\"effect\":{\"readsHost\":true,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::writesHost\",\"effect\":{\"readsHost\":false,\"writesHost\":true,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::emitsEvents\",\"effect\":{\"readsHost\":false,\"writesHost\":false,\"emitsEvents\":true,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::readsTime\",\"effect\":{\"readsHost\":false,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":true,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::usesRandom\",\"effect\":{\"readsHost\":false,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":true,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::readsIo\",\"effect\":{\"readsHost\":false,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":true,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::writesIo\",\"effect\":{\"readsHost\":false,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":true,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::readsReflection\",\"effect\":{\"readsHost\":false,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":true,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::writesReflection\",\"effect\":{\"readsHost\":false,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":true,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::callsReflection\",\"effect\":{\"readsHost\":false,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":true,\"spawnsTasks\":false}}]}}",
+    "scripts/effect-reads_host.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return native::readsHost(); } fn main() { task::spawn_scoped([[replace:start]]zz_w[[cursor]][[replace:end]]()); }\n",
+    "expected/effect-reads_host.txt": "/* 中😀 */ async fn zz_worker() -> i64 { return native::readsHost(); } fn main() { [[failure:start]]task::spawn_scoped(zz_worker())[[failure:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "effect-reads_host",
+        "file": "scripts/effect-reads_host.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_worker",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_worker",
+            "format": "PlainText",
+            "symbol": "effect-reads_host::zz_worker",
+            "appliedFile": "expected/effect-reads_host.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_effect_denied",
+                "message": "detached target `zz_worker` requires denied effect/capability `spawns_tasks` / `task_spawn`",
+                "marker": "failure",
+                "label": "task admission also requires an explicit host TaskScope at runtime"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      }
+    ]
+  }
+}

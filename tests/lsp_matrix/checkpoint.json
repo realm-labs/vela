@@ -1479,10 +1479,41 @@
         "completion-resolve/syntax/S9/negative/protocol"
       ],
       "summary": "Thirty-six shared sync-callback cases cover Array/Map/Set, Option/Result/Iterator, defaulted and named parameters, reordered fold callback slots and ordinary initial-value slots. Direct callback paths insert function references, excluding known asynchronous source/schema targets. Same-name source declarations deliberately have opposite asyncness; qualified, function and namespace aliases resolve their own targets. Full candidate sets, async details, canonical source/schema/builtin ownership, resolve pass-through, exact Unicode LF/CRLF edits, parseable application, applied source definition URI/ranges and builtin/schema null definitions are asserted. Selected sync paths retain no task/missing-await diagnostic. Dynamic Any and Closure callback values remain available. Ordinary source/schema methods, unknown receivers, nested calls and lambda bodies keep ordinary call insertion. Reflection call signature alternatives remain one callable owner; compiler-owned task operations cannot become first-class callbacks. Red tests exposed call insertion instead of references, unfiltered async candidates, over-rejection of same-owner reflection profiles and missing global stdlib builtin identity. Static callback policy uses registered parameter facts and scoped target metadata; task/callback insertion shares innermost syntax-call selection and plain-path edit construction. The existing defaulted sum-callback oracle now excludes task operations while preserving its exact parameter and signature assertions. Global stdlib candidates gain builtin symbols and resolve payloads. Workspace 4471 passed, two historical ignored; service 622 plus two ignored and protocol 607; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-Wb1HPp/results.json passed 9; native editors/vscode/test-results/input-DaDnC5/results.json passed 13; strict target/lsp-matrix/run-t89uQJ/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The 24 requirement references are partial child progress, not whole-partition acceptance. B03 remains unaccepted. Resume B03.31 with remaining task value/effect restrictions and S5 review; callback factories/dynamic arity and return contracts, invalid await contexts, shared-method ambiguity, abrupt exits, dependency/schema lifecycle and UX04 remain open. Queries do not execute callbacks or access live host state. Fresh macOS proof is required when next used. B16 remains deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.31",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S4/positive/service",
+        "completion/syntax/S4/positive/protocol",
+        "completion/syntax/S4/negative/service",
+        "completion/syntax/S4/negative/protocol",
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/negative/protocol",
+        "completion/syntax/S9/positive/service",
+        "completion/syntax/S9/positive/protocol",
+        "completion/syntax/S9/negative/service",
+        "completion/syntax/S9/negative/protocol",
+        "completion-resolve/syntax/S4/positive/service",
+        "completion-resolve/syntax/S4/positive/protocol",
+        "completion-resolve/syntax/S4/negative/service",
+        "completion-resolve/syntax/S4/negative/protocol",
+        "completion-resolve/syntax/S5/positive/service",
+        "completion-resolve/syntax/S5/positive/protocol",
+        "completion-resolve/syntax/S5/negative/service",
+        "completion-resolve/syntax/S5/negative/protocol",
+        "completion-resolve/syntax/S9/positive/service",
+        "completion-resolve/syntax/S9/positive/protocol",
+        "completion-resolve/syntax/S9/negative/service",
+        "completion-resolve/syntax/S9/negative/protocol"
+      ],
+      "summary": "Thirty-six shared applied-completion cases cover task admission diagnostics across value and effect boundaries. Complete argument/target candidate sets, insertion formats and ranges, callable ownership/resolve, exact independently marked applied source and parseability are asserted under Unicode LF/CRLF. Owned scalar/string/Array/Map/Option/Result and erased Any arguments retain no task diagnostic. Closure, function, iterator and nested collection/Option/Result/HostRef arguments retain precise rejection paths. Explicit parameter and argument failures have separate ranges; rejected result diagnostics span the complete worker call. Named arguments and middle-of-word replacements preserve the same facts. Synchronous matching continuations may retain trailing runtime resume parameters. Registered ceilings exercise ten individual effect flags, recursive worker and continuation call chains, denied TaskSpawn and missing ceiling metadata. Every admission diagnostic asserts exact code, severity, message, main range and one related label with exact URI/range/message; protocol labels use the existing data.labels contract. Protocol edits restore the original full completion result. No Runtime is executed and no live host state is accessed. This test-only change adds four test identities without changing completion or admission policy. Workspace 4475 passed, two historical ignored; service 624 plus two ignored and protocol 609; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-t2geY2/results.json passed 9; native editors/vscode/test-results/input-2dYow7/results.json passed 13; strict target/lsp-matrix/run-fsUadf/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The 24 referenced requirements record partial child progress, not whole-partition acceptance. B03 remains unaccepted. Resume B03.32 with S5 partition review and remaining async/callback boundaries; opaque/defaulted task values, method effect chains, host resume binding, schema/dependency lifecycle, semantic partitions and UX04 remain open. Fresh macOS proof is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.31",
-  "nextTask": "B03.31",
+  "activeChild": "B03.32",
+  "nextTask": "B03.32",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -3436,7 +3467,24 @@
     "target/b03-30-input.log",
     "target/b03-30-accepted-regression.log",
     "editors/vscode/test-results/run-Wb1HPp/results.json",
-    "editors/vscode/test-results/input-DaDnC5/results.json"
+    "editors/vscode/test-results/input-DaDnC5/results.json",
+    "target/lsp-matrix/run-fsUadf/report.json",
+    "target/b03-31-baseline.log",
+    "target/b03-31-values.log",
+    "target/b03-31-values-final.log",
+    "target/b03-31-task-tests.log",
+    "target/b03-31-task-final.log",
+    "target/b03-31-focused.log",
+    "target/b03-31-libraries.log",
+    "target/b03-31-workspace.log",
+    "target/b03-31-clippy.log",
+    "target/b03-31-clippy-final.log",
+    "target/b03-31-node.log",
+    "target/b03-31-editor.log",
+    "target/b03-31-input.log",
+    "target/b03-31-accepted-regression.log",
+    "editors/vscode/test-results/run-t2geY2/results.json",
+    "editors/vscode/test-results/input-2dYow7/results.json"
   ],
   "openIssues": [
     {
@@ -4057,8 +4105,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "e0f438e036703529fb17103e1db7f46d10edff35",
-          "treeSha256": "dac8ff995813a2bdbb69eabcd976ee0e20f530c160c889153eb88aa37e017462"
+          "revision": "06730a5d3302bde40195379134258b86377d38ac",
+          "treeSha256": "23a3baebfe1ca066aed24c1546bc4d9d17d290fc9560bd37ae77180496fe57c6"
         },
         "profile": {
           "platform": "win32",
@@ -4066,11 +4114,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-t89uQJ/report.json"
+          "target/lsp-matrix/run-fsUadf/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-Wb1HPp/results.json --local-results editors/vscode/test-results/input-DaDnC5/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-t2geY2/results.json --local-results editors/vscode/test-results/input-2dYow7/results.json",
             "exitCode": 0
           }
         ]

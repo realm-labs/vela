@@ -23,6 +23,18 @@ fn sync_callback_matrix_projects_owned_function_values_and_excludes_async_target
     verify_fixture("completion-sync-callbacks");
 }
 
+#[test]
+fn task_value_matrix_projects_argument_choices_and_exact_admission_diagnostics() {
+    verify_fixture("completion-task-values");
+}
+
+#[test]
+fn task_effect_matrix_projects_choices_and_transitive_denials() {
+    verify_fixture("completion-task-effects");
+    verify_fixture("completion-task-spawn-ceiling");
+    verify_fixture("completion-task-unknown-ceiling");
+}
+
 fn verify_fixture(name: &str) {
     for crlf in [false, true] {
         let mut spec = load(name);
@@ -169,6 +181,46 @@ fn verify_fixture(name: &str) {
                     &mut server,
                     json!({"textDocument":{"uri":uri(file),"version":version},"contentChanges":[{"text":edited}]}),
                 );
+                if let Some(applied_file) = expected["appliedFile"].as_str() {
+                    let applied = fixture.document(applied_file).expect("applied oracle");
+                    assert_eq!(edited, applied.text, "{case}");
+                    let notifications = crate::tests::notification_values(changes.clone());
+                    let publication = notifications
+                        .iter()
+                        .find(|n| {
+                            n["method"] == "textDocument/publishDiagnostics"
+                                && n["params"]["uri"] == uri(file)
+                        })
+                        .expect("applied diagnostics");
+                    let actual = publication["params"]["diagnostics"]
+                        .as_array()
+                        .expect("diagnostics")
+                        .iter()
+                        .filter(|d| {
+                            d["code"].as_str().is_some_and(|code| {
+                                code.starts_with("analysis::task_")
+                                    || code.starts_with("hir::task_")
+                                    || code == "analysis::async_call_requires_await"
+                            })
+                        })
+                        .collect::<Vec<_>>();
+                    let oracle = expected["diagnostics"].as_array().expect("diagnostics");
+                    assert_eq!(actual.len(), oracle.len(), "{case}: {actual:?}");
+                    for (actual, expected) in actual.iter().zip(oracle) {
+                        assert_eq!(actual["code"], expected["code"]);
+                        assert_eq!(actual["message"], expected["message"]);
+                        assert_eq!(actual["severity"], 1);
+                        let range = applied.markers[expected["marker"].as_str().expect("marker")];
+                        assert_eq!(
+                            actual["range"],
+                            json!({"start":{"line":range.start.line,"character":range.start.character},"end":{"line":range.end.line,"character":range.end.character}})
+                        );
+                        assert_eq!(
+                            actual["data"]["labels"],
+                            json!([{"uri":uri(file),"range":actual["range"],"message":expected["label"]}])
+                        );
+                    }
+                }
                 if case["checkTask"] == true {
                     if expected.get("target").is_some() {
                         let column = range.start.character

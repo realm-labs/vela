@@ -16,7 +16,7 @@ fixture does not certify every combination in an S dimension.
 | Stdlib calls and methods | `completion-stdlib-arguments`: registered names, imported paths, collection mutation variants, builtin owners and negative boundaries. `completion-sync-callbacks`: 36 cases for static sync function references, async exclusions, named/reordered slots, dynamic values, canonical resolve/definitions, reflection signature alternatives and ordinary nested calls. | Review callback factories, dynamic arity/return contracts and remaining async contexts together with the complete S5 call workflow. |
 | Imports and unavailable owners | `callable-imports`, `completion-import-aliases`, `completion-expression-ownership`: source/schema/stdlib aliases, local/declaration shadowing, private/missing/duplicate owners. `completion-package-callables` checks direct dependency function/namespace aliases, `crate::` fallback and inaccessible/transitive declarations. `completion-package-members` distinguishes owned methods/returns from same-name direct/transitive and schema declarations. | Review remaining returned-receiver forms and dependency lifecycle combinations. |
 | Service calls and authoring | `completion-service-calls`, `completion-service-paths`, `completion-service-roots`, `completion-service-parameters`, `completion-service-arguments`: unique/ambiguous origins, registered contracts, restricted contexts, schema changes and edits. | Retain these cases in the final S5/S8 mapping and lifecycle review. |
-| Static scoped tasks | `completion-task-paths`, `completion-task-calls`, `completion-task-operands`, `completion-task-eligibility`: builtin ownership, unsupported aliases, positional outer operands, nested ordinary calls, static async worker and synchronous matching continuation sets, qualified/imported ownership, existing parentheses and exact applied diagnostics. | Review value transfer, effect ceilings, host resume bindings and ranking separately; target shape alone does not prove runtime admission. |
+| Static scoped tasks | `completion-task-paths`, `completion-task-calls`, `completion-task-operands`, `completion-task-eligibility`: builtin ownership, unsupported aliases, positional outer operands, nested ordinary calls, static async worker and synchronous matching continuation sets, qualified/imported ownership, existing parentheses and exact applied diagnostics. `completion-task-values`, `completion-task-effects`, `completion-task-spawn-ceiling`, `completion-task-unknown-ceiling`: 36 applied-edit cases for owned/erased arguments, nested callable/iterator/HostRef rejection, parameter/result spans, per-capability ceilings, recursive worker/continuation effects and runtime-only resume parameters. | Review defaulted/opaque returned values, method effect chains, schema replacement and ranking; static target and diagnostic proof does not certify runtime admission or host resume binding. |
 | Dynamic/unresolved boundaries | The call, member and callable fixtures explicitly distinguish Any, unknown, missing owners, unsupported aliases and invalid arity. | Review all fixture families together before mapping the complete S5 negative cells. |
 
 The scoped-task review exposed three concrete defects: unknown source/schema task
@@ -33,7 +33,7 @@ post-edit signature check.
 
 ## Remaining B03 Acceptance Work
 
-1. Finish task value/effect restrictions and the S5 partition review. The
+1. Finish the S5 partition review and remaining async/callback boundaries. The
    `completion-sync-callbacks` fixture covers static sync callback reference
    insertion across builtin collection/Option/Result/Iterator methods, named and
    reordered slots, same-name source/schema/import owners and exact applied
@@ -52,8 +52,13 @@ post-edit signature check.
    package declarations. Completion details preserve asyncness; applied calls
    retain exact signatures, named parameters, inlays, definitions, missing-await
    diagnostic ranges and labels under Unicode LF/CRLF. Invalid await contexts,
-   broader callback combinations, transferable values, effects and host resume contracts
-   still require review. The
+   broader callback combinations and remaining opaque/defaulted task values,
+   method effect chains, schema replacement and host resume contracts still
+   require review. Thirty-six task-admission cases now retain complete candidate
+   sets through application, assert exact rejection messages, codes, severity,
+   ranges and related locations, and restore protocol completion results after
+   edits. Owned/Any arguments and absent effect ceilings have explicit negative
+   diagnostic proof; trailing resume parameters are not detached worker inputs. The
    `completion-receiver-assignments` fixture adds twenty cases for sequential
    writes, retained aliases, if/match/loop joins and chained method returns with
    same-name package types. It checks complete sets, stable merged field details,

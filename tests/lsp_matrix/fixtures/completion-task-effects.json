@@ -1,0 +1,354 @@
+{
+  "version": 1,
+  "id": "completion-task-effects",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.task_eligibility\"\nname = \"task_eligibility\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"executionEffectCeiling\":{\"readsHost\":true,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":true},\"functions\":[{\"name\":\"native::readsHost\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::writesHost\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::emitsEvents\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::readsTime\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::usesRandom\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::readsIo\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::writesIo\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::readsReflection\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::writesReflection\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}},{\"name\":\"native::callsReflection\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"sync\"}}],\"functionEffects\":[{\"name\":\"native::readsHost\",\"effect\":{\"readsHost\":true,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::writesHost\",\"effect\":{\"readsHost\":false,\"writesHost\":true,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::emitsEvents\",\"effect\":{\"readsHost\":false,\"writesHost\":false,\"emitsEvents\":true,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::readsTime\",\"effect\":{\"readsHost\":false,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":true,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::usesRandom\",\"effect\":{\"readsHost\":false,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":true,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::readsIo\",\"effect\":{\"readsHost\":false,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":true,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::writesIo\",\"effect\":{\"readsHost\":false,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":true,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::readsReflection\",\"effect\":{\"readsHost\":false,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":true,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::writesReflection\",\"effect\":{\"readsHost\":false,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":true,\"callsReflection\":false,\"spawnsTasks\":false}},{\"name\":\"native::callsReflection\",\"effect\":{\"readsHost\":false,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":true,\"spawnsTasks\":false}}]}}",
+    "scripts/effect-reads_host.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return native::readsHost(); } fn main() { task::spawn_scoped([[replace:start]]zz_w[[cursor]][[replace:end]]()); }\n",
+    "expected/effect-reads_host.txt": "/* 中😀 */ async fn zz_worker() -> i64 { return native::readsHost(); } fn main() { [[failure:start]]task::spawn_scoped(zz_worker())[[failure:end]]; }\n",
+    "scripts/effect-writes_host.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return native::writesHost(); } fn main() { task::spawn_scoped([[replace:start]]zz_w[[cursor]][[replace:end]]()); }\n",
+    "expected/effect-writes_host.txt": "/* 中😀 */ async fn zz_worker() -> i64 { return native::writesHost(); } fn main() { [[failure:start]]task::spawn_scoped(zz_worker())[[failure:end]]; }\n",
+    "scripts/effect-emits_events.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return native::emitsEvents(); } fn main() { task::spawn_scoped([[replace:start]]zz_w[[cursor]][[replace:end]]()); }\n",
+    "expected/effect-emits_events.txt": "/* 中😀 */ async fn zz_worker() -> i64 { return native::emitsEvents(); } fn main() { [[failure:start]]task::spawn_scoped(zz_worker())[[failure:end]]; }\n",
+    "scripts/effect-reads_time.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return native::readsTime(); } fn main() { task::spawn_scoped([[replace:start]]zz_w[[cursor]][[replace:end]]()); }\n",
+    "expected/effect-reads_time.txt": "/* 中😀 */ async fn zz_worker() -> i64 { return native::readsTime(); } fn main() { [[failure:start]]task::spawn_scoped(zz_worker())[[failure:end]]; }\n",
+    "scripts/effect-uses_random.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return native::usesRandom(); } fn main() { task::spawn_scoped([[replace:start]]zz_w[[cursor]][[replace:end]]()); }\n",
+    "expected/effect-uses_random.txt": "/* 中😀 */ async fn zz_worker() -> i64 { return native::usesRandom(); } fn main() { [[failure:start]]task::spawn_scoped(zz_worker())[[failure:end]]; }\n",
+    "scripts/effect-reads_io.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return native::readsIo(); } fn main() { task::spawn_scoped([[replace:start]]zz_w[[cursor]][[replace:end]]()); }\n",
+    "expected/effect-reads_io.txt": "/* 中😀 */ async fn zz_worker() -> i64 { return native::readsIo(); } fn main() { [[failure:start]]task::spawn_scoped(zz_worker())[[failure:end]]; }\n",
+    "scripts/effect-writes_io.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return native::writesIo(); } fn main() { task::spawn_scoped([[replace:start]]zz_w[[cursor]][[replace:end]]()); }\n",
+    "expected/effect-writes_io.txt": "/* 中😀 */ async fn zz_worker() -> i64 { return native::writesIo(); } fn main() { [[failure:start]]task::spawn_scoped(zz_worker())[[failure:end]]; }\n",
+    "scripts/effect-reads_reflection.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return native::readsReflection(); } fn main() { task::spawn_scoped([[replace:start]]zz_w[[cursor]][[replace:end]]()); }\n",
+    "expected/effect-reads_reflection.txt": "/* 中😀 */ async fn zz_worker() -> i64 { return native::readsReflection(); } fn main() { [[failure:start]]task::spawn_scoped(zz_worker())[[failure:end]]; }\n",
+    "scripts/effect-writes_reflection.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return native::writesReflection(); } fn main() { task::spawn_scoped([[replace:start]]zz_w[[cursor]][[replace:end]]()); }\n",
+    "expected/effect-writes_reflection.txt": "/* 中😀 */ async fn zz_worker() -> i64 { return native::writesReflection(); } fn main() { [[failure:start]]task::spawn_scoped(zz_worker())[[failure:end]]; }\n",
+    "scripts/effect-calls_reflection.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return native::callsReflection(); } fn main() { task::spawn_scoped([[replace:start]]zz_w[[cursor]][[replace:end]]()); }\n",
+    "expected/effect-calls_reflection.txt": "/* 中😀 */ async fn zz_worker() -> i64 { return native::callsReflection(); } fn main() { [[failure:start]]task::spawn_scoped(zz_worker())[[failure:end]]; }\n",
+    "scripts/effect-transitive.vela": "/* 中😀 */ fn first() -> i64 { return second(); } fn second() -> i64 { if false { return first(); } return native::readsIo(); } async fn worker() -> i64 { return first(); } fn zz_done(result: Result<i64, task::Error>) -> () {  } fn main() { task::spawn_scoped_then(worker(), [[replace:start]]zz_d[[cursor]][[replace:end]]); }\n",
+    "expected/effect-transitive.txt": "/* 中😀 */ fn first() -> i64 { return second(); } fn second() -> i64 { if false { return first(); } return native::readsIo(); } async fn worker() -> i64 { return first(); } fn zz_done(result: Result<i64, task::Error>) -> () {  } fn main() { [[failure:start]]task::spawn_scoped_then(worker(), zz_done)[[failure:end]]; }\n",
+    "scripts/effect-continuation.vela": "/* 中😀 */ fn first() -> i64 { return second(); } fn second() -> i64 { if false { return first(); } return native::readsIo(); } async fn worker() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () { first(); } fn main() { task::spawn_scoped_then(worker(), [[replace:start]]zz_d[[cursor]][[replace:end]]); }\n",
+    "expected/effect-continuation.txt": "/* 中😀 */ fn first() -> i64 { return second(); } fn second() -> i64 { if false { return first(); } return native::readsIo(); } async fn worker() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () { first(); } fn main() { [[failure:start]]task::spawn_scoped_then(worker(), zz_done)[[failure:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "effect-reads_host",
+        "file": "scripts/effect-reads_host.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_worker",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_worker",
+            "format": "PlainText",
+            "symbol": "effect-reads_host::zz_worker",
+            "appliedFile": "expected/effect-reads_host.txt",
+            "diagnostics": []
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "effect-writes_host",
+        "file": "scripts/effect-writes_host.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_worker",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_worker",
+            "format": "PlainText",
+            "symbol": "effect-writes_host::zz_worker",
+            "appliedFile": "expected/effect-writes_host.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_effect_denied",
+                "message": "detached target `zz_worker` requires denied effect/capability `writes_host` / `host_write`",
+                "marker": "failure",
+                "label": "task admission also requires an explicit host TaskScope at runtime"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "effect-emits_events",
+        "file": "scripts/effect-emits_events.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_worker",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_worker",
+            "format": "PlainText",
+            "symbol": "effect-emits_events::zz_worker",
+            "appliedFile": "expected/effect-emits_events.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_effect_denied",
+                "message": "detached target `zz_worker` requires denied effect/capability `emits_events` / `event_emit`",
+                "marker": "failure",
+                "label": "task admission also requires an explicit host TaskScope at runtime"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "effect-reads_time",
+        "file": "scripts/effect-reads_time.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_worker",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_worker",
+            "format": "PlainText",
+            "symbol": "effect-reads_time::zz_worker",
+            "appliedFile": "expected/effect-reads_time.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_effect_denied",
+                "message": "detached target `zz_worker` requires denied effect/capability `reads_time` / `time`",
+                "marker": "failure",
+                "label": "task admission also requires an explicit host TaskScope at runtime"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "effect-uses_random",
+        "file": "scripts/effect-uses_random.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_worker",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_worker",
+            "format": "PlainText",
+            "symbol": "effect-uses_random::zz_worker",
+            "appliedFile": "expected/effect-uses_random.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_effect_denied",
+                "message": "detached target `zz_worker` requires denied effect/capability `uses_random` / `random`",
+                "marker": "failure",
+                "label": "task admission also requires an explicit host TaskScope at runtime"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "effect-reads_io",
+        "file": "scripts/effect-reads_io.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_worker",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_worker",
+            "format": "PlainText",
+            "symbol": "effect-reads_io::zz_worker",
+            "appliedFile": "expected/effect-reads_io.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_effect_denied",
+                "message": "detached target `zz_worker` requires denied effect/capability `reads_io` / `io_read`",
+                "marker": "failure",
+                "label": "task admission also requires an explicit host TaskScope at runtime"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "effect-writes_io",
+        "file": "scripts/effect-writes_io.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_worker",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_worker",
+            "format": "PlainText",
+            "symbol": "effect-writes_io::zz_worker",
+            "appliedFile": "expected/effect-writes_io.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_effect_denied",
+                "message": "detached target `zz_worker` requires denied effect/capability `writes_io` / `io_write`",
+                "marker": "failure",
+                "label": "task admission also requires an explicit host TaskScope at runtime"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "effect-reads_reflection",
+        "file": "scripts/effect-reads_reflection.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_worker",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_worker",
+            "format": "PlainText",
+            "symbol": "effect-reads_reflection::zz_worker",
+            "appliedFile": "expected/effect-reads_reflection.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_effect_denied",
+                "message": "detached target `zz_worker` requires denied effect/capability `reads_reflection` / `reflection_read`",
+                "marker": "failure",
+                "label": "task admission also requires an explicit host TaskScope at runtime"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "effect-writes_reflection",
+        "file": "scripts/effect-writes_reflection.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_worker",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_worker",
+            "format": "PlainText",
+            "symbol": "effect-writes_reflection::zz_worker",
+            "appliedFile": "expected/effect-writes_reflection.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_effect_denied",
+                "message": "detached target `zz_worker` requires denied effect/capability `writes_reflection` / `reflection_write`",
+                "marker": "failure",
+                "label": "task admission also requires an explicit host TaskScope at runtime"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "effect-calls_reflection",
+        "file": "scripts/effect-calls_reflection.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_worker",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_worker",
+            "format": "PlainText",
+            "symbol": "effect-calls_reflection::zz_worker",
+            "appliedFile": "expected/effect-calls_reflection.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_effect_denied",
+                "message": "detached target `zz_worker` requires denied effect/capability `calls_reflection` / `reflection_call`",
+                "marker": "failure",
+                "label": "task admission also requires an explicit host TaskScope at runtime"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "effect-transitive",
+        "file": "scripts/effect-transitive.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_done",
+            "format": "PlainText",
+            "symbol": "effect-transitive::zz_done",
+            "appliedFile": "expected/effect-transitive.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_effect_denied",
+                "message": "detached target `worker` requires denied effect/capability `reads_io` / `io_read`",
+                "marker": "failure",
+                "label": "task admission also requires an explicit host TaskScope at runtime"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "effect-continuation",
+        "file": "scripts/effect-continuation.vela",
+        "items": [
+          {
+            "named": false,
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_done",
+            "format": "PlainText",
+            "symbol": "effect-continuation::zz_done",
+            "appliedFile": "expected/effect-continuation.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::task_effect_denied",
+                "message": "detached target `worker` requires denied effect/capability `reads_io` / `io_read`",
+                "marker": "failure",
+                "label": "task admission also requires an explicit host TaskScope at runtime"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      }
+    ]
+  }
+}
