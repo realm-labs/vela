@@ -771,7 +771,7 @@ impl LanguageServiceDatabases {
     /// memoized until the module graph or the schema changes.
     pub(crate) fn schema_analysis_facts(&self) -> &AnalysisFacts {
         self.analysis_cache
-            .with_schema(self.hir_db.graph(), self.schema_db.facts())
+            .with_schema(self.hir_db.graph(), &self.schema_db)
     }
 
     /// Number of whole-workspace fact builds this database has paid for. Tests

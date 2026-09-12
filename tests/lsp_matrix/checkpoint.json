@@ -1109,10 +1109,19 @@
         "completion/states/unresolved/protocol"
       ],
       "summary": "Complete reserved Service callee-path candidates using the same static owner resolution as positional calls. service::base methods require one reachable service origin; service::pinned members/methods use exact ServiceSet member identity. Missing/ambiguous owners, malformed shapes, imports/type sites and nested lambda/default bodies return no candidates without borrowing colliding source or ordinary schema declarations. Exact schema symbol identity and async parameter/return details survive lazy completion resolve. Full-token replacement fixes mid-identifier insertion; CST lookahead preserves an existing argument list, including trivia and incomplete calls. Thirty-one independently specified shared cases run in service and protocol layers under LF/CRLF and full/missing/ordinary-only schema modes (186 queries per layer), checking exact sets, detail/kind/identity, repeat, UTF-16 edits, parser-clean applied recovery and re-query. Preserve the initial missing Service method and prefix-only edit reproductions in b03-12-service-red.log and b03-12-edit-red.log. Focused matrix tests, relevant all-target Clippy, fmt and Node 73 passed. Final Windows source-bound audit run-12O9EE passed service 593 plus two historical ignored and protocol 580; installed VSIX run-E2SdeP passed 9 and native input-zzyTCR passed 13. Strict B02 regression refreshed all 145 accepted B00-B02 requirements without changing their historical acceptance records. B03 remains unaccepted; broad S5 stays unreviewed and whole pending-batch scope remains 1332. Continue B03.13 by independently testing unhinted service implementation parameters against the registered method contract and propagating their static facts through member/completion/call queries as needed; vela_analysis currently seeds local hints but has no ServiceSet/ServiceImpl parameter projection. Audit renamed/explicit/conflicting parameters, missing/invalid/ambiguous registrations, nested use, returned/view types and schema refresh. Remaining S5 also includes imported external callable lookup across signature/expected providers, name-aware occupied argument slots, provider/variable-arity contracts and root service namespace suggestions; lifecycle and UX04 remain open. macOS needs fresh proof after these changes when next used, B16 deferred. Find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B03.13",
+      "revision": null,
+      "requirements": [
+        "completion/states/repeat/protocol",
+        "completion/states/unresolved/protocol"
+      ],
+      "summary": "Seed unhinted Service implementation parameters from the exact registered method positional contract before shared local/expression analysis. Require valid per-declaration HIR ServiceImpl metadata and exact ServiceSet owner/method membership, matching arity/asyncness and no parameter defaults. Explicit source hints, including Any/unknown/conflicting hints, retain precedence. Add an analysis constructor with initial local facts while preserving existing graph-only and executable compiler entrypoints. Schema-backed memoization owns the projection; local completion now reads those same facts. Twenty-four independent shared cases run in service/protocol under LF/CRLF and complete/missing/ordinary-only schema (144 queries per layer): renamed slots, captured/shadowed parameters, local/member/Host/view/tuple types, malformed/duplicate attributes and invalid signatures, incomplete impl recovery, direct/chained method signatures and named-value expected arguments. Assert exact candidate sets, kinds/details/identities, UTF-16 edits, parseable applications and re-query. Dedicated tests cover schema change to a different parameter type, ordinary-only metadata, invalid JSON, deletion and restoration; incremental results equal a fresh service database and repeated queries reuse the cache; protocol uses actual watched-file notifications. Initial missing member failure is retained in b03-13-service-red.log. A provisional positional-argument local candidate assertion exposed the existing named-only argument-start provider; preserve b03-13-parameters.log and the new open issue, while final call queries explicitly test named-value contexts. Full workspace 4411 passed plus two historical ignored; full Clippy/fmt and Node 73 passed. Final source-bound Windows audit run-s5KezF passed service 595 plus two historical ignored and protocol 582; installed run-1dSKjL passed 9, input-rtGjhD passed 13. Strict B02 reverified all 145 accepted B00-B02 requirements with historical acceptance records intact. B03 remains unaccepted, broad S5 unreviewed, remaining whole-batch scope 1332. Continue B03.14 by unifying imported external callable ownership for signature/expected-argument and named-completion queries: query_context/call.rs::named_callable_facts_by_path resolves exact source ownership and imported paths, while query_context.rs::callable_facts_by_path still falls back to globally matched callee spelling. Independently cover aliases, namespace imports, ambiguous imports, private/local source shadowing, missing targets and registry-vs-stdlib collisions. Then address name-aware argument slots, ordinary positional expression candidates, provider/variable-arity metadata, root service namespace suggestions and remaining S5/lifecycle/UX04. macOS requires fresh evidence when next used; B16 deferred. Find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.13",
-  "nextTask": "B03.13",
+  "activeChild": "B03.14",
+  "nextTask": "B03.14",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -2732,7 +2741,21 @@
     "target/b03-12-accepted-regression.log",
     "target/lsp-matrix/run-6jCSYW/report.json",
     "editors/vscode/test-results/run-E2SdeP/results.json",
-    "editors/vscode/test-results/input-zzyTCR/results.json"
+    "editors/vscode/test-results/input-zzyTCR/results.json",
+    "target/lsp-matrix/run-s5KezF/report.json",
+    "target/b03-13-baseline.log",
+    "target/b03-13-service-red.log",
+    "target/b03-13-parameters.log",
+    "target/b03-13-parameters-final.log",
+    "target/b03-13-workspace.log",
+    "target/b03-13-clippy.log",
+    "target/b03-13-node.log",
+    "target/b03-13-editor.log",
+    "target/b03-13-input.log",
+    "target/b03-13-accepted-regression.log",
+    "target/lsp-matrix/run-s5u3cd/report.json",
+    "editors/vscode/test-results/run-1dSKjL/results.json",
+    "editors/vscode/test-results/input-rtGjhD/results.json"
   ],
   "openIssues": [
     {
@@ -2753,6 +2776,11 @@
       "id": "named-argument-active-parameter-mapping",
       "owner": "B07",
       "summary": "The shared query active parameter remains a structural argument index. In host::grant(reason = \"x\", <cursor>), named completion correctly offers arg0, while signature highlighting still uses index 1. Define and verify name-aware argument/expected-type mapping in B03/S5 and B07; the metadata fixture checks the exact signature and candidate set but does not certify highlighting for this out-of-order case. Preserve b03-8-named-schema2.log, which observed the ordinal result, and add direct named-value/used-slot assertions before acceptance."
+    },
+    {
+      "id": "call-argument-expression-candidates",
+      "owner": "B03",
+      "summary": "B03.13 provisional fixture exposed ordinary argument-start completion returning only named parameters: in #[service_impl(api::Handler)] impl Patch { fn choose(peer, pair) { let chosen_value = 1; peer.take(chosen<cursor>); } }, the registered peer.take(amount: u32) signature resolves but the candidate set is empty instead of offering chosen_value. Existing context selects NamedArgument before an equals sign; final B03.13 tests use peer.take(amount = chosen<cursor>) and certify named-value inference only. Preserve target/b03-13-parameters.log. Add independent ordinary positional/expression and named-label candidate contracts before closing B03; do not infer complete call authoring coverage from current parameter-name tests."
     }
   ],
   "profiles": [
@@ -3358,8 +3386,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "99fd1143e59b45c03598245087b1b8c76f07fa91",
-          "treeSha256": "57f8ce6c2f95bb3a29a85fdbd595bd76413e8f3814b67c63917893bcac4e5866"
+          "revision": "e268178d8ca518160e236dde71c7707e659e25a4",
+          "treeSha256": "776e8c254bc38f3cb5c9eae19a2d48fa9d03e4aa09bf010b4e64dda4bca243e2"
         },
         "profile": {
           "platform": "win32",
@@ -3367,11 +3395,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-12O9EE/report.json"
+          "target/lsp-matrix/run-s5KezF/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-E2SdeP/results.json --local-results editors/vscode/test-results/input-zzyTCR/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-1dSKjL/results.json --local-results editors/vscode/test-results/input-rtGjhD/results.json",
             "exitCode": 0
           }
         ]

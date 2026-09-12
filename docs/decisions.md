@@ -4296,3 +4296,15 @@ Electron's rendered context menu and a test-window-scoped keyboard layout helper
 macOS retains native menu and input-source helpers. Evidence binds the selected
 profile, driver and installed bytes. URI normalization accounts only for file-URI
 encoding and Windows drive-letter case; it preserves filenames and Unicode.
+
+## Static Service Implementation Parameter Context
+
+Tooling seeds unhinted Service implementation parameters from the exact
+registered method's positional contract before shared local/expression analysis.
+Resolve each HIR implementation independently, require matching asyncness and
+arity with no defaults, and retain explicit source hints even when they are
+dynamic, unknown or conflicting. Missing or invalid ServiceSet metadata provides
+no contextual type. Schema-backed facts own these seeds and invalidate with
+schema/source changes; graph-only and executable compiler analysis retain their
+existing inputs. This provides authoring context without changing compiler
+acceptance, Host parameter guards, runtime values or service dispatch semantics.

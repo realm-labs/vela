@@ -1,0 +1,471 @@
+{
+  "version": 1,
+  "id": "completion-service-parameters",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.service_arguments\"\nname = \"service_arguments\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Context\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Context\"\n        }\n      },\n      {\n        \"name\": \"host::Reply\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"host::Reply\"\n        }\n      },\n      {\n        \"name\": \"host::Failure\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Failure\",\n          \"variant\": null\n        }\n      }\n    ]\n  },\n  \"serviceSet\": {\n    \"id\": \"set\",\n    \"path\": \"api::Services\",\n    \"abiFingerprint\": \"abi\",\n    \"typeBindingChecksum\": \"bindings\",\n    \"services\": [\n      {\n        \"id\": \"handler\",\n        \"member\": \"handler\",\n        \"path\": \"api::Handler\",\n        \"abiFingerprint\": \"handler-abi\",\n        \"methods\": [\n          {\n            \"id\": \"handle\",\n            \"name\": \"handle\",\n            \"path\": \"api::Handler::handle\",\n            \"asyncMethod\": true,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"context\",\n                \"typeHint\": \"host::Context\",\n                \"mode\": \"shared_host\"\n              },\n              {\n                \"name\": \"count\",\n                \"typeHint\": \"i64\",\n                \"mode\": \"owned\"\n              },\n              {\n                \"name\": \"tags\",\n                \"typeHint\": \"Array<String>\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"Result<host::Reply, host::Failure>\"\n          },\n          {\n            \"id\": \"choose\",\n            \"name\": \"choose\",\n            \"path\": \"api::Handler::choose\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"peer\",\n                \"typeHint\": \"api::Peer\",\n                \"mode\": \"owned\"\n              },\n              {\n                \"name\": \"pair\",\n                \"typeHint\": \"Tuple<String, i64>\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"Option<host::Reply>\"\n          },\n          {\n            \"id\": \"views\",\n            \"name\": \"views\",\n            \"path\": \"api::Handler::views\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"values\",\n                \"typeHint\": \"ArrayMut<i64, growable>\",\n                \"mode\": \"owned\"\n              },\n              {\n                \"name\": \"lookup\",\n                \"typeHint\": \"MapMut<String, i64, fixed>\",\n                \"mode\": \"owned\"\n              },\n              {\n                \"name\": \"keys\",\n                \"typeHint\": \"SetView<String>\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"()\"\n          },\n          {\n            \"id\": \"empty\",\n            \"name\": \"empty\",\n            \"path\": \"api::Handler::empty\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [],\n            \"returnType\": \"()\"\n          },\n          {\n            \"id\": \"unknown\",\n            \"name\": \"unknown\",\n            \"path\": \"api::Handler::unknown\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"value\",\n                \"typeHint\": \"missing::Context\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"()\"\n          },\n          {\n            \"id\": \"next\",\n            \"name\": \"next\",\n            \"path\": \"api::Handler::next\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [],\n            \"returnType\": \"api::Peer\"\n          },\n          {\n            \"id\": \"grow\",\n            \"name\": \"grow\",\n            \"path\": \"api::Handler::grow\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [],\n            \"returnType\": \"ArrayMut<i64, growable>\"\n          },\n          {\n            \"id\": \"forward\",\n            \"name\": \"forward\",\n            \"path\": \"api::Handler::forward\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"handler\",\n                \"typeHint\": \"api::Handler\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"()\"\n          }\n        ]\n      },\n      {\n        \"id\": \"peer\",\n        \"member\": \"peer\",\n        \"path\": \"api::Peer\",\n        \"abiFingerprint\": \"peer-abi\",\n        \"methods\": [\n          {\n            \"id\": \"take\",\n            \"name\": \"take\",\n            \"path\": \"api::Peer::take\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"amount\",\n                \"typeHint\": \"u32\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"bool\"\n          }\n        ]\n      }\n    ]\n  }\n}\n",
+    "scripts/member.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn choose(peer, pair) { peer.[[replace:start]]ta[[cursor]][[replace:end]]; } }\n",
+    "scripts/renamed.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn choose(renamed, peer) { renamed.[[replace:start]]ta[[cursor]][[replace:end]]; } }\n",
+    "scripts/captured.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn choose(peer, pair) { let f = || { peer.[[replace:start]]ta[[cursor]][[replace:end]]; }; } }\n",
+    "scripts/shadowed.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn choose(peer, pair) { let f = |peer: Any| { peer.[[replace:start]]ta[[cursor]][[replace:end]]; }; } }\n",
+    "scripts/local.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn choose(chosen_value, pair) { [[replace:start]]chosen[[cursor]][[replace:end]]; } }\n",
+    "scripts/tuple.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn choose(peer, chosen_value) { [[replace:start]]chosen[[cursor]][[replace:end]]; } }\n",
+    "scripts/explicit.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn choose(chosen_value: String, pair) { [[replace:start]]chosen[[cursor]][[replace:end]]; } }\n",
+    "scripts/explicit_any.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn choose(chosen_value: Any, pair) { [[replace:start]]chosen[[cursor]][[replace:end]]; } }\n",
+    "scripts/explicit_conflict.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn choose(chosen_value: i64, pair) { [[replace:start]]chosen[[cursor]][[replace:end]]; } }\n",
+    "scripts/missing_attribute.vela": "/* 中😀 */ impl Patch { fn choose(peer, pair) { peer.[[replace:start]]ta[[cursor]][[replace:end]]; } }\n",
+    "scripts/bad_attribute.vela": "/* 中😀 */ #[service_impl(\"api::Handler\")] impl Patch { fn choose(peer, pair) { peer.[[replace:start]]ta[[cursor]][[replace:end]]; } }\n",
+    "scripts/missing_service.vela": "/* 中😀 */ #[service_impl(missing::Handler)] impl Patch { fn choose(peer, pair) { peer.[[replace:start]]ta[[cursor]][[replace:end]]; } }\n",
+    "scripts/missing_method.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn absent(peer, pair) { peer.[[replace:start]]ta[[cursor]][[replace:end]]; } }\n",
+    "scripts/wrong_arity.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn choose(peer) { peer.[[replace:start]]ta[[cursor]][[replace:end]]; } }\n",
+    "scripts/wrong_async.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn choose(peer, pair) { peer.[[replace:start]]ta[[cursor]][[replace:end]]; } }\n",
+    "scripts/default.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn choose(peer, pair = 1) { peer.[[replace:start]]ta[[cursor]][[replace:end]]; } }\n",
+    "scripts/incomplete.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn choose(peer, pair) { peer.[[replace:start]]ta[[cursor]][[replace:end]]\n",
+    "scripts/view.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn views(chosen_value, lookup, keys) { [[replace:start]]chosen[[cursor]][[replace:end]]; } }\n",
+    "scripts/call.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn choose(peer, pair) { let chosen_value = 1; peer.take(amount = [[replace:start]]chosen[[cursor]][[replace:end]]); } }\n",
+    "scripts/returned_call.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn forward(handler) { let chosen_value = 1; handler.next().take(amount = [[replace:start]]chosen[[cursor]][[replace:end]]); } }\n",
+    "scripts/duplicate_attribute.vela": "/* 中😀 */ #[service_impl(api::Handler)] #[service_impl(api::Peer)] impl Patch { fn choose(peer, pair) { peer.[[replace:start]]ta[[cursor]][[replace:end]]; } }\n",
+    "scripts/explicit_unknown.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn choose(chosen_value: missing::Type, pair) { [[replace:start]]chosen[[cursor]][[replace:end]]; } }\n",
+    "scripts/unknown_contract_type.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { fn unknown(chosen_value) { [[replace:start]]chosen[[cursor]][[replace:end]]; } }\n",
+    "scripts/host.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(chosen_value, count, tags) { [[replace:start]]chosen[[cursor]][[replace:end]]; } }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "member",
+        "file": "scripts/member.vela",
+        "items": [
+          {
+            "label": "take",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function(u32) -> bool",
+            "insert": "take($0)",
+            "symbol": "api::Peer.take",
+            "docs": null
+          }
+        ],
+        "withoutSchemaItems": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "renamed",
+        "file": "scripts/renamed.vela",
+        "items": [
+          {
+            "label": "take",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function(u32) -> bool",
+            "insert": "take($0)",
+            "symbol": "api::Peer.take",
+            "docs": null
+          }
+        ],
+        "withoutSchemaItems": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "captured",
+        "file": "scripts/captured.vela",
+        "items": [
+          {
+            "label": "take",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function(u32) -> bool",
+            "insert": "take($0)",
+            "symbol": "api::Peer.take",
+            "docs": null
+          }
+        ],
+        "withoutSchemaItems": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "shadowed",
+        "file": "scripts/shadowed.vela",
+        "items": [],
+        "withoutSchemaItems": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "local",
+        "file": "scripts/local.vela",
+        "items": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "api::Peer",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "withoutSchemaItems": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "unknown",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "tuple",
+        "file": "scripts/tuple.vela",
+        "items": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "(String, i64)",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "withoutSchemaItems": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "unknown",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "explicit",
+        "file": "scripts/explicit.vela",
+        "items": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "String",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "withoutSchemaItems": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "String",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "explicit_any",
+        "file": "scripts/explicit_any.vela",
+        "items": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "Any",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "withoutSchemaItems": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "Any",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "explicit_conflict",
+        "file": "scripts/explicit_conflict.vela",
+        "items": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "i64",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "withoutSchemaItems": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "i64",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "missing_attribute",
+        "file": "scripts/missing_attribute.vela",
+        "items": [],
+        "withoutSchemaItems": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "bad_attribute",
+        "file": "scripts/bad_attribute.vela",
+        "items": [],
+        "withoutSchemaItems": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "missing_service",
+        "file": "scripts/missing_service.vela",
+        "items": [],
+        "withoutSchemaItems": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "missing_method",
+        "file": "scripts/missing_method.vela",
+        "items": [],
+        "withoutSchemaItems": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "wrong_arity",
+        "file": "scripts/wrong_arity.vela",
+        "items": [],
+        "withoutSchemaItems": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "wrong_async",
+        "file": "scripts/wrong_async.vela",
+        "items": [],
+        "withoutSchemaItems": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "default",
+        "file": "scripts/default.vela",
+        "items": [],
+        "withoutSchemaItems": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "incomplete",
+        "file": "scripts/incomplete.vela",
+        "items": [
+          {
+            "label": "take",
+            "kind": "Method",
+            "lspKind": 2,
+            "detail": "Function(u32) -> bool",
+            "insert": "take($0)",
+            "symbol": "api::Peer.take",
+            "docs": null
+          }
+        ],
+        "withoutSchemaItems": [],
+        "recoverySuffix": "; } }"
+      },
+      {
+        "id": "view",
+        "file": "scripts/view.vela",
+        "items": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "ArrayMut(i64, growable)",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "withoutSchemaItems": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "unknown",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "call",
+        "file": "scripts/call.vela",
+        "items": [
+          {
+            "label": "chosen_value",
+            "kind": "Binding",
+            "lspKind": 6,
+            "detail": "i64",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "withoutSchemaItems": [
+          {
+            "label": "chosen_value",
+            "kind": "Binding",
+            "lspKind": 6,
+            "detail": "i64",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "recoverySuffix": "",
+        "signature": "api::Peer.take(amount: u32) -> bool",
+        "expectedName": "amount",
+        "expectedType": "u32"
+      },
+      {
+        "id": "returned_call",
+        "file": "scripts/returned_call.vela",
+        "items": [
+          {
+            "label": "chosen_value",
+            "kind": "Binding",
+            "lspKind": 6,
+            "detail": "i64",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "withoutSchemaItems": [
+          {
+            "label": "chosen_value",
+            "kind": "Binding",
+            "lspKind": 6,
+            "detail": "i64",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "recoverySuffix": "",
+        "signature": "api::Peer.take(amount: u32) -> bool",
+        "expectedName": "amount",
+        "expectedType": "u32"
+      },
+      {
+        "id": "duplicate_attribute",
+        "file": "scripts/duplicate_attribute.vela",
+        "items": [],
+        "withoutSchemaItems": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "explicit_unknown",
+        "file": "scripts/explicit_unknown.vela",
+        "items": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "unknown",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "withoutSchemaItems": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "unknown",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "unknown_contract_type",
+        "file": "scripts/unknown_contract_type.vela",
+        "items": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "unknown",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "withoutSchemaItems": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "unknown",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "host",
+        "file": "scripts/host.vela",
+        "items": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "host::Context",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "withoutSchemaItems": [
+          {
+            "label": "chosen_value",
+            "kind": "Parameter",
+            "lspKind": 6,
+            "detail": "unknown",
+            "insert": "chosen_value",
+            "symbol": null,
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      }
+    ]
+  }
+}

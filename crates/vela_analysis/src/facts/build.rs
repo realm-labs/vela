@@ -31,7 +31,22 @@ impl AnalysisFacts {
     }
 
     fn from_module_graph_with_schema(graph: &ModuleGraph, schema: Option<&RegistryFacts>) -> Self {
-        Self::build(graph, schema, None, None, None)
+        Self::default().build(graph, schema, None, None, None)
+    }
+
+    /// Seed externally registered parameter contracts before resolving local
+    /// uses and expressions. Explicit source hints retain precedence.
+    #[must_use]
+    pub fn from_module_graph_and_schema_with_local_facts(
+        graph: &ModuleGraph,
+        schema: &RegistryFacts,
+        locals: impl IntoIterator<Item = (HirLocalId, TypeFact)>,
+    ) -> Self {
+        Self {
+            locals: locals.into_iter().collect(),
+            ..Self::default()
+        }
+        .build(graph, Some(schema), None, None, None)
     }
 
     pub(crate) fn from_executable_scope(
@@ -41,7 +56,7 @@ impl AnalysisFacts {
         receiver: Option<ExecutableReceiverSeed<'_>>,
         literal_contexts: &BTreeMap<HirExprId, LiteralPrimitiveContext>,
     ) -> Self {
-        Self::build(
+        Self::default().build(
             graph,
             schema,
             Some(bodies),
@@ -51,13 +66,14 @@ impl AnalysisFacts {
     }
 
     fn build(
+        self,
         graph: &ModuleGraph,
         schema: Option<&RegistryFacts>,
         bodies: Option<&BTreeSet<HirBodyId>>,
         receiver: Option<ExecutableReceiverSeed<'_>>,
         literal_contexts: Option<&BTreeMap<HirExprId, LiteralPrimitiveContext>>,
     ) -> Self {
-        let mut facts = Self::default();
+        let mut facts = self;
 
         for declaration in graph.declarations() {
             if let Some(fact) = declaration_fact(graph, schema, declaration.id) {

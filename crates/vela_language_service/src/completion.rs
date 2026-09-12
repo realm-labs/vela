@@ -35,6 +35,8 @@ mod record_field_tests;
 mod relevance;
 mod schema_function;
 mod schema_type;
+#[cfg(test)]
+mod service_parameter_tests;
 mod service_path;
 #[cfg(test)]
 mod service_path_tests;

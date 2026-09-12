@@ -666,9 +666,14 @@ Service callee-path completion now uses the same static ownership relation:
 base methods and pinned members/methods have exact ServiceSet candidates, with
 no same-name source/schema fallback in reserved paths. Thirty-one shared cases
 check both layers, all three schema modes, LF/CRLF, lazy symbol resolution,
-full-token edits and preservation of existing arguments. Unhinted service
-parameter propagation and imported callable lookup across signature/expected-
-argument providers still need their focused audit. The earlier macOS input regression stopped on a locked
+full-token edits and preservation of existing arguments. Unhinted Service
+implementation parameters now receive registered positional type facts before
+shared expression analysis. Twenty-four cases cover local/member completion,
+captured and shadowed parameters, explicit-hint precedence, structural rejection,
+view/Host types and direct/chained signature queries; schema update, invalidation,
+deletion and recovery refresh the cached types. Imported callable lookup across
+signature/expected-argument providers still needs its focused audit.
+The earlier macOS input regression stopped on a locked
 desktop; that record does not imply a Windows blocker. Current platform evidence
 must be collected before strict acceptance; see [blocked.md](blocked.md).
 The alternating-machine infrastructure now runs B01/UX02/UX03 on Windows x64:
@@ -676,7 +681,7 @@ actual suggestion acceptance, F12/back and palettes, modifier-click, context-men
 Peek, exact Unicode targets and no-jump outcomes pass. The installed provider
 suite passes all nine scenarios. The original macOS acceptance remains historical;
 changed driver code needs fresh proof when that machine is next used. Shared
-implementation resumes at B03.13.
+implementation resumes at B03.14.
 
 ### Deferred Tracks
 

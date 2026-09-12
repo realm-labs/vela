@@ -1,9 +1,10 @@
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use crate::incremental::SchemaDb;
 use vela_analysis::facts::AnalysisFacts;
-use vela_analysis::registry::RegistryFacts;
 use vela_hir::module_graph::ModuleGraph;
+mod service_parameters;
 
 use std::sync::Arc;
 
@@ -45,14 +46,16 @@ impl AnalysisFactsCache {
         })
     }
 
-    pub(crate) fn with_schema(
-        &self,
-        graph: &ModuleGraph,
-        schema: &RegistryFacts,
-    ) -> &AnalysisFacts {
+    pub(crate) fn with_schema(&self, graph: &ModuleGraph, schema: &SchemaDb) -> &AnalysisFacts {
         self.with_schema.get_or_init(|| {
             self.builds.fetch_add(1, Ordering::Relaxed);
-            Arc::new(AnalysisFacts::from_module_graph_and_schema(graph, schema))
+            Arc::new(
+                AnalysisFacts::from_module_graph_and_schema_with_local_facts(
+                    graph,
+                    schema.facts(),
+                    service_parameters::parameter_facts(graph, schema),
+                ),
+            )
         })
     }
 

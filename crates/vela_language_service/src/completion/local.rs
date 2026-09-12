@@ -13,7 +13,7 @@ pub(super) fn local_completion_items(
     query: &QueryContext<'_>,
     context: &CompletionContext,
 ) -> Vec<CompletionItem> {
-    let facts = databases.graph_analysis_facts();
+    let facts = databases.schema_analysis_facts();
     let items = query
         .local_bindings_before_cursor()
         .filter(|local| local.name.starts_with(context.prefix()))
