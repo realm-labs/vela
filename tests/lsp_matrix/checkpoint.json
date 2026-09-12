@@ -1293,10 +1293,37 @@
         "completion-resolve/syntax/S5/negative/protocol"
       ],
       "summary": "Source expression and type completions now share address selection that resolves the exact declaration ID in the querying package/import scope. Direct dependency candidates retain a usable dependency prefix; shadowed canonical paths use crate qualification; inaccessible, unreachable transitive and shadowed dependency targets cannot lend candidates. Twelve shared package callable/constant cases cover complete sets, aliases, canonical/dependency shadowing, private and unknown targets, and current-module short labels under Unicode LF/CRLF. Applying each callable edit preserves its own signature and parameter names, exact parameter replacement edits, and target URI/range; constants also provide explicit edits. Resolve remains source-owned despite same-name schema metadata. Direct qualified dependency definition lookup now resolves in the query scope even when import expansion leaves the spelling unchanged. Original red assertions exposed flattened dependency ownership and transitive leakage, followed by missing dependency navigation and constant edits. Existing type ownership cases retain their assertions through the shared helper. Workspace 4455 passed, two historical ignored; service 616 plus two ignored and protocol 600; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-giiaXQ/results.json passed 9; native editors/vscode/test-results/input-yXKOT6/results.json passed 13; strict target/lsp-matrix/run-gfUJAq/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. These S5/S8 requirements are partial child progress, not whole-partition acceptance. B03 remains unaccepted. Resume B03.25 with dependency member/returned-receiver identity and cross-feature ownership, then remaining semantic/lifecycle obligations and UX04. Fresh macOS proof is required when next used. B16 remains deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.25",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S4/positive/service",
+        "completion/syntax/S4/positive/protocol",
+        "completion/syntax/S4/negative/service",
+        "completion/syntax/S4/negative/protocol",
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/negative/protocol",
+        "completion/syntax/S8/positive/service",
+        "completion/syntax/S8/positive/protocol",
+        "completion/syntax/S8/negative/service",
+        "completion/syntax/S8/negative/protocol",
+        "completion-resolve/syntax/S4/positive/service",
+        "completion-resolve/syntax/S4/positive/protocol",
+        "completion-resolve/syntax/S4/negative/service",
+        "completion-resolve/syntax/S4/negative/protocol",
+        "completion-resolve/syntax/S5/positive/service",
+        "completion-resolve/syntax/S5/positive/protocol",
+        "completion-resolve/syntax/S5/negative/service",
+        "completion-resolve/syntax/S5/negative/protocol"
+      ],
+      "summary": "Twenty-four shared package member cases cover root and direct dependency types with identical canonical names, a transitive same-name package, and colliding schema metadata under Unicode LF/CRLF. They assert full unprefixed member sets and prefix exclusions, source ownership and resolve pass-through, exact edit application, one owned inherent/default/trait method signature, exact named parameter edits and inlay label/position, and exact applied definition URI/range. Function and function-alias returns, inherent/default method returns and let-bound returned receivers preserve their fields and package targets. Red assertions exposed three simultaneous method signatures, missing method navigation, trait hint identity loss, empty dependency function-return members, and byte-column inlay positions after Unicode. Member call facts and navigation now retain receiver declaration IDs, share resolved impl-owner matching, and include trait hints in source identity facts. Scoped source function resolution drives semantic call targets and return hints; method return inference matches the exact receiver declaration before reading its signature. Inlay queries preserve callable identity and the protocol converts byte positions through its UTF-16 line index. No runtime or language feature was added. Workspace 4457 passed, two historical ignored; service 617 plus two ignored and protocol 601; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-ExHdiw/results.json passed 9; native editors/vscode/test-results/input-xHNvGv/results.json passed 13; strict target/lsp-matrix/run-0BQx0j/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. These S4/S5/S8 requirements are partial child progress, not whole-partition acceptance. B03 remains unaccepted. Resume B03.26 with trait-return and async/control-flow receiver combinations, then remaining semantic/lifecycle obligations and UX04. Fresh macOS proof is required when next used. B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.25",
-  "nextTask": "B03.25",
+  "activeChild": "B03.26",
+  "nextTask": "B03.26",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -3141,7 +3168,25 @@
     "target/b03-24-accepted-regression.log",
     "target/lsp-matrix/run-PXtpev/report.json",
     "editors/vscode/test-results/run-giiaXQ/results.json",
-    "editors/vscode/test-results/input-yXKOT6/results.json"
+    "editors/vscode/test-results/input-yXKOT6/results.json",
+    "target/lsp-matrix/run-0BQx0j/report.json",
+    "target/b03-25-baseline.log",
+    "target/b03-25-red.log",
+    "target/b03-25-callables.log",
+    "target/b03-25-navigation.log",
+    "target/b03-25-returns.log",
+    "target/b03-25-functions.log",
+    "target/b03-25-sets.log",
+    "target/b03-25-inlay.log",
+    "target/b03-25-workspace.log",
+    "target/b03-25-clippy.log",
+    "target/b03-25-node.log",
+    "target/b03-25-editor.log",
+    "target/b03-25-input.log",
+    "target/b03-25-accepted-regression.log",
+    "target/lsp-matrix/run-ypnyio/report.json",
+    "editors/vscode/test-results/run-ExHdiw/results.json",
+    "editors/vscode/test-results/input-xHNvGv/results.json"
   ],
   "openIssues": [
     {
@@ -3762,8 +3807,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "8babb380c0ffa53a35259728a58c7a983a21e795",
-          "treeSha256": "e327a2db1fd11d29fcdbb73a81eb1b79d6c61d594afa39d1b23864ebfd3e64f0"
+          "revision": "fd12a776498e3d1ea95c31c473f79ad2c41339ca",
+          "treeSha256": "b6f6090bb1f66b2e79c256b4c096c97aeeb75db7956662acf2582a68d380b66a"
         },
         "profile": {
           "platform": "win32",
@@ -3771,11 +3816,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-gfUJAq/report.json"
+          "target/lsp-matrix/run-0BQx0j/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-giiaXQ/results.json --local-results editors/vscode/test-results/input-yXKOT6/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-ExHdiw/results.json --local-results editors/vscode/test-results/input-xHNvGv/results.json",
             "exitCode": 0
           }
         ]

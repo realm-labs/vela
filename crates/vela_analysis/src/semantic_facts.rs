@@ -512,10 +512,7 @@ impl HirSemanticFacts {
                         }
                         Some(BindingResolution::Local(id)) => CallTargetFact::Local(*id),
                         Some(BindingResolution::Import(_)) => {
-                            expression_path(body, call.callee, HirPathKind::Callee)
-                                .map_or(CallTargetFact::Unresolved, |path| {
-                                    imported_variant_call_target(graph, schema, body, path)
-                                })
+                            self.unbound_call_target(graph, body, id, call, schema)
                         }
                         Some(BindingResolution::QualifiedPath(_)) => {
                             self.unbound_call_target(graph, body, id, call, schema)
@@ -852,7 +849,9 @@ impl HirSemanticFacts {
         if let Some(field) = body.field(call.callee) {
             let receiver = self.fact(field.receiver);
             let script_type = self.script_types.get(&field.receiver).cloned();
-            if let Some(method) = source_method(graph, &receiver, &field.name, schema) {
+            if let Some(method) =
+                source_method(graph, &receiver, script_type.as_ref(), &field.name, schema)
+            {
                 return CallTargetFact::ScriptMethod {
                     method: method.node,
                 };
@@ -901,6 +900,9 @@ impl HirSemanticFacts {
         let Some(path) = expression_path(body, call.callee, HirPathKind::Callee) else {
             return CallTargetFact::Dynamic;
         };
+        if let Some(declaration) = lookups::source_function(graph, body, call.callee) {
+            return CallTargetFact::Declaration(declaration.id);
+        }
         let variant = imported_variant_call_target(graph, schema, body, path);
         if !matches!(variant, CallTargetFact::Unresolved) {
             return variant;
@@ -947,7 +949,13 @@ impl HirSemanticFacts {
             if !matches!(direct, TypeFact::Unknown) {
                 return direct;
             }
-            if let Some(method) = source_method(graph, &receiver, &field.name, schema) {
+            if let Some(method) = source_method(
+                graph,
+                &receiver,
+                self.script_types.get(&field.receiver),
+                &field.name,
+                schema,
+            ) {
                 return method.returns;
             }
             if let Some(method) = stdlib_method_fact(&receiver, &field.name, None) {
@@ -960,6 +968,18 @@ impl HirSemanticFacts {
                 return call_return_fact(method.clone());
             }
             return TypeFact::Unknown;
+        }
+        if let Some(declaration) = lookups::source_function(graph, body, call.callee)
+            && let Some(hint) = graph
+                .function_signature(declaration.id)
+                .and_then(|signature| signature.return_type.as_ref())
+        {
+            return crate::hints::type_fact_from_hint_with_schema(
+                graph,
+                declaration.module,
+                hint,
+                schema,
+            );
         }
         let direct = call_return_fact(self.fact(call.callee));
         if !matches!(direct, TypeFact::Unknown) {

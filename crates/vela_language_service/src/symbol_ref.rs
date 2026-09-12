@@ -257,3 +257,30 @@ pub(crate) fn builtin_symbol(name: impl Into<String>) -> SymbolRef {
 pub(crate) fn builtin_member_symbol(owner: &str, member: &str) -> SymbolRef {
     SymbolRef::Builtin(format!("{owner}.{member}"))
 }
+
+pub(crate) fn source_impl_has_owner(
+    graph: &ModuleGraph,
+    declaration: &vela_hir::module_graph::Declaration,
+    owner: Option<vela_hir::ids::HirDeclId>,
+) -> bool {
+    let Some(owner) = owner else {
+        return true;
+    };
+    let Some(metadata) = graph.impl_metadata(declaration.id) else {
+        return false;
+    };
+    let Some(path) = graph.expand_import_path(declaration.module, &metadata.target_path) else {
+        return false;
+    };
+    [
+        DeclarationKind::Struct,
+        DeclarationKind::Enum,
+        DeclarationKind::Trait,
+    ]
+    .into_iter()
+    .any(|kind| {
+        graph
+            .resolve_visible_declaration_path(declaration.module, &path, kind)
+            .is_some_and(|target| target.id == owner)
+    })
+}

@@ -31,7 +31,10 @@ pub(super) fn source_field_type_fact_for_target(
     let graph = databases.hir_db().graph();
     let owner_names = record_owner_names(receiver);
     graph.declarations().find_map(|declaration| {
-        if declaration.kind != DeclarationKind::Struct
+        if target
+            .member_receiver_declaration()
+            .is_some_and(|owner| owner != declaration.id)
+            || declaration.kind != DeclarationKind::Struct
             || !owner_names
                 .iter()
                 .any(|owner| declaration_name_matches(graph, declaration, owner))
@@ -61,7 +64,10 @@ fn source_field_definition_for_target(
 ) -> Option<Definition> {
     let owner_names = record_owner_names(receiver);
     graph.declarations().find_map(|declaration| {
-        if declaration.kind != DeclarationKind::Struct
+        if target
+            .member_receiver_declaration()
+            .is_some_and(|owner| owner != declaration.id)
+            || declaration.kind != DeclarationKind::Struct
             || !owner_names
                 .iter()
                 .any(|owner| declaration_name_matches(graph, declaration, owner))
@@ -93,7 +99,13 @@ fn source_impl_method_definition_for_target(
     // not select a target based on declaration iteration order.
     for inherent in [true, false] {
         let mut candidates = graph.declarations().filter_map(|declaration| {
-            if declaration.kind != DeclarationKind::Impl {
+            if declaration.kind != DeclarationKind::Impl
+                || !crate::symbol_ref::source_impl_has_owner(
+                    graph,
+                    declaration,
+                    target.member_receiver_declaration(),
+                )
+            {
                 return None;
             }
             let metadata = graph.impl_metadata(declaration.id)?;
@@ -130,7 +142,10 @@ fn source_trait_method_definition_for_target(
 ) -> Option<Definition> {
     let owner_names = trait_owner_names(receiver);
     graph.declarations().find_map(|declaration| {
-        if declaration.kind != DeclarationKind::Trait
+        if target
+            .member_receiver_declaration()
+            .is_some_and(|owner| owner != declaration.id)
+            || declaration.kind != DeclarationKind::Trait
             || !owner_names
                 .iter()
                 .any(|owner| declaration_name_matches(graph, declaration, owner))
@@ -159,7 +174,13 @@ fn source_trait_default_method_definition_for_target(
 ) -> Option<Definition> {
     let owner_names = record_owner_names(receiver);
     graph.declarations().find_map(|declaration| {
-        if declaration.kind != DeclarationKind::Impl {
+        if declaration.kind != DeclarationKind::Impl
+            || !crate::symbol_ref::source_impl_has_owner(
+                graph,
+                declaration,
+                target.member_receiver_declaration(),
+            )
+        {
             return None;
         }
         let metadata = graph.impl_metadata(declaration.id)?;

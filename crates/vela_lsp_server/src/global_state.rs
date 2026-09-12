@@ -746,12 +746,17 @@ impl GlobalStateSnapshot {
             }
         };
         let hints = self.databases.inlay_hints(&input.document_id, input.range);
-
-        response_ok_typed_messages(
-            id,
-            to_proto::inlay_hints(&hints),
-            "typed inlayHint response",
-        )
+        let projected = match to_proto::inlay_hints(&hints, &text) {
+            Ok(hints) => hints,
+            Err(error) => {
+                return response_error_messages(
+                    id,
+                    ErrorCode::InternalError,
+                    format!("invalid inlayHint position: {error}"),
+                );
+            }
+        };
+        response_ok_typed_messages(id, projected, "typed inlayHint response")
     }
 
     fn navigation_location(

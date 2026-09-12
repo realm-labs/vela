@@ -27,6 +27,7 @@ pub(crate) struct SymbolTarget {
     text: String,
     range: TextRange,
     member_receiver_fact: Option<TypeFact>,
+    member_receiver_declaration: Option<vela_hir::ids::HirDeclId>,
     symbol: Option<SymbolRef>,
 }
 
@@ -45,6 +46,8 @@ impl SymbolTarget {
             text,
             range,
             member_receiver_fact,
+            member_receiver_declaration: member_receiver
+                .and_then(|range| query.source_type_for_range(databases, range)),
             symbol,
         })
     }
@@ -59,6 +62,10 @@ impl SymbolTarget {
 
     pub(crate) fn member_receiver_fact(&self) -> Option<&TypeFact> {
         self.member_receiver_fact.as_ref()
+    }
+
+    pub(crate) fn member_receiver_declaration(&self) -> Option<vela_hir::ids::HirDeclId> {
+        self.member_receiver_declaration
     }
 
     pub(crate) fn symbol(&self) -> Option<&SymbolRef> {

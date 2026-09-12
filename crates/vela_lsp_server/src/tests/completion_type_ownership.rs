@@ -18,6 +18,11 @@ fn package_callable_ownership_projects_sets_signatures_and_applied_targets() {
     assert_type_ownership("completion-package-callables");
 }
 
+#[test]
+fn package_member_ownership_projects_sets_signatures_returns_and_targets() {
+    assert_type_ownership("completion-package-members");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -80,6 +85,8 @@ fn assert_type_ownership(fixture_id: &str) {
                     .expect("item");
                 let kind = match string(expected, "kind") {
                     "Function" => 3,
+                    "Method" => 2,
+                    "Field" => 5,
                     "Const" => 21,
                     "Type" => 22,
                     "Trait" => 8,
@@ -174,6 +181,23 @@ fn assert_type_ownership(fixture_id: &str) {
                     );
                 }
                 if let Some(argument) = expected.get("argument") {
+                    if let Some(label) = expected["inlay"].as_str() {
+                        let character =
+                            range.start.character + insertion.find('(').expect("call") + 1;
+                        let point = json!({"line":range.start.line,"character":character});
+                        let hints = response_value(request::<r::InlayHintRequest>(
+                            &mut server,
+                            id,
+                            json!({"textDocument":{"uri":uri(file)},"range":{"start":point,"end":point}}),
+                        ));
+                        id += 1;
+                        assert!(hints["error"].is_null());
+                        let hints = hints["result"].as_array().expect("hints");
+                        assert_eq!(hints.len(), 1, "{case}");
+                        assert_eq!(hints[0]["label"], label, "{case}");
+                        assert_eq!(hints[0]["kind"], 2);
+                        assert_eq!(hints[0]["position"], point);
+                    }
                     let text = source.text[..range.start.byte].to_owned()
                         + &string(expected, "insert").replace("$0", "zz_")
                         + &source.text[range.end.byte..];

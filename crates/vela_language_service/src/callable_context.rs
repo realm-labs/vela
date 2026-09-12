@@ -251,19 +251,22 @@ pub(crate) fn member_callable_facts(
     let Some(receiver) = type_fact_for_source_range(databases, source_id, receiver_range) else {
         return Vec::new();
     };
-    member_callable_facts_for_type(databases, &receiver, method, args_prefix)
+    let owner =
+        crate::query_context::source_type_for_source_range(databases, source_id, receiver_range);
+    member_callable_facts_for_type(databases, &receiver, owner, method, args_prefix)
 }
 
 pub(crate) fn member_callable_facts_for_type(
     databases: &LanguageServiceDatabases,
     receiver: &TypeFact,
+    owner: Option<vela_hir::ids::HirDeclId>,
     method: &str,
     args_prefix: &str,
 ) -> Vec<CallableFacts> {
     if method.is_empty() {
         return Vec::new();
     }
-    let mut facts = source_method_callable_facts(databases, receiver, method);
+    let mut facts = source_method_callable_facts(databases, receiver, owner, method);
     facts.extend(schema_method_callable_facts(databases, receiver, method));
     facts.extend(stdlib_method_callable_facts(receiver, method, args_prefix));
     facts
@@ -272,11 +275,12 @@ pub(crate) fn member_callable_facts_for_type(
 fn source_method_callable_facts(
     databases: &LanguageServiceDatabases,
     receiver: &TypeFact,
+    owner: Option<vela_hir::ids::HirDeclId>,
     method: &str,
 ) -> Vec<CallableFacts> {
-    let mut facts = source_impl_method_callable_facts(databases, receiver, method);
+    let mut facts = source_impl_method_callable_facts(databases, receiver, owner, method);
     facts.extend(source_trait_method_callable_facts(
-        databases, receiver, method,
+        databases, receiver, owner, method,
     ));
     facts
 }
@@ -284,6 +288,7 @@ fn source_method_callable_facts(
 fn source_impl_method_callable_facts(
     databases: &LanguageServiceDatabases,
     receiver: &TypeFact,
+    owner: Option<vela_hir::ids::HirDeclId>,
     method: &str,
 ) -> Vec<CallableFacts> {
     let graph = databases.hir_db().graph();
@@ -292,7 +297,9 @@ fn source_impl_method_callable_facts(
     graph
         .declarations()
         .filter_map(|declaration| {
-            if declaration.kind != DeclarationKind::Impl {
+            if declaration.kind != DeclarationKind::Impl
+                || !crate::symbol_ref::source_impl_has_owner(graph, declaration, owner)
+            {
                 return None;
             }
             let metadata = graph.impl_metadata(declaration.id)?;
@@ -320,13 +327,15 @@ fn source_impl_method_callable_facts(
 fn source_trait_method_callable_facts(
     databases: &LanguageServiceDatabases,
     receiver: &TypeFact,
+    owner: Option<vela_hir::ids::HirDeclId>,
     method: &str,
 ) -> Vec<CallableFacts> {
     let graph = databases.hir_db().graph();
     let schema = databases.schema_db().facts();
-    let mut facts = source_trait_receiver_method_callable_facts(graph, schema, receiver, method);
+    let mut facts =
+        source_trait_receiver_method_callable_facts(graph, schema, receiver, owner, method);
     facts.extend(source_trait_impl_default_callable_facts(
-        graph, schema, receiver, method,
+        graph, schema, receiver, owner, method,
     ));
     facts
 }
@@ -335,13 +344,15 @@ fn source_trait_receiver_method_callable_facts(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     receiver: &TypeFact,
+    owner: Option<vela_hir::ids::HirDeclId>,
     method: &str,
 ) -> Vec<CallableFacts> {
     let owner_names = trait_owner_names(receiver);
     graph
         .declarations()
         .filter_map(|declaration| {
-            if declaration.kind != DeclarationKind::Trait
+            if owner.is_some_and(|owner| owner != declaration.id)
+                || declaration.kind != DeclarationKind::Trait
                 || !owner_names
                     .iter()
                     .any(|owner| declaration_name_matches(graph, declaration.id, owner))
@@ -371,13 +382,16 @@ fn source_trait_impl_default_callable_facts(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     receiver: &TypeFact,
+    owner: Option<vela_hir::ids::HirDeclId>,
     method: &str,
 ) -> Vec<CallableFacts> {
     let owner_names = record_owner_names(receiver);
     graph
         .declarations()
         .filter_map(|declaration| {
-            if declaration.kind != DeclarationKind::Impl {
+            if declaration.kind != DeclarationKind::Impl
+                || !crate::symbol_ref::source_impl_has_owner(graph, declaration, owner)
+            {
                 return None;
             }
             let metadata = graph.impl_metadata(declaration.id)?;

@@ -31,6 +31,7 @@ mod locals;
 mod service_call;
 mod source_type;
 use hir_cursor::refine_cursor_with_hir;
+pub(crate) use source_type::source_type_for_source_range;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CallArgumentFacts<'a> {

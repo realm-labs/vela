@@ -670,9 +670,17 @@ applied signatures, owned parameter names and exact definition targets under
 Unicode LF/CRLF. Direct qualified dependency paths now navigate without requiring
 their spelling to change during import expansion.
 
+Member call facts and navigation retain the receiver's source declaration ID,
+including trait hints and same-name dependency types. Qualified/aliased function
+returns and inherent/default method returns retain their declaration's package;
+local bindings preserve those returned receiver facts. Twenty-four shared package
+cases assert complete member sets, edits, signatures, named parameters, resolved
+docs and exact applied definitions under Unicode LF/CRLF. Parameter inlay hints
+use the same receiver identity and project byte positions to UTF-16 correctly.
+
 The [completion coverage review](lsp-completion-coverage-review.md) indexes S5
-proof and the remaining acceptance work. Resume B03.25 with dependency member/
-returned-receiver identity and cross-feature ownership, then the remaining
+proof and the remaining acceptance work. Resume B03.26 with trait-return and
+async/control-flow receiver combinations, then the remaining
 semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

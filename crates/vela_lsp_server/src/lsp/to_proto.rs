@@ -191,8 +191,12 @@ pub(crate) fn code_actions(actions: &[ServiceCodeAction]) -> lsp_types::CodeActi
         .collect()
 }
 
-pub(crate) fn inlay_hints(hints: &[ServiceInlayHint]) -> Vec<lsp_types::InlayHint> {
-    hints.iter().map(inlay_hint).collect()
+pub(crate) fn inlay_hints(
+    hints: &[ServiceInlayHint],
+    text: &str,
+) -> Result<Vec<lsp_types::InlayHint>, String> {
+    let index = crate::line_index::LineIndex::new(text);
+    hints.iter().map(|hint| inlay_hint(hint, &index)).collect()
 }
 
 pub(crate) fn semantic_tokens(
@@ -498,9 +502,12 @@ const fn code_action_kind(kind: ServiceCodeActionKind) -> lsp_types::CodeActionK
     }
 }
 
-fn inlay_hint(hint: &ServiceInlayHint) -> lsp_types::InlayHint {
-    lsp_types::InlayHint {
-        position: service_position(hint.position()),
+fn inlay_hint(
+    hint: &ServiceInlayHint,
+    index: &crate::line_index::LineIndex,
+) -> Result<lsp_types::InlayHint, String> {
+    Ok(lsp_types::InlayHint {
+        position: index.lsp_position(hint.position())?,
         label: lsp_types::InlayHintLabel::String(hint.label()),
         kind: Some(inlay_hint_kind(hint.kind())),
         text_edits: None,
@@ -508,7 +515,7 @@ fn inlay_hint(hint: &ServiceInlayHint) -> lsp_types::InlayHint {
         padding_left: None,
         padding_right: Some(true),
         data: None,
-    }
+    })
 }
 
 const fn inlay_hint_kind(kind: ServiceInlayHintKind) -> lsp_types::InlayHintKind {

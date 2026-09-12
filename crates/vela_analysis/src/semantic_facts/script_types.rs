@@ -59,19 +59,23 @@ impl HirSemanticFacts {
                 {
                     return Some(target.clone());
                 }
-                if let Some(BindingResolution::Declaration(declaration)) =
-                    base.resolution(call.callee)
-                {
-                    let metadata = graph.declaration(*declaration)?;
+                if let Some(metadata) = super::lookups::source_function(graph, body, call.callee) {
                     let hint = graph
-                        .function_signature(*declaration)?
+                        .function_signature(metadata.id)?
                         .return_type
                         .as_ref()?;
                     return schema_declaration_from_hint_in_module(graph, metadata.module, hint)
                         .map(ScriptTypeTargetFact::declaration);
                 }
                 let field = body.field(call.callee)?;
-                source_method(graph, &self.fact(field.receiver), &field.name, None)?.return_target
+                source_method(
+                    graph,
+                    &self.fact(field.receiver),
+                    self.script_types.get(&field.receiver),
+                    &field.name,
+                    None,
+                )?
+                .return_target
             }
             _ => None,
         }

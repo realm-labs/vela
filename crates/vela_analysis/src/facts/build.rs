@@ -103,7 +103,9 @@ impl AnalysisFacts {
                     && graph.declaration(declaration).is_some_and(|declaration| {
                         matches!(
                             declaration.kind,
-                            DeclarationKind::Struct | DeclarationKind::Enum
+                            DeclarationKind::Struct
+                                | DeclarationKind::Enum
+                                | DeclarationKind::Trait
                         )
                     })
                 {

@@ -20,6 +20,11 @@ fn package_callable_ownership_preserves_sets_signatures_and_applied_targets() {
     assert_type_ownership("completion-package-callables");
 }
 
+#[test]
+fn package_member_ownership_preserves_sets_signatures_returns_and_targets() {
+    assert_type_ownership("completion-package-members");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -45,6 +50,7 @@ fn assert_type_ownership(fixture_id: &str) {
                         crate::CompletionContextKind::StructFieldDeclaration,
                     Some("Expression") => crate::CompletionContextKind::Expression,
                     Some("ModulePath") => crate::CompletionContextKind::ModulePath,
+                    Some("Member") => crate::CompletionContextKind::Member,
                     _ => crate::CompletionContextKind::TypeHint,
                 },
                 "{case}"
@@ -123,6 +129,20 @@ fn assert_type_ownership(fixture_id: &str) {
                     assert_eq!(help.signatures()[0].label(), signature, "{case} {expected}");
                 }
                 if let Some(argument) = expected.get("argument") {
+                    if let Some(label) = expected["inlay"].as_str() {
+                        let start = range.start.byte + insertion.find('(').expect("call") + 1;
+                        let hints = fresh.inlay_hints(
+                            &uri(file),
+                            crate::DiagnosticRange::new(
+                                position(&edited, start),
+                                position(&edited, start),
+                            ),
+                        );
+                        assert_eq!(hints.len(), 1, "{case}");
+                        assert_eq!(hints[0].kind(), crate::InlayHintKind::Parameter);
+                        assert_eq!(hints[0].label(), label, "{case}");
+                        assert_eq!(hints[0].position(), position(&edited, start));
+                    }
                     let text = source.text[..range.start.byte].to_owned()
                         + &string(expected, "insert").replace("$0", "zz_")
                         + &source.text[range.end.byte..];

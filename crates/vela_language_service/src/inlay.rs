@@ -148,9 +148,17 @@ impl LanguageServiceDatabases {
                     let Some(receiver) = facts.expression(field.receiver) else {
                         continue;
                     };
-                    member_callable_facts_for_type(self, receiver, &field.name, &args_prefix)
-                        .into_iter()
-                        .next()
+                    member_callable_facts_for_type(
+                        self,
+                        receiver,
+                        facts
+                            .script_type(field.receiver)
+                            .map(|target| target.declaration),
+                        &field.name,
+                        &args_prefix,
+                    )
+                    .into_iter()
+                    .next()
                 } else {
                     body.paths
                         .iter()
@@ -362,9 +370,17 @@ pub(crate) fn hir_callable_for_call(
     let args_prefix = hir_args_prefix(body, call, source_text);
     if let Some(field) = body.field(call.callee) {
         let receiver = facts.expression(field.receiver)?;
-        member_callable_facts_for_type(databases, receiver, &field.name, &args_prefix)
-            .into_iter()
-            .next()
+        member_callable_facts_for_type(
+            databases,
+            receiver,
+            facts
+                .script_type(field.receiver)
+                .map(|target| target.declaration),
+            &field.name,
+            &args_prefix,
+        )
+        .into_iter()
+        .next()
     } else {
         body.paths
             .iter()

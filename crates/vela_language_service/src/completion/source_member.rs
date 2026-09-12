@@ -11,8 +11,8 @@ use vela_hir::type_hint::{
 use crate::CompletionSymbol;
 use crate::callable_context::query_type_fact_from_hint;
 use crate::symbol_ref::{
-    qualified_source_declaration_name, source_impl_method_symbol, source_impl_owner_matches,
-    source_member_symbol, source_variant_field_symbol,
+    qualified_source_declaration_name, source_impl_has_owner, source_impl_method_symbol,
+    source_impl_owner_matches, source_member_symbol, source_variant_field_symbol,
 };
 
 pub(super) fn source_member_completion_candidates(
@@ -146,7 +146,7 @@ fn source_impl_method_completion_items(
         .declarations()
         .filter_map(|declaration| {
             if declaration.kind != DeclarationKind::Impl
-                || !impl_has_owner(graph, declaration, owner)
+                || !source_impl_has_owner(graph, declaration, owner)
             {
                 return None;
             }
@@ -218,7 +218,7 @@ fn source_trait_default_method_completion_items(
         .declarations()
         .filter_map(|declaration| {
             if declaration.kind != DeclarationKind::Impl
-                || !impl_has_owner(graph, declaration, owner)
+                || !source_impl_has_owner(graph, declaration, owner)
             {
                 return None;
             }
@@ -365,31 +365,4 @@ fn push_owner_name(owners: &mut Vec<String>, name: &str) {
     if !owners.iter().any(|owner| owner == name) {
         owners.push(name.to_owned());
     }
-}
-
-fn impl_has_owner(
-    graph: &ModuleGraph,
-    declaration: &vela_hir::module_graph::Declaration,
-    owner: Option<vela_hir::ids::HirDeclId>,
-) -> bool {
-    let Some(owner) = owner else {
-        return true;
-    };
-    let Some(metadata) = graph.impl_metadata(declaration.id) else {
-        return false;
-    };
-    let Some(path) = graph.expand_import_path(declaration.module, &metadata.target_path) else {
-        return false;
-    };
-    [
-        DeclarationKind::Struct,
-        DeclarationKind::Enum,
-        DeclarationKind::Trait,
-    ]
-    .into_iter()
-    .any(|kind| {
-        graph
-            .resolve_visible_declaration_path(declaration.module, &path, kind)
-            .is_some_and(|target| target.id == owner)
-    })
 }

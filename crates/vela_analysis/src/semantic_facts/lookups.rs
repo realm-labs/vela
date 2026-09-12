@@ -19,9 +19,36 @@ pub(super) struct SourceMethodFact {
     pub(super) return_target: Option<ScriptTypeTargetFact>,
 }
 
+pub(super) fn source_function<'a>(
+    graph: &'a ModuleGraph,
+    body: &vela_hir::body::HirBody,
+    callee: vela_hir::ids::HirExprId,
+) -> Option<&'a vela_hir::module_graph::Declaration> {
+    use vela_hir::binding::BindingResolution;
+    let bindings = graph.bindings_for_body(body.id)?;
+    match bindings.resolution(callee) {
+        Some(BindingResolution::Declaration(id)) => graph
+            .declaration(*id)
+            .filter(|declaration| declaration.kind == DeclarationKind::Function),
+        Some(BindingResolution::Import(_) | BindingResolution::QualifiedPath(_)) => {
+            let module = graph.declaration(bindings.declaration)?.module;
+            let path = super::expression_path(body, callee, vela_hir::body::HirPathKind::Callee)?;
+            let path = graph.expand_import_path(module, path)?;
+            graph
+                .resolve_visible_declaration_path(module, &path, DeclarationKind::Function)
+                .filter(|declaration| {
+                    declaration.module == module
+                        || declaration.visibility == vela_hir::module_graph::Visibility::Public
+                })
+        }
+        _ => None,
+    }
+}
+
 pub(super) fn source_method(
     graph: &ModuleGraph,
     receiver: &TypeFact,
+    source: Option<&ScriptTypeTargetFact>,
     name: &str,
     schema: Option<&RegistryFacts>,
 ) -> Option<SourceMethodFact> {
@@ -34,15 +61,21 @@ pub(super) fn source_method(
         else {
             continue;
         };
-        let target = [
+        let target_declaration = [
             DeclarationKind::Struct,
             DeclarationKind::Enum,
             DeclarationKind::Trait,
         ]
         .into_iter()
-        .find_map(|kind| graph.resolve_visible_declaration_path(declaration.module, &target, kind))
-        .and_then(|target| graph.qualified_declaration_name(target.id))
-        .unwrap_or_else(|| target.join("::"));
+        .find_map(|kind| graph.resolve_visible_declaration_path(declaration.module, &target, kind));
+        if source.is_some_and(|source| {
+            target_declaration.is_none_or(|target| target.id != source.declaration)
+        }) {
+            continue;
+        }
+        let target = target_declaration
+            .and_then(|target| graph.qualified_declaration_name(target.id))
+            .unwrap_or_else(|| target.join("::"));
         if target != owner {
             continue;
         }

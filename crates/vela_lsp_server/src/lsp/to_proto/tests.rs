@@ -577,7 +577,7 @@ fn inlay_hints_project_typed_labels_and_kinds() {
         DiagnosticRange::new(Position::new(1, 0), Position::new(1, 80)),
     );
 
-    let hints = inlay_hints(&hints);
+    let hints = inlay_hints(&hints, source).expect("valid hint positions");
 
     assert_eq!(hints.len(), 2);
     assert_eq!(hints[0].position, lsp_types::Position::new(1, 29));

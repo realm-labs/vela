@@ -4499,3 +4499,11 @@ when import expansion leaves the spelling unchanged. This covers direct
 dependency paths while retaining visibility and unresolved-owner checks. Applied
 function completion must preserve both its exact target location and its own
 signature/parameter names; display-name equality cannot prove package identity.
+
+Carry the receiver declaration ID through member call facts and navigation,
+including trait-typed locals. Method target matching must resolve the impl's
+target in its declaring module before comparing IDs. Return facts keep the
+function/method declaration's scope and pass its type identity into later member
+queries; qualified and imported source calls resolve through that same module
+graph. Parameter hints reuse these owned callable facts and convert service byte
+positions through the protocol's UTF-16 line index.
