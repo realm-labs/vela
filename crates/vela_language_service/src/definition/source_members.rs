@@ -13,6 +13,9 @@ pub(super) fn source_member_definition_for_target(
     databases: &LanguageServiceDatabases,
     target: &SymbolTarget,
 ) -> Option<Definition> {
+    if target.has_incomplete_member_origins() {
+        return None;
+    }
     let mut definitions = Vec::new();
     for candidate in target.possible_member_targets() {
         if let Some(definition) = source_member_definition_for_owner(databases, &candidate)

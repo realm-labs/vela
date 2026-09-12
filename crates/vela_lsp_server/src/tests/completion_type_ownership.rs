@@ -53,6 +53,11 @@ fn receiver_assignment_flow_projects_possible_owners_and_rejects_stale_members()
     assert_type_ownership("completion-receiver-assignments");
 }
 
+#[test]
+fn shared_method_matrix_projects_merged_details_signatures_and_ambiguous_targets() {
+    assert_type_ownership("completion-shared-methods");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -276,6 +281,29 @@ fn assert_type_ownership(fixture_id: &str) {
                         assert_eq!(labels[0]["range"], expected_range);
                     }
                 }
+                if let Some(signatures) = expected["signatures"].as_array() {
+                    let open = insertion.find('(').expect("call");
+                    let help = response_value(request::<r::SignatureHelpRequest>(
+                        &mut server,
+                        id,
+                        json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":range.start.character+open+1}}),
+                    ));
+                    id += 1;
+                    assert!(help["error"].is_null());
+                    let mut actual = help["result"]["signatures"]
+                        .as_array()
+                        .expect("alternative signatures")
+                        .iter()
+                        .map(|signature| string(signature, "label"))
+                        .collect::<Vec<_>>();
+                    let mut expected = signatures
+                        .iter()
+                        .map(|signature| signature.as_str().expect("signature label"))
+                        .collect::<Vec<_>>();
+                    actual.sort();
+                    expected.sort();
+                    assert_eq!(actual, expected, "{case}");
+                }
                 if let Some(signature) = expected["signature"].as_str() {
                     let open = insertion.find('(').expect("call");
                     let help = response_value(request::<r::SignatureHelpRequest>(
@@ -359,7 +387,12 @@ fn assert_type_ownership(fixture_id: &str) {
                     let target = if target == "self" { file } else { target };
                     let marker = fixture.document(target).expect("target").markers
                         [string(expected, "marker")];
-                    let start = insertion.rfind("::").map_or(0, |i| i + 2);
+                    let start = insertion
+                        .split('(')
+                        .next()
+                        .expect("callee path")
+                        .rfind("::")
+                        .map_or(0, |i| i + 2);
                     let definition = response_value(request::<r::GotoDefinition>(
                         &mut server,
                         id,
@@ -370,6 +403,24 @@ fn assert_type_ownership(fixture_id: &str) {
                         definition["result"],
                         json!({"uri":uri(target),"range":{"start":{"line":marker.start.line,"character":marker.start.character},"end":{"line":marker.end.line,"character":marker.end.character}}}),
                         "{case} {expected}"
+                    );
+                } else {
+                    let start = insertion
+                        .split('(')
+                        .next()
+                        .expect("callee path")
+                        .rfind("::")
+                        .map_or(0, |i| i + 2);
+                    let definition = response_value(request::<r::GotoDefinition>(
+                        &mut server,
+                        id,
+                        json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":range.start.character+start+1}}),
+                    ));
+                    id += 1;
+                    assert!(definition["error"].is_null(), "{case} {expected}");
+                    assert!(
+                        definition["result"].is_null(),
+                        "{case} {expected}: {definition}"
                     );
                 }
                 if case["member"] == true {

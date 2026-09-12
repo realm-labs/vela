@@ -72,6 +72,12 @@ impl SymbolTarget {
         self.member_receiver_declaration
     }
 
+    pub(crate) fn has_incomplete_member_origins(&self) -> bool {
+        self.member_receiver_origins
+            .as_ref()
+            .is_some_and(|origins| !origins.possible().is_empty() && !origins.is_complete())
+    }
+
     pub(crate) fn possible_member_targets(&self) -> Vec<Self> {
         let Some(origins) = self
             .member_receiver_origins

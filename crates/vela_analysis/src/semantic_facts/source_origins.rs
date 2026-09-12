@@ -24,6 +24,10 @@ impl ScriptTypeOrigins {
         &self.possible
     }
 
+    pub fn is_complete(&self) -> bool {
+        self.complete
+    }
+
     pub fn unique(&self) -> Option<&ScriptTypeTargetFact> {
         (self.complete && self.possible.len() == 1).then(|| &self.possible[0])
     }
@@ -57,6 +61,12 @@ impl ScriptTypeOrigins {
                 .then(a.variant.cmp(&b.variant))
         });
         result.complete &= seen;
+        result
+    }
+
+    fn map_targets(&self, map: impl FnMut(&ScriptTypeTargetFact) -> Self) -> Self {
+        let mut result = Self::join(self.possible.iter().map(map));
+        result.complete &= self.complete;
         result
     }
 }
@@ -137,14 +147,12 @@ impl HirSemanticFacts {
             HirExprKind::Block { block } => join(super::value_flow::block_results(body, *block)),
             HirExprKind::If(value) => join(super::value_flow::if_results(body, value)),
             HirExprKind::Match(value) => join(super::value_flow::match_results(body, value)),
-            HirExprKind::Field(field) => {
-                ScriptTypeOrigins::join(origins(field.receiver).possible().iter().map(|owner| {
-                    super::targets::source_field_fact(graph, owner, &field.name, None)
-                        .and_then(|field| field.target)
-                        .map(ScriptTypeOrigins::known)
-                        .unwrap_or_default()
-                }))
-            }
+            HirExprKind::Field(field) => origins(field.receiver).map_targets(|owner| {
+                super::targets::source_field_fact(graph, owner, &field.name, None)
+                    .and_then(|field| field.target)
+                    .map(ScriptTypeOrigins::known)
+                    .unwrap_or_default()
+            }),
             HirExprKind::Call(call) => {
                 if let Some(lambda) = super::targets::direct_lambda_body(body, call.callee)
                     .and_then(|id| graph.body(id))
@@ -161,7 +169,7 @@ impl HirSemanticFacts {
                     && let Some(receivers) = self.source_origins.get(&field.receiver)
                     && !receivers.possible().is_empty()
                 {
-                    return ScriptTypeOrigins::join(receivers.possible().iter().map(|owner| {
+                    return receivers.map_targets(|owner| {
                         super::lookups::source_method_return(
                             graph,
                             &self.fact(field.receiver),
@@ -172,7 +180,7 @@ impl HirSemanticFacts {
                         .and_then(|method| method.target)
                         .map(ScriptTypeOrigins::known)
                         .unwrap_or_default()
-                    }));
+                    });
                 }
                 self.script_types
                     .get(&id)

@@ -55,6 +55,11 @@ fn receiver_assignment_flow_preserves_possible_owners_and_rejects_stale_members(
     assert_type_ownership("completion-receiver-assignments");
 }
 
+#[test]
+fn shared_method_matrix_preserves_merged_details_signatures_and_ambiguous_targets() {
+    assert_type_ownership("completion-shared-methods");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -223,6 +228,24 @@ fn assert_type_ownership(fixture_id: &str) {
                         assert_eq!(diagnostic_range.start(), position(&edited, call.start.byte));
                         assert_eq!(diagnostic_range.end(), position(&edited, end));
                     }
+                }
+                if let Some(signatures) = expected["signatures"].as_array() {
+                    let open = range.start.byte + insertion.find('(').expect("call");
+                    let help = fresh
+                        .signature_help(&uri(file), position(&edited, open + 1))
+                        .expect("applied alternative signatures");
+                    let mut actual = help
+                        .signatures()
+                        .iter()
+                        .map(|signature| signature.label())
+                        .collect::<Vec<_>>();
+                    let mut expected = signatures
+                        .iter()
+                        .map(|signature| signature.as_str().expect("signature label"))
+                        .collect::<Vec<_>>();
+                    actual.sort();
+                    expected.sort();
+                    assert_eq!(actual, expected, "{case}");
                 }
                 if let Some(signature) = expected["signature"].as_str() {
                     let open = range.start.byte + insertion.find('(').expect("call");

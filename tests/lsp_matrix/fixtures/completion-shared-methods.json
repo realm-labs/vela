@@ -1,0 +1,886 @@
+{
+  "version": 1,
+  "id": "completion-shared-methods",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.type_aliases\"\nname = \"type_aliases\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n[dependencies]\nexternal = { path = \"deps/external\" }\n",
+    "deps/external/vela.toml": "[package]\nid = \"dev.vela.external\"\nname = \"external\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[dependencies]\nhidden = { path = \"../hidden\" }\n",
+    "deps/hidden/vela.toml": "[package]\nid = \"dev.vela.hidden\"\nname = \"hidden\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"api::Token\",\"fact\":{\"kind\":\"record\",\"name\":\"api::Token\"}}],\"fields\":[{\"owner\":\"api::Token\",\"name\":\"own_schema\",\"fact\":{\"kind\":\"primitive\",\"name\":\"String\"},\"docs\":\"Wrong schema owner 中😀.\"}],\"methods\":[{\"owner\":\"api::Token\",\"name\":\"zz_pick\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"String\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"String\"}}}]}}",
+    "scripts/api.vela": "/* 中😀 */\npub struct Token {}\nimpl Token { fn [[pick:start]]zz_pick[[pick:end]](self, zz_root: i64) -> i64 { zz_root } fn [[next:start]]zz_next[[next:end]](self) -> Token { Token {} } }\npub trait Reader { fn [[default:start]]zz_default[[default:end]](self, zz_root: i64) -> i64 { 1 } }\nimpl Reader for Token {}\npub fn produce() -> Token { Token {} }\npub fn erase() -> Any { () }\npub struct Holder { item: Token }\npub fn wrap() -> Holder { Holder { item: Token {} } }\n",
+    "deps/external/scripts/api.vela": "/* 中😀 */\npub struct Token {}\nimpl Token { fn [[pick:start]]zz_pick[[pick:end]](self, zz_dep: bool) -> bool { zz_dep } fn [[next:start]]zz_next[[next:end]](self) -> Token { Token {} } }\npub trait Reader { fn [[default:start]]zz_default[[default:end]](self, zz_dep: bool) -> bool { true } }\nimpl Reader for Token {}\npub fn produce() -> Token { Token {} }\npub fn erase() -> Any { () }\n",
+    "deps/hidden/scripts/api.vela": "/* 中😀 */\npub struct Token {}\nimpl Token { fn [[pick:start]]zz_pick[[pick:end]](self, zz_hidden: String) -> String { zz_hidden } fn [[next:start]]zz_next[[next:end]](self) -> Token { Token {} } }\npub trait Reader { fn [[default:start]]zz_default[[default:end]](self, zz_hidden: String) -> String { \"hidden\" } }\nimpl Reader for Token {}\npub fn produce() -> Token { Token {} }\npub fn erase() -> Any { () }\n",
+    "scripts/root.vela": "/* 中😀 */\nfn run(flag: bool) { api::produce().[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/dependency.vela": "/* 中😀 */\nfn run(flag: bool) { external::api::produce().[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/joined.vela": "/* 中😀 */\nfn run(flag: bool) { (if flag { api::produce() } else { external::api::produce() }).[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/reversed.vela": "/* 中😀 */\nfn run(flag: bool) { (if flag { external::api::produce() } else { api::produce() }).[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/local_join.vela": "/* 中😀 */\nfn run(flag: bool) { let selected = if flag { api::produce() } else { external::api::produce() }; selected.[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/match_join.vela": "/* 中😀 */\nfn run(flag: bool) { (match flag { true => api::produce(), _ => external::api::produce() }).[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/branch_write.vela": "/* 中😀 */\nfn run(flag: bool) { let selected = api::produce(); if flag { selected = external::api::produce(); } selected.[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/overwrite.vela": "/* 中😀 */\nfn run(flag: bool) { let selected = if flag { api::produce() } else { external::api::produce() }; selected = external::api::produce(); selected.[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/prior_alias.vela": "/* 中😀 */\nfn run(flag: bool) { let selected = api::produce(); let prior = selected; selected = external::api::produce(); prior.[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/joined_return.vela": "/* 中😀 */\nfn run(flag: bool) { (if flag { api::produce() } else { external::api::produce() }).zz_next().[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/erased_join.vela": "/* 中😀 */\nfn run(flag: bool) { (if flag { api::produce() } else { api::erase() }).[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/missing_return.vela": "/* 中😀 */\nfn run(flag: bool) { api::produce().missing().[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/erased.vela": "/* 中😀 */\nfn run() { api::erase().[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/erased_reversed.vela": "/* 中😀 */\nfn run(flag: bool) { (if flag { api::erase() } else { api::produce() }).[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/erased_match.vela": "/* 中😀 */\nfn run(flag: bool) { (match flag { true => api::produce(), _ => api::erase() }).[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/erased_return.vela": "/* 中😀 */\nfn run(flag: bool) { (if flag { api::wrap() } else { api::erase() }).item.zz_next().[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/erased_field.vela": "/* 中😀 */\nfn run(flag: bool) { (if flag { api::wrap() } else { api::erase() }).item.[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/unknown_erased_return.vela": "/* 中😀 */\nfn run(flag: bool) { (if flag { api::produce() } else { api::erase() }).zz_next().[[replace:start]]zz_[[cursor]][[replace:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "root",
+        "file": "scripts/root.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Token",
+        "items": [
+          {
+            "label": "zz_default",
+            "insert": "zz_default($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Reader.zz_default",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "api::Reader.zz_default(zz_root: i64) -> i64"
+            ],
+            "target": "scripts/api.vela",
+            "marker": "default"
+          },
+          {
+            "label": "zz_next",
+            "insert": "zz_next($0)",
+            "kind": "Method",
+            "detail": "Function() -> api::Token",
+            "origin": "source",
+            "symbol": "api::Token.zz_next",
+            "docs": null,
+            "value": "",
+            "signatures": [
+              "Token.zz_next() -> api::Token"
+            ],
+            "target": "scripts/api.vela",
+            "marker": "next"
+          },
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.zz_pick",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "Token.zz_pick(zz_root: i64) -> i64"
+            ],
+            "target": "scripts/api.vela",
+            "marker": "pick"
+          }
+        ]
+      },
+      {
+        "id": "dependency",
+        "file": "scripts/dependency.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Token",
+        "items": [
+          {
+            "label": "zz_default",
+            "insert": "zz_default($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Reader.zz_default",
+            "docs": null,
+            "value": "true",
+            "signatures": [
+              "api::Reader.zz_default(zz_dep: bool) -> bool"
+            ],
+            "target": "deps/external/scripts/api.vela",
+            "marker": "default"
+          },
+          {
+            "label": "zz_next",
+            "insert": "zz_next($0)",
+            "kind": "Method",
+            "detail": "Function() -> api::Token",
+            "origin": "source",
+            "symbol": "api::Token.zz_next",
+            "docs": null,
+            "value": "",
+            "signatures": [
+              "Token.zz_next() -> api::Token"
+            ],
+            "target": "deps/external/scripts/api.vela",
+            "marker": "next"
+          },
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.zz_pick",
+            "docs": null,
+            "value": "true",
+            "signatures": [
+              "Token.zz_pick(zz_dep: bool) -> bool"
+            ],
+            "target": "deps/external/scripts/api.vela",
+            "marker": "pick"
+          }
+        ]
+      },
+      {
+        "id": "joined",
+        "file": "scripts/joined.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Token",
+        "items": [
+          {
+            "label": "zz_default",
+            "insert": "zz_default($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool | Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Reader.zz_default",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "api::Reader.zz_default(zz_root: i64) -> i64",
+              "api::Reader.zz_default(zz_dep: bool) -> bool"
+            ],
+            "target": null,
+            "marker": "default"
+          },
+          {
+            "label": "zz_next",
+            "insert": "zz_next($0)",
+            "kind": "Method",
+            "detail": "Function() -> api::Token",
+            "origin": "source",
+            "symbol": "api::Token.zz_next",
+            "docs": null,
+            "value": "",
+            "signatures": [
+              "Token.zz_next() -> api::Token",
+              "Token.zz_next() -> api::Token"
+            ],
+            "target": null,
+            "marker": "next"
+          },
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool | Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.zz_pick",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "Token.zz_pick(zz_root: i64) -> i64",
+              "Token.zz_pick(zz_dep: bool) -> bool"
+            ],
+            "target": null,
+            "marker": "pick"
+          }
+        ]
+      },
+      {
+        "id": "reversed",
+        "file": "scripts/reversed.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Token",
+        "items": [
+          {
+            "label": "zz_default",
+            "insert": "zz_default($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool | Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Reader.zz_default",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "api::Reader.zz_default(zz_root: i64) -> i64",
+              "api::Reader.zz_default(zz_dep: bool) -> bool"
+            ],
+            "target": null,
+            "marker": "default"
+          },
+          {
+            "label": "zz_next",
+            "insert": "zz_next($0)",
+            "kind": "Method",
+            "detail": "Function() -> api::Token",
+            "origin": "source",
+            "symbol": "api::Token.zz_next",
+            "docs": null,
+            "value": "",
+            "signatures": [
+              "Token.zz_next() -> api::Token",
+              "Token.zz_next() -> api::Token"
+            ],
+            "target": null,
+            "marker": "next"
+          },
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool | Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.zz_pick",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "Token.zz_pick(zz_root: i64) -> i64",
+              "Token.zz_pick(zz_dep: bool) -> bool"
+            ],
+            "target": null,
+            "marker": "pick"
+          }
+        ]
+      },
+      {
+        "id": "local_join",
+        "file": "scripts/local_join.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Token",
+        "items": [
+          {
+            "label": "zz_default",
+            "insert": "zz_default($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool | Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Reader.zz_default",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "api::Reader.zz_default(zz_root: i64) -> i64",
+              "api::Reader.zz_default(zz_dep: bool) -> bool"
+            ],
+            "target": null,
+            "marker": "default"
+          },
+          {
+            "label": "zz_next",
+            "insert": "zz_next($0)",
+            "kind": "Method",
+            "detail": "Function() -> api::Token",
+            "origin": "source",
+            "symbol": "api::Token.zz_next",
+            "docs": null,
+            "value": "",
+            "signatures": [
+              "Token.zz_next() -> api::Token",
+              "Token.zz_next() -> api::Token"
+            ],
+            "target": null,
+            "marker": "next"
+          },
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool | Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.zz_pick",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "Token.zz_pick(zz_root: i64) -> i64",
+              "Token.zz_pick(zz_dep: bool) -> bool"
+            ],
+            "target": null,
+            "marker": "pick"
+          }
+        ]
+      },
+      {
+        "id": "match_join",
+        "file": "scripts/match_join.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Token",
+        "items": [
+          {
+            "label": "zz_default",
+            "insert": "zz_default($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool | Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Reader.zz_default",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "api::Reader.zz_default(zz_root: i64) -> i64",
+              "api::Reader.zz_default(zz_dep: bool) -> bool"
+            ],
+            "target": null,
+            "marker": "default"
+          },
+          {
+            "label": "zz_next",
+            "insert": "zz_next($0)",
+            "kind": "Method",
+            "detail": "Function() -> api::Token",
+            "origin": "source",
+            "symbol": "api::Token.zz_next",
+            "docs": null,
+            "value": "",
+            "signatures": [
+              "Token.zz_next() -> api::Token",
+              "Token.zz_next() -> api::Token"
+            ],
+            "target": null,
+            "marker": "next"
+          },
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool | Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.zz_pick",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "Token.zz_pick(zz_root: i64) -> i64",
+              "Token.zz_pick(zz_dep: bool) -> bool"
+            ],
+            "target": null,
+            "marker": "pick"
+          }
+        ]
+      },
+      {
+        "id": "branch_write",
+        "file": "scripts/branch_write.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Token",
+        "items": [
+          {
+            "label": "zz_default",
+            "insert": "zz_default($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool | Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Reader.zz_default",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "api::Reader.zz_default(zz_root: i64) -> i64",
+              "api::Reader.zz_default(zz_dep: bool) -> bool"
+            ],
+            "target": null,
+            "marker": "default"
+          },
+          {
+            "label": "zz_next",
+            "insert": "zz_next($0)",
+            "kind": "Method",
+            "detail": "Function() -> api::Token",
+            "origin": "source",
+            "symbol": "api::Token.zz_next",
+            "docs": null,
+            "value": "",
+            "signatures": [
+              "Token.zz_next() -> api::Token",
+              "Token.zz_next() -> api::Token"
+            ],
+            "target": null,
+            "marker": "next"
+          },
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool | Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.zz_pick",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "Token.zz_pick(zz_root: i64) -> i64",
+              "Token.zz_pick(zz_dep: bool) -> bool"
+            ],
+            "target": null,
+            "marker": "pick"
+          }
+        ]
+      },
+      {
+        "id": "overwrite",
+        "file": "scripts/overwrite.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Token",
+        "items": [
+          {
+            "label": "zz_default",
+            "insert": "zz_default($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Reader.zz_default",
+            "docs": null,
+            "value": "true",
+            "signatures": [
+              "api::Reader.zz_default(zz_dep: bool) -> bool"
+            ],
+            "target": "deps/external/scripts/api.vela",
+            "marker": "default"
+          },
+          {
+            "label": "zz_next",
+            "insert": "zz_next($0)",
+            "kind": "Method",
+            "detail": "Function() -> api::Token",
+            "origin": "source",
+            "symbol": "api::Token.zz_next",
+            "docs": null,
+            "value": "",
+            "signatures": [
+              "Token.zz_next() -> api::Token"
+            ],
+            "target": "deps/external/scripts/api.vela",
+            "marker": "next"
+          },
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.zz_pick",
+            "docs": null,
+            "value": "true",
+            "signatures": [
+              "Token.zz_pick(zz_dep: bool) -> bool"
+            ],
+            "target": "deps/external/scripts/api.vela",
+            "marker": "pick"
+          }
+        ]
+      },
+      {
+        "id": "prior_alias",
+        "file": "scripts/prior_alias.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Token",
+        "items": [
+          {
+            "label": "zz_default",
+            "insert": "zz_default($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Reader.zz_default",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "api::Reader.zz_default(zz_root: i64) -> i64"
+            ],
+            "target": "scripts/api.vela",
+            "marker": "default"
+          },
+          {
+            "label": "zz_next",
+            "insert": "zz_next($0)",
+            "kind": "Method",
+            "detail": "Function() -> api::Token",
+            "origin": "source",
+            "symbol": "api::Token.zz_next",
+            "docs": null,
+            "value": "",
+            "signatures": [
+              "Token.zz_next() -> api::Token"
+            ],
+            "target": "scripts/api.vela",
+            "marker": "next"
+          },
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.zz_pick",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "Token.zz_pick(zz_root: i64) -> i64"
+            ],
+            "target": "scripts/api.vela",
+            "marker": "pick"
+          }
+        ]
+      },
+      {
+        "id": "joined_return",
+        "file": "scripts/joined_return.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Token",
+        "items": [
+          {
+            "label": "zz_default",
+            "insert": "zz_default($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool | Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Reader.zz_default",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "api::Reader.zz_default(zz_root: i64) -> i64",
+              "api::Reader.zz_default(zz_dep: bool) -> bool"
+            ],
+            "target": null,
+            "marker": "default"
+          },
+          {
+            "label": "zz_next",
+            "insert": "zz_next($0)",
+            "kind": "Method",
+            "detail": "Function() -> api::Token",
+            "origin": "source",
+            "symbol": "api::Token.zz_next",
+            "docs": null,
+            "value": "",
+            "signatures": [
+              "Token.zz_next() -> api::Token",
+              "Token.zz_next() -> api::Token"
+            ],
+            "target": null,
+            "marker": "next"
+          },
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool | Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.zz_pick",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "Token.zz_pick(zz_root: i64) -> i64",
+              "Token.zz_pick(zz_dep: bool) -> bool"
+            ],
+            "target": null,
+            "marker": "pick"
+          }
+        ]
+      },
+      {
+        "id": "erased_join",
+        "file": "scripts/erased_join.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_default",
+            "insert": "zz_default($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Reader.zz_default",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "api::Reader.zz_default(zz_root: i64) -> i64"
+            ],
+            "target": null,
+            "marker": "default"
+          },
+          {
+            "label": "zz_next",
+            "insert": "zz_next($0)",
+            "kind": "Method",
+            "detail": "Function() -> api::Token",
+            "origin": "source",
+            "symbol": "api::Token.zz_next",
+            "docs": null,
+            "value": "",
+            "signatures": [
+              "Token.zz_next() -> api::Token"
+            ],
+            "target": null,
+            "marker": "next"
+          },
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.zz_pick",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "Token.zz_pick(zz_root: i64) -> i64"
+            ],
+            "target": null,
+            "marker": "pick"
+          }
+        ],
+        "receiver": "api::Token | Any"
+      },
+      {
+        "id": "missing_return",
+        "file": "scripts/missing_return.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "erased",
+        "file": "scripts/erased.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "Any",
+        "items": []
+      },
+      {
+        "id": "erased_reversed",
+        "file": "scripts/erased_reversed.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_default",
+            "insert": "zz_default($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Reader.zz_default",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "api::Reader.zz_default(zz_root: i64) -> i64"
+            ],
+            "target": null,
+            "marker": "default"
+          },
+          {
+            "label": "zz_next",
+            "insert": "zz_next($0)",
+            "kind": "Method",
+            "detail": "Function() -> api::Token",
+            "origin": "source",
+            "symbol": "api::Token.zz_next",
+            "docs": null,
+            "value": "",
+            "signatures": [
+              "Token.zz_next() -> api::Token"
+            ],
+            "target": null,
+            "marker": "next"
+          },
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.zz_pick",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "Token.zz_pick(zz_root: i64) -> i64"
+            ],
+            "target": null,
+            "marker": "pick"
+          }
+        ],
+        "receiver": "Any | api::Token"
+      },
+      {
+        "id": "erased_match",
+        "file": "scripts/erased_match.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_default",
+            "insert": "zz_default($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Reader.zz_default",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "api::Reader.zz_default(zz_root: i64) -> i64"
+            ],
+            "target": null,
+            "marker": "default"
+          },
+          {
+            "label": "zz_next",
+            "insert": "zz_next($0)",
+            "kind": "Method",
+            "detail": "Function() -> api::Token",
+            "origin": "source",
+            "symbol": "api::Token.zz_next",
+            "docs": null,
+            "value": "",
+            "signatures": [
+              "Token.zz_next() -> api::Token"
+            ],
+            "target": null,
+            "marker": "next"
+          },
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.zz_pick",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "Token.zz_pick(zz_root: i64) -> i64"
+            ],
+            "target": null,
+            "marker": "pick"
+          }
+        ],
+        "receiver": "api::Token | Any"
+      },
+      {
+        "id": "erased_return",
+        "file": "scripts/erased_return.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_default",
+            "insert": "zz_default($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Reader.zz_default",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "api::Reader.zz_default(zz_root: i64) -> i64"
+            ],
+            "target": null,
+            "marker": "default"
+          },
+          {
+            "label": "zz_next",
+            "insert": "zz_next($0)",
+            "kind": "Method",
+            "detail": "Function() -> api::Token",
+            "origin": "source",
+            "symbol": "api::Token.zz_next",
+            "docs": null,
+            "value": "",
+            "signatures": [
+              "Token.zz_next() -> api::Token"
+            ],
+            "target": null,
+            "marker": "next"
+          },
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.zz_pick",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "Token.zz_pick(zz_root: i64) -> i64"
+            ],
+            "target": null,
+            "marker": "pick"
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "erased_field",
+        "file": "scripts/erased_field.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_default",
+            "insert": "zz_default($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Reader.zz_default",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "api::Reader.zz_default(zz_root: i64) -> i64"
+            ],
+            "target": null,
+            "marker": "default"
+          },
+          {
+            "label": "zz_next",
+            "insert": "zz_next($0)",
+            "kind": "Method",
+            "detail": "Function() -> api::Token",
+            "origin": "source",
+            "symbol": "api::Token.zz_next",
+            "docs": null,
+            "value": "",
+            "signatures": [
+              "Token.zz_next() -> api::Token"
+            ],
+            "target": null,
+            "marker": "next"
+          },
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.zz_pick",
+            "docs": null,
+            "value": "1",
+            "signatures": [
+              "Token.zz_pick(zz_root: i64) -> i64"
+            ],
+            "target": null,
+            "marker": "pick"
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "unknown_erased_return",
+        "file": "scripts/unknown_erased_return.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      }
+    ]
+  }
+}

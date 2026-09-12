@@ -758,9 +758,13 @@ unrelated or ambiguous arguments. Executable analysis independently checks the
 same slot and return boundaries; queries do not invoke callbacks.
 
 The [completion coverage review](lsp-completion-coverage-review.md) indexes S5
-proof and the remaining acceptance work. Resume B03.36 with the remaining S5
-partition review, including shared-method ambiguity and abrupt returned-receiver
-exits, then the remaining
+proof and the remaining acceptance work. Shared-method queries now cover merged
+details, all signature alternatives and exact/null definitions across package
+joins. Incomplete source origins survive field/method return chains and cannot
+prove a unique definition; source branches exclude colliding schema signatures.
+Protocol tests explicitly query null definitions after applying candidate edits.
+Resume B03.37 with the remaining S5 partition review, including abrupt
+returned-receiver exits, then the remaining
 semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

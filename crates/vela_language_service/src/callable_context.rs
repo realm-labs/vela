@@ -447,6 +447,12 @@ fn schema_method_callable_facts(
     receiver: &TypeFact,
     method: &str,
 ) -> Vec<CallableFacts> {
+    if let TypeFact::Union(facts) = receiver {
+        return facts
+            .iter()
+            .flat_map(|fact| schema_method_callable_facts(databases, fact, method))
+            .collect();
+    }
     let graph = databases.hir_db().graph();
     let source_owner = match receiver {
         TypeFact::Record { name } => Some((name, DeclarationKind::Struct)),

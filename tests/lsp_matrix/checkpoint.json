@@ -1634,10 +1634,41 @@
         "completion-resolve/syntax/S9/negative/protocol"
       ],
       "summary": "Sixteen shared callback-slot queries and an independent executable-analysis regression cover stdlib positional, named, reordered and mixed arguments under Unicode LF/CRLF. A red case showed reordered Iterator.fold arguments losing the initial record fact. Analysis now maps HIR argument facts into registered parameter order and selects only the actual callback slot for direct-lambda return and parameter specialization. A lambda in the initial value cannot invent result members; two lambdas in distinct slots no longer suppress the real callback. Unknown names, duplicate slots, extra arguments and positional-after-named calls retain unspecialized facts; validation owns diagnostics. Exact complete member sets, receiver facts, edits, source resolve ownership and applied field definitions are asserted in both layers, including contextual accumulator facts after reordering. Executable analysis independently checks named initial values, two lambda roles, callable-valued initial returns, concrete callback item facts and stdlib target identity. Typed source/schema callbacks retain their separate contract. No callback or host state is executed by these queries. Analysis 156 passed; workspace 4486 passed, two historical ignored; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-d73HIh/results.json passed 9; native editors/vscode/test-results/input-3MtKQw/results.json passed 13; strict target/lsp-matrix/run-3bXzcs/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The 24 requirement references record partial child progress, not whole-partition acceptance. B03 remains unaccepted. Resume B03.36 with remaining S5 review, including shared-method ambiguity and abrupt returned-receiver exits, then remaining semantic, lifecycle/URI/client and UX04 proof. Fresh macOS evidence is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.36",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S4/positive/service",
+        "completion/syntax/S4/positive/protocol",
+        "completion/syntax/S4/negative/service",
+        "completion/syntax/S4/negative/protocol",
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/negative/protocol",
+        "completion/syntax/S9/positive/service",
+        "completion/syntax/S9/positive/protocol",
+        "completion/syntax/S9/negative/service",
+        "completion/syntax/S9/negative/protocol",
+        "completion-resolve/syntax/S4/positive/service",
+        "completion-resolve/syntax/S4/positive/protocol",
+        "completion-resolve/syntax/S4/negative/service",
+        "completion-resolve/syntax/S4/negative/protocol",
+        "completion-resolve/syntax/S5/positive/service",
+        "completion-resolve/syntax/S5/positive/protocol",
+        "completion-resolve/syntax/S5/negative/service",
+        "completion-resolve/syntax/S5/negative/protocol",
+        "completion-resolve/syntax/S9/positive/service",
+        "completion-resolve/syntax/S9/positive/protocol",
+        "completion-resolve/syntax/S9/negative/service",
+        "completion-resolve/syntax/S9/negative/protocol"
+      ],
+      "summary": "Eighteen shared-method contexts apply 45 candidates in service and protocol under Unicode LF/CRLF. Same-name root/dependency inherent and default trait methods retain deterministic merged details, complete signature alternatives, exact edits, resolve ownership and owned or null definitions; hidden dependencies and colliding schema methods do not become source owners. Cases cover direct receivers, reversed if joins, match joins, aliases, reassignment, returned receivers and source/Any unions. An incomplete source union exposed navigation falsely selecting its sole known branch; member definitions now require complete origins, and field/method mappings preserve incompleteness. Known authoring choices remain available, while pure Any and unresolved returns have no invented members. A second failure exposed colliding schema signatures on source union branches; schema callable lookup now applies source precedence per union branch. The protocol ownership runner now actually queries and asserts null definition results, including error absence, and computes the callee position before any inserted argument paths. Plural signature oracles preserve all alternatives, including identical labels from distinct owners. Workspace 4488 passed, two historical ignored; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-q9HB0d/results.json passed 9; native editors/vscode/test-results/input-kegGsk/results.json passed 13; strict target/lsp-matrix/run-FDbBKf/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The 24 requirement references record partial child progress, not whole-partition acceptance. B03 remains unaccepted. Resume B03.37 with remaining S5 review, including abrupt returned-receiver exits, then remaining semantic, lifecycle/URI/client and UX04 proof. Fresh macOS evidence is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.36",
-  "nextTask": "B03.36",
+  "activeChild": "B03.37",
+  "nextTask": "B03.37",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -3657,7 +3688,19 @@
     "target/b03-35-input.log",
     "target/b03-35-accepted-regression.log",
     "editors/vscode/test-results/run-d73HIh/results.json",
-    "editors/vscode/test-results/input-3MtKQw/results.json"
+    "editors/vscode/test-results/input-3MtKQw/results.json",
+    "target/lsp-matrix/run-FDbBKf/report.json",
+    "target/b03-36-baseline.log",
+    "target/b03-36-red-signature.log",
+    "target/b03-36-shared.log",
+    "target/b03-36-workspace.log",
+    "target/b03-36-clippy.log",
+    "target/b03-36-node.log",
+    "target/b03-36-editor.log",
+    "target/b03-36-input.log",
+    "target/b03-36-accepted-regression.log",
+    "editors/vscode/test-results/run-q9HB0d/results.json",
+    "editors/vscode/test-results/input-kegGsk/results.json"
   ],
   "openIssues": [
     {
@@ -4278,8 +4321,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "909311abde4a727993f98d9cac605e1b52323dac",
-          "treeSha256": "8fa3cbab5d4111c952a9a66fa16ff85c88957323422c39f2300ea05f86c81453"
+          "revision": "e07a23066804017aa852564fcab39ef040afe1a8",
+          "treeSha256": "6b7640fbd8131c844aa22bc1af4dad9a63ab371437cd33a0e7b085cbbf36c24f"
         },
         "profile": {
           "platform": "win32",
@@ -4287,11 +4330,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-3bXzcs/report.json"
+          "target/lsp-matrix/run-FDbBKf/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-d73HIh/results.json --local-results editors/vscode/test-results/input-3MtKQw/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-q9HB0d/results.json --local-results editors/vscode/test-results/input-kegGsk/results.json",
             "exitCode": 0
           }
         ]

@@ -4583,3 +4583,12 @@ facts while ordinary validation owns their diagnostics. Incomplete slots remain
 available for analysis during editing. Typed source/schema callback analysis keeps
 its own callable contract. This corrects analysis facts without executing callbacks
 or changing runtime argument admission.
+
+Known source branches of a union remain available for authoring, but a source
+member definition requires complete receiver origins before distinct locations
+can establish uniqueness. Mapping fields and method returns preserves an unknown
+contributing path rather than turning the remaining known owners into a complete
+set. Schema callable lookup applies source precedence separately to each union
+branch. Completion may therefore show known alternatives without claiming that a
+dynamic branch has the same target, and identical method names cannot borrow a
+colliding schema signature.
