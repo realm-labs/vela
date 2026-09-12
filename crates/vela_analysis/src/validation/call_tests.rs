@@ -434,6 +434,42 @@ fn main() {
 }
 
 #[test]
+fn trait_call_validation_uses_declared_asyncness_and_parameter_slots() {
+    let source = SourceId::new(115);
+    let text = r#"
+trait Loader {
+    async fn load(self, amount: i64 = 1) -> i64;
+    fn keep(self, amount: i64) -> i64 { amount }
+}
+async fn main(loader: Loader, dynamic: Any) {
+    loader.load(amount = 2);
+    loader.load(3).await;
+    loader.keep(4);
+    dynamic.load(5);
+}
+"#;
+    let (graph, main) = graph(source, text);
+    let function = FunctionId::new(11_501);
+    let generation = generation(&graph, None, main, function);
+    let view = generation.view(function).expect("main view");
+    let diagnostics = view.validation_diagnostics();
+    assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+    assert_eq!(
+        diagnostics[0].code.as_deref(),
+        Some("analysis::async_call_requires_await")
+    );
+    assert_eq!(
+        span_text(text, diagnostics[0].span.expect("call span")),
+        "loader.load(amount = 2)"
+    );
+    let call = expression_exact(&graph, source, text, "loader.load(amount = 2)");
+    let placement = view.call_argument_placement(call).expect("trait placement");
+    assert_eq!(placement.mode, CallPlacementModeFact::Strict);
+    assert_eq!(slot_names(placement), ["amount"]);
+    assert_eq!(slot_sources(placement), [Some(0)]);
+}
+
+#[test]
 fn registry_async_calls_require_await() {
     let source = SourceId::new(113);
     let text = r#"

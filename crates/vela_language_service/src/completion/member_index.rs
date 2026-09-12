@@ -11,7 +11,9 @@ use crate::{CompletionSymbol, TextRange};
 
 use super::accumulator::CompletionAccumulator;
 use super::analysis_item::service_item_from_analysis_completion;
-use super::source_member::{declaration_name_matches, source_member_completion_candidates};
+use super::source_member::{
+    SourceMemberCompletion, declaration_name_matches, source_member_completion_candidates,
+};
 use super::{CompletionItem, label_segment_matches};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -86,24 +88,52 @@ impl MemberCompletionIndex {
                 .collect(),
             None => source_member_completion_candidates(graph, schema, receiver, None),
         };
-        let mut merged: Vec<(AnalysisCompletionItem, CompletionSymbol)> = Vec::new();
-        for (item, symbol) in candidates {
-            if let Some((prior, _)) = merged.iter_mut().find(|(prior, prior_symbol)| {
-                prior.label == item.label && prior.kind == item.kind && *prior_symbol == symbol
+        let mut merged: Vec<(SourceMemberCompletion, Vec<String>)> = Vec::new();
+        for candidate in candidates {
+            let detail = candidate.detail();
+            if let Some((prior, details)) = merged.iter_mut().find(|(prior, _)| {
+                prior.item.label == candidate.item.label
+                    && prior.item.kind == candidate.item.kind
+                    && prior.symbol == candidate.symbol
             }) {
-                let mut facts = match &prior.fact {
+                let mut facts = match &prior.item.fact {
                     TypeFact::Union(facts) => facts.clone(),
                     fact => vec![fact.clone()],
                 };
-                facts.push(item.fact);
+                facts.push(candidate.item.fact);
                 facts.sort_by_key(TypeFact::display_name);
-                prior.fact = TypeFact::union(facts);
+                prior.item.fact = TypeFact::union(facts);
+                details.push(detail);
+                details.sort();
+                details.dedup();
             } else {
-                merged.push((item, symbol));
+                merged.push((candidate, vec![detail]));
             }
         }
-        for (item, symbol) in merged {
-            self.push_analysis(item, MemberCompletionSurface::Source, Some(symbol), None);
+        for (candidate, details) in merged {
+            let method = candidate.item.kind == AnalysisCompletionKind::Method;
+            let item = self.push_analysis(
+                candidate.item,
+                MemberCompletionSurface::Source,
+                Some(candidate.symbol),
+                None,
+            );
+            if method {
+                let mut parts = crate::DisplayParts::new();
+                for (index, detail) in details.iter().enumerate() {
+                    if index != 0 {
+                        parts.extend(crate::DisplayParts::plain(" | "));
+                    }
+                    let detail = if let Some(detail) = detail.strip_prefix("async ") {
+                        parts.extend(crate::DisplayParts::plain("async "));
+                        detail
+                    } else {
+                        detail
+                    };
+                    parts.extend(super::display_type_detail_parts(detail));
+                }
+                item.set_detail_parts(parts);
+            }
         }
     }
 
@@ -128,12 +158,24 @@ impl MemberCompletionIndex {
                 }
                 _ => None,
             };
-            self.push_analysis(
+            let signature = match receiver {
+                TypeFact::Host { name } | TypeFact::Record { name } => {
+                    schema.method_signature_fact(name, &item.label)
+                }
+                TypeFact::Trait { name } => schema.trait_method_signature_fact(name, &item.label),
+                _ => None,
+            };
+            let completion = self.push_analysis(
                 item,
                 MemberCompletionSurface::Schema,
                 Some(symbol),
                 resource,
             );
+            if signature.is_some_and(|signature| signature.asyncness.is_async()) {
+                let mut parts = crate::DisplayParts::plain("async ");
+                parts.extend(completion.detail_parts());
+                completion.set_detail_parts(parts);
+            }
         }
     }
 
@@ -155,7 +197,7 @@ impl MemberCompletionIndex {
         surface: MemberCompletionSurface,
         symbol: Option<CompletionSymbol>,
         scoped_resource: Option<vela_analysis::registry::ScopedResourceReturnDef>,
-    ) {
+    ) -> &mut CompletionItem {
         let scoped_detail = scoped_resource.and_then(|resource| match &item.fact {
             TypeFact::Function { returns, .. } => Some(format!(
                 "{}; {}",
@@ -173,6 +215,7 @@ impl MemberCompletionIndex {
             item = item.with_symbol(symbol);
         }
         self.entries.push(MemberCompletionEntry { item, surface });
+        &mut self.entries.last_mut().expect("inserted completion").item
     }
 
     #[cfg(test)]

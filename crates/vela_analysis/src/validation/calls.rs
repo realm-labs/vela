@@ -149,6 +149,22 @@ fn placement_policy(
     call: &vela_hir::body::HirCall,
     target: &CallTargetFact,
 ) -> PlacementPolicy {
+    if let Some(field) = body.field(call.callee)
+        && let Some(owner) = facts.script_type(field.receiver)
+        && let Some(declaration) = graph.declaration(owner.declaration)
+        && let Some(shape) = graph.trait_shape(declaration.id)
+        && let Some(method) = shape
+            .methods
+            .iter()
+            .find(|method| method.name == field.name)
+    {
+        return PlacementPolicy::Strict(hir_signature(
+            graph,
+            declaration.module,
+            &method.signature,
+            true,
+        ));
+    }
     match target {
         CallTargetFact::Declaration(declaration) => source_function_signature(graph, *declaration)
             .map_or(PlacementPolicy::Unresolved, PlacementPolicy::Strict),

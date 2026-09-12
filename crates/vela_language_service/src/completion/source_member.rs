@@ -15,12 +15,45 @@ use crate::symbol_ref::{
     source_impl_owner_matches, source_member_symbol, source_variant_field_symbol,
 };
 
+pub(super) struct SourceMemberCompletion {
+    pub(super) item: AnalysisCompletionItem,
+    pub(super) symbol: CompletionSymbol,
+    asyncness: vela_common::CallableAsyncness,
+}
+
+impl SourceMemberCompletion {
+    fn new(item: AnalysisCompletionItem, symbol: CompletionSymbol) -> Self {
+        Self {
+            item,
+            symbol,
+            asyncness: vela_common::CallableAsyncness::Sync,
+        }
+    }
+
+    fn with_asyncness(mut self, asyncness: vela_common::CallableAsyncness) -> Self {
+        self.asyncness = asyncness;
+        self
+    }
+
+    pub(super) fn detail(&self) -> String {
+        format!(
+            "{}{}",
+            if self.asyncness.is_async() {
+                "async "
+            } else {
+                ""
+            },
+            self.item.fact.display_name()
+        )
+    }
+}
+
 pub(super) fn source_member_completion_candidates(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     receiver: &TypeFact,
     owner: Option<vela_hir::ids::HirDeclId>,
-) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
+) -> Vec<SourceMemberCompletion> {
     source_field_completion_items(graph, schema, receiver, owner)
         .into_iter()
         .chain(source_variant_field_completion_items(
@@ -37,7 +70,7 @@ fn source_variant_field_completion_items(
     schema: &RegistryFacts,
     receiver: &TypeFact,
     owner: Option<vela_hir::ids::HirDeclId>,
-) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
+) -> Vec<SourceMemberCompletion> {
     if let TypeFact::Union(facts) = receiver {
         return facts
             .iter()
@@ -71,7 +104,7 @@ fn source_variant_field_completion_items(
     fields
         .iter()
         .filter_map(|field| {
-            Some((
+            Some(SourceMemberCompletion::new(
                 AnalysisCompletionItem {
                     label: field.name.clone(),
                     kind: AnalysisCompletionKind::Field,
@@ -88,7 +121,7 @@ fn source_field_completion_items(
     schema: &RegistryFacts,
     receiver: &TypeFact,
     owner: Option<vela_hir::ids::HirDeclId>,
-) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
+) -> Vec<SourceMemberCompletion> {
     let owner_names = record_owner_names(receiver);
     graph
         .declarations()
@@ -106,7 +139,7 @@ fn source_field_completion_items(
         })
         .flat_map(|(declaration, shape)| {
             shape.fields.iter().filter_map(move |field| {
-                Some((
+                Some(SourceMemberCompletion::new(
                     AnalysisCompletionItem {
                         label: field.name.clone(),
                         kind: AnalysisCompletionKind::Field,
@@ -124,7 +157,7 @@ fn source_method_completion_items(
     schema: &RegistryFacts,
     receiver: &TypeFact,
     owner: Option<vela_hir::ids::HirDeclId>,
-) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
+) -> Vec<SourceMemberCompletion> {
     let mut items = source_impl_method_completion_items(graph, schema, receiver, owner);
     items.extend(source_trait_receiver_method_completion_items(
         graph, schema, receiver, owner,
@@ -140,7 +173,7 @@ fn source_impl_method_completion_items(
     schema: &RegistryFacts,
     receiver: &TypeFact,
     owner: Option<vela_hir::ids::HirDeclId>,
-) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
+) -> Vec<SourceMemberCompletion> {
     let owner_names = record_owner_names(receiver);
     graph
         .declarations()
@@ -158,14 +191,22 @@ fn source_impl_method_completion_items(
         })
         .flat_map(|(declaration, metadata)| {
             metadata.methods.iter().filter_map(move |method| {
-                Some((
-                    AnalysisCompletionItem {
-                        label: method.name.clone(),
-                        kind: AnalysisCompletionKind::Method,
-                        fact: function_fact_from_signature(graph, schema, &method.signature, true),
-                    },
-                    source_impl_method_symbol(graph, declaration, &method.name)?,
-                ))
+                Some(
+                    SourceMemberCompletion::new(
+                        AnalysisCompletionItem {
+                            label: method.name.clone(),
+                            kind: AnalysisCompletionKind::Method,
+                            fact: function_fact_from_signature(
+                                graph,
+                                schema,
+                                &method.signature,
+                                true,
+                            ),
+                        },
+                        source_impl_method_symbol(graph, declaration, &method.name)?,
+                    )
+                    .with_asyncness(method.signature.asyncness),
+                )
             })
         })
         .collect()
@@ -176,7 +217,7 @@ fn source_trait_receiver_method_completion_items(
     schema: &RegistryFacts,
     receiver: &TypeFact,
     owner: Option<vela_hir::ids::HirDeclId>,
-) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
+) -> Vec<SourceMemberCompletion> {
     let owner_names = trait_owner_names(receiver);
     graph
         .declarations()
@@ -194,14 +235,22 @@ fn source_trait_receiver_method_completion_items(
         })
         .flat_map(|(declaration, shape)| {
             shape.methods.iter().filter_map(move |method| {
-                Some((
-                    AnalysisCompletionItem {
-                        label: method.name.clone(),
-                        kind: AnalysisCompletionKind::Method,
-                        fact: function_fact_from_signature(graph, schema, &method.signature, true),
-                    },
-                    source_member_symbol(graph, declaration, &method.name)?,
-                ))
+                Some(
+                    SourceMemberCompletion::new(
+                        AnalysisCompletionItem {
+                            label: method.name.clone(),
+                            kind: AnalysisCompletionKind::Method,
+                            fact: function_fact_from_signature(
+                                graph,
+                                schema,
+                                &method.signature,
+                                true,
+                            ),
+                        },
+                        source_member_symbol(graph, declaration, &method.name)?,
+                    )
+                    .with_asyncness(method.signature.asyncness),
+                )
             })
         })
         .collect()
@@ -212,7 +261,7 @@ fn source_trait_default_method_completion_items(
     schema: &RegistryFacts,
     receiver: &TypeFact,
     owner: Option<vela_hir::ids::HirDeclId>,
-) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
+) -> Vec<SourceMemberCompletion> {
     let owner_names = record_owner_names(receiver);
     graph
         .declarations()
@@ -261,19 +310,22 @@ fn source_trait_default_method_completion_items(
                             {
                                 return None;
                             }
-                            Some((
-                                AnalysisCompletionItem {
-                                    label: method.name.clone(),
-                                    kind: AnalysisCompletionKind::Method,
-                                    fact: function_fact_from_signature(
-                                        graph,
-                                        schema,
-                                        &method.signature,
-                                        true,
-                                    ),
-                                },
-                                source_member_symbol(graph, trait_declaration, &method.name)?,
-                            ))
+                            Some(
+                                SourceMemberCompletion::new(
+                                    AnalysisCompletionItem {
+                                        label: method.name.clone(),
+                                        kind: AnalysisCompletionKind::Method,
+                                        fact: function_fact_from_signature(
+                                            graph,
+                                            schema,
+                                            &method.signature,
+                                            true,
+                                        ),
+                                    },
+                                    source_member_symbol(graph, trait_declaration, &method.name)?,
+                                )
+                                .with_asyncness(method.signature.asyncness),
+                            )
                         }
                     })
                 })

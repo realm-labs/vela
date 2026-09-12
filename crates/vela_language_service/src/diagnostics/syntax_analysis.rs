@@ -28,15 +28,6 @@ use crate::{
     expression_facts::{self, ExpressionFacts},
 };
 
-/// The two whole-workspace fact builds the diagnostics pass reads: expression
-/// facts resolve against the host schema, executable validation deliberately
-/// does not.
-#[derive(Clone, Copy)]
-pub(super) struct SourceAnalysisFacts<'a> {
-    pub(super) graph_only: &'a AnalysisFacts,
-    pub(super) schema_backed: &'a AnalysisFacts,
-}
-
 struct MemberSiteDiagnosticContext<'a> {
     source: SourceId,
     graph: &'a ModuleGraph,
@@ -50,9 +41,9 @@ pub(super) fn source_diagnostics(
     graph: &ModuleGraph,
     module: Option<ModuleId>,
     facts: &RegistryFacts,
-    analysis: SourceAnalysisFacts<'_>,
+    analysis: &AnalysisFacts,
 ) -> Vec<Diagnostic> {
-    let expression_facts = expression_facts::collect(graph, source, analysis.schema_backed);
+    let expression_facts = expression_facts::collect(graph, source, analysis);
     let member_context = MemberSiteDiagnosticContext {
         source,
         graph,
@@ -141,7 +132,7 @@ pub(super) fn source_diagnostics(
     let executable_validation = ExecutableValidationFacts::for_bodies(
         graph,
         Some(facts),
-        analysis.graph_only,
+        analysis,
         graph
             .bodies()
             .filter(|body| body.origin.span.source == source)
@@ -152,28 +143,10 @@ pub(super) fn source_diagnostics(
             .diagnostics()
             .iter()
             .filter(|diagnostic| {
-                diagnostic.code.as_deref() == Some("analysis::async_call_requires_await")
-            })
-            .cloned(),
-    );
-    let task_validation = ExecutableValidationFacts::for_bodies(
-        graph,
-        Some(facts),
-        analysis.schema_backed,
-        graph
-            .bodies()
-            .filter(|body| body.origin.span.source == source)
-            .map(|body| body.id),
-    );
-    diagnostics.extend(
-        task_validation
-            .diagnostics()
-            .iter()
-            .filter(|diagnostic| {
-                diagnostic
-                    .code
-                    .as_deref()
-                    .is_some_and(|code| code.starts_with("analysis::task_"))
+                diagnostic.code.as_deref().is_some_and(|code| {
+                    code == "analysis::async_call_requires_await"
+                        || code.starts_with("analysis::task_")
+                })
             })
             .cloned(),
     );

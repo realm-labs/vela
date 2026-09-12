@@ -8,9 +8,7 @@ use vela_hir::{
     ids::HirExprId,
 };
 
-use crate::callable_context::{
-    CallableParameterFacts, callable_facts, member_callable_facts_for_type,
-};
+use crate::callable_context::{CallableParameterFacts, member_callable_facts_for_type};
 use crate::symbol_ref::{builtin_member_symbol, schema_member_symbol, source_child_symbol};
 use crate::{
     DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, Position,
@@ -143,33 +141,7 @@ impl LanguageServiceDatabases {
             .filter(|body| body.origin.source == context.source_id)
         {
             for (_, call) in body.calls() {
-                let args_prefix = hir_args_prefix(body, call, context.source_text);
-                let callable = if let Some(field) = body.field(call.callee) {
-                    let Some(receiver) = facts.expression(field.receiver) else {
-                        continue;
-                    };
-                    member_callable_facts_for_type(
-                        self,
-                        receiver,
-                        facts.source_origins(field.receiver),
-                        &field.name,
-                        &args_prefix,
-                    )
-                    .into_iter()
-                    .next()
-                } else {
-                    body.paths
-                        .iter()
-                        .find(|path| {
-                            path.owner == HirPathOwner::Expression(call.callee)
-                                && path.kind == HirPathKind::Callee
-                        })
-                        .and_then(|path| {
-                            callable_facts(self, &path.path.join("::"))
-                                .into_iter()
-                                .next()
-                        })
-                };
+                let callable = hir_callable_for_call(self, body, call, context.source_text, facts);
                 let Some(callable) = callable else {
                     continue;
                 };
@@ -385,9 +357,31 @@ pub(crate) fn hir_callable_for_call(
                     && path.kind == HirPathKind::Callee
             })
             .and_then(|path| {
-                callable_facts(databases, &path.path.join("::"))
-                    .into_iter()
-                    .next()
+                let graph = databases.hir_db().graph();
+                if matches!(
+                    graph.bindings_for_body(body.id)?.resolution(call.callee),
+                    Some(vela_hir::binding::BindingResolution::Local(_))
+                ) {
+                    return None;
+                }
+                let source = databases
+                    .source_db()
+                    .records()
+                    .values()
+                    .find(|source| source.source_id() == body.origin.source)?;
+                let offset = usize::try_from(body.expression(call.callee)?.origin.span.end).ok()?;
+                let prefix = source_text.get(..offset)?;
+                let position = Position::new(
+                    prefix.bytes().filter(|byte| *byte == b'\n').count(),
+                    offset - prefix.rfind('\n').map_or(0, |index| index + 1),
+                );
+                let query =
+                    crate::QueryContext::from_databases(databases, source.document_id(), position)?;
+                let mut callables = query
+                    .callable_facts_by_path(databases, &path.path)
+                    .into_iter();
+                let callable = callables.next()?;
+                callables.next().is_none().then_some(callable)
             })
     }
 }

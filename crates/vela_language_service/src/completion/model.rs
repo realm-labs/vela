@@ -226,8 +226,24 @@ impl CompletionItem {
 
     #[must_use]
     pub(super) fn with_detail_parts(mut self, detail_parts: DisplayParts) -> Self {
+        self.set_detail_parts(detail_parts);
+        self
+    }
+
+    pub(super) fn set_detail_parts(&mut self, detail_parts: DisplayParts) {
         self.detail = detail_parts.render();
         self.metadata.detail_parts = Some(detail_parts);
+    }
+
+    pub(super) fn with_callable_asyncness(
+        mut self,
+        asyncness: vela_common::CallableAsyncness,
+    ) -> Self {
+        if asyncness.is_async() {
+            let mut parts = DisplayParts::plain("async ");
+            parts.extend(self.detail_parts());
+            self.set_detail_parts(parts);
+        }
         self
     }
 

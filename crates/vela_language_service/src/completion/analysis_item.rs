@@ -72,6 +72,9 @@ fn enrich_analysis_completion_item(
                     crate::callable_context::scoped_resource_detail(resource)
                 )));
             }
+            if let Some(signature) = schema.function_signature_fact(&label) {
+                item = item.with_callable_asyncness(signature.asyncness);
+            }
             item
         }
         _ => item,

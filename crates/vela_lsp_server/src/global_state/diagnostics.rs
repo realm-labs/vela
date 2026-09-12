@@ -12,13 +12,7 @@ impl ProjectState {
         let mut notifications = Vec::new();
         if !self.open_documents.is_empty() {
             notifications.extend(self.open_documents.iter().map(|document_id| {
-                let diagnostics = self.databases.diagnostics_for_document(document_id);
-                let mut diagnostics = to_proto::diagnostics(&diagnostics);
-                diagnostics.extend(to_proto::project_diagnostics(
-                    &self.analysis_diagnostics,
-                    document_id,
-                ));
-                publish_diagnostics_notification(document_id.as_str(), diagnostics, None)
+                self.publish_document_diagnostics(document_id.as_str(), document_id)
             }));
         }
 
@@ -33,7 +27,10 @@ impl ProjectState {
         document_id: &DocumentId,
     ) -> Message {
         let diagnostics = self.databases.diagnostics_for_document(document_id);
-        let mut diagnostics = to_proto::diagnostics(&diagnostics);
+        let mut diagnostics = match to_proto::diagnostics(&diagnostics, &self.databases) {
+            Ok(diagnostics) => diagnostics,
+            Err(error) => return publish_diagnostics_notification(uri, Vec::new(), Some(error)),
+        };
         diagnostics.extend(to_proto::project_diagnostics(
             &self.analysis_diagnostics,
             document_id,

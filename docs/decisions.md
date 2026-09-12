@@ -4528,3 +4528,16 @@ stable type order; navigation requires one distinct target location. Canonical
 symbol spelling alone cannot disambiguate packages. Unprefixed qualified HIR
 bindings must stay within the requesting package, including incremental source
 insertion before all modules are available.
+
+Completion carries callable asyncness separately from value type facts and renders
+`async` on asynchronous candidates. Source method candidates keep their declaring
+signature while combining possible-owner details; a canonical symbol name cannot
+supply another package's asyncness. Function parameter inlays use the same scoped
+callable resolution as signature help, and require a unique callable.
+
+Validate a source trait call against its declared signature independently of the
+availability of an implementation body. Language-service missing-await diagnostics
+use schema-backed executable facts, just as scoped-task validation does. Project
+service diagnostic ranges, labels and repair hints through their own document's
+current source text at the protocol boundary; reject unavailable or invalid ranges
+instead of emitting byte columns as UTF-16 positions.

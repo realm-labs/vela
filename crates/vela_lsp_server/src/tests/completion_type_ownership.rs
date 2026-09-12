@@ -29,6 +29,11 @@ fn returned_receiver_flow_projects_owned_sets_signatures_and_targets() {
 }
 
 #[test]
+fn async_callable_matrix_projects_owner_metadata_and_applied_await_contracts() {
+    assert_type_ownership("completion-async-callables");
+}
+
+#[test]
 fn receiver_assignment_flow_projects_possible_owners_and_rejects_stale_members() {
     assert_type_ownership("completion-receiver-assignments");
 }
@@ -164,10 +169,49 @@ fn assert_type_ownership(fixture_id: &str) {
                         .is_empty()
                 );
                 version += 1;
-                let _ = notify::<n::DidChangeTextDocument>(
+                let changes = notify::<n::DidChangeTextDocument>(
                     &mut server,
                     json!({"textDocument":{"uri":uri(file),"version":version},"contentChanges":[{"text":edited}]}),
                 );
+                if case["checkAwait"] == true {
+                    let notifications = crate::tests::notification_values(changes);
+                    let published = notifications
+                        .iter()
+                        .find(|notification| {
+                            notification["method"] == "textDocument/publishDiagnostics"
+                                && notification["params"]["uri"] == uri(file)
+                        })
+                        .expect("applied diagnostics");
+                    let missing = published["params"]["diagnostics"]
+                        .as_array()
+                        .expect("diagnostics")
+                        .iter()
+                        .filter(|diagnostic| {
+                            diagnostic["code"] == "analysis::async_call_requires_await"
+                        })
+                        .collect::<Vec<_>>();
+                    let required =
+                        expected["async"] == true && string(case, "applySuffix").is_empty();
+                    assert_eq!(
+                        missing.len(),
+                        usize::from(required),
+                        "{case} {expected}: {missing:?}"
+                    );
+                    if let Some(diagnostic) = missing.first() {
+                        let call = source.markers["call"];
+                        let end = call.end.character + insertion.encode_utf16().count()
+                            - (range.end.character - range.start.character);
+                        assert_eq!(diagnostic["severity"], 1);
+                        let expected_range = json!({"start":{"line":call.start.line,"character":call.start.character},"end":{"line":call.end.line,"character":end}});
+                        assert_eq!(diagnostic["range"], expected_range);
+                        let labels = diagnostic["data"]["labels"]
+                            .as_array()
+                            .expect("diagnostic labels");
+                        assert_eq!(labels.len(), 1);
+                        assert_eq!(labels[0]["uri"], uri(file));
+                        assert_eq!(labels[0]["range"], expected_range);
+                    }
+                }
                 if let Some(signature) = expected["signature"].as_str() {
                     let open = insertion.find('(').expect("call");
                     let help = response_value(request::<r::SignatureHelpRequest>(

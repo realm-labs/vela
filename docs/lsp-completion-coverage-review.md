@@ -33,7 +33,13 @@ post-edit signature check.
 
 ## Remaining B03 Acceptance Work
 
-1. Finish the async restriction and S5 partition review. The
+1. Finish callback/scoped-task eligibility and the S5 partition review. The
+   `completion-async-callables` fixture checks eighteen awaited/unawaited source,
+   alias, trait, host and schema cases with opposite asyncness in same-name
+   package declarations. Completion details preserve asyncness; applied calls
+   retain exact signatures, named parameters, inlays, definitions, missing-await
+   diagnostic ranges and labels under Unicode LF/CRLF. Invalid await contexts,
+   sync-only callbacks and static task eligibility still require review. The
    `completion-receiver-assignments` fixture adds twenty cases for sequential
    writes, retained aliases, if/match/loop joins and chained method returns with
    same-name package types. It checks complete sets, stable merged field details,

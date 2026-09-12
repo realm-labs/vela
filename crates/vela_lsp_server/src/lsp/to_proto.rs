@@ -80,11 +80,14 @@ pub(crate) fn signature_help(help: &SignatureHelp) -> lsp_types::SignatureHelp {
     }
 }
 
-pub(crate) fn diagnostics(diagnostics: &DocumentDiagnostics) -> Vec<lsp_types::Diagnostic> {
+pub(crate) fn diagnostics(
+    diagnostics: &DocumentDiagnostics,
+    databases: &vela_language_service::LanguageServiceDatabases,
+) -> Result<Vec<lsp_types::Diagnostic>, String> {
     diagnostics
         .diagnostics()
         .iter()
-        .map(service_diagnostic)
+        .map(|diagnostic| service_diagnostic(diagnostic, diagnostics.document_id(), databases))
         .collect()
 }
 
@@ -306,9 +309,17 @@ fn location(
     }
 }
 
-fn service_diagnostic(diagnostic: &ServiceDiagnostic) -> lsp_types::Diagnostic {
-    lsp_types::Diagnostic {
-        range: diagnostic.range().map_or_else(zero_range, diagnostic_range),
+fn service_diagnostic(
+    diagnostic: &ServiceDiagnostic,
+    document: &vela_language_service::DocumentId,
+    databases: &vela_language_service::LanguageServiceDatabases,
+) -> Result<lsp_types::Diagnostic, String> {
+    Ok(lsp_types::Diagnostic {
+        range: diagnostic
+            .range()
+            .map(|range| diagnostic_source_range(databases, document, range))
+            .transpose()?
+            .unwrap_or_else(zero_range),
         severity: Some(diagnostic_severity(diagnostic.severity())),
         code: diagnostic
             .code()
@@ -319,31 +330,44 @@ fn service_diagnostic(diagnostic: &ServiceDiagnostic) -> lsp_types::Diagnostic {
         message: diagnostic.message().to_owned(),
         related_information: None,
         tags: None,
-        data: Some(diagnostic_data(diagnostic)),
-    }
+        data: Some(diagnostic_data(diagnostic, databases)?),
+    })
 }
 
-fn diagnostic_data(diagnostic: &ServiceDiagnostic) -> JsonValue {
-    json!({
-        "labels": diagnostic.labels().iter().map(|label| {
-            json!({
-                "uri": label.document_id().as_str(),
-                "range": diagnostic_range(label.range()),
-                "message": label.message()
-            })
-        }).collect::<Vec<_>>(),
-        "candidates": diagnostic.candidates().iter().map(|candidate| {
-            json!({ "replacement": candidate.replacement() })
-        }).collect::<Vec<_>>(),
-        "repairHints": diagnostic.repair_hints().iter().map(|hint| {
-            json!({
-                "uri": hint.document_id().as_str(),
-                "range": diagnostic_range(hint.range()),
-                "title": hint.title(),
-                "replacement": hint.replacement()
-            })
-        }).collect::<Vec<_>>()
-    })
+fn diagnostic_source_range(
+    databases: &vela_language_service::LanguageServiceDatabases,
+    document: &vela_language_service::DocumentId,
+    range: DiagnosticRange,
+) -> Result<lsp_types::Range, String> {
+    let source = databases
+        .source_db()
+        .records()
+        .get(document)
+        .ok_or_else(|| format!("diagnostic source is unavailable: {}", document.as_str()))?;
+    let index = crate::line_index::LineIndex::new(source.text());
+    let start = index.lsp_position(range.start())?;
+    let end = index.lsp_position(range.end())?;
+    if start > end {
+        return Err("diagnostic range start is after its end".to_owned());
+    }
+    Ok(lsp_types::Range::new(start, end))
+}
+
+fn diagnostic_data(
+    diagnostic: &ServiceDiagnostic,
+    databases: &vela_language_service::LanguageServiceDatabases,
+) -> Result<JsonValue, String> {
+    let labels = diagnostic.labels().iter().map(|label| {
+        Ok(json!({"uri":label.document_id().as_str(),"range":diagnostic_source_range(databases, label.document_id(), label.range())?,"message":label.message()}))
+    }).collect::<Result<Vec<_>, String>>()?;
+    let repairs = diagnostic.repair_hints().iter().map(|hint| {
+        Ok(json!({"uri":hint.document_id().as_str(),"range":diagnostic_source_range(databases, hint.document_id(), hint.range())?,"title":hint.title(),"replacement":hint.replacement()}))
+    }).collect::<Result<Vec<_>, String>>()?;
+    Ok(json!({
+        "labels": labels,
+        "candidates": diagnostic.candidates().iter().map(|candidate| json!({"replacement":candidate.replacement()})).collect::<Vec<_>>(),
+        "repairHints": repairs,
+    }))
 }
 
 fn empty_diagnostic_data() -> JsonValue {

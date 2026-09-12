@@ -31,6 +31,11 @@ fn returned_receiver_flow_preserves_owned_sets_signatures_and_targets() {
 }
 
 #[test]
+fn async_callable_matrix_preserves_owner_metadata_and_applied_await_contracts() {
+    assert_type_ownership("completion-async-callables");
+}
+
+#[test]
 fn receiver_assignment_flow_preserves_possible_owners_and_rejects_stale_members() {
     assert_type_ownership("completion-receiver-assignments");
 }
@@ -140,6 +145,35 @@ fn assert_type_ownership(fixture_id: &str) {
                 let mut fresh = FixtureWorkspace::new(&spec).expect("fresh");
                 fresh.disk.get_mut(file).expect("file").text = edited.clone();
                 let fresh = databases(&fresh, &layout);
+                if case["checkAwait"] == true {
+                    let diagnostics = fresh.diagnostics_for_document(&uri(file));
+                    let missing = diagnostics
+                        .diagnostics()
+                        .iter()
+                        .filter(|diagnostic| {
+                            diagnostic.code() == Some("analysis::async_call_requires_await")
+                        })
+                        .collect::<Vec<_>>();
+                    let required =
+                        expected["async"] == true && string(case, "applySuffix").is_empty();
+                    assert_eq!(
+                        missing.len(),
+                        usize::from(required),
+                        "{case} {expected}: {missing:?}"
+                    );
+                    if let Some(diagnostic) = missing.first() {
+                        let call = source.markers["call"];
+                        let end =
+                            call.end.byte + insertion.len() - (range.end.byte - range.start.byte);
+                        assert_eq!(
+                            diagnostic.severity(),
+                            crate::ServiceDiagnosticSeverity::Error
+                        );
+                        let diagnostic_range = diagnostic.range().expect("call diagnostic range");
+                        assert_eq!(diagnostic_range.start(), position(&edited, call.start.byte));
+                        assert_eq!(diagnostic_range.end(), position(&edited, end));
+                    }
+                }
                 if let Some(signature) = expected["signature"].as_str() {
                     let open = range.start.byte + insertion.find('(').expect("call");
                     let help = fresh

@@ -1,0 +1,1022 @@
+{
+  "version": 1,
+  "id": "completion-async-callables",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.type_aliases\"\nname = \"type_aliases\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n[dependencies]\nexternal = { path = \"deps/external\" }\n",
+    "deps/external/vela.toml": "[package]\nid = \"dev.vela.external\"\nname = \"external\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[dependencies]\nhidden = { path = \"../hidden\" }\n",
+    "deps/hidden/vela.toml": "[package]\nid = \"dev.vela.hidden\"\nname = \"hidden\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/api.vela": "/* 中😀 */\npub struct Token {}\nimpl Token {\nasync fn [[own-async:start]]own_async[[own-async:end]](self, zz_root: i64) -> i64 { zz_root }\nfn [[own-sync:start]]own_sync[[own-sync:end]](self, zz_root: i64) -> i64 { zz_root }\n}\npub trait Worker {\nasync fn [[trait-own-async:start]]own_async[[trait-own-async:end]](self, zz_root: i64) -> i64;\nfn [[trait-own-sync:start]]own_sync[[trait-own-sync:end]](self, zz_root: i64) -> i64 { zz_root }\n}\npub async fn [[work-async:start]]work_async[[work-async:end]](zz_root: i64) -> i64 { zz_root }\npub fn [[work-sync:start]]work_sync[[work-sync:end]](zz_root: i64) -> i64 { zz_root }\n",
+    "deps/external/scripts/api.vela": "/* 中😀 */\npub struct Token {}\nimpl Token {\nfn [[own-async:start]]own_async[[own-async:end]](self, zz_dep: bool) -> bool { zz_dep }\nasync fn [[own-sync:start]]own_sync[[own-sync:end]](self, zz_dep: bool) -> bool { zz_dep }\n}\npub trait Worker {\nfn [[trait-own-async:start]]own_async[[trait-own-async:end]](self, zz_dep: bool) -> bool;\nasync fn [[trait-own-sync:start]]own_sync[[trait-own-sync:end]](self, zz_dep: bool) -> bool { zz_dep }\n}\npub fn [[work-async:start]]work_async[[work-async:end]](zz_dep: bool) -> bool { zz_dep }\npub async fn [[work-sync:start]]work_sync[[work-sync:end]](zz_dep: bool) -> bool { zz_dep }\n",
+    "deps/hidden/scripts/api.vela": "/* 中😀 */\npub struct Token {}\nimpl Token {\nasync fn [[own-async:start]]own_async[[own-async:end]](self, zz_hidden: String) -> String { zz_hidden }\nfn [[own-sync:start]]own_sync[[own-sync:end]](self, zz_hidden: String) -> String { zz_hidden }\n}\npub trait Worker {\nasync fn [[trait-own-async:start]]own_async[[trait-own-async:end]](self, zz_hidden: String) -> String;\nfn [[trait-own-sync:start]]own_sync[[trait-own-sync:end]](self, zz_hidden: String) -> String { zz_hidden }\n}\npub async fn [[work-async:start]]work_async[[work-async:end]](zz_hidden: String) -> String { zz_hidden }\npub fn [[work-sync:start]]work_sync[[work-sync:end]](zz_hidden: String) -> String { zz_hidden }\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"host::Handle\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Handle\"}}],\"traits\":[{\"name\":\"host::Worker\",\"fact\":{\"kind\":\"trait\",\"name\":\"host::Worker\"}}],\"methods\":[{\"owner\":\"host::Handle\",\"name\":\"own_async\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"asyncness\":\"async\",\"parameters\":[{\"name\":\"zz_host\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}},{\"owner\":\"host::Handle\",\"name\":\"own_sync\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"zz_host\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}}],\"traitMethods\":[{\"owner\":\"host::Worker\",\"name\":\"own_async\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"asyncness\":\"async\",\"parameters\":[{\"name\":\"zz_host\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}},{\"owner\":\"host::Worker\",\"name\":\"own_sync\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"zz_host\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}}],\"functions\":[{\"name\":\"native::work_async\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"asyncness\":\"async\",\"parameters\":[{\"name\":\"zz_host\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}},{\"name\":\"native::work_sync\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"zz_host\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}}]}}",
+    "scripts/root_method_unawaited.vela": "/* 中😀 */ async fn run(value: api::Token) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/root_method_awaited.vela": "/* 中😀 */ async fn run(value: api::Token) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/dep_method_unawaited.vela": "/* 中😀 */ async fn run(value: external::api::Token) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/dep_method_awaited.vela": "/* 中😀 */ async fn run(value: external::api::Token) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/root_alias_unawaited.vela": "use api::Token as Alias;\n/* 中😀 */ async fn run(value: Alias) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/root_alias_awaited.vela": "use api::Token as Alias;\n/* 中😀 */ async fn run(value: Alias) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/dep_alias_unawaited.vela": "use external::api::Token as Alias;\n/* 中😀 */ async fn run(value: Alias) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/dep_alias_awaited.vela": "use external::api::Token as Alias;\n/* 中😀 */ async fn run(value: Alias) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/root_trait_unawaited.vela": "/* 中😀 */ async fn run(value: api::Worker) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/root_trait_awaited.vela": "/* 中😀 */ async fn run(value: api::Worker) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/dep_trait_unawaited.vela": "/* 中😀 */ async fn run(value: external::api::Worker) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/dep_trait_awaited.vela": "/* 中😀 */ async fn run(value: external::api::Worker) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/schema_method_unawaited.vela": "/* 中😀 */ async fn run(value: host::Handle) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/schema_method_awaited.vela": "/* 中😀 */ async fn run(value: host::Handle) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/schema_trait_unawaited.vela": "/* 中😀 */ async fn run(value: host::Worker) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/schema_trait_awaited.vela": "/* 中😀 */ async fn run(value: host::Worker) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/functions_unawaited.vela": "/* 中😀 */ async fn run() { [[call:start]][[replace:start]]work_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/functions_awaited.vela": "/* 中😀 */ async fn run() { [[call:start]][[replace:start]]work_[[cursor]][[replace:end]][[call:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "root_method_unawaited",
+        "file": "scripts/root_method_unawaited.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async Token.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false
+          }
+        ]
+      },
+      {
+        "id": "root_method_awaited",
+        "file": "scripts/root_method_awaited.vela",
+        "context": "Member",
+        "applySuffix": ".await",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async Token.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false
+          }
+        ]
+      },
+      {
+        "id": "dep_method_unawaited",
+        "file": "scripts/dep_method_unawaited.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_async(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": false
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "async Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "true",
+            "signature": "async Token.own_sync(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": true
+          }
+        ]
+      },
+      {
+        "id": "dep_method_awaited",
+        "file": "scripts/dep_method_awaited.vela",
+        "context": "Member",
+        "applySuffix": ".await",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_async(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": false
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "async Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "true",
+            "signature": "async Token.own_sync(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": true
+          }
+        ]
+      },
+      {
+        "id": "root_alias_unawaited",
+        "file": "scripts/root_alias_unawaited.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async Token.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false
+          }
+        ]
+      },
+      {
+        "id": "root_alias_awaited",
+        "file": "scripts/root_alias_awaited.vela",
+        "context": "Member",
+        "applySuffix": ".await",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async Token.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false
+          }
+        ]
+      },
+      {
+        "id": "dep_alias_unawaited",
+        "file": "scripts/dep_alias_unawaited.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_async(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": false
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "async Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "true",
+            "signature": "async Token.own_sync(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": true
+          }
+        ]
+      },
+      {
+        "id": "dep_alias_awaited",
+        "file": "scripts/dep_alias_awaited.vela",
+        "context": "Member",
+        "applySuffix": ".await",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_async(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": false
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "async Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "true",
+            "signature": "async Token.own_sync(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": true
+          }
+        ]
+      },
+      {
+        "id": "root_trait_unawaited",
+        "file": "scripts/root_trait_unawaited.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Worker.own_async",
+            "target": "scripts/api.vela",
+            "marker": "trait-own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async api::Worker.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Worker.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "trait-own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "api::Worker.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false
+          }
+        ]
+      },
+      {
+        "id": "root_trait_awaited",
+        "file": "scripts/root_trait_awaited.vela",
+        "context": "Member",
+        "applySuffix": ".await",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Worker.own_async",
+            "target": "scripts/api.vela",
+            "marker": "trait-own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async api::Worker.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Worker.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "trait-own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "api::Worker.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false
+          }
+        ]
+      },
+      {
+        "id": "dep_trait_unawaited",
+        "file": "scripts/dep_trait_unawaited.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Worker.own_async",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "trait-own-async",
+            "docs": null,
+            "value": "true",
+            "signature": "api::Worker.own_async(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": false
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "async Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Worker.own_sync",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "trait-own-sync",
+            "docs": null,
+            "value": "true",
+            "signature": "async api::Worker.own_sync(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": true
+          }
+        ]
+      },
+      {
+        "id": "dep_trait_awaited",
+        "file": "scripts/dep_trait_awaited.vela",
+        "context": "Member",
+        "applySuffix": ".await",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Worker.own_async",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "trait-own-async",
+            "docs": null,
+            "value": "true",
+            "signature": "api::Worker.own_async(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": false
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "async Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Worker.own_sync",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "trait-own-sync",
+            "docs": null,
+            "value": "true",
+            "signature": "async api::Worker.own_sync(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": true
+          }
+        ]
+      },
+      {
+        "id": "schema_method_unawaited",
+        "file": "scripts/schema_method_unawaited.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(String) -> String",
+            "origin": "schema",
+            "symbol": "host::Handle.own_async",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "async host::Handle.own_async(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": true
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(String) -> String",
+            "origin": "schema",
+            "symbol": "host::Handle.own_sync",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "host::Handle.own_sync(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": false
+          }
+        ]
+      },
+      {
+        "id": "schema_method_awaited",
+        "file": "scripts/schema_method_awaited.vela",
+        "context": "Member",
+        "applySuffix": ".await",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(String) -> String",
+            "origin": "schema",
+            "symbol": "host::Handle.own_async",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "async host::Handle.own_async(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": true
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(String) -> String",
+            "origin": "schema",
+            "symbol": "host::Handle.own_sync",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "host::Handle.own_sync(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": false
+          }
+        ]
+      },
+      {
+        "id": "schema_trait_unawaited",
+        "file": "scripts/schema_trait_unawaited.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(String) -> String",
+            "origin": "schema",
+            "symbol": "host::Worker.own_async",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "async host::Worker.own_async(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": true
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(String) -> String",
+            "origin": "schema",
+            "symbol": "host::Worker.own_sync",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "host::Worker.own_sync(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": false
+          }
+        ]
+      },
+      {
+        "id": "schema_trait_awaited",
+        "file": "scripts/schema_trait_awaited.vela",
+        "context": "Member",
+        "applySuffix": ".await",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(String) -> String",
+            "origin": "schema",
+            "symbol": "host::Worker.own_async",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "async host::Worker.own_async(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": true
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(String) -> String",
+            "origin": "schema",
+            "symbol": "host::Worker.own_sync",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "host::Worker.own_sync(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": false
+          }
+        ]
+      },
+      {
+        "id": "functions_unawaited",
+        "file": "scripts/functions_unawaited.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "api::work_async",
+            "insert": "api::work_async($0)",
+            "kind": "Function",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::work_async",
+            "target": "scripts/api.vela",
+            "marker": "work-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async work_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true
+          },
+          {
+            "label": "api::work_sync",
+            "insert": "api::work_sync($0)",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::work_sync",
+            "target": "scripts/api.vela",
+            "marker": "work-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "work_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false
+          },
+          {
+            "label": "external::api::work_async",
+            "insert": "external::api::work_async($0)",
+            "kind": "Function",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::work_async",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "work-async",
+            "docs": null,
+            "value": "true",
+            "signature": "work_async(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": false
+          },
+          {
+            "label": "external::api::work_sync",
+            "insert": "external::api::work_sync($0)",
+            "kind": "Function",
+            "detail": "async Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::work_sync",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "work-sync",
+            "docs": null,
+            "value": "true",
+            "signature": "async work_sync(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": true
+          },
+          {
+            "label": "native::work_async",
+            "insert": "native::work_async($0)",
+            "kind": "Function",
+            "detail": "async Function(String) -> String",
+            "origin": "schema",
+            "symbol": "native::work_async",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "async native::work_async(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": true
+          },
+          {
+            "label": "native::work_sync",
+            "insert": "native::work_sync($0)",
+            "kind": "Function",
+            "detail": "Function(String) -> String",
+            "origin": "schema",
+            "symbol": "native::work_sync",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "native::work_sync(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": false
+          }
+        ]
+      },
+      {
+        "id": "functions_awaited",
+        "file": "scripts/functions_awaited.vela",
+        "context": "Expression",
+        "applySuffix": ".await",
+        "checkAwait": true,
+        "items": [
+          {
+            "label": "api::work_async",
+            "insert": "api::work_async($0)",
+            "kind": "Function",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::work_async",
+            "target": "scripts/api.vela",
+            "marker": "work-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async work_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true
+          },
+          {
+            "label": "api::work_sync",
+            "insert": "api::work_sync($0)",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::work_sync",
+            "target": "scripts/api.vela",
+            "marker": "work-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "work_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false
+          },
+          {
+            "label": "external::api::work_async",
+            "insert": "external::api::work_async($0)",
+            "kind": "Function",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::work_async",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "work-async",
+            "docs": null,
+            "value": "true",
+            "signature": "work_async(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": false
+          },
+          {
+            "label": "external::api::work_sync",
+            "insert": "external::api::work_sync($0)",
+            "kind": "Function",
+            "detail": "async Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::work_sync",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "work-sync",
+            "docs": null,
+            "value": "true",
+            "signature": "async work_sync(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": true
+          },
+          {
+            "label": "native::work_async",
+            "insert": "native::work_async($0)",
+            "kind": "Function",
+            "detail": "async Function(String) -> String",
+            "origin": "schema",
+            "symbol": "native::work_async",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "async native::work_async(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": true
+          },
+          {
+            "label": "native::work_sync",
+            "insert": "native::work_sync($0)",
+            "kind": "Function",
+            "detail": "Function(String) -> String",
+            "origin": "schema",
+            "symbol": "native::work_sync",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "native::work_sync(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": false
+          }
+        ]
+      }
+    ]
+  }
+}

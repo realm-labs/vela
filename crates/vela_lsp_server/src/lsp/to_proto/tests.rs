@@ -104,6 +104,53 @@ fn completion_item_resolved_projects_markdown_documentation() {
 }
 
 #[test]
+fn diagnostic_ranges_use_each_source_text_and_reject_invalid_offsets() {
+    let first = DocumentId::from("file:///workspace/scripts/first.vela");
+    let second = DocumentId::from("file:///workspace/scripts/second.vela");
+    let files = vec![
+        SourceFileSnapshot::new(first.clone(), "中😀 alpha\r\nnext"),
+        SourceFileSnapshot::new(second.clone(), "😀中 beta\n"),
+    ];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&assemble_project_sources(
+        &config,
+        &files,
+        &Workspace::new().snapshot(),
+    ));
+    for (document, start, end, expected_start, expected_end) in
+        [(&first, 3, 7, 1, 3), (&second, 4, 7, 2, 3)]
+    {
+        let range = DiagnosticRange::new(Position::new(0, start), Position::new(0, end));
+        assert_eq!(
+            diagnostic_source_range(&databases, document, range).expect("valid range"),
+            lsp_types::Range::new(
+                lsp_types::Position::new(0, expected_start),
+                lsp_types::Position::new(0, expected_end)
+            )
+        );
+    }
+    for (start, end) in [(1, 7), (3, 100), (7, 3)] {
+        assert!(
+            diagnostic_source_range(
+                &databases,
+                &first,
+                DiagnosticRange::new(Position::new(0, start), Position::new(0, end))
+            )
+            .is_err()
+        );
+    }
+    assert!(
+        diagnostic_source_range(
+            &databases,
+            &DocumentId::from("file:///missing.vela"),
+            DiagnosticRange::new(Position::new(0, 0), Position::new(0, 0))
+        )
+        .is_err()
+    );
+}
+
+#[test]
 fn diagnostics_project_typed_lsp_shape_and_extension_data() {
     let document = DocumentId::from("file:///workspace/scripts/main.vela");
     let source = "pub fn main( {";
@@ -113,7 +160,8 @@ fn diagnostics_project_typed_lsp_shape_and_extension_data() {
     let mut databases = LanguageServiceDatabases::new();
     databases.update(&project);
 
-    let diagnostics = diagnostics(&databases.diagnostics_for_document(&document));
+    let diagnostics = diagnostics(&databases.diagnostics_for_document(&document), &databases)
+        .expect("diagnostic projection");
 
     let diagnostic = diagnostics
         .first()

@@ -1386,10 +1386,41 @@
         "completion-resolve/syntax/S5/negative/protocol"
       ],
       "summary": "Twenty shared receiver-flow cases cover sequential assignment, query-before-write, retained aliases, assignment values, if/match/loop joins, later overwrites and chained method results across current/direct dependency same-name records, with inaccessible transitive and schema collisions. Exact complete candidate sets, receiver facts, stable shared-field type unions, byte/UTF-16 edits, parseable applications, owned signatures/named parameters/inlays, resolve pass-through and exact or ambiguous definition targets are asserted under LF/CRLF. Erased, scalar and incompatible branch writes cannot retain stale members. Local flow now carries possible source origins; authoring queries filter actual owners, merge shared field facts deterministically and require one distinct navigation location. Singular executable identity requires a complete unique origin; mixed receivers use dynamic dispatch. Red tests also exposed insertion-order-dependent cross-package qualified HIR binding and a for-loop swallowing a following expression statement. Direct HIR tests cover all six insertion orders; direct syntax tests cover twelve iterable/following-statement combinations. Workspace 4463 passed, two historical ignored; service 619 plus two ignored and protocol 603; Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-nyEVKX/results.json passed 9; native editors/vscode/test-results/input-QawIV1/results.json passed 13; strict target/lsp-matrix/run-owgbDD/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The 28 requirement references are partial child progress, not whole-partition acceptance. B03 remains unaccepted. Resume B03.28 with async restrictions and remaining S5 review; shared-method ambiguity, abrupt flow exits, dependency lifecycle and UX04 remain review obligations. Fresh macOS proof is required when next used. B16 remains deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.28",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S4/positive/service",
+        "completion/syntax/S4/positive/protocol",
+        "completion/syntax/S4/negative/service",
+        "completion/syntax/S4/negative/protocol",
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/negative/protocol",
+        "completion/syntax/S9/positive/service",
+        "completion/syntax/S9/positive/protocol",
+        "completion/syntax/S9/negative/service",
+        "completion/syntax/S9/negative/protocol",
+        "completion-resolve/syntax/S4/positive/service",
+        "completion-resolve/syntax/S4/positive/protocol",
+        "completion-resolve/syntax/S4/negative/service",
+        "completion-resolve/syntax/S4/negative/protocol",
+        "completion-resolve/syntax/S5/positive/service",
+        "completion-resolve/syntax/S5/positive/protocol",
+        "completion-resolve/syntax/S5/negative/service",
+        "completion-resolve/syntax/S5/negative/protocol",
+        "completion-resolve/syntax/S9/positive/service",
+        "completion-resolve/syntax/S9/positive/protocol",
+        "completion-resolve/syntax/S9/negative/service",
+        "completion-resolve/syntax/S9/negative/protocol"
+      ],
+      "summary": "Eighteen shared awaited/unawaited cases cover current/direct dependency functions, methods, aliases and trait receivers plus static host/schema methods, traits and functions. Same-name source declarations deliberately have opposite asyncness; a transitive package cannot contribute candidates. Full sets, async details, byte/UTF-16 edits, parseable application, owned signatures/named parameters/inlays, resolve pass-through and exact definitions are asserted under Unicode LF/CRLF. Missing-await diagnostics are required only for statically async unawaited candidates, with exact severity, call span and protocol label span; sync and awaited applications clear that diagnostic. Red tests exposed erased async completion metadata, missing trait-declaration await validation, cross-package function inlay borrowing and diagnostic byte columns emitted as UTF-16. Source method candidates retain asyncness beside value facts, source/schema function and method details render it, trait call validation uses declared signatures independently of implementation bodies, and service async/task checks share schema-backed facts. Function inlays reuse scoped callable lookup and reject ambiguous ownership. Diagnostic ranges, labels and repair hints project through their own current source; direct tests reject split, out-of-bounds, reversed and unavailable-source ranges. A direct analysis test checks trait async validation and named slots. The existing async task-worker detail oracle now includes async; insertion and operand behavior are unchanged. Workspace 4467 passed, two historical ignored; service 620 plus two ignored and protocol 605; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-K6b5OS/results.json passed 9; native editors/vscode/test-results/input-60AJbE/results.json passed 13; strict target/lsp-matrix/run-8fNQT8/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The 24 requirement references are partial child progress, not whole-partition acceptance. B03 remains unaccepted. Resume B03.29 with callback/scoped-task eligibility and remaining S5 review; invalid await contexts, shared-method ambiguity, abrupt exits, dependency/schema lifecycle and UX04 remain review obligations. Fresh macOS proof is required when next used. B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.28",
-  "nextTask": "B03.28",
+  "activeChild": "B03.29",
+  "nextTask": "B03.29",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -3293,7 +3324,25 @@
     "target/b03-27-accepted-regression.log",
     "target/lsp-matrix/run-8EaURB/report.json",
     "editors/vscode/test-results/run-nyEVKX/results.json",
-    "editors/vscode/test-results/input-QawIV1/results.json"
+    "editors/vscode/test-results/input-QawIV1/results.json",
+    "target/lsp-matrix/run-8fNQT8/report.json",
+    "target/b03-28-baseline.log",
+    "target/b03-28-red.log",
+    "target/b03-28-presentation.log",
+    "target/b03-28-await.log",
+    "target/b03-28-schema.log",
+    "target/b03-28-inlays.log",
+    "target/b03-28-ranges.log",
+    "target/b03-28-focused.log",
+    "target/b03-28-focused-final.log",
+    "target/b03-28-workspace.log",
+    "target/b03-28-clippy-final.log",
+    "target/b03-28-node.log",
+    "target/b03-28-editor.log",
+    "target/b03-28-input.log",
+    "target/b03-28-accepted-regression.log",
+    "editors/vscode/test-results/run-K6b5OS/results.json",
+    "editors/vscode/test-results/input-60AJbE/results.json"
   ],
   "openIssues": [
     {
@@ -3914,8 +3963,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "9aed1b2773519d79241d31c67c22f8cbb55c947d",
-          "treeSha256": "2a0bda0349eb045382fd4ccc9bcfe5d648d1f0e22ecc792b1073cab9e310063b"
+          "revision": "2b504e35d0a7fe746f4e03ab96489f60652f7a48",
+          "treeSha256": "cb24a37dfde606e9bae351bd70d18c075e7f6361716173431c701d948839e209"
         },
         "profile": {
           "platform": "win32",
@@ -3923,11 +3972,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-owgbDD/report.json"
+          "target/lsp-matrix/run-8fNQT8/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-nyEVKX/results.json --local-results editors/vscode/test-results/input-QawIV1/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-K6b5OS/results.json --local-results editors/vscode/test-results/input-60AJbE/results.json",
             "exitCode": 0
           }
         ]

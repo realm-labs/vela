@@ -120,6 +120,9 @@ fn source_declaration_completion_items(
             completion
                 .insert_text
                 .get_or_insert_with(|| completion.label.clone());
+            if let Some(signature) = graph.function_signature(declaration.id) {
+                completion = completion.with_callable_asyncness(signature.asyncness);
+            }
             accumulator.add(completion.with_symbol(source_symbol(symbol)));
         }
     }

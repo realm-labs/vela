@@ -22,7 +22,7 @@
           {
             "label": "zz_worker",
             "kind": "Function",
-            "detail": "Function() -> i64",
+            "detail": "async Function() -> i64",
             "insert": "zz_worker($0)",
             "format": "Snippet",
             "named": false
