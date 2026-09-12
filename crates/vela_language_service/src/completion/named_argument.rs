@@ -4,23 +4,14 @@ use super::{
 };
 use crate::QueryContext;
 use crate::callable_context::CallableFacts;
-use vela_syntax::ast::{AstNode, SyntaxCallExpr};
+use vela_syntax::ast::AstNode;
 
 pub(super) fn named_argument_completion_context(
     query: &QueryContext<'_>,
 ) -> Option<CallArgumentContext> {
     let call = query.call_argument_facts()?;
     let offset = query.cursor().replace_range().end;
-    let tree = query.syntax_parse()?.tree();
-    let expression = tree
-        .syntax()
-        .descendants()
-        .filter_map(SyntaxCallExpr::cast)
-        .find(|expression| {
-            expression.l_paren_token().is_some_and(|token| {
-                usize::from(token.text_range().start()) == call.call_open_offset()
-            })
-        })?;
+    let expression = query.syntax_call()?;
     let arguments = expression.arguments();
     for argument in &arguments {
         let range = argument.syntax().text_range();

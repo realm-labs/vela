@@ -21,8 +21,11 @@ use vela_hir::{
 };
 use vela_package::{ModuleKey, ModulePath};
 
+mod call;
+#[cfg(test)]
+mod call_argument_tests;
 mod hir_cursor;
-use hir_cursor::{hir_call_at, refine_cursor_with_hir};
+use hir_cursor::refine_cursor_with_hir;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CallArgumentFacts<'a> {
@@ -364,8 +367,14 @@ impl<'a> QueryContext<'a> {
 
     #[must_use]
     pub fn call_active_parameter_index(&self) -> Option<usize> {
-        self.call_args_prefix_text()
-            .map(active_call_parameter_index)
+        let offset = self.cursor.replace_range().end;
+        Some(
+            self.syntax_call()?
+                .separator_tokens()
+                .iter()
+                .filter(|token| usize::from(token.text_range().end()) <= offset)
+                .count(),
+        )
     }
 
     #[must_use]
@@ -402,7 +411,7 @@ impl<'a> QueryContext<'a> {
             callee,
             call_open_offset,
             args_prefix,
-            active_parameter: active_call_parameter_index(args_prefix),
+            active_parameter: self.call_active_parameter_index()?,
             member_receiver,
             member_method,
         })
@@ -454,18 +463,6 @@ impl<'a> QueryContext<'a> {
     }
 }
 
-impl<'a> QueryContext<'a> {
-    fn hir_call_for_cursor(&self) -> Option<(&'a HirBody, HirExprId)> {
-        hir_call_at(
-            self.graph?,
-            self.body?,
-            self.source_id()?,
-            self.call_open_offset()?,
-            self.cursor.replace_range().end,
-        )
-    }
-}
-
 fn hir_callee_path(body: &HirBody, callee_expression: HirExprId) -> Option<&[String]> {
     body.paths
         .iter()
@@ -478,22 +475,6 @@ fn hir_callee_path(body: &HirBody, callee_expression: HirExprId) -> Option<&[Str
 
 fn text_range(text: &str, range: TextRange) -> Option<&str> {
     text.get(range.start..range.end)
-}
-
-fn active_call_parameter_index(args_text: &str) -> usize {
-    let mut depth = 0usize;
-    let mut active = 0usize;
-    let mut lambda_params = false;
-    for ch in args_text.chars() {
-        match ch {
-            '|' => lambda_params = !lambda_params,
-            '(' | '[' | '{' => depth = depth.saturating_add(1),
-            ')' | ']' | '}' => depth = depth.saturating_sub(1),
-            ',' if depth == 0 && !lambda_params => active = active.saturating_add(1),
-            _ => {}
-        }
-    }
-    active
 }
 
 pub(crate) fn type_fact_for_source_range(

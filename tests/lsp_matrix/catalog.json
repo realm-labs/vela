@@ -2808,7 +2808,7 @@
     },
     {
       "requirement": "completion/states/repeat/protocol",
-      "assertion": "Repeat every request in the 25-query shared member/constructor fixture and assert identical full completion results before any edit. Exact candidate sets, ownership, details and resolved documentation are independently checked under LF/CRLF.",
+      "assertion": "Repeat every request in the shared member/constructor, source named-argument and call-argument-context fixtures and assert identical full completion results before any edit. Independently check exact candidate sets under LF/CRLF; the call context fixture also checks signature repetition and the active parameter through encoded URI and UTF-16 positions.",
       "tests": [
         {
           "layer": "protocol",
@@ -2817,6 +2817,10 @@
         {
           "layer": "protocol",
           "name": "tests::completion_named_arguments::named_argument_matrix_projects_exact_parameter_sets_and_parseable_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::call_argument_context::call_argument_matrix_projects_owned_active_parameter_through_utf16_positions"
         }
       ]
     },

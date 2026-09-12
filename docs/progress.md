@@ -635,7 +635,12 @@ constructor paths, field labels and field values. Eighteen source named-argument
 cases now apply parseable `name = value` edits; CST argument ownership excludes
 used positional/named slots, nested calls and string punctuation. Imported
 functions and source methods retain parameter ownership; private or shadowed
-callables cannot borrow unrelated names. Schema/stdlib parameter-name metadata,
+callables cannot borrow unrelated names. Nineteen shared call-context cases now
+check argument indices and remaining parameter candidates across strings, comments,
+nested expressions, lambda parameters and incomplete calls. CST separators and
+exact callee-to-HIR matching preserve completion/signature agreement, including
+trailing whitespace at EOF, with negative declaration and non-call positions.
+Schema/stdlib parameter-name metadata,
 broader S5 authoring semantics and UX04 remain open. The desktop locked again during the latest native input regression; see [blocked.md](blocked.md).
 
 ### Deferred Tracks
@@ -669,8 +674,9 @@ provides it.
 
 ## Next Up
 
-1. Complete LSP B02 navigation semantic/range/lifecycle and workbench routes,
-   resuming the execution checkpoint. Continue B03-B15 and B17-B19; B16 stays deferred.
+1. Continue LSP B03 completion semantics, lifecycle and workbench coverage from
+   the execution checkpoint; B00-B02 are accepted. Then complete B04-B15 and
+   B17-B19; B16 stays deferred.
 2. Address incremental HIR re-lowering and moving `did_change` diagnostics off
    the message loop when required by local state/scale acceptance.
 3. Audit the parameterized container and value-keyed Map/Set plans against

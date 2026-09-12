@@ -445,7 +445,7 @@ mod tests {
         databases.update(&project);
 
         let line_index = LineIndex::new(text);
-        let position = line_index.position(text.find("grant(").expect("call") + "grant(".len());
+        let position = line_index.position(text.rfind("grant(").expect("call") + "grant(".len());
         let help = databases
             .signature_help(&document, position)
             .expect("signature help should resolve incomplete call");

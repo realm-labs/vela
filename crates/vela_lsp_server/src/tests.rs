@@ -140,6 +140,7 @@ fn assert_workspace_progress(notifications: &[JsonValue]) {
     assert_eq!(end["params"]["value"]["kind"], "end");
 }
 
+mod call_argument_context;
 mod code_action;
 mod completion_map;
 mod completion_member;

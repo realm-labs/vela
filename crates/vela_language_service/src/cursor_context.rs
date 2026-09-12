@@ -619,10 +619,10 @@ fn token_start_index(tokens: &[Token], start: u32) -> Option<usize> {
 
 fn active_call_open(text: &str, offset: usize) -> Option<usize> {
     let mut stack = Vec::new();
-    for (index, ch) in text[..offset].char_indices() {
-        match ch {
-            '(' => stack.push(index),
-            ')' => {
+    for token in lex(SourceId::new(0), text.get(..offset)?).tokens {
+        match token.kind {
+            TokenKind::Symbol(Symbol::LParen) => stack.push(token.span.start as usize),
+            TokenKind::Symbol(Symbol::RParen) => {
                 stack.pop();
             }
             _ => {}

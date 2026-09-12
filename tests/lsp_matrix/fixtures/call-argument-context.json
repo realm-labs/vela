@@ -1,0 +1,230 @@
+{
+  "version": 1,
+  "id": "call-argument-context",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.call_context\"\nname = \"call_context\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/query_empty.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe([[cursor]]); }\n",
+    "scripts/query_comma.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe(\"x,y\", [[cursor]]value); }\n",
+    "scripts/query_brackets.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe(\"(, [ { )\", [[cursor]]value); }\n",
+    "scripts/query_pipe.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe(\"|\", [[cursor]]value); }\n",
+    "scripts/query_escaped.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe(\"escaped \\\" quote, comma\", [[cursor]]value); }\n",
+    "scripts/query_block_comment.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe(1 /* , | ( */, [[cursor]]value); }\n",
+    "scripts/query_line_comment.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe(1, // , | (\n [[cursor]]value); }\n",
+    "scripts/query_nested_outer.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe(inner(\"x,y\", 2), [[cursor]]value); }\n",
+    "scripts/query_nested_inner.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe(1, inner(\"x,y\", [[cursor]]value), 3); }\n",
+    "scripts/query_tuple.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe((1, 2), [[cursor]]value); }\n",
+    "scripts/query_array.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe([1, 2], [[cursor]]value); }\n",
+    "scripts/query_lambda.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe(|left, right| left, [[cursor]]value); }\n",
+    "scripts/query_record.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe(Pair {left: 1, right: 2}, [[cursor]]value); }\n",
+    "scripts/query_trailing.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe(1, 2, [[cursor]]); }\n",
+    "scripts/query_future.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe([[cursor]]value, 2, 3); }\n",
+    "scripts/query_incomplete.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe(\"x,y\", [[cursor]]}\n",
+    "scripts/query_incomplete_eof.vela": "fn probe(first: Any, second: Any, third: Any) -> () {}\nfn inner(first: Any, second: Any) -> i64 { return 1; }\nstruct Pair { left: i64, right: i64 }\n/* 中😀 */ fn main(value: i64) { probe(\"x,y\", [[cursor]]",
+    "scripts/query_declaration.vela": "/* 中😀 */ fn probe([[cursor]]first: Any, second: Any) {}\n",
+    "scripts/query_outside.vela": "fn probe(first: Any) {}\n/* 中😀 */ fn main() { let text = \"probe(\"; [[cursor]] }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "empty",
+        "file": "scripts/query_empty.vela",
+        "active": 0,
+        "callee": "probe",
+        "validSyntax": true,
+        "remainingParameters": [
+          "first",
+          "second",
+          "third"
+        ]
+      },
+      {
+        "id": "comma",
+        "file": "scripts/query_comma.vela",
+        "active": 1,
+        "callee": "probe",
+        "validSyntax": true,
+        "remainingParameters": [
+          "second",
+          "third"
+        ]
+      },
+      {
+        "id": "brackets",
+        "file": "scripts/query_brackets.vela",
+        "active": 1,
+        "callee": "probe",
+        "validSyntax": true,
+        "remainingParameters": [
+          "second",
+          "third"
+        ]
+      },
+      {
+        "id": "pipe",
+        "file": "scripts/query_pipe.vela",
+        "active": 1,
+        "callee": "probe",
+        "validSyntax": true,
+        "remainingParameters": [
+          "second",
+          "third"
+        ]
+      },
+      {
+        "id": "escaped",
+        "file": "scripts/query_escaped.vela",
+        "active": 1,
+        "callee": "probe",
+        "validSyntax": true,
+        "remainingParameters": [
+          "second",
+          "third"
+        ]
+      },
+      {
+        "id": "block_comment",
+        "file": "scripts/query_block_comment.vela",
+        "active": 1,
+        "callee": "probe",
+        "validSyntax": true,
+        "remainingParameters": [
+          "second",
+          "third"
+        ]
+      },
+      {
+        "id": "line_comment",
+        "file": "scripts/query_line_comment.vela",
+        "active": 1,
+        "callee": "probe",
+        "validSyntax": true,
+        "remainingParameters": [
+          "second",
+          "third"
+        ]
+      },
+      {
+        "id": "nested_outer",
+        "file": "scripts/query_nested_outer.vela",
+        "active": 1,
+        "callee": "probe",
+        "validSyntax": true,
+        "remainingParameters": [
+          "second",
+          "third"
+        ]
+      },
+      {
+        "id": "nested_inner",
+        "file": "scripts/query_nested_inner.vela",
+        "active": 1,
+        "callee": "inner",
+        "validSyntax": true,
+        "remainingParameters": [
+          "second"
+        ]
+      },
+      {
+        "id": "tuple",
+        "file": "scripts/query_tuple.vela",
+        "active": 1,
+        "callee": "probe",
+        "validSyntax": true,
+        "remainingParameters": [
+          "second",
+          "third"
+        ]
+      },
+      {
+        "id": "array",
+        "file": "scripts/query_array.vela",
+        "active": 1,
+        "callee": "probe",
+        "validSyntax": true,
+        "remainingParameters": [
+          "second",
+          "third"
+        ]
+      },
+      {
+        "id": "lambda",
+        "file": "scripts/query_lambda.vela",
+        "active": 1,
+        "callee": "probe",
+        "validSyntax": true,
+        "remainingParameters": [
+          "second",
+          "third"
+        ]
+      },
+      {
+        "id": "record",
+        "file": "scripts/query_record.vela",
+        "active": 1,
+        "callee": "probe",
+        "validSyntax": true,
+        "remainingParameters": [
+          "second",
+          "third"
+        ]
+      },
+      {
+        "id": "trailing",
+        "file": "scripts/query_trailing.vela",
+        "active": 2,
+        "callee": "probe",
+        "validSyntax": true,
+        "remainingParameters": [
+          "third"
+        ]
+      },
+      {
+        "id": "future",
+        "file": "scripts/query_future.vela",
+        "active": 0,
+        "callee": "probe",
+        "validSyntax": true,
+        "remainingParameters": [
+          "first",
+          "second",
+          "third"
+        ]
+      },
+      {
+        "id": "incomplete",
+        "file": "scripts/query_incomplete.vela",
+        "active": 1,
+        "callee": "probe",
+        "validSyntax": false,
+        "remainingParameters": [
+          "second",
+          "third"
+        ]
+      },
+      {
+        "id": "incomplete_eof",
+        "file": "scripts/query_incomplete_eof.vela",
+        "active": 1,
+        "callee": "probe",
+        "validSyntax": false,
+        "remainingParameters": [
+          "second",
+          "third"
+        ]
+      },
+      {
+        "id": "declaration",
+        "file": "scripts/query_declaration.vela",
+        "active": null,
+        "validSyntax": true
+      },
+      {
+        "id": "outside",
+        "file": "scripts/query_outside.vela",
+        "active": null,
+        "validSyntax": true
+      }
+    ]
+  }
+}
