@@ -9,6 +9,8 @@ mod analysis_item;
 mod analysis_tests;
 mod builtin_type;
 mod builtin_value;
+#[cfg(test)]
+mod callable_import_tests;
 mod context;
 mod expression;
 mod item;
@@ -294,7 +296,7 @@ impl LanguageServiceDatabases {
         {
             query.member_callable_facts(self, receiver, method, facts.args_prefix())
         } else if let Some(path) = facts.callee_path() {
-            query.named_callable_facts_by_path(self, path)
+            query.callable_facts_by_path(self, path)
         } else {
             Vec::new()
         };

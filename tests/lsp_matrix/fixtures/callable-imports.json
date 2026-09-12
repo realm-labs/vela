@@ -1,0 +1,492 @@
+{
+  "version": 1,
+  "id": "callable-imports",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.service_calls\"\nname = \"service_calls\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"functions\": [\n      {\n        \"name\": \"host::grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"u32\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"async\",\n          \"parameters\": [\n            {\n              \"name\": \"amount\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"u32\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"other::grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"issue\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"borrowed\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"schema_bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::hidden\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"schema_secret\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"math::max\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"collision\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::number\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::State::Ready\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::Private::Ready\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"service::pinned::peer::take\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  }\n}\n",
+    "scripts/api.vela": "pub fn grant(source_value: i64) -> bool { return true; } fn hidden(secret: i64) -> bool { return true; }\npub const number: i64 = 1;\npub enum State { Ready(value: i64) } enum Private { Ready(secret: bool) }\n",
+    "scripts/foreign.vela": "pub fn grant(unrelated: String) -> bool { return true; }\n",
+    "scripts/host_direct.vela": "/* 中😀 */   fn main() { host::grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/host_import.vela": "/* 中😀 */ use host::grant;  fn main() { grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/host_alias.vela": "/* 中😀 */ use host::grant as issue;  fn main() { issue([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/host_namespace.vela": "/* 中😀 */ use host as h;  fn main() { h::grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/source_direct.vela": "/* 中😀 */   fn main() { api::grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/source_import.vela": "/* 中😀 */ use api::grant;  fn main() { grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/source_alias.vela": "/* 中😀 */ use api::grant as issue;  fn main() { issue([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/source_namespace.vela": "/* 中😀 */ use api as a;  fn main() { a::grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/private_direct.vela": "/* 中😀 */   fn main() { api::hidden([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/private_alias.vela": "/* 中😀 */ use api::hidden as issue;  fn main() { issue([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/local_shadow.vela": "/* 中😀 */ use host::grant;  fn main(grant: Any) { grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/const_shadow.vela": "/* 中😀 */ use host::grant; const grant: i64 = 1; fn main() { grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/local_function.vela": "/* 中😀 */ use host::grant; fn grant(local_value: String) -> bool { return true; } fn main() { grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/missing_import.vela": "/* 中😀 */ use absent::grant as issue;  fn main() { issue([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/unimported.vela": "/* 中😀 */   fn main() { grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/missing_qualified.vela": "/* 中😀 */   fn main() { absent::grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/ambiguous_external.vela": "/* 中😀 */ use host::grant as issue; use other::grant as issue;  fn main() { issue([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/ambiguous_source.vela": "/* 中😀 */ use api::grant as issue; use foreign::grant as issue;  fn main() { issue([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/stdlib_direct.vela": "/* 中😀 */   fn main() { math::max([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/stdlib_alias.vela": "/* 中😀 */ use math::max as top;  fn main() { top([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/stdlib_namespace.vela": "/* 中😀 */ use math as m;  fn main() { m::max([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/stdlib_unimported.vela": "/* 中😀 */   fn main() { max([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/incomplete.vela": "/* 中😀 */ use host::grant as issue;  fn main() { issue([[replace:start]][[cursor]][[replace:end]]\n",
+    "scripts/qualified_const.vela": "/* 中😀 */  fn main() { api::number([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/private_namespace.vela": "/* 中😀 */ use api as a; fn main() { a::hidden([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/missing_namespace.vela": "/* 中😀 */ use absent as a; fn main() { a::grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/enum_local.vela": "/* 中😀 */ enum State { Ready(value: i64) } fn main() { Ready([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/enum_import.vela": "/* 中😀 */ use api::State as S; fn main() { S::Ready([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/enum_ambiguous.vela": "/* 中😀 */ enum One { Ready(value: i64) } enum Two { Ready(other: String) } fn main() { Ready([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/enum_private.vela": "/* 中😀 */  fn main() { api::Private::Ready([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/enum_unimported.vela": "/* 中😀 */  fn main() { Ready([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/reserved_import.vela": "/* 中😀 */ use service::pinned::peer::take as issue; fn main() { issue([[replace:start]][[cursor]][[replace:end]]); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "host_direct",
+        "file": "scripts/host_direct.vela",
+        "signature": "async host::grant(amount: u32) -> bool",
+        "parameters": [
+          {
+            "name": "amount",
+            "detail": "u32",
+            "insert": "amount = "
+          }
+        ],
+        "expectedName": "amount",
+        "expectedType": "u32",
+        "recoverySuffix": "",
+        "symbol": "host::grant",
+        "symbolKind": "Schema"
+      },
+      {
+        "id": "host_import",
+        "file": "scripts/host_import.vela",
+        "signature": "async host::grant(amount: u32) -> bool",
+        "parameters": [
+          {
+            "name": "amount",
+            "detail": "u32",
+            "insert": "amount = "
+          }
+        ],
+        "expectedName": "amount",
+        "expectedType": "u32",
+        "recoverySuffix": "",
+        "symbol": "host::grant",
+        "symbolKind": "Schema"
+      },
+      {
+        "id": "host_alias",
+        "file": "scripts/host_alias.vela",
+        "signature": "async host::grant(amount: u32) -> bool",
+        "parameters": [
+          {
+            "name": "amount",
+            "detail": "u32",
+            "insert": "amount = "
+          }
+        ],
+        "expectedName": "amount",
+        "expectedType": "u32",
+        "recoverySuffix": "",
+        "symbol": "host::grant",
+        "symbolKind": "Schema"
+      },
+      {
+        "id": "host_namespace",
+        "file": "scripts/host_namespace.vela",
+        "signature": "async host::grant(amount: u32) -> bool",
+        "parameters": [
+          {
+            "name": "amount",
+            "detail": "u32",
+            "insert": "amount = "
+          }
+        ],
+        "expectedName": "amount",
+        "expectedType": "u32",
+        "recoverySuffix": "",
+        "symbol": "host::grant",
+        "symbolKind": "Schema"
+      },
+      {
+        "id": "source_direct",
+        "file": "scripts/source_direct.vela",
+        "signature": "grant(source_value: i64) -> bool",
+        "parameters": [
+          {
+            "name": "source_value",
+            "detail": "i64",
+            "insert": "source_value = "
+          }
+        ],
+        "expectedName": "source_value",
+        "expectedType": "i64",
+        "recoverySuffix": "",
+        "symbol": "api::grant",
+        "symbolKind": "Source"
+      },
+      {
+        "id": "source_import",
+        "file": "scripts/source_import.vela",
+        "signature": "grant(source_value: i64) -> bool",
+        "parameters": [
+          {
+            "name": "source_value",
+            "detail": "i64",
+            "insert": "source_value = "
+          }
+        ],
+        "expectedName": "source_value",
+        "expectedType": "i64",
+        "recoverySuffix": "",
+        "symbol": "api::grant",
+        "symbolKind": "Source"
+      },
+      {
+        "id": "source_alias",
+        "file": "scripts/source_alias.vela",
+        "signature": "grant(source_value: i64) -> bool",
+        "parameters": [
+          {
+            "name": "source_value",
+            "detail": "i64",
+            "insert": "source_value = "
+          }
+        ],
+        "expectedName": "source_value",
+        "expectedType": "i64",
+        "recoverySuffix": "",
+        "symbol": "api::grant",
+        "symbolKind": "Source"
+      },
+      {
+        "id": "source_namespace",
+        "file": "scripts/source_namespace.vela",
+        "signature": "grant(source_value: i64) -> bool",
+        "parameters": [
+          {
+            "name": "source_value",
+            "detail": "i64",
+            "insert": "source_value = "
+          }
+        ],
+        "expectedName": "source_value",
+        "expectedType": "i64",
+        "recoverySuffix": "",
+        "symbol": "api::grant",
+        "symbolKind": "Source"
+      },
+      {
+        "id": "private_direct",
+        "file": "scripts/private_direct.vela",
+        "signature": null,
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "symbol": null,
+        "symbolKind": null
+      },
+      {
+        "id": "private_alias",
+        "file": "scripts/private_alias.vela",
+        "signature": null,
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "symbol": null,
+        "symbolKind": null
+      },
+      {
+        "id": "local_shadow",
+        "file": "scripts/local_shadow.vela",
+        "signature": null,
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "symbol": null,
+        "symbolKind": null
+      },
+      {
+        "id": "const_shadow",
+        "file": "scripts/const_shadow.vela",
+        "signature": null,
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "symbol": null,
+        "symbolKind": null
+      },
+      {
+        "id": "local_function",
+        "file": "scripts/local_function.vela",
+        "signature": "grant(local_value: String) -> bool",
+        "parameters": [
+          {
+            "name": "local_value",
+            "detail": "String",
+            "insert": "local_value = "
+          }
+        ],
+        "expectedName": "local_value",
+        "expectedType": "String",
+        "recoverySuffix": "",
+        "symbol": "local_function::grant",
+        "symbolKind": "Source"
+      },
+      {
+        "id": "missing_import",
+        "file": "scripts/missing_import.vela",
+        "signature": null,
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "symbol": null,
+        "symbolKind": null
+      },
+      {
+        "id": "unimported",
+        "file": "scripts/unimported.vela",
+        "signature": null,
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "symbol": null,
+        "symbolKind": null
+      },
+      {
+        "id": "missing_qualified",
+        "file": "scripts/missing_qualified.vela",
+        "signature": null,
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "symbol": null,
+        "symbolKind": null
+      },
+      {
+        "id": "ambiguous_external",
+        "file": "scripts/ambiguous_external.vela",
+        "signature": null,
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "symbol": null,
+        "symbolKind": null
+      },
+      {
+        "id": "ambiguous_source",
+        "file": "scripts/ambiguous_source.vela",
+        "signature": null,
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "symbol": null,
+        "symbolKind": null
+      },
+      {
+        "id": "stdlib_direct",
+        "file": "scripts/stdlib_direct.vela",
+        "signature": "math::max(left: i64 | f64, right: i64 | f64) -> i64 | f64",
+        "parameters": [
+          {
+            "name": "left",
+            "detail": "i64 | f64",
+            "insert": "left = "
+          },
+          {
+            "name": "right",
+            "detail": "i64 | f64",
+            "insert": "right = "
+          }
+        ],
+        "expectedName": "left",
+        "expectedType": "i64 | f64",
+        "recoverySuffix": "",
+        "symbol": "math::max",
+        "symbolKind": "Builtin"
+      },
+      {
+        "id": "stdlib_alias",
+        "file": "scripts/stdlib_alias.vela",
+        "signature": "math::max(left: i64 | f64, right: i64 | f64) -> i64 | f64",
+        "parameters": [
+          {
+            "name": "left",
+            "detail": "i64 | f64",
+            "insert": "left = "
+          },
+          {
+            "name": "right",
+            "detail": "i64 | f64",
+            "insert": "right = "
+          }
+        ],
+        "expectedName": "left",
+        "expectedType": "i64 | f64",
+        "recoverySuffix": "",
+        "symbol": "math::max",
+        "symbolKind": "Builtin"
+      },
+      {
+        "id": "stdlib_namespace",
+        "file": "scripts/stdlib_namespace.vela",
+        "signature": "math::max(left: i64 | f64, right: i64 | f64) -> i64 | f64",
+        "parameters": [
+          {
+            "name": "left",
+            "detail": "i64 | f64",
+            "insert": "left = "
+          },
+          {
+            "name": "right",
+            "detail": "i64 | f64",
+            "insert": "right = "
+          }
+        ],
+        "expectedName": "left",
+        "expectedType": "i64 | f64",
+        "recoverySuffix": "",
+        "symbol": "math::max",
+        "symbolKind": "Builtin"
+      },
+      {
+        "id": "stdlib_unimported",
+        "file": "scripts/stdlib_unimported.vela",
+        "signature": null,
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "symbol": null,
+        "symbolKind": null
+      },
+      {
+        "id": "incomplete",
+        "file": "scripts/incomplete.vela",
+        "signature": "async host::grant(amount: u32) -> bool",
+        "parameters": [
+          {
+            "name": "amount",
+            "detail": "u32",
+            "insert": "amount = "
+          }
+        ],
+        "expectedName": "amount",
+        "expectedType": "u32",
+        "recoverySuffix": "); }",
+        "symbol": "host::grant",
+        "symbolKind": "Schema"
+      },
+      {
+        "id": "qualified_const",
+        "file": "scripts/qualified_const.vela",
+        "signature": null,
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "symbol": null,
+        "symbolKind": null
+      },
+      {
+        "id": "private_namespace",
+        "file": "scripts/private_namespace.vela",
+        "signature": null,
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "symbol": null,
+        "symbolKind": null
+      },
+      {
+        "id": "missing_namespace",
+        "file": "scripts/missing_namespace.vela",
+        "signature": null,
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "symbol": null,
+        "symbolKind": null
+      },
+      {
+        "id": "enum_local",
+        "file": "scripts/enum_local.vela",
+        "parameters": [],
+        "expectedName": "value",
+        "expectedType": "i64",
+        "recoverySuffix": "",
+        "signature": "enum_local::State::Ready(value: i64) -> enum_local::State::Ready",
+        "symbol": "enum_local::State::Ready",
+        "symbolKind": "Source"
+      },
+      {
+        "id": "enum_import",
+        "file": "scripts/enum_import.vela",
+        "parameters": [],
+        "expectedName": "value",
+        "expectedType": "i64",
+        "recoverySuffix": "",
+        "signature": "api::State::Ready(value: i64) -> api::State::Ready",
+        "symbol": "api::State::Ready",
+        "symbolKind": "Source"
+      },
+      {
+        "id": "enum_ambiguous",
+        "file": "scripts/enum_ambiguous.vela",
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "signature": null,
+        "symbol": null,
+        "symbolKind": null
+      },
+      {
+        "id": "enum_private",
+        "file": "scripts/enum_private.vela",
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "signature": null,
+        "symbol": null,
+        "symbolKind": null
+      },
+      {
+        "id": "enum_unimported",
+        "file": "scripts/enum_unimported.vela",
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "signature": null,
+        "symbol": null,
+        "symbolKind": null
+      },
+      {
+        "id": "reserved_import",
+        "file": "scripts/reserved_import.vela",
+        "signature": null,
+        "parameters": [],
+        "expectedName": null,
+        "expectedType": null,
+        "recoverySuffix": "",
+        "symbol": null,
+        "symbolKind": null
+      }
+    ]
+  }
+}

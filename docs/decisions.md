@@ -4308,3 +4308,15 @@ no contextual type. Schema-backed facts own these seeds and invalidate with
 schema/source changes; graph-only and executable compiler analysis retain their
 existing inputs. This provides authoring context without changing compiler
 acceptance, Host parameter guards, runtime values or service dispatch semantics.
+
+## Contextual Callable Queries Share Import Ownership
+
+Parameter completion, signatures and expected-argument facts use one scoped
+callable lookup. Local bindings/declarations own their names; imports expand
+once and ambiguous imports return no target. Private or non-callable source
+declarations cannot borrow a registry signature. External functions require an
+exact resolved path, with canonical standard-library operations taking precedence
+over colliding registry entries, as in compile-target analysis. Preserve visible
+unique enum constructor lookup and build source variant facts from the selected
+declaration. Imported reserved Service paths still require lexical capability.
+Metadata discovery helpers do not define contextual callable ownership.

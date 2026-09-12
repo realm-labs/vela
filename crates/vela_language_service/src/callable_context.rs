@@ -484,67 +484,93 @@ fn source_variant_callable_facts(
     callee: &str,
 ) -> Vec<CallableFacts> {
     let graph = databases.hir_db().graph();
-    let schema = databases.schema_db().facts();
     graph
         .declarations()
         .filter(|declaration| declaration.kind == DeclarationKind::Enum)
-        .filter_map(|declaration| {
-            let owner = qualified_declaration_label(graph, declaration.id);
-            let shape = graph.enum_shape(declaration.id)?;
-            Some((declaration, owner, shape))
-        })
-        .flat_map(|(declaration, owner, shape)| {
-            shape.variants.iter().filter_map(move |variant| {
-                if !variant_callable_name_matches(
-                    callee,
-                    declaration.name.as_str(),
-                    &owner,
-                    &variant.name,
-                ) {
-                    return None;
-                }
-                let EnumVariantFieldsHint::Tuple(fields) = &variant.fields else {
-                    return None;
-                };
-                let params = fields
-                    .iter()
-                    .map(|field| CallableParameterFacts {
-                        name: field.name.clone(),
-                        type_fact: field.type_hint.as_ref().map_or(TypeFact::Unknown, |hint| {
-                            query_type_fact_from_hint(graph, hint, schema)
-                        }),
-                        defaulted: false,
+        .flat_map(|declaration| {
+            graph
+                .enum_shape(declaration.id)
+                .into_iter()
+                .flat_map(move |shape| {
+                    shape.variants.iter().filter_map(move |variant| {
+                        let owner = qualified_declaration_label(graph, declaration.id);
+                        variant_callable_name_matches(
+                            callee,
+                            &declaration.name,
+                            &owner,
+                            &variant.name,
+                        )
+                        .then(|| {
+                            source_variant_callable_fact(databases, declaration.id, &variant.name)
+                        })
+                        .flatten()
                     })
-                    .collect::<Vec<_>>();
-                Some(CallableFacts {
-                    name: format!("{owner}::{}", variant.name),
-                    params,
-                    returns: TypeFact::enum_type(&owner, Some(&variant.name)),
-                    scoped_resource: None,
-                    asyncness: CallableAsyncness::Sync,
-                    origin: CallableOrigin::SourceVariant,
-                    parameters_named: false,
-                    symbol: source_enum_variant_symbol(graph, declaration.id, &variant.name)?,
                 })
-            })
         })
         .collect()
 }
 
-pub(crate) fn named_external_callable_facts(
-    schema: &RegistryFacts,
-    callee: &str,
-) -> Vec<CallableFacts> {
+pub(crate) fn source_variant_callable_fact(
+    databases: &LanguageServiceDatabases,
+    declaration: vela_hir::ids::HirDeclId,
+    name: &str,
+) -> Option<CallableFacts> {
+    let graph = databases.hir_db().graph();
+    let schema = databases.schema_db().facts();
+    let owner = qualified_declaration_label(graph, declaration);
+    let variant = graph
+        .enum_shape(declaration)?
+        .variants
+        .iter()
+        .find(|variant| variant.name == name)?;
+    let EnumVariantFieldsHint::Tuple(fields) = &variant.fields else {
+        return None;
+    };
+    let params = fields
+        .iter()
+        .map(|field| CallableParameterFacts {
+            name: field.name.clone(),
+            type_fact: field.type_hint.as_ref().map_or(TypeFact::Unknown, |hint| {
+                query_type_fact_from_hint(graph, hint, schema)
+            }),
+            defaulted: false,
+        })
+        .collect();
+    Some(CallableFacts {
+        name: format!("{owner}::{name}"),
+        params,
+        returns: TypeFact::enum_type(&owner, Some(name)),
+        scoped_resource: None,
+        asyncness: CallableAsyncness::Sync,
+        origin: CallableOrigin::SourceVariant,
+        parameters_named: false,
+        symbol: source_enum_variant_symbol(graph, declaration, name)?,
+    })
+}
+
+pub(crate) fn external_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<CallableFacts> {
+    let standard = stdlib_callable_facts(callee)
+        .into_iter()
+        .filter(|callable| callable.name() == callee)
+        .collect::<Vec<_>>();
+    if !standard.is_empty() {
+        return standard;
+    }
     if schema.function_fact(callee).is_some() {
         return schema_callable_facts(schema, callee)
             .into_iter()
             .filter(|callable| callable.name() == callee)
             .collect();
     }
-    stdlib_callable_facts(callee)
+    let variants = schema_variant_callable_facts(schema, callee)
         .into_iter()
-        .filter(|callable| callable.name() == callee)
-        .collect()
+        .filter(|callable| callable.name() == callee || !callee.contains("::"))
+        .collect::<Vec<_>>();
+    if variants.len() == 1 {
+        variants
+    } else {
+        Vec::new()
+    }
 }
 
 fn schema_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<CallableFacts> {

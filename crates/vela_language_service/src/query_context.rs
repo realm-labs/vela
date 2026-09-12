@@ -2,8 +2,7 @@ use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::SyntaxSourceFile;
 
 use crate::callable_context::{
-    CallableFacts, callable_facts, member_callable_facts, source_callable_facts,
-    source_callable_facts_by_path,
+    CallableFacts, member_callable_facts, source_callable_facts, source_callable_facts_by_path,
 };
 use crate::{
     CursorContext, CursorContextKind, DocumentId, DocumentSnapshot, LanguageServiceDatabases,
@@ -24,6 +23,7 @@ use vela_package::{ModuleKey, ModulePath};
 mod call;
 #[cfg(test)]
 mod call_argument_tests;
+mod callable;
 mod hir_cursor;
 mod service_call;
 use hir_cursor::refine_cursor_with_hir;
@@ -304,13 +304,10 @@ impl<'a> QueryContext<'a> {
         databases: &LanguageServiceDatabases,
         callee: &str,
     ) -> Vec<CallableFacts> {
-        if callee.starts_with("service::") {
-            let path = callee.split("::").map(str::to_owned).collect::<Vec<_>>();
-            if let Some(callables) = self.service_callable_facts(databases, &path) {
-                return callables;
-            }
-        }
-        callable_facts(databases, callee)
+        self.callable_facts_by_path(
+            databases,
+            &callee.split("::").map(str::to_owned).collect::<Vec<_>>(),
+        )
     }
 
     #[must_use]
@@ -319,14 +316,7 @@ impl<'a> QueryContext<'a> {
         databases: &LanguageServiceDatabases,
         callee_path: &[String],
     ) -> Vec<CallableFacts> {
-        if let Some(callables) = self.service_callable_facts(databases, callee_path) {
-            return callables;
-        }
-        let source = self.source_callable_facts_by_path(databases, callee_path);
-        if !source.is_empty() {
-            return source;
-        }
-        callable_facts(databases, &callee_path.join("::"))
+        self.scoped_callable_facts(databases, callee_path)
     }
 
     #[must_use]
@@ -898,7 +888,7 @@ mod tests {
     #[test]
     fn query_context_exposes_source_callable_facts() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let source = "enum QuestState { Finished(quest_id: String) }\nfn grant(player: Player, amount: i64) -> bool { return true }\nfn main(player: Player) { grant(player, ) }";
+        let source = "use host::spawn; use math::max;\nenum QuestState { Finished(quest_id: String) }\nfn grant(player: Player, amount: i64) -> bool { return true }\nfn main(player: Player) { grant(player, ) }";
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let workspace = Workspace::new();
         let files = vec![SourceFileSnapshot::new(document.clone(), source)];

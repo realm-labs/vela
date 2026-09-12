@@ -671,8 +671,12 @@ implementation parameters now receive registered positional type facts before
 shared expression analysis. Twenty-four cases cover local/member completion,
 captured and shadowed parameters, explicit-hint precedence, structural rejection,
 view/Host types and direct/chained signature queries; schema update, invalidation,
-deletion and recovery refresh the cached types. Imported callable lookup across
-signature/expected-argument providers still needs its focused audit.
+deletion and recovery refresh the cached types. Contextual callable lookup now
+shares source/import ownership across parameter completion, signatures and
+expected-argument facts. Thirty-two shared cases cover aliases, namespace imports,
+source/registry/stdlib collisions, private and shadowed declarations, ambiguous
+or missing imports, reserved Service aliases and visible enum constructors.
+Named argument slot mapping and positional expression candidates remain open.
 The earlier macOS input regression stopped on a locked
 desktop; that record does not imply a Windows blocker. Current platform evidence
 must be collected before strict acceptance; see [blocked.md](blocked.md).
@@ -681,7 +685,7 @@ actual suggestion acceptance, F12/back and palettes, modifier-click, context-men
 Peek, exact Unicode targets and no-jump outcomes pass. The installed provider
 suite passes all nine scenarios. The original macOS acceptance remains historical;
 changed driver code needs fresh proof when that machine is next used. Shared
-implementation resumes at B03.14.
+implementation resumes at B03.15.
 
 ### Deferred Tracks
 

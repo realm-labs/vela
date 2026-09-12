@@ -1118,10 +1118,19 @@
         "completion/states/unresolved/protocol"
       ],
       "summary": "Seed unhinted Service implementation parameters from the exact registered method positional contract before shared local/expression analysis. Require valid per-declaration HIR ServiceImpl metadata and exact ServiceSet owner/method membership, matching arity/asyncness and no parameter defaults. Explicit source hints, including Any/unknown/conflicting hints, retain precedence. Add an analysis constructor with initial local facts while preserving existing graph-only and executable compiler entrypoints. Schema-backed memoization owns the projection; local completion now reads those same facts. Twenty-four independent shared cases run in service/protocol under LF/CRLF and complete/missing/ordinary-only schema (144 queries per layer): renamed slots, captured/shadowed parameters, local/member/Host/view/tuple types, malformed/duplicate attributes and invalid signatures, incomplete impl recovery, direct/chained method signatures and named-value expected arguments. Assert exact candidate sets, kinds/details/identities, UTF-16 edits, parseable applications and re-query. Dedicated tests cover schema change to a different parameter type, ordinary-only metadata, invalid JSON, deletion and restoration; incremental results equal a fresh service database and repeated queries reuse the cache; protocol uses actual watched-file notifications. Initial missing member failure is retained in b03-13-service-red.log. A provisional positional-argument local candidate assertion exposed the existing named-only argument-start provider; preserve b03-13-parameters.log and the new open issue, while final call queries explicitly test named-value contexts. Full workspace 4411 passed plus two historical ignored; full Clippy/fmt and Node 73 passed. Final source-bound Windows audit run-s5KezF passed service 595 plus two historical ignored and protocol 582; installed run-1dSKjL passed 9, input-rtGjhD passed 13. Strict B02 reverified all 145 accepted B00-B02 requirements with historical acceptance records intact. B03 remains unaccepted, broad S5 unreviewed, remaining whole-batch scope 1332. Continue B03.14 by unifying imported external callable ownership for signature/expected-argument and named-completion queries: query_context/call.rs::named_callable_facts_by_path resolves exact source ownership and imported paths, while query_context.rs::callable_facts_by_path still falls back to globally matched callee spelling. Independently cover aliases, namespace imports, ambiguous imports, private/local source shadowing, missing targets and registry-vs-stdlib collisions. Then address name-aware argument slots, ordinary positional expression candidates, provider/variable-arity metadata, root service namespace suggestions and remaining S5/lifecycle/UX04. macOS requires fresh evidence when next used; B16 deferred. Find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B03.14",
+      "revision": null,
+      "requirements": [
+        "completion/states/repeat/protocol",
+        "completion/states/unresolved/protocol"
+      ],
+      "summary": "Unify contextual callable resolution for parameter completion, signature help and expected-argument facts in query_context/callable.rs. Preserve lexical local/declaration ownership, expand one unambiguous import, resolve source namespace aliases, close private and non-callable declarations to registry fallback, and require exact external function paths. Canonical stdlib functions win over colliding registry facts, matching compile-target analysis. Source enum variants are built from the selected declaration; visible unique short variants remain supported while ambiguous/private/unimported source variants are rejected. Schema short variants require a unique candidate. Imported reserved Service paths still require lexical capability and cannot borrow ordinary same-name schema functions. Context-free discovery helpers remain separate; contextual metadata unit coverage now explicitly imports the external functions it queries. Thirty-two shared independent cases run in service and protocol under LF/CRLF, checking callable identity, exact signature/expected parameter/type, complete named-parameter sets, repeat, explicit Unicode UTF-16 edits, parser-clean application and signature re-query after edits. Preserve b03-14-service-red.log (six unrelated signatures from one imported call), service-regression.log (enum regression during the refactor), and reserved-red.log (alias leaked a reserved schema signature). Final focused cases, full service 596 plus two historical ignored and protocol 583 passed; relevant all-target Clippy, fmt and Node 73 passed. Installed VSIX run-iW6781 passed 9; Windows input-YP56UJ passed 13; strict run-kW8n0A refreshed all 145 B00-B02 obligations with original accepted snapshots intact. B03 remains unaccepted; broad S5 remains unreviewed, whole pending-batch scope 1332. Continue B03.15 with name-aware argument/parameter slot mapping shared by signature highlighting and expected-type/name queries. Existing call_argument_facts active_parameter counts CST separators; completion/analysis.rs::expected_call_argument indexes parameters by that ordinal, and signature.rs clamps the same ordinal. Independently cover out-of-order names, current named-value ownership, mixed occupied slots, unknown/duplicate names, nested/incomplete calls, defaults, zero-arity and rejected Service named syntax. Keep the existing named-argument-active-parameter-mapping issue until independently verified. Then address ordinary positional expression candidates, provider/variable-arity metadata, root Service namespace completion, remaining S5/lifecycle and UX04. macOS requires fresh proof when next used; B16 deferred. Find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.14",
-  "nextTask": "B03.14",
+  "activeChild": "B03.15",
+  "nextTask": "B03.15",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -2755,7 +2764,21 @@
     "target/b03-13-accepted-regression.log",
     "target/lsp-matrix/run-s5u3cd/report.json",
     "editors/vscode/test-results/run-1dSKjL/results.json",
-    "editors/vscode/test-results/input-rtGjhD/results.json"
+    "editors/vscode/test-results/input-rtGjhD/results.json",
+    "target/lsp-matrix/run-kW8n0A/report.json",
+    "target/b03-14-baseline.log",
+    "target/b03-14-service-red.log",
+    "target/b03-14-service-regression.log",
+    "target/b03-14-reserved-red.log",
+    "target/b03-14-imports-final.log",
+    "target/b03-14-clippy-final.log",
+    "target/b03-14-node.log",
+    "target/b03-14-editor.log",
+    "target/b03-14-input.log",
+    "target/b03-14-accepted-regression.log",
+    "target/lsp-matrix/run-pzjIKW/report.json",
+    "editors/vscode/test-results/run-iW6781/results.json",
+    "editors/vscode/test-results/input-YP56UJ/results.json"
   ],
   "openIssues": [
     {
@@ -3386,8 +3409,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "e268178d8ca518160e236dde71c7707e659e25a4",
-          "treeSha256": "776e8c254bc38f3cb5c9eae19a2d48fa9d03e4aa09bf010b4e64dda4bca243e2"
+          "revision": "09e2d3400d5debf03e621b928b602e493db71d77",
+          "treeSha256": "a2928e8a0f89219ed1f3a56125dc9596430473d4f5472fba11612a4eceabad9f"
         },
         "profile": {
           "platform": "win32",
@@ -3395,11 +3418,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-s5KezF/report.json"
+          "target/lsp-matrix/run-kW8n0A/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-1dSKjL/results.json --local-results editors/vscode/test-results/input-rtGjhD/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-iW6781/results.json --local-results editors/vscode/test-results/input-YP56UJ/results.json",
             "exitCode": 0
           }
         ]
