@@ -133,6 +133,17 @@ post-edit signature check.
    budget bounds loop convergence; exhaustion discards writable refinements.
    These cases do not certify every possible control-flow combination; continue
    the remaining S5 partition review and the semantic dimensions below.
+   `completion-schema-callable-lifecycle` checks five ordered states of one live
+   database/server: sync, async with a different return owner, changed sync
+   metadata, callable removal and restoration. Thirty candidate queries apply
+   24 edits and ten unchanged-call queries assert exact signatures or null.
+   Both LF/CRLF runs check async metadata, named parameters, inlays, returned
+   fields and docs, absent source definitions, and current documentation from
+   retained older resolve payloads. Decoy fields on the other return owner must
+   stay absent. Service results also match freshly assembled state; protocol
+   transitions use actual schema writes and watched-file notifications.
+   Entire-schema missing/invalid transitions remain separate from callable
+   removal within a valid schema and still require the remaining lifecycle review.
 2. Complete the semantic review of every applicable syntax dimension, including
    item/statement/lexical/control-flow/recovery and async boundaries. S3/S4
    evidence already in the catalog does not close the remaining dimensions.

@@ -1770,10 +1770,27 @@
         "completion/syntax/S6/negative/protocol"
       ],
       "summary": "Eighteen shared loop/match contexts apply 54 candidate edits under Unicode LF/CRLF in service and protocol. A red case exposed loop headers retaining only first-iteration receiver ownership. Headers now converge over entry, normal and continue backedges, excluding break/return states; patterns are rebound per pass and iterable exits retain enclosing ownership. A body-wide budget of twice the HIR expression/statement count bounds nested convergence; exhaustion drops refinements of writable locals to base contracts and performs one final structural pass. Base-local lookup explicitly excludes inferred semantic locals. Match values and local environments share wildcard/binding irrefutability; later arms are excluded after an unguarded irrefutable arm or an irrefutable diverging guard. No execution or constant folding was added. Exact shared oracles assert merged signatures, applied edits, parameter/inlay metadata and owned/null definitions for iterative aliases, nested exits, resets and ordered match results. Thirteen scalar loop cases, eight match value/control cases and eight forced-budget executions independently cover convergence, terminal exclusions, conservative exhaustion and retained resets/unchanged locals. Analysis 162 passed; workspace 4501 passed, two historical ignored; Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-FIyskA/results.json passed 9; native editors/vscode/test-results/input-gtmFuM/results.json passed 13; strict target/lsp-matrix/run-BHirCa/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The 28 requirement references record partial progress, not partition acceptance. B03 remains unaccepted. Resume B03.40 with remaining S5 partition review, then semantic, lifecycle/URI/client and UX04 proof. Fresh macOS evidence is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.40",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/negative/protocol",
+        "completion-resolve/syntax/S5/positive/service",
+        "completion-resolve/syntax/S5/positive/protocol",
+        "completion-resolve/syntax/S5/negative/service",
+        "completion-resolve/syntax/S5/negative/protocol",
+        "completion/states/stale_schema/protocol",
+        "completion-resolve/states/stale_schema/protocol"
+      ],
+      "summary": "Five ordered schema-callable states run against one live database/server under Unicode LF/CRLF: sync, async with a different return owner, changed sync metadata, callable removal within a valid schema and restoration. Thirty candidate queries apply 24 edits; ten unchanged-call queries assert exact current signatures or null. The shared ownership runners now support schema phases while preserving all existing exact candidate, edit, signature, named-parameter, inlay, async-diagnostic and definition assertions. Tests retain older resolve payloads across every replacement and verify current docs or absence without mutating their identity/edit data. Returned fields exclude decoys on the other host owner. Service completion/signature results match fresh assembly; protocol phases write schema files and deliver watched-file notifications, with clean close/reopen between candidate applications. No product correction was required. Whole-schema missing/invalid transitions are not certified by valid-schema callable removal. Workspace 4503 passed, two historical ignored; Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-8S2MkG/results.json passed 9; native editors/vscode/test-results/input-TX3Me5/results.json passed 13; strict target/lsp-matrix/run-Nj5ZD1/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The ten S5/stale-schema requirement references record partial progress, not partition acceptance. B03 remains unaccepted. Resume B03.41 with missing/invalid schema transitions, remaining S5/semantic review, lifecycle/URI/client and UX04 proof. Fresh macOS evidence is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.40",
-  "nextTask": "B03.40",
+  "activeChild": "B03.41",
+  "nextTask": "B03.41",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -3847,7 +3864,18 @@
     "target/b03-39-input.log",
     "target/b03-39-accepted-regression.log",
     "editors/vscode/test-results/run-FIyskA/results.json",
-    "editors/vscode/test-results/input-gtmFuM/results.json"
+    "editors/vscode/test-results/input-gtmFuM/results.json",
+    "target/lsp-matrix/run-Nj5ZD1/report.json",
+    "target/b03-40-baseline.log",
+    "target/b03-40-lifecycle.log",
+    "target/b03-40-workspace.log",
+    "target/b03-40-clippy.log",
+    "target/b03-40-node.log",
+    "target/b03-40-editor.log",
+    "target/b03-40-input.log",
+    "target/b03-40-accepted-regression.log",
+    "editors/vscode/test-results/run-8S2MkG/results.json",
+    "editors/vscode/test-results/input-TX3Me5/results.json"
   ],
   "openIssues": [
     {
@@ -4468,8 +4496,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "e4dbf91b09ea76b568746159d9ae23b16db0758a",
-          "treeSha256": "d49c3befccce43e4f28d180b1fc44b067aa1f0d58f6a0f4c2d788b2f72dd83ca"
+          "revision": "510194e71e6ef8db368346eff1490b323d50c94f",
+          "treeSha256": "f20a9d43092120027d2756f96e2677105429d713a08d7f35190e4d1de9599e17"
         },
         "profile": {
           "platform": "win32",
@@ -4477,11 +4505,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-BHirCa/report.json"
+          "target/lsp-matrix/run-Nj5ZD1/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-FIyskA/results.json --local-results editors/vscode/test-results/input-gtmFuM/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-8S2MkG/results.json --local-results editors/vscode/test-results/input-TX3Me5/results.json",
             "exitCode": 0
           }
         ]

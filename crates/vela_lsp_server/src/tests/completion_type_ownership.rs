@@ -73,6 +73,11 @@ fn loop_match_matrix_projects_backedge_owners_and_reachable_results() {
     assert_type_ownership("completion-loop-match-flow");
 }
 
+#[test]
+fn schema_callable_lifecycle_projects_current_contracts_and_stale_resolve() {
+    assert_type_ownership("completion-schema-callable-lifecycle");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -97,381 +102,456 @@ fn assert_type_ownership(fixture_id: &str) {
             json!({"processId":null,"rootUri":uri(""),"capabilities":{"textDocument":{"completion":{"completionItem":{"snippetSupport":true,"labelDetailsSupport":true,"resolveSupport":{"properties":["documentation"]}}}}}}),
         );
         let mut id = 2;
-        for case in spec.oracle["queries"].as_array().expect("queries") {
-            let file = string(case, "file");
-            let source = fixture.document(file).expect("document");
-            let point = source.markers["cursor"].start;
-            let range = source.markers["replace"];
-            let _ = notify::<n::DidOpenTextDocument>(
-                &mut server,
-                json!({"textDocument":{"uri":uri(file),"languageId":"vela","version":1,"text":source.text}}),
-            );
-            let params = json!({"textDocument":{"uri":uri(file)},"position":{"line":point.line,"character":point.character}});
-            let response =
-                response_value(request::<r::Completion>(&mut server, id, params.clone()));
-            id += 1;
-            assert!(response["error"].is_null(), "{case} {response}");
-            let items = response["result"]["items"].as_array().expect("items");
-            let expected = case["items"].as_array().expect("items");
-            let mut actual = items
-                .iter()
-                .map(|i| (string(i, "label"), string(&i["textEdit"], "newText")))
-                .collect::<Vec<_>>();
-            let mut keys = expected
-                .iter()
-                .map(|i| (string(i, "label"), string(i, "insert")))
-                .collect::<Vec<_>>();
-            actual.sort();
-            keys.sort();
-            assert_eq!(actual, keys, "{case}");
-            let mut version = 1;
-            for expected in expected {
-                let item = items
-                    .iter()
-                    .find(|i| {
-                        i["label"] == expected["label"]
-                            && i["textEdit"]["newText"] == expected["insert"]
-                    })
-                    .expect("item");
-                let kind = match string(expected, "kind") {
-                    "Function" => 3,
-                    "Method" => 2,
-                    "Field" => 5,
-                    "Const" => 21,
-                    "Type" => 22,
-                    "Trait" => 8,
-                    "Binding" => 6,
-                    "Module" => 9,
-                    other => panic!("{other}"),
-                };
-                assert_eq!(item["kind"], kind);
-                assert_eq!(item["detail"], expected["detail"]);
-                let symbol_name = expected["protocolSymbol"]
-                    .as_str()
-                    .unwrap_or(string(expected, "symbol"));
-                if expected["origin"] != "local" {
-                    assert_eq!(
-                        item["data"]["resolve"],
-                        json!({"kind":"documentation","symbol":{"kind":expected["origin"],"name":symbol_name}}),
-                        "{case}"
-                    );
+        let phases = spec.oracle["schemaLifecycle"]
+            .as_array()
+            .cloned()
+            .unwrap_or_else(|| vec![Value::Null]);
+        let mut saved = std::collections::BTreeMap::<String, Value>::new();
+        for phase in phases {
+            let mut current = spec.clone();
+            if !phase.is_null() {
+                current
+                    .files
+                    .insert("schema.json".to_owned(), phase["schema"].to_string());
+                current.oracle["queries"] = phase["queries"].clone();
+                std::fs::write(root.join("schema.json"), phase["schema"].to_string())
+                    .expect("schema replacement");
+                let _ = notify::<n::DidChangeWatchedFiles>(
+                    &mut server,
+                    json!({"changes":[{"uri":uri("schema.json"),"type":2}]}),
+                );
+                for (name, item) in &saved {
                     let resolved = response_value(request::<r::ResolveCompletionItem>(
                         &mut server,
                         id,
                         item.clone(),
                     ));
                     id += 1;
-                    assert_eq!(resolved["result"]["textEdit"], item["textEdit"]);
+                    assert!(resolved["error"].is_null(), "{resolved}");
                     assert_eq!(resolved["result"]["data"], item["data"]);
-                    let mut expected_resolved = item.clone();
-                    if let Some(docs) = expected["docs"].as_str() {
-                        expected_resolved["documentation"] =
-                            json!({"kind":"markdown","value":docs});
-                    }
-                    assert_eq!(resolved["result"], expected_resolved, "{case}");
+                    assert_eq!(resolved["result"]["textEdit"], item["textEdit"]);
+                    assert_eq!(
+                        resolved["result"]["documentation"]["value"], phase["resolveDocs"][name],
+                        "stale resolve {name}: {phase}"
+                    );
                 }
-                assert_eq!(
-                    item["textEdit"],
-                    json!({"range":{"start":{"line":range.start.line,"character":range.start.character},"end":{"line":range.end.line,"character":range.end.character}},"newText":expected["insert"]})
-                );
-                let insertion = format!(
-                    "{}{}",
-                    string(expected, "insert")
-                        .replace("$0", expected["value"].as_str().unwrap_or("1")),
-                    string(case, "applySuffix")
-                );
-                let edited = apply_edits(
-                    &source.text,
-                    &[Edit {
-                        start: (range.start.line, range.start.character),
-                        end: (range.end.line, range.end.character),
-                        text: &insertion,
-                    }],
-                )
-                .expect("edit");
-                assert_eq!(
-                    edited,
-                    format!(
-                        "{}{}{}",
-                        &source.text[..range.start.byte],
-                        insertion,
-                        &source.text[range.end.byte..]
-                    )
-                );
-                assert_eq!(
-                    vela_syntax::parse::parse_source(&edited)
-                        .diagnostics()
-                        .iter()
-                        .map(|d| d.code.clone().expect("syntax diagnostic code"))
-                        .collect::<Vec<_>>(),
-                    case["syntaxCodes"]
-                        .as_array()
-                        .map_or_else(Vec::new, |codes| codes
-                            .iter()
-                            .map(|code| code.as_str().expect("syntax code").to_owned())
-                            .collect()),
-                    "{case}: {edited}"
-                );
-                version += 1;
-                let changes = notify::<n::DidChangeTextDocument>(
+            }
+            let spec = current;
+            let fixture = FixtureWorkspace::new(&spec).expect("phase fixture");
+            for query in phase["signatureQueries"]
+                .as_array()
+                .map(Vec::as_slice)
+                .unwrap_or_default()
+            {
+                let file = string(query, "file");
+                let source = fixture.document(file).expect("signature document");
+                let point = source.markers["cursor"].start;
+                let result = response_value(request::<r::SignatureHelpRequest>(
                     &mut server,
-                    json!({"textDocument":{"uri":uri(file),"version":version},"contentChanges":[{"text":edited}]}),
+                    id,
+                    json!({"textDocument":{"uri":uri(file)},"position":{"line":point.line,"character":point.character}}),
+                ));
+                id += 1;
+                assert!(result["error"].is_null(), "{result}");
+                let labels = result["result"]["signatures"].as_array().map(|signatures| {
+                    signatures
+                        .iter()
+                        .map(|signature| &signature["label"])
+                        .collect::<Vec<_>>()
+                });
+                assert_eq!(json!(labels), query["labels"], "cached signature: {phase}");
+            }
+            for case in spec.oracle["queries"].as_array().expect("queries") {
+                let file = string(case, "file");
+                let source = fixture.document(file).expect("document");
+                let point = source.markers["cursor"].start;
+                let range = source.markers["replace"];
+                let _ = notify::<n::DidOpenTextDocument>(
+                    &mut server,
+                    json!({"textDocument":{"uri":uri(file),"languageId":"vela","version":1,"text":source.text}}),
                 );
-                if let Some(applied_file) = expected["appliedFile"].as_str() {
-                    let applied = fixture.document(applied_file).expect("applied oracle");
-                    assert_eq!(edited, applied.text, "{case}");
-                    let notifications = crate::tests::notification_values(changes.clone());
-                    let published = notifications
-                        .iter()
-                        .find(|n| {
-                            n["method"] == "textDocument/publishDiagnostics"
-                                && n["params"]["uri"] == uri(file)
-                        })
-                        .expect("applied diagnostics");
-                    let actual = published["params"]["diagnostics"]
-                        .as_array()
-                        .expect("diagnostics")
-                        .iter()
-                        .filter(|d| {
-                            d["code"]
-                                .as_str()
-                                .is_some_and(|code| code.contains("await"))
-                        })
-                        .collect::<Vec<_>>();
-                    let oracle = expected["diagnostics"]
-                        .as_array()
-                        .expect("await diagnostics");
-                    assert_eq!(actual.len(), oracle.len(), "{case}: {actual:?}");
-                    for (actual, expected) in actual.iter().zip(oracle) {
-                        assert_eq!(actual["code"], expected["code"]);
-                        assert_eq!(actual["message"], expected["message"]);
-                        assert_eq!(actual["severity"], 1);
-                        let range = applied.markers[string(expected, "marker")];
-                        assert_eq!(
-                            actual["range"],
-                            json!({"start":{"line":range.start.line,"character":range.start.character},"end":{"line":range.end.line,"character":range.end.character}})
-                        );
-                        assert_eq!(
-                            actual["data"]["labels"],
-                            json!([{"uri":uri(file),"range":actual["range"],"message":expected["label"]}])
-                        );
+                let params = json!({"textDocument":{"uri":uri(file)},"position":{"line":point.line,"character":point.character}});
+                let response =
+                    response_value(request::<r::Completion>(&mut server, id, params.clone()));
+                id += 1;
+                assert!(response["error"].is_null(), "{case} {response}");
+                let items = response["result"]["items"].as_array().expect("items");
+                if !phase.is_null() {
+                    for item in items {
+                        let symbol = &item["data"]["resolve"]["symbol"];
+                        if symbol["kind"] == "schema" {
+                            saved.insert(string(symbol, "name").to_owned(), item.clone());
+                        }
                     }
                 }
-                if case["checkAwait"] == true {
-                    let notifications = crate::tests::notification_values(changes);
-                    let published = notifications
+                let expected = case["items"].as_array().expect("items");
+                let mut actual = items
+                    .iter()
+                    .map(|i| (string(i, "label"), string(&i["textEdit"], "newText")))
+                    .collect::<Vec<_>>();
+                let mut keys = expected
+                    .iter()
+                    .map(|i| (string(i, "label"), string(i, "insert")))
+                    .collect::<Vec<_>>();
+                actual.sort();
+                keys.sort();
+                assert_eq!(actual, keys, "{case}");
+                let mut version = 1;
+                for expected in expected {
+                    let item = items
                         .iter()
-                        .find(|notification| {
-                            notification["method"] == "textDocument/publishDiagnostics"
-                                && notification["params"]["uri"] == uri(file)
+                        .find(|i| {
+                            i["label"] == expected["label"]
+                                && i["textEdit"]["newText"] == expected["insert"]
                         })
-                        .expect("applied diagnostics");
-                    let missing = published["params"]["diagnostics"]
-                        .as_array()
-                        .expect("diagnostics")
-                        .iter()
-                        .filter(|diagnostic| {
-                            diagnostic["code"] == "analysis::async_call_requires_await"
-                        })
-                        .collect::<Vec<_>>();
-                    let required =
-                        expected["async"] == true && string(case, "applySuffix").is_empty();
-                    assert_eq!(
-                        missing.len(),
-                        usize::from(required),
-                        "{case} {expected}: {missing:?}"
-                    );
-                    if let Some(diagnostic) = missing.first() {
-                        let call = source.markers["call"];
-                        let end = call.end.character + insertion.encode_utf16().count()
-                            - (range.end.character - range.start.character);
-                        assert_eq!(diagnostic["severity"], 1);
-                        let expected_range = json!({"start":{"line":call.start.line,"character":call.start.character},"end":{"line":call.end.line,"character":end}});
-                        assert_eq!(diagnostic["range"], expected_range);
-                        let labels = diagnostic["data"]["labels"]
-                            .as_array()
-                            .expect("diagnostic labels");
-                        assert_eq!(labels.len(), 1);
-                        assert_eq!(labels[0]["uri"], uri(file));
-                        assert_eq!(labels[0]["range"], expected_range);
-                    }
-                }
-                if let Some(signatures) = expected["signatures"].as_array() {
-                    let open = insertion.find('(').expect("call");
-                    let help = response_value(request::<r::SignatureHelpRequest>(
-                        &mut server,
-                        id,
-                        json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":range.start.character+open+1}}),
-                    ));
-                    id += 1;
-                    assert!(help["error"].is_null());
-                    let mut actual = help["result"]["signatures"]
-                        .as_array()
-                        .expect("alternative signatures")
-                        .iter()
-                        .map(|signature| string(signature, "label"))
-                        .collect::<Vec<_>>();
-                    let mut expected = signatures
-                        .iter()
-                        .map(|signature| signature.as_str().expect("signature label"))
-                        .collect::<Vec<_>>();
-                    actual.sort();
-                    expected.sort();
-                    assert_eq!(actual, expected, "{case}");
-                }
-                if let Some(signature) = expected["signature"].as_str() {
-                    let open = insertion.find('(').expect("call");
-                    let help = response_value(request::<r::SignatureHelpRequest>(
-                        &mut server,
-                        id,
-                        json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":range.start.character+open+1}}),
-                    ));
-                    id += 1;
-                    assert!(help["error"].is_null());
-                    assert_eq!(
-                        help["result"]["signatures"]
-                            .as_array()
-                            .expect("signatures")
-                            .len(),
-                        1,
-                        "{case}"
-                    );
-                    assert_eq!(
-                        help["result"]["signatures"][0]["label"], signature,
-                        "{case} {expected}"
-                    );
-                }
-                if let Some(argument) = expected.get("argument") {
-                    if let Some(label) = expected["inlay"].as_str() {
-                        let character =
-                            range.start.character + insertion.find('(').expect("call") + 1;
-                        let point = json!({"line":range.start.line,"character":character});
-                        let hints = response_value(request::<r::InlayHintRequest>(
+                        .expect("item");
+                    let kind = match string(expected, "kind") {
+                        "Function" => 3,
+                        "Method" => 2,
+                        "Field" => 5,
+                        "Const" => 21,
+                        "Type" => 22,
+                        "Trait" => 8,
+                        "Binding" => 6,
+                        "Module" => 9,
+                        other => panic!("{other}"),
+                    };
+                    assert_eq!(item["kind"], kind);
+                    assert_eq!(item["detail"], expected["detail"]);
+                    let symbol_name = expected["protocolSymbol"]
+                        .as_str()
+                        .unwrap_or(string(expected, "symbol"));
+                    if expected["origin"] != "local" {
+                        assert_eq!(
+                            item["data"]["resolve"],
+                            json!({"kind":"documentation","symbol":{"kind":expected["origin"],"name":symbol_name}}),
+                            "{case}"
+                        );
+                        let resolved = response_value(request::<r::ResolveCompletionItem>(
                             &mut server,
                             id,
-                            json!({"textDocument":{"uri":uri(file)},"range":{"start":point,"end":point}}),
+                            item.clone(),
                         ));
                         id += 1;
-                        assert!(hints["error"].is_null());
-                        let hints = hints["result"].as_array().expect("hints");
-                        assert_eq!(hints.len(), 1, "{case}");
-                        assert_eq!(hints[0]["label"], label, "{case}");
-                        assert_eq!(hints[0]["kind"], 2);
-                        assert_eq!(hints[0]["position"], point);
+                        assert_eq!(resolved["result"]["textEdit"], item["textEdit"]);
+                        assert_eq!(resolved["result"]["data"], item["data"]);
+                        let mut expected_resolved = item.clone();
+                        if let Some(docs) = expected["docs"].as_str() {
+                            expected_resolved["documentation"] =
+                                json!({"kind":"markdown","value":docs});
+                        }
+                        assert_eq!(resolved["result"], expected_resolved, "{case}");
                     }
-                    let text = source.text[..range.start.byte].to_owned()
-                        + &string(expected, "insert").replace("$0", "zz_")
-                        + &source.text[range.end.byte..];
-                    let start = range.start.character
-                        + string(expected, "insert").find('(').expect("call")
-                        + 1;
-                    version += 1;
-                    let _ = notify::<n::DidChangeTextDocument>(
-                        &mut server,
-                        json!({"textDocument":{"uri":uri(file),"version":version},"contentChanges":[{"text":text}]}),
-                    );
-                    let response = response_value(request::<r::Completion>(
-                        &mut server,
-                        id,
-                        json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":start+3}}),
-                    ));
-                    id += 1;
-                    assert!(response["error"].is_null());
-                    let parameters = response["result"]["items"].as_array().expect("parameters");
                     assert_eq!(
-                        parameters
+                        item["textEdit"],
+                        json!({"range":{"start":{"line":range.start.line,"character":range.start.character},"end":{"line":range.end.line,"character":range.end.character}},"newText":expected["insert"]})
+                    );
+                    let insertion = format!(
+                        "{}{}",
+                        string(expected, "insert")
+                            .replace("$0", expected["value"].as_str().unwrap_or("1")),
+                        string(case, "applySuffix")
+                    );
+                    let edited = apply_edits(
+                        &source.text,
+                        &[Edit {
+                            start: (range.start.line, range.start.character),
+                            end: (range.end.line, range.end.character),
+                            text: &insertion,
+                        }],
+                    )
+                    .expect("edit");
+                    assert_eq!(
+                        edited,
+                        format!(
+                            "{}{}{}",
+                            &source.text[..range.start.byte],
+                            insertion,
+                            &source.text[range.end.byte..]
+                        )
+                    );
+                    assert_eq!(
+                        vela_syntax::parse::parse_source(&edited)
+                            .diagnostics()
                             .iter()
-                            .map(|i| string(i, "label"))
+                            .map(|d| d.code.clone().expect("syntax diagnostic code"))
                             .collect::<Vec<_>>(),
-                        [string(argument, "label")],
-                        "{case}"
-                    );
-                    assert_eq!(parameters[0]["detail"], argument["detail"]);
-                    assert_eq!(parameters[0]["kind"], 6);
-                    assert_eq!(
-                        parameters[0]["textEdit"],
-                        json!({"range":{"start":{"line":range.start.line,"character":start},"end":{"line":range.start.line,"character":start+3}},"newText":format!("{} = ",string(argument,"label"))})
+                        case["syntaxCodes"]
+                            .as_array()
+                            .map_or_else(Vec::new, |codes| codes
+                                .iter()
+                                .map(|code| code.as_str().expect("syntax code").to_owned())
+                                .collect()),
+                        "{case}: {edited}"
                     );
                     version += 1;
-                    let _ = notify::<n::DidChangeTextDocument>(
+                    let changes = notify::<n::DidChangeTextDocument>(
                         &mut server,
                         json!({"textDocument":{"uri":uri(file),"version":version},"contentChanges":[{"text":edited}]}),
                     );
-                }
-                if let Some(target) = expected["target"].as_str() {
-                    let target = if target == "self" { file } else { target };
-                    let marker = fixture.document(target).expect("target").markers
-                        [string(expected, "marker")];
-                    let start = insertion
-                        .split('(')
-                        .next()
-                        .expect("callee path")
-                        .rfind("::")
-                        .map_or(0, |i| i + 2);
-                    let definition = response_value(request::<r::GotoDefinition>(
-                        &mut server,
-                        id,
-                        json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":range.start.character+start+1}}),
-                    ));
-                    id += 1;
-                    assert_eq!(
-                        definition["result"],
-                        json!({"uri":uri(target),"range":{"start":{"line":marker.start.line,"character":marker.start.character},"end":{"line":marker.end.line,"character":marker.end.character}}}),
-                        "{case} {expected}"
-                    );
-                } else {
-                    let start = insertion
-                        .split('(')
-                        .next()
-                        .expect("callee path")
-                        .rfind("::")
-                        .map_or(0, |i| i + 2);
-                    let definition = response_value(request::<r::GotoDefinition>(
-                        &mut server,
-                        id,
-                        json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":range.start.character+start+1}}),
-                    ));
-                    id += 1;
-                    assert!(definition["error"].is_null(), "{case} {expected}");
-                    assert!(
-                        definition["result"].is_null(),
-                        "{case} {expected}: {definition}"
-                    );
-                }
-                if case["member"] == true {
-                    let member = source.markers["member"].start;
-                    let response = response_value(request::<r::Completion>(
-                        &mut server,
-                        id,
-                        json!({"textDocument":{"uri":uri(file)},"position":{"line":member.line,"character":member.character+insertion.encode_utf16().count()-(range.end.character-range.start.character)}}),
-                    ));
-                    id += 1;
-                    let members = response["result"]["items"].as_array().expect("members");
-                    assert_eq!(
-                        members
+                    if let Some(applied_file) = expected["appliedFile"].as_str() {
+                        let applied = fixture.document(applied_file).expect("applied oracle");
+                        assert_eq!(edited, applied.text, "{case}");
+                        let notifications = crate::tests::notification_values(changes.clone());
+                        let published = notifications
                             .iter()
-                            .map(|i| string(i, "label"))
-                            .collect::<Vec<_>>(),
-                        ["tag"],
-                        "{case}"
-                    );
-                    assert_eq!(
-                        members[0]["data"]["resolve"]["symbol"],
-                        json!({"kind":expected["origin"],"name":format!("{}.tag",string(expected,"symbol"))})
-                    );
-                    if let Some(detail) = expected["fieldDetail"].as_str() {
-                        assert_eq!(members[0]["detail"], detail, "{case} {expected}");
+                            .find(|n| {
+                                n["method"] == "textDocument/publishDiagnostics"
+                                    && n["params"]["uri"] == uri(file)
+                            })
+                            .expect("applied diagnostics");
+                        let actual = published["params"]["diagnostics"]
+                            .as_array()
+                            .expect("diagnostics")
+                            .iter()
+                            .filter(|d| {
+                                d["code"]
+                                    .as_str()
+                                    .is_some_and(|code| code.contains("await"))
+                            })
+                            .collect::<Vec<_>>();
+                        let oracle = expected["diagnostics"]
+                            .as_array()
+                            .expect("await diagnostics");
+                        assert_eq!(actual.len(), oracle.len(), "{case}: {actual:?}");
+                        for (actual, expected) in actual.iter().zip(oracle) {
+                            assert_eq!(actual["code"], expected["code"]);
+                            assert_eq!(actual["message"], expected["message"]);
+                            assert_eq!(actual["severity"], 1);
+                            let range = applied.markers[string(expected, "marker")];
+                            assert_eq!(
+                                actual["range"],
+                                json!({"start":{"line":range.start.line,"character":range.start.character},"end":{"line":range.end.line,"character":range.end.character}})
+                            );
+                            assert_eq!(
+                                actual["data"]["labels"],
+                                json!([{"uri":uri(file),"range":actual["range"],"message":expected["label"]}])
+                            );
+                        }
                     }
+                    if case["checkAwait"] == true {
+                        let notifications = crate::tests::notification_values(changes);
+                        let published = notifications
+                            .iter()
+                            .find(|notification| {
+                                notification["method"] == "textDocument/publishDiagnostics"
+                                    && notification["params"]["uri"] == uri(file)
+                            })
+                            .expect("applied diagnostics");
+                        let missing = published["params"]["diagnostics"]
+                            .as_array()
+                            .expect("diagnostics")
+                            .iter()
+                            .filter(|diagnostic| {
+                                diagnostic["code"] == "analysis::async_call_requires_await"
+                            })
+                            .collect::<Vec<_>>();
+                        let required =
+                            expected["async"] == true && string(case, "applySuffix").is_empty();
+                        assert_eq!(
+                            missing.len(),
+                            usize::from(required),
+                            "{case} {expected}: {missing:?}"
+                        );
+                        if let Some(diagnostic) = missing.first() {
+                            let call = source.markers["call"];
+                            let end = call.end.character + insertion.encode_utf16().count()
+                                - (range.end.character - range.start.character);
+                            assert_eq!(diagnostic["severity"], 1);
+                            let expected_range = json!({"start":{"line":call.start.line,"character":call.start.character},"end":{"line":call.end.line,"character":end}});
+                            assert_eq!(diagnostic["range"], expected_range);
+                            let labels = diagnostic["data"]["labels"]
+                                .as_array()
+                                .expect("diagnostic labels");
+                            assert_eq!(labels.len(), 1);
+                            assert_eq!(labels[0]["uri"], uri(file));
+                            assert_eq!(labels[0]["range"], expected_range);
+                        }
+                    }
+                    if let Some(signatures) = expected["signatures"].as_array() {
+                        let open = insertion.find('(').expect("call");
+                        let help = response_value(request::<r::SignatureHelpRequest>(
+                            &mut server,
+                            id,
+                            json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":range.start.character+open+1}}),
+                        ));
+                        id += 1;
+                        assert!(help["error"].is_null());
+                        let mut actual = help["result"]["signatures"]
+                            .as_array()
+                            .expect("alternative signatures")
+                            .iter()
+                            .map(|signature| string(signature, "label"))
+                            .collect::<Vec<_>>();
+                        let mut expected = signatures
+                            .iter()
+                            .map(|signature| signature.as_str().expect("signature label"))
+                            .collect::<Vec<_>>();
+                        actual.sort();
+                        expected.sort();
+                        assert_eq!(actual, expected, "{case}");
+                    }
+                    if let Some(signature) = expected["signature"].as_str() {
+                        let open = insertion.find('(').expect("call");
+                        let help = response_value(request::<r::SignatureHelpRequest>(
+                            &mut server,
+                            id,
+                            json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":range.start.character+open+1}}),
+                        ));
+                        id += 1;
+                        assert!(help["error"].is_null());
+                        assert_eq!(
+                            help["result"]["signatures"]
+                                .as_array()
+                                .expect("signatures")
+                                .len(),
+                            1,
+                            "{case}"
+                        );
+                        assert_eq!(
+                            help["result"]["signatures"][0]["label"], signature,
+                            "{case} {expected}"
+                        );
+                    }
+                    if let Some(argument) = expected.get("argument") {
+                        if let Some(label) = expected["inlay"].as_str() {
+                            let character =
+                                range.start.character + insertion.find('(').expect("call") + 1;
+                            let point = json!({"line":range.start.line,"character":character});
+                            let hints = response_value(request::<r::InlayHintRequest>(
+                                &mut server,
+                                id,
+                                json!({"textDocument":{"uri":uri(file)},"range":{"start":point,"end":point}}),
+                            ));
+                            id += 1;
+                            assert!(hints["error"].is_null());
+                            let hints = hints["result"].as_array().expect("hints");
+                            assert_eq!(hints.len(), 1, "{case}");
+                            assert_eq!(hints[0]["label"], label, "{case}");
+                            assert_eq!(hints[0]["kind"], 2);
+                            assert_eq!(hints[0]["position"], point);
+                        }
+                        let text = source.text[..range.start.byte].to_owned()
+                            + &string(expected, "insert").replace("$0", "zz_")
+                            + &source.text[range.end.byte..];
+                        let start = range.start.character
+                            + string(expected, "insert").find('(').expect("call")
+                            + 1;
+                        version += 1;
+                        let _ = notify::<n::DidChangeTextDocument>(
+                            &mut server,
+                            json!({"textDocument":{"uri":uri(file),"version":version},"contentChanges":[{"text":text}]}),
+                        );
+                        let response = response_value(request::<r::Completion>(
+                            &mut server,
+                            id,
+                            json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":start+3}}),
+                        ));
+                        id += 1;
+                        assert!(response["error"].is_null());
+                        let parameters =
+                            response["result"]["items"].as_array().expect("parameters");
+                        assert_eq!(
+                            parameters
+                                .iter()
+                                .map(|i| string(i, "label"))
+                                .collect::<Vec<_>>(),
+                            [string(argument, "label")],
+                            "{case}"
+                        );
+                        assert_eq!(parameters[0]["detail"], argument["detail"]);
+                        assert_eq!(parameters[0]["kind"], 6);
+                        assert_eq!(
+                            parameters[0]["textEdit"],
+                            json!({"range":{"start":{"line":range.start.line,"character":start},"end":{"line":range.start.line,"character":start+3}},"newText":format!("{} = ",string(argument,"label"))})
+                        );
+                        version += 1;
+                        let _ = notify::<n::DidChangeTextDocument>(
+                            &mut server,
+                            json!({"textDocument":{"uri":uri(file),"version":version},"contentChanges":[{"text":edited}]}),
+                        );
+                    }
+                    if let Some(target) = expected["target"].as_str() {
+                        let target = if target == "self" { file } else { target };
+                        let marker = fixture.document(target).expect("target").markers
+                            [string(expected, "marker")];
+                        let start = insertion
+                            .split('(')
+                            .next()
+                            .expect("callee path")
+                            .rfind("::")
+                            .map_or(0, |i| i + 2);
+                        let definition = response_value(request::<r::GotoDefinition>(
+                            &mut server,
+                            id,
+                            json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":range.start.character+start+1}}),
+                        ));
+                        id += 1;
+                        assert_eq!(
+                            definition["result"],
+                            json!({"uri":uri(target),"range":{"start":{"line":marker.start.line,"character":marker.start.character},"end":{"line":marker.end.line,"character":marker.end.character}}}),
+                            "{case} {expected}"
+                        );
+                    } else {
+                        let start = insertion
+                            .split('(')
+                            .next()
+                            .expect("callee path")
+                            .rfind("::")
+                            .map_or(0, |i| i + 2);
+                        let definition = response_value(request::<r::GotoDefinition>(
+                            &mut server,
+                            id,
+                            json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":range.start.character+start+1}}),
+                        ));
+                        id += 1;
+                        assert!(definition["error"].is_null(), "{case} {expected}");
+                        assert!(
+                            definition["result"].is_null(),
+                            "{case} {expected}: {definition}"
+                        );
+                    }
+                    if case["member"] == true {
+                        let member = source.markers["member"].start;
+                        let response = response_value(request::<r::Completion>(
+                            &mut server,
+                            id,
+                            json!({"textDocument":{"uri":uri(file)},"position":{"line":member.line,"character":member.character+insertion.encode_utf16().count()-(range.end.character-range.start.character)}}),
+                        ));
+                        id += 1;
+                        let members = response["result"]["items"].as_array().expect("members");
+                        assert_eq!(
+                            members
+                                .iter()
+                                .map(|i| string(i, "label"))
+                                .collect::<Vec<_>>(),
+                            ["tag"],
+                            "{case}"
+                        );
+                        assert_eq!(
+                            members[0]["data"]["resolve"]["symbol"],
+                            json!({"kind":expected["origin"],"name":format!("{}.tag",string(expected,"symbol"))})
+                        );
+                        if let Some(detail) = expected["fieldDetail"].as_str() {
+                            assert_eq!(members[0]["detail"], detail, "{case} {expected}");
+                        }
+                    }
+                    version += 1;
+                    let _ = notify::<n::DidChangeTextDocument>(
+                        &mut server,
+                        json!({"textDocument":{"uri":uri(file),"version":version},"contentChanges":[{"text":source.text}]}),
+                    );
+                    let restored =
+                        response_value(request::<r::Completion>(&mut server, id, params.clone()));
+                    id += 1;
+                    assert_eq!(restored["result"], response["result"], "{case}");
                 }
-                version += 1;
-                let _ = notify::<n::DidChangeTextDocument>(
-                    &mut server,
-                    json!({"textDocument":{"uri":uri(file),"version":version},"contentChanges":[{"text":source.text}]}),
-                );
-                let restored =
-                    response_value(request::<r::Completion>(&mut server, id, params.clone()));
-                id += 1;
-                assert_eq!(restored["result"], response["result"], "{case}");
+                if !phase.is_null() {
+                    let _ = notify::<n::DidCloseTextDocument>(
+                        &mut server,
+                        json!({"textDocument":{"uri":uri(file)}}),
+                    );
+                }
             }
         }
         for (index, step) in spec.oracle["lifecycle"]
