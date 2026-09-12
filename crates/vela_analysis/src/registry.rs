@@ -17,6 +17,7 @@ mod compile_view;
 mod effect;
 mod hint_fact;
 mod reflect_view;
+mod type_hint;
 
 pub use effect::RegistryEffectFact;
 use hint_fact::{registry_hint_fact, type_desc_fact};

@@ -4250,3 +4250,16 @@ method. Host-injected APIs, static task operands and unmatched variable-arity
 reflection shapes remain explicit exceptions to named insertion until their
 own contracts are verified. Exact source/schema ownership and unambiguous
 external imports take precedence over short-name guesses.
+
+
+## Service Schema Callable Projection Uses Registration Type Facts
+
+Service-set JSON parameter names and asyncness are authoritative callable
+metadata; service parameters are required. Preserve their nested parameter and
+return facts instead of replacing them with Unknown. Register every service
+owner first, then resolve hints through the existing registry parser and the
+same type-fact converter as compile-view analysis. Normalize only the service
+wire's explicit tuple/mutation spellings and retain exact schema names. Reject
+malformed hints and duplicate parameter names; an unresolved named type stays
+Unknown. Service projection replaces both an ordinary trait method fact and
+its signature together, preventing stale signature/type disagreement.

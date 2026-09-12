@@ -2808,7 +2808,7 @@
     },
     {
       "requirement": "completion/states/repeat/protocol",
-      "assertion": "Repeat every request in the shared member/constructor, source/schema/stdlib named-argument and call-argument-context fixtures and assert identical full completion results before any edit. Independently check exact candidate sets under LF/CRLF; the call context fixture also checks signature repetition and the active parameter through encoded URI and UTF-16 positions.",
+      "assertion": "Repeat every request in the shared member/constructor, source/schema/stdlib/service named-argument and call-argument-context fixtures and assert identical full completion results before any edit. Independently check exact candidate sets under LF/CRLF; the call context fixture also checks signature repetition and the active parameter through encoded URI and UTF-16 positions.",
       "tests": [
         {
           "layer": "protocol",
@@ -2825,6 +2825,10 @@
         {
           "layer": "protocol",
           "name": "tests::completion_named_arguments::stdlib_named_argument_matrix_projects_registered_names_edits_and_negative_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::service_named_argument_matrix_projects_contracts_and_utf16_edits"
         }
       ]
     },
@@ -2840,7 +2844,7 @@
     },
     {
       "requirement": "completion/states/unresolved/protocol",
-      "assertion": "Unknown receiver hints and unhinted receivers, missing record constructors and a missing qualified schema constructor path produce exact empty completion sets. Nearby valid source/schema member and constructor queries prove the workspace remains usable; missing paths cannot fall back to unrelated short-name fields. Standard-library named argument queries also reject missing targets, ambiguous imports and unsupported grouped import syntax; the latter publishes an error diagnostic.",
+      "assertion": "Unknown receiver hints and unhinted receivers, missing record constructors and a missing qualified schema constructor path produce exact empty completion sets. Nearby valid source/schema member and constructor queries prove the workspace remains usable; missing paths cannot fall back to unrelated short-name fields. Standard-library named argument queries also reject missing targets, ambiguous imports and unsupported grouped import syntax; the latter publishes an error diagnostic. Service receiver cases check missing methods, unknown owners and dynamic receivers against exact empty sets.",
       "tests": [
         {
           "layer": "protocol",
@@ -2853,6 +2857,10 @@
         {
           "layer": "protocol",
           "name": "tests::completion_named_arguments::stdlib_named_argument_matrix_projects_registered_names_edits_and_negative_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::service_named_argument_matrix_projects_contracts_and_utf16_edits"
         }
       ]
     },

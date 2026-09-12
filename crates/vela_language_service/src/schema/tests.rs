@@ -183,7 +183,7 @@ fn schema_export_round_trips_registry_facts() {
         round_tripped.trait_method_fact("fixture::handler", "handle"),
         Some(&TypeFact::function(
             vec![TypeFact::Unknown],
-            TypeFact::Unknown
+            TypeFact::result(TypeFact::Unknown, TypeFact::Unknown)
         ))
     );
     assert_eq!(

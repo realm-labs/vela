@@ -13,6 +13,11 @@ fn stdlib_named_argument_matrix_projects_registered_names_edits_and_negative_bou
     verify_fixture("completion-stdlib-arguments");
 }
 
+#[test]
+fn service_named_argument_matrix_projects_contracts_and_utf16_edits() {
+    verify_fixture("completion-service-arguments");
+}
+
 fn verify_fixture(fixture_name: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_name);

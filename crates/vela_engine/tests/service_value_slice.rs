@@ -199,3 +199,63 @@ impl InvalidCopyBack {
         "mutable copy-back must fail before the authored Rust body executes",
     );
 }
+
+#[cfg(feature = "schema-artifact")]
+#[test]
+fn exported_service_schema_preserves_registered_parameter_types_without_invocation() {
+    use vela_analysis::registry::CallableParameterRequirementFact;
+    use vela_analysis::type_fact::TypeFact;
+    use vela_common::{CallableAsyncness, CollectionViewMutation};
+
+    let app = TestServices::builder(
+        Engine::builder()
+            .capability(Capability::HostWrite)
+            .install_generated_type::<RequestContext>(),
+    )
+    .task_scope(crate::support::dropping_task_scope())
+    .emergency_patch_effect_ceiling(crate::support::emergency_patch_effect_ceiling())
+    .totals(RustTotalService)
+    .build()
+    .expect("service domain");
+    let (engine, _) = app.into_parts();
+    let artifact = engine.tooling_schema_artifact().expect("static metadata");
+    let decoded =
+        vela_language_service::SchemaArtifact::from_json(&artifact.to_json().expect("encode"))
+            .expect("decode");
+    let facts = decoded.to_registry_facts();
+    for (method, parameter, expected) in [
+        (
+            "sum",
+            "values",
+            TypeFact::array_view(TypeFact::record("slice_service::Entry")),
+        ),
+        ("one", "value", TypeFact::record("slice_service::Entry")),
+        (
+            "owned",
+            "values",
+            TypeFact::array(TypeFact::record("slice_service::Entry")),
+        ),
+        (
+            "mutate",
+            "values",
+            TypeFact::array_mut(TypeFact::I64, CollectionViewMutation::Growable),
+        ),
+    ] {
+        let signature = facts
+            .trait_method_signature_fact("slice_service::totals", method)
+            .expect("signature");
+        assert_eq!(signature.asyncness, CallableAsyncness::Sync);
+        assert_eq!(signature.returns, TypeFact::I64);
+        assert_eq!(signature.parameters.len(), 2);
+        assert_eq!(signature.parameters[0].name, "context");
+        assert_eq!(signature.parameters[0].type_fact, TypeFact::host("Context"));
+        assert_eq!(signature.parameters[1].name, parameter);
+        assert_eq!(signature.parameters[1].type_fact, expected, "{method}");
+        assert!(
+            signature
+                .parameters
+                .iter()
+                .all(|p| p.requirement == CallableParameterRequirementFact::Required)
+        );
+    }
+}

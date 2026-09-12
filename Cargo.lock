@@ -1286,6 +1286,7 @@ dependencies = [
  "vela_def",
  "vela_hir",
  "vela_package",
+ "vela_registry",
  "vela_syntax",
 ]
 

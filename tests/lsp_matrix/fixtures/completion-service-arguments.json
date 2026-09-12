@@ -1,0 +1,216 @@
+{
+  "version": 1,
+  "id": "completion-service-arguments",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.service_arguments\"\nname = \"service_arguments\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Context\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Context\"\n        }\n      },\n      {\n        \"name\": \"host::Reply\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"host::Reply\"\n        }\n      },\n      {\n        \"name\": \"host::Failure\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Failure\",\n          \"variant\": null\n        }\n      }\n    ]\n  },\n  \"serviceSet\": {\n    \"id\": \"set\",\n    \"path\": \"api::Services\",\n    \"abiFingerprint\": \"abi\",\n    \"typeBindingChecksum\": \"bindings\",\n    \"services\": [\n      {\n        \"id\": \"handler\",\n        \"member\": \"handler\",\n        \"path\": \"api::Handler\",\n        \"abiFingerprint\": \"handler-abi\",\n        \"methods\": [\n          {\n            \"id\": \"handle\",\n            \"name\": \"handle\",\n            \"path\": \"api::Handler::handle\",\n            \"asyncMethod\": true,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"context\",\n                \"typeHint\": \"host::Context\",\n                \"mode\": \"shared_host\"\n              },\n              {\n                \"name\": \"count\",\n                \"typeHint\": \"i64\",\n                \"mode\": \"owned\"\n              },\n              {\n                \"name\": \"tags\",\n                \"typeHint\": \"Array<String>\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"Result<host::Reply, host::Failure>\"\n          },\n          {\n            \"id\": \"choose\",\n            \"name\": \"choose\",\n            \"path\": \"api::Handler::choose\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"peer\",\n                \"typeHint\": \"api::Peer\",\n                \"mode\": \"owned\"\n              },\n              {\n                \"name\": \"pair\",\n                \"typeHint\": \"Tuple<String, i64>\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"Option<host::Reply>\"\n          },\n          {\n            \"id\": \"views\",\n            \"name\": \"views\",\n            \"path\": \"api::Handler::views\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"values\",\n                \"typeHint\": \"ArrayMut<i64, growable>\",\n                \"mode\": \"owned\"\n              },\n              {\n                \"name\": \"lookup\",\n                \"typeHint\": \"MapMut<String, i64, fixed>\",\n                \"mode\": \"owned\"\n              },\n              {\n                \"name\": \"keys\",\n                \"typeHint\": \"SetView<String>\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"()\"\n          },\n          {\n            \"id\": \"empty\",\n            \"name\": \"empty\",\n            \"path\": \"api::Handler::empty\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [],\n            \"returnType\": \"()\"\n          },\n          {\n            \"id\": \"unknown\",\n            \"name\": \"unknown\",\n            \"path\": \"api::Handler::unknown\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"value\",\n                \"typeHint\": \"missing::Context\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"()\"\n          },\n          {\n            \"id\": \"next\",\n            \"name\": \"next\",\n            \"path\": \"api::Handler::next\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [],\n            \"returnType\": \"api::Peer\"\n          },\n          {\n            \"id\": \"grow\",\n            \"name\": \"grow\",\n            \"path\": \"api::Handler::grow\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [],\n            \"returnType\": \"ArrayMut<i64, growable>\"\n          }\n        ]\n      },\n      {\n        \"id\": \"peer\",\n        \"member\": \"peer\",\n        \"path\": \"api::Peer\",\n        \"abiFingerprint\": \"peer-abi\",\n        \"methods\": [\n          {\n            \"id\": \"take\",\n            \"name\": \"take\",\n            \"path\": \"api::Peer::take\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"amount\",\n                \"typeHint\": \"u32\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"bool\"\n          }\n        ]\n      }\n    ]\n  }\n}\n",
+    "scripts/query_async.vela": "/* 中😀 */ fn main(h: api::Handler) { h.handle([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_used.vela": "/* 中😀 */ fn main(h: api::Handler, ctx: host::Context) { h.handle(ctx, [[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_named.vela": "/* 中😀 */ fn main(h: api::Handler) { h.handle(tags = [], [[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_partial.vela": "/* 中😀 */ fn main(h: api::Handler) { h.handle([[replace:start]]co[[cursor]][[replace:end]]); }\n",
+    "scripts/query_tuple_forward.vela": "/* 中😀 */ fn main(h: api::Handler) { h.choose([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_views.vela": "/* 中😀 */ fn main(h: api::Handler) { h.views([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_empty.vela": "/* 中😀 */ fn main(h: api::Handler) { h.empty([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_unknown_type.vela": "/* 中😀 */ fn main(h: api::Handler) { h.unknown([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_forward_return.vela": "/* 中😀 */ fn main(h: api::Handler) { h.next().take([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_growable_return.vela": "/* 中😀 */ fn main(h: api::Handler) { h.grow().insert([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_unresolved_owner.vela": "/* 中😀 */ fn main(h: missing::Handler) { h.handle([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_source_owner.vela": "/* 中😀 */ struct Handler {} fn main(h: Handler) { h.handle([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_dynamic.vela": "/* 中😀 */ fn main(h: Any) { h.handle([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_missing_method.vela": "/* 中😀 */ fn main(h: api::Handler) { h.missing([[replace:start]][[cursor]][[replace:end]]); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "async",
+        "file": "scripts/query_async.vela",
+        "parameters": [
+          {
+            "name": "context",
+            "detail": "host::Context",
+            "insert": "context = "
+          },
+          {
+            "name": "count",
+            "detail": "i64",
+            "insert": "count = "
+          },
+          {
+            "name": "tags",
+            "detail": "Array(String)",
+            "insert": "tags = "
+          }
+        ],
+        "apply": "count",
+        "value": "1",
+        "signature": "async api::Handler.handle(context: host::Context, count: i64, tags: Array(String)) -> Result(host::Reply, host::Failure)"
+      },
+      {
+        "id": "used",
+        "file": "scripts/query_used.vela",
+        "parameters": [
+          {
+            "name": "count",
+            "detail": "i64",
+            "insert": "count = "
+          },
+          {
+            "name": "tags",
+            "detail": "Array(String)",
+            "insert": "tags = "
+          }
+        ],
+        "apply": "tags",
+        "value": "[]"
+      },
+      {
+        "id": "named",
+        "file": "scripts/query_named.vela",
+        "parameters": [
+          {
+            "name": "context",
+            "detail": "host::Context",
+            "insert": "context = "
+          },
+          {
+            "name": "count",
+            "detail": "i64",
+            "insert": "count = "
+          }
+        ],
+        "apply": "count",
+        "value": "1"
+      },
+      {
+        "id": "partial",
+        "file": "scripts/query_partial.vela",
+        "parameters": [
+          {
+            "name": "context",
+            "detail": "host::Context",
+            "insert": "context = "
+          },
+          {
+            "name": "count",
+            "detail": "i64",
+            "insert": "count = "
+          }
+        ],
+        "apply": "context",
+        "value": "ctx"
+      },
+      {
+        "id": "tuple_forward",
+        "file": "scripts/query_tuple_forward.vela",
+        "parameters": [
+          {
+            "name": "peer",
+            "detail": "api::Peer",
+            "insert": "peer = "
+          },
+          {
+            "name": "pair",
+            "detail": "(String, i64)",
+            "insert": "pair = "
+          }
+        ],
+        "apply": "pair",
+        "value": "(\"x\", 1)"
+      },
+      {
+        "id": "views",
+        "file": "scripts/query_views.vela",
+        "parameters": [
+          {
+            "name": "values",
+            "detail": "ArrayMut(i64, growable)",
+            "insert": "values = "
+          },
+          {
+            "name": "lookup",
+            "detail": "MapMut(String, i64, fixed)",
+            "insert": "lookup = "
+          },
+          {
+            "name": "keys",
+            "detail": "SetView(String)",
+            "insert": "keys = "
+          }
+        ],
+        "apply": "keys",
+        "value": "keys"
+      },
+      {
+        "id": "empty",
+        "file": "scripts/query_empty.vela",
+        "parameters": [],
+        "signature": "api::Handler.empty() -> ()"
+      },
+      {
+        "id": "unknown_type",
+        "file": "scripts/query_unknown_type.vela",
+        "parameters": [
+          {
+            "name": "value",
+            "detail": "unknown",
+            "insert": "value = "
+          }
+        ],
+        "apply": "value",
+        "value": "1"
+      },
+      {
+        "id": "forward_return",
+        "file": "scripts/query_forward_return.vela",
+        "parameters": [
+          {
+            "name": "amount",
+            "detail": "u32",
+            "insert": "amount = "
+          }
+        ],
+        "apply": "amount",
+        "value": "1"
+      },
+      {
+        "id": "growable_return",
+        "file": "scripts/query_growable_return.vela",
+        "parameters": [
+          {
+            "name": "index",
+            "detail": "i64",
+            "insert": "index = "
+          },
+          {
+            "name": "value",
+            "detail": "i64",
+            "insert": "value = "
+          }
+        ],
+        "apply": "index",
+        "value": "0"
+      },
+      {
+        "id": "unresolved_owner",
+        "file": "scripts/query_unresolved_owner.vela",
+        "parameters": []
+      },
+      {
+        "id": "source_owner",
+        "file": "scripts/query_source_owner.vela",
+        "parameters": []
+      },
+      {
+        "id": "dynamic",
+        "file": "scripts/query_dynamic.vela",
+        "parameters": []
+      },
+      {
+        "id": "missing_method",
+        "file": "scripts/query_missing_method.vela",
+        "parameters": []
+      }
+    ]
+  }
+}

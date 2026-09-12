@@ -360,6 +360,15 @@ function. Provider-injected APIs and variable-arity reflection shapes need their
 own explicit metadata. Reserved-word parameter labels may appear in signatures
 but cannot become invalid `name = value` edits.
 
+Service-set metadata projects names, required parameters, asyncness and nested
+parameter/return types into the same callable facts. All service owners are
+registered before hints are resolved, so service ordering does not affect
+cross-service references. Projection uses the registration hint parser and
+shared type conversion, with exact schema name lookup; the wire-specific tuple
+and collection mutation shapes normalize to structured registration hints.
+Unknown named types retain unknown leaves rather than borrowing short names.
+Duplicate parameter names and malformed service hints are rejected.
+
 When the schema is absent or stale, tooling should degrade to `Any` and report
 schema diagnostics. It must not invent host facts or read host state.
 

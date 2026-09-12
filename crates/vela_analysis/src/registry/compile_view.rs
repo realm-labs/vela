@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_common::{CollectionViewMutation, HostTypeId, PrimitiveTag};
+use vela_common::HostTypeId;
 use vela_def::{DefPath, FieldId, TypeId, VariantId};
 use vela_reflect::modules::DeclOrigin;
 use vela_registry::{
@@ -373,60 +373,7 @@ impl<'registry> CompileViewFacts<'registry> {
     }
 
     fn type_hint_fact(&self, hint: &TypeHintDef) -> TypeFact {
-        let name = hint.path.join("::");
-        match (name.as_str(), hint.args.as_slice()) {
-            ("()", []) => TypeFact::UNIT,
-            ("()", elements) if elements.len() >= 2 => {
-                TypeFact::tuple(elements.iter().map(|element| self.type_hint_fact(element)))
-            }
-            ("Any", []) => TypeFact::Any,
-            ("String", []) => TypeFact::STRING,
-            ("Bytes", []) => TypeFact::BYTES,
-            ("Array", []) => TypeFact::array(TypeFact::Unknown),
-            ("Array", [element]) => TypeFact::array(self.type_hint_fact(element)),
-            ("ArrayView", [element]) => TypeFact::array_view(self.type_hint_fact(element)),
-            ("ArrayMut", [element]) => TypeFact::array_mut(
-                self.type_hint_fact(element),
-                hint.collection_mutation
-                    .unwrap_or(CollectionViewMutation::Fixed),
-            ),
-            ("Map", []) => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
-            ("Map", [key, value]) => {
-                TypeFact::map(self.type_hint_fact(key), self.type_hint_fact(value))
-            }
-            ("MapView", [key, value]) => {
-                TypeFact::map_view(self.type_hint_fact(key), self.type_hint_fact(value))
-            }
-            ("MapMut", [key, value]) => TypeFact::map_mut(
-                self.type_hint_fact(key),
-                self.type_hint_fact(value),
-                hint.collection_mutation
-                    .unwrap_or(CollectionViewMutation::Growable),
-            ),
-            ("Set", []) => TypeFact::set(TypeFact::Unknown),
-            ("Set", [element]) => TypeFact::set(self.type_hint_fact(element)),
-            ("SetView", [element]) => TypeFact::set_view(self.type_hint_fact(element)),
-            ("SetMut", [element]) => TypeFact::set_mut(
-                self.type_hint_fact(element),
-                hint.collection_mutation
-                    .unwrap_or(CollectionViewMutation::Growable),
-            ),
-            ("Iterator", []) => TypeFact::iterator(TypeFact::Unknown),
-            ("Iterator", [item]) => TypeFact::iterator(self.type_hint_fact(item)),
-            ("Function", []) => TypeFact::function(Vec::new(), TypeFact::Unknown),
-            ("Closure", []) => TypeFact::Closure,
-            ("Option", []) => TypeFact::option(TypeFact::Unknown),
-            ("Option", [some]) => TypeFact::option(self.type_hint_fact(some)),
-            ("Result", []) => TypeFact::result(TypeFact::Unknown, TypeFact::Unknown),
-            ("Result", [ok, err]) => {
-                TypeFact::result(self.type_hint_fact(ok), self.type_hint_fact(err))
-            }
-            (name, []) => PrimitiveTag::from_name(name)
-                .map(TypeFact::primitive)
-                .or_else(|| self.type_facts.get(name).cloned())
-                .unwrap_or(TypeFact::Unknown),
-            _ => TypeFact::Unknown,
-        }
+        super::type_hint::type_hint_fact(hint, &|name| self.type_facts.get(name).cloned())
     }
 }
 

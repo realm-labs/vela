@@ -1,7 +1,13 @@
 use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
-use vela_analysis::registry::{RegistryEffectFact, RegistryFacts};
+use vela_analysis::registry::{
+    CallableParameterFact, CallableParameterRequirementFact, CallableSignatureFact,
+    RegistryEffectFact, RegistryFacts,
+};
+use vela_common::CallableAsyncness;
+mod type_hint;
+use type_hint::service_type_hint;
 use vela_analysis::type_fact::TypeFact;
 
 use super::SchemaArtifactError;
@@ -277,9 +283,15 @@ pub(super) fn validate_service_set(
                     "service metadata contains a duplicate method ID or name",
                 ));
             }
+            validate_type_hint(&method.return_type)?;
+            let mut parameter_names = BTreeSet::new();
             for parameter in &method.parameters {
                 require_nonempty("service parameter name", &parameter.name)?;
                 require_nonempty("service parameter type", &parameter.type_hint)?;
+                validate_type_hint(&parameter.type_hint)?;
+                if !parameter_names.insert(&parameter.name) {
+                    return Err(SchemaArtifactError::new("duplicate service parameter name"));
+                }
                 require_nonempty("service parameter mode", &parameter.mode)?;
                 let mut origins = BTreeSet::new();
                 for origin in &parameter.host_origins {
@@ -300,21 +312,44 @@ pub(super) fn validate_service_set(
 }
 
 pub(super) fn project_service_set(service_set: &SchemaServiceSetFact, facts: &mut RegistryFacts) {
+    // Collect every owner before resolving cross-service parameter/return hints.
     for service in &service_set.services {
         facts.insert_trait(&service.path, TypeFact::trait_type(&service.path));
+    }
+    for service in &service_set.services {
         for method in &service.methods {
+            let resolve = |text: &str| {
+                service_type_hint(text)
+                    .map_or(TypeFact::Unknown, |hint| facts.type_hint_fact(&hint))
+            };
+            let signature = CallableSignatureFact::new(
+                method.parameters.iter().map(|parameter| {
+                    CallableParameterFact::new(
+                        &parameter.name,
+                        resolve(&parameter.type_hint),
+                        CallableParameterRequirementFact::Required,
+                    )
+                }),
+                resolve(&method.return_type),
+            )
+            .asyncness(if method.async_method {
+                CallableAsyncness::Async
+            } else {
+                CallableAsyncness::Sync
+            });
             facts.insert_trait_method(
                 &service.path,
                 &method.name,
                 TypeFact::function(
-                    method
+                    signature
                         .parameters
                         .iter()
-                        .map(|_| TypeFact::Unknown)
+                        .map(|p| p.type_fact.clone())
                         .collect(),
-                    TypeFact::Unknown,
+                    signature.returns.clone(),
                 ),
             );
+            facts.insert_trait_method_signature(&service.path, &method.name, signature);
             facts.insert_trait_method_effect(
                 &service.path,
                 &method.name,
@@ -322,6 +357,12 @@ pub(super) fn project_service_set(service_set: &SchemaServiceSetFact, facts: &mu
             );
         }
     }
+}
+
+fn validate_type_hint(text: &str) -> Result<(), SchemaArtifactError> {
+    service_type_hint(text)
+        .map(|_| ())
+        .ok_or_else(|| SchemaArtifactError::new(format!("invalid service type hint: {text}")))
 }
 
 fn registry_effect(effects: &[String]) -> RegistryEffectFact {
@@ -349,3 +390,6 @@ fn require_nonempty(kind: &str, value: &str) -> Result<(), SchemaArtifactError> 
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;

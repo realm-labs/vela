@@ -650,8 +650,13 @@ edits, direct/aliased imports, builtin families, fixed/read-only/growable views,
 reserved labels and negative boundaries. Analysis reads the static registration
 manifest, with inventory checks for every standard function and method;
 `Map.group_by` is restored to the candidate list. Provider-specific/variable-arity
-metadata, service-set signatures, name-aware expected-parameter mapping, broader
-S5 authoring semantics and UX04 remain open. The desktop locked again during the latest native input regression; see [blocked.md](blocked.md).
+metadata, name-aware expected-parameter mapping, broader S5 authoring semantics
+and UX04 remain open. Service-set projection now retains parameter names, asyncness,
+nested types and collection mutation contracts. Fourteen shared cases cover
+service receiver completion, occupied slots, forward references and chained
+returns; a real Engine export checks registered Host/Value/view metadata.
+Compiler-owned service namespace authoring and imported callable lookup across
+signature/expected-argument providers still need their focused audit. The desktop locked again during the latest native input regression; see [blocked.md](blocked.md).
 
 ### Deferred Tracks
 
