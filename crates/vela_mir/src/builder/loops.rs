@@ -71,9 +71,9 @@ impl FunctionBuilder<'_> {
         body: Option<HirBlockId>,
         origin: MirSourceOrigin,
     ) -> Result<(), MirBuildError> {
-        self.validate_for_flow(statement, origin)?;
         let iterable =
             iterable.ok_or_else(|| self.inconsistent(origin, "for statement has no iterable"))?;
+        self.validate_for_flow(statement, iterable, origin)?;
         let body = body.ok_or_else(|| self.inconsistent(origin, "for statement has no body"))?;
         if self.input.analysis().block_control_flow(body).is_none() {
             return Err(self.inconsistent(origin, "for body has no analysis control-flow fact"));
@@ -448,16 +448,25 @@ impl FunctionBuilder<'_> {
     fn validate_for_flow(
         &self,
         statement: HirStmtId,
+        iterable: HirExprId,
         origin: MirSourceOrigin,
     ) -> Result<(), MirBuildError> {
         let analysis = self.input.analysis();
         let flow = analysis
             .statement_control_flow(statement)
             .ok_or_else(|| self.inconsistent(origin, "for statement has no control-flow fact"))?;
-        if !flow.can_fallthrough || flow.may_break || flow.may_continue {
+        let input = analysis
+            .control_flow(iterable)
+            .ok_or_else(|| self.inconsistent(origin, "for iterable has no control-flow fact"))?;
+        // Body-local break/continue are consumed by this loop. Exits while
+        // evaluating its input still belong to the enclosing context.
+        if flow.can_fallthrough != input.can_fallthrough
+            || flow.may_break != input.may_break
+            || flow.may_continue != input.may_continue
+        {
             return Err(self.inconsistent(
                 origin,
-                "for statement control-flow fact did not consume loop-local exits",
+                "for statement control-flow fact does not preserve the iterable exit boundary",
             ));
         }
         Ok(())

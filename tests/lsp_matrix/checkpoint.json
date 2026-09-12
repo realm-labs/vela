@@ -1665,10 +1665,45 @@
         "completion-resolve/syntax/S9/negative/protocol"
       ],
       "summary": "Eighteen shared-method contexts apply 45 candidates in service and protocol under Unicode LF/CRLF. Same-name root/dependency inherent and default trait methods retain deterministic merged details, complete signature alternatives, exact edits, resolve ownership and owned or null definitions; hidden dependencies and colliding schema methods do not become source owners. Cases cover direct receivers, reversed if joins, match joins, aliases, reassignment, returned receivers and source/Any unions. An incomplete source union exposed navigation falsely selecting its sole known branch; member definitions now require complete origins, and field/method mappings preserve incompleteness. Known authoring choices remain available, while pure Any and unresolved returns have no invented members. A second failure exposed colliding schema signatures on source union branches; schema callable lookup now applies source precedence per union branch. The protocol ownership runner now actually queries and asserts null definition results, including error absence, and computes the callee position before any inserted argument paths. Plural signature oracles preserve all alternatives, including identical labels from distinct owners. Workspace 4488 passed, two historical ignored; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-q9HB0d/results.json passed 9; native editors/vscode/test-results/input-kegGsk/results.json passed 13; strict target/lsp-matrix/run-FDbBKf/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The 24 requirement references record partial child progress, not whole-partition acceptance. B03 remains unaccepted. Resume B03.37 with remaining S5 review, including abrupt returned-receiver exits, then remaining semantic, lifecycle/URI/client and UX04 proof. Fresh macOS evidence is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.37",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S4/positive/service",
+        "completion/syntax/S4/positive/protocol",
+        "completion/syntax/S4/negative/service",
+        "completion/syntax/S4/negative/protocol",
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/negative/protocol",
+        "completion/syntax/S9/positive/service",
+        "completion/syntax/S9/positive/protocol",
+        "completion/syntax/S9/negative/service",
+        "completion/syntax/S9/negative/protocol",
+        "completion-resolve/syntax/S4/positive/service",
+        "completion-resolve/syntax/S4/positive/protocol",
+        "completion-resolve/syntax/S4/negative/service",
+        "completion-resolve/syntax/S4/negative/protocol",
+        "completion-resolve/syntax/S5/positive/service",
+        "completion-resolve/syntax/S5/positive/protocol",
+        "completion-resolve/syntax/S5/negative/service",
+        "completion-resolve/syntax/S5/negative/protocol",
+        "completion-resolve/syntax/S9/positive/service",
+        "completion-resolve/syntax/S9/positive/protocol",
+        "completion-resolve/syntax/S9/negative/service",
+        "completion-resolve/syntax/S9/negative/protocol",
+        "completion/syntax/S6/positive/service",
+        "completion/syntax/S6/positive/protocol",
+        "completion/syntax/S6/negative/service",
+        "completion/syntax/S6/negative/protocol"
+      ],
+      "summary": "Seventeen shared abrupt-flow contexts apply twenty candidate edits under Unicode LF/CRLF in service and protocol. A red case exposed unreachable tails after return still supplying source members. A shared structural HIR traversal separates normal values from explicit invocation returns and derives control flags from the same paths. Return/break/continue stop sequential traversal; branches retain only fallthrough values, expression inputs respect evaluation order, short-circuit paths remain conditional, and loops consume break/continue while retaining possible zero iterations. Nested lambda bodies have separate invocation boundaries. Lambda types and source origins use reachable explicit returns plus fallthrough values; an empty normal set is Never and a reachable absent value is unit. Shared tests assert exact candidate sets, applied edits, signatures, argument/inlay contracts and definition ownership or null results. Thirteen independent analysis cases assert scalar facts, control flags, argument order and nested invocation boundaries. MIR validates iterable exits against the enclosing context; break/continue regressions assert exact outer-loop targets and no inner iterator. Analysis 158 and MIR 226 passed; workspace 4493 passed, two historical ignored; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-EfKINr/results.json passed 9; native editors/vscode/test-results/input-1ATAwX/results.json passed 13; strict target/lsp-matrix/run-XPfEV9/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The 28 requirement references include the four applicable completion S6 obligations and record partial progress, not partition acceptance. B03 remains unaccepted. Resume B03.38 with local assignment environments at abrupt branch/loop exits and remaining S5 review, then semantic, lifecycle/URI/client and UX04 proof. No script execution or constant-folding policy was added. Fresh macOS evidence is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.37",
-  "nextTask": "B03.37",
+  "activeChild": "B03.38",
+  "nextTask": "B03.38",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -3700,7 +3735,21 @@
     "target/b03-36-input.log",
     "target/b03-36-accepted-regression.log",
     "editors/vscode/test-results/run-q9HB0d/results.json",
-    "editors/vscode/test-results/input-kegGsk/results.json"
+    "editors/vscode/test-results/input-kegGsk/results.json",
+    "target/lsp-matrix/run-XPfEV9/report.json",
+    "target/b03-37-baseline.log",
+    "target/b03-37-red.log",
+    "target/b03-37-abrupt.log",
+    "target/b03-37-analysis.log",
+    "target/b03-37-analysis-mir.log",
+    "target/b03-37-workspace.log",
+    "target/b03-37-clippy.log",
+    "target/b03-37-node.log",
+    "target/b03-37-editor.log",
+    "target/b03-37-input.log",
+    "target/b03-37-accepted-regression.log",
+    "editors/vscode/test-results/run-EfKINr/results.json",
+    "editors/vscode/test-results/input-1ATAwX/results.json"
   ],
   "openIssues": [
     {
@@ -4321,8 +4370,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "e07a23066804017aa852564fcab39ef040afe1a8",
-          "treeSha256": "6b7640fbd8131c844aa22bc1af4dad9a63ab371437cd33a0e7b085cbbf36c24f"
+          "revision": "9c089cd34d56b0beb5398ada3e22866343bbcf6d",
+          "treeSha256": "d93274036bc530fad3d304612cb2162c7d73ae3748862b570a78e0c3692f573e"
         },
         "profile": {
           "platform": "win32",
@@ -4330,11 +4379,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-FDbBKf/report.json"
+          "target/lsp-matrix/run-XPfEV9/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-q9HB0d/results.json --local-results editors/vscode/test-results/input-kegGsk/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-EfKINr/results.json --local-results editors/vscode/test-results/input-1ATAwX/results.json",
             "exitCode": 0
           }
         ]

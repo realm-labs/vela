@@ -1,6 +1,6 @@
 use super::{HirSemanticFacts, ScriptTypeTargetFact};
 use vela_hir::binding::BindingResolution;
-use vela_hir::body::{HirBody, HirBodyRoot, HirExprKind};
+use vela_hir::body::{HirBody, HirExprKind};
 use vela_hir::ids::HirExprId;
 use vela_hir::module_graph::ModuleGraph;
 
@@ -157,13 +157,7 @@ impl HirSemanticFacts {
                 if let Some(lambda) = super::targets::direct_lambda_body(body, call.callee)
                     .and_then(|id| graph.body(id))
                 {
-                    return match lambda.root {
-                        HirBodyRoot::Expr(id) => origins(id),
-                        HirBodyRoot::Block(block) => {
-                            join(super::value_flow::block_results(lambda, block))
-                        }
-                        HirBodyRoot::Empty => ScriptTypeOrigins::default(),
-                    };
+                    return join(super::value_flow::body_results(lambda));
                 }
                 if let Some(field) = body.field(call.callee)
                     && let Some(receivers) = self.source_origins.get(&field.receiver)

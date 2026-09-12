@@ -763,8 +763,11 @@ details, all signature alternatives and exact/null definitions across package
 joins. Incomplete source origins survive field/method return chains and cannot
 prove a unique definition; source branches exclude colliding schema signatures.
 Protocol tests explicitly query null definitions after applying candidate edits.
-Resume B03.37 with the remaining S5 partition review, including abrupt
-returned-receiver exits, then the remaining
+Seventeen abrupt-flow cases now exclude unreachable tail receivers and retain
+reachable explicit lambda returns. One HIR traversal supplies normal values,
+invocation returns and control flags; source origins follow the same result sets.
+Resume B03.38 with local assignment environments at abrupt branch/loop exits and
+the remaining S5 partition review, then the remaining
 semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

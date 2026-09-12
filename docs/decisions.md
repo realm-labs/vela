@@ -4592,3 +4592,17 @@ set. Schema callable lookup applies source precedence separately to each union
 branch. Completion may therefore show known alternatives without claiming that a
 dynamic branch has the same target, and identical method names cannot borrow a
 colliding schema signature.
+
+HIR value-flow analysis separates reachable fallthrough values from explicit
+invocation returns. An empty fallthrough set is Never, while a reachable absent
+value is unit. Blocks, conditional/match branches, evaluated expression inputs
+and loop exits use one structural traversal for both result sets and control
+flags, preventing unreachable tails from acquiring type or source-owner facts.
+Lambda invocation results join their own reachable returns and fallthrough paths;
+creating a nested lambda does not evaluate its body. For loops retain a possible
+zero-iteration path when their iterable falls through and consume body-local
+break/continue exits. Exits while evaluating the iterable belong to the enclosing
+context. MIR validates this iterable boundary instead of requiring every for
+statement to fall through; a diverging iterable creates no inner iterator. This traversal
+does not execute scripts or constant-fold branch conditions; local assignment
+environment joins remain a separate analysis responsibility.

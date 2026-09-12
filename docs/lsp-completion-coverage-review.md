@@ -105,7 +105,17 @@ post-edit signature check.
    invented members. Schema signatures cannot replace a source branch of a union.
    The shared protocol runner now actually requests and checks null definitions,
    matching the service oracle, and locates the callee independently of qualified
-   paths inside inserted arguments. Abrupt control-flow exits remain to be reviewed;
+   paths inside inserted arguments. `completion-abrupt-flow` adds seventeen
+   contexts and twenty candidate applications for unreachable tails after
+   return/break/continue, nested exits, one/all returning branches, match arms and
+   explicit lambda returns. Ordinary block results exclude exits; invocation
+   results include reachable explicit returns and fallthrough values. The shared
+   HIR traversal also supplies control flags, respects argument evaluation order,
+   consumes loop break/continue exits and keeps nested lambda returns separate.
+   Independent analysis assertions cover thirteen scalar/control-flow cases.
+   MIR checks preserve exits from iterable evaluation; nested-loop tests assert
+   that iterable break/continue target the enclosing loop without an inner iterator.
+   Local assignment environments at abrupt branch/loop exits still need review;
    these cases do not certify every possible control-flow combination.
 2. Complete the semantic review of every applicable syntax dimension, including
    item/statement/lexical/control-flow/recovery and async boundaries. S3/S4

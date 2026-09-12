@@ -60,6 +60,11 @@ fn shared_method_matrix_preserves_merged_details_signatures_and_ambiguous_target
     assert_type_ownership("completion-shared-methods");
 }
 
+#[test]
+fn abrupt_flow_matrix_preserves_reachable_receivers_and_explicit_lambda_returns() {
+    assert_type_ownership("completion-abrupt-flow");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);

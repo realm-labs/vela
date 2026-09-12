@@ -20,7 +20,7 @@ mod value_flow;
 #[cfg(test)]
 mod local_flow_tests;
 
-use control_flow::{block_flow, fallthrough_flow, if_flow, match_flow, statement_flow};
+use control_flow::{block_flow, expression_flow, statement_flow};
 use local_flow::refine_local_fact;
 use logical_records::{
     logical_member_target, logical_record_constructor_fact, logical_record_constructor_target,
@@ -41,7 +41,7 @@ use targets::{direct_lambda_body, registry_field_owner, source_field_fact};
 use vela_common::PrimitiveTag;
 use vela_hir::binding::BindingResolution;
 use vela_hir::body::{
-    HirBody, HirBodyRoot, HirExprKind, HirPathKind, HirPathOwner, HirPatternKind, HirStmtKind,
+    HirBody, HirExprKind, HirPathKind, HirPathOwner, HirPatternKind, HirStmtKind,
 };
 use vela_hir::ids::{HirBlockId, HirBodyId, HirExprId, HirLocalId, HirPatternId, HirStmtId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
@@ -427,6 +427,9 @@ impl HirSemanticFacts {
     }
 
     fn result_value(&self, results: Vec<Option<HirExprId>>) -> TypeFact {
+        if results.is_empty() {
+            return TypeFact::Never;
+        }
         TypeFact::union(
             results
                 .into_iter()
@@ -435,11 +438,7 @@ impl HirSemanticFacts {
     }
 
     fn body_value(&self, body: &HirBody) -> TypeFact {
-        match body.root {
-            HirBodyRoot::Expr(id) => self.fact(id),
-            HirBodyRoot::Block(block) => self.block_value(body, block),
-            HirBodyRoot::Empty => TypeFact::UNIT,
-        }
+        self.result_value(value_flow::body_results(body))
     }
 
     fn record_targets(
@@ -700,7 +699,7 @@ impl HirSemanticFacts {
                 self.control_flow.insert(id, block_flow(body, *block));
             }
             HirExprKind::If(_) | HirExprKind::Match(_) | HirExprKind::Try { .. } => {
-                self.control_flow.insert(id, fallthrough_flow());
+                self.control_flow.insert(id, expression_flow(body, id));
             }
             _ => {}
         }
@@ -1129,16 +1128,8 @@ impl HirSemanticFacts {
                 .insert(block.id, block_flow(body, block.id));
         }
         for expression in body.expressions.values() {
-            let flow = match &expression.kind {
-                HirExprKind::Block { block } => Some(block_flow(body, *block)),
-                HirExprKind::If(value) => Some(if_flow(body, value)),
-                HirExprKind::Match(value) => Some(match_flow(body, value)),
-                HirExprKind::Try { .. } => Some(fallthrough_flow()),
-                _ => None,
-            };
-            if let Some(flow) = flow {
-                self.control_flow.insert(expression.id, flow);
-            }
+            self.control_flow
+                .insert(expression.id, expression_flow(body, expression.id));
         }
     }
 }

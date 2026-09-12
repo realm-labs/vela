@@ -1,0 +1,454 @@
+{
+  "version": 1,
+  "id": "completion-abrupt-flow",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.type_aliases\"\nname = \"type_aliases\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n[dependencies]\nexternal = { path = \"deps/external\" }\n",
+    "deps/external/vela.toml": "[package]\nid = \"dev.vela.external\"\nname = \"external\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[dependencies]\nhidden = { path = \"../hidden\" }\n",
+    "deps/hidden/vela.toml": "[package]\nid = \"dev.vela.hidden\"\nname = \"hidden\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"api::Returned\",\"fact\":{\"kind\":\"record\",\"name\":\"api::Returned\"}}],\"fields\":[{\"owner\":\"api::Returned\",\"name\":\"foreign_schema\",\"fact\":{\"kind\":\"primitive\",\"name\":\"String\"},\"docs\":\"Wrong schema owner 中😀.\"}]}}",
+    "scripts/api.vela": "/* 中😀 */\npub struct Returned { [[payload:start]]payload[[payload:end]]: i64 }\nimpl Returned { fn [[choose:start]]choose[[choose:end]](self, zz_root: i64) -> i64 { zz_root } }\npub struct Token {}\nimpl Token { async fn next(self) -> Returned { Returned { payload: 1 } } }\npub trait Reader { fn fetch(self) -> Returned; fn fallback(self) -> Returned { Returned { payload: 1 } } async fn obtain(self) -> Returned; }\nimpl Reader for Token { fn fetch(self) -> Returned { Returned { payload: 1 } } async fn obtain(self) -> Returned { Returned { payload: 1 } } }\npub fn produce() -> Returned { Returned { payload: 1 } }\npub async fn future() -> Returned { Returned { payload: 1 } }\npub fn erase() -> Any { () }\n",
+    "deps/external/scripts/api.vela": "/* 中😀 */\npub struct Returned { [[payload:start]]payload[[payload:end]]: bool }\nimpl Returned { fn [[choose:start]]choose[[choose:end]](self, zz_dep: bool) -> bool { zz_dep } }\npub struct Token {}\nimpl Token { async fn next(self) -> Returned { Returned { payload: true } } }\npub trait Reader { fn fetch(self) -> Returned; fn fallback(self) -> Returned { Returned { payload: true } } async fn obtain(self) -> Returned; }\nimpl Reader for Token { fn fetch(self) -> Returned { Returned { payload: true } } async fn obtain(self) -> Returned { Returned { payload: true } } }\npub fn produce() -> Returned { Returned { payload: true } }\npub async fn future() -> Returned { Returned { payload: true } }\npub fn erase() -> Any { () }\n",
+    "deps/hidden/scripts/api.vela": "/* 中😀 */\npub struct Returned { [[payload:start]]payload[[payload:end]]: String }\nimpl Returned { fn [[choose:start]]choose[[choose:end]](self, zz_hidden: String) -> String { zz_hidden } }\npub struct Token {}\nimpl Token { async fn next(self) -> Returned { Returned { payload: \"hidden\" } } }\npub trait Reader { fn fetch(self) -> Returned; fn fallback(self) -> Returned { Returned { payload: \"hidden\" } } async fn obtain(self) -> Returned; }\nimpl Reader for Token { fn fetch(self) -> Returned { Returned { payload: \"hidden\" } } async fn obtain(self) -> Returned { Returned { payload: \"hidden\" } } }\npub fn produce() -> Returned { Returned { payload: \"hidden\" } }\npub async fn future() -> Returned { Returned { payload: \"hidden\" } }\npub fn erase() -> Any { () }\n",
+    "scripts/return_tail.vela": "/* 中😀 */\nfn run(flag: bool) { ({ return; api::produce() }).[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/return_nested.vela": "/* 中😀 */\nfn run(flag: bool) { ({ { return; } api::produce() }).[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/return_both_branches.vela": "/* 中😀 */\nfn run(flag: bool) { ({ if flag { return; } else { return; } api::produce() }).[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/return_one_branch.vela": "/* 中😀 */\nfn run(flag: bool) { (if flag { return; api::produce() } else { external::api::produce() }).[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/return_reverse_branch.vela": "/* 中😀 */\nfn run(flag: bool) { (if flag { external::api::produce() } else { return; api::produce() }).[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/return_match.vela": "/* 中😀 */\nfn run(flag: bool) { (match flag { true => { return; api::produce() }, _ => external::api::produce() }).[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/fallthrough_after_conditional.vela": "/* 中😀 */\nfn run(flag: bool) { ({ if flag { return; } external::api::produce() }).[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/break_tail.vela": "/* 中😀 */\nfn run(flag: bool) { for item in [1] { ({ break; api::produce() }).[[replace:start]][[cursor]][[replace:end]]; } }\n",
+    "scripts/break_branch.vela": "/* 中😀 */\nfn run(flag: bool) { for item in [1] { (if flag { break; api::produce() } else { external::api::produce() }).[[replace:start]][[cursor]][[replace:end]]; } }\n",
+    "scripts/continue_tail.vela": "/* 中😀 */\nfn run(flag: bool) { for item in [1] { ({ continue; api::produce() }).[[replace:start]][[cursor]][[replace:end]]; } }\n",
+    "scripts/continue_branch.vela": "/* 中😀 */\nfn run(flag: bool) { for item in [1] { (if flag { continue; api::produce() } else { external::api::produce() }).[[replace:start]][[cursor]][[replace:end]]; } }\n",
+    "scripts/lambda_return.vela": "/* 中😀 */\nfn run(flag: bool) { (|| { return api::produce(); external::api::produce() })().[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/lambda_conditional_return.vela": "/* 中😀 */\nfn run(flag: bool) { (|| { if flag { return api::produce(); } api::produce() })().[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/lambda_bare_return.vela": "/* 中😀 */\nfn run(flag: bool) { (|| { return; api::produce() })().[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/lambda_loop_return.vela": "/* 中😀 */\nfn run(flag: bool) { (|| { for item in [1] { return api::produce(); external::api::produce(); } api::produce() })().[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/return_in_expression.vela": "/* 中😀 */\nfn run(flag: bool) { ({ ({ return; }); api::produce() }).[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/lambda_nested_return.vela": "/* 中😀 */\nfn run(flag: bool) { (|| { ({ return api::produce(); }); external::api::produce() })().[[replace:start]][[cursor]][[replace:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "return_tail",
+        "file": "scripts/return_tail.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "return_nested",
+        "file": "scripts/return_nested.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "return_both_branches",
+        "file": "scripts/return_both_branches.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "return_one_branch",
+        "file": "scripts/return_one_branch.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Returned.payload",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          },
+          {
+            "label": "choose",
+            "insert": "choose($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Returned.choose",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "value": "true",
+            "signature": "Returned.choose(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          }
+        ]
+      },
+      {
+        "id": "return_reverse_branch",
+        "file": "scripts/return_reverse_branch.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Returned.payload",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          },
+          {
+            "label": "choose",
+            "insert": "choose($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Returned.choose",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "value": "true",
+            "signature": "Returned.choose(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          }
+        ]
+      },
+      {
+        "id": "return_match",
+        "file": "scripts/return_match.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Returned.payload",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          },
+          {
+            "label": "choose",
+            "insert": "choose($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Returned.choose",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "value": "true",
+            "signature": "Returned.choose(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          }
+        ]
+      },
+      {
+        "id": "fallthrough_after_conditional",
+        "file": "scripts/fallthrough_after_conditional.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Returned.payload",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          },
+          {
+            "label": "choose",
+            "insert": "choose($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Returned.choose",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "value": "true",
+            "signature": "Returned.choose(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          }
+        ]
+      },
+      {
+        "id": "break_tail",
+        "file": "scripts/break_tail.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "break_branch",
+        "file": "scripts/break_branch.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Returned.payload",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          },
+          {
+            "label": "choose",
+            "insert": "choose($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Returned.choose",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "value": "true",
+            "signature": "Returned.choose(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          }
+        ]
+      },
+      {
+        "id": "continue_tail",
+        "file": "scripts/continue_tail.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "continue_branch",
+        "file": "scripts/continue_branch.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Returned.payload",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          },
+          {
+            "label": "choose",
+            "insert": "choose($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Returned.choose",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "value": "true",
+            "signature": "Returned.choose(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          }
+        ]
+      },
+      {
+        "id": "lambda_return",
+        "file": "scripts/lambda_return.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Returned.payload",
+            "target": "scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          },
+          {
+            "label": "choose",
+            "insert": "choose($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Returned.choose",
+            "target": "scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "value": "1",
+            "signature": "Returned.choose(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          }
+        ]
+      },
+      {
+        "id": "lambda_conditional_return",
+        "file": "scripts/lambda_conditional_return.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Returned.payload",
+            "target": "scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          },
+          {
+            "label": "choose",
+            "insert": "choose($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Returned.choose",
+            "target": "scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "value": "1",
+            "signature": "Returned.choose(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          }
+        ]
+      },
+      {
+        "id": "lambda_bare_return",
+        "file": "scripts/lambda_bare_return.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "lambda_loop_return",
+        "file": "scripts/lambda_loop_return.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Returned.payload",
+            "target": "scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          },
+          {
+            "label": "choose",
+            "insert": "choose($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Returned.choose",
+            "target": "scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "value": "1",
+            "signature": "Returned.choose(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          }
+        ]
+      },
+      {
+        "id": "return_in_expression",
+        "file": "scripts/return_in_expression.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "lambda_nested_return",
+        "file": "scripts/lambda_nested_return.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Returned.payload",
+            "target": "scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          },
+          {
+            "label": "choose",
+            "insert": "choose($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Returned.choose",
+            "target": "scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "value": "1",
+            "signature": "Returned.choose(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          }
+        ]
+      }
+    ]
+  }
+}

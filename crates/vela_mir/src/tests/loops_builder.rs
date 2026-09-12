@@ -280,6 +280,51 @@ fn mir_builder_stops_cleanly_when_loop_iterable_or_body_diverges() {
 }
 
 #[test]
+fn mir_builder_iterable_exits_target_the_enclosing_loop() {
+    for exit in ["break", "continue"] {
+        let source = format!(
+            "fn main(values) {{ for outer in values {{ for inner in {{ {exit}; values }} {{ inner; }} }} return 9; }}"
+        );
+        let program = build(&source, &["values"]);
+        let dump = program.dump();
+        let function = program
+            .functions()
+            .next()
+            .map(|(_, function)| function)
+            .expect("root MIR function");
+        let headers = function
+            .blocks()
+            .filter_map(|(id, block)| match &block.terminator()?.kind {
+                MirTerminatorKind::IteratorNext { done, .. } => Some((id, *done)),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(headers.len(), 1, "{dump}");
+        let expected = if exit == "break" {
+            headers[0].1
+        } else {
+            headers[0].0
+        };
+        let targets = function
+            .blocks()
+            .filter_map(|(_, block)| {
+                let terminator = block.terminator()?;
+                let MirTerminatorKind::Jump(target) = &terminator.kind else {
+                    return None;
+                };
+                (source_text(&source, terminator.origin.span)
+                    .trim_end_matches(';')
+                    .trim()
+                    == exit)
+                    .then_some(*target)
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(targets, vec![expected], "{dump}");
+        assert!(!dump.contains("<unterminated>"), "{dump}");
+    }
+}
+
+#[test]
 fn mir_builder_lowers_destructuring_loop_patterns_before_the_user_body() {
     let program = build(
         "fn main(values) { for (left, right) in values { left; } }",
