@@ -1,9 +1,9 @@
-use super::ConstructorTargetFact;
+use super::{CallTargetFact, ConstructorTargetFact};
 use crate::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_hir::{
     binding::{BindingResolution, ConstructorResolution},
     body::HirBody,
-    module_graph::{Declaration, DeclarationKind, ModuleGraph, Visibility},
+    module_graph::{DeclarationKind, ModuleGraph, Visibility},
 };
 
 pub(super) fn imported_constructor_target(
@@ -13,6 +13,9 @@ pub(super) fn imported_constructor_target(
     path: &[String],
     binding: Option<&BindingResolution>,
 ) -> Option<ConstructorTargetFact> {
+    if path.len() > 1 && matches!(binding, Some(BindingResolution::Local(_))) {
+        return Some(ConstructorTargetFact::Unresolved);
+    }
     if !matches!(binding, Some(BindingResolution::Import(_))) {
         return None;
     }
@@ -34,10 +37,26 @@ pub(super) fn imported_constructor_target(
     .find_map(|kind| graph.resolve_visible_declaration_path(module, &expanded, kind))
     .or_else(|| {
         let (_, owner) = expanded.split_last()?;
-        graph.resolve_visible_declaration_path(module, owner, DeclarationKind::Enum)
+        [
+            DeclarationKind::Enum,
+            DeclarationKind::Struct,
+            DeclarationKind::Trait,
+            DeclarationKind::Function,
+            DeclarationKind::Const,
+            DeclarationKind::State,
+        ]
+        .into_iter()
+        .find_map(|kind| graph.resolve_visible_declaration_path(module, owner, kind))
     });
     let resolution = if let Some(source) = source {
         if source.module != module && source.visibility != Visibility::Public {
+            return Some(ConstructorTargetFact::Unresolved);
+        }
+        if source.kind != DeclarationKind::Enum
+            && graph
+                .resolve_visible_declaration_path(module, &expanded, DeclarationKind::Struct)
+                .is_none()
+        {
             return Some(ConstructorTargetFact::Unresolved);
         }
         ConstructorResolution::Declaration(source.id)
@@ -115,17 +134,43 @@ pub(super) fn unit_variant_constructor_target(
     path: &[String],
     resolution: Option<&BindingResolution>,
 ) -> Option<ConstructorTargetFact> {
+    if matches!(resolution, Some(BindingResolution::Local(_))) {
+        return None;
+    }
+    if path.len() < 2 {
+        return None;
+    }
+    let module = graph
+        .declaration(graph.bindings_for_body(body.id)?.declaration)?
+        .module;
+    let Some(path) = graph.expand_import_path(module, path) else {
+        return Some(ConstructorTargetFact::Unresolved);
+    };
     let (variant, owner_path) = path.split_last()?;
     if owner_path.is_empty() {
         return None;
     }
-    let declaration = match resolution {
-        Some(BindingResolution::Declaration(declaration)) => graph.declaration(*declaration),
-        _ => source_enum_for_path(graph, body, owner_path),
-    };
-    if let Some(declaration) = declaration
-        && declaration.kind == DeclarationKind::Enum
-    {
+    let declaration = [
+        DeclarationKind::Enum,
+        DeclarationKind::Struct,
+        DeclarationKind::Trait,
+        DeclarationKind::Function,
+        DeclarationKind::Const,
+        DeclarationKind::State,
+    ]
+    .into_iter()
+    .find_map(|kind| graph.resolve_visible_declaration_path(module, owner_path, kind));
+    if let Some(declaration) = declaration {
+        if declaration.kind != DeclarationKind::Enum
+            || (declaration.module != module && declaration.visibility != Visibility::Public)
+            || !graph
+                .enum_shape(declaration.id)?
+                .variants
+                .iter()
+                .any(|entry| entry.name == *variant)
+        {
+            return Some(ConstructorTargetFact::Unresolved);
+        }
         return Some(ConstructorTargetFact::Variant {
             enum_declaration: declaration.id,
             variant: variant.clone(),
@@ -133,7 +178,9 @@ pub(super) fn unit_variant_constructor_target(
     }
     schema
         .and_then(|schema| {
-            schema.variant_for_owner_or_unique_short_name(&owner_path.join("::"), variant)
+            schema
+                .variant_for_owner_or_unique_short_name(&owner_path.join("::"), variant)
+                .filter(|target| target.owner == owner_path.join("::"))
         })
         .map(|target| ConstructorTargetFact::RegistryVariant {
             owner: target.owner,
@@ -141,20 +188,25 @@ pub(super) fn unit_variant_constructor_target(
         })
 }
 
-// A globally unique short name is insufficient evidence of a visible owner.
-pub(super) fn source_enum_for_path<'a>(
-    graph: &'a ModuleGraph,
+pub(super) fn imported_variant_call_target(
+    graph: &ModuleGraph,
+    schema: Option<&RegistryFacts>,
     body: &HirBody,
     path: &[String],
-) -> Option<&'a Declaration> {
-    let module = graph
-        .declaration(graph.bindings_for_body(body.id)?.declaration)?
-        .module;
-    graph
-        .resolve_visible_declaration_path(module, path, DeclarationKind::Enum)
-        .filter(|declaration| {
-            declaration.module == module || declaration.visibility == Visibility::Public
-        })
+) -> CallTargetFact {
+    match unit_variant_constructor_target(graph, schema, body, path, None) {
+        Some(ConstructorTargetFact::Variant {
+            enum_declaration,
+            variant,
+        }) => CallTargetFact::Variant {
+            enum_declaration,
+            variant,
+        },
+        Some(ConstructorTargetFact::RegistryVariant { owner, variant }) => {
+            CallTargetFact::RegistryVariant { owner, variant }
+        }
+        _ => CallTargetFact::Unresolved,
+    }
 }
 
 pub(super) fn constructor_result_fact(

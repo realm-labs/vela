@@ -153,6 +153,7 @@ pub fn main() {
     assert_eq!(
         response["result"],
         serde_json::json!([
+            { "position": { "line": 2, "character": 14 }, "label": ": game::quest::QuestProgress::Active", "kind": 1, "paddingRight": true },
             {
                 "position": { "line": 2, "character": call_line.find("\"quest-1\"").expect("first arg") },
                 "label": "quest_id:",

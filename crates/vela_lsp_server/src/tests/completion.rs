@@ -972,7 +972,13 @@ pub fn main(state: QuestState) {
         }),
     ));
 
-    assert_completion(&response, "Completed", 20, "QuestState");
+    assert_completion_insert_text(
+        &response,
+        "Completed",
+        20,
+        "game::main::QuestState",
+        "game::main::QuestState::Completed",
+    );
     assert_no_completion(&response, "helper");
     let completed = completion_item(&response, "Completed");
     assert_eq!(

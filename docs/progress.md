@@ -719,8 +719,19 @@ check cache recovery. Source and registry local hints expand imports without
 short-name fallback. Member completion carries semantic declaration identity
 to distinguish same-named records in different packages. Tuple variant entries
 follow the existing parameter grammar (`name: Type`); bare names are declaration
-positions. Enum/variant constructor imports, broader dependency/cross-feature
-identity, provider/variable-arity metadata, remaining S5/lifecycle and UX04 stay open.
+positions. Enum type and namespace aliases now retain their owner through
+unit/tuple/record construction, qualified patterns and record-field completion.
+Forty-nine shared cases assert complete candidates, canonical resolve identity,
+documentation, whole-token edits, applied definitions and receiver members under
+LF/CRLF. Unqualified pattern variants insert qualified paths, preserving distinct
+same-name owners. Six persistent import states replace source and registry field
+metadata and check missing/ambiguous targets and recovery. Ten independent analysis
+cases verify result facts and reject private, non-enum, ambiguous, missing and
+locally shadowed owners, including colliding registry metadata. Qualified HIR
+constructor paths respect visible local bindings. Tuple declaration recovery
+distinguishes empty/separator/name slots from annotations and default expressions,
+including an unclosed enum. Broader dependency/cross-feature identity, provider/
+variable-arity metadata, remaining S5/lifecycle and UX04 stay open.
 The earlier macOS input regression stopped on a locked
 desktop; that record does not imply a Windows blocker. Current platform evidence
 must be collected before strict acceptance; see [blocked.md](blocked.md).
@@ -729,7 +740,7 @@ actual suggestion acceptance, F12/back and palettes, modifier-click, context-men
 Peek, exact Unicode targets and no-jump outcomes pass. The installed provider
 suite passes all nine scenarios. The original macOS acceptance remains historical;
 changed driver code needs fresh proof when that machine is next used. Shared
-implementation resumes at B03.20.
+implementation resumes at B03.21.
 
 ### Deferred Tracks
 

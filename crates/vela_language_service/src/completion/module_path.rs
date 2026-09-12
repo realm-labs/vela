@@ -56,22 +56,11 @@ pub(super) fn module_path_completion_items(
                 fact: TypeFact::module(format!("{base}::{segment}")),
             }),
     );
-    let current_id = graph.module_id(current_module);
-    let source_enum = current_id.and_then(|module| {
-        graph.resolve_visible_declaration_path(module, &segments, DeclarationKind::Enum)
-    });
-    if let Some(declaration) = source_enum {
-        if Some(declaration.module) != current_id && declaration.visibility != Visibility::Public {
-            return Vec::new();
-        }
-        service_items.extend(script_enum_variant_path_completions(
+    if let Some(module) = graph.module_id(current_module) {
+        service_items.extend(enum_variant_path_completions(
             graph,
-            declaration,
-            context.prefix(),
-        ));
-    } else {
-        service_items.extend(schema_enum_variant_path_completions(
             schema,
+            module,
             &base,
             context.prefix(),
         ));
@@ -176,4 +165,33 @@ fn declaration_owner_label(graph: &ModuleGraph, declaration: &Declaration) -> Op
             &declaration.name,
         ))
     }
+}
+
+pub(super) fn enum_variant_path_completions(
+    graph: &ModuleGraph,
+    schema: &RegistryFacts,
+    module: vela_hir::ids::ModuleId,
+    base: &str,
+    prefix: &str,
+) -> Vec<CompletionItem> {
+    let path = base.split("::").map(str::to_owned).collect::<Vec<_>>();
+    let source = [
+        DeclarationKind::Enum,
+        DeclarationKind::Struct,
+        DeclarationKind::Trait,
+        DeclarationKind::Function,
+        DeclarationKind::Const,
+        DeclarationKind::State,
+    ]
+    .into_iter()
+    .find_map(|kind| graph.resolve_visible_declaration_path(module, &path, kind));
+    if let Some(declaration) = source {
+        if declaration.kind != DeclarationKind::Enum
+            || (declaration.module != module && declaration.visibility != Visibility::Public)
+        {
+            return Vec::new();
+        }
+        return script_enum_variant_path_completions(graph, declaration, prefix);
+    }
+    schema_enum_variant_path_completions(schema, base, prefix)
 }

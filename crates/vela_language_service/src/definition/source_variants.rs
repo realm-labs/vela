@@ -27,7 +27,8 @@ impl LanguageServiceDatabases {
             if site.segment_range != target.range() {
                 continue;
             }
-            let (name, owner) = site.path.split_last()?;
+            let path = query.expand_import_path(site.path)?;
+            let (name, owner) = path.split_last()?;
             if owner.is_empty() {
                 continue;
             }

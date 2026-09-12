@@ -7,6 +7,12 @@ use crate::ids::HirDeclId;
 
 impl SyntaxBindingLowerer<'_> {
     pub(super) fn resolve_constructor_path(&self, path: &[String]) -> Option<BindingResolution> {
+        if path.len() > 1
+            && let Some(name) = path.first()
+            && let Some(local @ BindingResolution::Local(_)) = self.resolve_name(name)
+        {
+            return Some(local);
+        }
         if let [name] = path {
             return self.resolve_declaration_name(name);
         }

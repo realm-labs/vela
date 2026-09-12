@@ -1194,10 +1194,33 @@
         "completion-resolve/syntax/S3/negative/protocol"
       ],
       "summary": "Type annotation completion now uses current type/import/package scope, keeps canonical metadata separate from resolvable insertion paths, inserts short names only when they select the same declaration or registered type, uses crate qualification when an import shadows a source namespace, rejects inaccessible registry spellings and replaces the complete identifier. Local value bindings do not shadow annotation type names. Thirty-six independently authored type/import cases plus nine package cases run under LF/CRLF (90 query contexts per layer), asserting frozen complete candidate/edit sets, type/trait/module kind and detail, byte/UTF-16 ranges, canonical resolve metadata and exact resolved documentation, parseable edits, exact post-edit source definition URI/ranges, receiver facts and members, and protocol apply/restore. Dependency cases distinguish identically spelled records in the root and direct dependency by exact definition targets and i64-versus-bool field contracts, preserve dependency aliases and crate paths, and exclude private/unresolved/transitive-only targets. Six import overlay states in both layers check replacement, missing/duplicate/private targets and recovery. Shared source hints expand imports once; registry local hints require exact expanded paths and cannot borrow short-name or source-owned metadata. Ten independent analysis cases cover source/schema aliases, namespace imports, ambiguity, private/unavailable targets and non-type declaration shadows. Applied package tests exposed mixed member field types; member completion now carries available semantic declaration IDs through source field/variant/method selection instead of merging package-less owner spellings. Existing grammar defines tuple variant entries as parameters (name: Type), so bare tuple names are declaration contexts. Correct old type-position fixture syntax and cursor expectations; retain a negative bare-name matrix case rather than adding language syntax. Old unimported Plasma expectations now require defs::Plasma insertion. Preserve types-red (missing alias candidates), types-focused2 (registry alias receiver unknown), types-focused3/4 (the old tuple-position oracle treated a field name as a type), regression (old short insertion), and regression2 (root record borrowed dependency bool field) evidence. Full workspace passed 4430 with two historical ignored; service 604 plus two ignored, protocol 589, workspace all-target Clippy/fmt and Node 73 passed. Installed Windows VSIX run-h0Yifz passed 9 and native input-bqjgza passed 13. Strict run-6EBhF4 refreshed all 145 accepted B00-B02 requirements with original snapshots intact. S3/S8 entries record this partial child, not broad partition closure; B03 remains unaccepted, remaining whole-batch scope stays 1332. Continue B03.20 with independently authored enum/variant constructor import and alias cases (unit/tuple/record/pattern paths), remaining tuple declaration/default/incomplete boundaries and cross-package/source-schema ownership where exposed. Broader package-less cross-feature identity, registered nested hints and provider/variable-arity metadata, root Service namespaces, remaining S5/lifecycle/UX04 still require proof. Preserve type/package fixture evidence. Fresh macOS proof is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.20",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S4/positive/service",
+        "completion/syntax/S4/positive/protocol",
+        "completion/syntax/S4/negative/service",
+        "completion/syntax/S4/negative/protocol",
+        "completion/syntax/S6/positive/service",
+        "completion/syntax/S6/positive/protocol",
+        "completion/syntax/S6/negative/service",
+        "completion/syntax/S6/negative/protocol",
+        "completion/syntax/S8/positive/service",
+        "completion/syntax/S8/positive/protocol",
+        "completion/syntax/S8/negative/service",
+        "completion/syntax/S8/negative/protocol",
+        "completion-resolve/syntax/S4/positive/service",
+        "completion-resolve/syntax/S4/positive/protocol",
+        "completion-resolve/syntax/S4/negative/service",
+        "completion-resolve/syntax/S4/negative/protocol"
+      ],
+      "summary": "Enum type and namespace aliases now preserve exact source/registry variant owners through unit, tuple-call and record constructors, qualified pattern completion, record-field candidates and applied definition queries. Unqualified pattern candidates insert qualified paths and retain separate same-name owners; pattern and namespace contexts replace the complete terminal identifier. Private, non-enum and ambiguous source owners cannot borrow colliding registry variants or record fields. Qualified HIR constructor paths respect visible local bindings. Forty-nine independently authored shared cases run under LF/CRLF (98 query contexts per layer), checking frozen complete candidate/edit sets, kind/detail, canonical resolve metadata and exact documentation, byte/UTF-16 ranges, parseable applied edits, exact source definition URI/ranges, metadata-only null definitions and receiver/member ownership. Six persistent import states in each layer check source i64 to source bool to registry i64 replacement, missing/ambiguous imports and recovery; service results also match fresh databases. Ten independent analysis cases assert all three constructor result facts and source declaration IDs, including private, non-enum, ambiguous, missing and local-shadow negatives with colliding metadata. Tuple authoring checks distinguish empty, separator and field-name slots from annotation types/default expressions, including bounded recovery in an unclosed enum. Preserve full old inlay expectations plus the newly inferred enum result type hints, and update the old pattern insertion expectation to a qualified owner. Schema tuple slots explicitly retain their registered numeric field candidate; source record-versus-tuple behavior is not conflated. Full workspace 4436 passed with two historical ignored; service 607 plus two ignored, protocol 591, workspace all-target Clippy/fmt and Node 73 passed. Windows installed VSIX editors/vscode/test-results/run-iPBbzL/results.json passed 9; native editors/vscode/test-results/input-Mt8grm/results.json passed 13; strict target/lsp-matrix/run-SmRQsR/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots intact. The first input attempt stopped before interactions because VS Code migrated quickSuggestions false to the expanded all-off object. Both pinned machine profiles now author that explicit representation; exact setting comparisons remain enforced. Fresh editor/input/source proof was collected after the change; earlier captures are retained as historical, not current proof. S4/S6/S8 entries record this partial child, not broad partition closure; B03 remains unaccepted with remaining whole-batch scope 1332. Continue B03.21 with independently authored remaining S5 callable/provider and variable-arity completion contracts, registered nested hints/root Service namespaces and related ownership gaps. Broader dependency/cross-feature identity, lifecycle and UX04 still need proof; fresh macOS evidence is required when next used and B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.20",
-  "nextTask": "B03.20",
+  "activeChild": "B03.21",
+  "nextTask": "B03.21",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -2939,7 +2962,33 @@
     "target/b03-19-accepted-regression.log",
     "target/lsp-matrix/run-lZKBQa/report.json",
     "editors/vscode/test-results/run-h0Yifz/results.json",
-    "editors/vscode/test-results/input-bqjgza/results.json"
+    "editors/vscode/test-results/input-bqjgza/results.json",
+    "target/lsp-matrix/run-SmRQsR/report.json",
+    "target/b03-20-baseline.log",
+    "target/b03-20-enums-red.log",
+    "target/b03-20-enums-focused.log",
+    "target/b03-20-enums-protocol.log",
+    "target/b03-20-enums-final.log",
+    "target/b03-20-analysis.log",
+    "target/b03-20-tuple.log",
+    "target/b03-20-workspace.log",
+    "target/b03-20-workspace-final.log",
+    "target/b03-20-workspace-verified.log",
+    "target/b03-20-clippy.log",
+    "target/b03-20-clippy-verified.log",
+    "target/b03-20-node.log",
+    "target/b03-20-node-verified.log",
+    "target/b03-20-lifecycle-final.log",
+    "target/b03-20-protocol-final.log",
+    "target/b03-20-editor.log",
+    "target/b03-20-editor-verified.log",
+    "target/b03-20-input.log",
+    "target/b03-20-input-verified.log",
+    "target/b03-20-accepted-regression.log",
+    "target/lsp-matrix/run-5mysql/report.json",
+    "target/lsp-matrix/run-1j2KBm/report.json",
+    "editors/vscode/test-results/run-iPBbzL/results.json",
+    "editors/vscode/test-results/input-Mt8grm/results.json"
   ],
   "openIssues": [
     {
@@ -3560,8 +3609,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "40e382e3132fb581fd82374f43fb1909366cd1b2",
-          "treeSha256": "a3daafa5ce9efff63ca86cc92f9bc300c2547102edb0c0c917dfa0555381607a"
+          "revision": "6ead0d9842bf3c2f2ba5b05cce4c8797d5981f8a",
+          "treeSha256": "d9dff392a36fcb0104d97d24a443566a572bac3d027ac286f5bce47a342fcd54"
         },
         "profile": {
           "platform": "win32",
@@ -3569,11 +3618,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-6EBhF4/report.json"
+          "target/lsp-matrix/run-SmRQsR/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-h0Yifz/results.json --local-results editors/vscode/test-results/input-bqjgza/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-iPBbzL/results.json --local-results editors/vscode/test-results/input-Mt8grm/results.json",
             "exitCode": 0
           }
         ]

@@ -26,7 +26,28 @@ pub(super) fn source_record_field_completions(
             graph
                 .resolve_visible_declaration_path(module, owner, DeclarationKind::Enum)
                 .map(|declaration| (declaration, Some(variant)))
-        })?;
+        });
+    let Some(source) = source else {
+        let (_, owner) = constructor.path.split_last()?;
+        return [
+            DeclarationKind::Struct,
+            DeclarationKind::Enum,
+            DeclarationKind::Trait,
+            DeclarationKind::Function,
+            DeclarationKind::Const,
+            DeclarationKind::State,
+        ]
+        .into_iter()
+        .any(|kind| {
+            graph
+                .resolve_visible_declaration_path(module, owner, kind)
+                .is_some()
+                || graph
+                    .resolve_visible_declaration_path(module, &constructor.path, kind)
+                    .is_some()
+        })
+        .then(Vec::new);
+    };
     let (declaration, variant) = source;
     if declaration.module != module && declaration.visibility != Visibility::Public {
         return Some(Vec::new());

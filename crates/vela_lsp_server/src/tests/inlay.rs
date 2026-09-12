@@ -640,6 +640,12 @@ pub fn main() {
         response["result"],
         serde_json::json!([
             {
+                "position": { "line": 5, "character": 14 },
+                "label": ": game::main::QuestProgress::Active",
+                "kind": 1,
+                "paddingRight": true
+            },
+            {
                 "position": { "line": 5, "character": 39 },
                 "label": "quest_id:",
                 "kind": 2,

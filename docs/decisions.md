@@ -4413,3 +4413,27 @@ is insufficient evidence of member ownership.
 Enum tuple fields retain the existing parameter grammar: `Value(name: Type)`.
 The bare identifier in `Value(name)` declares a field, so it must not be treated
 as a type annotation by cursor recovery or completion tests.
+
+## Enum Completion Preserves Variant Ownership Across Aliases
+
+Expand enum type and namespace imports once for completion, applied definition
+queries and static constructor facts. Keep authored qualifiers separate from
+canonical metadata. Qualified pattern completion replaces only the complete
+terminal identifier; unqualified variants insert a resolvable qualified path so
+same-name variants from different owners remain distinct. Private, non-enum and
+ambiguous source owners cannot fall through to colliding registry variants or
+record fields. A visible local binding owns a qualified constructor's first name.
+
+Unit, tuple-call and record constructors retain exact enum/variant result facts;
+type inlays consequently include newly known constructor results. Preserve full
+parameter inlay assertions alongside those type hints. Empty and separator tuple
+declaration slots follow the existing parameter grammar. Recovery inside an
+unclosed enum is bounded to a top-level tuple separator and excludes nested
+default calls. These changes add static query evidence without new syntax or
+execution of script/host code.
+
+Both installed-input profiles explicitly disable quick suggestions in ordinary
+code, comments and strings. This uses VS Code's expanded setting representation
+instead of the legacy boolean that can be migrated during startup. Keep exact
+observed-setting equality and capture fresh profile evidence; do not normalize or
+discard mismatches in the input runner.

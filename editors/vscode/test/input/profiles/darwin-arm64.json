@@ -22,7 +22,11 @@
     "editor.accessibilitySupport": "on",
     "editor.minimap.enabled": false,
     "editor.wordBasedSuggestions": "off",
-    "editor.quickSuggestions": false,
+    "editor.quickSuggestions": {
+      "other": "off",
+      "comments": "off",
+      "strings": "off"
+    },
     "editor.suggest.showSnippets": false,
     "editor.gotoLocation.multipleDefinitions": "goto",
     "files.autoSave": "off",

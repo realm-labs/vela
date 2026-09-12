@@ -1,4 +1,5 @@
 mod constructor_targets;
+mod enum_aliases;
 mod host_variant_fields;
 mod operator_targets;
 mod pattern_fields;

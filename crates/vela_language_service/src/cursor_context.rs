@@ -173,12 +173,14 @@ pub fn cursor_context_at(
         .as_ref()
         .is_some_and(|parse| is_pattern_context(&parse.tree(), prefix_start))
     {
-        return context(
+        let mut cursor = context(
             CursorContextKind::Pattern,
             prefix_start,
             prefix,
             identifier_range,
         );
+        cursor.module_base = module_path_before_colons(text, before_prefix).map(|path| path.base);
+        return cursor;
     }
 
     if syntax_parse.as_ref().is_some_and(|parse| {

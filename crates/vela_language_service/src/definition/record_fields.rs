@@ -63,6 +63,8 @@ impl LanguageServiceDatabases {
     ) -> Option<RecordFieldNavigation> {
         let graph = self.hir_db().graph();
         let module = graph.module_id(query.module_key()?)?;
+        let expanded = query.expand_import_path(path)?;
+        let path = expanded.as_slice();
         let source = graph
             .resolve_visible_declaration_path(module, path, DeclarationKind::Struct)
             .map(|declaration| (declaration, None))
@@ -116,6 +118,26 @@ impl LanguageServiceDatabases {
                 ),
                 type_definition: fact.and_then(|fact| self.type_definition_for_fact(&fact)),
             });
+        }
+        let (_, parent) = path.split_last()?;
+        if [
+            DeclarationKind::Struct,
+            DeclarationKind::Enum,
+            DeclarationKind::Trait,
+            DeclarationKind::Function,
+            DeclarationKind::Const,
+            DeclarationKind::State,
+        ]
+        .into_iter()
+        .any(|kind| {
+            graph
+                .resolve_visible_declaration_path(module, path, kind)
+                .is_some()
+                || graph
+                    .resolve_visible_declaration_path(module, parent, kind)
+                    .is_some()
+        }) {
+            return None;
         }
         let owner = path.join("::");
         let fact = self.schema_db().facts().field_fact(&owner, name)?;

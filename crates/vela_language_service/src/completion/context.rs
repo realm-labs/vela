@@ -75,6 +75,9 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
         )
     {
         record_constructor.current_module = query.module_key().cloned();
+        record_constructor.path = query
+            .expand_import_path(&record_constructor.path)
+            .unwrap_or_default();
         return CompletionContext {
             kind: CompletionContextKind::RecordField,
             prefix: prefix.to_owned(),
@@ -111,8 +114,10 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
         return CompletionContext {
             kind: CompletionContextKind::Pattern,
             prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, offset),
-            module_base: None,
+            replace_range: cursor
+                .identifier_range()
+                .unwrap_or(TextRange::new(prefix_start, offset)),
+            module_base: cursor.module_base().map(ToOwned::to_owned),
             member_receiver: None,
             record_constructor: None,
             map_key: None,
@@ -157,7 +162,9 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
         return CompletionContext {
             kind: CompletionContextKind::ModulePath,
             prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, offset),
+            replace_range: cursor
+                .identifier_range()
+                .unwrap_or(TextRange::new(prefix_start, offset)),
             module_base: Some(module_base.to_owned()),
             member_receiver: None,
             record_constructor: None,

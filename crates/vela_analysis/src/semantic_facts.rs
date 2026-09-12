@@ -1,7 +1,7 @@
 mod constructor_resolution;
 use constructor_resolution::{
-    constructor_result_fact, constructor_target, imported_constructor_target, source_enum_for_path,
-    unit_variant_constructor_target,
+    constructor_result_fact, constructor_target, imported_constructor_target,
+    imported_variant_call_target, unit_variant_constructor_target,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -511,7 +511,12 @@ impl HirSemanticFacts {
                             }
                         }
                         Some(BindingResolution::Local(id)) => CallTargetFact::Local(*id),
-                        Some(BindingResolution::Import(_)) => CallTargetFact::Unresolved,
+                        Some(BindingResolution::Import(_)) => {
+                            expression_path(body, call.callee, HirPathKind::Callee)
+                                .map_or(CallTargetFact::Unresolved, |path| {
+                                    imported_variant_call_target(graph, schema, body, path)
+                                })
+                        }
                         Some(BindingResolution::QualifiedPath(_)) => {
                             self.unbound_call_target(graph, body, id, call, schema)
                         }
@@ -896,23 +901,9 @@ impl HirSemanticFacts {
         let Some(path) = expression_path(body, call.callee, HirPathKind::Callee) else {
             return CallTargetFact::Dynamic;
         };
-        if let Some((variant, owner_path)) = path.split_last()
-            && let Some(declaration) = source_enum_for_path(graph, body, owner_path)
-        {
-            return CallTargetFact::Variant {
-                enum_declaration: declaration.id,
-                variant: variant.clone(),
-            };
-        }
-        if let Some((variant, owner_path)) = path.split_last()
-            && let Some(target) = schema.and_then(|schema| {
-                schema.variant_for_owner_or_unique_short_name(&owner_path.join("::"), variant)
-            })
-        {
-            return CallTargetFact::RegistryVariant {
-                owner: target.owner,
-                variant: target.name,
-            };
+        let variant = imported_variant_call_target(graph, schema, body, path);
+        if !matches!(variant, CallTargetFact::Unresolved) {
+            return variant;
         }
         let qualified = path.join("::");
         let args = call
@@ -978,12 +969,16 @@ impl HirSemanticFacts {
             return TypeFact::Unknown;
         };
         let qualified = path.join("::");
-        if let Some((variant, owner_path)) = path.split_last()
-            && let Some(target) = schema.and_then(|schema| {
-                schema.variant_for_owner_or_unique_short_name(&owner_path.join("::"), variant)
-            })
-        {
-            return target.fact;
+        if let Some(target) = unit_variant_constructor_target(
+            graph,
+            schema,
+            body,
+            path,
+            graph
+                .bindings_for_body(body.id)
+                .and_then(|bindings| bindings.resolution(call.callee)),
+        ) {
+            return constructor_result_fact(graph, schema, &target).unwrap_or(TypeFact::Unknown);
         }
         let args = call
             .arguments

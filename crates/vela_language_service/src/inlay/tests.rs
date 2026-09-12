@@ -637,6 +637,10 @@ pub fn main() {
         hint_labels(&hints),
         vec![
             (
+                Position::new(2, 14),
+                ": game::quest::QuestProgress::Active".to_owned()
+            ),
+            (
                 Position::new(2, call_line.find("\"quest-1\"").expect("first arg")),
                 "quest_id:".to_owned()
             ),
@@ -646,10 +650,13 @@ pub fn main() {
             )
         ]
     );
-    assert!(
-        hints
-            .iter()
-            .all(|hint| hint.kind() == InlayHintKind::Parameter)
+    assert_eq!(
+        hints.iter().map(|hint| hint.kind()).collect::<Vec<_>>(),
+        vec![
+            InlayHintKind::Type,
+            InlayHintKind::Parameter,
+            InlayHintKind::Parameter
+        ]
     );
 }
 
@@ -673,14 +680,21 @@ pub fn main() {
     assert_eq!(
         hint_labels(&hints),
         vec![
+            (
+                Position::new(5, 14),
+                ": game::main::QuestProgress::Active".to_owned()
+            ),
             (Position::new(5, 39), "quest_id:".to_owned()),
             (Position::new(5, 50), "count:".to_owned())
         ]
     );
-    assert!(
-        hints
-            .iter()
-            .all(|hint| hint.kind() == InlayHintKind::Parameter)
+    assert_eq!(
+        hints.iter().map(|hint| hint.kind()).collect::<Vec<_>>(),
+        vec![
+            InlayHintKind::Type,
+            InlayHintKind::Parameter,
+            InlayHintKind::Parameter
+        ]
     );
 }
 

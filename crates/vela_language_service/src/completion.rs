@@ -16,6 +16,8 @@ mod call_parameter_tests;
 #[cfg(test)]
 mod callable_import_tests;
 mod context;
+#[cfg(test)]
+mod enum_alias_tests;
 mod expression;
 #[cfg(test)]
 mod expression_ownership_tests;
@@ -305,18 +307,7 @@ impl LanguageServiceDatabases {
         query: &QueryContext<'_>,
         context: &CompletionContext,
     ) -> Vec<CompletionItem> {
-        let current_module = query
-            .module_path()
-            .map(|module| module.segments().to_vec())
-            .unwrap_or_default();
-        let graph = self.hir_db().graph();
-        pattern_context_completion_items(
-            graph,
-            self.schema_db().facts(),
-            &current_module,
-            context.replace_range(),
-            context.prefix(),
-        )
+        pattern_context_completion_items(self, query, context)
     }
 
     fn lambda_parameter_completion_items(
