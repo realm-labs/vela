@@ -43,6 +43,9 @@ pub(super) fn path_symbol_ref(
             .iter()
             .map(|token| token.text().to_owned())
             .collect::<Vec<_>>();
+        let Some(path) = query.expand_import_path(&path) else {
+            return Some(None);
+        };
         if let Some(module_key) = graph.resolve_module_path(key, &path)
             && graph.module_id(&module_key).is_some()
         {

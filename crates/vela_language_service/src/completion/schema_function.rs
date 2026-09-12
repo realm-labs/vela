@@ -1,24 +1,25 @@
-use vela_analysis::{
-    completion::{
-        CompletionItem as AnalysisCompletionItem, CompletionKind as AnalysisCompletionKind,
-    },
-    registry::RegistryFacts,
+use vela_analysis::completion::{
+    CompletionItem as AnalysisCompletionItem, CompletionKind as AnalysisCompletionKind,
 };
 
-use crate::TextRange;
+use crate::{LanguageServiceDatabases, QueryContext, TextRange};
 
 use super::{
     CompletionItem, analysis_item::dedupe_and_filter_analysis_items, label_segment_matches,
 };
 
 pub(super) fn schema_function_completion_items(
-    schema: &RegistryFacts,
+    databases: &LanguageServiceDatabases,
+    query: &QueryContext<'_>,
     replace_range: TextRange,
     prefix: &str,
 ) -> Vec<CompletionItem> {
+    let schema = databases.schema_db().facts();
+    let scope = super::imports::ImportScope::new(databases, query);
     dedupe_and_filter_analysis_items(
         schema
             .functions()
+            .filter(|function| scope.external_function_available(&function.name))
             .map(|function| AnalysisCompletionItem {
                 label: function.name,
                 kind: AnalysisCompletionKind::Function,

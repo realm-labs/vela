@@ -236,13 +236,14 @@ pub(crate) fn load(id: &str) -> Spec {
 // fixtures. Every returned label is asserted, including non-parameter extras.
 pub(crate) fn expected_expression_labels<'a>(
     oracle: &'a serde_json::Value,
-    query: &serde_json::Value,
+    query: &'a serde_json::Value,
 ) -> Vec<&'a str> {
     query["expressions"].as_str().map_or_else(Vec::new, |set| {
         oracle["expressionSets"][set]
             .as_array()
             .expect("expression set")
             .iter()
+            .chain(query["expressionAliases"].as_array().into_iter().flatten())
             .map(|label| label.as_str().expect("expression label"))
             .collect()
     })

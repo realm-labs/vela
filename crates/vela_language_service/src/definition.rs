@@ -115,7 +115,8 @@ impl LanguageServiceDatabases {
         }
 
         if let Some(bindings) = query.bindings()
-            && let Some(definition) = definition_from_resolution_at_target(bindings, &target, self)
+            && let Some(definition) =
+                definition_from_resolution_at_target(bindings, &target, self, &query)
         {
             return Some(definition);
         }
@@ -513,6 +514,7 @@ fn definition_from_resolution_at_target(
     bindings: &BindingMap,
     target: &SymbolTarget,
     databases: &LanguageServiceDatabases,
+    query: &QueryContext<'_>,
 ) -> Option<Definition> {
     let graph = databases.hir_db().graph();
     let resolution = binding_resolution_for_source_range(graph, bindings, target.range())?;
@@ -535,7 +537,18 @@ fn definition_from_resolution_at_target(
             }
             Some(definition)
         }
-        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
+        BindingResolution::QualifiedPath(path) => {
+            databases.definition_from_imported_path(query, path)
+        }
+        BindingResolution::Import(_) => {
+            let site = query
+                .body()?
+                .paths
+                .iter()
+                .filter_map(hir_path_sites::site)
+                .find(|site| site.segment_range == target.range())?;
+            databases.definition_from_imported_path(query, site.path)
+        }
     }
 }
 

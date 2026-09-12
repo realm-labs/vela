@@ -702,7 +702,14 @@ constructor's receiver members under Unicode LF/CRLF. Protocol tests apply and
 restore overlays and retain resolve identity. Registered record constructors now
 carry their exact static result type into shared analysis; field changes, schema
 removal/recovery, source precedence and unknown owners have regression checks.
-Imported alias candidate enumeration, other expression ownership partitions,
+Direct and namespace import aliases now preserve source/schema/stdlib ownership
+in expression and qualified-member candidates. Twenty-eight shared cases assert
+complete edits, canonical resolve identities, applied definitions and constructor
+members under LF/CRLF. Six overlay states verify target switching, missing,
+duplicate and private imports, then recovery. Ambiguous import bindings remain
+unresolved during HIR refresh; imported record constructors carry their exact
+static owner. Local function/constant shadows retain distinct qualified choices.
+Type-hint and enum/variant import paths, dependency alias ownership,
 provider/variable-arity metadata, broader S5/lifecycle coverage and UX04 remain open.
 The earlier macOS input regression stopped on a locked
 desktop; that record does not imply a Windows blocker. Current platform evidence
@@ -712,7 +719,7 @@ actual suggestion acceptance, F12/back and palettes, modifier-click, context-men
 Peek, exact Unicode targets and no-jump outcomes pass. The installed provider
 suite passes all nine scenarios. The original macOS acceptance remains historical;
 changed driver code needs fresh proof when that machine is next used. Shared
-implementation resumes at B03.18.
+implementation resumes at B03.19.
 
 ### Deferred Tracks
 

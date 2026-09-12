@@ -21,6 +21,7 @@ fn run() {
     let c = Local { tag: 1 }; c.tag;
     let d = missing::Token { tag: 1 }; d.tag;
 }
+
 "#,
     ));
     graph.resolve_imports();
@@ -78,5 +79,100 @@ fn run() {
             );
         }
         assert_eq!(fields.len(), 4);
+    }
+}
+
+#[test]
+fn imported_record_results_preserve_source_registry_and_unavailable_owners() {
+    for (imports, expression, receiver, field) in [
+        (
+            "use host::Token as Alias;",
+            "Alias",
+            Some("host::Token"),
+            Some(TypeFact::BOOL),
+        ),
+        (
+            "use host as Alias;",
+            "Alias::Token",
+            Some("host::Token"),
+            Some(TypeFact::BOOL),
+        ),
+        (
+            "use api::Token as Alias;",
+            "Alias",
+            Some("api::Token"),
+            Some(TypeFact::I64),
+        ),
+        (
+            "use api as Alias;",
+            "Alias::Token",
+            Some("api::Token"),
+            Some(TypeFact::I64),
+        ),
+        ("use api::Hidden as Alias;", "Alias", None, None),
+        ("use missing::Token as Alias;", "Alias", None, None),
+        (
+            "use host::Token as Alias; use api::Token as Alias;",
+            "Alias",
+            None,
+            None,
+        ),
+        (
+            "use host as Alias; use api as Alias;",
+            "Alias::Token",
+            None,
+            None,
+        ),
+        (
+            "use host::Token as Alias; struct Alias { tag: String }",
+            "Alias",
+            Some("main::Alias"),
+            Some(TypeFact::STRING),
+        ),
+    ] {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(231),
+            PackageId::anonymous(),
+            ModulePath::from_qualified("main"),
+            format!("{imports} fn run() {{ let value = {expression} {{ tag: 1 }}; value.tag; }}"),
+        ));
+        graph.add_source(ModuleSource::new(
+            SourceId::new(232),
+            PackageId::anonymous(),
+            ModulePath::from_qualified("api"),
+            "pub struct Token { tag: i64 } struct Hidden { tag: i64 }",
+        ));
+        graph.resolve_imports();
+        let mut schema = RegistryFacts::default();
+        for name in ["host::Token", "api::Hidden"] {
+            schema.insert_type(name, TypeFact::record(name));
+            schema.insert_field(name, "tag", TypeFact::BOOL);
+        }
+        let facts = AnalysisFacts::from_module_graph_and_schema(&graph, &schema);
+        let body = graph
+            .bodies()
+            .find(|body| {
+                body.expressions
+                    .values()
+                    .any(|e| matches!(e.kind, HirExprKind::Record { .. }))
+            })
+            .expect("body");
+        let record = body
+            .expressions
+            .values()
+            .find(|e| matches!(e.kind, HirExprKind::Record { .. }))
+            .expect("record");
+        let access = body
+            .expressions
+            .values()
+            .find(|e| matches!(e.kind, HirExprKind::Field(_)))
+            .expect("field");
+        assert_eq!(
+            facts.expression(record.id),
+            receiver.map(TypeFact::record).as_ref(),
+            "{imports}"
+        );
+        assert_eq!(facts.expression(access.id), field.as_ref(), "{imports}");
     }
 }

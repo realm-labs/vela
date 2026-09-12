@@ -146,6 +146,7 @@ mod callable_imports;
 mod code_action;
 mod completion_call_expressions;
 mod completion_expression_ownership;
+mod completion_import_aliases;
 mod completion_map;
 mod completion_member;
 mod completion_members;

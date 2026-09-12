@@ -328,20 +328,24 @@ impl ModuleGraph {
         (bindings, diagnostics)
     }
 
-    fn import_bindings(&self, module: &HirModule) -> Vec<ImportBinding> {
-        module
-            .imports
-            .iter()
-            .filter_map(|import| {
-                let name = import_binding_name(import)?;
-                let declaration = match import.resolution {
-                    Some(ImportResolution::Declaration(declaration)) => Some(declaration),
-                    None => {
-                        self.lookup_import_declaration(&module.key, import.module, &import.path)
-                    }
-                };
-                Some(ImportBinding { name, declaration })
-            })
+    pub(super) fn import_bindings(&self, module: &HirModule) -> Vec<ImportBinding> {
+        let mut bindings = BTreeMap::new();
+        for binding in module.imports.iter().filter_map(|import| {
+            let name = import_binding_name(import)?;
+            let declaration = match import.resolution {
+                Some(ImportResolution::Declaration(declaration)) => Some(declaration),
+                None => self.lookup_import_declaration(&module.key, import.module, &import.path),
+            };
+            Some(ImportBinding { name, declaration })
+        }) {
+            bindings
+                .entry(binding.name)
+                .and_modify(|declaration| *declaration = None)
+                .or_insert(binding.declaration);
+        }
+        bindings
+            .into_iter()
+            .map(|(name, declaration)| ImportBinding { name, declaration })
             .collect()
     }
 

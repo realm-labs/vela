@@ -26,6 +26,7 @@ mod call_argument;
 mod call_argument_tests;
 mod callable;
 mod hir_cursor;
+mod imports;
 mod locals;
 mod service_call;
 use hir_cursor::refine_cursor_with_hir;

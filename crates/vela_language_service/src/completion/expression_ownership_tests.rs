@@ -52,7 +52,10 @@ fn expression_ownership_matrix_applied_types_resolve_to_the_selected_owner() {
                 let item = result
                     .items()
                     .iter()
-                    .find(|i| i.lookup() == expected["symbol"])
+                    .find(|i| {
+                        i.label() == expected["label"]
+                            && i.insert_text() == expected["insert"].as_str()
+                    })
                     .expect("owned type");
                 let symbol = if expected["origin"] == "source" {
                     SymbolRef::Source(string(expected, "symbol").to_owned())
@@ -60,7 +63,12 @@ fn expression_ownership_matrix_applied_types_resolve_to_the_selected_owner() {
                     SymbolRef::Schema(string(expected, "symbol").to_owned())
                 };
                 assert_eq!(item.symbol(), Some(&symbol));
-                assert_eq!(item.filter_text(), string(expected, "symbol"));
+                assert_eq!(
+                    item.filter_text(),
+                    expected["lookup"]
+                        .as_str()
+                        .unwrap_or(string(expected, "symbol"))
+                );
                 let edit = item.text_edit().expect("edit");
                 assert_eq!(
                     edit.range(),

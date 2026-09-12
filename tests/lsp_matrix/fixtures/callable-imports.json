@@ -76,7 +76,10 @@
         "recoverySuffix": "",
         "symbol": "host::grant",
         "symbolKind": "Schema",
-        "expressions": "set0"
+        "expressions": "set0",
+        "expressionAliases": [
+          "grant"
+        ]
       },
       {
         "id": "host_alias",
@@ -94,7 +97,8 @@
         "recoverySuffix": "",
         "symbol": "host::grant",
         "symbolKind": "Schema",
-        "expressions": "set0"
+        "expressions": "set0",
+        "expressionAliases": []
       },
       {
         "id": "host_namespace",
@@ -112,7 +116,10 @@
         "recoverySuffix": "",
         "symbol": "host::grant",
         "symbolKind": "Schema",
-        "expressions": "set0"
+        "expressions": "set0",
+        "expressionAliases": [
+          "h"
+        ]
       },
       {
         "id": "source_direct",
@@ -148,7 +155,10 @@
         "recoverySuffix": "",
         "symbol": "api::grant",
         "symbolKind": "Source",
-        "expressions": "set0"
+        "expressions": "set0",
+        "expressionAliases": [
+          "grant"
+        ]
       },
       {
         "id": "source_alias",
@@ -166,7 +176,8 @@
         "recoverySuffix": "",
         "symbol": "api::grant",
         "symbolKind": "Source",
-        "expressions": "set0"
+        "expressions": "set0",
+        "expressionAliases": []
       },
       {
         "id": "source_namespace",
@@ -184,7 +195,10 @@
         "recoverySuffix": "",
         "symbol": "api::grant",
         "symbolKind": "Source",
-        "expressions": "set0"
+        "expressions": "set0",
+        "expressionAliases": [
+          "a"
+        ]
       },
       {
         "id": "private_direct",
@@ -208,7 +222,7 @@
         "recoverySuffix": "",
         "symbol": null,
         "symbolKind": null,
-        "expressions": "set0"
+        "expressions": "closed_import"
       },
       {
         "id": "local_shadow",
@@ -262,7 +276,7 @@
         "recoverySuffix": "",
         "symbol": null,
         "symbolKind": null,
-        "expressions": "set0"
+        "expressions": "closed_import"
       },
       {
         "id": "unimported",
@@ -298,7 +312,7 @@
         "recoverySuffix": "",
         "symbol": null,
         "symbolKind": null,
-        "expressions": "set0"
+        "expressions": "closed_import"
       },
       {
         "id": "ambiguous_source",
@@ -310,7 +324,7 @@
         "recoverySuffix": "",
         "symbol": null,
         "symbolKind": null,
-        "expressions": "set0"
+        "expressions": "closed_import"
       },
       {
         "id": "stdlib_direct",
@@ -356,7 +370,10 @@
         "recoverySuffix": "",
         "symbol": "math::max",
         "symbolKind": "Builtin",
-        "expressions": "set0"
+        "expressions": "set0",
+        "expressionAliases": [
+          "top"
+        ]
       },
       {
         "id": "stdlib_namespace",
@@ -379,7 +396,10 @@
         "recoverySuffix": "",
         "symbol": "math::max",
         "symbolKind": "Builtin",
-        "expressions": "set0"
+        "expressions": "set0",
+        "expressionAliases": [
+          "m"
+        ]
       },
       {
         "id": "stdlib_unimported",
@@ -409,7 +429,8 @@
         "recoverySuffix": "); }",
         "symbol": "host::grant",
         "symbolKind": "Schema",
-        "expressions": "set0"
+        "expressions": "set0",
+        "expressionAliases": []
       },
       {
         "id": "qualified_const",
@@ -433,7 +454,10 @@
         "recoverySuffix": "",
         "symbol": null,
         "symbolKind": null,
-        "expressions": "set0"
+        "expressions": "set0",
+        "expressionAliases": [
+          "a"
+        ]
       },
       {
         "id": "missing_namespace",
@@ -469,7 +493,10 @@
         "signature": "api::State::Ready(value: i64) -> api::State::Ready",
         "symbol": "api::State::Ready",
         "symbolKind": "Source",
-        "expressions": "set0"
+        "expressions": "set0",
+        "expressionAliases": [
+          "S"
+        ]
       },
       {
         "id": "enum_ambiguous",
@@ -517,7 +544,7 @@
         "recoverySuffix": "",
         "symbol": null,
         "symbolKind": null,
-        "expressions": "set0"
+        "expressions": "closed_import"
       }
     ],
     "expressionSets": {
@@ -529,7 +556,6 @@
         "api::Private::Ready",
         "api::State::Ready",
         "api::grant",
-        "api::hidden",
         "api::number",
         "bytes::from_hex",
         "const_shadow",
@@ -688,7 +714,6 @@
         "api::Private::Ready",
         "api::State::Ready",
         "api::grant",
-        "api::hidden",
         "api::number",
         "bytes::from_hex",
         "const_shadow",
@@ -849,7 +874,6 @@
         "api::Private::Ready",
         "api::State::Ready",
         "api::grant",
-        "api::hidden",
         "api::number",
         "bytes::from_hex",
         "const_shadow",
@@ -1010,7 +1034,6 @@
         "api::Private::Ready",
         "api::State::Ready",
         "api::grant",
-        "api::hidden",
         "api::number",
         "bytes::from_hex",
         "const_shadow",
@@ -1042,6 +1065,163 @@
         "io::print",
         "io::println",
         "issue",
+        "local_function",
+        "local_shadow",
+        "main",
+        "math::abs",
+        "math::ceil",
+        "math::clamp",
+        "math::distance2d",
+        "math::distance3d",
+        "math::floor",
+        "math::lerp",
+        "math::max",
+        "math::min",
+        "math::move_towards",
+        "math::pow",
+        "math::random",
+        "math::round",
+        "math::sign",
+        "math::sqrt",
+        "missing_import",
+        "missing_namespace",
+        "missing_qualified",
+        "option::flatten",
+        "option::is_none",
+        "option::is_some",
+        "option::none",
+        "option::ok_or",
+        "option::some",
+        "option::unwrap_or",
+        "other::grant",
+        "private_alias",
+        "private_direct",
+        "private_namespace",
+        "qualified_const",
+        "reflect::access",
+        "reflect::attr",
+        "reflect::attrs",
+        "reflect::call",
+        "reflect::docs",
+        "reflect::effects",
+        "reflect::exports",
+        "reflect::field",
+        "reflect::fields",
+        "reflect::function",
+        "reflect::functions",
+        "reflect::get",
+        "reflect::has_attr",
+        "reflect::has_field",
+        "reflect::has_function",
+        "reflect::has_method",
+        "reflect::has_module",
+        "reflect::has_permission",
+        "reflect::has_trait",
+        "reflect::has_type",
+        "reflect::has_variant",
+        "reflect::id",
+        "reflect::implements",
+        "reflect::kind",
+        "reflect::method",
+        "reflect::methods",
+        "reflect::module",
+        "reflect::modules",
+        "reflect::name",
+        "reflect::origin",
+        "reflect::owner",
+        "reflect::params",
+        "reflect::permissions",
+        "reflect::required_permissions",
+        "reflect::returns",
+        "reflect::set",
+        "reflect::source_span",
+        "reflect::trait_info",
+        "reflect::traits",
+        "reflect::type_info",
+        "reflect::type_of",
+        "reflect::types",
+        "reflect::variant",
+        "reflect::variant_info",
+        "reflect::variant_is",
+        "reflect::variants",
+        "reserved_import",
+        "result::err",
+        "result::flatten",
+        "result::is_err",
+        "result::is_ok",
+        "result::ok",
+        "result::to_error_option",
+        "result::to_option",
+        "result::unwrap_or",
+        "service::pinned::peer::take",
+        "set::from_array",
+        "source_alias",
+        "source_direct",
+        "source_import",
+        "source_namespace",
+        "stdlib_alias",
+        "stdlib_direct",
+        "stdlib_namespace",
+        "stdlib_unimported",
+        "task::spawn_scoped",
+        "task::spawn_scoped_then",
+        "time::elapsed_since",
+        "time::now",
+        "time::tick",
+        "true",
+        "u16::try_from_u64",
+        "u32::from_u16",
+        "u32::wrapping_mul",
+        "u64::from_u32",
+        "u8::bit_and",
+        "u8::bit_or",
+        "u8::bit_xor",
+        "u8::rotate_left",
+        "u8::rotate_right",
+        "u8::shift_left",
+        "u8::shift_right",
+        "u8::try_from_u64",
+        "u8::wrapping_add",
+        "unimported"
+      ],
+      "closed_import": [
+        "State",
+        "ambiguous_external",
+        "ambiguous_source",
+        "api",
+        "api::Private::Ready",
+        "api::State::Ready",
+        "api::grant",
+        "api::number",
+        "bytes::from_hex",
+        "const_shadow",
+        "crate",
+        "enum_ambiguous",
+        "enum_import",
+        "enum_local",
+        "enum_private",
+        "enum_unimported",
+        "f32::try_from_f64",
+        "f64::from_f32",
+        "false",
+        "foreign",
+        "foreign::grant",
+        "fs::read_to_string",
+        "fs::write_string",
+        "host::grant",
+        "host_alias",
+        "host_direct",
+        "host_import",
+        "host_namespace",
+        "i16::try_from_i64",
+        "i32::from_i16",
+        "i32::try_from_i64",
+        "i64::from_i32",
+        "i8::try_from_i64",
+        "i8::wrapping_add",
+        "incomplete",
+        "io::print",
+        "io::println",
         "local_function",
         "local_shadow",
         "main",

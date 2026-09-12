@@ -1,8 +1,34 @@
-use vela_hir::module_graph::{Declaration, ImportResolution, Visibility};
+use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, Visibility};
 
 use crate::{LanguageServiceDatabases, QueryContext, symbol_target::SymbolTarget};
 
 impl LanguageServiceDatabases {
+    pub(super) fn definition_from_imported_path(
+        &self,
+        query: &QueryContext<'_>,
+        path: &[String],
+    ) -> Option<super::Definition> {
+        let expanded = query.expand_import_path(path)?;
+        if expanded == path {
+            return None;
+        }
+        let graph = self.hir_db().graph();
+        let module = graph.module_id(query.module_key()?)?;
+        let declaration = [
+            DeclarationKind::Function,
+            DeclarationKind::Const,
+            DeclarationKind::State,
+            DeclarationKind::Struct,
+            DeclarationKind::Enum,
+            DeclarationKind::Trait,
+        ]
+        .into_iter()
+        .find_map(|kind| graph.resolve_visible_declaration_path(module, &expanded, kind))?;
+        if declaration.module != module && declaration.visibility != Visibility::Public {
+            return None;
+        }
+        self.definition_from_declaration(declaration)
+    }
     // Recognized import syntax owns even a null result: a prefix, unresolved
     // import or inaccessible declaration must not borrow a same-name symbol.
     pub(super) fn source_import_declaration<'a>(

@@ -123,7 +123,18 @@ pub(super) fn pattern_constructor_target(
     let resolution = graph
         .bindings_for_body(body.id)
         .and_then(|bindings| bindings.pattern_constructor_resolution(&path.path));
-    Some(constructor_target(graph, schema, &path.path, resolution))
+    Some(
+        super::imported_constructor_target(
+            graph,
+            schema,
+            body,
+            &path.path,
+            graph
+                .bindings_for_body(body.id)
+                .and_then(|bindings| bindings.pattern_resolution(&path.path)),
+        )
+        .unwrap_or_else(|| constructor_target(graph, schema, &path.path, resolution)),
+    )
 }
 
 fn variant_field_fact(

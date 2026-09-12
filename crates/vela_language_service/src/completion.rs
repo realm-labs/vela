@@ -19,6 +19,9 @@ mod context;
 mod expression;
 #[cfg(test)]
 mod expression_ownership_tests;
+#[cfg(test)]
+mod import_alias_tests;
+mod imports;
 mod item;
 mod lambda_parameter;
 mod local;
@@ -218,16 +221,7 @@ impl LanguageServiceDatabases {
         query: &QueryContext<'_>,
         context: &CompletionContext,
     ) -> Vec<CompletionItem> {
-        let Some(current_module) = query.module_key() else {
-            return Vec::new();
-        };
-        module_path_context_completion_items(
-            self.hir_db().graph(),
-            self.graph_analysis_facts(),
-            self.schema_db().facts(),
-            current_module,
-            context,
-        )
+        module_path_context_completion_items(self, query, context)
     }
 
     fn member_completion_items(

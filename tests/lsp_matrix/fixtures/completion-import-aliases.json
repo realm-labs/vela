@@ -1,0 +1,560 @@
+{
+  "version": 1,
+  "id": "completion-import-aliases",
+  "files": {
+    "vela.toml": "[package]\nid=\"dev.vela.aliases\"\nname=\"aliases\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n[host]\nschema=\"schema.json\"\n",
+    "scripts/api.vela": "/* 中😀 */ pub fn [[grant:start]]grant[[grant:end]](value: i64) -> bool { return true; }\npub const [[number:start]]number[[number:end]]: i64 = 1;\npub struct [[token:start]]Token[[token:end]] { tag: i64 }\nfn hidden() {}\n",
+    "scripts/other.vela": "pub fn grant(value: String) -> String { return value; }\n",
+    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Token\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"host::Token\"\n        }\n      }\n    ],\n    \"fields\": [\n      {\n        \"owner\": \"host::Token\",\n        \"name\": \"tag\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"i64\"\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"host::grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"registered\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"registered\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::hidden\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"registered\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"option::some\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"registered\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  }\n}\n",
+    "scripts/case_source_function.vela": "use api::grant as aliasGrant;\n/* 中😀 */ fn main() { let selected = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+    "scripts/case_source_const.vela": "use api::number as aliasNumber;\n/* 中😀 */ fn main() { let selected = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+    "scripts/case_source_type.vela": "use api::Token as aliasToken;\n/* 中😀 */ fn main() { let selected = [[replace:start]]ali[[cursor]][[replace:end]] { tag: 1 }; selected.ta[[member]]; }\n",
+    "scripts/case_schema_function.vela": "use host::grant as aliasGrant;\n/* 中😀 */ fn main() { let selected = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+    "scripts/case_schema_type.vela": "use host::Token as aliasToken;\n/* 中😀 */ fn main() { let selected = [[replace:start]]ali[[cursor]][[replace:end]] { tag: 1 }; selected.ta[[member]]; }\n",
+    "scripts/case_stdlib_function.vela": "use option::some as aliasSome;\n/* 中😀 */ fn main() { let selected = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+    "scripts/case_duplicate.vela": "use api::grant as aliasGrant; use other::grant as aliasGrant;\n/* 中😀 */ fn main() { let selected = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+    "scripts/case_duplicate_same.vela": "use api::grant as aliasGrant; use api::grant as aliasGrant;\n/* 中😀 */ fn main() { let selected = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+    "scripts/case_missing.vela": "use missing::grant as aliasGrant;\n/* 中😀 */ fn main() { let selected = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+    "scripts/case_private.vela": "use api::hidden as aliasHidden;\n/* 中😀 */ fn main() { let selected = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+    "scripts/case_local_shadow.vela": "use api::grant as aliasGrant;\n/* 中😀 */ fn main() { let [[binding:start]]aliasGrant[[binding:end]] = 1; let selected = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+    "scripts/case_declaration_shadow.vela": "use api::grant as aliasGrant; fn [[owned:start]]aliasGrant[[owned:end]]() -> i64 { return 1; }\n/* 中😀 */ fn main() { let selected = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+    "scripts/case_source_short.vela": "use api::grant;\n/* 中😀 */ fn main() { let selected = [[replace:start]]gra[[cursor]][[replace:end]]; }\n",
+    "scripts/case_source_namespace.vela": "use api as aliasSpace;\n/* 中😀 */ fn main() { let selected = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+    "scripts/case_source_namespace_member.vela": "use api as aliasSpace;\n/* 中😀 */ fn main() { let selected = aliasSpace::[[replace:start]]gr[[cursor]][[replace:end]]; }\n",
+    "scripts/case_schema_namespace.vela": "use host as aliasSpace;\n/* 中😀 */ fn main() { let selected = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+    "scripts/case_schema_namespace_member.vela": "use host as aliasSpace;\n/* 中😀 */ fn main() { let selected = aliasSpace::[[replace:start]]gr[[cursor]][[replace:end]]; }\n",
+    "scripts/case_stdlib_namespace.vela": "use option as aliasSpace;\n/* 中😀 */ fn main() { let selected = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+    "scripts/case_stdlib_namespace_member.vela": "use option as aliasSpace;\n/* 中😀 */ fn main() { let selected = aliasSpace::[[replace:start]]so[[cursor]][[replace:end]]; }\n",
+    "scripts/case_private_namespace.vela": "use api as aliasSpace;\n/* 中😀 */ fn main() { let selected = aliasSpace::[[replace:start]]hid[[cursor]][[replace:end]]; }\n",
+    "scripts/case_duplicate_namespace.vela": "use api as aliasSpace; use host as aliasSpace;\n/* 中😀 */ fn main() { let selected = aliasSpace::[[replace:start]]gr[[cursor]][[replace:end]]; }\n",
+    "scripts/case_unknown_namespace.vela": "use absent as aliasSpace;\n/* 中😀 */ fn main() { let selected = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+    "scripts/case_unknown_namespace_member.vela": "use absent as aliasSpace;\n/* 中😀 */ fn main() { let selected = aliasSpace::[[replace:start]]gr[[cursor]][[replace:end]]; }\n",
+    "scripts/case_source_namespace_type.vela": "use api as aliasSpace;\n/* 中😀 */ fn main() { let selected = aliasSpace::[[replace:start]]To[[cursor]][[replace:end]] { tag: 1 }; selected.ta[[member]]; }\n",
+    "scripts/case_schema_namespace_type.vela": "use host as aliasSpace;\n/* 中😀 */ fn main() { let selected = aliasSpace::[[replace:start]]To[[cursor]][[replace:end]] { tag: 1 }; selected.ta[[member]]; }\n",
+    "scripts/case_source_namespace_const.vela": "use api as aliasSpace;\n/* 中😀 */ fn main() { let selected = aliasSpace::[[replace:start]]num[[cursor]][[replace:end]]; }\n",
+    "scripts/case_local_function_shadow.vela": "fn [[owned:start]]aliasGrant[[owned:end]]() -> i64 { return 1; }\n/* 中😀 */ fn main() { let [[binding:start]]aliasGrant[[binding:end]] = true; let selected = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+    "scripts/case_local_const_shadow.vela": "const [[owned:start]]aliasNumber[[owned:end]]: i64 = 1;\n/* 中😀 */ fn main() { let [[binding:start]]aliasNumber[[binding:end]] = true; let selected = [[replace:start]]ali[[cursor]][[replace:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "source_function",
+        "file": "scripts/case_source_function.vela",
+        "items": [
+          {
+            "label": "aliasGrant",
+            "insert": "aliasGrant($0)",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "origin": "source",
+            "symbol": "api::grant",
+            "target": "scripts/api.vela",
+            "marker": "grant"
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "source_const",
+        "file": "scripts/case_source_const.vela",
+        "items": [
+          {
+            "label": "aliasNumber",
+            "insert": "aliasNumber",
+            "kind": "Const",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::number",
+            "target": "scripts/api.vela",
+            "marker": "number"
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "source_type",
+        "file": "scripts/case_source_type.vela",
+        "items": [
+          {
+            "label": "aliasToken",
+            "insert": "aliasToken",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token"
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "schema_function",
+        "file": "scripts/case_schema_function.vela",
+        "items": [
+          {
+            "label": "aliasGrant",
+            "insert": "aliasGrant($0)",
+            "kind": "Function",
+            "detail": "Function(bool) -> bool",
+            "origin": "schema",
+            "symbol": "host::grant",
+            "target": null
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "schema_type",
+        "file": "scripts/case_schema_type.vela",
+        "items": [
+          {
+            "label": "aliasToken",
+            "insert": "aliasToken",
+            "kind": "Type",
+            "detail": "host::Token",
+            "origin": "schema",
+            "symbol": "host::Token",
+            "target": null
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "stdlib_function",
+        "file": "scripts/case_stdlib_function.vela",
+        "items": [
+          {
+            "label": "aliasSome",
+            "insert": "aliasSome($0)",
+            "kind": "Function",
+            "detail": "Function(Any) -> Option(Any)",
+            "origin": "builtin",
+            "symbol": "option::some",
+            "target": null
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "duplicate",
+        "file": "scripts/case_duplicate.vela",
+        "items": [],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "duplicate_same",
+        "file": "scripts/case_duplicate_same.vela",
+        "items": [],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "missing",
+        "file": "scripts/case_missing.vela",
+        "items": [],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "private",
+        "file": "scripts/case_private.vela",
+        "items": [],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "local_shadow",
+        "file": "scripts/case_local_shadow.vela",
+        "items": [
+          {
+            "label": "aliasGrant",
+            "insert": "aliasGrant",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "local",
+            "symbol": "aliasGrant",
+            "target": "self",
+            "marker": "binding"
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "declaration_shadow",
+        "file": "scripts/case_declaration_shadow.vela",
+        "items": [
+          {
+            "label": "aliasGrant",
+            "insert": "aliasGrant($0)",
+            "kind": "Function",
+            "detail": "Function() -> i64",
+            "origin": "source",
+            "symbol": "case_declaration_shadow::aliasGrant",
+            "target": "self",
+            "marker": "owned"
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "source_short",
+        "file": "scripts/case_source_short.vela",
+        "items": [
+          {
+            "label": "grant",
+            "insert": "grant($0)",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "origin": "source",
+            "symbol": "api::grant",
+            "target": "scripts/api.vela",
+            "marker": "grant"
+          },
+          {
+            "label": "api::grant",
+            "insert": "api::grant($0)",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "origin": "source",
+            "symbol": "api::grant",
+            "target": "scripts/api.vela",
+            "marker": "grant"
+          },
+          {
+            "label": "other::grant",
+            "insert": "other::grant($0)",
+            "kind": "Function",
+            "detail": "Function(String) -> String",
+            "origin": "source",
+            "symbol": "other::grant",
+            "target": null,
+            "marker": "grant"
+          },
+          {
+            "label": "host::grant",
+            "insert": "host::grant($0)",
+            "kind": "Function",
+            "detail": "Function(bool) -> bool",
+            "origin": "schema",
+            "symbol": "host::grant",
+            "target": null
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "source_namespace",
+        "file": "scripts/case_source_namespace.vela",
+        "items": [
+          {
+            "label": "aliasSpace",
+            "insert": "aliasSpace",
+            "kind": "Module",
+            "detail": "api",
+            "origin": "source",
+            "symbol": "api",
+            "target": null,
+            "serviceSymbol": "dev.vela.anonymous::api",
+            "protocolSymbol": "dev.vela.aliases::api"
+          }
+        ],
+        "applySuffix": "::grant(1)",
+        "leafOffset": 0
+      },
+      {
+        "id": "source_namespace_member",
+        "file": "scripts/case_source_namespace_member.vela",
+        "items": [
+          {
+            "label": "grant",
+            "insert": "grant($0)",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "origin": "source",
+            "symbol": "api::grant",
+            "target": "scripts/api.vela",
+            "marker": "grant"
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "schema_namespace",
+        "file": "scripts/case_schema_namespace.vela",
+        "items": [
+          {
+            "label": "aliasSpace",
+            "insert": "aliasSpace",
+            "kind": "Module",
+            "detail": "host",
+            "origin": "schema",
+            "symbol": "host",
+            "target": null
+          }
+        ],
+        "applySuffix": "::grant(1)",
+        "leafOffset": 0
+      },
+      {
+        "id": "schema_namespace_member",
+        "file": "scripts/case_schema_namespace_member.vela",
+        "items": [
+          {
+            "label": "grant",
+            "insert": "grant($0)",
+            "kind": "Function",
+            "detail": "Function(bool) -> bool",
+            "origin": "schema",
+            "symbol": "host::grant",
+            "target": null
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "stdlib_namespace",
+        "file": "scripts/case_stdlib_namespace.vela",
+        "items": [
+          {
+            "label": "aliasSpace",
+            "insert": "aliasSpace",
+            "kind": "Module",
+            "detail": "option",
+            "origin": "builtin",
+            "symbol": "option",
+            "target": null
+          }
+        ],
+        "applySuffix": "::some(1)",
+        "leafOffset": 0
+      },
+      {
+        "id": "stdlib_namespace_member",
+        "file": "scripts/case_stdlib_namespace_member.vela",
+        "items": [
+          {
+            "label": "some",
+            "insert": "some($0)",
+            "kind": "Function",
+            "detail": "Function(Any) -> Option(Any)",
+            "origin": "builtin",
+            "symbol": "option::some",
+            "target": null
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "private_namespace",
+        "file": "scripts/case_private_namespace.vela",
+        "items": [],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "duplicate_namespace",
+        "file": "scripts/case_duplicate_namespace.vela",
+        "items": [],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "unknown_namespace",
+        "file": "scripts/case_unknown_namespace.vela",
+        "items": [],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "unknown_namespace_member",
+        "file": "scripts/case_unknown_namespace_member.vela",
+        "items": [],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "source_namespace_type",
+        "file": "scripts/case_source_namespace_type.vela",
+        "items": [
+          {
+            "label": "Token",
+            "insert": "Token",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token"
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "schema_namespace_type",
+        "file": "scripts/case_schema_namespace_type.vela",
+        "items": [
+          {
+            "label": "Token",
+            "insert": "Token",
+            "kind": "Type",
+            "detail": "host::Token",
+            "origin": "schema",
+            "symbol": "host::Token",
+            "target": null
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "source_namespace_const",
+        "file": "scripts/case_source_namespace_const.vela",
+        "items": [
+          {
+            "label": "number",
+            "insert": "number",
+            "kind": "Const",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::number",
+            "target": "scripts/api.vela",
+            "marker": "number"
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "local_function_shadow",
+        "file": "scripts/case_local_function_shadow.vela",
+        "items": [
+          {
+            "label": "aliasGrant",
+            "insert": "aliasGrant",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "local",
+            "symbol": "aliasGrant",
+            "target": "self",
+            "marker": "binding"
+          },
+          {
+            "label": "aliasGrant",
+            "insert": "case_local_function_shadow::aliasGrant($0)",
+            "kind": "Function",
+            "detail": "Function() -> i64",
+            "origin": "source",
+            "symbol": "case_local_function_shadow::aliasGrant",
+            "target": "self",
+            "marker": "owned"
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      },
+      {
+        "id": "local_const_shadow",
+        "file": "scripts/case_local_const_shadow.vela",
+        "items": [
+          {
+            "label": "aliasNumber",
+            "insert": "aliasNumber",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "local",
+            "symbol": "aliasNumber",
+            "target": "self",
+            "marker": "binding"
+          },
+          {
+            "label": "aliasNumber",
+            "insert": "case_local_const_shadow::aliasNumber",
+            "kind": "Const",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "case_local_const_shadow::aliasNumber",
+            "target": "self",
+            "marker": "owned"
+          }
+        ],
+        "applySuffix": "",
+        "leafOffset": 0
+      }
+    ],
+    "lifecycle": [
+      {
+        "source": "use api::grant as aliasGrant;\n/* 中😀 */ fn main() { let value = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+        "items": [
+          {
+            "label": "aliasGrant",
+            "insert": "aliasGrant($0)",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "origin": "source",
+            "symbol": "api::grant",
+            "target": "scripts/api.vela",
+            "marker": "grant"
+          }
+        ]
+      },
+      {
+        "source": "use other::grant as aliasGrant;\n/* 中😀 */ fn main() { let value = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+        "items": [
+          {
+            "label": "aliasGrant",
+            "insert": "aliasGrant($0)",
+            "kind": "Function",
+            "detail": "Function(String) -> String",
+            "origin": "source",
+            "symbol": "other::grant",
+            "target": null,
+            "marker": "grant"
+          }
+        ]
+      },
+      {
+        "source": "use absent::grant as aliasGrant;\n/* 中😀 */ fn main() { let value = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+        "items": []
+      },
+      {
+        "source": "use api::grant as aliasGrant; use other::grant as aliasGrant;\n/* 中😀 */ fn main() { let value = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+        "items": []
+      },
+      {
+        "source": "use api::hidden as aliasGrant;\n/* 中😀 */ fn main() { let value = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+        "items": []
+      },
+      {
+        "source": "use api::grant as aliasGrant;\n/* 中😀 */ fn main() { let value = [[replace:start]]ali[[cursor]][[replace:end]]; }\n",
+        "items": [
+          {
+            "label": "aliasGrant",
+            "insert": "aliasGrant($0)",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "origin": "source",
+            "symbol": "api::grant",
+            "target": "scripts/api.vela",
+            "marker": "grant"
+          }
+        ]
+      }
+    ]
+  }
+}

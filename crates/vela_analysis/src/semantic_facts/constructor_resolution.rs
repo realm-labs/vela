@@ -1,10 +1,56 @@
 use super::ConstructorTargetFact;
-use crate::registry::RegistryFacts;
+use crate::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_hir::{
     binding::{BindingResolution, ConstructorResolution},
     body::HirBody,
     module_graph::{Declaration, DeclarationKind, ModuleGraph, Visibility},
 };
+
+pub(super) fn imported_constructor_target(
+    graph: &ModuleGraph,
+    schema: Option<&RegistryFacts>,
+    body: &HirBody,
+    path: &[String],
+    binding: Option<&BindingResolution>,
+) -> Option<ConstructorTargetFact> {
+    if !matches!(binding, Some(BindingResolution::Import(_))) {
+        return None;
+    }
+    let module = graph
+        .declaration(graph.bindings_for_body(body.id)?.declaration)?
+        .module;
+    let Some(expanded) = graph.expand_import_path(module, path) else {
+        return Some(ConstructorTargetFact::Unresolved);
+    };
+    let source = [
+        DeclarationKind::Struct,
+        DeclarationKind::Enum,
+        DeclarationKind::Trait,
+        DeclarationKind::Function,
+        DeclarationKind::Const,
+        DeclarationKind::State,
+    ]
+    .into_iter()
+    .find_map(|kind| graph.resolve_visible_declaration_path(module, &expanded, kind))
+    .or_else(|| {
+        let (_, owner) = expanded.split_last()?;
+        graph.resolve_visible_declaration_path(module, owner, DeclarationKind::Enum)
+    });
+    let resolution = if let Some(source) = source {
+        if source.module != module && source.visibility != Visibility::Public {
+            return Some(ConstructorTargetFact::Unresolved);
+        }
+        ConstructorResolution::Declaration(source.id)
+    } else {
+        ConstructorResolution::Dynamic(expanded.clone())
+    };
+    Some(constructor_target(
+        graph,
+        schema,
+        &expanded,
+        Some(resolution),
+    ))
+}
 
 pub(super) fn constructor_target(
     graph: &ModuleGraph,
@@ -109,4 +155,42 @@ pub(super) fn source_enum_for_path<'a>(
         .filter(|declaration| {
             declaration.module == module || declaration.visibility == Visibility::Public
         })
+}
+
+pub(super) fn constructor_result_fact(
+    graph: &ModuleGraph,
+    schema: Option<&RegistryFacts>,
+    target: &ConstructorTargetFact,
+) -> Option<TypeFact> {
+    match target {
+        ConstructorTargetFact::Variant {
+            enum_declaration,
+            variant,
+        } => graph.declaration(*enum_declaration).map(|declaration| {
+            if declaration.name == "Option" && variant == "None" {
+                TypeFact::OptionNone
+            } else {
+                let name = graph
+                    .qualified_declaration_name(*enum_declaration)
+                    .unwrap_or_else(|| declaration.name.clone());
+                TypeFact::enum_type(name, Some(variant.as_str()))
+            }
+        }),
+        ConstructorTargetFact::RegistryVariant { owner, variant } => schema
+            .and_then(|schema| schema.variant_for_owner_or_unique_short_name(owner, variant))
+            .map(|target| target.fact),
+        ConstructorTargetFact::RegistryType { path } => {
+            schema.and_then(|schema| schema.type_fact(path)).cloned()
+        }
+        ConstructorTargetFact::Declaration(id) => {
+            let declaration = graph.declaration(*id)?;
+            let name = graph.qualified_declaration_name(*id)?;
+            match declaration.kind {
+                DeclarationKind::Struct => Some(TypeFact::record(name)),
+                DeclarationKind::Enum => Some(TypeFact::enum_type(name, None::<String>)),
+                _ => None,
+            }
+        }
+        ConstructorTargetFact::Dynamic | ConstructorTargetFact::Unresolved => None,
+    }
 }

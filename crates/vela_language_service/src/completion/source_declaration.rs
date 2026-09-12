@@ -84,7 +84,8 @@ fn source_declaration_completion_items(
         &current_module,
     ) {
         if accepts_kind(item.kind) && label_segment_matches(&item.label, prefix) {
-            let completion = if matches!(
+            let shadowed = local_names.contains(item.label.as_str());
+            let mut completion = if matches!(
                 item.kind,
                 AnalysisCompletionKind::Type | AnalysisCompletionKind::Trait
             ) {
@@ -102,6 +103,14 @@ fn source_declaration_completion_items(
             } else {
                 service_item_from_analysis_completion(item, prefix)
             };
+            if shadowed {
+                completion.metadata.lookup = Some(symbol.clone());
+                completion.metadata.filter_text = Some(symbol.clone());
+                completion.insert_text = Some(
+                    super::analysis_item::callable_insert_text(completion.kind, &symbol)
+                        .unwrap_or_else(|| symbol.clone()),
+                );
+            }
             accumulator.add(completion.with_symbol(source_symbol(symbol)));
         }
     }

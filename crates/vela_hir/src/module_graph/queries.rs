@@ -561,6 +561,27 @@ impl ModuleGraph {
             .map(|module| module.imports.as_slice())
     }
 
+    /// Expand a single import binding without guessing among duplicate aliases.
+    /// Callers that query an expression must first honor its local binding.
+    #[must_use]
+    pub fn expand_import_path(&self, module: ModuleId, path: &[String]) -> Option<Vec<String>> {
+        let first = path.first()?;
+        if self.module(module)?.get(first).is_some() {
+            return Some(path.to_vec());
+        }
+        let mut imports = self
+            .imports(module)?
+            .iter()
+            .filter(|import| import.alias.as_ref().or_else(|| import.path.last()) == Some(first));
+        let Some(import) = imports.next() else {
+            return Some(path.to_vec());
+        };
+        if imports.next().is_some() {
+            return None;
+        }
+        Some(import.path.iter().chain(&path[1..]).cloned().collect())
+    }
+
     pub fn dependent_modules(
         &self,
         roots: impl IntoIterator<Item = ModuleId>,

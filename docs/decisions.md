@@ -4377,3 +4377,20 @@ well as candidate metadata and parseability.
 Shared analysis carries an already resolved registry record constructor's
 exact registered result type into local/member facts. It does not infer a type
 from a global short-name match or replace a source constructor's ownership.
+
+## Imported Completion References Retain Their Selected Owner
+
+Expression and namespace-member completion expand a visible import once and
+retain its authored spelling separately from canonical source/schema/stdlib
+identity. Local bindings and current-module declarations own conflicting names;
+duplicate aliases provide no target, including repeated identical imports.
+Private source declarations cannot fall through to colliding registry metadata.
+Canonical standard-library functions keep precedence over registry collisions;
+reserved Service imports still require their lexical capability.
+
+HIR binding refresh preserves ambiguous imports as unresolved instead of
+selecting one declaration. Tooling definition queries and shared constructor
+analysis consume the same single-import expansion. An imported record carries
+the exact resolved source or registered result fact into receiver queries.
+Applied edits must preserve definition and member ownership through overlay
+changes and recovery. This is static analysis and does not execute host code.

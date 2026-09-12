@@ -95,6 +95,17 @@
             "origin": "schema",
             "target": null,
             "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "TargetToken",
+            "symbol": "api::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "memberDetail": "i64",
+            "lookup": "TargetToken",
+            "description": "api::TargetToken"
           }
         ],
         "receiver": true

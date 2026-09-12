@@ -70,7 +70,10 @@ fn expression_ownership_matrix_projects_applied_type_identity_and_receiver_membe
             for expected in expected.iter().filter(|i| i["kind"] == "Type") {
                 let item = items
                     .iter()
-                    .find(|i| i["filterText"] == expected["symbol"])
+                    .find(|i| {
+                        i["label"] == expected["label"]
+                            && i["textEdit"]["newText"] == expected["insert"]
+                    })
                     .expect("owned type");
                 let insertion = string(expected, "insert");
                 assert_eq!(
@@ -79,11 +82,14 @@ fn expression_ownership_matrix_projects_applied_type_identity_and_receiver_membe
                 );
                 assert_eq!(
                     item["labelDetails"]["description"],
-                    json!(
-                        string(expected, "symbol")
-                            .rsplit_once("::")
-                            .map(|(owner, _)| owner)
-                    )
+                    expected
+                        .get("description")
+                        .cloned()
+                        .unwrap_or_else(|| json!(
+                            string(expected, "symbol")
+                                .rsplit_once("::")
+                                .map(|(owner, _)| owner)
+                        ))
                 );
                 let resolved = response_value(request::<r::ResolveCompletionItem>(
                     &mut server,

@@ -27,6 +27,7 @@ pub(super) fn expression_completion_items(
 ) -> Vec<CompletionItem> {
     let facts = databases.graph_analysis_facts();
     let mut items = local_completion_items(databases, query, context);
+    items.extend(super::imports::ImportScope::new(databases, query).completion_items(context));
     items.extend(builtin_value_completion_items(context.prefix()));
     items.extend(schema_type_completion_items(
         schema,
@@ -36,7 +37,8 @@ pub(super) fn expression_completion_items(
         context.prefix(),
     ));
     items.extend(schema_function_completion_items(
-        schema,
+        databases,
+        query,
         context.replace_range(),
         context.prefix(),
     ));

@@ -2,45 +2,49 @@ use vela_analysis::{
     completion::{
         CompletionItem as AnalysisCompletionItem, declaration_completion, global_completions,
     },
-    facts::AnalysisFacts,
     registry::RegistryFacts,
     type_fact::TypeFact,
 };
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph, Visibility};
-use vela_package::{ModuleKey, ModulePath};
 
 use super::{
     CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
-    analysis_item::{callable_insert_text, completion_insert_format},
     dedupe_and_filter_service_items, display_qualified_detail, display_type_detail_parts,
-    label_segment_matches,
-    relevance::completion_sort_text,
+    label_segment_matches, relevance::completion_sort_text,
 };
 use crate::symbol_ref::{schema_variant_symbol, source_enum_variant_symbol};
 
 pub(super) fn module_path_completion_items(
-    graph: &ModuleGraph,
-    facts: &AnalysisFacts,
-    schema: &RegistryFacts,
-    current_module: &ModuleKey,
+    databases: &crate::LanguageServiceDatabases,
+    query: &crate::QueryContext<'_>,
     context: &CompletionContext,
 ) -> Vec<CompletionItem> {
-    let Some(base) = context.module_base() else {
+    let Some(current_module) = query.module_key() else {
         return Vec::new();
     };
+    let scope = super::imports::ImportScope::new(databases, query);
+    let Some(base) = context.module_base().and_then(|base| scope.expand(base)) else {
+        return Vec::new();
+    };
+    let graph = databases.hir_db().graph();
+    let schema = databases.schema_db().facts();
+    let facts = databases.graph_analysis_facts();
     let mut analysis_items = global_completions(schema);
     let mut service_items = Vec::new();
-    let base_path = ModulePath::from_qualified(base);
-    let base_key = graph
-        .resolve_module_path(current_module, base_path.segments())
-        .unwrap_or_else(|| ModuleKey::new(current_module.package.clone(), base_path));
+    let segments = base.split("::").map(str::to_owned).collect::<Vec<_>>();
+    let Some(base_key) = graph.resolve_module_path(current_module, &segments) else {
+        return Vec::new();
+    };
     if let Some(module) = graph.module_id(&base_key) {
-        analysis_items.extend(
-            graph
-                .declarations_in_module(module)
-                .into_iter()
-                .filter_map(|declaration| declaration_completion(graph, facts, declaration)),
-        );
+        analysis_items.extend(graph.declarations_in_module(module).into_iter().filter_map(
+            |declaration| {
+                let mut item = declaration_completion(graph, facts, declaration)?;
+                // Keep the spelling that addresses the selected package, including
+                // crate/dependency aliases, separate from its canonical symbol.
+                item.label = format!("{base}::{}", declaration.name);
+                Some(item)
+            },
+        ));
     }
     analysis_items.extend(
         graph
@@ -53,18 +57,13 @@ pub(super) fn module_path_completion_items(
             }),
     );
     let current_id = graph.module_id(current_module);
-    let source_enum = current_id
-        .and_then(|module| {
-            graph.resolve_visible_declaration_path(
-                module,
-                &base.split("::").map(str::to_owned).collect::<Vec<_>>(),
-                DeclarationKind::Enum,
-            )
-        })
-        .filter(|declaration| {
-            Some(declaration.module) == current_id || declaration.visibility == Visibility::Public
-        });
+    let source_enum = current_id.and_then(|module| {
+        graph.resolve_visible_declaration_path(module, &segments, DeclarationKind::Enum)
+    });
     if let Some(declaration) = source_enum {
+        if Some(declaration.module) != current_id && declaration.visibility != Visibility::Public {
+            return Vec::new();
+        }
         service_items.extend(script_enum_variant_path_completions(
             graph,
             declaration,
@@ -73,13 +72,24 @@ pub(super) fn module_path_completion_items(
     } else {
         service_items.extend(schema_enum_variant_path_completions(
             schema,
-            base,
+            &base,
             context.prefix(),
         ));
     }
-    for item in analysis_items {
-        if let Some(service_item) = service_item_for_module_path(item, base, context.prefix()) {
-            service_items.push(service_item);
+    let namespace = format!("{base}::");
+    let paths = analysis_items
+        .iter()
+        .filter_map(|item| {
+            let suffix = item.label.strip_prefix(&namespace)?;
+            let label = suffix.split("::").next()?;
+            label.starts_with(context.prefix()).then_some(label)
+        })
+        .collect::<std::collections::BTreeSet<_>>();
+    for label in paths {
+        if let Some(item) =
+            scope.item_for_path(&format!("{base}::{label}"), label, context.prefix())
+        {
+            service_items.push(item);
         }
     }
     dedupe_and_filter_service_items(
@@ -87,44 +97,6 @@ pub(super) fn module_path_completion_items(
         context.replace_range(),
         context.prefix(),
         |item| label_segment_matches(item.label(), context.prefix()),
-    )
-}
-
-fn service_item_for_module_path(
-    item: AnalysisCompletionItem,
-    base: &str,
-    prefix: &str,
-) -> Option<CompletionItem> {
-    let suffix = item
-        .label
-        .strip_prefix(base)
-        .and_then(|suffix| suffix.strip_prefix("::"))?;
-    if !suffix.starts_with(prefix) {
-        return None;
-    }
-    let label = suffix
-        .split_once("::")
-        .map_or(suffix, |(segment, _)| segment)
-        .to_owned();
-    let kind = if suffix.contains("::") {
-        CompletionKind::Module
-    } else {
-        item.kind.into()
-    };
-    let insert_text = callable_insert_text(kind, &label);
-    let insert_format = completion_insert_format(insert_text.as_ref());
-    let detail_parts = display_type_detail_parts(item.fact.display_name());
-    Some(
-        CompletionItem {
-            sort_text: Some(completion_sort_text(kind, &label, prefix)),
-            metadata: Default::default(),
-            label,
-            kind,
-            detail: detail_parts.render(),
-            insert_text,
-            insert_format,
-        }
-        .with_detail_parts(detail_parts),
     )
 }
 

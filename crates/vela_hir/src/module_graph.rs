@@ -20,7 +20,7 @@ pub use model::{
     Declaration, DeclarationIndex, DeclarationKind, Import, ImportResolution, ModuleSource,
     ResolvedImport, Visibility,
 };
-use names::{closest_name, import_binding_name};
+use names::closest_name;
 
 use self::body_binding::{FunctionBodySource, SchemaFieldDefaultBodySource};
 use crate::attributes::HirAttribute;
@@ -590,13 +590,13 @@ impl ModuleGraph {
             .modules
             .iter()
             .map(|module| {
-                let imports = module
-                    .imports
-                    .iter()
-                    .filter_map(|import| {
-                        let name = import_binding_name(import)?;
-                        let ImportResolution::Declaration(declaration) = import.resolution?;
-                        Some((name, declaration))
+                let imports = self
+                    .import_bindings(module)
+                    .into_iter()
+                    .filter_map(|binding| {
+                        binding
+                            .declaration
+                            .map(|declaration| (binding.name, declaration))
                     })
                     .collect::<BTreeMap<_, _>>();
                 (module.id, imports)

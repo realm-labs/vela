@@ -1,6 +1,7 @@
 mod constructor_resolution;
 use constructor_resolution::{
-    constructor_target, source_enum_for_path, unit_variant_constructor_target,
+    constructor_result_fact, constructor_target, imported_constructor_target, source_enum_for_path,
+    unit_variant_constructor_target,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -307,7 +308,9 @@ impl HirSemanticFacts {
         match &expression.kind {
             HirExprKind::Literal(literal) => literal_fact(literal),
             HirExprKind::Path(_) => self
-                .constructor_result_fact(graph, schema, id)
+                .constructors
+                .get(&id)
+                .and_then(|target| constructor_result_fact(graph, schema, target))
                 .or_else(|| match base.resolution(id) {
                     Some(BindingResolution::Local(local)) => self
                         .local_use_types
@@ -326,7 +329,11 @@ impl HirSemanticFacts {
                         self.fact(expression)
                     })
                 })
-                .or_else(|| self.constructor_result_fact(graph, schema, id))
+                .or_else(|| {
+                    self.constructors
+                        .get(&id)
+                        .and_then(|target| constructor_result_fact(graph, schema, target))
+                })
                 .or_else(|| base.base_expression(id).cloned())
                 .unwrap_or(TypeFact::Unknown),
             HirExprKind::Paren { expression } => {
@@ -669,10 +676,21 @@ impl HirSemanticFacts {
                 let resolution = graph
                     .bindings_for_body(body.id)
                     .and_then(|bindings| bindings.constructor_resolution(id));
-                let target = expression_path(body, id, HirPathKind::Constructor)
-                    .map_or(ConstructorTargetFact::Unresolved, |path| {
-                        constructor_target(graph, schema, path, resolution)
-                    });
+                let target = expression_path(body, id, HirPathKind::Constructor).map_or(
+                    ConstructorTargetFact::Unresolved,
+                    |path| {
+                        imported_constructor_target(
+                            graph,
+                            schema,
+                            body,
+                            path,
+                            graph
+                                .bindings_for_body(body.id)
+                                .and_then(|bindings| bindings.resolution(id)),
+                        )
+                        .unwrap_or_else(|| constructor_target(graph, schema, path, resolution))
+                    },
+                );
                 match &target {
                     ConstructorTargetFact::Declaration(declaration) => {
                         self.script_types
@@ -704,38 +722,6 @@ impl HirSemanticFacts {
                 self.control_flow.insert(id, fallthrough_flow());
             }
             _ => {}
-        }
-    }
-
-    fn constructor_result_fact(
-        &self,
-        graph: &ModuleGraph,
-        schema: Option<&RegistryFacts>,
-        expression: HirExprId,
-    ) -> Option<TypeFact> {
-        match self.constructors.get(&expression)? {
-            ConstructorTargetFact::Variant {
-                enum_declaration,
-                variant,
-            } => graph.declaration(*enum_declaration).map(|declaration| {
-                if declaration.name == "Option" && variant == "None" {
-                    TypeFact::OptionNone
-                } else {
-                    let name = graph
-                        .qualified_declaration_name(*enum_declaration)
-                        .unwrap_or_else(|| declaration.name.clone());
-                    TypeFact::enum_type(name, Some(variant.as_str()))
-                }
-            }),
-            ConstructorTargetFact::RegistryVariant { owner, variant } => schema
-                .and_then(|schema| schema.variant_for_owner_or_unique_short_name(owner, variant))
-                .map(|target| target.fact),
-            ConstructorTargetFact::RegistryType { path } => {
-                schema.and_then(|schema| schema.type_fact(path)).cloned()
-            }
-            ConstructorTargetFact::Declaration(_)
-            | ConstructorTargetFact::Dynamic
-            | ConstructorTargetFact::Unresolved => None,
         }
     }
 

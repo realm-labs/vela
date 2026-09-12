@@ -92,7 +92,10 @@
         ],
         "apply": "value",
         "value": "1",
-        "expressions": "set0"
+        "expressions": "set0",
+        "expressionAliases": [
+          "some"
+        ]
       },
       {
         "id": "math",
@@ -371,7 +374,10 @@
         ],
         "apply": "value",
         "value": "1",
-        "expressions": "set0"
+        "expressions": "set0",
+        "expressionAliases": [
+          "wrap"
+        ]
       },
       {
         "id": "module_alias",
@@ -385,7 +391,10 @@
         ],
         "apply": "value",
         "value": "1",
-        "expressions": "set0"
+        "expressions": "set0",
+        "expressionAliases": [
+          "opt"
+        ]
       },
       {
         "id": "group_import",
