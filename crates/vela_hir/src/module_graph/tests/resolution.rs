@@ -1,6 +1,71 @@
 use super::*;
 
 #[test]
+fn qualified_bindings_keep_package_identity_across_source_insertion_order() {
+    let app = PackageId::new("com.example.app").expect("app package");
+    let hidden = PackageId::new("com.example.hidden").expect("hidden package");
+    for order in [
+        [0, 1, 2],
+        [0, 2, 1],
+        [1, 0, 2],
+        [1, 2, 0],
+        [2, 0, 1],
+        [2, 1, 0],
+    ] {
+        let mut graph = ModuleGraph::new();
+        let mut caller = None;
+        let mut api = None;
+        for index in order {
+            match index {
+                0 => {
+                    graph.add_source(package_source(
+                        1,
+                        &hidden,
+                        "api",
+                        "pub fn produce() -> bool { true }",
+                    ));
+                }
+                1 => {
+                    caller = Some(graph.add_source(package_source(
+                        2,
+                        &app,
+                        "main",
+                        "fn run() { api::produce(); }",
+                    )));
+                }
+                2 => {
+                    api = Some(graph.add_source(package_source(
+                        3,
+                        &app,
+                        "api",
+                        "pub fn produce() -> i64 { 1 }",
+                    )));
+                }
+                _ => unreachable!(),
+            }
+        }
+        graph.resolve_imports();
+        let run = graph
+            .module(caller.expect("caller module"))
+            .expect("caller declarations")
+            .get("run")
+            .expect("run");
+        let expected = graph
+            .module(api.expect("api module"))
+            .expect("api declarations")
+            .get("produce")
+            .expect("produce");
+        let bindings = graph.bindings(run).expect("run bindings");
+        assert!(
+            bindings
+                .resolutions()
+                .any(|(_, resolution)| resolution == &BindingResolution::Declaration(expected)),
+            "{order:?}"
+        );
+    }
+}
+
+#[test]
 fn crate_import_resolves_within_current_package() {
     let package = PackageId::new("com.example.app").expect("package");
     let mut graph = ModuleGraph::new();

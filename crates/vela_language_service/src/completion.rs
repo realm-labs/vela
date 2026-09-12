@@ -250,7 +250,7 @@ impl LanguageServiceDatabases {
             self.hir_db().graph(),
             self.schema_db().facts(),
             &receiver_fact,
-            query.source_type_for_range(self, receiver.range),
+            query.source_origins_for_range(self, receiver.range),
             context.replace_range(),
             context.prefix(),
         );

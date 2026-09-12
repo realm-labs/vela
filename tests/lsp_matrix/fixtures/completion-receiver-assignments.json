@@ -1,0 +1,1124 @@
+{
+  "version": 1,
+  "id": "completion-receiver-assignments",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.type_aliases\"\nname = \"type_aliases\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n[dependencies]\nexternal = { path = \"deps/external\" }\n",
+    "deps/external/vela.toml": "[package]\nid = \"dev.vela.external\"\nname = \"external\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[dependencies]\nhidden = { path = \"../hidden\" }\n",
+    "deps/hidden/vela.toml": "[package]\nid = \"dev.vela.hidden\"\nname = \"hidden\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"api::Token\",\"fact\":{\"kind\":\"record\",\"name\":\"api::Token\"}}],\"fields\":[{\"owner\":\"api::Token\",\"name\":\"own_schema\",\"fact\":{\"kind\":\"primitive\",\"name\":\"String\"},\"docs\":\"Wrong schema owner 中😀.\"}]}}",
+    "scripts/api.vela": "/* 中😀 */\npub struct Token { [[field:start]]own_root[[field:end]]: i64, [[shared:start]]own_shared[[shared:end]]: i64 }\nimpl Token { fn [[call:start]]own_root_call[[call:end]](self, zz_root: i64) -> i64 { zz_root } }\npub fn produce() -> Token { Token { own_root: 1, own_shared: 1 } }\npub fn erase() -> Any { null }\nimpl Token { fn next(self) -> Token { produce() } }\n",
+    "deps/external/scripts/api.vela": "/* 中😀 */\npub struct Token { [[field:start]]own_dep[[field:end]]: bool, [[shared:start]]own_shared[[shared:end]]: bool }\nimpl Token { fn [[call:start]]own_dep_call[[call:end]](self, zz_dep: bool) -> bool { zz_dep } }\npub fn produce() -> Token { Token { own_dep: true, own_shared: true } }\npub fn erase() -> Any { null }\nimpl Token { fn next(self) -> Token { produce() } }\n",
+    "deps/hidden/scripts/api.vela": "/* 中😀 */\npub struct Token { [[field:start]]own_hidden[[field:end]]: String, [[shared:start]]own_shared[[shared:end]]: String }\nimpl Token { fn [[call:start]]own_hidden_call[[call:end]](self, zz_hidden: String) -> String { zz_hidden } }\npub fn produce() -> Token { Token { own_hidden: \"hidden\", own_shared: \"hidden\" } }\npub fn erase() -> Any { null }\nimpl Token { fn next(self) -> Token { produce() } }\n",
+    "scripts/root_to_dep.vela": "/* 中😀 */ fn run(flag: bool) { let selected = api::produce(); selected = external::api::produce(); selected.[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/dep_to_root.vela": "/* 中😀 */ fn run(flag: bool) { let selected = external::api::produce(); selected = api::produce(); selected.[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/before_assignment.vela": "/* 中😀 */ fn run(flag: bool) { let selected = api::produce(); selected.[[replace:start]]own_[[cursor]][[replace:end]]; selected = external::api::produce(); }\n",
+    "scripts/prior_alias.vela": "/* 中😀 */ fn run(flag: bool) { let selected = api::produce(); let prior = selected; selected = external::api::produce(); prior.[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/same_assignment.vela": "/* 中😀 */ fn run(flag: bool) { let selected = api::produce(); selected = api::produce(); selected.[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/assignment_value.vela": "/* 中😀 */ fn run(flag: bool) { let selected = api::produce(); (selected = external::api::produce()).[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/if_expression.vela": "/* 中😀 */ fn run(flag: bool) { (if flag { api::produce() } else { external::api::produce() }).[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/if_reversed.vela": "/* 中😀 */ fn run(flag: bool) { (if flag { external::api::produce() } else { api::produce() }).[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/let_if.vela": "/* 中😀 */ fn run(flag: bool) { let selected = if flag { api::produce() } else { external::api::produce() }; selected.[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/branch_assignment.vela": "/* 中😀 */ fn run(flag: bool) { let selected = api::produce(); if flag { selected = external::api::produce(); } selected.[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/both_branches_dep.vela": "/* 中😀 */ fn run(flag: bool) { let selected = api::produce(); if flag { selected = external::api::produce(); } else { selected = external::api::produce(); } selected.[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/after_branch_overwrite.vela": "/* 中😀 */ fn run(flag: bool) { let selected = api::produce(); if flag { selected = external::api::produce(); } selected = api::produce(); selected.[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/match_expression.vela": "/* 中😀 */ fn run(flag: bool) { (match flag { true => api::produce(), _ => external::api::produce() }).[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/loop_assignment.vela": "/* 中😀 */ fn run(flag: bool) { let selected = api::produce(); for n in [1] { selected = external::api::produce(); } selected.[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/erased_assignment.vela": "/* 中😀 */ fn run(flag: bool) { let selected = api::produce(); selected = api::erase(); selected.[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/scalar_assignment.vela": "/* 中😀 */ fn run(flag: bool) { let selected = api::produce(); selected = 1; selected.[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/branch_erased.vela": "/* 中😀 */ fn run(flag: bool) { let selected = api::produce(); if flag { selected = api::erase(); } selected.[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/assigned_method_chain.vela": "/* 中😀 */ fn run(flag: bool) { let selected = api::produce(); selected = external::api::produce(); selected.next().[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/mixed_method_chain.vela": "/* 中😀 */ fn run(flag: bool) { (if flag { api::produce() } else { external::api::produce() }).next().[[replace:start]]own_[[cursor]][[replace:end]]; }\n",
+    "scripts/mixed_method_chain_reversed.vela": "/* 中😀 */ fn run(flag: bool) { (if flag { external::api::produce() } else { api::produce() }).next().[[replace:start]]own_[[cursor]][[replace:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "root_to_dep",
+        "file": "scripts/root_to_dep.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_dep",
+            "insert": "own_dep",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_dep_call",
+            "insert": "own_dep_call($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep_call",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_dep_call(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "dep_to_root",
+        "file": "scripts/dep_to_root.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_root",
+            "insert": "own_root",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root",
+            "target": "scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_root_call",
+            "insert": "own_root_call($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root_call",
+            "target": "scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_root_call(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": "scripts/api.vela",
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "before_assignment",
+        "file": "scripts/before_assignment.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_root",
+            "insert": "own_root",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root",
+            "target": "scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_root_call",
+            "insert": "own_root_call($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root_call",
+            "target": "scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_root_call(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": "scripts/api.vela",
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "prior_alias",
+        "file": "scripts/prior_alias.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_root",
+            "insert": "own_root",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root",
+            "target": "scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_root_call",
+            "insert": "own_root_call($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root_call",
+            "target": "scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_root_call(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": "scripts/api.vela",
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "same_assignment",
+        "file": "scripts/same_assignment.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_root",
+            "insert": "own_root",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root",
+            "target": "scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_root_call",
+            "insert": "own_root_call($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root_call",
+            "target": "scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_root_call(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": "scripts/api.vela",
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "assignment_value",
+        "file": "scripts/assignment_value.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_dep",
+            "insert": "own_dep",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_dep_call",
+            "insert": "own_dep_call($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep_call",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_dep_call(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "if_expression",
+        "file": "scripts/if_expression.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_root",
+            "insert": "own_root",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root",
+            "target": "scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_root_call",
+            "insert": "own_root_call($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root_call",
+            "target": "scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_root_call(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          },
+          {
+            "label": "own_dep",
+            "insert": "own_dep",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_dep_call",
+            "insert": "own_dep_call($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep_call",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_dep_call(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "bool | i64",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": null,
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "if_reversed",
+        "file": "scripts/if_reversed.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_root",
+            "insert": "own_root",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root",
+            "target": "scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_root_call",
+            "insert": "own_root_call($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root_call",
+            "target": "scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_root_call(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          },
+          {
+            "label": "own_dep",
+            "insert": "own_dep",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_dep_call",
+            "insert": "own_dep_call($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep_call",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_dep_call(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "bool | i64",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": null,
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "let_if",
+        "file": "scripts/let_if.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_root",
+            "insert": "own_root",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root",
+            "target": "scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_root_call",
+            "insert": "own_root_call($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root_call",
+            "target": "scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_root_call(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          },
+          {
+            "label": "own_dep",
+            "insert": "own_dep",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_dep_call",
+            "insert": "own_dep_call($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep_call",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_dep_call(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "bool | i64",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": null,
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "branch_assignment",
+        "file": "scripts/branch_assignment.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_root",
+            "insert": "own_root",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root",
+            "target": "scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_root_call",
+            "insert": "own_root_call($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root_call",
+            "target": "scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_root_call(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          },
+          {
+            "label": "own_dep",
+            "insert": "own_dep",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_dep_call",
+            "insert": "own_dep_call($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep_call",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_dep_call(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "bool | i64",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": null,
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "both_branches_dep",
+        "file": "scripts/both_branches_dep.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_dep",
+            "insert": "own_dep",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_dep_call",
+            "insert": "own_dep_call($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep_call",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_dep_call(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "after_branch_overwrite",
+        "file": "scripts/after_branch_overwrite.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_root",
+            "insert": "own_root",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root",
+            "target": "scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_root_call",
+            "insert": "own_root_call($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root_call",
+            "target": "scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_root_call(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": "scripts/api.vela",
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "match_expression",
+        "file": "scripts/match_expression.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_root",
+            "insert": "own_root",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root",
+            "target": "scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_root_call",
+            "insert": "own_root_call($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root_call",
+            "target": "scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_root_call(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          },
+          {
+            "label": "own_dep",
+            "insert": "own_dep",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_dep_call",
+            "insert": "own_dep_call($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep_call",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_dep_call(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "bool | i64",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": null,
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "loop_assignment",
+        "file": "scripts/loop_assignment.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_root",
+            "insert": "own_root",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root",
+            "target": "scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_root_call",
+            "insert": "own_root_call($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root_call",
+            "target": "scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_root_call(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          },
+          {
+            "label": "own_dep",
+            "insert": "own_dep",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_dep_call",
+            "insert": "own_dep_call($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep_call",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_dep_call(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "bool | i64",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": null,
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "erased_assignment",
+        "file": "scripts/erased_assignment.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "scalar_assignment",
+        "file": "scripts/scalar_assignment.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "branch_erased",
+        "file": "scripts/branch_erased.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "assigned_method_chain",
+        "file": "scripts/assigned_method_chain.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_dep",
+            "insert": "own_dep",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_dep_call",
+            "insert": "own_dep_call($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep_call",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_dep_call(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "mixed_method_chain",
+        "file": "scripts/mixed_method_chain.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_root",
+            "insert": "own_root",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root",
+            "target": "scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_root_call",
+            "insert": "own_root_call($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root_call",
+            "target": "scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_root_call(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          },
+          {
+            "label": "own_dep",
+            "insert": "own_dep",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_dep_call",
+            "insert": "own_dep_call($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep_call",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_dep_call(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "bool | i64",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": null,
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      },
+      {
+        "id": "mixed_method_chain_reversed",
+        "file": "scripts/mixed_method_chain_reversed.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "own_root",
+            "insert": "own_root",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root",
+            "target": "scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_root_call",
+            "insert": "own_root_call($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_root_call",
+            "target": "scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_root_call(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:"
+          },
+          {
+            "label": "own_dep",
+            "insert": "own_dep",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "field",
+            "docs": null
+          },
+          {
+            "label": "own_dep_call",
+            "insert": "own_dep_call($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_dep_call",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "call",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_dep_call(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:"
+          },
+          {
+            "label": "own_shared",
+            "insert": "own_shared",
+            "kind": "Field",
+            "detail": "bool | i64",
+            "origin": "source",
+            "symbol": "api::Token.own_shared",
+            "target": null,
+            "marker": "shared",
+            "docs": null
+          }
+        ],
+        "receiver": "api::Token"
+      }
+    ]
+  }
+}

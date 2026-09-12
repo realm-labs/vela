@@ -686,9 +686,16 @@ these flows, exact receiver facts and complete candidate sets under Unicode
 LF/CRLF. Member context uses the syntax receiver before lexical recovery, so
 semicolons and braces inside a receiver no longer truncate its range.
 
+Local assignment flow now carries possible source declarations alongside type
+facts. Twenty shared cases cover reassignment, retained aliases, branch/match/loop
+joins and chained method results across same-name package types. Completion merges
+shared field types deterministically; ambiguous fields have no arbitrary definition.
+Unprefixed HIR paths stay in the requesting package regardless of source insertion
+order, and a for-loop keeps a following expression statement outside its body.
+
 The [completion coverage review](lsp-completion-coverage-review.md) indexes S5
-proof and the remaining acceptance work. Resume B03.27 with mixed-package branch
-identities and receiver reassignment, then the remaining
+proof and the remaining acceptance work. Resume B03.28 with the async restriction
+and remaining S5 review, then the remaining
 semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

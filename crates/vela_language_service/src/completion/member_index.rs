@@ -39,7 +39,7 @@ impl MemberCompletionIndex {
         graph: &ModuleGraph,
         schema: &RegistryFacts,
         receiver: &TypeFact,
-        source_owner: Option<vela_hir::ids::HirDeclId>,
+        source_origins: Option<&vela_analysis::semantic_facts::ScriptTypeOrigins>,
         replace_range: TextRange,
         prefix: &str,
     ) -> Self {
@@ -48,7 +48,7 @@ impl MemberCompletionIndex {
             replace_range,
             prefix: prefix.to_owned(),
         };
-        index.extend_source(graph, schema, receiver, source_owner);
+        index.extend_source(graph, schema, receiver, source_origins);
         index.extend_schema(graph, schema, receiver);
         index.extend_builtin(receiver);
         index
@@ -69,11 +69,40 @@ impl MemberCompletionIndex {
         graph: &ModuleGraph,
         schema: &RegistryFacts,
         receiver: &TypeFact,
-        source_owner: Option<vela_hir::ids::HirDeclId>,
+        source_origins: Option<&vela_analysis::semantic_facts::ScriptTypeOrigins>,
     ) {
-        for (item, symbol) in
-            source_member_completion_candidates(graph, schema, receiver, source_owner)
-        {
+        let candidates = match source_origins.filter(|origins| !origins.possible().is_empty()) {
+            Some(origins) => origins
+                .possible()
+                .iter()
+                .flat_map(|owner| {
+                    source_member_completion_candidates(
+                        graph,
+                        schema,
+                        receiver,
+                        Some(owner.declaration),
+                    )
+                })
+                .collect(),
+            None => source_member_completion_candidates(graph, schema, receiver, None),
+        };
+        let mut merged: Vec<(AnalysisCompletionItem, CompletionSymbol)> = Vec::new();
+        for (item, symbol) in candidates {
+            if let Some((prior, _)) = merged.iter_mut().find(|(prior, prior_symbol)| {
+                prior.label == item.label && prior.kind == item.kind && *prior_symbol == symbol
+            }) {
+                let mut facts = match &prior.fact {
+                    TypeFact::Union(facts) => facts.clone(),
+                    fact => vec![fact.clone()],
+                };
+                facts.push(item.fact);
+                facts.sort_by_key(TypeFact::display_name);
+                prior.fact = TypeFact::union(facts);
+            } else {
+                merged.push((item, symbol));
+            }
+        }
+        for (item, symbol) in merged {
             self.push_analysis(item, MemberCompletionSurface::Source, Some(symbol), None);
         }
     }

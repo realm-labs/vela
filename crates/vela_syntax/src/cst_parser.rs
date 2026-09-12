@@ -397,7 +397,11 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             if depth.is_root() && current == SyntaxKind::LBrace {
                 let body_end = self.find_matching_brace_end(cursor).min(end);
                 let next = self.skip_trivia(body_end);
-                if next >= end || self.at_explicit_statement_start(next) {
+                if next >= end
+                    || self.at_explicit_statement_start(next)
+                    || (!self.at_kind(next, SyntaxKind::LBrace)
+                        && !self.at_statement_continuation(next))
+                {
                     return Some(cursor);
                 }
             }

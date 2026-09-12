@@ -13,6 +13,21 @@ pub(super) fn source_member_definition_for_target(
     databases: &LanguageServiceDatabases,
     target: &SymbolTarget,
 ) -> Option<Definition> {
+    let mut definitions = Vec::new();
+    for candidate in target.possible_member_targets() {
+        if let Some(definition) = source_member_definition_for_owner(databases, &candidate)
+            && !definitions.contains(&definition)
+        {
+            definitions.push(definition);
+        }
+    }
+    (definitions.len() == 1).then(|| definitions.remove(0))
+}
+
+fn source_member_definition_for_owner(
+    databases: &LanguageServiceDatabases,
+    target: &SymbolTarget,
+) -> Option<Definition> {
     let receiver = target.member_receiver_fact()?;
     let graph = databases.hir_db().graph();
     source_field_definition_for_target(databases, graph, target, receiver)
@@ -24,6 +39,19 @@ pub(super) fn source_member_definition_for_target(
 }
 
 pub(super) fn source_field_type_fact_for_target(
+    databases: &LanguageServiceDatabases,
+    target: &SymbolTarget,
+) -> Option<TypeFact> {
+    let mut facts = target
+        .possible_member_targets()
+        .iter()
+        .filter_map(|target| source_field_type_fact_for_owner(databases, target))
+        .collect::<Vec<_>>();
+    facts.sort_by_key(TypeFact::display_name);
+    (!facts.is_empty()).then(|| TypeFact::union(facts))
+}
+
+fn source_field_type_fact_for_owner(
     databases: &LanguageServiceDatabases,
     target: &SymbolTarget,
 ) -> Option<TypeFact> {

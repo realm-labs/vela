@@ -28,6 +28,7 @@ pub(crate) struct SymbolTarget {
     range: TextRange,
     member_receiver_fact: Option<TypeFact>,
     member_receiver_declaration: Option<vela_hir::ids::HirDeclId>,
+    member_receiver_origins: Option<vela_analysis::semantic_facts::ScriptTypeOrigins>,
     symbol: Option<SymbolRef>,
 }
 
@@ -48,6 +49,9 @@ impl SymbolTarget {
             member_receiver_fact,
             member_receiver_declaration: member_receiver
                 .and_then(|range| query.source_type_for_range(databases, range)),
+            member_receiver_origins: member_receiver
+                .and_then(|range| query.source_origins_for_range(databases, range))
+                .cloned(),
             symbol,
         })
     }
@@ -66,6 +70,26 @@ impl SymbolTarget {
 
     pub(crate) fn member_receiver_declaration(&self) -> Option<vela_hir::ids::HirDeclId> {
         self.member_receiver_declaration
+    }
+
+    pub(crate) fn possible_member_targets(&self) -> Vec<Self> {
+        let Some(origins) = self
+            .member_receiver_origins
+            .as_ref()
+            .filter(|origins| !origins.possible().is_empty())
+        else {
+            return vec![self.clone()];
+        };
+        origins
+            .possible()
+            .iter()
+            .map(|owner| {
+                let mut target = self.clone();
+                target.member_receiver_declaration = Some(owner.declaration);
+                target.member_receiver_origins = None;
+                target
+            })
+            .collect()
     }
 
     pub(crate) fn symbol(&self) -> Option<&SymbolRef> {

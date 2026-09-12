@@ -387,6 +387,16 @@ impl ModuleGraph {
         requesting_module: ModuleId,
         accept: &dyn Fn(HirDeclId) -> bool,
     ) -> Vec<(Vec<String>, HirDeclId)> {
+        // Unprefixed module paths are relative to the requesting package.
+        // A body can be bound before its module is inserted; in that case
+        // leave other modules as qualified paths for later graph resolution.
+        if module.id != requesting_module
+            && self
+                .module_package(requesting_module)
+                .is_none_or(|package| package != &module.key.package)
+        {
+            return Vec::new();
+        }
         module
             .declarations
             .names()

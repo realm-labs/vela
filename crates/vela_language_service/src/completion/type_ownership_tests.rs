@@ -30,6 +30,11 @@ fn returned_receiver_flow_preserves_owned_sets_signatures_and_targets() {
     assert_type_ownership("completion-return-flow");
 }
 
+#[test]
+fn receiver_assignment_flow_preserves_possible_owners_and_rejects_stale_members() {
+    assert_type_ownership("completion-receiver-assignments");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);

@@ -7,6 +7,54 @@ use crate::parse::parse_source;
 use crate::{SyntaxKind, SyntaxTreeBuilder};
 
 #[test]
+fn for_body_keeps_following_expression_statements_outside_the_loop() {
+    for iterable in ["[1]", "items", "{ items }", "Source { count: 1 }.items()"] {
+        for tail in [
+            "selected.own_root;",
+            "selected = next();",
+            "consume(selected);",
+        ] {
+            let source = format!("fn run() {{ for n in {iterable} {{ consume(n); }} {tail} }}");
+            let parse = parse_source(&source);
+            assert!(
+                parse.diagnostics().is_empty(),
+                "{source}: {:?}",
+                parse.diagnostics()
+            );
+            let body = parse
+                .tree()
+                .functions()
+                .next()
+                .expect("run")
+                .body()
+                .expect("body");
+            let statements = body.statements().collect::<Vec<_>>();
+            assert_eq!(statements.len(), 2, "{source}");
+            let loop_statement = statements[0].as_for().expect("for statement");
+            assert_eq!(
+                loop_statement
+                    .iterable()
+                    .expect("iterable")
+                    .syntax()
+                    .text()
+                    .to_string()
+                    .trim(),
+                iterable
+            );
+            assert_eq!(
+                loop_statement
+                    .body()
+                    .expect("loop body")
+                    .statements()
+                    .count(),
+                1
+            );
+            assert_eq!(statements[1].syntax().text().to_string().trim(), tail);
+        }
+    }
+}
+
+#[test]
 fn ast_block_exposes_statement_children() {
     let mut builder = SyntaxTreeBuilder::default();
     builder.start_node(SyntaxKind::SourceFile);

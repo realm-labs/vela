@@ -12,7 +12,26 @@ use crate::facts::AnalysisFacts;
 use crate::registry::RegistryFacts;
 use crate::type_fact::TypeFact;
 
-type LocalEnvironment = BTreeMap<HirLocalId, TypeFact>;
+use super::ScriptTypeOrigins;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct LocalValue {
+    fact: TypeFact,
+    origins: ScriptTypeOrigins,
+}
+
+impl LocalValue {
+    fn new(fact: TypeFact, origins: ScriptTypeOrigins) -> Self {
+        let origins = if matches!(fact, TypeFact::Any | TypeFact::Unknown) {
+            ScriptTypeOrigins::default()
+        } else {
+            origins
+        };
+        Self { fact, origins }
+    }
+}
+
+type LocalEnvironment = BTreeMap<HirLocalId, LocalValue>;
 
 impl HirSemanticFacts {
     pub(super) fn record_local_use_facts(
@@ -22,20 +41,26 @@ impl HirSemanticFacts {
         schema: Option<&RegistryFacts>,
         base: &AnalysisFacts,
     ) {
-        let mut environment = body_local_environment(&self.locals, body, base);
+        let mut environment =
+            body_local_environment(&self.locals, &self.local_script_types, body, base);
         let mut flow = LocalFlow {
             graph,
             body,
             schema,
             base,
             expression_types: &self.types,
+            source_origins: &self.source_origins,
             uses: BTreeMap::new(),
         };
         flow.visit_root(&mut environment);
         for expression in body.expressions.keys() {
             self.local_use_types.remove(expression);
+            self.local_use_origins.remove(expression);
         }
-        self.local_use_types.extend(flow.uses);
+        for (expression, value) in flow.uses {
+            self.local_use_types.insert(expression, value.fact);
+            self.local_use_origins.insert(expression, value.origins);
+        }
     }
 }
 
@@ -45,7 +70,8 @@ struct LocalFlow<'facts> {
     schema: Option<&'facts RegistryFacts>,
     base: &'facts AnalysisFacts,
     expression_types: &'facts BTreeMap<HirExprId, TypeFact>,
-    uses: BTreeMap<HirExprId, TypeFact>,
+    source_origins: &'facts BTreeMap<HirExprId, ScriptTypeOrigins>,
+    uses: BTreeMap<HirExprId, LocalValue>,
 }
 
 impl LocalFlow<'_> {
@@ -78,7 +104,10 @@ impl LocalFlow<'_> {
                         let fact = initializer
                             .map(|initializer| self.fact(initializer, environment))
                             .unwrap_or(TypeFact::Unknown);
-                        self.bind_pattern(*pattern, &fact, environment);
+                        let origins = initializer
+                            .map(|id| self.origins(id, environment))
+                            .unwrap_or_default();
+                        self.bind_pattern(*pattern, &fact, &origins, environment);
                     }
                 }
                 HirStmtKind::Return { value } => {
@@ -105,7 +134,12 @@ impl LocalFlow<'_> {
                         } else {
                             item.clone()
                         };
-                        self.bind_pattern(*pattern, &fact, &mut iteration);
+                        self.bind_pattern(
+                            *pattern,
+                            &fact,
+                            &ScriptTypeOrigins::default(),
+                            &mut iteration,
+                        );
                     }
                     if let Some(body) = body {
                         self.visit_block(*body, &mut iteration);
@@ -134,7 +168,9 @@ impl LocalFlow<'_> {
                 if let Some(BindingResolution::Local(local)) = self.base.resolution(expression) {
                     self.uses.insert(
                         expression,
-                        environment.get(local).cloned().unwrap_or(TypeFact::Unknown),
+                        environment.get(local).cloned().unwrap_or_else(|| {
+                            LocalValue::new(TypeFact::Unknown, ScriptTypeOrigins::default())
+                        }),
                     );
                 }
             }
@@ -176,7 +212,17 @@ impl LocalFlow<'_> {
                         .map_or(inferred.clone(), |declared| {
                             refine_local_fact(declared, inferred)
                         });
-                    set_local(environment, *local, fact);
+                    let origins = self
+                        .base
+                        .base_local_script_type(*local)
+                        .cloned()
+                        .map(ScriptTypeOrigins::known)
+                        .unwrap_or_else(|| {
+                            value
+                                .map(|id| self.origins(id, environment))
+                                .unwrap_or_default()
+                        });
+                    set_local(environment, *local, LocalValue::new(fact, origins));
                 }
             }
             HirExprKind::Field(field) => self.visit_expression(field.receiver, environment),
@@ -249,7 +295,15 @@ impl LocalFlow<'_> {
             };
             let mut branch = entry.clone();
             if let Some(pattern) = arm.pattern {
-                self.bind_pattern(pattern, &scrutinee, &mut branch);
+                self.bind_pattern(
+                    pattern,
+                    &scrutinee,
+                    &value
+                        .scrutinee
+                        .map(|id| self.origins(id, &entry))
+                        .unwrap_or_default(),
+                    &mut branch,
+                );
             }
             self.visit_optional(arm.guard, &mut branch);
             match arm.body {
@@ -278,23 +332,68 @@ impl LocalFlow<'_> {
         &self,
         pattern: vela_hir::ids::HirPatternId,
         fact: &TypeFact,
+        origins: &ScriptTypeOrigins,
         environment: &mut LocalEnvironment,
     ) {
-        for inferred in pattern_local_facts(self.graph, self.schema, self.body, pattern, fact, None)
-        {
+        for inferred in pattern_local_facts(
+            self.graph,
+            self.schema,
+            self.body,
+            pattern,
+            fact,
+            origins.unique(),
+        ) {
             let fact = self
                 .base
                 .local(inferred.local)
                 .map_or(inferred.fact.clone(), |declared| {
                     refine_local_fact(declared, inferred.fact)
                 });
-            set_local(environment, inferred.local, fact);
+            let origins = self
+                .base
+                .base_local_script_type(inferred.local)
+                .cloned()
+                .map(ScriptTypeOrigins::known)
+                .unwrap_or_else(|| {
+                    if matches!(
+                        self.body
+                            .patterns
+                            .get(&pattern)
+                            .map(|pattern| &pattern.kind),
+                        Some(vela_hir::body::HirPatternKind::Binding { .. })
+                    ) {
+                        origins.clone()
+                    } else {
+                        inferred
+                            .script_type
+                            .clone()
+                            .map(ScriptTypeOrigins::known)
+                            .unwrap_or_default()
+                    }
+                });
+            set_local(environment, inferred.local, LocalValue::new(fact, origins));
         }
+    }
+
+    fn origins(&self, expression: HirExprId, environment: &LocalEnvironment) -> ScriptTypeOrigins {
+        if let Some(BindingResolution::Local(local)) = self.base.resolution(expression) {
+            return environment
+                .get(local)
+                .map(|value| value.origins.clone())
+                .unwrap_or_default();
+        }
+        self.source_origins
+            .get(&expression)
+            .cloned()
+            .unwrap_or_default()
     }
 
     fn fact(&self, expression: HirExprId, environment: &LocalEnvironment) -> TypeFact {
         if let Some(BindingResolution::Local(local)) = self.base.resolution(expression) {
-            return environment.get(local).cloned().unwrap_or(TypeFact::Unknown);
+            return environment
+                .get(local)
+                .map(|value| value.fact.clone())
+                .unwrap_or(TypeFact::Unknown);
         }
         self.expression_types
             .get(&expression)
@@ -454,8 +553,8 @@ pub(super) fn refine_local_fact(declared: &TypeFact, inferred: TypeFact) -> Type
     }
 }
 
-fn set_local(environment: &mut LocalEnvironment, local: HirLocalId, fact: TypeFact) {
-    if matches!(fact, TypeFact::Unknown) {
+fn set_local(environment: &mut LocalEnvironment, local: HirLocalId, fact: LocalValue) {
+    if matches!(fact.fact, TypeFact::Unknown) {
         environment.remove(&local);
     } else {
         environment.insert(local, fact);
@@ -470,6 +569,7 @@ fn set_local(environment: &mut LocalEnvironment, local: HirLocalId, fact: TypeFa
 /// sized by the whole project.
 fn body_local_environment(
     locals: &BTreeMap<HirLocalId, TypeFact>,
+    source_locals: &BTreeMap<HirLocalId, super::ScriptTypeTargetFact>,
     body: &HirBody,
     base: &AnalysisFacts,
 ) -> LocalEnvironment {
@@ -488,7 +588,22 @@ fn body_local_environment(
             });
     declared
         .chain(resolved)
-        .filter_map(|local| locals.get(&local).map(|fact| (local, fact.clone())))
+        .filter_map(|local| {
+            locals.get(&local).map(|fact| {
+                (
+                    local,
+                    LocalValue::new(
+                        fact.clone(),
+                        source_locals
+                            .get(&local)
+                            .or_else(|| base.base_local_script_type(local))
+                            .cloned()
+                            .map(ScriptTypeOrigins::known)
+                            .unwrap_or_default(),
+                    ),
+                )
+            })
+        })
         .collect()
 }
 
@@ -509,13 +624,26 @@ fn join_environments<'a>(
         else {
             continue;
         };
-        if environments
-            .iter()
-            .all(|environment| environment.get(&local) == Some(first))
-        {
-            joined.insert(local, first.clone());
+        if environments.iter().all(|environment| {
+            environment
+                .get(&local)
+                .is_some_and(|value| value.fact == first.fact)
+        }) {
+            let origins = ScriptTypeOrigins::join(environments.iter().filter_map(|environment| {
+                environment.get(&local).map(|value| value.origins.clone())
+            }));
+            joined.insert(local, LocalValue::new(first.fact.clone(), origins));
         } else if let Some(declared) = base.local(local) {
-            joined.insert(local, declared.clone());
+            joined.insert(
+                local,
+                LocalValue::new(
+                    declared.clone(),
+                    base.base_local_script_type(local)
+                        .cloned()
+                        .map(ScriptTypeOrigins::known)
+                        .unwrap_or_default(),
+                ),
+            );
         }
     }
     joined

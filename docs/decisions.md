@@ -4516,3 +4516,15 @@ facts and unique declaration identity. A unique identity joins only when every
 result path has the same declaration; a unit path cannot silently disappear from
 the join. Direct lambdas apply the same body-result rule. Member cursor recovery
 uses an available syntax receiver before token-fragment heuristics.
+
+Local value flow also carries a deterministic set of possible source declarations.
+Assignments replace the inferred origins at that use site; branch joins combine
+origins without changing the existing policy for incompatible value facts or
+explicit type contracts. Unknown/erased locals discard inferred source origins.
+The singular executable target is available only when every contributing path has
+the same target. Mixed source receivers retain dynamic executable dispatch while
+authoring queries enumerate their possible owners. Shared field details merge in
+stable type order; navigation requires one distinct target location. Canonical
+symbol spelling alone cannot disambiguate packages. Unprefixed qualified HIR
+bindings must stay within the requesting package, including incremental source
+insertion before all modules are available.

@@ -151,9 +151,7 @@ impl LanguageServiceDatabases {
                     member_callable_facts_for_type(
                         self,
                         receiver,
-                        facts
-                            .script_type(field.receiver)
-                            .map(|target| target.declaration),
+                        facts.source_origins(field.receiver),
                         &field.name,
                         &args_prefix,
                     )
@@ -373,9 +371,7 @@ pub(crate) fn hir_callable_for_call(
         member_callable_facts_for_type(
             databases,
             receiver,
-            facts
-                .script_type(field.receiver)
-                .map(|target| target.declaration),
+            facts.source_origins(field.receiver),
             &field.name,
             &args_prefix,
         )

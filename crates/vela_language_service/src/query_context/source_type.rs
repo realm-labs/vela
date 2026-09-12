@@ -33,3 +33,30 @@ pub(crate) fn source_type_for_source_range(
         .script_type(expression)
         .map(|target| target.declaration)
 }
+
+impl QueryContext<'_> {
+    pub(crate) fn source_origins_for_range<'a>(
+        &self,
+        databases: &'a LanguageServiceDatabases,
+        range: TextRange,
+    ) -> Option<&'a vela_analysis::semantic_facts::ScriptTypeOrigins> {
+        source_origins_for_source_range(databases, self.source_id()?, range)
+    }
+}
+
+pub(crate) fn source_origins_for_source_range(
+    databases: &LanguageServiceDatabases,
+    source_id: SourceId,
+    range: TextRange,
+) -> Option<&vela_analysis::semantic_facts::ScriptTypeOrigins> {
+    let span = Span::new(
+        source_id,
+        u32::try_from(range.start).ok()?,
+        u32::try_from(range.end).ok()?,
+    );
+    let expression = databases
+        .hir_db()
+        .graph()
+        .expression_containing_span(span)?;
+    databases.schema_analysis_facts().source_origins(expression)
+}

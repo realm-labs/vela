@@ -252,21 +252,30 @@ pub(crate) fn member_callable_facts(
         return Vec::new();
     };
     let owner =
-        crate::query_context::source_type_for_source_range(databases, source_id, receiver_range);
+        crate::query_context::source_origins_for_source_range(databases, source_id, receiver_range);
     member_callable_facts_for_type(databases, &receiver, owner, method, args_prefix)
 }
 
 pub(crate) fn member_callable_facts_for_type(
     databases: &LanguageServiceDatabases,
     receiver: &TypeFact,
-    owner: Option<vela_hir::ids::HirDeclId>,
+    origins: Option<&vela_analysis::semantic_facts::ScriptTypeOrigins>,
     method: &str,
     args_prefix: &str,
 ) -> Vec<CallableFacts> {
     if method.is_empty() {
         return Vec::new();
     }
-    let mut facts = source_method_callable_facts(databases, receiver, owner, method);
+    let mut facts = match origins.filter(|origins| !origins.possible().is_empty()) {
+        Some(origins) => origins
+            .possible()
+            .iter()
+            .flat_map(|owner| {
+                source_method_callable_facts(databases, receiver, Some(owner.declaration), method)
+            })
+            .collect(),
+        None => source_method_callable_facts(databases, receiver, None, method),
+    };
     facts.extend(schema_method_callable_facts(databases, receiver, method));
     facts.extend(stdlib_method_callable_facts(receiver, method, args_prefix));
     facts

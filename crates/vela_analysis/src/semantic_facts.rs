@@ -12,6 +12,8 @@ mod logical_records;
 mod lookups;
 mod patterns;
 mod script_types;
+mod source_origins;
+pub use source_origins::ScriptTypeOrigins;
 mod targets;
 mod value_flow;
 
@@ -24,7 +26,7 @@ use logical_records::{
     logical_member_target, logical_record_constructor_fact, logical_record_constructor_target,
 };
 use lookups::{
-    binary_fact, call_return_fact, field_fact, index_fact, literal_fact, registry_method_effect,
+    binary_fact, call_return_fact, index_fact, literal_fact, registry_method_effect,
     registry_method_fact, resolved_literal_type, schema_knows_owner, source_method,
     try_payload_fact, type_owner,
 };
@@ -67,6 +69,8 @@ pub struct HirSemanticFacts {
     locals: BTreeMap<HirLocalId, TypeFact>,
     script_types: BTreeMap<HirExprId, ScriptTypeTargetFact>,
     local_script_types: BTreeMap<HirLocalId, ScriptTypeTargetFact>,
+    source_origins: BTreeMap<HirExprId, ScriptTypeOrigins>,
+    local_use_origins: BTreeMap<HirExprId, ScriptTypeOrigins>,
     patterns: BTreeMap<HirPatternId, TypeFact>,
     logical_record_constructors: BTreeMap<HirExprId, LogicalRecordKind>,
     calls: BTreeMap<HirExprId, CallTargetFact>,
@@ -156,6 +160,8 @@ impl HirSemanticFacts {
             let local_uses_before = facts.local_use_types.clone();
             let locals_before = facts.locals.clone();
             let script_types_before = facts.script_types.clone();
+            let origins_before = facts.source_origins.clone();
+            let local_origins_before = facts.local_use_origins.clone();
             let local_script_types_before = facts.local_script_types.clone();
             for body in &bodies {
                 facts.infer_local_facts(graph, body, schema, base);
@@ -172,6 +178,13 @@ impl HirSemanticFacts {
                         facts.types.insert(expression.id, fact);
                     }
                     facts.record_targets(graph, body, expression.id, schema, base);
+                    let origins = facts.infer_source_origins(graph, body, expression.id, base);
+                    if let Some(target) = origins.unique() {
+                        facts.script_types.insert(expression.id, target.clone());
+                    } else {
+                        facts.script_types.remove(&expression.id);
+                    }
+                    facts.source_origins.insert(expression.id, origins);
                 }
                 facts.infer_local_script_types(body);
                 facts.record_patterns(graph, body, schema, base);
@@ -183,6 +196,8 @@ impl HirSemanticFacts {
                 && facts.local_use_types == local_uses_before
                 && facts.locals == locals_before
                 && facts.script_types == script_types_before
+                && facts.source_origins == origins_before
+                && facts.local_use_origins == local_origins_before
                 && facts.local_script_types == local_script_types_before
             {
                 break;
@@ -217,6 +232,10 @@ impl HirSemanticFacts {
     #[must_use]
     pub fn script_type(&self, expression: HirExprId) -> Option<&ScriptTypeTargetFact> {
         self.script_types.get(&expression)
+    }
+
+    pub fn source_origins(&self, expression: HirExprId) -> Option<&ScriptTypeOrigins> {
+        self.source_origins.get(&expression)
     }
 
     #[must_use]
@@ -364,13 +383,7 @@ impl HirSemanticFacts {
             HirExprKind::Assign { value, .. } => {
                 value.map_or(TypeFact::Unknown, |id| self.fact(id))
             }
-            HirExprKind::Field(field) => field_fact(
-                graph,
-                self.script_types.get(&field.receiver),
-                &self.fact(field.receiver),
-                &field.name,
-                schema,
-            ),
+            HirExprKind::Field(field) => self.owned_field_fact(graph, field, schema),
             HirExprKind::Call(call) => self.call_return(graph, body, call, schema),
             HirExprKind::Index(index) => index_fact(&self.fact(index.receiver), schema),
             HirExprKind::Array { elements } => {
@@ -495,6 +508,14 @@ impl HirSemanticFacts {
             }
             HirExprKind::Field(field) => {
                 let receiver = self.fact(field.receiver);
+                if self
+                    .source_origins
+                    .get(&field.receiver)
+                    .is_some_and(|origins| origins.possible().len() > 1)
+                {
+                    self.members.insert(id, MemberTargetFact::Dynamic);
+                    return;
+                }
                 let source_receiver = self.script_types.get(&field.receiver);
                 let source_field = source_receiver
                     .and_then(|receiver| source_field_fact(graph, receiver, &field.name, schema));
@@ -806,6 +827,13 @@ impl HirSemanticFacts {
     ) -> CallTargetFact {
         if let Some(field) = body.field(call.callee) {
             let receiver = self.fact(field.receiver);
+            if self
+                .source_origins
+                .get(&field.receiver)
+                .is_some_and(|origins| origins.possible().len() > 1)
+            {
+                return CallTargetFact::Dynamic;
+            }
             let script_type = self.script_types.get(&field.receiver).cloned();
             if let Some(method) =
                 source_method(graph, &receiver, script_type.as_ref(), &field.name, schema)
@@ -902,6 +930,30 @@ impl HirSemanticFacts {
             let receiver = self.fact(field.receiver);
             if let Some(method) = self.contextual_stdlib_method_fact(graph, body, call) {
                 return scoped_iterator_return(&receiver, &field.name, method.returns);
+            }
+            if let Some(origins) = self.source_origins.get(&field.receiver)
+                && !origins.possible().is_empty()
+            {
+                let mut facts = origins
+                    .possible()
+                    .iter()
+                    .filter_map(|owner| {
+                        lookups::source_method_return(
+                            graph,
+                            &receiver,
+                            Some(owner),
+                            &field.name,
+                            schema,
+                        )
+                        .map(|method| method.fact)
+                    })
+                    .collect::<Vec<_>>();
+                facts.sort_by_key(TypeFact::display_name);
+                return if facts.is_empty() {
+                    call_return_fact(self.fact(call.callee))
+                } else {
+                    TypeFact::union(facts)
+                };
             }
             if let Some(method) = lookups::source_method_return(
                 graph,

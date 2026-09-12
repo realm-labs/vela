@@ -66,6 +66,13 @@ impl AnalysisFacts {
         self.semantic.script_type(expression)
     }
 
+    pub fn source_origins(
+        &self,
+        expression: HirExprId,
+    ) -> Option<&crate::semantic_facts::ScriptTypeOrigins> {
+        self.semantic.source_origins(expression)
+    }
+
     #[must_use]
     pub fn literal(&self, expression: HirExprId) -> Option<&LiteralResult> {
         self.literals.get(expression)
