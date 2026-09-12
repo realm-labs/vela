@@ -4541,3 +4541,13 @@ use schema-backed executable facts, just as scoped-task validation does. Project
 service diagnostic ranges, labels and repair hints through their own document's
 current source text at the protocol boundary; reject unavailable or invalid ranges
 instead of emitting byte columns as UTF-16 positions.
+
+Static task operand completion uses the innermost syntax argument list, including
+qualified-path cursors. Worker candidates must resolve to declared async functions;
+continuations must resolve to synchronous functions and, when the worker is known,
+share the analysis validator's exact required outcome-parameter contract. An
+unknown worker leaves the outcome unconstrained. Module candidates remain path
+navigation steps, and nested ordinary expressions retain ordinary completion.
+This is static authoring guidance; value transfer, effect ceilings and host resume
+bindings remain separate admission checks. Imported/qualified callable metadata
+must retain the owning source or schema signature's asyncness.

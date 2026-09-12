@@ -39,6 +39,7 @@ use capabilities::CapabilityIndex;
 pub use host_access::{
     HostAccessUseFact, HostAccessUseKind, HostIndexCapabilityResolutionFact, HostIndexUseFact,
 };
+pub use tasks::task_continuation_parameter_matches;
 
 /// Whether analysis can prove a required semantic capability at a use site.
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -16,7 +16,7 @@ fixture does not certify every combination in an S dimension.
 | Stdlib calls and methods | `completion-stdlib-arguments`: registered names, imported paths, collection mutation variants, builtin owners and negative boundaries. | Final S5 review must consider both expression and parameter-name candidate sets, rather than treating named-argument proof as the whole call workflow. |
 | Imports and unavailable owners | `callable-imports`, `completion-import-aliases`, `completion-expression-ownership`: source/schema/stdlib aliases, local/declaration shadowing, private/missing/duplicate owners. `completion-package-callables` checks direct dependency function/namespace aliases, `crate::` fallback and inaccessible/transitive declarations. `completion-package-members` distinguishes owned methods/returns from same-name direct/transitive and schema declarations. | Review remaining returned-receiver forms and dependency lifecycle combinations. |
 | Service calls and authoring | `completion-service-calls`, `completion-service-paths`, `completion-service-roots`, `completion-service-parameters`, `completion-service-arguments`: unique/ambiguous origins, registered contracts, restricted contexts, schema changes and edits. | Retain these cases in the final S5/S8 mapping and lifecycle review. |
-| Static scoped tasks | `completion-task-paths`, `completion-task-calls`, `completion-task-operands`: builtin operation ownership, unsupported paths/aliases, ordinary source aliases, positional-only outer operands, named inner calls, callable edits and continuation paths. | Broader target eligibility/ranking and async returned-member combinations remain part of final S5 review; this fixture does not claim them. |
+| Static scoped tasks | `completion-task-paths`, `completion-task-calls`, `completion-task-operands`, `completion-task-eligibility`: builtin ownership, unsupported aliases, positional outer operands, nested ordinary calls, static async worker and synchronous matching continuation sets, qualified/imported ownership, existing parentheses and exact applied diagnostics. | Review value transfer, effect ceilings, host resume bindings and ranking separately; target shape alone does not prove runtime admission. |
 | Dynamic/unresolved boundaries | The call, member and callable fixtures explicitly distinguish Any, unknown, missing owners, unsupported aliases and invalid arity. | Review all fixture families together before mapping the complete S5 negative cells. |
 
 The scoped-task review exposed three concrete defects: unknown source/schema task
@@ -33,13 +33,21 @@ post-edit signature check.
 
 ## Remaining B03 Acceptance Work
 
-1. Finish callback/scoped-task eligibility and the S5 partition review. The
+1. Finish sync-only callbacks, task value/effect restrictions and the S5 partition
+   review. Twenty-four `completion-task-eligibility` cases verify complete static
+   target sets, async metadata, canonical resolve ownership, LF/CRLF Unicode edits
+   and applied diagnostics. Unknown/dynamic workers do not invent an outcome type;
+   continuation choices still require static synchronous functions. Nested ordinary
+   expressions keep their ordinary completion policy. Five existing task-call
+   cases now explicitly exclude dynamic local operands while preserving builtin
+   signature and positional-argument assertions. The
    `completion-async-callables` fixture checks eighteen awaited/unawaited source,
    alias, trait, host and schema cases with opposite asyncness in same-name
    package declarations. Completion details preserve asyncness; applied calls
    retain exact signatures, named parameters, inlays, definitions, missing-await
    diagnostic ranges and labels under Unicode LF/CRLF. Invalid await contexts,
-   sync-only callbacks and static task eligibility still require review. The
+   sync-only callbacks, transferable values, effects and host resume contracts
+   still require review. The
    `completion-receiver-assignments` fixture adds twenty cases for sequential
    writes, retained aliases, if/match/loop joins and chained method returns with
    same-name package types. It checks complete sets, stable merged field details,

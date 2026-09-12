@@ -1,0 +1,696 @@
+{
+  "version": 1,
+  "id": "completion-task-eligibility",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.task_eligibility\"\nname = \"task_eligibility\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"functions\":[{\"name\":\"zz_native\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"signature\":{\"parameters\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"asyncness\":\"async\"}}]}}",
+    "scripts/api.vela": "pub async fn zz_async() -> bool { return true; } pub fn zz_sync() -> bool { return true; } pub fn zz_done(result: Result<bool, task::Error>) -> () {} pub fn zz_wrong(result: Result<i64, task::Error>) -> () {}\n",
+    "scripts/worker.vela": "/* 中😀 */ async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/worker-then.vela": "/* 中😀 */ async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped_then([[replace:start]]zz_[[cursor]][[replace:end]], [[diagnostic:start]]zz_done[[diagnostic:end]]); }\n",
+    "scripts/worker-middle.vela": "/* 中😀 */ async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped([[replace:start]]zz_[[cursor]]wrong[[replace:end]]); }\n",
+    "scripts/worker-comment.vela": "/* 中😀 */ async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped(/* keep */ [[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/worker-existing-call.vela": "/* 中😀 */ async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped([[replace:start]]zz_[[cursor]][[replace:end]]()); }\n",
+    "scripts/continuation.vela": "/* 中😀 */ async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped_then(zz_async(), [[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/continuation-comment.vela": "/* 中😀 */ async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped_then(zz_async(), /* keep */ [[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/continuation-middle.vela": "/* 中😀 */ async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped_then(zz_async(), [[replace:start]]zz_[[cursor]]wrong[[replace:end]]); }\n",
+    "scripts/qualified-worker.vela": "/* 中😀 */ async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped(api::[[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/qualified-continuation.vela": "/* 中😀 */ async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped_then(api::zz_async(), api::[[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/alias-worker.vela": "/* 中😀 */ use api::zz_async as zz_imported; async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/alias-continuation.vela": "/* 中😀 */ use api::zz_done as zz_imported; async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped_then(api::zz_async(), [[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/namespace-worker.vela": "/* 中😀 */ use api as ns; async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped(ns::[[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/namespace-continuation.vela": "/* 中😀 */ use api as ns; async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped_then(ns::zz_async(), ns::[[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/unannotated-worker-result.vela": "/* 中😀 */ async fn worker() { return 1; } fn zz_done(result: Result<Any, task::Error>) -> () {} fn zz_wrong(result: Result<i64, task::Error>) -> () {} fn main(zz_dynamic: Function) { task::spawn_scoped_then(worker(), [[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/nested-worker-argument.vela": "/* 中😀 */ async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; async fn takes(value: i64) -> i64 { return value; } fn main(zz_dynamic: Function) { task::spawn_scoped(takes([[replace:start]]zz_s[[cursor]][[replace:end]])); }\n",
+    "scripts/nested-continuation-call.vela": "/* 中😀 */ async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn consume(value: i64) -> () {} fn main(zz_dynamic: Function) { task::spawn_scoped_then(zz_async(), consume([[replace:start]]zz_s[[cursor]][[replace:end]])); }\n",
+    "scripts/continuation-lambda.vela": "/* 中😀 */ async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped_then(zz_async(), || { [[replace:start]]zz_s[[cursor]][[replace:end]]; }); }\n",
+    "scripts/unknown-operation.vela": "/* 中😀 */ async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::unknown([[replace:start]]zz_s[[cursor]][[replace:end]]); }\n",
+    "scripts/ordinary-operation-alias.vela": "/* 中😀 */ use ordinary::spawn_scoped as spawn; async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { spawn([[replace:start]]zz_s[[cursor]][[replace:end]]); }\n",
+    "scripts/unknown-worker.vela": "/* 中😀 */ async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped_then(missing(), [[replace:start]]zz_d[[cursor]][[replace:end]]); }\n",
+    "scripts/dynamic-worker.vela": "/* 中😀 */ async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped_then(zz_dynamic(), [[replace:start]]zz_d[[cursor]][[replace:end]]); }\n",
+    "scripts/schema-worker-alias.vela": "/* 中😀 */ use zz_native as zz_imported; async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn main(zz_dynamic: Function) { task::spawn_scoped([[replace:start]]zz_import[[cursor]][[replace:end]]); }\n",
+    "scripts/ordinary-schema-alias.vela": "/* 中😀 */ use zz_native as zz_imported; async fn zz_async() -> i64 { return 1; } fn zz_sync() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} async fn zz_later(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_wrong(result: Result<bool, task::Error>) -> () {} fn zz_optional(result: Result<i64, task::Error> = Result::Ok(1)) -> () {} fn zz_empty() -> () {} const zz_value: i64 = 1; fn consume(value: i64) -> () {} fn main(zz_dynamic: Function) { consume([[replace:start]]zz_import[[cursor]][[replace:end]]); }\n",
+    "scripts/ordinary.vela": "pub fn spawn_scoped(value: i64) -> () {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "worker",
+        "file": "scripts/worker.vela",
+        "items": [
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "worker::zz_async"
+          },
+          {
+            "label": "zz_later",
+            "kind": "Function",
+            "detail": "async Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_later($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "worker::zz_later"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "async Function() -> bool",
+            "insert": "api::zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_async"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "worker-then",
+        "file": "scripts/worker-then.vela",
+        "items": [
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "worker-then::zz_async"
+          },
+          {
+            "label": "zz_later",
+            "kind": "Function",
+            "detail": "async Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_later($0)",
+            "format": "Snippet",
+            "named": false,
+            "taskDiagnostic": "analysis::task_continuation_invalid",
+            "symbol": "worker-then::zz_later"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "async Function() -> bool",
+            "insert": "api::zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "taskDiagnostic": "analysis::task_continuation_invalid",
+            "symbol": "api::zz_async"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "worker-middle",
+        "file": "scripts/worker-middle.vela",
+        "items": [
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "worker-middle::zz_async"
+          },
+          {
+            "label": "zz_later",
+            "kind": "Function",
+            "detail": "async Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_later($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "worker-middle::zz_later"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "async Function() -> bool",
+            "insert": "api::zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_async"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "worker-comment",
+        "file": "scripts/worker-comment.vela",
+        "items": [
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "worker-comment::zz_async"
+          },
+          {
+            "label": "zz_later",
+            "kind": "Function",
+            "detail": "async Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_later($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "worker-comment::zz_later"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "async Function() -> bool",
+            "insert": "api::zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_async"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "worker-existing-call",
+        "file": "scripts/worker-existing-call.vela",
+        "items": [
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "worker-existing-call::zz_async"
+          },
+          {
+            "label": "zz_later",
+            "kind": "Function",
+            "detail": "async Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_later",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "worker-existing-call::zz_later"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "async Function() -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "continuation",
+        "file": "scripts/continuation.vela",
+        "items": [
+          {
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_done",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "continuation::zz_done"
+          },
+          {
+            "label": "api::zz_wrong",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error)) -> ()",
+            "insert": "api::zz_wrong",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_wrong"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "continuation-comment",
+        "file": "scripts/continuation-comment.vela",
+        "items": [
+          {
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_done",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "continuation-comment::zz_done"
+          },
+          {
+            "label": "api::zz_wrong",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error)) -> ()",
+            "insert": "api::zz_wrong",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_wrong"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "continuation-middle",
+        "file": "scripts/continuation-middle.vela",
+        "items": [
+          {
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_done",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "continuation-middle::zz_done"
+          },
+          {
+            "label": "api::zz_wrong",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error)) -> ()",
+            "insert": "api::zz_wrong",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_wrong"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "qualified-worker",
+        "file": "scripts/qualified-worker.vela",
+        "items": [
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function() -> bool",
+            "insert": "zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "description": "api::zz_async",
+            "symbol": "api::zz_async"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "qualified-continuation",
+        "file": "scripts/qualified-continuation.vela",
+        "items": [
+          {
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(bool, task::Error)) -> ()",
+            "insert": "zz_done",
+            "format": "PlainText",
+            "named": false,
+            "description": "api::zz_done",
+            "symbol": "api::zz_done"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "alias-worker",
+        "file": "scripts/alias-worker.vela",
+        "items": [
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "alias-worker::zz_async"
+          },
+          {
+            "label": "zz_later",
+            "kind": "Function",
+            "detail": "async Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_later($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "alias-worker::zz_later"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "async Function() -> bool",
+            "insert": "api::zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_async"
+          },
+          {
+            "label": "zz_imported",
+            "kind": "Function",
+            "detail": "async Function() -> bool",
+            "insert": "zz_imported($0)",
+            "format": "Snippet",
+            "named": false,
+            "description": "api::zz_async",
+            "symbol": "api::zz_async"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "alias-continuation",
+        "file": "scripts/alias-continuation.vela",
+        "items": [
+          {
+            "label": "zz_imported",
+            "kind": "Function",
+            "detail": "Function(Result(bool, task::Error)) -> ()",
+            "insert": "zz_imported",
+            "format": "PlainText",
+            "named": false,
+            "description": "api::zz_done",
+            "symbol": "api::zz_done"
+          },
+          {
+            "label": "api::zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(bool, task::Error)) -> ()",
+            "insert": "api::zz_done",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_done"
+          },
+          {
+            "label": "zz_wrong",
+            "kind": "Function",
+            "detail": "Function(Result(bool, task::Error)) -> ()",
+            "insert": "zz_wrong",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "alias-continuation::zz_wrong"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "namespace-worker",
+        "file": "scripts/namespace-worker.vela",
+        "items": [
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function() -> bool",
+            "insert": "zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "description": "api::zz_async",
+            "symbol": "api::zz_async"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "namespace-continuation",
+        "file": "scripts/namespace-continuation.vela",
+        "items": [
+          {
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(bool, task::Error)) -> ()",
+            "insert": "zz_done",
+            "format": "PlainText",
+            "named": false,
+            "description": "api::zz_done",
+            "symbol": "api::zz_done"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "unannotated-worker-result",
+        "file": "scripts/unannotated-worker-result.vela",
+        "items": [
+          {
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(Any, task::Error)) -> ()",
+            "insert": "zz_done",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "unannotated-worker-result::zz_done"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "nested-worker-argument",
+        "file": "scripts/nested-worker-argument.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function() -> i64",
+            "insert": "zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "nested-worker-argument::zz_sync"
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "Function() -> bool",
+            "insert": "api::zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_sync"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "nested-continuation-call",
+        "file": "scripts/nested-continuation-call.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function() -> i64",
+            "insert": "zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "nested-continuation-call::zz_sync"
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "Function() -> bool",
+            "insert": "api::zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_sync"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "continuation-lambda",
+        "file": "scripts/continuation-lambda.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function() -> i64",
+            "insert": "zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "continuation-lambda::zz_sync"
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "Function() -> bool",
+            "insert": "api::zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_sync"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "unknown-operation",
+        "file": "scripts/unknown-operation.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function() -> i64",
+            "insert": "zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "unknown-operation::zz_sync"
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "Function() -> bool",
+            "insert": "api::zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_sync"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "ordinary-operation-alias",
+        "file": "scripts/ordinary-operation-alias.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function() -> i64",
+            "insert": "zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "ordinary-operation-alias::zz_sync"
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "Function() -> bool",
+            "insert": "api::zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_sync"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "unknown-worker",
+        "file": "scripts/unknown-worker.vela",
+        "items": [
+          {
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_done",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "unknown-worker::zz_done"
+          },
+          {
+            "label": "api::zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(bool, task::Error)) -> ()",
+            "insert": "api::zz_done",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_done"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "dynamic-worker",
+        "file": "scripts/dynamic-worker.vela",
+        "items": [
+          {
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_done",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "dynamic-worker::zz_done"
+          },
+          {
+            "label": "api::zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(bool, task::Error)) -> ()",
+            "insert": "api::zz_done",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_done"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "schema-worker-alias",
+        "file": "scripts/schema-worker-alias.vela",
+        "items": [],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "ordinary-schema-alias",
+        "file": "scripts/ordinary-schema-alias.vela",
+        "items": [
+          {
+            "label": "zz_imported",
+            "kind": "Function",
+            "detail": "async Function() -> i64",
+            "insert": "zz_imported($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native",
+            "origin": "schema",
+            "description": "zz_native"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      }
+    ]
+  }
+}

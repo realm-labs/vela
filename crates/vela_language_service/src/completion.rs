@@ -64,6 +64,7 @@ mod struct_field;
 #[cfg(test)]
 mod struct_field_tests;
 mod task_path;
+mod task_target;
 #[cfg(test)]
 mod tuple_destructuring_tests;
 mod type_display;
@@ -173,7 +174,7 @@ impl LanguageServiceDatabases {
                 }
             }
         };
-        task_path::adjust_continuation_items(&query, &mut items);
+        task_target::adjust_items(self, &query, &mut items);
         self.completion_query_is_current(token).then_some(())?;
         Some(CompletionList {
             context,

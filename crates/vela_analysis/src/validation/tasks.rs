@@ -266,10 +266,7 @@ fn validate_continuation(
     continuation_expression: HirExprId,
     fallback_span: Span,
 ) {
-    let Some(worker_signature) = graph.function_signature(worker) else {
-        return;
-    };
-    let Some(worker_declaration) = graph.declaration(worker) else {
+    let Some((_, expected_name)) = continuation_outcome(graph, worker) else {
         return;
     };
     let Some(continuation_declaration) = graph.declaration(continuation) else {
@@ -279,23 +276,8 @@ fn validate_continuation(
     else {
         return;
     };
-    let (worker_return, worker_return_name) = worker_signature.return_type.as_ref().map_or_else(
-        || (TypeFact::Any, "Any".to_owned()),
-        |hint| {
-            (
-                crate::hints::type_fact_from_hint_in_module(graph, worker_declaration.module, hint),
-                hint.display(),
-            )
-        },
-    );
-    let expected = TypeFact::result(worker_return, TypeFact::record("task::Error"));
-    let expected_name = format!("Result<{worker_return_name}, task::Error>");
     let first = continuation_signature.parameters.first();
-    let valid = first.is_some_and(|parameter| {
-        parameter.requirement == CallableParameterRequirementFact::Required
-            && parameter.type_fact == expected
-    });
-    if valid {
+    if task_continuation_parameter_matches(graph, worker, continuation) == Some(true) {
         return;
     }
     let span = graph
@@ -323,6 +305,40 @@ fn validate_continuation(
         );
     }
     validation.diagnostics.push(diagnostic);
+}
+
+/// Whether the declared first parameter accepts this worker's sealed outcome.
+/// This checks static parameter shape only, not asyncness, effects or host resume bindings.
+#[must_use]
+pub fn task_continuation_parameter_matches(
+    graph: &ModuleGraph,
+    worker: HirDeclId,
+    continuation: HirDeclId,
+) -> Option<bool> {
+    let (expected, _) = continuation_outcome(graph, worker)?;
+    let signature = super::calls::source_function_signature(graph, continuation)?;
+    Some(signature.parameters.first().is_some_and(|parameter| {
+        parameter.requirement == CallableParameterRequirementFact::Required
+            && parameter.type_fact == expected
+    }))
+}
+
+fn continuation_outcome(graph: &ModuleGraph, worker: HirDeclId) -> Option<(TypeFact, String)> {
+    let signature = graph.function_signature(worker)?;
+    let declaration = graph.declaration(worker)?;
+    let (worker_return, worker_return_name) = signature.return_type.as_ref().map_or_else(
+        || (TypeFact::Any, "Any".to_owned()),
+        |hint| {
+            (
+                crate::hints::type_fact_from_hint_in_module(graph, declaration.module, hint),
+                hint.display(),
+            )
+        },
+    );
+    Some((
+        TypeFact::result(worker_return, TypeFact::record("task::Error")),
+        format!("Result<{worker_return_name}, task::Error>"),
+    ))
 }
 
 fn value_diagnostic(

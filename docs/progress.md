@@ -701,9 +701,17 @@ validate against the declared signature even without an implementation body.
 Diagnostic ranges and their labels/repair hints use each document's current text
 for protocol UTF-16 projection; invalid ranges cannot be emitted as byte columns.
 
+Static task operand completion now filters workers to declared async functions
+and continuations to synchronous functions with the matching required outcome
+parameter. Twenty-four shared cases cover qualified/imported targets, unknown
+workers, dynamic/schema exclusions, nested expressions and existing call syntax.
+Applied candidates preserve resolve ownership and task/await diagnostics; a
+changed worker result retains the exact incompatible-continuation diagnostic.
+Qualified and imported callable details retain source/schema asyncness.
+
 The [completion coverage review](lsp-completion-coverage-review.md) indexes S5
-proof and the remaining acceptance work. Resume B03.29 with callback/scoped-task
-eligibility and remaining S5 review, then the remaining
+proof and the remaining acceptance work. Resume B03.30 with sync-only callbacks,
+remaining task value/effect restrictions and S5 review, then the remaining
 semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

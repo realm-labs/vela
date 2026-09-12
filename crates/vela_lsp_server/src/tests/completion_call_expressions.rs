@@ -13,6 +13,11 @@ fn task_operand_matrix_projects_calls_and_static_continuation_paths() {
     verify_fixture("completion-task-operands");
 }
 
+#[test]
+fn task_eligibility_matrix_projects_static_targets_and_matching_continuations() {
+    verify_fixture("completion-task-eligibility");
+}
+
 fn verify_fixture(name: &str) {
     for crlf in [false, true] {
         let mut spec = load(name);
@@ -92,9 +97,25 @@ fn verify_fixture(name: &str) {
                     "{case}"
                 );
                 assert_eq!(item["detail"], expected["detail"]);
+                if expected["symbol"].is_string() {
+                    assert_eq!(
+                        item["data"]["resolve"],
+                        json!({"kind":"documentation","symbol":{"kind":expected["origin"].as_str().unwrap_or("source"),"name":expected["symbol"]}})
+                    );
+                    let resolved = response_value(request::<r::ResolveCompletionItem>(
+                        &mut server,
+                        id,
+                        item.clone(),
+                    ));
+                    id += 1;
+                    assert!(resolved["error"].is_null());
+                    assert_eq!(resolved["result"], *item);
+                }
                 assert_eq!(
                     item["labelDetails"]["description"],
-                    if expected["named"] == true {
+                    if expected["description"].is_string() {
+                        expected["description"].clone()
+                    } else if expected["named"] == true {
                         json!("named argument")
                     } else {
                         json!(null)
@@ -139,10 +160,61 @@ fn verify_fixture(name: &str) {
                     parsed.diagnostics()
                 );
                 version += 1;
-                let _ = notify::<n::DidChangeTextDocument>(
+                let changes = notify::<n::DidChangeTextDocument>(
                     &mut server,
                     json!({"textDocument":{"uri":uri(file),"version":version},"contentChanges":[{"text":edited}]}),
                 );
+                if case["checkTask"] == true {
+                    let notifications = crate::tests::notification_values(changes);
+                    let diagnostics = notifications
+                        .iter()
+                        .find(|n| {
+                            n["method"] == "textDocument/publishDiagnostics"
+                                && n["params"]["uri"] == uri(file)
+                        })
+                        .expect("applied diagnostics");
+                    let codes = diagnostics["params"]["diagnostics"]
+                        .as_array()
+                        .expect("diagnostics")
+                        .iter()
+                        .filter_map(|d| d["code"].as_str())
+                        .filter(|code| {
+                            code.starts_with("hir::task_")
+                                || code.starts_with("analysis::task_")
+                                || *code == "analysis::async_call_requires_await"
+                        })
+                        .collect::<Vec<_>>();
+                    assert_eq!(
+                        codes,
+                        expected["taskDiagnostic"]
+                            .as_str()
+                            .into_iter()
+                            .collect::<Vec<_>>(),
+                        "{case} {expected}"
+                    );
+                    if let Some(code) = expected["taskDiagnostic"].as_str() {
+                        let diagnostic = diagnostics["params"]["diagnostics"]
+                            .as_array()
+                            .expect("diagnostics")
+                            .iter()
+                            .find(|d| d["code"] == code)
+                            .expect("task diagnostic");
+                        let marked = source.markers["diagnostic"];
+                        let shift = insertion.encode_utf16().count() as isize
+                            - (range.end.character - range.start.character) as isize;
+                        let start = marked
+                            .start
+                            .character
+                            .checked_add_signed(shift)
+                            .expect("start");
+                        let end = marked.end.character.checked_add_signed(shift).expect("end");
+                        assert_eq!(
+                            diagnostic["range"],
+                            json!({"start":{"line":marked.start.line,"character":start},"end":{"line":marked.end.line,"character":end}})
+                        );
+                        assert_eq!(diagnostic["severity"], 1);
+                    }
+                }
                 let again = response_value(request::<r::Completion>(
                     &mut server,
                     id,

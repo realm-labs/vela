@@ -14,6 +14,11 @@ fn task_operand_matrix_inserts_calls_and_static_continuation_paths() {
     verify_fixture("completion-task-operands");
 }
 
+#[test]
+fn task_eligibility_matrix_keeps_static_async_workers_and_matching_continuations() {
+    verify_fixture("completion-task-eligibility");
+}
+
 fn verify_fixture(name: &str) {
     for crlf in [false, true] {
         let mut spec = load(name);
@@ -23,20 +28,7 @@ fn verify_fixture(name: &str) {
             }
         }
         let fixture = FixtureWorkspace::new(&spec).expect("fixture");
-        let files = fixture
-            .disk
-            .iter()
-            .filter(|(file, _)| file.ends_with(".vela"))
-            .map(|(file, source)| SourceFileSnapshot::new(uri(file), source.text.as_str()))
-            .collect::<Vec<_>>();
-        let mut db = LanguageServiceDatabases::new();
-        db.update(&assemble_project_sources(
-            &WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]),
-            &files,
-            &Workspace::new().snapshot(),
-        ));
-        db.load_schema_artifact_json("/workspace/schema.json", &fixture.disk["schema.json"].text);
-        assert!(db.schema_db().diagnostics().is_empty());
+        let db = databases(&fixture);
         for case in spec.oracle["queries"].as_array().expect("queries") {
             let file = case["file"].as_str().expect("file");
             let source = fixture.document(file).expect("source");
@@ -82,12 +74,28 @@ fn verify_fixture(name: &str) {
                 );
                 assert_eq!(format!("{:?}", item.insert_format()), expected["format"]);
                 assert_eq!(item.filter_text(), item.label());
+                if let Some(symbol) = expected["symbol"].as_str() {
+                    let symbol = if expected["origin"] == "schema" {
+                        crate::SymbolRef::Schema(symbol.to_owned())
+                    } else {
+                        crate::SymbolRef::Source(symbol.to_owned())
+                    };
+                    assert_eq!(item.symbol(), Some(&symbol));
+                    assert!(
+                        db.completion_documentation(
+                            item.resolve_payload().expect("resolve payload")
+                        )
+                        .is_none()
+                    );
+                }
                 assert_eq!(
                     item.label_details().description(),
-                    expected["named"]
-                        .as_bool()
-                        .expect("named argument role")
-                        .then_some("named argument")
+                    expected["description"]
+                        .as_str()
+                        .or_else(|| expected["named"]
+                            .as_bool()
+                            .expect("named argument role")
+                            .then_some("named argument"))
                 );
                 let edit = item.text_edit().expect("explicit edit");
                 let range = source.markers["replace"];
@@ -120,9 +128,75 @@ fn verify_fixture(name: &str) {
                     "{case}: {:?}",
                     parsed.diagnostics()
                 );
+                if case["checkTask"] == true {
+                    let mut fresh = FixtureWorkspace::new(&spec).expect("fresh fixture");
+                    fresh.disk.get_mut(file).expect("file").text = text.clone();
+                    let fresh = databases(&fresh);
+                    let diagnostics = fresh.diagnostics_for_document(&uri(file));
+                    let codes = diagnostics
+                        .diagnostics()
+                        .iter()
+                        .filter_map(|d| d.code())
+                        .filter(|code| {
+                            code.starts_with("hir::task_")
+                                || code.starts_with("analysis::task_")
+                                || *code == "analysis::async_call_requires_await"
+                        })
+                        .collect::<Vec<_>>();
+                    assert_eq!(
+                        codes,
+                        expected["taskDiagnostic"]
+                            .as_str()
+                            .into_iter()
+                            .collect::<Vec<_>>(),
+                        "{case} {expected}"
+                    );
+                    if let Some(code) = expected["taskDiagnostic"].as_str() {
+                        let diagnostic = diagnostics
+                            .diagnostics()
+                            .iter()
+                            .find(|d| d.code() == Some(code))
+                            .expect("task diagnostic");
+                        let marked = source.markers["diagnostic"];
+                        let shift =
+                            insertion.len() as isize - (range.end.byte - range.start.byte) as isize;
+                        let position = |byte: usize| {
+                            let byte = byte.checked_add_signed(shift).expect("shift");
+                            Position::new(
+                                text[..byte].bytes().filter(|b| *b == b'\n').count(),
+                                byte - text[..byte].rfind('\n').map_or(0, |i| i + 1),
+                            )
+                        };
+                        let span = diagnostic.range().expect("diagnostic range");
+                        assert_eq!(span.start(), position(marked.start.byte));
+                        assert_eq!(span.end(), position(marked.end.byte));
+                        assert_eq!(
+                            diagnostic.severity(),
+                            crate::ServiceDiagnosticSeverity::Error
+                        );
+                    }
+                }
             }
         }
     }
+}
+
+fn databases(fixture: &FixtureWorkspace) -> LanguageServiceDatabases {
+    let files = fixture
+        .disk
+        .iter()
+        .filter(|(file, _)| file.ends_with(".vela"))
+        .map(|(file, source)| SourceFileSnapshot::new(uri(file), source.text.as_str()))
+        .collect::<Vec<_>>();
+    let mut db = LanguageServiceDatabases::new();
+    db.update(&assemble_project_sources(
+        &WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]),
+        &files,
+        &Workspace::new().snapshot(),
+    ));
+    db.load_schema_artifact_json("/workspace/schema.json", &fixture.disk["schema.json"].text);
+    assert!(db.schema_db().diagnostics().is_empty());
+    db
 }
 
 fn uri(file: &str) -> DocumentId {

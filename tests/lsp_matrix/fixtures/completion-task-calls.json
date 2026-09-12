@@ -35,7 +35,7 @@
         "recoverySuffix": "",
         "symbol": "task::spawn_scoped",
         "symbolKind": "Builtin",
-        "expressions": "local"
+        "expressions": "empty"
       },
       {
         "id": "then_first",
@@ -48,7 +48,7 @@
         "recoverySuffix": "",
         "symbol": "task::spawn_scoped_then",
         "symbolKind": "Builtin",
-        "expressions": "local"
+        "expressions": "empty"
       },
       {
         "id": "then_second",
@@ -61,7 +61,7 @@
         "recoverySuffix": "",
         "symbol": "task::spawn_scoped_then",
         "symbolKind": "Builtin",
-        "expressions": "local"
+        "expressions": "empty"
       },
       {
         "id": "literal_import_collision",
@@ -74,7 +74,7 @@
         "recoverySuffix": "",
         "symbol": "task::spawn_scoped",
         "symbolKind": "Builtin",
-        "expressions": "local"
+        "expressions": "empty"
       },
       {
         "id": "literal_local_collision",
@@ -87,7 +87,7 @@
         "recoverySuffix": "",
         "symbol": "task::spawn_scoped",
         "symbolKind": "Builtin",
-        "expressions": "local"
+        "expressions": "empty"
       },
       {
         "id": "unknown",
