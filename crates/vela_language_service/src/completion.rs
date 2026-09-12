@@ -274,15 +274,9 @@ impl LanguageServiceDatabases {
         let callables = if let (Some(receiver), Some(method)) =
             (facts.member_receiver(), facts.member_method())
         {
-            query
-                .member_callable_facts(self, receiver, method, facts.args_prefix())
-                .into_iter()
-                .filter(|callable| {
-                    callable.origin() == crate::callable_context::CallableOrigin::SourceMethod
-                })
-                .collect()
+            query.member_callable_facts(self, receiver, method, facts.args_prefix())
         } else if let Some(path) = facts.callee_path() {
-            query.source_callable_facts_by_path(self, path)
+            query.named_callable_facts_by_path(self, path)
         } else {
             Vec::new()
         };

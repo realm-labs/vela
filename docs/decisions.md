@@ -4227,3 +4227,13 @@ bind independent route checks to source, profile, driver, fixture, packaging,
 VSIX and server identities, with retained traces and artifact hashes. The audit
 also compares archive payloads with installed files and current extension sources.
 Gate self-tests alone cannot certify runtime Input/Render proof.
+
+### Static Schema Callable Parameter Metadata
+
+B03 preserves registry callable signatures on function, method and trait-method
+schema entries. Optional metadata keeps type-only artifacts unchanged, while
+explicit names, required/defaulted markers and asyncness enter the canonical
+hash. Signature types must agree with the callable fact. Completion tracks
+whether names have an authoritative source; it never infers that from an
+`arg0` spelling. Source owners and exact schema names retain separate parameter
+sets. Standard-library name metadata still needs an independent ABI audit.

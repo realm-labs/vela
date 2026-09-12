@@ -45,6 +45,16 @@ fn named_argument_matrix_checks_owner_sets_occupied_slots_and_parseable_edits() 
                 .collect::<Vec<_>>();
             expected.sort_unstable();
             assert_eq!(names, expected, "{query}");
+            if let Some(label) = query["signature"].as_str() {
+                let help = db
+                    .signature_help(&uri(file), position(&source.text, point.byte))
+                    .expect("signature");
+                assert_eq!(help.signatures().len(), 1, "{query}");
+                assert_eq!(help.signatures()[0].label(), label, "{query}");
+                if let Some(active) = query["activeParameter"].as_u64() {
+                    assert_eq!(help.active_parameter(), active as usize, "{query}");
+                }
+            }
             for expected in query["parameters"].as_array().expect("params") {
                 let item = result
                     .items()
@@ -128,5 +138,9 @@ fn databases(fixture: &FixtureWorkspace) -> LanguageServiceDatabases {
         &files,
         &Workspace::new().snapshot(),
     ));
+    if let Some(schema) = fixture.disk.get("schema.json") {
+        db.load_schema_artifact_json("/workspace/schema.json", &schema.text);
+        assert!(db.schema_db().diagnostics().is_empty(), "valid schema");
+    }
     db
 }

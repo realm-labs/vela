@@ -52,6 +52,7 @@ pub(super) fn script_function_parameter_completions(
 ) -> Vec<CompletionItem> {
     callables
         .iter()
+        .filter(|callable| callable.supports_named_arguments())
         .flat_map(|callable| {
             callable
                 .params()

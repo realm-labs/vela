@@ -2,14 +2,21 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use vela_analysis::registry::{
-    RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryFunctionFact,
-    RegistryIndexCapabilityFact, RegistryMemberFact, RegistryMethodAccessFact, RegistryModuleFact,
-    ScopedResourceKindDef, ScopedResourceParentDef, ScopedResourceReturnDef,
+    RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryIndexCapabilityFact,
+    RegistryMemberFact, RegistryMethodAccessFact, RegistryModuleFact, ScopedResourceKindDef,
+    ScopedResourceParentDef, ScopedResourceReturnDef,
 };
 use vela_analysis::type_fact::TypeFact;
-use vela_common::{CollectionViewMutation, PrimitiveTag, ReceiverCapability, SourceId, Span};
+use vela_common::{CollectionViewMutation, PrimitiveTag, ReceiverCapability, Span};
 
+#[cfg(test)]
+use vela_common::SourceId;
+
+mod entry;
+use entry::{SchemaFunctionFact, SchemaMemberFact, SchemaNamedFact, SchemaSourceSpan};
 mod service;
+mod signature;
+use signature::validate_signatures;
 mod type_binding;
 
 use service::validate_service_set;
@@ -164,6 +171,7 @@ impl SchemaArtifact {
             }
         }
         validate_type_binding_facts(&self.facts)?;
+        validate_signatures(&self.facts)?;
         if let Some(service_set) = &self.service_set {
             validate_service_set(service_set)?;
         }
@@ -354,7 +362,9 @@ impl SchemaArtifactFacts {
                 .map(|member| {
                     let docs = facts.method_docs(&member.owner, &member.name);
                     let resource = facts.method_scoped_resource(&member.owner, &member.name);
+                    let signature = facts.method_signature_fact(&member.owner, &member.name);
                     SchemaMemberFact::from_registry_member(member, docs, resource)
+                        .with_signature(signature)
                 })
                 .collect(),
             method_effects: facts
@@ -369,7 +379,9 @@ impl SchemaArtifactFacts {
                 .trait_methods()
                 .map(|member| {
                     let docs = facts.trait_method_docs(&member.owner, &member.name);
+                    let signature = facts.trait_method_signature_fact(&member.owner, &member.name);
                     SchemaMemberFact::from_registry_member(member, docs, None)
+                        .with_signature(signature)
                 })
                 .collect(),
             trait_method_effects: facts
@@ -381,7 +393,9 @@ impl SchemaArtifactFacts {
                 .map(|function| {
                     let docs = facts.function_docs(&function.name);
                     let resource = facts.function_scoped_resource(&function.name);
+                    let signature = facts.function_signature_fact(&function.name);
                     SchemaFunctionFact::from_registry_function(function, docs, resource)
+                        .with_signature(signature)
                 })
                 .collect(),
             function_effects: facts
@@ -448,6 +462,13 @@ impl SchemaArtifactFacts {
             }
         }
         for entry in &self.methods {
+            if let Some(signature) = &entry.signature {
+                facts.insert_method_signature(
+                    entry.owner.clone(),
+                    entry.name.clone(),
+                    signature.to_registry(),
+                );
+            }
             facts.insert_method(
                 entry.owner.clone(),
                 entry.name.clone(),
@@ -475,6 +496,13 @@ impl SchemaArtifactFacts {
             facts.insert_method_access(access.to_registry_fact());
         }
         for entry in &self.trait_methods {
+            if let Some(signature) = &entry.signature {
+                facts.insert_trait_method_signature(
+                    entry.owner.clone(),
+                    entry.name.clone(),
+                    signature.to_registry(),
+                );
+            }
             facts.insert_trait_method(
                 entry.owner.clone(),
                 entry.name.clone(),
@@ -496,6 +524,9 @@ impl SchemaArtifactFacts {
             );
         }
         for entry in &self.functions {
+            if let Some(signature) = &entry.signature {
+                facts.insert_function_signature(entry.name.clone(), signature.to_registry());
+            }
             facts.insert_function(entry.name.clone(), entry.fact.to_type_fact());
             if let Some(docs) = &entry.docs {
                 facts.insert_function_docs(entry.name.clone(), docs.clone());
@@ -594,132 +625,6 @@ fn fnv1a64(bytes: &[u8]) -> u64 {
         hash = hash.wrapping_mul(SCHEMA_HASH_PRIME);
     }
     if hash == 0 { 1 } else { hash }
-}
-
-#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SchemaSourceSpan {
-    source: u32,
-    start: u32,
-    end: u32,
-}
-
-impl SchemaSourceSpan {
-    fn from_span(span: Span) -> Self {
-        Self {
-            source: span.source.get(),
-            start: span.start,
-            end: span.end,
-        }
-    }
-
-    fn to_span(self) -> Option<Span> {
-        (self.start <= self.end)
-            .then(|| Span::new(SourceId::new(self.source), self.start, self.end))
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
-struct SchemaNamedFact {
-    name: String,
-    fact: SchemaTypeFact,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    docs: Option<String>,
-    #[serde(
-        default,
-        rename = "sourceSpan",
-        alias = "source_span",
-        skip_serializing_if = "Option::is_none"
-    )]
-    source_span: Option<SchemaSourceSpan>,
-}
-
-impl SchemaNamedFact {
-    fn new(name: impl Into<String>, fact: &TypeFact, docs: Option<&str>) -> Self {
-        Self {
-            name: name.into(),
-            fact: SchemaTypeFact::from_type_fact(fact),
-            docs: docs.map(str::to_owned),
-            source_span: None,
-        }
-    }
-
-    fn from_registry_module(value: RegistryModuleFact) -> Self {
-        Self {
-            name: value.name,
-            fact: SchemaTypeFact::from_type_fact(&value.fact),
-            docs: value.docs,
-            source_span: value.source_span.map(SchemaSourceSpan::from_span),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
-struct SchemaMemberFact {
-    owner: String,
-    name: String,
-    fact: SchemaTypeFact,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    docs: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    scoped_resource: Option<SchemaScopedResourceReturn>,
-    #[serde(
-        default,
-        rename = "sourceSpan",
-        alias = "source_span",
-        skip_serializing_if = "Option::is_none"
-    )]
-    source_span: Option<SchemaSourceSpan>,
-}
-
-impl SchemaMemberFact {
-    fn from_registry_member(
-        value: RegistryMemberFact,
-        docs: Option<&str>,
-        scoped_resource: Option<ScopedResourceReturnDef>,
-    ) -> Self {
-        Self {
-            owner: value.owner,
-            name: value.name,
-            fact: SchemaTypeFact::from_type_fact(&value.fact),
-            docs: docs.map(str::to_owned),
-            scoped_resource: scoped_resource.map(Into::into),
-            source_span: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
-struct SchemaFunctionFact {
-    name: String,
-    fact: SchemaTypeFact,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    docs: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    scoped_resource: Option<SchemaScopedResourceReturn>,
-    #[serde(
-        default,
-        rename = "sourceSpan",
-        alias = "source_span",
-        skip_serializing_if = "Option::is_none"
-    )]
-    source_span: Option<SchemaSourceSpan>,
-}
-
-impl SchemaFunctionFact {
-    fn from_registry_function(
-        value: RegistryFunctionFact,
-        docs: Option<&str>,
-        scoped_resource: Option<ScopedResourceReturnDef>,
-    ) -> Self {
-        Self {
-            name: value.name,
-            fact: SchemaTypeFact::from_type_fact(&value.fact),
-            docs: docs.map(str::to_owned),
-            scoped_resource: scoped_resource.map(Into::into),
-            source_span: None,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]

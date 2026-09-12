@@ -22,7 +22,21 @@
     "scripts/query_method_used.vela": "/* 中😀 */ fn main(p: api::Player) { p.grant(reason = \"x\", [[replace:start]]am[[cursor]][[replace:end]]); }\n",
     "scripts/query_unknown.vela": "/* 中😀 */ fn main() { missing([[replace:start]][[cursor]][[replace:end]]); }\n",
     "scripts/query_shadowed.vela": "/* 中😀 */ use api::grant; fn main(grant: Function) { grant([[replace:start]][[cursor]][[replace:end]]); }\n",
-    "scripts/query_private.vela": "/* 中😀 */ fn main() { api::hidden([[replace:start]][[cursor]][[replace:end]]); }\n"
+    "scripts/query_private.vela": "/* 中😀 */ fn main() { api::hidden([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Player\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Player\"\n        }\n      },\n      {\n        \"name\": \"api::Player\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"api::Player\"\n        }\n      }\n    ],\n    \"traits\": [\n      {\n        \"name\": \"host::Rewardable\",\n        \"fact\": {\n          \"kind\": \"trait\",\n          \"name\": \"host::Rewardable\"\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"host::grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"async\",\n          \"parameters\": [\n            {\n              \"name\": \"arg0\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"i64\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"host::legacy\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"foreign::grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"unrelated\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::hidden\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"unrelated\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"unrelated\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ],\n    \"methods\": [\n      {\n        \"name\": \"grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"owner\": \"host::Player\",\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"amount\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"i64\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"legacy\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"owner\": \"host::Player\"\n      },\n      {\n        \"name\": \"grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"owner\": \"api::Player\",\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"unrelated\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ],\n    \"traitMethods\": [\n      {\n        \"name\": \"preview\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"owner\": \"host::Rewardable\",\n        \"signature\": {\n          \"asyncness\": \"async\",\n          \"parameters\": [\n            {\n              \"name\": \"amount\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"i64\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  }\n}\n",
+    "scripts/query_schema_all.vela": "/* 中😀 */ fn main() { host::grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_schema_used.vela": "/* 中😀 */ fn main() { host::grant(1, [[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_schema_named_used.vela": "/* 中😀 */ fn main() { host::grant(reason = \"x\", [[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_schema_method.vela": "/* 中😀 */ fn main(p: host::Player) { p.grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_schema_method_used.vela": "/* 中😀 */ fn main(p: host::Player) { p.grant(1, [[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_schema_trait.vela": "/* 中😀 */ fn main(p: host::Rewardable) { p.preview([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_schema_legacy.vela": "/* 中😀 */ fn main() { host::legacy([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_schema_method_legacy.vela": "/* 中😀 */ fn main(p: host::Player) { p.legacy([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_schema_missing.vela": "/* 中😀 */ fn main() { unknown::grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_schema_wrong_owner.vela": "/* 中😀 */ fn main(p: host::Missing) { p.grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_schema_dynamic.vela": "/* 中😀 */ fn main(p: Any) { p.grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_stdlib_indexed.vela": "/* 中😀 */ fn main() { option::some([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_stdlib_method_indexed.vela": "/* 中😀 */ fn main(values: Array<i64>) { values.push([[replace:start]][[cursor]][[replace:end]]); }\n"
   },
   "actions": [],
   "oracle": {
@@ -276,6 +290,149 @@
         "parameters": [],
         "apply": null,
         "value": "1"
+      },
+      {
+        "id": "schema_all",
+        "file": "scripts/query_schema_all.vela",
+        "parameters": [
+          {
+            "name": "arg0",
+            "detail": "i64",
+            "insert": "arg0 = "
+          },
+          {
+            "name": "reason",
+            "detail": "String (defaulted)",
+            "insert": "reason = "
+          }
+        ],
+        "apply": "arg0",
+        "value": "1",
+        "signature": "async host::grant(arg0: i64, reason: String (defaulted)) -> bool",
+        "activeParameter": 0
+      },
+      {
+        "id": "schema_used",
+        "file": "scripts/query_schema_used.vela",
+        "parameters": [
+          {
+            "name": "reason",
+            "detail": "String (defaulted)",
+            "insert": "reason = "
+          }
+        ],
+        "apply": "reason",
+        "value": "\"x\"",
+        "signature": "async host::grant(arg0: i64, reason: String (defaulted)) -> bool",
+        "activeParameter": 1
+      },
+      {
+        "id": "schema_named_used",
+        "file": "scripts/query_schema_named_used.vela",
+        "parameters": [
+          {
+            "name": "arg0",
+            "detail": "i64",
+            "insert": "arg0 = "
+          }
+        ],
+        "apply": "arg0",
+        "value": "1",
+        "signature": "async host::grant(arg0: i64, reason: String (defaulted)) -> bool"
+      },
+      {
+        "id": "schema_method",
+        "file": "scripts/query_schema_method.vela",
+        "parameters": [
+          {
+            "name": "amount",
+            "detail": "i64",
+            "insert": "amount = "
+          },
+          {
+            "name": "reason",
+            "detail": "String (defaulted)",
+            "insert": "reason = "
+          }
+        ],
+        "apply": "amount",
+        "value": "1",
+        "signature": "host::Player.grant(amount: i64, reason: String (defaulted)) -> bool",
+        "activeParameter": 0
+      },
+      {
+        "id": "schema_method_used",
+        "file": "scripts/query_schema_method_used.vela",
+        "parameters": [
+          {
+            "name": "reason",
+            "detail": "String (defaulted)",
+            "insert": "reason = "
+          }
+        ],
+        "apply": "reason",
+        "value": "\"x\"",
+        "signature": "host::Player.grant(amount: i64, reason: String (defaulted)) -> bool",
+        "activeParameter": 1
+      },
+      {
+        "id": "schema_trait",
+        "file": "scripts/query_schema_trait.vela",
+        "parameters": [
+          {
+            "name": "amount",
+            "detail": "i64",
+            "insert": "amount = "
+          },
+          {
+            "name": "reason",
+            "detail": "String (defaulted)",
+            "insert": "reason = "
+          }
+        ],
+        "apply": "amount",
+        "value": "1",
+        "signature": "async host::Rewardable.preview(amount: i64, reason: String (defaulted)) -> bool",
+        "activeParameter": 0
+      },
+      {
+        "id": "schema_legacy",
+        "file": "scripts/query_schema_legacy.vela",
+        "parameters": [],
+        "signature": "host::legacy(arg0: i64, arg1: String) -> bool",
+        "activeParameter": 0
+      },
+      {
+        "id": "schema_method_legacy",
+        "file": "scripts/query_schema_method_legacy.vela",
+        "parameters": [],
+        "signature": "host::Player.legacy(arg0: i64, arg1: String) -> bool",
+        "activeParameter": 0
+      },
+      {
+        "id": "schema_missing",
+        "file": "scripts/query_schema_missing.vela",
+        "parameters": []
+      },
+      {
+        "id": "schema_wrong_owner",
+        "file": "scripts/query_schema_wrong_owner.vela",
+        "parameters": []
+      },
+      {
+        "id": "schema_dynamic",
+        "file": "scripts/query_schema_dynamic.vela",
+        "parameters": []
+      },
+      {
+        "id": "stdlib_indexed",
+        "file": "scripts/query_stdlib_indexed.vela",
+        "parameters": []
+      },
+      {
+        "id": "stdlib_method_indexed",
+        "file": "scripts/query_stdlib_method_indexed.vela",
+        "parameters": []
       }
     ]
   }

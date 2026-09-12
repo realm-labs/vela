@@ -43,6 +43,7 @@ pub struct CallableFacts {
     scoped_resource: Option<ScopedResourceReturnDef>,
     asyncness: CallableAsyncness,
     origin: CallableOrigin,
+    parameters_named: bool,
     symbol: SymbolRef,
 }
 
@@ -80,6 +81,11 @@ impl CallableFacts {
     #[must_use]
     pub const fn origin(&self) -> CallableOrigin {
         self.origin
+    }
+
+    #[must_use]
+    pub const fn supports_named_arguments(&self) -> bool {
+        self.parameters_named
     }
 
     #[must_use]
@@ -211,6 +217,7 @@ pub(crate) fn source_callable_facts_for_declaration(
         scoped_resource: None,
         asyncness: signature.asyncness,
         origin: CallableOrigin::Source,
+        parameters_named: true,
         symbol: source_symbol_for_declaration(graph, declaration),
     })
 }
@@ -256,11 +263,7 @@ pub(crate) fn member_callable_facts_for_type(
         return Vec::new();
     }
     let mut facts = source_method_callable_facts(databases, receiver, method);
-    facts.extend(schema_method_callable_facts(
-        databases.schema_db().facts(),
-        receiver,
-        method,
-    ));
+    facts.extend(schema_method_callable_facts(databases, receiver, method));
     facts.extend(stdlib_method_callable_facts(receiver, method, args_prefix));
     facts
 }
@@ -416,10 +419,24 @@ fn source_trait_impl_default_callable_facts(
 }
 
 fn schema_method_callable_facts(
-    schema: &RegistryFacts,
+    databases: &LanguageServiceDatabases,
     receiver: &TypeFact,
     method: &str,
 ) -> Vec<CallableFacts> {
+    let graph = databases.hir_db().graph();
+    let source_owner = match receiver {
+        TypeFact::Record { name } => Some((name, DeclarationKind::Struct)),
+        TypeFact::Trait { name } => Some((name, DeclarationKind::Trait)),
+        _ => None,
+    };
+    if source_owner.is_some_and(|(name, kind)| {
+        graph.declarations().any(|declaration| {
+            declaration.kind == kind && qualified_declaration_label(graph, declaration.id) == *name
+        })
+    }) {
+        return Vec::new();
+    }
+    let schema = databases.schema_db().facts();
     let Some((owner, fact)) = schema_method_fact_for_receiver(schema, receiver, method) else {
         return Vec::new();
     };
@@ -442,6 +459,7 @@ fn schema_method_callable_facts(
         scoped_resource: schema.method_scoped_resource(&owner, method),
         asyncness: signature.map_or(CallableAsyncness::Sync, |signature| signature.asyncness),
         origin: CallableOrigin::SchemaMethod,
+        parameters_named: signature.is_some(),
         symbol: schema_member_symbol(&owner, method),
     }]
 }
@@ -505,10 +523,21 @@ fn source_variant_callable_facts(
                     scoped_resource: None,
                     asyncness: CallableAsyncness::Sync,
                     origin: CallableOrigin::SourceVariant,
+                    parameters_named: false,
                     symbol: source_enum_variant_symbol(graph, declaration.id, &variant.name)?,
                 })
             })
         })
+        .collect()
+}
+
+pub(crate) fn named_schema_callable_facts(
+    schema: &RegistryFacts,
+    callee: &str,
+) -> Vec<CallableFacts> {
+    schema_callable_facts(schema, callee)
+        .into_iter()
+        .filter(|callable| callable.name() == callee)
         .collect()
 }
 
@@ -532,6 +561,7 @@ fn schema_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<CallableFa
                 asyncness: signature
                     .map_or(CallableAsyncness::Sync, |signature| signature.asyncness),
                 origin: CallableOrigin::Schema,
+                parameters_named: signature.is_some(),
                 symbol: schema_symbol(function.name),
             })
         })
@@ -557,6 +587,7 @@ fn schema_variant_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<Ca
                 scoped_resource: None,
                 asyncness: CallableAsyncness::Sync,
                 origin: CallableOrigin::SchemaVariant,
+                parameters_named: false,
                 symbol: schema_variant_symbol(&variant.owner, &variant.name),
             })
         })
@@ -631,6 +662,7 @@ fn stdlib_callable_fact(fact: StdlibFunctionFact) -> CallableFacts {
         scoped_resource: None,
         asyncness: CallableAsyncness::Sync,
         origin: CallableOrigin::Stdlib,
+        parameters_named: false,
         symbol: builtin_symbol(fact.name),
     }
 }
@@ -660,6 +692,7 @@ fn stdlib_method_callable_fact(
         scoped_resource,
         asyncness: CallableAsyncness::Sync,
         origin: CallableOrigin::StdlibMethod,
+        parameters_named: false,
         symbol: builtin_member_symbol(&fact.receiver.display_name(), fact.method),
     }
 }
@@ -699,6 +732,7 @@ fn callable_facts_from_signature(
         scoped_resource: None,
         asyncness: signature.asyncness,
         origin,
+        parameters_named: true,
     }
 }
 
@@ -825,11 +859,6 @@ fn owner_names(receiver: &TypeFact) -> Vec<String> {
     let mut owners = record_owner_names(receiver);
     if let TypeFact::Host { name } | TypeFact::Trait { name } = receiver {
         push_owner_name(&mut owners, name);
-        if let Some(short) = name.rsplit("::").next()
-            && short != name
-        {
-            push_owner_name(&mut owners, short);
-        }
     }
     owners
 }

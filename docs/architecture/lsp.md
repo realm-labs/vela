@@ -335,12 +335,22 @@ The schema artifact should carry copied metadata:
 stable TypeId, FieldId, MethodId, VariantId, TraitId, FunctionId
 qualified names and display names
 type hints and builtin container contracts
+callable parameter names, required/defaulted status, return types and asyncness
 field and method access metadata
 EffectSet and required capabilities
 docs and declaration origins
 source spans when known
 schema hash or version
 ```
+
+Function, method and trait-method entries may carry a `signature` object. Its
+parameter and return types must agree with the entry's function fact; parameter
+names, requirement markers and asyncness participate in the schema hash. Known
+parameter declaration spans round-trip with the metadata. Missing signatures
+preserve the type-only format and do not create authoritative parameter names.
+Named-argument completion uses source declarations or explicit registry
+signatures; generated display labels such as `arg0` are not insertable names.
+An explicitly registered parameter named `arg0` remains valid.
 
 When the schema is absent or stale, tooling should degrade to `Any` and report
 schema diagnostics. It must not invent host facts or read host state.

@@ -1052,15 +1052,24 @@
     },
     {
       "id": "B03.7",
-      "revision": null,
+      "revision": "df8cc69f4",
       "requirements": [
         "completion/states/repeat/protocol"
       ],
       "summary": "Add 19 shared call-context cases (17 argument sites and two negative declaration/non-call sites), tested under LF/CRLF and UTF-16/encoded URI positions. Reproduce and fix string/comment punctuation corrupting active argument indices and call-open detection: use lexer tokens for parentheses and actual CST-owned separators for the index. Reuse exact syntax-call lookup for named completion. Match CST callee spans to HIR call facts, including missing closing delimiters and trailing whitespace at EOF, with callee-body fallback when the cursor lies beyond the recovered body. Snapshot-only queries retain structural indices by parsing their immutable source. Independently assert completion expected parameter, exact remaining parameter sets, unique signatures, active indices and repeated protocol results. Correct the old incomplete-call test that accidentally targeted the function declaration, and retain a negative declaration assertion. Final service 582 plus two historical ignored, protocol 577, eight binary/transport tests, Node 69, relevant Clippy/fmt and installed VSIX 9 passed. Audit run-wKqzns matches source identity and supplements completion repeat proof; installed run-9kjwhO. Preserve initial reproduction, focused recovery and first package failure logs. Broad S5 remains unreviewed; B03 stays unaccepted and 1332 whole-batch requirements remain. Continue B03.8 with schema/stdlib callable parameter metadata: ordinary SchemaArtifactFacts and type_binding metadata do not serialize function/method/trait CallableSignatureFact; direct RegistryFacts getters contain real parameter names/defaults/asyncness but wire fallback uses indexed names. Add round-trip proof and preserve only authoritative insertable names, then finish broader S5, remaining syntax/lifecycle and UX04. Fresh native evidence remains required for strict batch acceptance; latest native attempt recorded desktop lock, not retried here. B16 deferred. Find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B03.8",
+      "revision": null,
+      "requirements": [
+        "completion/states/repeat/protocol",
+        "completion/states/unresolved/protocol"
+      ],
+      "summary": "Preserve optional function/method/trait CallableSignatureFact metadata across static schema export/import: parameter names, required/defaulted markers, asyncness, parameter/return types and known declaration spans. Four independent schema tests assert literal wire shape, exact restored signatures, metadata hash changes/stale-hash rejection, malformed/disagreeing metadata rejection and unchanged type-only encoding. Extract entry and signature modules; schema.rs is now below 1200 lines. Track authoritative callable parameter names explicitly; named completion accepts real source/schema names (including a genuine registered arg0) and suppresses generated display labels. Resolve source function ownership before exact schema lookup and prevent schema method parameters leaking into same-name source records/traits or falling back to unrelated short type names. Extend the shared named-argument fixture from 18 to 31 cases with function/method/trait signatures, defaults, asyncness, exact sets, parseable UTF-16 edits and re-query, legacy schemas, missing/dynamic receivers and stdlib placeholder negatives. Existing source private/shadowed/method cases now run against colliding schema declarations. Full workspace 4392 passed plus two historical ignored, workspace Clippy and fmt passed; final focused tests/relevant Clippy, Node 69, service 586 plus two historical ignored, protocol 577 and installed VSIX 9 passed. Audit run-4YoEhE matches source identity; installed run-9cEoY7. Preserve the schema-owner reproduction and module-extraction compile failure logs. Broad S5 remains unreviewed; B03 unaccepted; whole-batch remaining stays 1332. Continue B03.9 with actual standard-library parameter ABI/names (StdlibFunctionFact::new generates arg0 labels; only scoped task entries override names), service-set projection, imported schema callable ownership, and the remaining callable/expected-parameter semantics before lifecycle and UX04. Review named-argument signature/expected-type mapping: the current active index is structural, and the out-of-order named case intentionally does not certify semantic highlighting. Fresh native input evidence remains required before strict acceptance; B16 deferred. Find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.8",
-  "nextTask": "B03.8",
+  "activeChild": "B03.9",
+  "nextTask": "B03.9",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -2575,7 +2584,23 @@
     "target/lsp-matrix/b03-7-recovery-corrected.log",
     "target/lsp-matrix/b03-7-reproduction.log",
     "target/lsp-matrix/run-wKqzns/report.json",
-    "editors/vscode/test-results/run-9kjwhO/results.json"
+    "editors/vscode/test-results/run-9kjwhO/results.json",
+    "target/lsp-matrix/b03-8-baseline.log",
+    "target/lsp-matrix/b03-8-clippy-final.log",
+    "target/lsp-matrix/b03-8-clippy.log",
+    "target/lsp-matrix/b03-8-installed.log",
+    "target/lsp-matrix/b03-8-named-baseline.log",
+    "target/lsp-matrix/b03-8-named-final.log",
+    "target/lsp-matrix/b03-8-named-schema.log",
+    "target/lsp-matrix/b03-8-named-schema2.log",
+    "target/lsp-matrix/b03-8-node.log",
+    "target/lsp-matrix/b03-8-packages.log",
+    "target/lsp-matrix/b03-8-protocol.log",
+    "target/lsp-matrix/b03-8-signatures.log",
+    "target/lsp-matrix/b03-8-workspace-final.log",
+    "target/lsp-matrix/b03-8-workspace.log",
+    "target/lsp-matrix/run-4YoEhE/report.json",
+    "editors/vscode/test-results/run-9cEoY7/results.json"
   ],
   "openIssues": [
     {
@@ -2591,6 +2616,11 @@
       "id": "navigation-unicode-render-styles",
       "owner": "B06",
       "summary": "The retained input-navigation fixture renders make after Chinese/non-BMP text in split mtk13/mtk3/mtk17 spans. Navigation and source geometry are verified, but syntax/semantic style ownership was not assessed in B02. Review this rendered observation during B06 token-position/style coverage; preserve input-ODUwef/rendered-lines.json and the final modifier screenshot rather than treating navigation proof as styling proof."
+    },
+    {
+      "id": "named-argument-active-parameter-mapping",
+      "owner": "B07",
+      "summary": "The shared query active parameter remains a structural argument index. In host::grant(reason = \"x\", <cursor>), named completion correctly offers arg0, while signature highlighting still uses index 1. Define and verify name-aware argument/expected-type mapping in B03/S5 and B07; the metadata fixture checks the exact signature and candidate set but does not certify highlighting for this out-of-order case. Preserve b03-8-named-schema2.log, which observed the ordinal result, and add direct named-value/used-slot assertions before acceptance."
     }
   ]
 }

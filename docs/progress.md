@@ -631,8 +631,9 @@ source records; missing qualified constructors do not fall back to short names.
 Thirty-four enum cases now cover source/schema unit, tuple and record variants,
 visible owner resolution, constructor fields, applied edits and negative shapes.
 Record construction preserves known enum variant facts; cursor contexts separate
-constructor paths, field labels and field values. Eighteen source named-argument
-cases now apply parseable `name = value` edits; CST argument ownership excludes
+constructor paths, field labels and field values. Thirty-one shared source/schema
+named-argument cases check parseable `name = value` edits, exact parameter sets,
+async/defaulted signatures and explicit negative results. CST argument ownership excludes
 used positional/named slots, nested calls and string punctuation. Imported
 functions and source methods retain parameter ownership; private or shadowed
 callables cannot borrow unrelated names. Nineteen shared call-context cases now
@@ -640,8 +641,11 @@ check argument indices and remaining parameter candidates across strings, commen
 nested expressions, lambda parameters and incomplete calls. CST separators and
 exact callee-to-HIR matching preserve completion/signature agreement, including
 trailing whitespace at EOF, with negative declaration and non-call positions.
-Schema/stdlib parameter-name metadata,
-broader S5 authoring semantics and UX04 remain open. The desktop locked again during the latest native input regression; see [blocked.md](blocked.md).
+Static schema export now preserves function/method/trait signatures, including
+parameter names, defaults, asyncness and known spans; malformed or conflicting
+metadata is rejected and signature changes invalidate the hash. Source/schema
+name collisions and generated parameter labels cannot leak into named completion.
+Stdlib parameter-name metadata, broader S5 authoring semantics and UX04 remain open. The desktop locked again during the latest native input regression; see [blocked.md](blocked.md).
 
 ### Deferred Tracks
 

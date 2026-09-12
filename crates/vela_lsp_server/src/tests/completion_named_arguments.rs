@@ -78,6 +78,26 @@ fn named_argument_matrix_projects_exact_parameter_sets_and_parseable_utf16_edits
                 .collect::<Vec<_>>();
             expected.sort_unstable();
             assert_eq!(names, expected, "{query}");
+            if let Some(label) = query["signature"].as_str() {
+                let help = response_value(request::<r::SignatureHelpRequest>(
+                    &mut server,
+                    id,
+                    json!({"textDocument":{"uri":uri(file)},"position":{"line":point.line,"character":point.character}}),
+                ));
+                id += 1;
+                assert_eq!(
+                    help["result"]["signatures"]
+                        .as_array()
+                        .expect("signatures")
+                        .len(),
+                    1,
+                    "{query}"
+                );
+                assert_eq!(help["result"]["signatures"][0]["label"], label, "{query}");
+                if let Some(active) = query["activeParameter"].as_u64() {
+                    assert_eq!(help["result"]["activeParameter"], active, "{query}");
+                }
+            }
             for expected in query["parameters"].as_array().expect("params") {
                 let item = items
                     .iter()
