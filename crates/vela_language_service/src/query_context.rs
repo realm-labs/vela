@@ -21,10 +21,12 @@ use vela_hir::{
 use vela_package::{ModuleKey, ModulePath};
 
 mod call;
+mod call_argument;
 #[cfg(test)]
 mod call_argument_tests;
 mod callable;
 mod hir_cursor;
+mod locals;
 mod service_call;
 use hir_cursor::refine_cursor_with_hir;
 
@@ -170,7 +172,11 @@ impl<'a> QueryContext<'a> {
         let mut cursor = cursor_context_at(source.text(), position, syntax_parse);
         let body = u32::try_from(cursor.replace_range().end)
             .ok()
-            .and_then(|offset| graph.body_containing_offset(source.source_id(), offset));
+            .and_then(|offset| graph.body_containing_offset(source.source_id(), offset))
+            .or_else(|| {
+                let offset = u32::try_from(cursor.call_callee()?.start).ok()?;
+                graph.body_containing_offset(source.source_id(), offset)
+            });
         if let Some(body) = body {
             refine_cursor_with_hir(
                 graph,
@@ -180,7 +186,10 @@ impl<'a> QueryContext<'a> {
                 &mut cursor,
             );
         }
-        let bindings = query_bindings(databases, source, cursor.replace_range().end);
+        // Incomplete calls can extend beyond recovery HIR spans, particularly
+        // at EOF. Their actual callee still identifies the lexical owner.
+        let bindings = query_bindings(databases, source, cursor.replace_range().end)
+            .or_else(|| query_bindings(databases, source, cursor.call_callee()?.start));
         Some(Self {
             document_id: document_id.clone(),
             position,
@@ -258,13 +267,7 @@ impl<'a> QueryContext<'a> {
     }
 
     pub fn local_bindings_before_cursor(&self) -> impl Iterator<Item = &LocalBinding> + '_ {
-        let offset = u32::try_from(self.cursor.replace_range().end).ok();
-        self.bindings.into_iter().flat_map(move |bindings| {
-            bindings.locals().filter(move |local| {
-                let visible_after = local.scope_span.unwrap_or(local.span);
-                offset.is_some_and(|offset| visible_after.end <= offset)
-            })
-        })
+        self.visible_locals().into_iter()
     }
 
     #[must_use]

@@ -10,6 +10,8 @@ mod analysis_tests;
 mod builtin_type;
 mod builtin_value;
 #[cfg(test)]
+mod call_expression_tests;
+#[cfg(test)]
 mod call_parameter_tests;
 #[cfg(test)]
 mod callable_import_tests;
@@ -122,10 +124,7 @@ impl LanguageServiceDatabases {
             return Some(empty_completion_list(CompletionContext::expression(0, "")));
         };
         self.completion_query_is_current(token).then_some(())?;
-        let mut context = completion_context(&query);
-        if context.kind() == CompletionContextKind::NamedArgument && query.is_service_call() {
-            context.kind = CompletionContextKind::Expression;
-        }
+        let context = completion_context(&query);
         let analysis = completion_analysis(self, &query, &context);
         let items = if let Some(items) = service_path::completion_items(self, &query, &context) {
             items
@@ -275,35 +274,14 @@ impl LanguageServiceDatabases {
         let Some(call) = context.call_arguments.as_ref() else {
             return Vec::new();
         };
-        let used_names = call
-            .used_names
-            .iter()
-            .map(String::as_str)
-            .collect::<Vec<_>>();
-        let Some(facts) = query.call_argument_facts() else {
-            return Vec::new();
-        };
-        if facts.callee_expression().is_some_and(|expression| {
-            matches!(
-                query
-                    .bindings()
-                    .and_then(|bindings| bindings.resolution(expression)),
-                Some(vela_hir::binding::BindingResolution::Local(_))
-            )
-        }) {
-            return Vec::new();
-        }
-        let callables = if let (Some(receiver), Some(method)) =
-            (facts.member_receiver(), facts.member_method())
+        let callables = query.call_target_facts(self);
+        let mut items = script_function_parameter_completions(&callables, query, call.has_equal);
+        if query
+            .call_argument_position()
+            .is_some_and(|position| position.allows_positional_expression(callables.first()))
         {
-            query.member_callable_facts(self, receiver, method, facts.args_prefix())
-        } else if let Some(path) = facts.callee_path() {
-            query.callable_facts_by_path(self, path)
-        } else {
-            Vec::new()
-        };
-        let items =
-            script_function_parameter_completions(&callables, &used_names, call.positional_count);
+            items.extend(self.expression_completion_items(query, context));
+        }
         dedupe_and_filter_service_items(items, context.replace_range(), context.prefix(), |item| {
             label_segment_matches(item.label(), context.prefix())
         })

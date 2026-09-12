@@ -144,6 +144,7 @@ mod call_argument_context;
 mod call_parameter_mapping;
 mod callable_imports;
 mod code_action;
+mod completion_call_expressions;
 mod completion_map;
 mod completion_member;
 mod completion_members;

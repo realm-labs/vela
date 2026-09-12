@@ -111,6 +111,10 @@ fn verify_fixture(fixture_name: &str) {
                 .iter()
                 .map(|item| item["name"].as_str().expect("name"))
                 .collect::<Vec<_>>();
+            expected.extend(crate::matrix_fixture::expected_expression_labels(
+                &spec.oracle,
+                query,
+            ));
             expected.sort_unstable();
             assert_eq!(names, expected, "{query}");
             if let Some(label) = query["signature"].as_str() {
@@ -136,7 +140,10 @@ fn verify_fixture(fixture_name: &str) {
             for expected in query["parameters"].as_array().expect("params") {
                 let item = items
                     .iter()
-                    .find(|item| item["label"] == expected["name"])
+                    .find(|item| {
+                        item["label"] == expected["name"]
+                            && item["labelDetails"]["description"] == "named argument"
+                    })
                     .expect("parameter");
                 assert_eq!(item["kind"], 6);
                 assert_eq!(item["detail"], expected["detail"]);
@@ -190,8 +197,9 @@ fn verify_fixture(fixture_name: &str) {
                             .as_array()
                             .expect("requery")
                             .iter()
-                            .all(|candidate| candidate["label"] != item["label"]),
-                        "occupied parameter: {query}"
+                            .any(|candidate| candidate["label"] == item["label"]
+                                && candidate["textEdit"]["newText"] == item["label"]),
+                        "current label replacement: {query}"
                     );
                 }
             }

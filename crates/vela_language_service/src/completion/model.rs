@@ -75,6 +75,7 @@ pub struct CompletionItem {
 
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct CompletionItemMetadata {
+    pub(super) argument_name: bool,
     pub(super) lookup: Option<String>,
     pub(super) edit_range: Option<TextRange>,
     pub(super) text_edit: Option<CompletionTextEdit>,
@@ -280,8 +281,7 @@ pub(super) struct RecordConstructor {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct CallArgumentContext {
     pub(super) callee_range: Option<TextRange>,
-    pub(super) used_names: Vec<String>,
-    pub(super) positional_count: usize,
+    pub(super) has_equal: bool,
 }
 
 impl CompletionContext {
@@ -422,6 +422,7 @@ mod tests {
             insert_format: CompletionInsertFormat::Snippet,
             sort_text: Some("0030_01_game::reward::Reward".to_owned()),
             metadata: CompletionItemMetadata {
+                argument_name: false,
                 lookup: Some("game::reward::Reward".to_owned()),
                 edit_range: Some(TextRange::new(10, 12)),
                 text_edit: Some(CompletionTextEdit {

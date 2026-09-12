@@ -70,13 +70,20 @@ fn callable_import_matrix_agrees_on_owned_parameters_signatures_and_edits() {
                 .iter()
                 .map(|i| i["name"].as_str().expect("name"))
                 .collect::<Vec<_>>();
+            names.extend(crate::matrix_fixture::expected_expression_labels(
+                &spec.oracle,
+                case,
+            ));
             names.sort_unstable();
             assert_eq!(labels, names, "{case}");
             for expected in expected {
                 let item = result
                     .items()
                     .iter()
-                    .find(|i| i.label() == expected["name"])
+                    .find(|i| {
+                        i.label() == expected["name"]
+                            && i.label_details().description() == Some("named argument")
+                    })
                     .expect("item");
                 assert_eq!(item.kind(), crate::CompletionKind::Parameter);
                 assert_eq!(item.detail(), expected["detail"].as_str().expect("detail"));

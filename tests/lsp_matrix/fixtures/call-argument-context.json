@@ -36,7 +36,8 @@
           "first",
           "second",
           "third"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "comma",
@@ -47,7 +48,8 @@
         "remainingParameters": [
           "second",
           "third"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "brackets",
@@ -58,7 +60,8 @@
         "remainingParameters": [
           "second",
           "third"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "pipe",
@@ -69,7 +72,8 @@
         "remainingParameters": [
           "second",
           "third"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "escaped",
@@ -80,7 +84,8 @@
         "remainingParameters": [
           "second",
           "third"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "block_comment",
@@ -91,7 +96,8 @@
         "remainingParameters": [
           "second",
           "third"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "line_comment",
@@ -102,7 +108,8 @@
         "remainingParameters": [
           "second",
           "third"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "nested_outer",
@@ -113,7 +120,8 @@
         "remainingParameters": [
           "second",
           "third"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "nested_inner",
@@ -123,7 +131,8 @@
         "validSyntax": true,
         "remainingParameters": [
           "second"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "tuple",
@@ -134,7 +143,8 @@
         "remainingParameters": [
           "second",
           "third"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "array",
@@ -145,7 +155,8 @@
         "remainingParameters": [
           "second",
           "third"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "lambda",
@@ -156,7 +167,8 @@
         "remainingParameters": [
           "second",
           "third"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "record",
@@ -167,7 +179,8 @@
         "remainingParameters": [
           "second",
           "third"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "trailing",
@@ -177,7 +190,8 @@
         "validSyntax": true,
         "remainingParameters": [
           "third"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "future",
@@ -189,7 +203,8 @@
           "first",
           "second",
           "third"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "incomplete",
@@ -200,7 +215,8 @@
         "remainingParameters": [
           "second",
           "third"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "incomplete_eof",
@@ -211,20 +227,162 @@
         "remainingParameters": [
           "second",
           "third"
-        ]
+        ],
+        "expressions": "set0"
       },
       {
         "id": "declaration",
         "file": "scripts/query_declaration.vela",
         "active": null,
-        "validSyntax": true
+        "validSyntax": true,
+        "expressions": null
       },
       {
         "id": "outside",
         "file": "scripts/query_outside.vela",
         "active": null,
-        "validSyntax": true
+        "validSyntax": true,
+        "expressions": null
       }
-    ]
+    ],
+    "expressionSets": {
+      "set0": [
+        "Pair",
+        "bytes::from_hex",
+        "crate",
+        "f32::try_from_f64",
+        "f64::from_f32",
+        "false",
+        "fs::read_to_string",
+        "fs::write_string",
+        "i16::try_from_i64",
+        "i32::from_i16",
+        "i32::try_from_i64",
+        "i64::from_i32",
+        "i8::try_from_i64",
+        "i8::wrapping_add",
+        "inner",
+        "io::print",
+        "io::println",
+        "main",
+        "math::abs",
+        "math::ceil",
+        "math::clamp",
+        "math::distance2d",
+        "math::distance3d",
+        "math::floor",
+        "math::lerp",
+        "math::max",
+        "math::min",
+        "math::move_towards",
+        "math::pow",
+        "math::random",
+        "math::round",
+        "math::sign",
+        "math::sqrt",
+        "option::flatten",
+        "option::is_none",
+        "option::is_some",
+        "option::none",
+        "option::ok_or",
+        "option::some",
+        "option::unwrap_or",
+        "probe",
+        "query_array",
+        "query_block_comment",
+        "query_brackets",
+        "query_comma",
+        "query_declaration",
+        "query_empty",
+        "query_escaped",
+        "query_future",
+        "query_incomplete",
+        "query_incomplete_eof",
+        "query_lambda",
+        "query_line_comment",
+        "query_nested_inner",
+        "query_nested_outer",
+        "query_outside",
+        "query_pipe",
+        "query_record",
+        "query_trailing",
+        "query_tuple",
+        "reflect::access",
+        "reflect::attr",
+        "reflect::attrs",
+        "reflect::call",
+        "reflect::docs",
+        "reflect::effects",
+        "reflect::exports",
+        "reflect::field",
+        "reflect::fields",
+        "reflect::function",
+        "reflect::functions",
+        "reflect::get",
+        "reflect::has_attr",
+        "reflect::has_field",
+        "reflect::has_function",
+        "reflect::has_method",
+        "reflect::has_module",
+        "reflect::has_permission",
+        "reflect::has_trait",
+        "reflect::has_type",
+        "reflect::has_variant",
+        "reflect::id",
+        "reflect::implements",
+        "reflect::kind",
+        "reflect::method",
+        "reflect::methods",
+        "reflect::module",
+        "reflect::modules",
+        "reflect::name",
+        "reflect::origin",
+        "reflect::owner",
+        "reflect::params",
+        "reflect::permissions",
+        "reflect::required_permissions",
+        "reflect::returns",
+        "reflect::set",
+        "reflect::source_span",
+        "reflect::trait_info",
+        "reflect::traits",
+        "reflect::type_info",
+        "reflect::type_of",
+        "reflect::types",
+        "reflect::variant",
+        "reflect::variant_info",
+        "reflect::variant_is",
+        "reflect::variants",
+        "result::err",
+        "result::flatten",
+        "result::is_err",
+        "result::is_ok",
+        "result::ok",
+        "result::to_error_option",
+        "result::to_option",
+        "result::unwrap_or",
+        "set::from_array",
+        "task::spawn_scoped",
+        "task::spawn_scoped_then",
+        "time::elapsed_since",
+        "time::now",
+        "time::tick",
+        "true",
+        "u16::try_from_u64",
+        "u32::from_u16",
+        "u32::wrapping_mul",
+        "u64::from_u32",
+        "u8::bit_and",
+        "u8::bit_or",
+        "u8::bit_xor",
+        "u8::rotate_left",
+        "u8::rotate_right",
+        "u8::shift_left",
+        "u8::shift_right",
+        "u8::try_from_u64",
+        "u8::wrapping_add",
+        "value"
+      ]
+    }
   }
 }

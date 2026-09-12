@@ -4342,3 +4342,21 @@ defaults missing/out-of-range active parameters to zero and ignores the value
 for zero-arity signatures. Preserve explicit zero presentation for unmapped
 arguments while semantic queries return no expected name or type. This does not
 claim no-highlight UI support or change compiler argument acceptance.
+
+## Call Argument Choices Preserve Syntax And Lexical Ownership
+
+An uncommitted argument slot combines expression candidates and available
+parameter names when a positional value is legal. Use the shared parameter-slot
+facts to exclude occupied slots, including future names, and to stop positional
+choices after a named argument. A committed label receives parameter names only;
+replace the full identifier without adding a second equals sign or touching its
+value. Parameter-name candidates carry a distinct edit role and visible label
+description, so a same-name local remains a separate choice with its own insertion.
+
+Expression completion follows current HIR scopes and ancestor bodies, selecting
+the nearest visible binding and excluding closed blocks/lambdas and later
+declarations. Earlier parameters remain visible in parameter defaults. An actual
+callee anchors scope recovery for incomplete calls beyond HIR spans. Binding
+types come from local analysis facts, never an enclosing expression selected by
+a declaration-name span. Cross-module source declarations require public
+visibility. These are tooling queries; no script or host code executes.

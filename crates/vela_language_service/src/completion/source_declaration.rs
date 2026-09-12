@@ -72,6 +72,10 @@ fn source_declaration_completion_items(
     for (item, symbol) in relative_current_module_items(
         declarations
             .into_iter()
+            .filter(|declaration| {
+                declaration.visibility == vela_hir::module_graph::Visibility::Public
+                    || graph.module_key(declaration.module) == query.module_key()
+            })
             .filter_map(|declaration| declaration_completion(graph, facts, declaration)),
         &current_module,
     ) {

@@ -90,6 +90,10 @@ fn callable_import_matrix_projects_owned_signatures_parameters_and_utf16_edits()
                 .iter()
                 .map(|i| i["name"].as_str().expect("name"))
                 .collect::<Vec<_>>();
+            names.extend(crate::matrix_fixture::expected_expression_labels(
+                &spec.oracle,
+                case,
+            ));
             names.sort_unstable();
             assert_eq!(labels, names, "{case}");
             let range = source.markers["replace"];
@@ -97,7 +101,10 @@ fn callable_import_matrix_projects_owned_signatures_parameters_and_utf16_edits()
             for expected in expected {
                 let item = items
                     .iter()
-                    .find(|i| i["label"] == expected["name"])
+                    .find(|i| {
+                        i["label"] == expected["name"]
+                            && i["labelDetails"]["description"] == "named argument"
+                    })
                     .expect("item");
                 assert_eq!(item["kind"], 6);
                 assert_eq!(item["detail"], expected["detail"]);

@@ -67,6 +67,10 @@ fn verify_fixture(fixture_name: &str) {
                 .iter()
                 .map(|p| p["name"].as_str().expect("name"))
                 .collect::<Vec<_>>();
+            expected.extend(crate::matrix_fixture::expected_expression_labels(
+                &spec.oracle,
+                query,
+            ));
             expected.sort_unstable();
             assert_eq!(names, expected, "{query}");
             if let Some(label) = query["signature"].as_str() {
@@ -83,7 +87,10 @@ fn verify_fixture(fixture_name: &str) {
                 let item = result
                     .items()
                     .iter()
-                    .find(|item| item.label() == expected["name"])
+                    .find(|item| {
+                        item.label() == expected["name"]
+                            && item.label_details().description() == Some("named argument")
+                    })
                     .expect("parameter");
                 assert_eq!(item.kind(), crate::CompletionKind::Parameter);
                 assert_eq!(
@@ -136,8 +143,9 @@ fn verify_fixture(fixture_name: &str) {
                         again
                             .items()
                             .iter()
-                            .all(|candidate| candidate.label() != item.label()),
-                        "occupied name must disappear: {query}"
+                            .any(|candidate| candidate.label() == item.label()
+                                && candidate.insert_text() == Some(item.label())),
+                        "current name remains editable without duplicating equals: {query}"
                     );
                 }
             }

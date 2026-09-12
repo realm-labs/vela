@@ -17,6 +17,7 @@ pub(super) struct CompletionAccumulator {
 #[derive(Debug, Clone, Eq, Ord, PartialEq, PartialOrd)]
 struct CompletionIdentity {
     lookup: String,
+    argument_name: bool,
     replace_start: usize,
     replace_end: usize,
 }
@@ -34,6 +35,7 @@ impl CompletionAccumulator {
         let item = self.prepare_item(item);
         let identity = CompletionIdentity {
             lookup: item.lookup().to_owned(),
+            argument_name: item.metadata.argument_name,
             replace_start: self.replace_range.start,
             replace_end: self.replace_range.end,
         };

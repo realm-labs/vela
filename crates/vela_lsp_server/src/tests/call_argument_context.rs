@@ -81,6 +81,10 @@ fn call_argument_matrix_projects_owned_active_parameter_through_utf16_positions(
                 .iter()
                 .map(|name| name.as_str().expect("name"))
                 .collect::<Vec<_>>();
+            expected.extend(crate::matrix_fixture::expected_expression_labels(
+                &spec.oracle,
+                case,
+            ));
             expected.sort_unstable();
             assert_eq!(names, expected, "completion parameters: {case}");
             let result = &response["result"];

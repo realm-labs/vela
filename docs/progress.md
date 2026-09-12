@@ -683,8 +683,17 @@ names, illegal positional-after-named expressions, missing arguments, nested and
 incomplete calls, zero arity and positional-only Service/enum contracts. Protocol
 queries check LF/CRLF, Unicode positions and incremental prefix edits. Unmapped
 arguments have no expected type; signature presentation uses the LSP 3.17 zero
-fallback. Ordinary argument expression candidates and combined parameter-label
-completion remain open, along with provider/variable-arity metadata and UX04.
+fallback. Ordinary argument slots now combine expression and parameter-name
+candidates; distinct edit roles preserve a same-name variable and label. Existing
+equals signs and values survive whole-label replacement. Thirty-five shared
+cases verify exact candidate/insert pairs, role descriptions, Unicode LF/CRLF
+edits, parseable applications and protocol restoration. Earlier named-argument
+fixtures now assert frozen complete expression sets alongside every parameter.
+Private cross-module declarations and closed lambda/block locals are excluded;
+local shadowing, captures, earlier default parameters and incomplete-call scope
+recovery use HIR ownership. Unknown local facts no longer borrow an enclosing
+expression's type. Source/schema expression insertion ownership, provider and
+variable-arity metadata, broader S5/lifecycle coverage and UX04 remain open.
 The earlier macOS input regression stopped on a locked
 desktop; that record does not imply a Windows blocker. Current platform evidence
 must be collected before strict acceptance; see [blocked.md](blocked.md).
@@ -693,7 +702,7 @@ actual suggestion acceptance, F12/back and palettes, modifier-click, context-men
 Peek, exact Unicode targets and no-jump outcomes pass. The installed provider
 suite passes all nine scenarios. The original macOS acceptance remains historical;
 changed driver code needs fresh proof when that machine is next used. Shared
-implementation resumes at B03.16.
+implementation resumes at B03.17.
 
 ### Deferred Tracks
 

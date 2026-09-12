@@ -1,6 +1,6 @@
 use super::{
-    CallArgumentContext, CompletionInsertFormat, CompletionItem, CompletionKind,
-    display_type_detail_parts, is_identifier_continue,
+    CallArgumentContext, CompletionInsertFormat, CompletionItem, CompletionItemMetadata,
+    CompletionKind, CompletionLabelDetails, display_type_detail_parts, is_identifier_continue,
 };
 use crate::QueryContext;
 use crate::callable_context::CallableFacts;
@@ -33,35 +33,29 @@ pub(super) fn named_argument_completion_context(
     }
     Some(CallArgumentContext {
         callee_range: Some(call.callee_range()),
-        used_names: arguments.iter().filter_map(|arg| arg.name_text()).collect(),
-        positional_count: arguments
-            .iter()
-            .filter(|arg| {
-                arg.name_token().is_none()
-                    && usize::from(arg.syntax().text_range().end())
-                        < query.cursor().replace_range().start
-            })
-            .count(),
+        has_equal: query.call_argument_position()?.has_equal,
     })
 }
 
 pub(super) fn script_function_parameter_completions(
     callables: &[CallableFacts],
-    used_names: &[&str],
-    positional_count: usize,
+    query: &QueryContext<'_>,
+    has_equal: bool,
 ) -> Vec<CompletionItem> {
+    let Some(position) = query.call_argument_position() else {
+        return Vec::new();
+    };
     callables
         .iter()
         .filter(|callable| callable.supports_named_arguments())
         .flat_map(|callable| {
+            let available = position.available_parameters(callable);
             callable
                 .params()
                 .iter()
-                .skip(positional_count)
-                .filter(|param| {
-                    !used_names.contains(&param.name()) && insertable_parameter_name(param.name())
-                })
-                .map(|param| {
+                .zip(available)
+                .filter(|(param, available)| *available && insertable_parameter_name(param.name()))
+                .map(|(param, _)| {
                     let mut detail_parts =
                         display_type_detail_parts(param.type_fact().display_name());
                     if param.defaulted() {
@@ -71,10 +65,21 @@ pub(super) fn script_function_parameter_completions(
                         label: param.name().to_owned(),
                         kind: CompletionKind::Parameter,
                         detail: detail_parts.render(),
-                        insert_text: Some(format!("{} = ", param.name())),
+                        insert_text: Some(if has_equal {
+                            param.name().to_owned()
+                        } else {
+                            format!("{} = ", param.name())
+                        }),
                         insert_format: CompletionInsertFormat::PlainText,
                         sort_text: None,
-                        metadata: Default::default(),
+                        metadata: CompletionItemMetadata {
+                            argument_name: true,
+                            label_details: CompletionLabelDetails {
+                                description: Some("named argument".to_owned()),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        },
                     }
                     .with_detail_parts(detail_parts)
                 })

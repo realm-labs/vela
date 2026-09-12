@@ -232,6 +232,22 @@ pub(crate) fn load(id: &str) -> Spec {
     .expect("fixture spec must be valid")
 }
 
+// Frozen, independently enumerated expression sets augment the older parameter
+// fixtures. Every returned label is asserted, including non-parameter extras.
+pub(crate) fn expected_expression_labels<'a>(
+    oracle: &'a serde_json::Value,
+    query: &serde_json::Value,
+) -> Vec<&'a str> {
+    query["expressions"].as_str().map_or_else(Vec::new, |set| {
+        oracle["expressionSets"][set]
+            .as_array()
+            .expect("expression set")
+            .iter()
+            .map(|label| label.as_str().expect("expression label"))
+            .collect()
+    })
+}
+
 pub(crate) fn offset_at(text: &str, line: usize, character: usize) -> Result<usize, String> {
     let mut start = 0;
     for (index, row) in text.split('\n').enumerate() {

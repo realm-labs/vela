@@ -1,7 +1,7 @@
 use vela_analysis::type_fact::TypeFact;
 use vela_hir::binding::LocalBindingKind;
 
-use crate::{LanguageServiceDatabases, QueryContext, TextRange};
+use crate::{LanguageServiceDatabases, QueryContext};
 
 use super::{
     CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
@@ -25,18 +25,7 @@ pub(super) fn local_completion_items(
                 | LocalBindingKind::LambdaParameter
                 | LocalBindingKind::Pattern => CompletionKind::Binding,
             };
-            let fact = facts
-                .local(local.id)
-                .filter(|fact| !matches!(fact, TypeFact::Unknown))
-                .cloned()
-                .or_else(|| {
-                    let range = TextRange::new(
-                        usize::try_from(local.span.start).ok()?,
-                        usize::try_from(local.span.end).ok()?,
-                    );
-                    query.type_fact_for_range(databases, range)
-                })
-                .unwrap_or(TypeFact::Unknown);
+            let fact = facts.local(local.id).cloned().unwrap_or(TypeFact::Unknown);
             let detail_parts = display_type_detail_parts(fact.display_name());
             CompletionItem {
                 sort_text: Some(completion_sort_text(kind, &local.name, "")),

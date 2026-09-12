@@ -1142,10 +1142,21 @@
         "signature-help/syntax/S5/negative/protocol"
       ],
       "summary": "Share semantic argument-to-parameter mapping and ordered callable selection between signature help and completion expected-name/type queries. Preserve the CST separator index. Resolve reordered names; reserve earlier positional slots including missing expressions, prior named slots and following names at empty authoring positions. Unknown names, duplicate current bindings, positional expressions after named arguments, overflow, zero arity and named syntax on positional-only Service/enum targets have no expected parameter. Independently valid later named arguments recover after earlier errors. Unmapped signatures use the documented LSP 3.17 zero presentation fallback, which never supplies an expected type. Forty-four independent shared fixtures run under LF/CRLF in service and protocol (88 contexts per layer): defaults, mixed slots, future names, nested calls/lambdas, comments/strings, multiline Unicode, incomplete calls, source methods, imported schema functions, standard functions, Service receivers, reserved Service calls and enum constructors. Assert exact signatures, active indices, expected names/types and unchanged structural ordinals; protocol repeats and applies an actual UTF-16 incremental non-BMP prefix edit before querying again. Preserve b03-15-mapping-red.log (reason incorrectly selected parameter zero) and b03-15-hole-red.log (missing earlier positional slot shifted highlighting). Final focused checks, service 597 plus two historical ignored and protocol 584 passed; relevant all-target Clippy, fmt and Node 73 passed. Installed VSIX run-JTuk5K passed 9, Windows input-xFcN10 passed 13; strict run-sw1vnY refreshed all 145 B00-B02 obligations with original acceptance records unchanged. The listed S5 requirement IDs identify partial work only: broad completion/signature S5 remain unreviewed and B03/B07 are not accepted. Remaining whole-batch scope 1332. Close the named-argument-active-parameter-mapping semantic issue; B07 still owns full signature/client/render coverage, including any future no-active-parameter capability. Continue B03.16 with independent complete candidate sets for ordinary call expressions and parameter labels, covering the retained peer.take(chosen<cursor>) failure. completion.rs currently chooses only named_argument_completion_items for NamedArgument; context.rs selects that context for bare prefixes/empty slots, suppressing expression locals. Define coexisting name/value choices, preserve distinct insertion semantics for a local sharing a parameter name, reject expression suggestions in committed labels and after named arguments, and unify occupied-slot handling with the new mapping. Existing named-only fixture assertions must evolve with explicit full expected sets rather than silently filtering extras. Then provider/variable-arity metadata, root Service namespace suggestions and remaining S5/lifecycle/UX04. Fresh macOS evidence remains required when next used; B16 deferred. Find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B03.16",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/protocol"
+      ],
+      "summary": "Combine parameter-name and expression candidates at uncommitted call arguments when positional insertion is legal. Extract shared CallArgumentPosition facts so signature mapping, available names and positional eligibility use the same occupied slots. Preserve distinct named-argument edit identity and visible role description even when a local binding or function parameter shares its label. Replace complete existing labels without adding another equals sign or overwriting values; suppress positional choices in committed labels, after named arguments, in overflow/zero-arity known calls and where later names occupy the current positional slot. Unknown/dynamic targets retain expression authoring. Route reserved Service calls through the same logic. Thirty-five independent shared cases run in service and protocol under LF/CRLF (70 contexts per layer), asserting full label/insert pairs, kinds, types, insertion formats, role descriptions, Unicode ranges, parser-clean applications, repeated results and didChange/restoration. Includes source/schema/Service/enum/dynamic call sites, global function snippets, private/current-module visibility, incomplete EOF calls, lambda/block scope, local shadowing, captures, earlier default parameters and later-local exclusion. Prior named-argument/import/call-context fixtures now compare complete frozen expression sets alongside all parameter candidates; these sets enumerate authored declarations and existing callable vocabulary, not provider responses. Their edit re-query now explicitly checks replacement of the current label, rather than incorrectly requiring it to disappear. Fix private cross-module declaration leakage; use active HIR scopes/ancestor bodies and latest visible declarations for locals. Retain earlier parameters in ParameterDefault parent scope, anchor EOF scope through the actual callee, and take binding types only from local facts so an unknown lambda parameter cannot borrow its enclosing function type. Preserve b03-16-service-red.log (missing ordinary value), focused2.log (missing EOF local), private-red.log, scope-red.log (closed lambda parameter leak), scope-focused.log (unknown parameter borrowed lambda type), and regression-final1.log (default-parent recovery during the refactor). Final full service 598 plus two historical ignored and protocol 585 passed; relevant all-target Clippy, fmt and Node 73 passed. Installed VSIX run-KT5gNg passed 9; Windows input-OgXux9 passed 13; strict run-ObizMp refreshed all 145 accepted B00-B02 requirements with original snapshots intact. Close call-argument-expression-candidates; listed S5 IDs identify partial work only and broad S5 remains unreviewed. B03 is unaccepted; remaining whole-batch scope 1332. Continue B03.17 by independently checking expression candidate identities and inserted references, especially cross-module source/schema type constructors, imported aliases, local/global/schema same-name collisions and selected receiver ownership after applying edits. completion/type_display.rs currently renders and inserts the short type label while retaining a qualified lookup; expression.rs routes global source/schema types through that helper, so verify actual post-edit resolution rather than treating parser-clean text as semantic proof. source_declaration.rs filters visibility but does not enumerate import aliases. Then provider/variable-arity metadata, root Service namespace suggestions and remaining S5/lifecycle/UX04. Fresh macOS proof is required when next used; B16 remains deferred. Find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.16",
-  "nextTask": "B03.16",
+  "activeChild": "B03.17",
+  "nextTask": "B03.17",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -2807,7 +2818,25 @@
     "target/b03-15-accepted-regression.log",
     "target/lsp-matrix/run-HTLUCL/report.json",
     "editors/vscode/test-results/run-JTuk5K/results.json",
-    "editors/vscode/test-results/input-xFcN10/results.json"
+    "editors/vscode/test-results/input-xFcN10/results.json",
+    "target/lsp-matrix/run-ObizMp/report.json",
+    "target/b03-16-baseline.log",
+    "target/b03-16-service-red.log",
+    "target/b03-16-focused2.log",
+    "target/b03-16-private-red.log",
+    "target/b03-16-scope-red.log",
+    "target/b03-16-scope-focused.log",
+    "target/b03-16-regression-red.log",
+    "target/b03-16-regression-final1.log",
+    "target/b03-16-regression-final3.log",
+    "target/b03-16-clippy-final.log",
+    "target/b03-16-node.log",
+    "target/b03-16-editor.log",
+    "target/b03-16-input.log",
+    "target/b03-16-accepted-regression.log",
+    "target/lsp-matrix/run-2Y0UzR/report.json",
+    "editors/vscode/test-results/run-KT5gNg/results.json",
+    "editors/vscode/test-results/input-OgXux9/results.json"
   ],
   "openIssues": [
     {
@@ -2823,11 +2852,6 @@
       "id": "navigation-unicode-render-styles",
       "owner": "B06",
       "summary": "The retained input-navigation fixture renders make after Chinese/non-BMP text in split mtk13/mtk3/mtk17 spans. Navigation and source geometry are verified, but syntax/semantic style ownership was not assessed in B02. Review this rendered observation during B06 token-position/style coverage; preserve input-ODUwef/rendered-lines.json and the final modifier screenshot rather than treating navigation proof as styling proof."
-    },
-    {
-      "id": "call-argument-expression-candidates",
-      "owner": "B03",
-      "summary": "B03.13 provisional fixture exposed ordinary argument-start completion returning only named parameters: in #[service_impl(api::Handler)] impl Patch { fn choose(peer, pair) { let chosen_value = 1; peer.take(chosen<cursor>); } }, the registered peer.take(amount: u32) signature resolves but the candidate set is empty instead of offering chosen_value. Existing context selects NamedArgument before an equals sign; final B03.13 tests use peer.take(amount = chosen<cursor>) and certify named-value inference only. Preserve target/b03-13-parameters.log. Add independent ordinary positional/expression and named-label candidate contracts before closing B03; do not infer complete call authoring coverage from current parameter-name tests."
     }
   ],
   "profiles": [
@@ -3433,8 +3457,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "8c57590c8d74a0a06f4d632a44c884b5ff892f32",
-          "treeSha256": "0924f931598c6a6dec6ebccea6d742b97c522488dcda9eca6fd37d7f95099753"
+          "revision": "4b2a99107b4e20da44f9fa685ef41b488e788763",
+          "treeSha256": "274f20fecfef4d1aefbde8bd079324e68478ed1494b07c2fba55cc44e36a0ad4"
         },
         "profile": {
           "platform": "win32",
@@ -3442,11 +3466,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-sw1vnY/report.json"
+          "target/lsp-matrix/run-ObizMp/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-JTuk5K/results.json --local-results editors/vscode/test-results/input-xFcN10/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-KT5gNg/results.json --local-results editors/vscode/test-results/input-OgXux9/results.json",
             "exitCode": 0
           }
         ]
