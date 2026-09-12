@@ -13,6 +13,7 @@ mod lookups;
 mod patterns;
 mod script_types;
 mod targets;
+mod value_flow;
 
 #[cfg(test)]
 mod local_flow_tests;
@@ -38,8 +39,7 @@ use targets::{direct_lambda_body, registry_field_owner, source_field_fact};
 use vela_common::PrimitiveTag;
 use vela_hir::binding::BindingResolution;
 use vela_hir::body::{
-    HirBody, HirBodyRoot, HirElseBranch, HirExprKind, HirMatchArmBody, HirPathKind, HirPathOwner,
-    HirPatternKind, HirStmtKind,
+    HirBody, HirBodyRoot, HirExprKind, HirPathKind, HirPathOwner, HirPatternKind, HirStmtKind,
 };
 use vela_hir::ids::{HirBlockId, HirBodyId, HirExprId, HirLocalId, HirPatternId, HirStmtId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
@@ -403,64 +403,22 @@ impl HirSemanticFacts {
                 TypeFact::function(params, self.body_value(body))
             }),
             HirExprKind::Block { block } => self.block_value(body, *block),
-            HirExprKind::If(value) => TypeFact::union([
-                value
-                    .then_block
-                    .map_or(TypeFact::UNIT, |block| self.block_value(body, block)),
-                value
-                    .else_branch
-                    .as_ref()
-                    .map_or(TypeFact::UNIT, |branch| match branch {
-                        HirElseBranch::Block(block) => self.block_value(body, *block),
-                        HirElseBranch::If(value) => {
-                            let then_fact = value
-                                .then_block
-                                .map_or(TypeFact::UNIT, |block| self.block_value(body, block));
-                            TypeFact::union([then_fact, TypeFact::UNIT])
-                        }
-                    }),
-            ]),
-            HirExprKind::Match(value) => TypeFact::union(value.arms.iter().map(|id| {
-                body.match_arms
-                    .get(id)
-                    .map_or(TypeFact::Unknown, |arm| match arm.body {
-                        Some(HirMatchArmBody::Expr(id)) => self.fact(id),
-                        Some(HirMatchArmBody::Block(block)) => self.block_value(body, block),
-                        None => TypeFact::UNIT,
-                    })
-            })),
+            HirExprKind::If(value) => self.result_value(value_flow::if_results(body, value)),
+            HirExprKind::Match(value) => self.result_value(value_flow::match_results(body, value)),
             HirExprKind::Missing => TypeFact::Unknown,
         }
     }
 
     fn block_value(&self, body: &HirBody, block: vela_hir::ids::HirBlockId) -> TypeFact {
-        let Some(statement) = body
-            .blocks
-            .get(&block)
-            .and_then(|block| block.statements.last())
-            .and_then(|statement| body.statements.get(statement))
-        else {
-            return TypeFact::UNIT;
-        };
-        match &statement.kind {
-            HirStmtKind::Expr {
-                expression: Some(id),
-                terminated: false,
-            } => self.fact(*id),
-            HirStmtKind::If(value) => value
-                .then_block
-                .map_or(TypeFact::UNIT, |block| self.block_value(body, block)),
-            HirStmtKind::Match(value) => TypeFact::union(value.arms.iter().map(|id| {
-                body.match_arms
-                    .get(id)
-                    .map_or(TypeFact::Unknown, |arm| match arm.body {
-                        Some(HirMatchArmBody::Expr(id)) => self.fact(id),
-                        Some(HirMatchArmBody::Block(block)) => self.block_value(body, block),
-                        None => TypeFact::UNIT,
-                    })
-            })),
-            _ => TypeFact::UNIT,
-        }
+        self.result_value(value_flow::block_results(body, block))
+    }
+
+    fn result_value(&self, results: Vec<Option<HirExprId>>) -> TypeFact {
+        TypeFact::union(
+            results
+                .into_iter()
+                .map(|id| id.map_or(TypeFact::UNIT, |id| self.fact(id))),
+        )
     }
 
     fn body_value(&self, body: &HirBody) -> TypeFact {
@@ -945,18 +903,18 @@ impl HirSemanticFacts {
             if let Some(method) = self.contextual_stdlib_method_fact(graph, body, call) {
                 return scoped_iterator_return(&receiver, &field.name, method.returns);
             }
-            let direct = call_return_fact(self.fact(call.callee));
-            if !matches!(direct, TypeFact::Unknown) {
-                return direct;
-            }
-            if let Some(method) = source_method(
+            if let Some(method) = lookups::source_method_return(
                 graph,
                 &receiver,
                 self.script_types.get(&field.receiver),
                 &field.name,
                 schema,
             ) {
-                return method.returns;
+                return method.fact;
+            }
+            let direct = call_return_fact(self.fact(call.callee));
+            if !matches!(direct, TypeFact::Unknown) {
+                return direct;
             }
             if let Some(method) = stdlib_method_fact(&receiver, &field.name, None) {
                 return scoped_iterator_return(&receiver, &field.name, method.returns);

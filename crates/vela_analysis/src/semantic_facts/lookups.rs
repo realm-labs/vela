@@ -19,6 +19,60 @@ pub(super) struct SourceMethodFact {
     pub(super) return_target: Option<ScriptTypeTargetFact>,
 }
 
+pub(super) struct SourceMethodReturnFact {
+    pub(super) fact: TypeFact,
+    pub(super) target: Option<ScriptTypeTargetFact>,
+}
+
+pub(super) fn source_method_return(
+    graph: &ModuleGraph,
+    receiver: &TypeFact,
+    source: Option<&ScriptTypeTargetFact>,
+    name: &str,
+    schema: Option<&RegistryFacts>,
+) -> Option<SourceMethodReturnFact> {
+    if let TypeFact::Trait { name: owner } = receiver {
+        let mut declarations = graph
+            .declarations_by_kind(DeclarationKind::Trait)
+            .into_iter()
+            .filter(|declaration| {
+                source.map_or_else(
+                    || graph.qualified_declaration_name(declaration.id).as_ref() == Some(owner),
+                    |source| source.declaration == declaration.id,
+                )
+            });
+        let declaration = declarations.next()?;
+        if declarations.next().is_some() {
+            return None;
+        }
+        let signature = &graph
+            .trait_shape(declaration.id)?
+            .methods
+            .iter()
+            .find(|method| method.name == name)?
+            .signature;
+        let hint = signature.return_type.as_ref();
+        return Some(SourceMethodReturnFact {
+            fact: hint.map_or(TypeFact::Unknown, |hint| {
+                type_fact_from_hint_with_schema(graph, declaration.module, hint, schema)
+            }),
+            target: hint.and_then(|hint| {
+                crate::hints::schema_declaration_from_hint_in_module(
+                    graph,
+                    declaration.module,
+                    hint,
+                )
+                .map(ScriptTypeTargetFact::declaration)
+            }),
+        });
+    }
+    let method = source_method(graph, receiver, source, name, schema)?;
+    Some(SourceMethodReturnFact {
+        fact: method.returns,
+        target: method.return_target,
+    })
+}
+
 pub(super) fn source_function<'a>(
     graph: &'a ModuleGraph,
     body: &vela_hir::body::HirBody,

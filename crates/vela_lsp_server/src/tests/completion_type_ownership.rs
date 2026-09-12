@@ -23,6 +23,11 @@ fn package_member_ownership_projects_sets_signatures_returns_and_targets() {
     assert_type_ownership("completion-package-members");
 }
 
+#[test]
+fn returned_receiver_flow_projects_owned_sets_signatures_and_targets() {
+    assert_type_ownership("completion-return-flow");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);

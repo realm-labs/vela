@@ -4507,3 +4507,12 @@ function/method declaration's scope and pass its type identity into later member
 queries; qualified and imported source calls resolve through that same module
 graph. Parameter hints reuse these owned callable facts and convert service byte
 positions through the protocol's UTF-16 line index.
+
+Trait return facts come from the receiver trait's declared signature, including
+required methods without bodies; value inference does not choose an implementation
+body to obtain that contract. Await preserves the returned source identity. Block,
+if/else-if and match inference share their structural result paths for both value
+facts and unique declaration identity. A unique identity joins only when every
+result path has the same declaration; a unit path cannot silently disappear from
+the join. Direct lambdas apply the same body-result rule. Member cursor recovery
+uses an available syntax receiver before token-fragment heuristics.

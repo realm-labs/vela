@@ -1320,10 +1320,41 @@
         "completion-resolve/syntax/S5/negative/protocol"
       ],
       "summary": "Twenty-four shared package member cases cover root and direct dependency types with identical canonical names, a transitive same-name package, and colliding schema metadata under Unicode LF/CRLF. They assert full unprefixed member sets and prefix exclusions, source ownership and resolve pass-through, exact edit application, one owned inherent/default/trait method signature, exact named parameter edits and inlay label/position, and exact applied definition URI/range. Function and function-alias returns, inherent/default method returns and let-bound returned receivers preserve their fields and package targets. Red assertions exposed three simultaneous method signatures, missing method navigation, trait hint identity loss, empty dependency function-return members, and byte-column inlay positions after Unicode. Member call facts and navigation now retain receiver declaration IDs, share resolved impl-owner matching, and include trait hints in source identity facts. Scoped source function resolution drives semantic call targets and return hints; method return inference matches the exact receiver declaration before reading its signature. Inlay queries preserve callable identity and the protocol converts byte positions through its UTF-16 line index. No runtime or language feature was added. Workspace 4457 passed, two historical ignored; service 617 plus two ignored and protocol 601; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-ExHdiw/results.json passed 9; native editors/vscode/test-results/input-xHNvGv/results.json passed 13; strict target/lsp-matrix/run-0BQx0j/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. These S4/S5/S8 requirements are partial child progress, not whole-partition acceptance. B03 remains unaccepted. Resume B03.26 with trait-return and async/control-flow receiver combinations, then remaining semantic/lifecycle obligations and UX04. Fresh macOS proof is required when next used. B16 remains deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.26",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S4/positive/service",
+        "completion/syntax/S4/positive/protocol",
+        "completion/syntax/S4/negative/service",
+        "completion/syntax/S4/negative/protocol",
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/negative/protocol",
+        "completion/syntax/S6/positive/service",
+        "completion/syntax/S6/positive/protocol",
+        "completion/syntax/S6/negative/service",
+        "completion/syntax/S6/negative/protocol",
+        "completion/syntax/S9/positive/service",
+        "completion/syntax/S9/positive/protocol",
+        "completion/syntax/S9/negative/service",
+        "completion/syntax/S9/negative/protocol",
+        "completion-resolve/syntax/S4/positive/service",
+        "completion-resolve/syntax/S4/positive/protocol",
+        "completion-resolve/syntax/S4/negative/service",
+        "completion-resolve/syntax/S4/negative/protocol",
+        "completion-resolve/syntax/S5/positive/service",
+        "completion-resolve/syntax/S5/positive/protocol",
+        "completion-resolve/syntax/S5/negative/service",
+        "completion-resolve/syntax/S5/negative/protocol"
+      ],
+      "summary": "Forty shared returned-receiver cases cover current/direct dependency packages with same-name records, a transitive collision and schema-only foreign fields. Required/default trait returns, trait aliases, awaited functions/aliases/inherent/trait/synchronous calls, blocks, parentheses, if/else-if, match expression/block arms, let-bound branch results and direct expression/block lambdas preserve their owner. Positive cases assert exact receiver facts and full field/method sets, source resolve pass-through, explicit byte/UTF-16 edits, parseable applications, owned signatures/named parameters/inlay positions and exact definition URI/range. Erased, unknown trait and terminated-block receivers yield no candidates. Red tests exposed missing trait return members, wrong-package field types after await, and member cursor truncation at nested block punctuation. Trait return inference now reads the declared signature independently of implementation bodies. Await passes source identity; structural value-path helpers serve both value facts and unique identity joins, including all else-if branches and lambda block results. Syntax receiver ranges take priority over token-fragment recovery. The block fixture was parenthesized to disambiguate statement-head braces; its original candidate and target oracles remain unchanged. Mixed-owner branch joins, receiver reassignment and remaining async restrictions are not certified by these same-owner cases. Workspace 4459 passed, two historical ignored; service 618 plus two ignored and protocol 602; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-Sq4OnE/results.json passed 9; native editors/vscode/test-results/input-1IxXMV/results.json passed 13; strict target/lsp-matrix/run-Cv0GBc/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. S4/S5/S6/S9 obligations are partial child progress, not whole-partition acceptance. B03 remains unaccepted. Resume B03.27 with mixed-package branch identities and receiver reassignment, then remaining semantic/lifecycle obligations and UX04. Fresh macOS proof is required when next used. B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.26",
-  "nextTask": "B03.26",
+  "activeChild": "B03.27",
+  "nextTask": "B03.27",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -3186,7 +3217,25 @@
     "target/b03-25-accepted-regression.log",
     "target/lsp-matrix/run-ypnyio/report.json",
     "editors/vscode/test-results/run-ExHdiw/results.json",
-    "editors/vscode/test-results/input-xHNvGv/results.json"
+    "editors/vscode/test-results/input-xHNvGv/results.json",
+    "target/lsp-matrix/run-Cv0GBc/report.json",
+    "target/b03-26-baseline.log",
+    "target/b03-26-red.log",
+    "target/b03-26-trait.log",
+    "target/b03-26-trait2.log",
+    "target/b03-26-flow.log",
+    "target/b03-26-flow2.log",
+    "target/b03-26-cursor.log",
+    "target/b03-26-receiver.log",
+    "target/b03-26-workspace.log",
+    "target/b03-26-clippy.log",
+    "target/b03-26-node.log",
+    "target/b03-26-editor.log",
+    "target/b03-26-input.log",
+    "target/b03-26-accepted-regression.log",
+    "target/lsp-matrix/run-3iz6Ay/report.json",
+    "editors/vscode/test-results/run-Sq4OnE/results.json",
+    "editors/vscode/test-results/input-1IxXMV/results.json"
   ],
   "openIssues": [
     {
@@ -3807,8 +3856,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "fd12a776498e3d1ea95c31c473f79ad2c41339ca",
-          "treeSha256": "b6f6090bb1f66b2e79c256b4c096c97aeeb75db7956662acf2582a68d380b66a"
+          "revision": "7b0e814b7e6541c9a5ee10ed5e62d9ea1debafce",
+          "treeSha256": "4bd49258848af661dfa0e768996c442fff97ce97ef7bd8245f6d688eaa4aace8"
         },
         "profile": {
           "platform": "win32",
@@ -3816,11 +3865,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-0BQx0j/report.json"
+          "target/lsp-matrix/run-Cv0GBc/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-ExHdiw/results.json --local-results editors/vscode/test-results/input-xHNvGv/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-Sq4OnE/results.json --local-results editors/vscode/test-results/input-1IxXMV/results.json",
             "exitCode": 0
           }
         ]

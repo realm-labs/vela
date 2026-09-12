@@ -678,9 +678,17 @@ cases assert complete member sets, edits, signatures, named parameters, resolved
 docs and exact applied definitions under Unicode LF/CRLF. Parameter inlay hints
 use the same receiver identity and project byte positions to UTF-16 correctly.
 
+Required/default trait method returns and awaited source calls now preserve
+their source type identity. Block, if/else-if, match and direct lambda results
+share value-path inference; branches with the same declaration preserve that
+owner through later completion and navigation. Forty shared package cases check
+these flows, exact receiver facts and complete candidate sets under Unicode
+LF/CRLF. Member context uses the syntax receiver before lexical recovery, so
+semicolons and braces inside a receiver no longer truncate its range.
+
 The [completion coverage review](lsp-completion-coverage-review.md) indexes S5
-proof and the remaining acceptance work. Resume B03.26 with trait-return and
-async/control-flow receiver combinations, then the remaining
+proof and the remaining acceptance work. Resume B03.27 with mixed-package branch
+identities and receiver reassignment, then the remaining
 semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

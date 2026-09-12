@@ -25,6 +25,11 @@ fn package_member_ownership_preserves_sets_signatures_returns_and_targets() {
     assert_type_ownership("completion-package-members");
 }
 
+#[test]
+fn returned_receiver_flow_preserves_owned_sets_signatures_and_targets() {
+    assert_type_ownership("completion-return-flow");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -56,6 +61,16 @@ fn assert_type_ownership(fixture_id: &str) {
                 "{case}"
             );
             assert_eq!(result, db.completion_items(&uri(file), pos));
+            if let Some(receiver) = case["receiver"].as_str() {
+                let crate::CompletionAnalysisKind::DotAccess(dot) = result.analysis().kind() else {
+                    panic!("member analysis: {case}");
+                };
+                assert_eq!(
+                    dot.receiver_fact().map(|fact| fact.display_name()),
+                    Some(receiver.to_owned()),
+                    "{case}"
+                );
+            }
             let expected = case["items"].as_array().expect("items");
             let mut keys = expected
                 .iter()

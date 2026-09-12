@@ -1,3 +1,4 @@
+mod member;
 mod tuple_field;
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{AstNode, SyntaxMapEntry, SyntaxSourceFile};
@@ -233,7 +234,10 @@ pub fn cursor_context_at(
         );
     }
 
-    if let Some(receiver) = recovered_member_receiver_before_dot(text, prefix_start) {
+    if let Some(receiver) = syntax_parse
+        .and_then(|parse| member::syntax_member_receiver(&parse.tree(), prefix_start))
+        .or_else(|| recovered_member_receiver_before_dot(text, prefix_start))
+    {
         let mut cursor = context(
             CursorContextKind::MemberAccess,
             prefix_start,

@@ -6,8 +6,8 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use crate::facts::AnalysisFacts;
 use crate::hints::schema_declaration_from_hint_in_module;
 
+use super::HirSemanticFacts;
 use super::targets::{ScriptTypeTargetFact, direct_lambda_body, source_field_fact};
-use super::{HirSemanticFacts, source_method};
 
 impl HirSemanticFacts {
     pub(super) fn infer_script_type(
@@ -41,8 +41,19 @@ impl HirSemanticFacts {
                 }
                 _ => None,
             },
-            HirExprKind::Paren { expression } | HirExprKind::Try { expression } => {
+            HirExprKind::Paren { expression }
+            | HirExprKind::Try { expression }
+            | HirExprKind::Await { expression } => {
                 expression.and_then(|expression| self.script_types.get(&expression).cloned())
+            }
+            HirExprKind::Block { block } => {
+                self.joined_script_type(super::value_flow::block_results(body, *block))
+            }
+            HirExprKind::If(value) => {
+                self.joined_script_type(super::value_flow::if_results(body, value))
+            }
+            HirExprKind::Match(value) => {
+                self.joined_script_type(super::value_flow::match_results(body, value))
             }
             HirExprKind::Assign { value, .. } => {
                 value.and_then(|value| self.script_types.get(&value).cloned())
@@ -54,10 +65,16 @@ impl HirSemanticFacts {
             HirExprKind::Call(call) => {
                 if let Some(lambda) = direct_lambda_body(body, call.callee)
                     && let Some(lambda) = graph.body(lambda)
-                    && let HirBodyRoot::Expr(expression) = lambda.root
-                    && let Some(target) = self.script_types.get(&expression)
                 {
-                    return Some(target.clone());
+                    return match lambda.root {
+                        HirBodyRoot::Expr(expression) => {
+                            self.script_types.get(&expression).cloned()
+                        }
+                        HirBodyRoot::Block(block) => {
+                            self.joined_script_type(super::value_flow::block_results(lambda, block))
+                        }
+                        HirBodyRoot::Empty => None,
+                    };
                 }
                 if let Some(metadata) = super::lookups::source_function(graph, body, call.callee) {
                     let hint = graph
@@ -68,17 +85,32 @@ impl HirSemanticFacts {
                         .map(ScriptTypeTargetFact::declaration);
                 }
                 let field = body.field(call.callee)?;
-                source_method(
+                super::lookups::source_method_return(
                     graph,
                     &self.fact(field.receiver),
                     self.script_types.get(&field.receiver),
                     &field.name,
                     None,
                 )?
-                .return_target
+                .target
             }
             _ => None,
         }
+    }
+
+    fn joined_script_type(&self, results: Vec<Option<HirExprId>>) -> Option<ScriptTypeTargetFact> {
+        let mut results = results.into_iter();
+        let mut target = self.script_types.get(&results.next()??)?.clone();
+        for expression in results {
+            let other = self.script_types.get(&expression?)?;
+            if other.declaration != target.declaration {
+                return None;
+            }
+            if other.variant != target.variant {
+                target.variant = None;
+            }
+        }
+        Some(target)
     }
 
     pub(super) fn infer_local_script_types(&mut self, body: &HirBody) {
