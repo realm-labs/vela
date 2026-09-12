@@ -173,6 +173,11 @@ impl<'a, 'db> ImportScope<'a, 'db> {
         }
         let stdlib = stdlib_function_completion_facts();
         if let Some(function) = stdlib.iter().find(|function| function.name == path) {
+            if path.starts_with("task::") {
+                // Only literal task paths introduce the compiler capability.
+                // Real source declarations have already been resolved above.
+                return None;
+            }
             return Some(render(
                 AnalysisItem {
                     label: path.to_owned(),

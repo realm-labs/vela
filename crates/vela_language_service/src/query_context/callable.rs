@@ -5,7 +5,7 @@ use super::QueryContext;
 use crate::LanguageServiceDatabases;
 use crate::callable_context::{
     CallableFacts, external_callable_facts, source_callable_facts_for_declaration,
-    source_variant_callable_fact,
+    source_variant_callable_fact, stdlib_callable_facts,
 };
 
 impl QueryContext<'_> {
@@ -14,6 +14,11 @@ impl QueryContext<'_> {
         databases: &LanguageServiceDatabases,
         path: &[String],
     ) -> Vec<CallableFacts> {
+        // Like HIR binding, literal task paths are compiler-owned before any
+        // local, import, source declaration or registry lookup.
+        if path.len() > 1 && path[0] == "task" {
+            return stdlib_callable_facts(&path.join("::"));
+        }
         if let Some(callables) = self.service_callable_facts(databases, path) {
             return callables;
         }
@@ -139,6 +144,11 @@ impl QueryContext<'_> {
             return source_variant_callable_fact(databases, declaration.id, variant)
                 .into_iter()
                 .collect();
+        }
+        // A source declaration addressed through an alias can still be an
+        // ordinary function. An alias cannot create a lexical task capability.
+        if external.first().is_some_and(|root| root == "task") {
+            return Vec::new();
         }
         external_callable_facts(databases.schema_db().facts(), &external.join("::"))
     }

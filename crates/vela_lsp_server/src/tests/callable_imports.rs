@@ -5,8 +5,17 @@ use serde_json::json;
 
 #[test]
 fn callable_import_matrix_projects_owned_signatures_parameters_and_utf16_edits() {
+    verify_fixture("callable-imports");
+}
+
+#[test]
+fn task_callable_matrix_projects_reserved_ownership_and_positional_operands() {
+    verify_fixture("completion-task-calls");
+}
+
+fn verify_fixture(name: &str) {
     for crlf in [false, true] {
-        let mut spec = load("callable-imports");
+        let mut spec = load(name);
         if crlf {
             for text in spec.files.values_mut() {
                 *text = text.replace('\n', "\r\n");
@@ -70,7 +79,10 @@ fn callable_import_matrix_projects_owned_signatures_parameters_and_utf16_edits()
                     help["result"]["signatures"][0]["label"], case["signature"],
                     "{case}"
                 );
-                assert_eq!(help["result"]["activeParameter"], 0);
+                assert_eq!(
+                    help["result"]["activeParameter"],
+                    case["activeParameter"].as_u64().unwrap_or(0)
+                );
             }
             let completion =
                 response_value(request::<r::Completion>(&mut server, id, params.clone()));
@@ -156,7 +168,7 @@ fn callable_import_matrix_projects_owned_signatures_parameters_and_utf16_edits()
                 let again = response_value(request::<r::SignatureHelpRequest>(
                     &mut server,
                     id,
-                    json!({"textDocument":{"uri":uri(file)},"position":{"line":point.line,"character":point.character + inserted.encode_utf16().count()}}),
+                    json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":range.start.character + inserted.encode_utf16().count()}}),
                 ));
                 id += 1;
                 assert_eq!(again["result"]["signatures"], help["result"]["signatures"]);

@@ -6,8 +6,17 @@ use crate::{
 
 #[test]
 fn callable_import_matrix_agrees_on_owned_parameters_signatures_and_edits() {
+    verify_fixture("callable-imports");
+}
+
+#[test]
+fn task_callable_matrix_preserves_reserved_ownership_and_positional_operands() {
+    verify_fixture("completion-task-calls");
+}
+
+fn verify_fixture(name: &str) {
     for crlf in [false, true] {
-        let mut spec = load("callable-imports");
+        let mut spec = load(name);
         if crlf {
             for text in spec.files.values_mut() {
                 *text = text.replace('\n', "\r\n");
@@ -18,6 +27,15 @@ fn callable_import_matrix_agrees_on_owned_parameters_signatures_and_edits() {
         for case in spec.oracle["queries"].as_array().expect("queries") {
             let file = case["file"].as_str().expect("file");
             let source = fixture.document(file).expect("source");
+            if let Some(code) = case["diagnosticCode"].as_str() {
+                assert!(
+                    db.diagnostics_for_document(&uri(file))
+                        .diagnostics()
+                        .iter()
+                        .any(|d| d.code() == Some(code)),
+                    "{case}"
+                );
+            }
             let point = source.markers["cursor"].start;
             let position = Position::new(
                 point.line,
@@ -47,7 +65,10 @@ fn callable_import_matrix_agrees_on_owned_parameters_signatures_and_edits() {
                 let help = help.expect("signature");
                 assert_eq!(help.signatures().len(), 1, "{case}");
                 assert_eq!(help.signatures()[0].label(), signature, "{case}");
-                assert_eq!(help.active_parameter(), 0);
+                assert_eq!(
+                    help.active_parameter(),
+                    case["activeParameter"].as_u64().unwrap_or(0) as usize
+                );
             } else {
                 assert!(help.is_none(), "{case}: {help:?}");
             }
@@ -127,8 +148,13 @@ fn callable_import_matrix_agrees_on_owned_parameters_signatures_and_edits() {
                     .signature_help(
                         &uri(file),
                         Position::new(
-                            position.line,
-                            position.character + edit.new_text().len() + 1,
+                            range.start.line,
+                            range.start.byte
+                                - source.text[..range.start.byte]
+                                    .rfind('\n')
+                                    .map_or(0, |i| i + 1)
+                                + edit.new_text().len()
+                                + 1,
                         ),
                     )
                     .expect("edited signature");

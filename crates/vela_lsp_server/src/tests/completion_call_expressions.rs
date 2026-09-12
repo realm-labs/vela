@@ -5,8 +5,17 @@ use serde_json::json;
 
 #[test]
 fn call_expression_matrix_projects_complete_choices_and_applies_utf16_edits() {
+    verify_fixture("completion-call-expressions");
+}
+
+#[test]
+fn task_operand_matrix_projects_calls_and_static_continuation_paths() {
+    verify_fixture("completion-task-operands");
+}
+
+fn verify_fixture(name: &str) {
     for crlf in [false, true] {
-        let mut spec = load("completion-call-expressions");
+        let mut spec = load(name);
         if crlf {
             for text in spec.files.values_mut() {
                 *text = text.replace('\n', "\r\n");

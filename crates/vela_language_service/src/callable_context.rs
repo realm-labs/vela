@@ -670,7 +670,7 @@ fn schema_variant_parameter_name(name: &str) -> String {
     }
 }
 
-fn stdlib_callable_facts(callee: &str) -> Vec<CallableFacts> {
+pub(crate) fn stdlib_callable_facts(callee: &str) -> Vec<CallableFacts> {
     stdlib_function_completion_facts()
         .into_iter()
         .filter(|fact| callable_name_matches(fact.name, callee))

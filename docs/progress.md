@@ -654,9 +654,17 @@ restricted contexts and metadata absence under Unicode LF/CRLF. Nine lifecycle
 states cover dirty removed/ambiguous/recovered callers and replaced/empty/invalid/
 recovered Service sets, with persistent-versus-fresh service equivalence.
 
-Remaining B03 work includes broader S5 and dependency/cross-feature identity,
-lifecycle combinations and UX04 interaction proof. Shared implementation resumes
-at B03.23. B00-B02 acceptance snapshots stay
+Static task path completion now rejects unknown source/schema operations and
+keeps literal task call signatures builtin-owned. Outer operands stay positional;
+ordinary aliased source functions and nested worker calls retain their own
+parameter contracts. Continuation completion inserts a static function path,
+while worker and nested expression completions retain call insertion. Shared
+fixtures cover these distinctions, whole-token edits and Unicode LF/CRLF.
+
+The [completion coverage review](lsp-completion-coverage-review.md) indexes S5
+proof and the remaining acceptance work. Resume B03.24 with dependency callable/
+member identity and cross-feature ownership, then the remaining semantic,
+lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:
 suggestion acceptance, F12/back and palettes, modifier-click, context-menu Peek,

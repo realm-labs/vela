@@ -104,6 +104,11 @@ fn service_path_matrix_projects_owned_candidates_resolve_and_utf16_edits() {
 }
 
 #[test]
+fn task_path_matrix_projects_owned_operations_and_whole_identifier_edits() {
+    run_matrix("completion-task-paths");
+}
+
+#[test]
 fn service_root_matrix_projects_contextual_namespaces_and_edits() {
     run_matrix("completion-service-roots");
 }
@@ -129,7 +134,7 @@ fn run_matrix(name: &str) {
             spec.files
                 .insert("schema.json".to_owned(), schema.to_string());
         }
-        if mode == "empty" {
+        if mode == "empty" && spec.oracle["schemaIndependent"] != true {
             let mut schema: serde_json::Value =
                 serde_json::from_str(&spec.files["schema.json"]).expect("schema");
             schema["serviceSet"]["services"] = serde_json::json!([]);
@@ -172,7 +177,7 @@ fn run_matrix(name: &str) {
             assert!(first["error"].is_null(), "{case}: {first}");
             assert_eq!(first["result"], repeat["result"], "{case}");
             let items = first["result"]["items"].as_array().expect("items");
-            let expected = if mode == "full" {
+            let expected = if mode == "full" || spec.oracle["schemaIndependent"] == true {
                 case["items"].as_array().expect("items").as_slice()
             } else {
                 &[]

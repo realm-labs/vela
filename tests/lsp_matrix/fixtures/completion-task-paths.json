@@ -1,0 +1,406 @@
+{
+  "version": 1,
+  "id": "completion-task-paths",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.task_completion\"\nname = \"task_completion\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"functions\":[{\"name\":\"task::spawn_scoped\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}},{\"name\":\"task::spawn_scoped_then\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}},{\"name\":\"task::join\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}},{\"name\":\"task::ghost\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}}]}}",
+    "scripts/task.vela": "/// Ordinary source function, not a task operation.\npub fn spawn_scoped(zz_source: bool) -> bool { return true; }\npub fn join(zz_source: bool) -> bool { return true; }\n",
+    "scripts/other.vela": "pub fn spawn_scoped(zz_other: String) -> String { return \"\"; }\n",
+    "scripts/root.vela": "/* 中😀 */ fn main() { task::[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/prefix.vela": "/* 中😀 */ fn main() { task::[[replace:start]]spawn_[[cursor]][[replace:end]]; }\n",
+    "scripts/middle.vela": "/* 中😀 */ fn main() { task::[[replace:start]]spawn_scoped_t[[cursor]]hen[[replace:end]]; }\n",
+    "scripts/start.vela": "/* 中😀 */ fn main() { task::[[replace:start]][[cursor]]spawn_scoped[[replace:end]]; }\n",
+    "scripts/exact.vela": "/* 中😀 */ fn main() { task::[[replace:start]]spawn_scoped_then[[cursor]][[replace:end]]; }\n",
+    "scripts/existing.vela": "/* 中😀 */ async fn worker() {} fn main() { task::[[replace:start]]spawn_scoped[[cursor]][[replace:end]](worker()); }\n",
+    "scripts/existing_then.vela": "/* 中😀 */ async fn worker() {} fn done(result: Any) {} fn main() { task::[[replace:start]]spawn_scoped_t[[cursor]]hen[[replace:end]](worker(), done); }\n",
+    "scripts/comment.vela": "/* 中😀 */ async fn worker() {} fn main() { task::[[replace:start]]spawn_scoped[[cursor]][[replace:end]] /* keep */ (worker()); }\n",
+    "scripts/empty_call.vela": "/* 中😀 */ async fn worker() {} fn main() { task::[[replace:start]][[cursor]][[replace:end]](worker()); }\n",
+    "scripts/local_collision.vela": "/* 中😀 */ fn main(task: Any) { task::[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/import_collision.vela": "/* 中😀 */ use other as task; fn main() { task::[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/lambda.vela": "/* 中😀 */ fn main() { let f = || { task::[[replace:start]][[cursor]][[replace:end]]; }; }\n",
+    "scripts/nested.vela": "/* 中😀 */ fn main() { if true { task::[[replace:start]][[cursor]][[replace:end]]; } }\n",
+    "scripts/incomplete.vela": "/* 中😀 */ fn main() { task::[[replace:start]][[cursor]][[replace:end]]\n",
+    "scripts/unknown.vela": "/* 中😀 */ fn main() { task::[[replace:start]]join[[cursor]][[replace:end]]; }\n",
+    "scripts/schema_unknown.vela": "/* 中😀 */ fn main() { task::[[replace:start]]ghost[[cursor]][[replace:end]]; }\n",
+    "scripts/nested_unknown.vela": "/* 中😀 */ fn main() { task::missing::[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/deeper.vela": "/* 中😀 */ fn main() { task::spawn_scoped::[[replace:start]][[cursor]][[replace:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "schemaIndependent": true,
+    "queries": [
+      {
+        "id": "root",
+        "file": "scripts/root.vela",
+        "items": [
+          {
+            "label": "spawn_scoped",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped(invocation: Any) -> ()",
+            "insert": "spawn_scoped($0)",
+            "symbol": "task::spawn_scoped",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "spawn_scoped_then",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped_then(invocation: Any, continuation: Any) -> ()",
+            "insert": "spawn_scoped_then($0)",
+            "symbol": "task::spawn_scoped_then",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "prefix",
+        "file": "scripts/prefix.vela",
+        "items": [
+          {
+            "label": "spawn_scoped",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped(invocation: Any) -> ()",
+            "insert": "spawn_scoped($0)",
+            "symbol": "task::spawn_scoped",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "spawn_scoped_then",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped_then(invocation: Any, continuation: Any) -> ()",
+            "insert": "spawn_scoped_then($0)",
+            "symbol": "task::spawn_scoped_then",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "middle",
+        "file": "scripts/middle.vela",
+        "items": [
+          {
+            "label": "spawn_scoped_then",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped_then(invocation: Any, continuation: Any) -> ()",
+            "insert": "spawn_scoped_then($0)",
+            "symbol": "task::spawn_scoped_then",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "start",
+        "file": "scripts/start.vela",
+        "items": [
+          {
+            "label": "spawn_scoped",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped(invocation: Any) -> ()",
+            "insert": "spawn_scoped($0)",
+            "symbol": "task::spawn_scoped",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "spawn_scoped_then",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped_then(invocation: Any, continuation: Any) -> ()",
+            "insert": "spawn_scoped_then($0)",
+            "symbol": "task::spawn_scoped_then",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "exact",
+        "file": "scripts/exact.vela",
+        "items": [
+          {
+            "label": "spawn_scoped_then",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped_then(invocation: Any, continuation: Any) -> ()",
+            "insert": "spawn_scoped_then($0)",
+            "symbol": "task::spawn_scoped_then",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "existing",
+        "file": "scripts/existing.vela",
+        "items": [
+          {
+            "label": "spawn_scoped",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped(invocation: Any) -> ()",
+            "insert": "spawn_scoped",
+            "symbol": "task::spawn_scoped",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "spawn_scoped_then",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped_then(invocation: Any, continuation: Any) -> ()",
+            "insert": "spawn_scoped_then",
+            "symbol": "task::spawn_scoped_then",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "existing_then",
+        "file": "scripts/existing_then.vela",
+        "items": [
+          {
+            "label": "spawn_scoped_then",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped_then(invocation: Any, continuation: Any) -> ()",
+            "insert": "spawn_scoped_then",
+            "symbol": "task::spawn_scoped_then",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "comment",
+        "file": "scripts/comment.vela",
+        "items": [
+          {
+            "label": "spawn_scoped",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped(invocation: Any) -> ()",
+            "insert": "spawn_scoped",
+            "symbol": "task::spawn_scoped",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "spawn_scoped_then",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped_then(invocation: Any, continuation: Any) -> ()",
+            "insert": "spawn_scoped_then",
+            "symbol": "task::spawn_scoped_then",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "empty_call",
+        "file": "scripts/empty_call.vela",
+        "items": [
+          {
+            "label": "spawn_scoped",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped(invocation: Any) -> ()",
+            "insert": "spawn_scoped",
+            "symbol": "task::spawn_scoped",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "spawn_scoped_then",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped_then(invocation: Any, continuation: Any) -> ()",
+            "insert": "spawn_scoped_then",
+            "symbol": "task::spawn_scoped_then",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "local_collision",
+        "file": "scripts/local_collision.vela",
+        "items": [
+          {
+            "label": "spawn_scoped",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped(invocation: Any) -> ()",
+            "insert": "spawn_scoped($0)",
+            "symbol": "task::spawn_scoped",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "spawn_scoped_then",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped_then(invocation: Any, continuation: Any) -> ()",
+            "insert": "spawn_scoped_then($0)",
+            "symbol": "task::spawn_scoped_then",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "import_collision",
+        "file": "scripts/import_collision.vela",
+        "items": [
+          {
+            "label": "spawn_scoped",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped(invocation: Any) -> ()",
+            "insert": "spawn_scoped($0)",
+            "symbol": "task::spawn_scoped",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "spawn_scoped_then",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped_then(invocation: Any, continuation: Any) -> ()",
+            "insert": "spawn_scoped_then($0)",
+            "symbol": "task::spawn_scoped_then",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "lambda",
+        "file": "scripts/lambda.vela",
+        "items": [
+          {
+            "label": "spawn_scoped",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped(invocation: Any) -> ()",
+            "insert": "spawn_scoped($0)",
+            "symbol": "task::spawn_scoped",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "spawn_scoped_then",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped_then(invocation: Any, continuation: Any) -> ()",
+            "insert": "spawn_scoped_then($0)",
+            "symbol": "task::spawn_scoped_then",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "nested",
+        "file": "scripts/nested.vela",
+        "items": [
+          {
+            "label": "spawn_scoped",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped(invocation: Any) -> ()",
+            "insert": "spawn_scoped($0)",
+            "symbol": "task::spawn_scoped",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "spawn_scoped_then",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped_then(invocation: Any, continuation: Any) -> ()",
+            "insert": "spawn_scoped_then($0)",
+            "symbol": "task::spawn_scoped_then",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "incomplete",
+        "file": "scripts/incomplete.vela",
+        "items": [
+          {
+            "label": "spawn_scoped",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped(invocation: Any) -> ()",
+            "insert": "spawn_scoped($0)",
+            "symbol": "task::spawn_scoped",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "spawn_scoped_then",
+            "kind": "Function",
+            "lspKind": 3,
+            "detail": "task::spawn_scoped_then(invocation: Any, continuation: Any) -> ()",
+            "insert": "spawn_scoped_then($0)",
+            "symbol": "task::spawn_scoped_then",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": "; }"
+      },
+      {
+        "id": "unknown",
+        "file": "scripts/unknown.vela",
+        "items": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "schema_unknown",
+        "file": "scripts/schema_unknown.vela",
+        "items": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "nested_unknown",
+        "file": "scripts/nested_unknown.vela",
+        "items": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "deeper",
+        "file": "scripts/deeper.vela",
+        "items": [],
+        "recoverySuffix": ""
+      }
+    ]
+  }
+}

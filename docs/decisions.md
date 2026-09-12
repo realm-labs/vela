@@ -4468,3 +4468,18 @@ source/schema names cannot lend their documentation or ownership. Replace the
 whole identifier, including a suffix after the cursor in an existing call, and
 recompute availability after source or schema changes. This adds authoring
 support to existing compiler capabilities without changing dispatch semantics.
+
+## Static Task Completion Follows Literal Compiler Ownership
+
+Literal `task::` operation paths resolve builtin task facts before imports,
+locals, source declarations or registry functions, matching HIR binding.
+Unknown operations cannot borrow ordinary callable metadata. Aliases may still
+address real ordinary source declarations in a `task` module, but an alias does
+not synthesize the compiler's lexical task capability from builtin metadata.
+
+The outer task operands remain positional-only. In the direct second operand
+of `task::spawn_scoped_then`, function completion inserts a static path without
+call parentheses. Worker calls, nested ordinary calls and callback bodies retain
+their ordinary insertion behavior. Use shared callable path rendering to preserve
+whole-identifier edits and existing argument lists for both Service and task
+operations. These are authoring changes, not runtime or task-lifecycle changes.

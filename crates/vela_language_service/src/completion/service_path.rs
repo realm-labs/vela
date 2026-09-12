@@ -1,14 +1,14 @@
 use vela_hir::body::HirBodyOwner;
-use vela_syntax::ast::AstNode;
-use vela_syntax::{SyntaxKind, TextSize};
 
 use crate::callable_context::service_callable_fact;
 use crate::{CursorContextKind, DisplayParts, LanguageServiceDatabases, QueryContext};
 
 use super::{
-    CompletionContext, CompletionContextKind, CompletionInsertFormat, CompletionItem,
-    CompletionKind, CompletionSymbol, dedupe_and_filter_service_items,
+    CompletionContext, CompletionContextKind, CompletionItem, CompletionKind, CompletionSymbol,
+    dedupe_and_filter_service_items,
 };
+
+use super::callable_path::{callable_item, has_argument_list, item};
 
 // Reserved namespaces own even invalid/unknown paths: ordinary source or
 // registry functions with the same spelling must never supply candidates.
@@ -78,27 +78,7 @@ pub(super) fn completion_items(
             ) else {
                 continue;
             };
-            let detail = DisplayParts::callable_signature_with_asyncness(
-                callable.asyncness(),
-                callable.name(),
-                callable.params().iter().map(|param| {
-                    DisplayParts::parameter(param.name(), &param.type_fact().display_name())
-                }),
-                Some(&callable.return_display_name()),
-            );
-            items.push(
-                item(
-                    method.name(),
-                    CompletionKind::Function,
-                    if has_arguments {
-                        method.name().to_owned()
-                    } else {
-                        format!("{}($0)", method.name())
-                    },
-                )
-                .with_detail_parts(detail)
-                .with_symbol(callable.symbol().clone()),
-            );
+            items.push(callable_item(&callable, method.name(), has_arguments));
         }
     }
     Some(dedupe_and_filter_service_items(
@@ -114,35 +94,4 @@ fn namespace_item(name: &str) -> CompletionItem {
     item(name, CompletionKind::Module, name.to_owned())
         .with_detail_parts(DisplayParts::type_name(&path))
         .with_symbol(CompletionSymbol::Builtin(path))
-}
-
-fn item(label: &str, kind: CompletionKind, insertion: String) -> CompletionItem {
-    let insert_format = if insertion.contains("$0") {
-        CompletionInsertFormat::Snippet
-    } else {
-        CompletionInsertFormat::PlainText
-    };
-    CompletionItem {
-        label: label.to_owned(),
-        kind,
-        detail: String::new(),
-        insert_text: Some(insertion),
-        insert_format,
-        sort_text: None,
-        metadata: Default::default(),
-    }
-}
-
-fn has_argument_list(query: &QueryContext<'_>, end: usize) -> bool {
-    let Some(parse) = query.syntax_parse() else {
-        return false;
-    };
-    let Ok(end) = u32::try_from(end) else {
-        return false;
-    };
-    let end = TextSize::from(end);
-    let first = parse.tree().syntax().token_at_offset(end).right_biased();
-    std::iter::successors(first, |token| token.next_token())
-        .find(|token| token.text_range().start() >= end && !token.kind().is_trivia())
-        .is_some_and(|token| token.kind() == SyntaxKind::LParen)
 }

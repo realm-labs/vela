@@ -15,6 +15,7 @@ mod call_expression_tests;
 mod call_parameter_tests;
 #[cfg(test)]
 mod callable_import_tests;
+mod callable_path;
 mod context;
 #[cfg(test)]
 mod enum_alias_tests;
@@ -61,6 +62,7 @@ mod stdlib_function;
 mod struct_field;
 #[cfg(test)]
 mod struct_field_tests;
+mod task_path;
 #[cfg(test)]
 mod tuple_destructuring_tests;
 mod type_display;
@@ -136,7 +138,9 @@ impl LanguageServiceDatabases {
         self.completion_query_is_current(token).then_some(())?;
         let context = completion_context(&query);
         let analysis = completion_analysis(self, &query, &context);
-        let items = if let Some(items) = service_path::completion_items(self, &query, &context) {
+        let mut items = if let Some(items) = service_path::completion_items(self, &query, &context)
+            .or_else(|| task_path::completion_items(&query, &context))
+        {
             items
         } else {
             match analysis.context_kind() {
@@ -168,6 +172,7 @@ impl LanguageServiceDatabases {
                 }
             }
         };
+        task_path::adjust_continuation_items(&query, &mut items);
         self.completion_query_is_current(token).then_some(())?;
         Some(CompletionList {
             context,

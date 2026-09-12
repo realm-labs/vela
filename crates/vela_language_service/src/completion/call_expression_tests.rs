@@ -6,8 +6,17 @@ use crate::{
 
 #[test]
 fn call_expression_matrix_preserves_complete_choices_and_distinct_insertions() {
+    verify_fixture("completion-call-expressions");
+}
+
+#[test]
+fn task_operand_matrix_inserts_calls_and_static_continuation_paths() {
+    verify_fixture("completion-task-operands");
+}
+
+fn verify_fixture(name: &str) {
     for crlf in [false, true] {
-        let mut spec = load("completion-call-expressions");
+        let mut spec = load(name);
         if crlf {
             for text in spec.files.values_mut() {
                 *text = text.replace('\n', "\r\n");

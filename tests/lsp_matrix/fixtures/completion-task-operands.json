@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "id": "completion-task-operands",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.task_completion\"\nname = \"task_completion\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{}}",
+    "scripts/worker.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {}  fn main() { task::spawn_scoped([[replace:start]]zz_w[[cursor]][[replace:end]]); }\n",
+    "scripts/continuation.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {}  fn main() { task::spawn_scoped_then(zz_worker(), [[replace:start]]zz_d[[cursor]][[replace:end]]); }\n",
+    "scripts/continuation_mid.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {}  fn main() { task::spawn_scoped_then(zz_worker(), [[replace:start]]zz_d[[cursor]]one[[replace:end]]); }\n",
+    "scripts/continuation_comment.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {}  fn main() { task::spawn_scoped_then(zz_worker(), /* keep */ [[replace:start]]zz_d[[cursor]][[replace:end]]); }\n",
+    "scripts/unknown_outer.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {}  fn main() { task::missing(zz_worker(), [[replace:start]]zz_d[[cursor]][[replace:end]]); }\n",
+    "scripts/nested_inner.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {} fn consume(callback: Function) -> () {} fn main() { task::spawn_scoped_then(zz_worker(), consume([[replace:start]]zz_d[[cursor]][[replace:end]])); }\n",
+    "scripts/lambda_body.vela": "/* 中😀 */ async fn zz_worker() -> i64 { return 1; } fn zz_done(result: Result<i64, task::Error>) -> () {}  fn main() { task::spawn_scoped_then(zz_worker(), || { [[replace:start]]zz_d[[cursor]][[replace:end]]; }); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "worker",
+        "file": "scripts/worker.vela",
+        "items": [
+          {
+            "label": "zz_worker",
+            "kind": "Function",
+            "detail": "Function() -> i64",
+            "insert": "zz_worker($0)",
+            "format": "Snippet",
+            "named": false
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1"
+      },
+      {
+        "id": "continuation",
+        "file": "scripts/continuation.vela",
+        "items": [
+          {
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_done",
+            "format": "PlainText",
+            "named": false
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1"
+      },
+      {
+        "id": "continuation_mid",
+        "file": "scripts/continuation_mid.vela",
+        "items": [
+          {
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_done",
+            "format": "PlainText",
+            "named": false
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1"
+      },
+      {
+        "id": "continuation_comment",
+        "file": "scripts/continuation_comment.vela",
+        "items": [
+          {
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_done",
+            "format": "PlainText",
+            "named": false
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1"
+      },
+      {
+        "id": "unknown_outer",
+        "file": "scripts/unknown_outer.vela",
+        "items": [
+          {
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_done($0)",
+            "format": "Snippet",
+            "named": false
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1"
+      },
+      {
+        "id": "nested_inner",
+        "file": "scripts/nested_inner.vela",
+        "items": [
+          {
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_done($0)",
+            "format": "Snippet",
+            "named": false
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1"
+      },
+      {
+        "id": "lambda_body",
+        "file": "scripts/lambda_body.vela",
+        "items": [
+          {
+            "label": "zz_done",
+            "kind": "Function",
+            "detail": "Function(Result(i64, task::Error)) -> ()",
+            "insert": "zz_done($0)",
+            "format": "Snippet",
+            "named": false
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1"
+      }
+    ]
+  }
+}
