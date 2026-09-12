@@ -123,6 +123,10 @@ impl AnalysisFacts {
         self.expressions.get(&expression)
     }
 
+    pub(crate) fn base_local(&self, local: HirLocalId) -> Option<&TypeFact> {
+        self.locals.get(&local)
+    }
+
     pub(crate) fn resolution(&self, expression: HirExprId) -> Option<&BindingResolution> {
         self.resolutions.get(&expression)
     }

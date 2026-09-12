@@ -98,6 +98,73 @@ fn lambda_returns_respect_argument_order_and_nested_invocation_boundaries() {
     }
 }
 
+#[test]
+fn match_results_and_control_flags_exclude_unreachable_arms() {
+    for (expression, expected, normal, returns) in [
+        (
+            "match flag { _ => 1, true => \"unreachable\" }",
+            TypeFact::I64,
+            true,
+            false,
+        ),
+        (
+            "match flag { bound => 1, true => { return; } }",
+            TypeFact::I64,
+            true,
+            false,
+        ),
+        (
+            "match flag { _ => { return; }, true => 1 }",
+            TypeFact::Never,
+            false,
+            true,
+        ),
+        (
+            "match flag { _ if ({ return; true }) => 1, _ => 2 }",
+            TypeFact::Never,
+            false,
+            true,
+        ),
+        (
+            "match flag { true if ({ return; true }) => 1, _ => 2 }",
+            TypeFact::I64,
+            true,
+            true,
+        ),
+        (
+            "match flag { _ if flag => { return; }, _ => 1 }",
+            TypeFact::I64,
+            true,
+            true,
+        ),
+        (
+            "(|| { match flag { _ => 1, true => { return \"unreachable\"; } } })()",
+            TypeFact::I64,
+            true,
+            false,
+        ),
+        (
+            "(|| { match flag { _ if ({ return 1; true }) => \"unreachable\", _ => false } })()",
+            TypeFact::I64,
+            true,
+            false,
+        ),
+    ] {
+        let (facts, id) = analyze(expression);
+        assert_eq!(facts.expression(id), Some(&expected), "{expression}");
+        assert_eq!(
+            facts.control_flow(id),
+            Some(&ControlFlowFact {
+                can_fallthrough: normal,
+                may_return: returns,
+                may_break: false,
+                may_continue: false
+            }),
+            "{expression}"
+        );
+    }
+}
+
 fn analyze(expression: &str) -> (AnalysisFacts, vela_hir::ids::HirExprId) {
     let source = SourceId::new(99);
     let prefix = "fn consume(value) { value } fn pair(first, second) { first } fn main(flag: bool) { let probe = ";

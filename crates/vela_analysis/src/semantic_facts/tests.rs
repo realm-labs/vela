@@ -2,6 +2,7 @@ mod constructor_targets;
 mod enum_aliases;
 mod host_variant_fields;
 mod local_exits;
+mod loop_flow;
 mod operator_targets;
 mod pattern_fields;
 mod registry_constructors;

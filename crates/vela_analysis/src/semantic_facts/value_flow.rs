@@ -1,9 +1,9 @@
 use super::ControlFlowFact;
 use vela_hir::body::{
     HirBinaryOp, HirBody, HirBodyRoot, HirElseBranch, HirExprKind, HirIf,
-    HirInterpolatedStringPart, HirLiteral, HirMatch, HirMatchArmBody, HirStmtKind,
+    HirInterpolatedStringPart, HirLiteral, HirMatch, HirMatchArmBody, HirPatternKind, HirStmtKind,
 };
-use vela_hir::ids::{HirBlockId, HirExprId};
+use vela_hir::ids::{HirBlockId, HirExprId, HirPatternId};
 
 // None is a reachable unit value. An empty normal set means no fallthrough.
 #[derive(Default)]
@@ -178,11 +178,17 @@ pub(super) fn match_flow(body: &HirBody, value: &HirMatch) -> ValueFlow {
         return flow;
     }
     let mut branches = ValueFlow::default();
+    let mut unmatched = true;
     for id in &value.arms {
+        if !unmatched {
+            break;
+        }
         let Some(arm) = body.match_arms.get(id) else {
             continue;
         };
         let mut branch = optional_flow(body, arm.guard);
+        unmatched = !pattern_is_irrefutable(body, arm.pattern)
+            || (arm.guard.is_some() && !branch.normal.is_empty());
         if !branch.normal.is_empty() {
             branch.then(match arm.body {
                 Some(HirMatchArmBody::Block(block)) => block_flow(body, block),
@@ -197,6 +203,17 @@ pub(super) fn match_flow(body: &HirBody, value: &HirMatch) -> ValueFlow {
     }
     flow.then(branches);
     flow
+}
+
+pub(super) fn pattern_is_irrefutable(body: &HirBody, pattern: Option<HirPatternId>) -> bool {
+    pattern
+        .and_then(|id| body.patterns.get(&id))
+        .is_some_and(|pattern| {
+            matches!(
+                pattern.kind,
+                HirPatternKind::Binding { .. } | HirPatternKind::Wildcard
+            )
+        })
 }
 
 pub(super) fn expression_flow(body: &HirBody, id: HirExprId) -> ValueFlow {

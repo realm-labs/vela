@@ -70,6 +70,11 @@ fn local_exit_matrix_preserves_reachable_assignment_owners() {
     assert_type_ownership("completion-local-exits");
 }
 
+#[test]
+fn loop_match_matrix_preserves_backedge_owners_and_reachable_results() {
+    assert_type_ownership("completion-loop-match-flow");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);

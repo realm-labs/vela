@@ -768,8 +768,10 @@ reachable explicit lambda returns. One HIR traversal supplies normal values,
 invocation returns and control flags; source origins follow the same result sets.
 Local assignment joins now exclude returning branches, stop at exits and retain
 loop exit snapshots. Match guards carry their evaluated state to later arms.
-Resume B03.39 with loop-carried state and match-result reachability review, then
-the remaining S5 partition review and
+Loop headers now include normal/continue backedges under a shared analysis budget;
+break/return exits remain terminal. Match values and local environments share
+the irrefutable-pattern boundary and exclude unreachable later arms.
+Resume B03.40 with the remaining S5 partition review and
 semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

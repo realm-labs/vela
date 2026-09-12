@@ -1,3 +1,4 @@
+mod loops;
 mod walk;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -51,6 +52,12 @@ impl HirSemanticFacts {
             source_origins: &self.source_origins,
             uses: BTreeMap::new(),
             loop_exits: Vec::new(),
+            loop_passes_left: body
+                .expressions
+                .len()
+                .saturating_add(body.statements.len())
+                .saturating_mul(2)
+                .max(1),
         };
         flow.visit_root(&mut environment);
         for expression in body.expressions.keys() {
@@ -72,7 +79,8 @@ struct LocalFlow<'facts> {
     expression_types: &'facts BTreeMap<HirExprId, TypeFact>,
     source_origins: &'facts BTreeMap<HirExprId, ScriptTypeOrigins>,
     uses: BTreeMap<HirExprId, LocalValue>,
-    loop_exits: Vec<Vec<LocalEnvironment>>,
+    loop_exits: Vec<loops::LoopExits>,
+    loop_passes_left: usize,
 }
 
 impl LocalFlow<'_> {
@@ -93,7 +101,7 @@ impl LocalFlow<'_> {
         ) {
             let fact = self
                 .base
-                .local(inferred.local)
+                .base_local(inferred.local)
                 .map_or(inferred.fact.clone(), |declared| {
                     refine_local_fact(declared, inferred.fact)
                 });
@@ -381,7 +389,7 @@ fn join_environments<'a>(
                 environment.get(&local).map(|value| value.origins.clone())
             }));
             joined.insert(local, LocalValue::new(first.fact.clone(), origins));
-        } else if let Some(declared) = base.local(local) {
+        } else if let Some(declared) = base.base_local(local) {
             joined.insert(
                 local,
                 LocalValue::new(

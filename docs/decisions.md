@@ -4615,3 +4615,15 @@ Expression inputs stop at divergence and short-circuit operators retain their
 skipped path. Match guards pass evaluated writes to subsequent arms when false;
 an unguarded wildcard or binding consumes the remaining unmatched path. This
 structural, intra-body analysis does not execute scripts or fold conditions.
+
+Local loop headers converge over the entry state, normal completion and continue
+backedges; break and return states do not enter a later iteration. Iteration
+patterns are rebound on each pass. A budget shared by every nested loop in one
+body permits twice the total HIR expression/statement count, with a minimum of
+one pass. On exhaustion, locals assigned within the loop lose their inferred
+input refinements, retaining only explicit base contracts, before one final
+structural pass. The base-local accessor keeps declared contracts distinct from
+inferred semantic locals. Tests force both immediate and subsequent exhaustion.
+Value-flow and local-state walks share the same wildcard/binding irrefutability
+predicate; an irrefutable unguarded arm, or an irrefutable diverging guard, makes
+later match arms unreachable without evaluating patterns or conditions.

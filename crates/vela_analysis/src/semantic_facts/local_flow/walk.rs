@@ -1,10 +1,10 @@
 use super::{LocalEnvironment, LocalFlow, LocalValue, join_environments, set_local};
-use crate::semantic_facts::{iterable_item_fact, refine_local_fact};
+use crate::semantic_facts::refine_local_fact;
 use crate::type_fact::TypeFact;
 use vela_hir::binding::BindingResolution;
 use vela_hir::body::{
     HirBinaryOp, HirBodyRoot, HirElseBranch, HirExprKind, HirIf, HirInterpolatedStringPart,
-    HirLiteral, HirMatch, HirMatchArmBody, HirPatternKind, HirStmtKind,
+    HirLiteral, HirMatch, HirMatchArmBody, HirStmtKind,
 };
 use vela_hir::ids::{HirBlockId, HirExprId};
 
@@ -17,7 +17,11 @@ impl LocalFlow<'_> {
         }
     }
 
-    fn visit_block(&mut self, block: HirBlockId, environment: &mut LocalEnvironment) -> bool {
+    pub(super) fn visit_block(
+        &mut self,
+        block: HirBlockId,
+        environment: &mut LocalEnvironment,
+    ) -> bool {
         let Some(block) = self.body.blocks.get(&block) else {
             return true;
         };
@@ -62,7 +66,10 @@ impl LocalFlow<'_> {
             }
             HirStmtKind::Break | HirStmtKind::Continue => {
                 if let Some(exits) = self.loop_exits.last_mut() {
-                    exits.push(environment.clone());
+                    match statement {
+                        HirStmtKind::Break => exits.breaks.push(environment.clone()),
+                        _ => exits.continues.push(environment.clone()),
+                    }
                 }
                 false
             }
@@ -70,36 +77,7 @@ impl LocalFlow<'_> {
                 patterns,
                 iterable,
                 body,
-            } => {
-                // The iterable is evaluated before the new loop owns exits.
-                if !self.visit_optional(*iterable, environment) {
-                    return false;
-                }
-                let entry = environment.clone();
-                let mut iteration = entry.clone();
-                let item = iterable
-                    .map(|id| iterable_item_fact(&self.fact(id, environment)))
-                    .unwrap_or(TypeFact::Unknown);
-                for (index, pattern) in patterns.iter().enumerate() {
-                    let fact = if patterns.len() == 2 && index == 0 {
-                        TypeFact::I64
-                    } else {
-                        item.clone()
-                    };
-                    self.bind_pattern(*pattern, &fact, &Default::default(), &mut iteration);
-                }
-                self.loop_exits.push(Vec::new());
-                let normal = body.is_none_or(|id| self.visit_block(id, &mut iteration));
-                let mut exits = self.loop_exits.pop().expect("loop exit scope");
-                // Zero iterations, normal completion, break, and a continue
-                // followed by iterator exhaustion can all reach the successor.
-                exits.push(entry);
-                if normal {
-                    exits.push(iteration);
-                }
-                *environment = join_environments(exits.iter(), self.base);
-                true
-            }
+            } => self.visit_loop(patterns, *iterable, *body, environment),
             HirStmtKind::If(value) => self.visit_if(value, environment),
             HirStmtKind::Match(value) => self.visit_match(value, environment),
             HirStmtKind::Block(block) => self.visit_block(*block, environment),
@@ -166,7 +144,7 @@ impl LocalFlow<'_> {
                         .unwrap_or(TypeFact::Unknown);
                     let fact = self
                         .base
-                        .local(*local)
+                        .base_local(*local)
                         .map_or(inferred.clone(), |declared| {
                             refine_local_fact(declared, inferred)
                         });
@@ -269,15 +247,8 @@ impl LocalFlow<'_> {
                 continue;
             };
             let mut branch = entry.clone();
-            let irrefutable = arm
-                .pattern
-                .and_then(|id| self.body.patterns.get(&id))
-                .is_some_and(|pattern| {
-                    matches!(
-                        pattern.kind,
-                        HirPatternKind::Binding { .. } | HirPatternKind::Wildcard
-                    )
-                });
+            let irrefutable =
+                crate::semantic_facts::value_flow::pattern_is_irrefutable(self.body, arm.pattern);
             if let Some(pattern) = arm.pattern {
                 self.bind_pattern(pattern, &scrutinee, &origins, &mut branch);
             }
@@ -313,7 +284,7 @@ impl LocalFlow<'_> {
         normal
     }
 
-    fn visit_optional(
+    pub(super) fn visit_optional(
         &mut self,
         expression: Option<HirExprId>,
         environment: &mut LocalEnvironment,
