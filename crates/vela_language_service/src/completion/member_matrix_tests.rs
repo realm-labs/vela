@@ -7,6 +7,61 @@ use crate::{
 };
 
 #[test]
+fn callable_return_matrix_preserves_nested_owner_members_and_resolved_docs() {
+    assert_member_matrix("completion-callable-returns");
+}
+
+#[test]
+fn callable_return_schema_lifecycle_refreshes_nested_facts_and_docs() {
+    let spec = load("completion-callable-returns");
+    let fixture = FixtureWorkspace::new(&spec).expect("fixture");
+    let file = "scripts/function.vela";
+    let source = fixture.document(file).expect("source");
+    let cursor = position(&source.text, source.markers["cursor"].start.byte);
+    let call = position(
+        &source.text,
+        source.text.find("accept(rows)").expect("call") + 7,
+    );
+    let mut db = databases(&fixture, &spec.oracle["schema"]);
+    for step in spec.oracle["lifecycle"].as_array().expect("states") {
+        let text = if step["mode"] == "invalid" {
+            "{".to_owned()
+        } else {
+            json!({"formatVersion":1,"facts":step["schema"]}).to_string()
+        };
+        db.load_schema_artifact_json("/workspace/schema.json", &text);
+        assert_eq!(
+            !db.schema_db().diagnostics().is_empty(),
+            step["mode"] == "invalid"
+        );
+        let result = db.completion_items(&uri(file), cursor);
+        let mut fresh = databases(&fixture, &json!({}));
+        fresh.load_schema_artifact_json("/workspace/schema.json", &text);
+        assert_eq!(result, fresh.completion_items(&uri(file), cursor), "{step}");
+        let actual = result
+            .items()
+            .iter()
+            .map(|item| {
+                json!({"label":item.label(),"detail":item.detail(),
+            "docs":db.completion_documentation(item.resolve_payload().expect("resolve"))})
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(json!(actual), step["items"], "{step}");
+        let signature = db.signature_help(&uri(file), call).expect("signature");
+        assert_eq!(
+            signature.signatures()[0].label(),
+            step["signature"].as_str().expect("label")
+        );
+        assert_eq!(
+            signature,
+            fresh
+                .signature_help(&uri(file), call)
+                .expect("fresh signature")
+        );
+    }
+}
+
+#[test]
 fn member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries() {
     assert_member_matrix("completion-members");
 }

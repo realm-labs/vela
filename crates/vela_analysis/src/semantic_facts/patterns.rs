@@ -154,6 +154,7 @@ fn variant_field_fact(
                 variant: Some(variant.clone()),
             },
             field,
+            schema,
         )
         .map(|field| PatternValueFact {
             fact: field.fact,

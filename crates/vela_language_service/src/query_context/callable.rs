@@ -97,7 +97,7 @@ impl QueryContext<'_> {
                 source_callable_facts_for_declaration(
                     graph,
                     databases.schema_db().facts(),
-                    databases.graph_analysis_facts(),
+                    databases.schema_analysis_facts(),
                     declaration,
                 )
                 .into_iter()

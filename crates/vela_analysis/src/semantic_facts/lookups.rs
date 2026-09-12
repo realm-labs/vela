@@ -4,11 +4,10 @@ use vela_hir::ids::HirNodeId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
 
-use super::source_declaration_for_path;
 use super::targets::{
     ScriptTypeTargetFact, registry_callable_owner, registry_field_owner, source_field_fact,
 };
-use crate::hints::type_fact_from_hint_in_module;
+use crate::hints::type_fact_from_hint_with_schema;
 use crate::literals::{LiteralResult, ResolvedLiteralFact};
 use crate::registry::{RegistryEffectFact, RegistryFacts};
 use crate::stdlib::stdlib_method_fact;
@@ -24,14 +23,27 @@ pub(super) fn source_method(
     graph: &ModuleGraph,
     receiver: &TypeFact,
     name: &str,
+    schema: Option<&RegistryFacts>,
 ) -> Option<SourceMethodFact> {
     let owner = type_owner(receiver)?;
     for declaration in graph.declarations_by_kind(DeclarationKind::Impl) {
         let Some(metadata) = graph.impl_metadata(declaration.id) else {
             continue;
         };
-        let target = metadata.target_path.join("::");
-        if target != owner && !owner.ends_with(&format!("::{target}")) {
+        let Some(target) = graph.expand_import_path(declaration.module, &metadata.target_path)
+        else {
+            continue;
+        };
+        let target = [
+            DeclarationKind::Struct,
+            DeclarationKind::Enum,
+            DeclarationKind::Trait,
+        ]
+        .into_iter()
+        .find_map(|kind| graph.resolve_visible_declaration_path(declaration.module, &target, kind))
+        .and_then(|target| graph.qualified_declaration_name(target.id))
+        .unwrap_or_else(|| target.join("::"));
+        if target != owner {
             continue;
         }
         if let Some(method) = metadata.methods.iter().find(|method| method.name == name) {
@@ -40,7 +52,7 @@ pub(super) fn source_method(
                 .return_type
                 .as_ref()
                 .map_or(TypeFact::Unknown, |hint| {
-                    type_fact_from_hint_in_module(graph, declaration.module, hint)
+                    type_fact_from_hint_with_schema(graph, declaration.module, hint, schema)
                 });
             let return_target = method.signature.return_type.as_ref().and_then(|hint| {
                 crate::hints::schema_declaration_from_hint_in_module(
@@ -59,7 +71,14 @@ pub(super) fn source_method(
         let ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
             continue;
         };
-        let Some(trait_declaration) = source_declaration_for_path(graph, trait_path) else {
+        let Some(trait_path) = graph.expand_import_path(declaration.module, trait_path) else {
+            continue;
+        };
+        let Some(trait_declaration) = graph.resolve_visible_declaration_path(
+            declaration.module,
+            &trait_path,
+            DeclarationKind::Trait,
+        ) else {
             continue;
         };
         let Some(shape) = graph.trait_shape(trait_declaration.id) else {
@@ -73,7 +92,7 @@ pub(super) fn source_method(
                 .return_type
                 .as_ref()
                 .map_or(TypeFact::Unknown, |hint| {
-                    type_fact_from_hint_in_module(graph, trait_declaration.module, hint)
+                    type_fact_from_hint_with_schema(graph, trait_declaration.module, hint, schema)
                 });
             let return_target = method.signature.return_type.as_ref().and_then(|hint| {
                 crate::hints::schema_declaration_from_hint_in_module(
@@ -173,7 +192,7 @@ pub(super) fn field_fact(
             .map(|field| field.fact().clone())
             .unwrap_or(TypeFact::Unknown);
     }
-    if let Some(field) = source.and_then(|source| source_field_fact(graph, source, name)) {
+    if let Some(field) = source.and_then(|source| source_field_fact(graph, source, name, schema)) {
         return field.fact;
     }
     if let Some(method) = stdlib_method_fact(receiver, name, None) {

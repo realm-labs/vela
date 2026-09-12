@@ -5,7 +5,8 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 
 use super::AnalysisFacts;
 use crate::hints::{
-    declaration_schema_fact, schema_declaration_from_hint_in_module, type_fact_from_hint_in_module,
+    declaration_schema_fact, schema_declaration_from_hint_in_module,
+    type_fact_from_hint_with_schema,
 };
 use crate::literals::{LiteralFacts, LiteralPrimitiveContext};
 use crate::registry::RegistryFacts;
@@ -110,16 +111,7 @@ impl AnalysisFacts {
                         .local_script_types
                         .insert(local.id, ScriptTypeTargetFact::declaration(declaration));
                 }
-                let fact = type_fact_from_hint_in_module(graph, owner.module, hint);
-                let fact = if matches!(fact, TypeFact::Unknown) {
-                    schema
-                        .and_then(|schema| {
-                            schema_fact_for_hint(graph, owner.module, schema, &hint.path)
-                        })
-                        .unwrap_or(fact)
-                } else {
-                    fact
-                };
+                let fact = type_fact_from_hint_with_schema(graph, owner.module, hint, schema);
                 facts.locals.insert(local.id, fact);
             }
         }
@@ -168,37 +160,6 @@ impl AnalysisFacts {
     }
 }
 
-fn schema_fact_for_hint(
-    graph: &ModuleGraph,
-    module: vela_hir::ids::ModuleId,
-    schema: &RegistryFacts,
-    path: &[String],
-) -> Option<TypeFact> {
-    let path = graph.expand_import_path(module, path)?;
-    let current = graph.module_key(module)?;
-    if [
-        DeclarationKind::Struct,
-        DeclarationKind::Enum,
-        DeclarationKind::Trait,
-        DeclarationKind::Function,
-        DeclarationKind::Const,
-        DeclarationKind::State,
-    ]
-    .into_iter()
-    .any(|kind| {
-        graph
-            .declaration_by_type_path(&path, current, kind)
-            .is_some()
-    }) {
-        return None;
-    }
-    let qualified = path.join("::");
-    schema
-        .type_fact(&qualified)
-        .or_else(|| schema.trait_fact(&qualified))
-        .cloned()
-}
-
 fn declaration_fact(
     graph: &ModuleGraph,
     schema: Option<&RegistryFacts>,
@@ -214,25 +175,9 @@ fn declaration_fact(
             .const_metadata(declaration)?
             .type_hint
             .as_ref()
-            .map(|hint| type_fact_from_hint_in_module(graph, metadata.module, hint)),
+            .map(|hint| type_fact_from_hint_with_schema(graph, metadata.module, hint, schema)),
         DeclarationKind::State => graph.state_metadata(declaration).map(|global| {
-            let fact = type_fact_from_hint_in_module(graph, metadata.module, &global.type_hint);
-            if !matches!(fact, TypeFact::Unknown) {
-                return fact;
-            }
-            let qualified = global.type_hint.path.join("::");
-            schema
-                .and_then(|schema| {
-                    schema.type_fact(&qualified).or_else(|| {
-                        global
-                            .type_hint
-                            .path
-                            .last()
-                            .and_then(|name| schema.type_fact(name))
-                    })
-                })
-                .cloned()
-                .unwrap_or(TypeFact::Unknown)
+            type_fact_from_hint_with_schema(graph, metadata.module, &global.type_hint, schema)
         }),
         DeclarationKind::Function => graph.function_signature(declaration).map(|signature| {
             let params = signature
@@ -240,7 +185,7 @@ fn declaration_fact(
                 .iter()
                 .map(|param| {
                     param.type_hint.as_ref().map_or(TypeFact::Unknown, |hint| {
-                        type_fact_from_hint_in_module(graph, metadata.module, hint)
+                        type_fact_from_hint_with_schema(graph, metadata.module, hint, schema)
                     })
                 })
                 .collect();
@@ -248,7 +193,7 @@ fn declaration_fact(
                 .return_type
                 .as_ref()
                 .map_or(TypeFact::Unknown, |hint| {
-                    type_fact_from_hint_in_module(graph, metadata.module, hint)
+                    type_fact_from_hint_with_schema(graph, metadata.module, hint, schema)
                 });
             TypeFact::function(params, returns)
         }),

@@ -542,7 +542,7 @@ impl HirSemanticFacts {
                 let receiver = self.fact(field.receiver);
                 let source_receiver = self.script_types.get(&field.receiver);
                 let source_field = source_receiver
-                    .and_then(|receiver| source_field_fact(graph, receiver, &field.name));
+                    .and_then(|receiver| source_field_fact(graph, receiver, &field.name, schema));
                 let target = if let Some(target) = logical_member_target(&receiver, &field.name) {
                     target
                 } else if let Some(field) = source_field {
@@ -852,7 +852,7 @@ impl HirSemanticFacts {
         if let Some(field) = body.field(call.callee) {
             let receiver = self.fact(field.receiver);
             let script_type = self.script_types.get(&field.receiver).cloned();
-            if let Some(method) = source_method(graph, &receiver, &field.name) {
+            if let Some(method) = source_method(graph, &receiver, &field.name, schema) {
                 return CallTargetFact::ScriptMethod {
                     method: method.node,
                 };
@@ -947,7 +947,7 @@ impl HirSemanticFacts {
             if !matches!(direct, TypeFact::Unknown) {
                 return direct;
             }
-            if let Some(method) = source_method(graph, &receiver, &field.name) {
+            if let Some(method) = source_method(graph, &receiver, &field.name, schema) {
                 return method.returns;
             }
             if let Some(method) = stdlib_method_fact(&receiver, &field.name, None) {

@@ -124,7 +124,7 @@ pub(crate) fn source_callable_facts(
     callee: &str,
 ) -> Vec<CallableFacts> {
     let graph = databases.hir_db().graph();
-    let facts = databases.graph_analysis_facts();
+    let facts = databases.schema_analysis_facts();
     let schema = databases.schema_db().facts();
     graph
         .declarations()
@@ -157,7 +157,7 @@ pub(crate) fn source_callable_facts_by_path(
     else {
         return Vec::new();
     };
-    let facts = databases.graph_analysis_facts();
+    let facts = databases.schema_analysis_facts();
     let schema = databases.schema_db().facts();
     source_callable_facts_for_declaration(graph, schema, facts, declaration)
         .into_iter()
@@ -1046,28 +1046,12 @@ pub(crate) fn query_type_fact_from_hint(
                 && hint.span.end <= declaration.span.end
         })
         .map(|declaration| declaration.module);
-    let fact = module.map_or_else(
+    module.map_or_else(
         || type_fact_from_hint(graph, hint),
-        |module| vela_analysis::hints::type_fact_from_hint_in_module(graph, module, hint),
-    );
-    if matches!(fact, TypeFact::Unknown) {
-        schema_fact_for_hint(hint, schema).unwrap_or(TypeFact::Unknown)
-    } else {
-        fact
-    }
-}
-
-fn schema_fact_for_hint(hint: &HirTypeHint, schema: &RegistryFacts) -> Option<TypeFact> {
-    if !hint.args.is_empty() {
-        return None;
-    }
-    let qualified = hint.path.join("::");
-    schema
-        .type_fact(&qualified)
-        .or_else(|| schema.trait_fact(&qualified))
-        .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
-        .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
-        .cloned()
+        |module| {
+            vela_analysis::hints::type_fact_from_hint_with_schema(graph, module, hint, Some(schema))
+        },
+    )
 }
 
 fn qualified_declaration_label(

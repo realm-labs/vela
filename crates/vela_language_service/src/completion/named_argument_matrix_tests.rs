@@ -5,6 +5,11 @@ use crate::{
 };
 
 #[test]
+fn callable_hint_matrix_preserves_nested_types_and_registered_parameter_prefixes() {
+    verify_fixture("completion-callable-hints");
+}
+
+#[test]
 fn named_argument_matrix_checks_owner_sets_occupied_slots_and_parseable_edits() {
     verify_fixture("completion-named-arguments");
 }
@@ -32,6 +37,14 @@ fn verify_fixture(fixture_name: &str) {
         for query in spec.oracle["queries"].as_array().expect("queries") {
             let file = query["file"].as_str().expect("file");
             let source = fixture.document(file).expect("source");
+            if query["parseErrors"] == true {
+                assert!(
+                    !vela_syntax::parse::parse_source(&source.text)
+                        .diagnostics()
+                        .is_empty(),
+                    "invalid non-builtin type arguments: {query}"
+                );
+            }
             if query["diagnosticError"] == true {
                 assert!(
                     db.diagnostics_for_document(&uri(file))
@@ -55,6 +68,23 @@ fn verify_fixture(fixture_name: &str) {
                     .items(),
                 result.items()
             );
+            if query.get("expectedType").is_some() {
+                assert_eq!(
+                    serde_json::json!(
+                        result
+                            .analysis()
+                            .expected_type()
+                            .map(|fact| fact.display_name())
+                    ),
+                    query["expectedType"],
+                    "{query}"
+                );
+                assert_eq!(
+                    result.analysis().expected_name(),
+                    query["expectedName"].as_str(),
+                    "{query}"
+                );
+            }
             let mut names = result
                 .items()
                 .iter()

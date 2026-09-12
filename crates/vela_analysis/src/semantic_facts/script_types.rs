@@ -49,7 +49,7 @@ impl HirSemanticFacts {
             }
             HirExprKind::Field(field) => {
                 let receiver = self.script_types.get(&field.receiver)?;
-                source_field_fact(graph, receiver, &field.name)?.target
+                source_field_fact(graph, receiver, &field.name, None)?.target
             }
             HirExprKind::Call(call) => {
                 if let Some(lambda) = direct_lambda_body(body, call.callee)
@@ -71,7 +71,7 @@ impl HirSemanticFacts {
                         .map(ScriptTypeTargetFact::declaration);
                 }
                 let field = body.field(call.callee)?;
-                source_method(graph, &self.fact(field.receiver), &field.name)?.return_target
+                source_method(graph, &self.fact(field.receiver), &field.name, None)?.return_target
             }
             _ => None,
         }

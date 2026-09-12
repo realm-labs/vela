@@ -4437,3 +4437,22 @@ code, comments and strings. This uses VS Code's expanded setting representation
 instead of the legacy boolean that can be migrated during startup. Keep exact
 observed-setting equality and capture fresh profile evidence; do not normalize or
 discard mismatches in the input runner.
+
+## Nested Source Hints Preserve Registered Leaf Ownership
+
+Resolve each leaf of a source annotation in the declaration's module/import
+scope. Reuse the builtin container/tuple shapes for graph-only and registry-aware
+facts; unavailable leaves stay unknown within their container. Source declarations
+own same-path positives and negatives, including private and non-type declarations.
+Registry lookup requires the exact expanded path and cannot use a short-name
+fallback. Unsupported non-builtin type arguments remain invalid syntax.
+
+Carry these facts through locals, function signatures, constants/state, source
+fields, pattern fields and method returns. Callable presentation reads the same
+schema-aware facts. Resolve implementation targets and default traits in their
+own modules so same-name records cannot borrow another implementation's return
+type. Provider annotations do not create a separate completion or execution path.
+Known native parameter metadata supplies only that prefix; extra positional slots
+do not invent names or types, and absent name metadata does not enable indexed
+labels as named arguments. Schema replacement must invalidate nested facts and
+resolved docs as well as the outer callable entry.

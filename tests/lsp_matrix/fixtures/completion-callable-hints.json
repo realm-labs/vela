@@ -1,0 +1,519 @@
+{
+  "version": 1,
+  "id": "completion-callable-hints",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.callable_hints\"\nname = \"callable_hints\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "scripts/api.vela": "pub struct Row { count: bool } struct Hidden {} pub const Mask: i64 = 1;\n",
+    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Row\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Row\"\n        }\n      },\n      {\n        \"name\": \"host::Issue\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Issue\"\n        }\n      },\n      {\n        \"name\": \"api::Row\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"api::Row\"\n        }\n      },\n      {\n        \"name\": \"api::Hidden\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"api::Hidden\"\n        }\n      },\n      {\n        \"name\": \"api::Mask\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"api::Mask\"\n        }\n      },\n      {\n        \"name\": \"Alias\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"Alias\"\n        }\n      },\n      {\n        \"name\": \"Row\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"Row\"\n        }\n      }\n    ],\n    \"fields\": [\n      {\n        \"owner\": \"host::Row\",\n        \"name\": \"count\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"i64\"\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"native::send\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"zz_items\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"i64\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"docs\": \"Registered prefix 中😀.\"\n      },\n      {\n        \"name\": \"native::legacy\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  }\n}\n",
+    "scripts/array.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: Array<Alias>) -> bool { true }\nfn main(value: Array<Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/array_view.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: ArrayView<Alias>) -> bool { true }\nfn main(value: ArrayView<Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/array_mut.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: ArrayMut<Alias>) -> bool { true }\nfn main(value: ArrayMut<Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/map.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: Map<String, Alias>) -> bool { true }\nfn main(value: Map<String, Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/map_view.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: MapView<String, Alias>) -> bool { true }\nfn main(value: MapView<String, Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/map_mut.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: MapMut<String, Alias>) -> bool { true }\nfn main(value: MapMut<String, Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/set.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: Set<Alias>) -> bool { true }\nfn main(value: Set<Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/set_view.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: SetView<Alias>) -> bool { true }\nfn main(value: SetView<Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/set_mut.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: SetMut<Alias>) -> bool { true }\nfn main(value: SetMut<Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/iterator.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: Iterator<Alias>) -> bool { true }\nfn main(value: Iterator<Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/option.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: Option<Alias>) -> bool { true }\nfn main(value: Option<Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/result.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: Result<Array<Alias>, host::Issue>) -> bool { true }\nfn main(value: Result<Array<Alias>, host::Issue>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/tuple.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: (Alias, Array<Alias>)) -> bool { true }\nfn main(value: (Alias, Array<Alias>)) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/direct.vela": "\n/* 中😀 */ fn accept(zz_items: host::Row) -> bool { true }\nfn main(value: host::Row) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/alias.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: Alias) -> bool { true }\nfn main(value: Alias) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/namespace.vela": "use host as Alias;\n/* 中😀 */ fn accept(zz_items: Array<Alias::Row>) -> bool { true }\nfn main(value: Array<Alias::Row>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/source.vela": "use api::Row as Alias;\n/* 中😀 */ fn accept(zz_items: Array<Alias>) -> bool { true }\nfn main(value: Array<Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/private.vela": "use api::Hidden as Alias;\n/* 中😀 */ fn accept(zz_items: Array<Alias>) -> bool { true }\nfn main(value: Array<Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/non_type.vela": "use api::Mask as Alias;\n/* 中😀 */ fn accept(zz_items: Array<Alias>) -> bool { true }\nfn main(value: Array<Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/missing.vela": "use missing::Row as Alias;\n/* 中😀 */ fn accept(zz_items: Array<Alias>) -> bool { true }\nfn main(value: Array<Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/duplicate.vela": "use host::Row as Alias; use api::Row as Alias;\n/* 中😀 */ fn accept(zz_items: Array<Alias>) -> bool { true }\nfn main(value: Array<Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/qualified_miss.vela": "\n/* 中😀 */ fn accept(zz_items: Array<missing::Row>) -> bool { true }\nfn main(value: Array<missing::Row>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/generic_miss.vela": "\n/* 中😀 */ fn accept(zz_items: Missing<host::Row>) -> bool { true }\nfn main(value: Missing<host::Row>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/provider_alias.vela": "use host::Row as Alias;\n/* 中😀 */ trait Provider { fn accept(self, zz_items: Array<Alias>) -> bool; } pub struct Worker {} #[provider(id = \"worker\")] impl Provider for Worker { pub fn accept(self, zz_items: Array<Alias>) -> bool { true } }\nfn main(value: Array<Alias>, runner: Worker) { runner.accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/provider_default.vela": "use host::Row as Alias;\n/* 中😀 */ trait Provider { fn accept(self, zz_items: Array<Alias>) -> bool { true } } pub struct Worker {} #[provider(id = \"worker\")] impl Provider for Worker {}\nfn main(value: Array<Alias>, runner: Worker) { runner.accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/native_prefix.vela": "/* 中😀 */ fn main(value: i64) { native::send([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/native_extra.vela": "/* 中😀 */ fn main(value: i64) { native::send(1, \"extra\", [[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/native_named_occupied.vela": "/* 中😀 */ fn main(value: i64) { native::send(zz_items = 1, [[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/native_legacy.vela": "/* 中😀 */ fn main(value: i64) { native::legacy([[replace:start]]arg[[cursor]][[replace:end]]); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "array",
+        "file": "scripts/array.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "Array(host::Row)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: Array(host::Row)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "Array(host::Row)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "array_view",
+        "file": "scripts/array_view.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "ArrayView(host::Row)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: ArrayView(host::Row)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "ArrayView(host::Row)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "array_mut",
+        "file": "scripts/array_mut.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "ArrayMut(host::Row, fixed)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: ArrayMut(host::Row, fixed)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "ArrayMut(host::Row, fixed)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "map",
+        "file": "scripts/map.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "Map(String, host::Row)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: Map(String, host::Row)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "Map(String, host::Row)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "map_view",
+        "file": "scripts/map_view.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "MapView(String, host::Row)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: MapView(String, host::Row)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "MapView(String, host::Row)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "map_mut",
+        "file": "scripts/map_mut.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "MapMut(String, host::Row, growable)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: MapMut(String, host::Row, growable)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "MapMut(String, host::Row, growable)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "set",
+        "file": "scripts/set.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "Set(host::Row)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: Set(host::Row)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "Set(host::Row)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "set_view",
+        "file": "scripts/set_view.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "SetView(host::Row)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: SetView(host::Row)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "SetView(host::Row)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "set_mut",
+        "file": "scripts/set_mut.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "SetMut(host::Row, growable)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: SetMut(host::Row, growable)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "SetMut(host::Row, growable)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "iterator",
+        "file": "scripts/iterator.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "Iterator",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: Iterator) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "Iterator",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "option",
+        "file": "scripts/option.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "Option(host::Row)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: Option(host::Row)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "Option(host::Row)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "result",
+        "file": "scripts/result.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "Result(Array(host::Row), host::Issue)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: Result(Array(host::Row), host::Issue)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "Result(Array(host::Row), host::Issue)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "tuple",
+        "file": "scripts/tuple.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "(host::Row, Array(host::Row))",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: (host::Row, Array(host::Row))) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "(host::Row, Array(host::Row))",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "direct",
+        "file": "scripts/direct.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "host::Row",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: host::Row) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "host::Row",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "alias",
+        "file": "scripts/alias.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "host::Row",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: host::Row) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "host::Row",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "namespace",
+        "file": "scripts/namespace.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "Array(host::Row)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: Array(host::Row)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "Array(host::Row)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "source",
+        "file": "scripts/source.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "Array(api::Row)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: Array(api::Row)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "Array(api::Row)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "private",
+        "file": "scripts/private.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "Array(unknown)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: Array(unknown)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "Array(unknown)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "non_type",
+        "file": "scripts/non_type.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "Array(unknown)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: Array(unknown)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "Array(unknown)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "missing",
+        "file": "scripts/missing.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "Array(unknown)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: Array(unknown)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "Array(unknown)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "duplicate",
+        "file": "scripts/duplicate.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "Array(unknown)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: Array(unknown)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "Array(unknown)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "qualified_miss",
+        "file": "scripts/qualified_miss.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "Array(unknown)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: Array(unknown)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "Array(unknown)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "generic_miss",
+        "file": "scripts/generic_miss.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "unknown",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "accept(zz_items: unknown) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "unknown",
+        "apply": null,
+        "value": "value",
+        "parseErrors": true
+      },
+      {
+        "id": "provider_alias",
+        "file": "scripts/provider_alias.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "Array(host::Row)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "Provider for Worker.accept(zz_items: Array(host::Row)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "Array(host::Row)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "provider_default",
+        "file": "scripts/provider_default.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "Array(host::Row)",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "provider_default::Provider.accept(zz_items: Array(host::Row)) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "Array(host::Row)",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "native_prefix",
+        "file": "scripts/native_prefix.vela",
+        "parameters": [
+          {
+            "name": "zz_items",
+            "detail": "i64",
+            "insert": "zz_items = "
+          }
+        ],
+        "signature": "native::send(zz_items: i64) -> bool",
+        "activeParameter": 0,
+        "expectedName": "zz_items",
+        "expectedType": "i64",
+        "apply": "zz_items",
+        "value": "value"
+      },
+      {
+        "id": "native_extra",
+        "file": "scripts/native_extra.vela",
+        "parameters": [],
+        "signature": "native::send(zz_items: i64) -> bool",
+        "activeParameter": 0,
+        "expectedName": null,
+        "expectedType": null,
+        "apply": null,
+        "value": "value"
+      },
+      {
+        "id": "native_named_occupied",
+        "file": "scripts/native_named_occupied.vela",
+        "parameters": [],
+        "signature": "native::send(zz_items: i64) -> bool",
+        "activeParameter": 0,
+        "expectedName": null,
+        "expectedType": null,
+        "apply": null,
+        "value": "value"
+      },
+      {
+        "id": "native_legacy",
+        "file": "scripts/native_legacy.vela",
+        "parameters": [],
+        "signature": "native::legacy(arg0: i64) -> bool",
+        "activeParameter": 0,
+        "expectedName": "arg0",
+        "expectedType": "i64",
+        "apply": null,
+        "value": "value"
+      }
+    ]
+  }
+}

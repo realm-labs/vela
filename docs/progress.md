@@ -617,130 +617,46 @@ success or failure. The execution checkpoint records fresh strict batch
 acceptance. B14 still owns the later semantic
 partition completeness review.
 
-B03 completion work now verifies schema-documentation update, invalidation,
-deletion and recovery, malformed resolve payload rejection, and unchanged item
-fields. Type-position matrices exposed and corrected missing source/schema
-ownership, tuple-variant type-context classification, and completion edits
-projected as byte columns instead of UTF-16. Fifty-three shared cases validate
-exact metadata, documentation, edits, resulting source and re-query under
-LF/CRLF, including source enums and all 25 public builtin type hints. Missing
-`Any`, `Range`, `Function` and `Closure` completion candidates are restored;
-legacy/internal spellings and erased receiver member guesses are excluded.
-Twenty-seven member/constructor cases pin full candidate sets,
-source/schema identity, trait ownership, explicit field edits and lazy docs.
-Cross-module names and same-name schema types no longer leak members into
-source records; missing qualified constructors do not fall back to short names.
-Thirty-four enum cases now cover source/schema unit, tuple and record variants,
-visible owner resolution, constructor fields, applied edits and negative shapes.
-Record construction preserves known enum variant facts; cursor contexts separate
-constructor paths, field labels and field values. Thirty-one shared source/schema
-named-argument cases check parseable `name = value` edits, exact parameter sets,
-async/defaulted signatures and explicit negative results. CST argument ownership excludes
-used positional/named slots, nested calls and string punctuation. Imported
-functions and source methods retain parameter ownership; private or shadowed
-callables cannot borrow unrelated names. Nineteen shared call-context cases now
-check argument indices and remaining parameter candidates across strings, comments,
-nested expressions, lambda parameters and incomplete calls. CST separators and
-exact callee-to-HIR matching preserve completion/signature agreement, including
-trailing whitespace at EOF, with negative declaration and non-call positions.
-Static schema export now preserves function/method/trait signatures, including
-parameter names, defaults, asyncness and known spans; malformed or conflicting
-metadata is rejected and signature changes invalidate the hash. Source/schema
-name collisions and generated parameter labels cannot leak into named completion.
-Thirty additional stdlib cases now cover registered names/defaults, parseable
-edits, direct/aliased imports, builtin families, fixed/read-only/growable views,
-reserved labels and negative boundaries. Analysis reads the static registration
-manifest, with inventory checks for every standard function and method;
-`Map.group_by` is restored to the candidate list. Provider-specific/variable-arity
-metadata, broader S5 authoring semantics
-and UX04 remain open. Service-set projection now retains parameter names, asyncness,
-nested types and collection mutation contracts. Fourteen shared cases cover
-service receiver completion, occupied slots, forward references and chained
-returns; a real Engine export checks registered Host/Value/view metadata.
-Twenty additional shared cases now check compiler-owned service call arguments:
-positional expression edits, exact signatures/expected parameters, recursive
-and imported helper ownership, ambiguous origins, nested-body rejection and
-incomplete impl recovery. LF/CRLF queries run with complete, absent and ordinary
-same-name schema metadata. Local binding candidates now carry explicit edits.
-Service callee-path completion now uses the same static ownership relation:
-base methods and pinned members/methods have exact ServiceSet candidates, with
-no same-name source/schema fallback in reserved paths. Thirty-one shared cases
-check both layers, all three schema modes, LF/CRLF, lazy symbol resolution,
-full-token edits and preservation of existing arguments. Unhinted Service
-implementation parameters now receive registered positional type facts before
-shared expression analysis. Twenty-four cases cover local/member completion,
-captured and shadowed parameters, explicit-hint precedence, structural rejection,
-view/Host types and direct/chained signature queries; schema update, invalidation,
-deletion and recovery refresh the cached types. Contextual callable lookup now
-shares source/import ownership across parameter completion, signatures and
-expected-argument facts. Thirty-two shared cases cover aliases, namespace imports,
-source/registry/stdlib collisions, private and shadowed declarations, ambiguous
-or missing imports, reserved Service aliases and visible enum constructors.
-Signature highlighting and expected-argument name/type now share semantic
-parameter mapping while preserving the structural CST argument index. Forty-four
-shared cases cover reordered/defaulted names, occupied slots, duplicates, unknown
-names, illegal positional-after-named expressions, missing arguments, nested and
-incomplete calls, zero arity and positional-only Service/enum contracts. Protocol
-queries check LF/CRLF, Unicode positions and incremental prefix edits. Unmapped
-arguments have no expected type; signature presentation uses the LSP 3.17 zero
-fallback. Ordinary argument slots now combine expression and parameter-name
-candidates; distinct edit roles preserve a same-name variable and label. Existing
-equals signs and values survive whole-label replacement. Thirty-five shared
-cases verify exact candidate/insert pairs, role descriptions, Unicode LF/CRLF
-edits, parseable applications and protocol restoration. Earlier named-argument
-fixtures now assert frozen complete expression sets alongside every parameter.
-Private cross-module declarations and closed lambda/block locals are excluded;
-local shadowing, captures, earlier default parameters and incomplete-call scope
-recovery use HIR ownership. Unknown local facts no longer borrow an enclosing
-expression's type. Expression type candidates now retain short display labels
-while inserting qualified source/schema paths; current-module types retain a
-short insertion only when no visible local owns that spelling. Source owners
-also exclude conflicting registry type candidates, including private declarations.
-Eleven shared cases verify complete candidate/edit sets, same-name ownership,
-whole-identifier replacement, exact post-edit source definitions and the selected
-constructor's receiver members under Unicode LF/CRLF. Protocol tests apply and
-restore overlays and retain resolve identity. Registered record constructors now
-carry their exact static result type into shared analysis; field changes, schema
-removal/recovery, source precedence and unknown owners have regression checks.
-Direct and namespace import aliases now preserve source/schema/stdlib ownership
-in expression and qualified-member candidates. Twenty-eight shared cases assert
-complete edits, canonical resolve identities, applied definitions and constructor
-members under LF/CRLF. Six overlay states verify target switching, missing,
-duplicate and private imports, then recovery. Ambiguous import bindings remain
-unresolved during HIR refresh; imported record constructors carry their exact
-static owner. Local function/constant shadows retain distinct qualified choices.
-Type annotations now enumerate visible type/module imports, preserve resolvable
-qualified insertions and replace whole identifiers. Forty-five shared cases
-cover annotation positions, private/duplicate/missing imports, source/schema
-collisions, namespace shadows, direct dependency aliases and inaccessible
-transitive packages. Applied references retain exact definition locations,
-resolve documentation and record member types under LF/CRLF; six import states
-check cache recovery. Source and registry local hints expand imports without
-short-name fallback. Member completion carries semantic declaration identity
-to distinguish same-named records in different packages. Tuple variant entries
-follow the existing parameter grammar (`name: Type`); bare names are declaration
-positions. Enum type and namespace aliases now retain their owner through
-unit/tuple/record construction, qualified patterns and record-field completion.
-Forty-nine shared cases assert complete candidates, canonical resolve identity,
-documentation, whole-token edits, applied definitions and receiver members under
-LF/CRLF. Unqualified pattern variants insert qualified paths, preserving distinct
-same-name owners. Six persistent import states replace source and registry field
-metadata and check missing/ambiguous targets and recovery. Ten independent analysis
-cases verify result facts and reject private, non-enum, ambiguous, missing and
-locally shadowed owners, including colliding registry metadata. Qualified HIR
-constructor paths respect visible local bindings. Tuple declaration recovery
-distinguishes empty/separator/name slots from annotations and default expressions,
-including an unclosed enum. Broader dependency/cross-feature identity, provider/
-variable-arity metadata, remaining S5/lifecycle and UX04 stay open.
-The earlier macOS input regression stopped on a locked
-desktop; that record does not imply a Windows blocker. Current platform evidence
-must be collected before strict acceptance; see [blocked.md](blocked.md).
-The alternating-machine infrastructure now runs B01/UX02/UX03 on Windows x64:
-actual suggestion acceptance, F12/back and palettes, modifier-click, context-menu
-Peek, exact Unicode targets and no-jump outcomes pass. The installed provider
-suite passes all nine scenarios. The original macOS acceptance remains historical;
-changed driver code needs fresh proof when that machine is next used. Shared
-implementation resumes at B03.21.
+B03 remains unaccepted. Current completion proof covers source/schema/stdlib
+types and members, enum construction and patterns, named arguments, import and
+namespace aliases, direct dependency types, and compiler-owned Service paths.
+Shared service/protocol fixtures use frozen complete candidate sets, canonical
+resolve metadata and documentation, Unicode LF/CRLF edits, applied references
+and receiver members. Local shadowing, private/ambiguous/missing owners, malformed
+syntax, erased receivers and occupied argument slots have explicit negatives.
+Parameter mapping is shared with signature and expected-argument queries;
+expression and parameter-name edits preserve distinct same-name roles.
+Type annotations preserve resolvable qualified insertions and semantic source
+identity, including dependency aliases and crate paths. Enum tuple entries follow
+the existing parameter grammar; empty/name slots are not type annotations.
+
+Source annotations now resolve registered leaf types recursively in declaration
+scope across builtin containers, tuples, functions, locals, globals and source
+fields/method returns. Same-path source declarations own both positive and
+negative results; schema short-name fallback is excluded. Source method lookup
+resolves implementation and default-trait targets in their owning module instead
+of matching short-name suffixes. Forty-one additional shared callable cases cover
+nested type/parameter contracts, Provider implementations/default methods, known
+native parameter prefixes, returned members and registry/source collisions.
+Nineteen analysis cases check complete structural facts, including hidden
+Iterator element types and collection mutation capabilities. Six schema states
+check field type/name/doc replacement, missing and invalid metadata, recovery and
+persistent-versus-fresh service equivalence. Native positional arguments beyond
+known metadata receive no invented parameter names or types; this does not claim
+a new variadic registration contract. Detailed child evidence remains in the
+execution checkpoint and Git.
+
+Remaining B03 work includes root Service namespace completion, broader S5 and
+dependency/cross-feature identity, lifecycle combinations and UX04 interaction
+proof. Shared implementation resumes at B03.22. B00-B02 acceptance snapshots stay
+fixed, and the remaining whole-batch inventory stays at 1332 requirements.
+Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:
+suggestion acceptance, F12/back and palettes, modifier-click, context-menu Peek,
+exact Unicode targets and no-jump outcomes. The original macOS acceptance is
+historical; fresh evidence is required when that machine is next used. The earlier
+locked macOS desktop does not imply a Windows blocker; see [blocked.md](blocked.md).
+Both input profiles author the explicit all-off quickSuggestions setting while
+retaining exact observed-setting checks. B16 remains deferred.
 
 ### Deferred Tracks
 

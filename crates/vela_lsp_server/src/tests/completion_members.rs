@@ -4,6 +4,78 @@ use lsp_types::{notification as n, request as r};
 use serde_json::json;
 
 #[test]
+fn callable_return_matrix_projects_nested_owner_members_and_resolved_docs() {
+    assert_member_matrix("completion-callable-returns");
+}
+
+#[test]
+fn callable_return_schema_lifecycle_projects_refreshed_nested_facts_and_docs() {
+    let spec = load("completion-callable-returns");
+    let fixture = FixtureWorkspace::new(&spec).expect("fixture");
+    let temp = crate::tests::support::unique_temp_root("callable-return-lifecycle");
+    let root = temp.join("中文 % workspace");
+    fixture.materialize(&root).expect("workspace");
+    let uri = |file: &str| {
+        lsp_types::Url::from_file_path(root.join(file))
+            .expect("URI")
+            .to_string()
+    };
+    let mut server = TestServer::new();
+    let _ = request::<r::Initialize>(
+        &mut server,
+        1,
+        json!({"processId":null,"rootUri":uri(""),"capabilities":{}}),
+    );
+    let file = "scripts/function.vela";
+    let source = fixture.document(file).expect("source");
+    let point = source.markers["cursor"].start;
+    let call_line = source.text.lines().nth(2).expect("call line");
+    let call_column = call_line.find("accept(rows)").expect("call") + 7;
+    let mut id = 2;
+    for step in spec.oracle["lifecycle"].as_array().expect("states") {
+        let text = if step["mode"] == "invalid" {
+            "{".to_owned()
+        } else {
+            json!({"formatVersion":1,"facts":step["schema"]}).to_string()
+        };
+        std::fs::write(root.join("schema.json"), text).expect("schema");
+        let _ = notify::<n::DidChangeWatchedFiles>(
+            &mut server,
+            json!({"changes":[{"uri":uri("schema.json"),"type":2}]}),
+        );
+        let response = response_value(request::<r::Completion>(
+            &mut server,
+            id,
+            json!({"textDocument":{"uri":uri(file)},"position":{"line":point.line,"character":point.character}}),
+        ));
+        id += 1;
+        let mut actual = Vec::new();
+        for item in response["result"]["items"].as_array().expect("items") {
+            let resolved = response_value(request::<r::ResolveCompletionItem>(
+                &mut server,
+                id,
+                item.clone(),
+            ));
+            id += 1;
+            assert_eq!(resolved["result"]["data"], item["data"]);
+            actual.push(json!({"label":item["label"],"detail":item["detail"],"docs":resolved["result"]["documentation"]["value"]}));
+        }
+        assert_eq!(json!(actual), step["items"], "{step}");
+        let signature = response_value(request::<r::SignatureHelpRequest>(
+            &mut server,
+            id,
+            json!({"textDocument":{"uri":uri(file)},"position":{"line":2,"character":call_column}}),
+        ));
+        id += 1;
+        assert_eq!(
+            signature["result"]["signatures"][0]["label"],
+            step["signature"]
+        );
+    }
+    std::fs::remove_dir_all(temp).expect("cleanup");
+}
+
+#[test]
 fn member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits() {
     assert_member_matrix("completion-members");
 }

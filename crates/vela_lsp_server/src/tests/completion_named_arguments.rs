@@ -4,6 +4,11 @@ use lsp_types::{notification as n, request as r};
 use serde_json::json;
 
 #[test]
+fn callable_hint_matrix_projects_nested_types_and_registered_parameter_prefixes() {
+    verify_fixture("completion-callable-hints");
+}
+
+#[test]
 fn named_argument_matrix_projects_exact_parameter_sets_and_parseable_utf16_edits() {
     verify_fixture("completion-named-arguments");
 }
@@ -84,6 +89,14 @@ fn verify_fixture(fixture_name: &str) {
         for query in spec.oracle["queries"].as_array().expect("queries") {
             let file = query["file"].as_str().expect("file");
             let source = fixture.document(file).expect("source");
+            if query["parseErrors"] == true {
+                assert!(
+                    !vela_syntax::parse::parse_source(&source.text)
+                        .diagnostics()
+                        .is_empty(),
+                    "invalid non-builtin type arguments: {query}"
+                );
+            }
             let point = source.markers["cursor"].start;
             let range = source.markers["replace"];
             let response = response_value(request::<r::Completion>(

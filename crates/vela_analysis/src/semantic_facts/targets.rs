@@ -4,7 +4,7 @@ use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirLocalId, HirNodeId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
 
-use crate::hints::{schema_declaration_from_hint_in_module, type_fact_from_hint_in_module};
+use crate::hints::{schema_declaration_from_hint_in_module, type_fact_from_hint_with_schema};
 use crate::logical_records::LogicalRecordFieldTargetFact;
 use crate::registry::{
     RegistryFieldTargetFact, RegistryIndexCapabilityFact, RegistryTypeTargetFact,
@@ -174,6 +174,7 @@ pub(super) fn source_field_fact(
     graph: &ModuleGraph,
     receiver: &ScriptTypeTargetFact,
     name: &str,
+    schema: Option<&crate::registry::RegistryFacts>,
 ) -> Option<SourceFieldFact> {
     let declaration = graph.declaration(receiver.declaration)?;
     match declaration.kind {
@@ -184,7 +185,7 @@ pub(super) fn source_field_fact(
                 .iter()
                 .find(|field| field.name == name)?;
             let fact = field.type_hint.as_ref().map_or(TypeFact::Unknown, |hint| {
-                type_fact_from_hint_in_module(graph, declaration.module, hint)
+                type_fact_from_hint_with_schema(graph, declaration.module, hint, schema)
             });
             let target = field.type_hint.as_ref().and_then(|hint| {
                 schema_declaration_from_hint_in_module(graph, declaration.module, hint)
@@ -217,7 +218,7 @@ pub(super) fn source_field_fact(
                     .as_ref(),
             };
             let fact = hint.map_or(TypeFact::Unknown, |hint| {
-                type_fact_from_hint_in_module(graph, declaration.module, hint)
+                type_fact_from_hint_with_schema(graph, declaration.module, hint, schema)
             });
             let target = hint.and_then(|hint| {
                 schema_declaration_from_hint_in_module(graph, declaration.module, hint)

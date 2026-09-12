@@ -6,7 +6,12 @@ use vela_hir::type_hint::HirTypeHint;
 use crate::type_fact::TypeFact;
 
 #[cfg(test)]
+mod registry_tests;
+#[cfg(test)]
 mod scope_tests;
+
+mod registry;
+pub use registry::type_fact_from_hint_with_schema;
 
 pub fn type_fact_from_hint(graph: &ModuleGraph, hint: &HirTypeHint) -> TypeFact {
     type_fact_from_hir_hint(graph, None, hint)
@@ -17,7 +22,9 @@ pub fn type_fact_from_hint_in_module(
     module: ModuleId,
     hint: &HirTypeHint,
 ) -> TypeFact {
-    if let Some(fact) = builtin_type_fact_from_hir_hint(graph, Some(module), hint) {
+    if let Some(fact) = builtin_type_fact_from_hir_hint(hint, &|arg| {
+        type_fact_from_hint_in_module(graph, module, arg)
+    }) {
         return fact;
     }
     if hint.path.as_slice() == ["task", "Error"] && hint.args.is_empty() {
@@ -77,81 +84,56 @@ fn type_fact_from_hir_hint(
     if hint.path.as_slice() == ["task", "Error"] && hint.args.is_empty() {
         return TypeFact::record("task::Error");
     }
-    if let Some(fact) = builtin_type_fact_from_hir_hint(graph, module, hint) {
+    if let Some(fact) =
+        builtin_type_fact_from_hir_hint(hint, &|arg| type_fact_from_arg(graph, module, arg))
+    {
         return fact;
     }
     type_fact_from_path(graph, &hint.path)
 }
 
 fn builtin_type_fact_from_hir_hint(
-    graph: &ModuleGraph,
-    module: Option<ModuleId>,
     hint: &HirTypeHint,
+    resolve: &impl Fn(&HirTypeHint) -> TypeFact,
 ) -> Option<TypeFact> {
     let [name] = hint.path.as_slice() else {
         return None;
     };
     match name.as_str() {
         HirTypeHint::UNIT_PATH if hint.args.is_empty() => Some(TypeFact::UNIT),
-        HirTypeHint::UNIT_PATH if hint.args.len() >= 2 => Some(TypeFact::tuple(
-            hint.args
-                .iter()
-                .map(|arg| type_fact_from_arg(graph, module, arg)),
-        )),
-        "Array" if hint.args.len() == 1 => Some(TypeFact::array(type_fact_from_arg(
-            graph,
-            module,
-            &hint.args[0],
-        ))),
-        "ArrayView" if hint.args.len() == 1 => Some(TypeFact::array_view(type_fact_from_arg(
-            graph,
-            module,
-            &hint.args[0],
-        ))),
+        HirTypeHint::UNIT_PATH if hint.args.len() >= 2 => {
+            Some(TypeFact::tuple(hint.args.iter().map(resolve)))
+        }
+        "Array" if hint.args.len() == 1 => Some(TypeFact::array(resolve(&hint.args[0]))),
+        "ArrayView" if hint.args.len() == 1 => Some(TypeFact::array_view(resolve(&hint.args[0]))),
         "ArrayMut" if hint.args.len() == 1 => Some(TypeFact::array_mut(
-            type_fact_from_arg(graph, module, &hint.args[0]),
+            resolve(&hint.args[0]),
             CollectionViewMutation::Fixed,
         )),
         "Map" if hint.args.len() == 2 => Some(TypeFact::map(
-            type_fact_from_arg(graph, module, &hint.args[0]),
-            type_fact_from_arg(graph, module, &hint.args[1]),
+            resolve(&hint.args[0]),
+            resolve(&hint.args[1]),
         )),
         "MapView" if hint.args.len() == 2 => Some(TypeFact::map_view(
-            type_fact_from_arg(graph, module, &hint.args[0]),
-            type_fact_from_arg(graph, module, &hint.args[1]),
+            resolve(&hint.args[0]),
+            resolve(&hint.args[1]),
         )),
         "MapMut" if hint.args.len() == 2 => Some(TypeFact::map_mut(
-            type_fact_from_arg(graph, module, &hint.args[0]),
-            type_fact_from_arg(graph, module, &hint.args[1]),
+            resolve(&hint.args[0]),
+            resolve(&hint.args[1]),
             CollectionViewMutation::Growable,
         )),
-        "Set" if hint.args.len() == 1 => Some(TypeFact::set(type_fact_from_arg(
-            graph,
-            module,
-            &hint.args[0],
-        ))),
-        "SetView" if hint.args.len() == 1 => Some(TypeFact::set_view(type_fact_from_arg(
-            graph,
-            module,
-            &hint.args[0],
-        ))),
+        "Set" if hint.args.len() == 1 => Some(TypeFact::set(resolve(&hint.args[0]))),
+        "SetView" if hint.args.len() == 1 => Some(TypeFact::set_view(resolve(&hint.args[0]))),
         "SetMut" if hint.args.len() == 1 => Some(TypeFact::set_mut(
-            type_fact_from_arg(graph, module, &hint.args[0]),
+            resolve(&hint.args[0]),
             CollectionViewMutation::Growable,
         )),
-        "Iterator" if hint.args.len() == 1 => Some(TypeFact::iterator(type_fact_from_arg(
-            graph,
-            module,
-            &hint.args[0],
-        ))),
-        "Option" if hint.args.len() == 1 => Some(TypeFact::option(type_fact_from_arg(
-            graph,
-            module,
-            &hint.args[0],
-        ))),
+        "Iterator" if hint.args.len() == 1 => Some(TypeFact::iterator(resolve(&hint.args[0]))),
+        "Option" if hint.args.len() == 1 => Some(TypeFact::option(resolve(&hint.args[0]))),
         "Result" if hint.args.len() == 2 => Some(TypeFact::result(
-            type_fact_from_arg(graph, module, &hint.args[0]),
-            type_fact_from_arg(graph, module, &hint.args[1]),
+            resolve(&hint.args[0]),
+            resolve(&hint.args[1]),
         )),
         _ if hint.args.is_empty() => builtin_type_fact(name),
         _ => None,

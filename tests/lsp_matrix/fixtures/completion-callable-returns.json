@@ -1,0 +1,1043 @@
+{
+  "version": 1,
+  "id": "completion-callable-returns",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.callable_hints\"\nname = \"callable_hints\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "scripts/api.vela": "pub struct Row { count: bool } struct Hidden {} pub const Mask: i64 = 1;\n",
+    "scripts/function.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(rows: Array<Alias>) -> Array<Alias> { rows }\nfn main(rows: Array<Alias>, level: i64) { accept(rows)[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
+    "scripts/provider.vela": "use host::Row as Alias;\n/* 中😀 */ trait Provider { fn echo(self, rows: Array<Alias>) -> Array<Alias>; } pub struct Worker {} #[provider(id = \"worker\")] impl Provider for Worker { pub fn echo(self, rows: Array<Alias>) -> Array<Alias> { rows } }\nfn main(rows: Array<Alias>, level: i64, worker: Worker) { worker.echo(rows)[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
+    "scripts/default.vela": "use host::Row as Alias;\n/* 中😀 */ trait Provider { fn echo(self, rows: Array<Alias>) -> Array<Alias> { rows } } pub struct Worker {} #[provider(id = \"worker\")] impl Provider for Worker {}\nfn main(rows: Array<Alias>, level: i64, worker: Worker) { worker.echo(rows)[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
+    "scripts/field.vela": "use host::Row as Alias;\n/* 中😀 */ struct Holder { rows: Array<Alias> }\nfn main(rows: Array<Alias>, level: i64, holder: Holder) { holder.rows[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
+    "scripts/constant.vela": "use host::Row as Alias;\n/* 中😀 */ const ROWS: Array<Alias> = [];\nfn main(rows: Array<Alias>, level: i64) { ROWS[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
+    "scripts/state.vela": "use host::Row as Alias;\n/* 中😀 */ extern state STATE: Array<Alias>;\nfn main(rows: Array<Alias>, level: i64) { STATE[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
+    "scripts/source_function.vela": "use api::Row as Alias;\n/* 中😀 */ fn accept(rows: Array<Alias>) -> Array<Alias> { rows }\nfn main(rows: Array<Alias>, level: i64) { accept(rows)[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
+    "scripts/source_provider.vela": "use api::Row as Alias;\n/* 中😀 */ trait Provider { fn echo(self, rows: Array<Alias>) -> Array<Alias>; } pub struct Worker {} #[provider(id = \"worker\")] impl Provider for Worker { pub fn echo(self, rows: Array<Alias>) -> Array<Alias> { rows } }\nfn main(rows: Array<Alias>, level: i64, worker: Worker) { worker.echo(rows)[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
+    "scripts/missing.vela": "use missing::Row as Alias;\n/* 中😀 */ fn accept(rows: Array<Alias>) -> Array<Alias> { rows }\nfn main(rows: Array<Alias>, level: i64) { accept(rows)[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
+    "scripts/private.vela": "use api::Hidden as Alias;\n/* 中😀 */ fn accept(rows: Array<Alias>) -> Array<Alias> { rows }\nfn main(rows: Array<Alias>, level: i64) { accept(rows)[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
+    "scripts/non_type.vela": "use api::Mask as Alias;\n/* 中😀 */ fn accept(rows: Array<Alias>) -> Array<Alias> { rows }\nfn main(rows: Array<Alias>, level: i64) { accept(rows)[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
+    "scripts/duplicate.vela": "use host::Row as Alias; use api::Row as Alias;\n/* 中😀 */ fn accept(rows: Array<Alias>) -> Array<Alias> { rows }\nfn main(rows: Array<Alias>, level: i64) { accept(rows)[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "schema": {
+      "types": [
+        {
+          "name": "host::Row",
+          "fact": {
+            "kind": "host",
+            "name": "host::Row"
+          }
+        },
+        {
+          "name": "host::Issue",
+          "fact": {
+            "kind": "host",
+            "name": "host::Issue"
+          }
+        },
+        {
+          "name": "api::Row",
+          "fact": {
+            "kind": "host",
+            "name": "api::Row"
+          }
+        },
+        {
+          "name": "api::Hidden",
+          "fact": {
+            "kind": "host",
+            "name": "api::Hidden"
+          }
+        },
+        {
+          "name": "api::Mask",
+          "fact": {
+            "kind": "host",
+            "name": "api::Mask"
+          }
+        },
+        {
+          "name": "Alias",
+          "fact": {
+            "kind": "host",
+            "name": "Alias"
+          }
+        },
+        {
+          "name": "Row",
+          "fact": {
+            "kind": "host",
+            "name": "Row"
+          }
+        }
+      ],
+      "fields": [
+        {
+          "owner": "host::Row",
+          "name": "count",
+          "fact": {
+            "kind": "primitive",
+            "name": "i64"
+          },
+          "docs": "Row count docs 中😀."
+        }
+      ],
+      "functions": [
+        {
+          "name": "native::send",
+          "fact": {
+            "kind": "function",
+            "params": [
+              {
+                "kind": "primitive",
+                "name": "i64"
+              }
+            ],
+            "returns": {
+              "kind": "primitive",
+              "name": "bool"
+            }
+          },
+          "signature": {
+            "asyncness": "sync",
+            "parameters": [
+              {
+                "name": "zz_items",
+                "typeFact": {
+                  "kind": "primitive",
+                  "name": "i64"
+                },
+                "requirement": "required"
+              }
+            ],
+            "returns": {
+              "kind": "primitive",
+              "name": "bool"
+            }
+          },
+          "docs": "Registered prefix 中😀."
+        },
+        {
+          "name": "native::legacy",
+          "fact": {
+            "kind": "function",
+            "params": [
+              {
+                "kind": "primitive",
+                "name": "i64"
+              }
+            ],
+            "returns": {
+              "kind": "primitive",
+              "name": "bool"
+            }
+          }
+        }
+      ]
+    },
+    "queries": [
+      {
+        "id": "function",
+        "file": "scripts/function.vela",
+        "context": "Member",
+        "receiver": "host::Row",
+        "items": [
+          {
+            "label": "count",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "schema",
+            "symbol": "host::Row.count",
+            "docs": "Row count docs 中😀.",
+            "insert": "count"
+          }
+        ],
+        "apply": "count"
+      },
+      {
+        "id": "provider",
+        "file": "scripts/provider.vela",
+        "context": "Member",
+        "receiver": "host::Row",
+        "items": [
+          {
+            "label": "count",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "schema",
+            "symbol": "host::Row.count",
+            "docs": "Row count docs 中😀.",
+            "insert": "count"
+          }
+        ],
+        "apply": "count"
+      },
+      {
+        "id": "default",
+        "file": "scripts/default.vela",
+        "context": "Member",
+        "receiver": "host::Row",
+        "items": [
+          {
+            "label": "count",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "schema",
+            "symbol": "host::Row.count",
+            "docs": "Row count docs 中😀.",
+            "insert": "count"
+          }
+        ],
+        "apply": "count"
+      },
+      {
+        "id": "field",
+        "file": "scripts/field.vela",
+        "context": "Member",
+        "receiver": "host::Row",
+        "items": [
+          {
+            "label": "count",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "schema",
+            "symbol": "host::Row.count",
+            "docs": "Row count docs 中😀.",
+            "insert": "count"
+          }
+        ],
+        "apply": "count"
+      },
+      {
+        "id": "constant",
+        "file": "scripts/constant.vela",
+        "context": "Member",
+        "receiver": "host::Row",
+        "items": [
+          {
+            "label": "count",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "schema",
+            "symbol": "host::Row.count",
+            "docs": "Row count docs 中😀.",
+            "insert": "count"
+          }
+        ],
+        "apply": "count"
+      },
+      {
+        "id": "state",
+        "file": "scripts/state.vela",
+        "context": "Member",
+        "receiver": "host::Row",
+        "items": [
+          {
+            "label": "count",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "i64",
+            "symbolKind": "schema",
+            "symbol": "host::Row.count",
+            "docs": "Row count docs 中😀.",
+            "insert": "count"
+          }
+        ],
+        "apply": "count"
+      },
+      {
+        "id": "source_function",
+        "file": "scripts/source_function.vela",
+        "context": "Member",
+        "receiver": "api::Row",
+        "items": [
+          {
+            "label": "count",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "bool",
+            "symbolKind": "source",
+            "symbol": "api::Row.count",
+            "docs": null,
+            "insert": "count"
+          }
+        ],
+        "apply": "count"
+      },
+      {
+        "id": "source_provider",
+        "file": "scripts/source_provider.vela",
+        "context": "Member",
+        "receiver": "api::Row",
+        "items": [
+          {
+            "label": "count",
+            "kind": "Field",
+            "lspKind": 5,
+            "detail": "bool",
+            "symbolKind": "source",
+            "symbol": "api::Row.count",
+            "docs": null,
+            "insert": "count"
+          }
+        ],
+        "apply": "count"
+      },
+      {
+        "id": "missing",
+        "file": "scripts/missing.vela",
+        "context": "Member",
+        "receiver": null,
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "private",
+        "file": "scripts/private.vela",
+        "context": "Member",
+        "receiver": null,
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "non_type",
+        "file": "scripts/non_type.vela",
+        "context": "Member",
+        "receiver": null,
+        "items": [],
+        "apply": null
+      },
+      {
+        "id": "duplicate",
+        "file": "scripts/duplicate.vela",
+        "context": "Member",
+        "receiver": null,
+        "items": [],
+        "apply": null
+      }
+    ],
+    "lifecycle": [
+      {
+        "mode": "normal",
+        "schema": {
+          "types": [
+            {
+              "name": "host::Row",
+              "fact": {
+                "kind": "host",
+                "name": "host::Row"
+              }
+            },
+            {
+              "name": "host::Issue",
+              "fact": {
+                "kind": "host",
+                "name": "host::Issue"
+              }
+            },
+            {
+              "name": "api::Row",
+              "fact": {
+                "kind": "host",
+                "name": "api::Row"
+              }
+            },
+            {
+              "name": "api::Hidden",
+              "fact": {
+                "kind": "host",
+                "name": "api::Hidden"
+              }
+            },
+            {
+              "name": "api::Mask",
+              "fact": {
+                "kind": "host",
+                "name": "api::Mask"
+              }
+            },
+            {
+              "name": "Alias",
+              "fact": {
+                "kind": "host",
+                "name": "Alias"
+              }
+            },
+            {
+              "name": "Row",
+              "fact": {
+                "kind": "host",
+                "name": "Row"
+              }
+            }
+          ],
+          "fields": [
+            {
+              "owner": "host::Row",
+              "name": "count",
+              "fact": {
+                "kind": "primitive",
+                "name": "i64"
+              },
+              "docs": "Count v1 中😀."
+            }
+          ],
+          "functions": [
+            {
+              "name": "native::send",
+              "fact": {
+                "kind": "function",
+                "params": [
+                  {
+                    "kind": "primitive",
+                    "name": "i64"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              },
+              "signature": {
+                "asyncness": "sync",
+                "parameters": [
+                  {
+                    "name": "zz_items",
+                    "typeFact": {
+                      "kind": "primitive",
+                      "name": "i64"
+                    },
+                    "requirement": "required"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              },
+              "docs": "Registered prefix 中😀."
+            },
+            {
+              "name": "native::legacy",
+              "fact": {
+                "kind": "function",
+                "params": [
+                  {
+                    "kind": "primitive",
+                    "name": "i64"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              }
+            }
+          ]
+        },
+        "items": [
+          {
+            "label": "count",
+            "detail": "i64",
+            "docs": "Count v1 中😀."
+          }
+        ],
+        "signature": "accept(rows: Array(host::Row)) -> Array(host::Row)"
+      },
+      {
+        "mode": "normal",
+        "schema": {
+          "types": [
+            {
+              "name": "host::Row",
+              "fact": {
+                "kind": "host",
+                "name": "host::Row"
+              }
+            },
+            {
+              "name": "host::Issue",
+              "fact": {
+                "kind": "host",
+                "name": "host::Issue"
+              }
+            },
+            {
+              "name": "api::Row",
+              "fact": {
+                "kind": "host",
+                "name": "api::Row"
+              }
+            },
+            {
+              "name": "api::Hidden",
+              "fact": {
+                "kind": "host",
+                "name": "api::Hidden"
+              }
+            },
+            {
+              "name": "api::Mask",
+              "fact": {
+                "kind": "host",
+                "name": "api::Mask"
+              }
+            },
+            {
+              "name": "Alias",
+              "fact": {
+                "kind": "host",
+                "name": "Alias"
+              }
+            },
+            {
+              "name": "Row",
+              "fact": {
+                "kind": "host",
+                "name": "Row"
+              }
+            }
+          ],
+          "fields": [
+            {
+              "owner": "host::Row",
+              "name": "count",
+              "fact": {
+                "kind": "primitive",
+                "name": "bool"
+              },
+              "docs": "Count v2 中😀."
+            }
+          ],
+          "functions": [
+            {
+              "name": "native::send",
+              "fact": {
+                "kind": "function",
+                "params": [
+                  {
+                    "kind": "primitive",
+                    "name": "i64"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              },
+              "signature": {
+                "asyncness": "sync",
+                "parameters": [
+                  {
+                    "name": "zz_items",
+                    "typeFact": {
+                      "kind": "primitive",
+                      "name": "i64"
+                    },
+                    "requirement": "required"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              },
+              "docs": "Registered prefix 中😀."
+            },
+            {
+              "name": "native::legacy",
+              "fact": {
+                "kind": "function",
+                "params": [
+                  {
+                    "kind": "primitive",
+                    "name": "i64"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              }
+            }
+          ]
+        },
+        "items": [
+          {
+            "label": "count",
+            "detail": "bool",
+            "docs": "Count v2 中😀."
+          }
+        ],
+        "signature": "accept(rows: Array(host::Row)) -> Array(host::Row)"
+      },
+      {
+        "mode": "normal",
+        "schema": {
+          "types": [
+            {
+              "name": "host::Row",
+              "fact": {
+                "kind": "host",
+                "name": "host::Row"
+              }
+            },
+            {
+              "name": "host::Issue",
+              "fact": {
+                "kind": "host",
+                "name": "host::Issue"
+              }
+            },
+            {
+              "name": "api::Row",
+              "fact": {
+                "kind": "host",
+                "name": "api::Row"
+              }
+            },
+            {
+              "name": "api::Hidden",
+              "fact": {
+                "kind": "host",
+                "name": "api::Hidden"
+              }
+            },
+            {
+              "name": "api::Mask",
+              "fact": {
+                "kind": "host",
+                "name": "api::Mask"
+              }
+            },
+            {
+              "name": "Alias",
+              "fact": {
+                "kind": "host",
+                "name": "Alias"
+              }
+            },
+            {
+              "name": "Row",
+              "fact": {
+                "kind": "host",
+                "name": "Row"
+              }
+            }
+          ],
+          "fields": [
+            {
+              "owner": "host::Row",
+              "name": "counter",
+              "fact": {
+                "kind": "primitive",
+                "name": "i64"
+              },
+              "docs": "Counter v3 中😀."
+            }
+          ],
+          "functions": [
+            {
+              "name": "native::send",
+              "fact": {
+                "kind": "function",
+                "params": [
+                  {
+                    "kind": "primitive",
+                    "name": "i64"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              },
+              "signature": {
+                "asyncness": "sync",
+                "parameters": [
+                  {
+                    "name": "zz_items",
+                    "typeFact": {
+                      "kind": "primitive",
+                      "name": "i64"
+                    },
+                    "requirement": "required"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              },
+              "docs": "Registered prefix 中😀."
+            },
+            {
+              "name": "native::legacy",
+              "fact": {
+                "kind": "function",
+                "params": [
+                  {
+                    "kind": "primitive",
+                    "name": "i64"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              }
+            }
+          ]
+        },
+        "items": [
+          {
+            "label": "counter",
+            "detail": "i64",
+            "docs": "Counter v3 中😀."
+          }
+        ],
+        "signature": "accept(rows: Array(host::Row)) -> Array(host::Row)"
+      },
+      {
+        "mode": "missing",
+        "schema": {
+          "types": [
+            {
+              "name": "host::Issue",
+              "fact": {
+                "kind": "host",
+                "name": "host::Issue"
+              }
+            },
+            {
+              "name": "api::Row",
+              "fact": {
+                "kind": "host",
+                "name": "api::Row"
+              }
+            },
+            {
+              "name": "api::Hidden",
+              "fact": {
+                "kind": "host",
+                "name": "api::Hidden"
+              }
+            },
+            {
+              "name": "api::Mask",
+              "fact": {
+                "kind": "host",
+                "name": "api::Mask"
+              }
+            },
+            {
+              "name": "Alias",
+              "fact": {
+                "kind": "host",
+                "name": "Alias"
+              }
+            },
+            {
+              "name": "Row",
+              "fact": {
+                "kind": "host",
+                "name": "Row"
+              }
+            }
+          ],
+          "fields": [],
+          "functions": [
+            {
+              "name": "native::send",
+              "fact": {
+                "kind": "function",
+                "params": [
+                  {
+                    "kind": "primitive",
+                    "name": "i64"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              },
+              "signature": {
+                "asyncness": "sync",
+                "parameters": [
+                  {
+                    "name": "zz_items",
+                    "typeFact": {
+                      "kind": "primitive",
+                      "name": "i64"
+                    },
+                    "requirement": "required"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              },
+              "docs": "Registered prefix 中😀."
+            },
+            {
+              "name": "native::legacy",
+              "fact": {
+                "kind": "function",
+                "params": [
+                  {
+                    "kind": "primitive",
+                    "name": "i64"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              }
+            }
+          ]
+        },
+        "items": [],
+        "signature": "accept(rows: Array(unknown)) -> Array(unknown)"
+      },
+      {
+        "mode": "invalid",
+        "schema": {
+          "types": [
+            {
+              "name": "host::Issue",
+              "fact": {
+                "kind": "host",
+                "name": "host::Issue"
+              }
+            },
+            {
+              "name": "api::Row",
+              "fact": {
+                "kind": "host",
+                "name": "api::Row"
+              }
+            },
+            {
+              "name": "api::Hidden",
+              "fact": {
+                "kind": "host",
+                "name": "api::Hidden"
+              }
+            },
+            {
+              "name": "api::Mask",
+              "fact": {
+                "kind": "host",
+                "name": "api::Mask"
+              }
+            },
+            {
+              "name": "Alias",
+              "fact": {
+                "kind": "host",
+                "name": "Alias"
+              }
+            },
+            {
+              "name": "Row",
+              "fact": {
+                "kind": "host",
+                "name": "Row"
+              }
+            }
+          ],
+          "fields": [],
+          "functions": [
+            {
+              "name": "native::send",
+              "fact": {
+                "kind": "function",
+                "params": [
+                  {
+                    "kind": "primitive",
+                    "name": "i64"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              },
+              "signature": {
+                "asyncness": "sync",
+                "parameters": [
+                  {
+                    "name": "zz_items",
+                    "typeFact": {
+                      "kind": "primitive",
+                      "name": "i64"
+                    },
+                    "requirement": "required"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              },
+              "docs": "Registered prefix 中😀."
+            },
+            {
+              "name": "native::legacy",
+              "fact": {
+                "kind": "function",
+                "params": [
+                  {
+                    "kind": "primitive",
+                    "name": "i64"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              }
+            }
+          ]
+        },
+        "items": [],
+        "signature": "accept(rows: Array(unknown)) -> Array(unknown)"
+      },
+      {
+        "mode": "normal",
+        "schema": {
+          "types": [
+            {
+              "name": "host::Row",
+              "fact": {
+                "kind": "host",
+                "name": "host::Row"
+              }
+            },
+            {
+              "name": "host::Issue",
+              "fact": {
+                "kind": "host",
+                "name": "host::Issue"
+              }
+            },
+            {
+              "name": "api::Row",
+              "fact": {
+                "kind": "host",
+                "name": "api::Row"
+              }
+            },
+            {
+              "name": "api::Hidden",
+              "fact": {
+                "kind": "host",
+                "name": "api::Hidden"
+              }
+            },
+            {
+              "name": "api::Mask",
+              "fact": {
+                "kind": "host",
+                "name": "api::Mask"
+              }
+            },
+            {
+              "name": "Alias",
+              "fact": {
+                "kind": "host",
+                "name": "Alias"
+              }
+            },
+            {
+              "name": "Row",
+              "fact": {
+                "kind": "host",
+                "name": "Row"
+              }
+            }
+          ],
+          "fields": [
+            {
+              "owner": "host::Row",
+              "name": "count",
+              "fact": {
+                "kind": "primitive",
+                "name": "i64"
+              },
+              "docs": "Count v4 中😀."
+            }
+          ],
+          "functions": [
+            {
+              "name": "native::send",
+              "fact": {
+                "kind": "function",
+                "params": [
+                  {
+                    "kind": "primitive",
+                    "name": "i64"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              },
+              "signature": {
+                "asyncness": "sync",
+                "parameters": [
+                  {
+                    "name": "zz_items",
+                    "typeFact": {
+                      "kind": "primitive",
+                      "name": "i64"
+                    },
+                    "requirement": "required"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              },
+              "docs": "Registered prefix 中😀."
+            },
+            {
+              "name": "native::legacy",
+              "fact": {
+                "kind": "function",
+                "params": [
+                  {
+                    "kind": "primitive",
+                    "name": "i64"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "bool"
+                }
+              }
+            }
+          ]
+        },
+        "items": [
+          {
+            "label": "count",
+            "detail": "i64",
+            "docs": "Count v4 中😀."
+          }
+        ],
+        "signature": "accept(rows: Array(host::Row)) -> Array(host::Row)"
+      }
+    ]
+  }
+}
