@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "platform": "win32",
+  "arch": "x64",
+  "vscodeVersion": "1.137.0",
+  "locale": "en",
+  "keyboardLayout": "00000409",
+  "displayBackend": "Windows native Electron",
+  "theme": "Dark Modern",
+  "zoomLevel": 0,
+  "fontFamily": "Consolas",
+  "fontSize": 14,
+  "settings": {
+    "chat.disableAIFeatures": true,
+    "workbench.secondarySideBar.defaultVisibility": "hidden",
+    "workbench.startupEditor": "none",
+    "workbench.colorTheme": "Dark Modern",
+    "window.zoomLevel": 0,
+    "editor.fontFamily": "Consolas",
+    "editor.fontSize": 14,
+    "editor.fontLigatures": false,
+    "editor.accessibilitySupport": "on",
+    "editor.minimap.enabled": false,
+    "editor.wordBasedSuggestions": "off",
+    "editor.quickSuggestions": false,
+    "editor.suggest.showSnippets": false,
+    "editor.gotoLocation.multipleDefinitions": "goto",
+    "files.autoSave": "off",
+    "files.eol": "\n",
+    "vela.trace.server": "verbose",
+    "git.openRepositoryInParentFolders": "never"
+  },
+  "display": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 1,
+    "screenWidth": 5120,
+    "screenHeight": 1440
+  }
+}

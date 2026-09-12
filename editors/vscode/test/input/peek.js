@@ -2,14 +2,16 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const assert = require("node:assert/strict");
-const { fileURLToPath, pathToFileURL } = require("node:url");
+const { fileURLToPath } = require("node:url");
 const { navigationModel } = require("../../../../scripts/lsp-matrix/navigation-contracts");
 const { navigationResponses } = require("../../../../scripts/lsp-matrix/navigation-trace");
 const { offsetAt } = require("../../../../scripts/lsp-matrix/fixtures");
+const { relativeFile, fileUri, canonicalUri } = require("./paths");
 const evidence = require("../../../../scripts/lsp-matrix/local-evidence");
 const { findLog } = require("./logs");
 
-async function runPeek({ page, bridge, record, root, workspace, contracts, until, onProof, pid }) {
+async function runPeek({ page, bridge, record, root, workspace, contracts, until, onProof, pid, platform }) {
+  const native = require("./native-menu").nativeMenu({ root, platform, page, pid });
   const model = navigationModel();
   const log = findLog(root, (name) => name.endsWith("-Vela LSP Trace.log"));
   const logText = () => fs.readFileSync(log, "utf8");
@@ -19,8 +21,8 @@ async function runPeek({ page, bridge, record, root, workspace, contracts, until
   const observe = async () => {
     const active = (await bridge("inspect")).active;
     if (!active) return null;
-    const file = path.relative(workspace, fileURLToPath(active.uri));
-    assert.equal(active.uri, pathToFileURL(path.join(workspace, file)).href);
+    const file = relativeFile(workspace, fileURLToPath(active.uri));
+    assert.equal(active.uri, fileUri(path.join(workspace, file)));
     return { file, text: active.text, dirty: active.dirty, selections: active.selections };
   };
   const line = async (scope, text) => {
@@ -54,7 +56,7 @@ async function runPeek({ page, bridge, record, root, workspace, contracts, until
       }));
     };
     if (contract.id !== "ux03-modifier-click")
-      require("node:child_process").execFileSync(path.join(root, "native-menu"), [String(pid), "activate", "setup"], { timeout: 5000 });
+      await native.activate();
     await bridge("setup", { file: origin.file, ...point });
     await input.focus();
     await state("origin");
@@ -98,19 +100,14 @@ async function runPeek({ page, bridge, record, root, workspace, contracts, until
       } else if (item.target === "source-identifier") {
         if (item.event === "hover") await page.mouse.move(pointer.x, pointer.y);
         else if (item.button === "right") {
-          const geometry = { ...pointer, ...await page.evaluate(() => ({ width: innerWidth, height: innerHeight })) };
-          const nativePointer = JSON.parse(require("node:child_process").execFileSync(path.join(root, "native-menu"),
-            [String(pid), "context-click", JSON.stringify(geometry)], { encoding: "utf8", timeout: 5000 }));
+          const nativePointer = await native.contextClick(pointer);
           receipt("observation", `${id}-native-pointer`, nativePointer);
         } else await page.mouse.click(pointer.x, pointer.y, { button: item.button, clickCount: item.clickCount });
       } else if (item.target === "peek-target-title") {
         await peek.locator(".head .peekview-title").click();
       } else {
-        const { execFileSync } = require("node:child_process");
-        const native = (operation) => JSON.parse(execFileSync(path.join(root, "native-menu"),
-          [String(pid), operation, item.target], { encoding: "utf8", timeout: 5000, stdio: ["ignore", "pipe", "pipe"] }));
-        const visible = await until(`native ${item.target} menu`, () => {
-          try { return native("inspect"); }
+        const visible = await until(`native ${item.target} menu`, async () => {
+          try { return await native.inspect(item.target); }
           catch (error) {
             if (!String(error.stderr).includes("expected one visible native menu item")) throw error;
             fs.writeFileSync(path.join(root, "native-menu-inspection.txt"), String(error.stderr));
@@ -120,11 +117,9 @@ async function runPeek({ page, bridge, record, root, workspace, contracts, until
         receipt("observation", `${id}-native`, visible);
         if (item.target === "Peek Definition") {
           check("native-submenu", { title: visible.title, role: visible.role, enabled: visible.enabled });
-          const b = visible.menuBounds;
-          execFileSync("screencapture", ["-x", "-R", [Math.floor(b.x), Math.floor(b.y), Math.ceil(b.width), Math.ceil(b.height)].join(","),
-            path.join(root, `${contract.id}-menu.png`)], { timeout: 5000 });
+          await native.screenshot(path.join(root, `${contract.id}-menu.png`), visible);
         }
-        native(item.event === "hover" ? "hover" : "click");
+        await native.operate(item.target, item.event === "hover" ? "hover" : "click");
       }
       /* The native helper verifies test-process focus before physical menu input. */
 
@@ -138,15 +133,15 @@ async function runPeek({ page, bridge, record, root, workspace, contracts, until
         return found.length > 0 && found;
       });
       for (const response of responses) {
-        assert.equal(response.params.textDocument.uri, pathToFileURL(path.join(workspace, origin.file)).href);
+        assert.equal(canonicalUri(response.params.textDocument.uri), fileUri(path.join(workspace, origin.file)));
         let result = null;
         if (response.result !== null) {
           const value = Array.isArray(response.result) ? response.result[0] : response.result;
           if (Array.isArray(response.result)) assert.equal(response.result.length, 1);
-          const uri = value.targetUri ?? value.uri, range = value.targetSelectionRange ?? value.range;
+          const uri = canonicalUri(value.targetUri ?? value.uri), range = value.targetSelectionRange ?? value.range;
           const doc = (await bridge("inspect")).documents.find((doc) => doc.uri === uri);
           assert.ok(doc, "peek or navigation must resolve the actual target document");
-          result = { file: path.relative(workspace, fileURLToPath(uri)), range,
+          result = { file: relativeFile(workspace, fileURLToPath(uri)), range,
             text: doc.text.slice(offsetAt(doc.text, range.start), offsetAt(doc.text, range.end)) };
         }
         const observed = { method: response.method, request: { file: origin.file, position: response.params.position }, result };
@@ -157,7 +152,9 @@ async function runPeek({ page, bridge, record, root, workspace, contracts, until
     };
     const modifier = async () => {
       try {
-        await action("modifier-down"); await action("modifier-hover");
+        // Position the pointer before pressing the modifier; otherwise the
+        // previous route's identifier can start an unrelated definition query.
+        await action("modifier-hover"); await action("modifier-down");
         if (unknown) {
           await until("unknown modifier hover completes", () => navigationResponses(logText().slice(boundary)).some((item) => item.method === "textDocument/definition"));
         } else {

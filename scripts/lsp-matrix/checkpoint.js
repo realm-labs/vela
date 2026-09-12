@@ -2,6 +2,7 @@
 
 const { digest } = require("./model");
 const { batchIds } = require("./execution");
+const { validateProfiles, selectProfile, profileKey } = require("./profiles");
 
 const localOrder = batchIds.filter((id) => id !== "B16");
 
@@ -36,19 +37,17 @@ function validateAcceptance(batch) {
 }
 
 function validateCheckpoint(checkpoint, manifest, requirements) {
-  if (checkpoint.version !== 1 || checkpoint.scope !== "local" || checkpoint.manifestVersion !== manifest.version) {
+  if (checkpoint.version !== 2 || checkpoint.scope !== "local" || checkpoint.manifestVersion !== manifest.version) {
     throw new Error("unsupported checkpoint version or scope");
   }
   equal(checkpoint.deferredBatches, ["B16"], "only B16 may be deferred");
-  if (!checkpoint.profile?.platform || !checkpoint.profile?.arch || !/^\d+\.\d+\.\d+$/.test(checkpoint.profile?.vscodeVersion)) {
-    throw new Error("checkpoint requires an exact local profile");
-  }
+  validateProfiles(checkpoint.profiles);
   const known = new Set();
   for (const batch of [...checkpoint.acceptedBatches, ...checkpoint.reopenedBatches]) {
     if (known.has(batch.id)) throw new Error(`duplicate checkpoint batch ${batch.id}`);
     known.add(batch.id);
     validateAcceptance(batch);
-    equal(batch.validation.profile, checkpoint.profile, `${batch.id}: changed local profile requires explicit re-audit`);
+    selectProfile(checkpoint.profiles, batch.validation.profile);
   }
   for (const batch of checkpoint.reopenedBatches) {
     if (!batch.reason?.trim()) throw new Error(`${batch.id}: reopening requires a reason`);
@@ -83,6 +82,20 @@ function validateCheckpoint(checkpoint, manifest, requirements) {
   if (checkpoint.artifacts.some((file) => typeof file !== "string" || file.startsWith("/") || file.includes("..") || /^[A-Za-z]:/.test(file))) {
     throw new Error("checkpoint artifact paths must be repository-relative");
   }
+  if (!Array.isArray(checkpoint.profileAudits) ||
+      new Set(checkpoint.profileAudits.map((audit) => profileKey(audit.validation?.profile ?? {}))).size !== checkpoint.profileAudits.length) {
+    throw Error("invalid or duplicate profile audits");
+  }
+  for (const audit of checkpoint.profileAudits) {
+    selectProfile(checkpoint.profiles, audit.validation?.profile ?? {});
+    if (!audit.batches?.length || new Set(audit.batches).size !== audit.batches.length ||
+        audit.batches.some((id) => !localOrder.includes(id))) throw Error("invalid profile audit scope");
+    validateAcceptance({ id: audit.batches[0], requirements: audit.requirements, validation: audit.validation });
+    // Audits are historical snapshots. They never satisfy the live gate and may
+    // retain the old hashes after an explicitly reopened contract changes.
+    if (new Set(audit.requirements.map((r) => r.id)).size !== audit.requirements.length ||
+        audit.requirements.some((r) => !r.id || !r.contractHash)) throw Error("invalid profile audit requirements");
+  }
   return checkpoint;
 }
 
@@ -107,13 +120,20 @@ function gate(requirements, assessed, checkpoint, selected, testCommandFailed) {
 
 function acceptBatch(checkpoint, manifest, requirements, assessed, id, validation, testCommandFailed) {
   validateCheckpoint(checkpoint, manifest, requirements);
-  if (firstPending(checkpoint) !== id) throw new Error("acceptance must close the first incomplete local batch");
-  gate(requirements, assessed, checkpoint, id, testCommandFailed);
+  const refreshing = checkpoint.acceptedBatches.some((batch) => batch.id === id);
+  if (!refreshing && firstPending(checkpoint) !== id) throw new Error("acceptance must close the first incomplete local batch");
+  const batches = gate(requirements, assessed, checkpoint, id, testCommandFailed);
   const accepted = { id, requirements: requirementScope(requirements, id), validation };
   validateAcceptance(accepted);
+  selectProfile(checkpoint.profiles, validation.profile);
   const next = structuredClone(checkpoint);
-  next.acceptedBatches.push(accepted);
+  next.profileAudits = next.profileAudits.filter((audit) => profileKey(audit.validation.profile) !== profileKey(validation.profile));
+  next.profileAudits.push({ batches,
+    requirements: batches.flatMap((batch) => requirementScope(requirements, batch)), validation });
+  next.profileAudits.sort((a, b) => profileKey(a.validation.profile).localeCompare(profileKey(b.validation.profile)));
   next.artifacts = [...new Set([...next.artifacts, ...(validation.artifacts ?? [])])];
+  if (refreshing) return validateCheckpoint(next, manifest, requirements);
+  next.acceptedBatches.push(accepted);
   next.acceptedBatches.sort((a, b) => a.id.localeCompare(b.id));
   next.reopenedBatches = next.reopenedBatches.filter((batch) => batch.id !== id);
   if (next.activeChild && !next.completedChildren.some((child) => child.id === next.activeChild)) {

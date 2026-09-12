@@ -2,12 +2,13 @@
 
 // Independent, reviewed actions and expected outcomes. Runtime code supplies
 // observations; these definitions must never query the provider/workbench.
-function localContracts(requirements, fixture) {
+function localContracts(requirements, fixture, platform = "darwin") {
+  if (!["darwin", "win32"].includes(platform)) throw Error(`unsupported interaction platform ${platform}`);
   const requirement = requirements.find(
     (item) => item.id === "batch/B01/input-render-driver",
   );
   if (!requirement) throw new Error("driver obligation is missing");
-  return [
+  const contracts = [
     {
       id: "input-driver",
       fixture: fixture.id,
@@ -67,5 +68,20 @@ function localContracts(requirements, fixture) {
     ...require("./navigation-contracts").navigationContracts(requirements),
     ...require("./peek-contracts").peekContracts(requirements),
   ];
+  if (platform === "win32") {
+    const keys = { "Meta+Shift+P": "Control+Shift+P", "Meta+Home": "Control+Home", "Control+-": "Alt+ArrowLeft", Meta: "Control" };
+    for (const contract of contracts) {
+      for (const action of contract.actions) {
+        if (keys[action.key]) action.key = keys[action.key];
+        if (action.id === "accept-candidate") action.selector = "suggest-widget listitem";
+      }
+      for (const check of contract.checks) {
+        if (check.id === "native-submenu") check.expected.role = "menuitem";
+        if (check.id === "visible-candidate") check.expected.role = "listitem";
+      }
+      contract.artifacts = contract.artifacts.filter((file) => file !== "native-menu");
+    }
+  }
+  return contracts;
 }
 module.exports = { localContracts };

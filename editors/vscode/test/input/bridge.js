@@ -7,6 +7,7 @@ const path = require("node:path");
 const http = require("node:http");
 const crypto = require("node:crypto");
 const vscode = require("vscode");
+const { fileUri } = require("./paths");
 const {
   parseMarkers,
   safeFile,
@@ -61,7 +62,7 @@ async function run() {
   const inspect = async () => {
     const editor = vscode.window.activeTextEditor;
     const settings = Object.fromEntries(
-      Object.keys(require("./profile.json").settings).map((key) => [
+      Object.keys(require("../../../../scripts/lsp-matrix/profiles").inputProfile(path.resolve(__dirname, "../../../..")).settings).map((key) => [
         key,
         vscode.workspace.getConfiguration().get(key),
       ]),
@@ -76,14 +77,14 @@ async function run() {
       documents: vscode.workspace.textDocuments
         .filter((doc) => doc.uri.scheme === "file")
         .map((doc) => ({
-          uri: doc.uri.toString(),
+          uri: fileUri(doc.uri.fsPath),
           text: doc.getText(),
           dirty: doc.isDirty,
           version: doc.version,
           languageId: doc.languageId,
         })),
       active: editor && {
-        uri: editor.document.uri.toString(),
+        uri: fileUri(editor.document.uri.fsPath),
         text: editor.document.getText(),
         dirty: editor.document.isDirty,
         selections: editor.selections.map((selection) => ({

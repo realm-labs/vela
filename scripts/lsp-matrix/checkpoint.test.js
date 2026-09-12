@@ -8,7 +8,7 @@ function fixture() {
   const requirements = cp.localOrder.map((owner) => ({ id: `batch/${owner}/proof`, owner, contractHash: owner }));
   const manifest = { version: 1 };
   const profile = { platform: "darwin", arch: "arm64", vscodeVersion: "1.137.0" };
-  const checkpoint = { version: 1, scope: "local", manifestVersion: 1, profile,
+  const checkpoint = { version: 2, scope: "local", manifestVersion: 1, profiles: [profile], profileAudits: [],
     deferredBatches: ["B16"], acceptedBatches: [], reopenedBatches: [], completedChildren: [],
     activeChild: "B00.3", nextTask: "B00.3", remainingRequirements: requirements.map((item) => item.id).sort(),
     artifacts: [], openIssues: [] };
@@ -87,7 +87,7 @@ test("forged order, duplicate acceptance and stale remaining IDs fail", () => {
   const f = fixture();
   assert.throws(() => accept(f, "B02"), /first incomplete/);
   accept(f);
-  assert.throws(() => accept(f), /first incomplete/);
+  accept(f); // Re-audit an accepted batch without advancing shared progress.
   f.checkpoint.remainingRequirements.pop();
   assert.throws(() => cp.validateCheckpoint(f.checkpoint, f.manifest, f.requirements), /remaining requirement IDs/);
   const g = fixture();
@@ -135,8 +135,8 @@ test("checkpoint rejects missing source identity, failed commands and changed pr
   }
   const f = fixture();
   accept(f);
-  f.checkpoint.profile = { ...f.checkpoint.profile, vscodeVersion: "1.90.0" };
-  assert.throws(() => cp.validateCheckpoint(f.checkpoint, f.manifest, f.requirements), /changed local profile/);
+  f.checkpoint.profiles[0] = { ...f.checkpoint.profiles[0], vscodeVersion: "1.90.0" };
+  assert.throws(() => cp.validateCheckpoint(f.checkpoint, f.manifest, f.requirements), /local execution profile/);
 });
 
 test("checkpoint rejects wrong active child and machine-specific artifact paths", () => {
@@ -151,11 +151,38 @@ test("checkpoint rejects wrong active child and machine-specific artifact paths"
 test("local gates pin the execution profile while ordinary existing CI stays portable", () => {
   const { checkpoint } = fixture();
   const other = { platform: "linux", arch: "x64", vscodeVersion: "1.90.0" };
-  cp.validateExecutionProfile(checkpoint.profile, other, false);
-  assert.throws(() => cp.validateExecutionProfile(checkpoint.profile, other, true), /local execution profile/);
-  assert.throws(() => cp.validateExecutionProfile(checkpoint.profile,
-    { ...checkpoint.profile, vscodeVersion: "1.90.0" }, true), /local execution profile/);
-  cp.validateExecutionProfile(checkpoint.profile, checkpoint.profile, true);
+  const profile = checkpoint.profiles[0];
+  cp.validateExecutionProfile(profile, other, false);
+  assert.throws(() => cp.validateExecutionProfile(profile, other, true), /local execution profile/);
+  assert.throws(() => cp.validateExecutionProfile(profile,
+    { ...profile, vscodeVersion: "1.90.0" }, true), /local execution profile/);
+  cp.validateExecutionProfile(profile, profile, true);
+});
+
+test("alternating machines retain shared progress and independent current profile audits", () => {
+  const f = fixture();
+  const windows = { platform: "win32", arch: "x64", vscodeVersion: "1.137.0" };
+  f.checkpoint.profiles.push(windows);
+  accept(f);
+  accept(f, "B01");
+  f.checkpoint.activeChild = f.checkpoint.nextTask = "B02.12";
+  const accepted = structuredClone(f.checkpoint.acceptedBatches);
+  f.validation = { ...f.validation, profile: windows };
+  f.assessed[1].status = "unreviewed";
+  assert.throws(() => accept(f, "B00"), /unverified/, "Mac proof cannot certify missing Windows proof");
+  f.assessed[1].status = "verified";
+  accept(f, "B00");
+  assert.equal(f.checkpoint.activeChild, "B02.12");
+  assert.deepEqual(f.checkpoint.acceptedBatches, accepted);
+  assert.equal(f.checkpoint.profileAudits.length, 2);
+  assert.deepEqual(f.checkpoint.profileAudits[1].batches, ["B00", "B01"]);
+  accept(f, "B02");
+  assert.equal(f.checkpoint.nextTask, "B03");
+  assert.deepEqual(f.checkpoint.acceptedBatches[2].validation.profile, windows);
+  f.validation = { ...f.validation, profile: f.checkpoint.profiles[0] };
+  accept(f, "B02");
+  assert.equal(f.checkpoint.profileAudits.length, 2);
+  assert.equal(f.checkpoint.nextTask, "B03");
 });
 
 test("repository checkpoint retains every obligation until its whole batch is accepted", () => {

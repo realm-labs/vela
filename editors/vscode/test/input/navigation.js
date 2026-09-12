@@ -5,7 +5,8 @@ const fs = require("node:fs");
 const { offsetAt } = require("../../../../scripts/lsp-matrix/fixtures");
 const { navigationResponses } = require("../../../../scripts/lsp-matrix/navigation-trace");
 const { findLog } = require("./logs");
-const { pathToFileURL } = require("node:url");
+
+const { relativeFile, fileUri, canonicalUri } = require("./paths");
 const evidence = require("../../../../scripts/lsp-matrix/local-evidence");
 const { navigationModel } = require("../../../../scripts/lsp-matrix/navigation-contracts");
 
@@ -16,8 +17,8 @@ async function runNavigation({ page, bridge, record, root, workspace, contracts,
   const observe = async () => {
     const state = await bridge("inspect"), active = state.active;
     if (!active) return null; // Editor replacement can briefly clear the active editor.
-    const file = path.relative(workspace, require("node:url").fileURLToPath(active.uri));
-    assert.equal(active.uri, pathToFileURL(path.join(workspace, file)).href,
+    const file = relativeFile(workspace, require("node:url").fileURLToPath(active.uri));
+    assert.equal(active.uri, fileUri(path.join(workspace, file)),
       "editor URI must match the encoded workspace file URI");
     return { file, text: active.text, dirty: active.dirty, selections: active.selections };
   };
@@ -79,7 +80,7 @@ async function runNavigation({ page, bridge, record, root, workspace, contracts,
       const responses = await until(`completed ${kind} request after action`, () => {
         const entries = navigationResponses(logText().slice(boundary)).filter((entry) =>
           entry.method === expected.method &&
-          entry.params.textDocument.uri === pathToFileURL(path.join(workspace, expected.request.file)).href &&
+          canonicalUri(entry.params.textDocument.uri) === fileUri(path.join(workspace, expected.request.file)) &&
           entry.params.position.line === expected.request.position.line &&
           entry.params.position.character === expected.request.position.character);
         return entries.length > 0 && entries;
@@ -90,16 +91,16 @@ async function runNavigation({ page, bridge, record, root, workspace, contracts,
       if (response.result !== null) {
         const value = Array.isArray(response.result) ? response.result[0] : response.result;
         if (Array.isArray(response.result)) assert.equal(response.result.length, 1);
-        const uri = value.targetUri ?? value.uri;
+        const uri = canonicalUri(value.targetUri ?? value.uri);
         const range = value.targetSelectionRange ?? value.range;
         const document = (await bridge("inspect")).documents.find((doc) => doc.uri === uri);
         assert.ok(document, "the native action must have opened the returned target");
-        result = { file: path.relative(workspace, require("node:url").fileURLToPath(uri)), range,
+        result = { file: relativeFile(workspace, require("node:url").fileURLToPath(uri)), range,
           text: document.text.slice(offsetAt(document.text, range.start), offsetAt(document.text, range.end)) };
       }
       // Normalize property order only; compare the actual method, request and response.
       check(`wire-${kind}`, { method: response.method,
-        request: { file: path.relative(workspace, require("node:url").fileURLToPath(response.params.textDocument.uri)),
+        request: { file: relativeFile(workspace, require("node:url").fileURLToPath(response.params.textDocument.uri)),
           position: response.params.position }, result });
       receipt("observation", `${kind}-request-id`, { requestId: response.id });
     };
@@ -111,7 +112,7 @@ async function runNavigation({ page, bridge, record, root, workspace, contracts,
       await action("dirty-prefix");
       const state = await bridge("inspect");
       check("unopened-target", { unopened: !state.documents.some((doc) =>
-        doc.uri === pathToFileURL(path.join(workspace, model.spec.oracle.definitionFile)).href) });
+        doc.uri === fileUri(path.join(workspace, model.spec.oracle.definitionFile))) });
     }
     const marker = contract.id.includes("unknown-target") ? "unknown" :
       contract.id.includes("type-definition") ? "typed-use" : "call";

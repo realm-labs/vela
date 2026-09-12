@@ -6,10 +6,14 @@ that VS Code workbench through pinned Playwright/CDP keyboard and pointer events
 The extension-host bridge only sets up fixtures, reports observations and ends
 the run. It does not perform the input action under acceptance.
 
-`profile.json` pins the one local machine/editor configuration, including locale,
+`profiles/darwin-arm64.json` and `profiles/win32-x64.json` pin the local
+machine/editor configurations, selected automatically using the platform and
+architecture registered in `tests/lsp_matrix/checkpoint.json`, including locale,
 keyboard layout, theme, zoom, font and measured viewport/display scale. The runner
 checks actual configuration, language, architecture, keyboard layout and display.
-A changed profile requires explicit review and fresh proof. Extra environments,
+A changed profile requires explicit review and fresh proof. Switching between
+registered machines does not edit shared progress or reuse another platform's
+evidence. Extra environments,
 versions and rendering variants remain deferred B16 work. The fixture demonstration
 uses a trusted isolated workspace; UX21 must use its own trust-enabled setup.
 
@@ -44,3 +48,33 @@ only the self-referencing execution checkpoint is excluded. Missing actual input
 results cannot be replaced by validator self-tests. Feature batches add their
 own exact route contracts and observations; the B01 demonstration does not certify
 any of UX01-UX18 or UX21.
+
+For alternating machines, sync committed source and the shared checkpoint through
+Git. Run `npm ci --prefix editors/vscode` after dependency changes. The ordinary
+installed suite (`npm --prefix editors/vscode test`) defaults to the current
+registered profile's exact VS Code version; CI can still explicitly select its
+own version with `VSCODE_TEST_VERSION`.
+
+The same commands work in PowerShell and macOS shells:
+
+```text
+node --test "scripts/lsp-matrix/*.test.js"
+node scripts/lsp-matrix/run.js --run
+npm --prefix editors/vscode test
+npm --prefix editors/vscode run test:input
+node scripts/lsp-matrix/run.js --run --batch B02 --accept --editor-results <provider-results.json> --local-results <input-results.json>
+```
+
+The final command revalidates B00-B02 on the current platform and records its
+profile audit, preserving the B03 child and original Mac acceptance. Use the next
+incomplete batch ID when actually closing new scope. Logs, VSIX files and binaries
+are local ignored artifacts; regenerate them after switching machines. Profile
+audit records describe historical successful runs, not current-source freshness.
+
+Windows uses Ctrl for the command palette/modifier click, Ctrl+Home and Alt+Left
+for navigation, and the rendered Electron context menu for actual Peek pointer
+input. The Windows helper checks the interactive desktop and changes/restores
+the keyboard layout only on the test-owned window. macOS retains its Swift native
+menu and input-source helpers. Both require an unlocked interactive session.
+Display observations are retained as `observed-display.json`; changed screen,
+scale, font or editor settings require a reviewed profile update and fresh proof.

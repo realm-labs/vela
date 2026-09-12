@@ -5,7 +5,7 @@ function peekContracts(requirements) {
   const model = navigationModel();
   const key = (id, key, event) => ({ id, device: "keyboard", key, ...(event ? { event } : {}) });
   const click = (id, target, button = "left", clickCount = 1) => ({ id, device: "pointer", target, button, clickCount });
-  const modifier = [key("modifier-down", "Meta", "down"), { id: "modifier-hover", device: "pointer", target: "source-identifier", event: "hover" }, click("modifier-click", "source-identifier"), key("modifier-up", "Meta", "up")];
+  const modifier = [{ id: "modifier-hover", device: "pointer", target: "source-identifier", event: "hover" }, key("modifier-down", "Meta", "down"), click("modifier-click", "source-identifier"), key("modifier-up", "Meta", "up")];
   const menu = [click("context-menu", "source-identifier", "right"),
     { id: "peek-submenu", device: "pointer", target: "Peek", event: "hover" },
     click("peek-definition", "Peek Definition")];

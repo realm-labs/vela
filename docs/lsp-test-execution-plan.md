@@ -20,14 +20,16 @@ never execute scripts or access live host state. Preserve the service/server/
 editor boundaries; unrelated runtime optimization and new language or LSP
 features are outside this goal.
 
-The current goal uses one recorded local development profile: the available OS
-and one exact supported VS Code version. Complete syntax/semantic partitions,
+The current goal supports alternating Windows and macOS development machines.
+The checkpoint registers one exact local profile per platform/architecture;
+each invocation selects the current machine automatically. Complete syntax/semantic partitions,
 positive/negative assertions, ranges/edits, state machines, local installed-VSIX
-interactions, generated checks and scale gates on that profile. Unicode,
+interactions, generated checks and scale gates on the selected profile. Unicode,
 LF/CRLF, URI fixtures and client-capability variants remain required wherever
 locally executable; they are correctness cases, not new execution environments.
 
-B16 environment expansion is deferred: additional OS/editor versions, remote
+B16 environment expansion is deferred: environments beyond the two registered
+development profiles, additional editor versions, remote
 hosts, upgrade/coexistence profiles, keyboard remaps, theme/zoom sweeps and new
 multi-environment CI scheduling do not block this goal. Preserve their scenario
 IDs as deferred scope, not verified or N/A. Do not require their infrastructure
@@ -39,8 +41,8 @@ Use this prompt to start later in a client that supports `/goal`:
 ```text
 /goal Implement the LSP test matrix according to docs/lsp-test-execution-plan.md.
 Read the checkpoint, resume the first incomplete local batch, and complete
-B00-B15, then B17-B19 in order; keep B16 deferred. Use one recorded local
-development profile. For each batch, add independent assertions, fix exposed
+B00-B15, then B17-B19 in order; keep B16 deferred. Select the registered local
+development profile for the current Windows or macOS machine. For each batch, add independent assertions, fix exposed
 defects, run its acceptance checks, and create small, coherent Conventional Commits.
 Record the LSP-Batch ID and validation results in each commit body.
 Do not pass acceptance by deleting requirements, weakening assertions,
@@ -100,6 +102,24 @@ B01 supplies the workbench input/render driver and validated local evidence
 format; B02-B13 and B15 implement their assigned local scenarios. B19 requires
 all mandatory local interaction tuples as well as the full local semantic matrix.
 Use child commits within these batches to keep driver, feature and CI work small.
+
+### Alternating Local Machines
+
+Implementation progress, accepted batches, child IDs and the next task are shared.
+Switching machines does not reopen a batch or discard its original validation.
+Every scoped gate still executes the selected batch and all accepted batches
+against current sources and evidence from the current profile. Never combine
+Windows and macOS bundles to fill missing cells. `--accept` on an already accepted
+batch records a fresh profile audit without advancing or resetting the active child.
+Checkpoint v2 retains original batch acceptance and the latest successful scoped
+audit per profile, including its exact requirement hashes, source and artifacts.
+These records are historical proof, never substitutes for the live gate.
+
+Both machines can continue B03.12 and later child work. Missing native desktop
+proof on one machine does not prohibit semantic/protocol work there. B19 requires
+one complete current local acceptance run on a registered profile; it does not
+require both machines to be available together or claim unexecuted environments.
+See the [local driver guide](../editors/vscode/test/input/README.md) for commands.
 
 Batch numbers and completed scope remain stable. If a batch needs multiple
 independently verifiable changes, use child IDs such as `B04.1`, `B04.2`, and
@@ -212,7 +232,7 @@ is the single source of batch status alongside its manifest; keep this plan
 stable rather than appending a per-commit narrative. Each checkpoint records:
 
 - Accepted batches, active child, remaining exact requirement IDs, and next task.
-- Current local scope/profile and the separate deferred B16 follow-up.
+- Registered local profiles, independent profile audit records and the separate deferred B16 follow-up.
 - Manifest version, tested source revision/tree identity, validation commands and
   results, editor profiles, and artifact locations/provenance.
 - Uncommitted work and reproducible failures when interrupted, with external

@@ -588,8 +588,10 @@ references; reports distinguish candidate tests, mapped assertions, executed
 proof, and unreviewed requirements. P0 inventory is implemented; P1 semantic
 mapping and P2 range/edit transformation coverage remain open. Ordinary CI is
 not full acceptance while the separate strict gate reports unresolved cells.
-The active execution plan prioritizes complete coverage on one recorded local
-profile, including actual input/render proof and generated/scale checks. B16's
+The active execution plan supports alternating Windows/macOS development with
+shared batch/child progress and independent registered profiles and audit records.
+Each strict run requires complete fresh proof on its selected local profile,
+including actual input/render proof and generated/scale checks. B16's
 additional environments are deferred follow-up work and do not block B19 local
 acceptance. The local package-path baseline is restored. The versioned ownership inventory registers
 1327 semantic obligations, 136 local interaction obligations and 14 infrastructure/
@@ -662,7 +664,15 @@ incomplete impl recovery. LF/CRLF queries run with complete, absent and ordinary
 same-name schema metadata. Local binding candidates now carry explicit edits.
 Service callee-path candidates, unhinted service parameter propagation and
 imported callable lookup across signature/expected-argument providers still
-need their focused audit. The desktop locked again during the latest native input regression; see [blocked.md](blocked.md).
+need their focused audit. The earlier macOS input regression stopped on a locked
+desktop; that record does not imply a Windows blocker. Current platform evidence
+must be collected before strict acceptance; see [blocked.md](blocked.md).
+The alternating-machine infrastructure now runs B01/UX02/UX03 on Windows x64:
+actual suggestion acceptance, F12/back and palettes, modifier-click, context-menu
+Peek, exact Unicode targets and no-jump outcomes pass. The installed provider
+suite passes all nine scenarios. The original macOS acceptance remains historical;
+changed driver code needs fresh proof when that machine is next used. Shared
+implementation resumes at B03.12.
 
 ### Deferred Tracks
 

@@ -140,6 +140,14 @@
         {
           "layer": "gate",
           "name": "later audits preserve earlier failure reports and logs"
+        },
+        {
+          "layer": "gate",
+          "name": "alternating machines retain shared progress and independent current profile audits"
+        },
+        {
+          "layer": "gate",
+          "name": "local profile selection pins platform, architecture and version without changing shared state"
         }
       ]
     },
@@ -226,6 +234,10 @@
         {
           "layer": "protocol",
           "name": "tests::support::parallel_fixture_roots_are_unique_with_a_frozen_clock"
+        },
+        {
+          "layer": "gate",
+          "name": "editor file identity preserves encoded Unicode and fixture paths on the current OS"
         }
       ]
     },
@@ -240,6 +252,10 @@
         {
           "layer": "gate",
           "name": "driver self-tests alone cannot certify actual input or replace missing interaction routes"
+        },
+        {
+          "layer": "gate",
+          "name": "Windows input routes keep exact semantic oracles and platform-specific real input"
         }
       ]
     },

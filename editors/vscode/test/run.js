@@ -43,7 +43,9 @@ async function main() {
   if (packaged.error) throw packaged.error;
   if (packaged.status !== 0) throw new Error(`VSIX packaging failed: ${packaged.status}`);
 
-  const version = process.env.VSCODE_TEST_VERSION || "stable";
+  const { selectProfile } = require("../../../scripts/lsp-matrix/profiles");
+  const { profiles } = require("../../../tests/lsp_matrix/checkpoint.json");
+  const version = process.env.VSCODE_TEST_VERSION || selectProfile(profiles, process, false)?.vscodeVersion || "stable";
   const vscodeExecutablePath = await downloadAndUnzipVSCode(version);
   const extensionsDir = path.join(resultRoot, "extensions");
   const userDataDir = path.join(resultRoot, "user-data");

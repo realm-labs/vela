@@ -9,6 +9,7 @@ const localEvidence = require("./local-evidence");
 const { localContracts } = require("./local-contracts");
 const { verifyInstalledPackage } = require("./archive-evidence");
 const checkpointModel = require("./checkpoint");
+const { selectProfile, inputProfile } = require("./profiles");
 const { sourceIdentity } = require("./source-identity");
 const { runInfrastructure, assessInfrastructure } = require("./infrastructure");
 const { capabilities } = require("./stdio");
@@ -100,8 +101,8 @@ async function main() {
     return;
   }
   checkpointModel.validateCheckpoint(checkpoint, manifest, executionRequirements);
-  checkpointModel.validateExecutionProfile(checkpoint.profile,
-    { platform: process.platform, arch: process.arch }, Boolean(selectedBatch) || args.includes("--strict"));
+  const scoped = Boolean(selectedBatch) || args.includes("--strict");
+  const selectedProfile = selectProfile(checkpoint.profiles, process, scoped);
   const source = sourceIdentity(root);
   const infrastructure = runInfrastructure(root, output, args.includes("--run"));
   if (infrastructure.failed) failedCommands.push({ command: "node --test scripts/lsp-matrix/*.test.js", log: "infrastructure.log" });
@@ -131,7 +132,7 @@ async function main() {
   const actualCapabilities = await capabilities(binary);
   if (editorResults) {
     const editor = JSON.parse(fs.readFileSync(path.resolve(editorResults), "utf8"));
-    checkpointModel.validateExecutionProfile(checkpoint.profile,
+    if (scoped) checkpointModel.validateExecutionProfile(selectedProfile,
       { platform: process.platform, arch: process.arch, vscodeVersion: editor.vscodeVersion },
       Boolean(selectedBatch) || args.includes("--strict"));
     if (editor.version !== 1 || JSON.stringify(editor.provenance) !== JSON.stringify(provenance(root, binary))) {
@@ -149,10 +150,9 @@ async function main() {
   let localProofs = [];
   if (localResults) {
     const file = path.resolve(localResults);
-    const profile = JSON.parse(read("editors/vscode/test/input/profile.json"));
-    checkpointModel.validateExecutionProfile(checkpoint.profile, profile, true);
+    const profile = inputProfile(root);
     const inputs = localEvidence.currentInputs(root, binary, profile);
-    const contracts = localContracts(executionRequirements, JSON.parse(read("tests/lsp_matrix/fixtures/input-driver.json")));
+    const contracts = localContracts(executionRequirements, JSON.parse(read("tests/lsp_matrix/fixtures/input-driver.json")), profile.platform);
     const bundle = JSON.parse(fs.readFileSync(file, "utf8"));
     localProofs = localEvidence.validateBundle(bundle, { inputs, profile }, contracts, path.dirname(file));
     const installedServer = localEvidence.artifactPath(path.dirname(file), bundle.installedServer);
@@ -181,6 +181,7 @@ async function main() {
       [status, assessed.filter((item) => item.status === status).length])),
     actualCapabilities, features, requirements: assessed,
     execution: { version: manifest.version, scope: manifest.scope,
+      profile: selectedProfile ?? null,
       acceptedBatches: checkpoint.acceptedBatches.map((batch) => batch.id),
       deferredBatches: manifest.batches.filter((batch) => batch.scope === "deferred").map((batch) => batch.id),
       requirements: executionRequirements.map((requirement) => ({ ...requirement,
@@ -201,8 +202,8 @@ async function main() {
     console.log(`Strict ${args.includes("--strict") ? "local" : selectedBatch} acceptance passed.`);
   }
   if (args.includes("--accept")) {
-    const validation = { source, profile: checkpoint.profile,
-      artifacts: [path.relative(root, path.join(output, "report.json"))],
+    const validation = { source, profile: selectedProfile,
+      artifacts: [path.relative(root, path.join(output, "report.json")).split(path.sep).join("/")],
       commands: [{ command: `node scripts/lsp-matrix/run.js ${args.filter((arg) => arg !== "--accept").join(" ")}`, exitCode: 0 }] };
     checkpoint = checkpointModel.acceptBatch(checkpoint, manifest, executionRequirements,
       report.execution.requirements, selectedBatch, validation, failed);

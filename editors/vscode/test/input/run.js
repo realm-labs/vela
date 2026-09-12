@@ -9,7 +9,8 @@ const {
 } = require("@vscode/test-electron");
 const { chromium } = require("playwright-core");
 const { FixtureWorkspace } = require("../../../../scripts/lsp-matrix/fixtures");
-const profile = require("./profile.json");
+const profile = require("../../../../scripts/lsp-matrix/profiles").inputProfile(path.resolve(__dirname, "../../../.."));
+const { buildNativeMenu, windowsDesktop } = require("./native-menu");
 const fixture = require("../../../../tests/lsp_matrix/fixtures/input-driver.json");
 const evidence = require("../../../../scripts/lsp-matrix/local-evidence");
 const {
@@ -40,23 +41,21 @@ async function run() {
     "use the pinned local profile",
   );
   assert.equal(process.arch, profile.arch);
-  const keyboard = spawnSync(
-    "defaults",
-    ["read", "com.apple.HIToolbox", "AppleCurrentKeyboardLayoutInputSourceID"],
-    { encoding: "utf8", timeout: 5000 },
-  );
-  if (keyboard.error) throw keyboard.error;
-  assert.equal(keyboard.status, 0);
-  assert.equal(keyboard.stdout.trim(), profile.keyboardLayout);
+  if (profile.platform === "darwin") {
+    const keyboard = spawnSync(
+      "defaults",
+      ["read", "com.apple.HIToolbox", "AppleCurrentKeyboardLayoutInputSourceID"],
+      { encoding: "utf8", timeout: 5000 },
+    );
+    if (keyboard.error) throw keyboard.error;
+    assert.equal(keyboard.status, 0);
+    assert.equal(keyboard.stdout.trim(), profile.keyboardLayout);
+  }
   const resultsDir = path.join(extensionRoot, "test-results");
   fs.mkdirSync(resultsDir, { recursive: true });
   const root = fs.mkdtempSync(path.join(resultsDir, "input-"));
   console.log(`Input artifacts: ${root}`);
-  const nativeHelper = path.join(root, "native-menu");
-  const nativeBuild = spawnSync("swiftc", [path.join(__dirname, "native-menu.swift"), "-o", nativeHelper],
-    { stdio: "inherit", timeout: 120000 });
-  if (nativeBuild.error) throw nativeBuild.error;
-  if (nativeBuild.status !== 0) throw Error("native menu helper compilation failed");
+  buildNativeMenu(root, profile.platform);
   const trace = [];
   const record = (kind, id, details) => {
     trace.push({
@@ -108,7 +107,7 @@ async function run() {
   ];
   const install = await runVSCodeCommand(
     ["--install-extension", vsix, "--force", ...isolated],
-    { version: profile.vscodeVersion, cachePath, spawn: { timeout: 120000 } },
+    { version: profile.vscodeVersion, cachePath, spawn: { timeout: 120000, windowsHide: true } },
   );
   if (install.exitCode !== undefined && install.exitCode !== 0)
     throw Error("VSIX install failed");
@@ -177,6 +176,13 @@ async function run() {
     observedDisplay;
   const proofs = [];
   let contracts = [];
+  let keyboardState;
+  const restoreKeyboard = () => {
+    if (keyboardState) {
+      windowsDesktop("restore", child.pid, keyboardState.previous, keyboardState.window);
+      keyboardState = undefined;
+    }
+  };
   const timer = setTimeout(() => child.kill("SIGTERM"), 180000);
   try {
     await until(
@@ -214,6 +220,7 @@ async function run() {
       return body.value;
     };
     await page.bringToFront();
+    if (profile.platform === "win32") keyboardState = windowsDesktop("select", child.pid, profile.keyboardLayout);
     const before = await bridge("inspect");
     assert.equal(before.vscodeVersion, profile.vscodeVersion);
     assert.deepEqual(before.settings, profile.settings);
@@ -227,6 +234,7 @@ async function run() {
       screenWidth: screen.width,
       screenHeight: screen.height,
     }));
+    fs.writeFileSync(path.join(root, "observed-display.json"), JSON.stringify(observedDisplay, null, 2));
     assert.deepEqual(
       observedDisplay,
       profile.display,
@@ -234,8 +242,8 @@ async function run() {
     );
     installedServer = path.relative(
       root,
-      path.join(before.extensionPath, "server/vela_lsp_server"),
-    );
+      path.join(before.extensionPath, "server", profile.platform === "win32" ? "vela_lsp_server.exe" : "vela_lsp_server"),
+    ).split(path.sep).join("/");
     inputs = evidence.currentInputs(
       repository,
       path.join(root, installedServer),
@@ -248,7 +256,7 @@ async function run() {
       inputs.serverSha256,
     );
     const requirements = loadInventory(repository).executionRequirements;
-    contracts = localContracts(requirements, fixture);
+    contracts = localContracts(requirements, fixture, profile.platform);
     const contract = contracts[0];
     const proofStarted = Date.now();
     assert.equal(
@@ -285,7 +293,7 @@ async function run() {
     const widget = page.locator(".suggest-widget.visible");
     await widget.waitFor({ state: "visible" });
     const candidate = widget
-      .getByRole("option")
+      .getByRole(contract.checks[1].expected.role)
       .filter({ hasText: fixture.oracle.candidate });
     await candidate.waitFor({ state: "visible" });
     assert.equal(await candidate.count(), 1);
@@ -309,7 +317,7 @@ async function run() {
     await candidate.click();
     record("input", "accept-candidate", {
       device: "pointer",
-      selector: "suggest-widget option",
+      selector: contract.actions.find((action) => action.id === "accept-candidate").selector,
       label: fixture.oracle.candidate,
       clickCount: 1,
     });
@@ -377,8 +385,9 @@ async function run() {
     }
     record("observation", "requested-proofs", { ids: requestedProofs.length ? requestedProofs : contracts.map((item) => item.id) });
     await require("./peek").runPeek({
-      page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter((item) => requestedProofs.includes(item.id)) : contracts, until, pid: child.pid, onProof: (proof) => proofs.push(proof),
+      page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter((item) => requestedProofs.includes(item.id)) : contracts, until, pid: child.pid, platform: profile.platform, onProof: (proof) => proofs.push(proof),
     });
+    restoreKeyboard();
     await bridge("finish");
     const completed = await until("workbench exit", () => exit, 15000);
     assert.equal(completed.code, 0);
@@ -413,6 +422,7 @@ async function run() {
     }
   } finally {
     clearTimeout(timer);
+    try { restoreKeyboard(); } catch (failure) { error ??= failure; }
     if (!exit) {
       child.kill("SIGTERM");
       await Promise.race([exited, delay(3000)]);
@@ -468,7 +478,8 @@ async function run() {
 async function main() {
   assert.equal(process.platform, profile.platform);
   assert.equal(process.arch, profile.arch);
-  await require("./keyboard-layout").withKeyboardLayout(profile.keyboardLayout, run);
+  if (profile.platform === "darwin") await require("./keyboard-layout").withKeyboardLayout(profile.keyboardLayout, run);
+  else await run();
 }
 main().catch((error) => {
   console.error(error);

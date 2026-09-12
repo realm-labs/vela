@@ -41,3 +41,11 @@ local batch. Accepted batches need fresh proof in every later scoped run. `--loc
 source/profile/driver/fixture/package integrity checks. Missing route results
 stay unreviewed; validator self-tests cannot replace actual input proof.
 Child commits record `LSP-Batch`, exact requirements, validation and remaining work.
+
+Checkpoint v2 registers both alternating development profiles. Acceptance and
+the active child remain shared; each batch retains its original validation and
+`profileAudits` retains the latest successful scoped run per platform/architecture.
+An accepted batch may be passed to `--accept` to record a fresh current-platform
+audit without moving the next task. Every such run must re-prove all already
+accepted batches on that platform. Neither historical audits nor another
+platform's bundles can satisfy missing current proof.

@@ -4277,3 +4277,22 @@ functions with reserved names. Share per-declaration HIR service metadata
 validation between tolerant tooling and the strict full compiler catalog.
 Preserve incomplete method children in syntax recovery instead of compensating
 with language-service text scanning; malformed source remains diagnosed.
+
+## Alternating Windows And macOS LSP Development
+
+The user develops on both local machines. Checkpoint v2 registers exact
+Windows x64 and macOS ARM64 profiles while keeping batch acceptance, completed
+children and the next task shared. Original acceptance provenance remains intact;
+successful scoped re-audits record separate latest profile snapshots without
+rewinding implementation progress. Every scoped run re-executes all accepted
+batch obligations using one current source/profile/installed-binary evidence set.
+Never aggregate partial Windows and macOS bundles to close a batch. B19 requires
+one complete run on a registered local profile; broader B16 environments remain
+deferred, and local acceptance does not claim both platforms passed.
+
+Platform-specific input contracts preserve identical semantic/range/document
+oracles and use each OS's default shortcuts and actual menu UI. Windows uses
+Electron's rendered context menu and a test-window-scoped keyboard layout helper;
+macOS retains native menu and input-source helpers. Evidence binds the selected
+profile, driver and installed bytes. URI normalization accounts only for file-URI
+encoding and Windows drive-letter case; it preserves filenames and Unicode.

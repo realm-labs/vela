@@ -5,13 +5,15 @@ installed-workbench input/render driver and strict local evidence validation. Th
 has nine installed-VSIX scenarios and invokes providers or editor commands. Its
 legacy F12 scenario invokes a command. The separate local driver now sends
 actual F12/back and palette input for UX02, with exact editor state and passive
-request/response checks. UX03 modifier-click also has input/render proof; its
-native Peek routes and the remaining local families are still pending. The current catalog has 27 feature-level `editor/smoke` cells.
+request/response checks. UX03 modifier-click and Peek routes have local
+input/render proof; the checkpoint records the platform and revision, while
+the remaining local families stay pending. The current catalog has 27 feature-level `editor/smoke` cells.
 Neither those cells nor the 1327 initial requirements certify this matrix.
 
 This document extends [the strategy](lsp-test-strategy.md) and is executed through
 [execution plan](lsp-test-execution-plan.md). Scenario IDs remain stable.
-UX01-UX18 and UX21 are required on one recorded local development profile;
+UX01-UX18 and UX21 are required on the selected registered local development profile;
+Windows/macOS runs keep separate evidence while sharing batch progress.
 B00 expands their routes and negative cases into explicit obligations. B16-owned
 UX19, UX20, UX22, UX23 and UX24 remain deferred follow-up families, without detailed
 environment expansion in this goal. Local rows start pending. Existing tests may

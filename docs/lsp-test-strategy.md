@@ -14,9 +14,14 @@ user workflows and input/render evidence to P4. Its UX01-UX24 scenarios cover
 widgets, keyboard/mouse routes, undo/recovery, remote hosts, upgrades and declared
 extension coexistence. They are planned requirements, not current test coverage.
 
-Current acceptance prioritizes complete coverage on one recorded local development
-profile. UX01-UX18 and UX21, all local semantic/state/range obligations, and P5
-generated/scale checks remain required. B16's additional OS/editor versions,
+Current acceptance prioritizes complete coverage on one selected registered local
+profile per run. Windows and macOS development machines share implementation
+progress, with independent evidence and profile audit records; switching machines
+does not reset the next task. Each strict gate requires fresh proof on its selected
+profile for all accepted batches, and cannot combine bundles across profiles.
+UX01-UX18 and UX21, all local semantic/state/range obligations, and P5
+generated/scale checks remain required. B16's environments beyond the registered
+local machines, additional editor versions,
 remote hosts, upgrade/coexistence profiles, keyboard remaps and theme/zoom sweeps
 are deferred follow-up work and do not block local acceptance. Preserve those
 families separately; do not count them as verified or N/A. Existing CI remains
