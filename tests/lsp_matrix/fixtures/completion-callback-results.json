@@ -1,0 +1,188 @@
+{
+  "version": 1,
+  "id": "completion-callback-results",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.callback_contracts\"\nname = \"callback_contracts\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "scripts/api.vela": "/* 中😀 */\npub struct Output { [[payload:start]]payload[[payload:end]]: i64 }\npub fn produce(value: i64) -> Output { return Output { payload: value }; }\npub fn factory() -> Closure { return |value| Output { payload: value }; }\n",
+    "scripts/array_lambda.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { items.map(|value| api::produce(value))[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/iterator_lambda.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { items.iter().map(|value| api::produce(value)).collect_array()[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/array_block.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { items.map(|value| { api::produce(value) })[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/iterator_block.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { items.iter().map(|value| { api::produce(value) }).collect_array()[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/array_named.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { items.map(api::produce)[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/iterator_named.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { items.iter().map(api::produce).collect_array()[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/array_dynamic.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { items.map(dynamic)[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/iterator_dynamic.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { items.iter().map(dynamic).collect_array()[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/array_closure.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { items.map(closure)[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/iterator_closure.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { items.iter().map(closure).collect_array()[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/array_factory.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { items.map(api::factory())[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/iterator_factory.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { items.iter().map(api::factory()).collect_array()[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/lambda_erased.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { items.map(|value| dynamic)[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/lambda_local.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { let callback = |value| api::produce(value); items.map(callback)[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{}}"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "array_lambda",
+        "file": "scripts/array_lambda.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Output",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Output.payload",
+            "target": "scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "iterator_lambda",
+        "file": "scripts/iterator_lambda.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Output",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Output.payload",
+            "target": "scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "array_block",
+        "file": "scripts/array_block.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Output",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Output.payload",
+            "target": "scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "iterator_block",
+        "file": "scripts/iterator_block.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Output",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Output.payload",
+            "target": "scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "array_named",
+        "file": "scripts/array_named.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "Any",
+        "items": []
+      },
+      {
+        "id": "iterator_named",
+        "file": "scripts/iterator_named.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "Any",
+        "items": []
+      },
+      {
+        "id": "array_dynamic",
+        "file": "scripts/array_dynamic.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "Any",
+        "items": []
+      },
+      {
+        "id": "iterator_dynamic",
+        "file": "scripts/iterator_dynamic.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "Any",
+        "items": []
+      },
+      {
+        "id": "array_closure",
+        "file": "scripts/array_closure.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "Any",
+        "items": []
+      },
+      {
+        "id": "iterator_closure",
+        "file": "scripts/iterator_closure.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "Any",
+        "items": []
+      },
+      {
+        "id": "array_factory",
+        "file": "scripts/array_factory.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "Any",
+        "items": []
+      },
+      {
+        "id": "iterator_factory",
+        "file": "scripts/iterator_factory.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "Any",
+        "items": []
+      },
+      {
+        "id": "lambda_erased",
+        "file": "scripts/lambda_erased.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "Any",
+        "items": []
+      },
+      {
+        "id": "lambda_local",
+        "file": "scripts/lambda_local.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "Any",
+        "items": []
+      }
+    ]
+  }
+}

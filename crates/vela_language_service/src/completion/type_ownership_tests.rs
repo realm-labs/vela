@@ -31,6 +31,11 @@ fn returned_receiver_flow_preserves_owned_sets_signatures_and_targets() {
 }
 
 #[test]
+fn callback_contract_results_preserve_direct_lambda_facts_and_erased_boundaries() {
+    assert_type_ownership("completion-callback-results");
+}
+
+#[test]
 fn async_callable_matrix_preserves_owner_metadata_and_applied_await_contracts() {
     assert_type_ownership("completion-async-callables");
 }

@@ -743,9 +743,17 @@ recursive worker/continuation calls, denied TaskSpawn and absent-ceiling metadat
 Trailing continuation parameters remain a host-resume contract. Both test layers
 run Unicode LF/CRLF cases; these static queries do not prove runtime admission.
 
+Eighteen shared callback-contract cases retain declared zero/one/two/defaulted
+parameter signatures, dynamic callback values and conservative map result facts.
+Direct expression/block lambdas preserve proven record members through eager and
+iterator maps; named callbacks, factories, bound local closures and erased values
+do not invent result members. Both layers check exact choices, edits, resolve and
+definitions under Unicode LF/CRLF. This is static completion proof, not callback
+runtime admission or a new callable compatibility policy.
+
 The [completion coverage review](lsp-completion-coverage-review.md) indexes S5
-proof and the remaining acceptance work. Resume B03.34 with the remaining S5
-partition review and dynamic callback contracts, then the remaining
+proof and the remaining acceptance work. Resume B03.35 with the remaining S5
+partition review, including contextual callback parameters and returned receivers, then the remaining
 semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

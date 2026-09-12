@@ -25,6 +25,11 @@ fn sync_callback_matrix_inserts_owned_function_values_and_excludes_async_targets
 }
 
 #[test]
+fn callback_contract_matrix_preserves_declared_signatures_and_dynamic_values() {
+    verify_fixture("completion-callback-contracts");
+}
+
+#[test]
 fn callback_factory_matrix_preserves_existing_calls_and_reference_boundaries() {
     verify_fixture("completion-callback-factories");
 }

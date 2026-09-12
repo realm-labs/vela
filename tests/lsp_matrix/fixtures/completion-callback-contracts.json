@@ -1,0 +1,405 @@
+{
+  "version": 1,
+  "id": "completion-callback-contracts",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.callback_contracts\"\nname = \"callback_contracts\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "scripts/array.vela": "/* 中😀 */\nfn [[zero:start]]zz_zero[[zero:end]]() -> bool { return true; }\nfn [[one:start]]zz_one[[one:end]](value: i64) -> bool { return true; }\nfn [[two:start]]zz_two[[two:end]](key: String, value: i64) -> bool { return true; }\nfn [[defaulted:start]]zz_defaulted[[defaulted:end]](value: i64 = 1) -> bool { return true; }\nfn [[text:start]]zz_text[[text:end]](value: i64) -> String { return \"text\"; }\nfn [[erased:start]]zz_erased[[erased:end]](value: i64) -> Any { return (); }\nasync fn zz_async(value: i64) -> bool { return true; }\nfn run(items: Array<i64>, zz_dynamic: Any, zz_closure: Closure) { items.filter([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/map.vela": "/* 中😀 */\nfn [[zero:start]]zz_zero[[zero:end]]() -> bool { return true; }\nfn [[one:start]]zz_one[[one:end]](value: i64) -> bool { return true; }\nfn [[two:start]]zz_two[[two:end]](key: String, value: i64) -> bool { return true; }\nfn [[defaulted:start]]zz_defaulted[[defaulted:end]](value: i64 = 1) -> bool { return true; }\nfn [[text:start]]zz_text[[text:end]](value: i64) -> String { return \"text\"; }\nfn [[erased:start]]zz_erased[[erased:end]](value: i64) -> Any { return (); }\nasync fn zz_async(value: i64) -> bool { return true; }\nfn run(items: Map<String, i64>, zz_dynamic: Any, zz_closure: Closure) { items.filter(callback = [[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/fallback.vela": "/* 中😀 */\nfn [[zero:start]]zz_zero[[zero:end]]() -> bool { return true; }\nfn [[one:start]]zz_one[[one:end]](value: i64) -> bool { return true; }\nfn [[two:start]]zz_two[[two:end]](key: String, value: i64) -> bool { return true; }\nfn [[defaulted:start]]zz_defaulted[[defaulted:end]](value: i64 = 1) -> bool { return true; }\nfn [[text:start]]zz_text[[text:end]](value: i64) -> String { return \"text\"; }\nfn [[erased:start]]zz_erased[[erased:end]](value: i64) -> Any { return (); }\nasync fn zz_async(value: i64) -> bool { return true; }\nfn run(items: Option<i64>, zz_dynamic: Any, zz_closure: Closure) { items.or_else([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/fold.vela": "/* 中😀 */\nfn [[zero:start]]zz_zero[[zero:end]]() -> bool { return true; }\nfn [[one:start]]zz_one[[one:end]](value: i64) -> bool { return true; }\nfn [[two:start]]zz_two[[two:end]](key: String, value: i64) -> bool { return true; }\nfn [[defaulted:start]]zz_defaulted[[defaulted:end]](value: i64 = 1) -> bool { return true; }\nfn [[text:start]]zz_text[[text:end]](value: i64) -> String { return \"text\"; }\nfn [[erased:start]]zz_erased[[erased:end]](value: i64) -> Any { return (); }\nasync fn zz_async(value: i64) -> bool { return true; }\nfn run(items: Iterator<i64>, zz_dynamic: Any, zz_closure: Closure) { items.fold(0, [[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{}}"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "array",
+        "file": "scripts/array.vela",
+        "items": [
+          {
+            "label": "zz_zero",
+            "kind": "Function",
+            "detail": "Function() -> bool",
+            "insert": "zz_zero",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "array::zz_zero",
+            "origin": "source",
+            "target": "scripts/array.vela",
+            "targetMarker": "zero"
+          },
+          {
+            "label": "zz_one",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_one",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "array::zz_one",
+            "origin": "source",
+            "target": "scripts/array.vela",
+            "targetMarker": "one"
+          },
+          {
+            "label": "zz_two",
+            "kind": "Function",
+            "detail": "Function(String, i64) -> bool",
+            "insert": "zz_two",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "array::zz_two",
+            "origin": "source",
+            "target": "scripts/array.vela",
+            "targetMarker": "two"
+          },
+          {
+            "label": "zz_defaulted",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_defaulted",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "array::zz_defaulted",
+            "origin": "source",
+            "target": "scripts/array.vela",
+            "targetMarker": "defaulted"
+          },
+          {
+            "label": "zz_text",
+            "kind": "Function",
+            "detail": "Function(i64) -> String",
+            "insert": "zz_text",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "array::zz_text",
+            "origin": "source",
+            "target": "scripts/array.vela",
+            "targetMarker": "text"
+          },
+          {
+            "label": "zz_erased",
+            "kind": "Function",
+            "detail": "Function(i64) -> Any",
+            "insert": "zz_erased",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "array::zz_erased",
+            "origin": "source",
+            "target": "scripts/array.vela",
+            "targetMarker": "erased"
+          },
+          {
+            "label": "zz_dynamic",
+            "kind": "Parameter",
+            "detail": "Any",
+            "insert": "zz_dynamic",
+            "format": "PlainText",
+            "named": false
+          },
+          {
+            "label": "zz_closure",
+            "kind": "Parameter",
+            "detail": "Closure",
+            "insert": "zz_closure",
+            "format": "PlainText",
+            "named": false
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "map",
+        "file": "scripts/map.vela",
+        "items": [
+          {
+            "label": "zz_zero",
+            "kind": "Function",
+            "detail": "Function() -> bool",
+            "insert": "zz_zero",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "map::zz_zero",
+            "origin": "source",
+            "target": "scripts/map.vela",
+            "targetMarker": "zero"
+          },
+          {
+            "label": "zz_one",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_one",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "map::zz_one",
+            "origin": "source",
+            "target": "scripts/map.vela",
+            "targetMarker": "one"
+          },
+          {
+            "label": "zz_two",
+            "kind": "Function",
+            "detail": "Function(String, i64) -> bool",
+            "insert": "zz_two",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "map::zz_two",
+            "origin": "source",
+            "target": "scripts/map.vela",
+            "targetMarker": "two"
+          },
+          {
+            "label": "zz_defaulted",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_defaulted",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "map::zz_defaulted",
+            "origin": "source",
+            "target": "scripts/map.vela",
+            "targetMarker": "defaulted"
+          },
+          {
+            "label": "zz_text",
+            "kind": "Function",
+            "detail": "Function(i64) -> String",
+            "insert": "zz_text",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "map::zz_text",
+            "origin": "source",
+            "target": "scripts/map.vela",
+            "targetMarker": "text"
+          },
+          {
+            "label": "zz_erased",
+            "kind": "Function",
+            "detail": "Function(i64) -> Any",
+            "insert": "zz_erased",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "map::zz_erased",
+            "origin": "source",
+            "target": "scripts/map.vela",
+            "targetMarker": "erased"
+          },
+          {
+            "label": "zz_dynamic",
+            "kind": "Parameter",
+            "detail": "Any",
+            "insert": "zz_dynamic",
+            "format": "PlainText",
+            "named": false
+          },
+          {
+            "label": "zz_closure",
+            "kind": "Parameter",
+            "detail": "Closure",
+            "insert": "zz_closure",
+            "format": "PlainText",
+            "named": false
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "fallback",
+        "file": "scripts/fallback.vela",
+        "items": [
+          {
+            "label": "zz_zero",
+            "kind": "Function",
+            "detail": "Function() -> bool",
+            "insert": "zz_zero",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "fallback::zz_zero",
+            "origin": "source",
+            "target": "scripts/fallback.vela",
+            "targetMarker": "zero"
+          },
+          {
+            "label": "zz_one",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_one",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "fallback::zz_one",
+            "origin": "source",
+            "target": "scripts/fallback.vela",
+            "targetMarker": "one"
+          },
+          {
+            "label": "zz_two",
+            "kind": "Function",
+            "detail": "Function(String, i64) -> bool",
+            "insert": "zz_two",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "fallback::zz_two",
+            "origin": "source",
+            "target": "scripts/fallback.vela",
+            "targetMarker": "two"
+          },
+          {
+            "label": "zz_defaulted",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_defaulted",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "fallback::zz_defaulted",
+            "origin": "source",
+            "target": "scripts/fallback.vela",
+            "targetMarker": "defaulted"
+          },
+          {
+            "label": "zz_text",
+            "kind": "Function",
+            "detail": "Function(i64) -> String",
+            "insert": "zz_text",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "fallback::zz_text",
+            "origin": "source",
+            "target": "scripts/fallback.vela",
+            "targetMarker": "text"
+          },
+          {
+            "label": "zz_erased",
+            "kind": "Function",
+            "detail": "Function(i64) -> Any",
+            "insert": "zz_erased",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "fallback::zz_erased",
+            "origin": "source",
+            "target": "scripts/fallback.vela",
+            "targetMarker": "erased"
+          },
+          {
+            "label": "zz_dynamic",
+            "kind": "Parameter",
+            "detail": "Any",
+            "insert": "zz_dynamic",
+            "format": "PlainText",
+            "named": false
+          },
+          {
+            "label": "zz_closure",
+            "kind": "Parameter",
+            "detail": "Closure",
+            "insert": "zz_closure",
+            "format": "PlainText",
+            "named": false
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "fold",
+        "file": "scripts/fold.vela",
+        "items": [
+          {
+            "label": "zz_zero",
+            "kind": "Function",
+            "detail": "Function() -> bool",
+            "insert": "zz_zero",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "fold::zz_zero",
+            "origin": "source",
+            "target": "scripts/fold.vela",
+            "targetMarker": "zero"
+          },
+          {
+            "label": "zz_one",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_one",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "fold::zz_one",
+            "origin": "source",
+            "target": "scripts/fold.vela",
+            "targetMarker": "one"
+          },
+          {
+            "label": "zz_two",
+            "kind": "Function",
+            "detail": "Function(String, i64) -> bool",
+            "insert": "zz_two",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "fold::zz_two",
+            "origin": "source",
+            "target": "scripts/fold.vela",
+            "targetMarker": "two"
+          },
+          {
+            "label": "zz_defaulted",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_defaulted",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "fold::zz_defaulted",
+            "origin": "source",
+            "target": "scripts/fold.vela",
+            "targetMarker": "defaulted"
+          },
+          {
+            "label": "zz_text",
+            "kind": "Function",
+            "detail": "Function(i64) -> String",
+            "insert": "zz_text",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "fold::zz_text",
+            "origin": "source",
+            "target": "scripts/fold.vela",
+            "targetMarker": "text"
+          },
+          {
+            "label": "zz_erased",
+            "kind": "Function",
+            "detail": "Function(i64) -> Any",
+            "insert": "zz_erased",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "fold::zz_erased",
+            "origin": "source",
+            "target": "scripts/fold.vela",
+            "targetMarker": "erased"
+          },
+          {
+            "label": "zz_dynamic",
+            "kind": "Parameter",
+            "detail": "Any",
+            "insert": "zz_dynamic",
+            "format": "PlainText",
+            "named": false
+          },
+          {
+            "label": "zz_closure",
+            "kind": "Parameter",
+            "detail": "Closure",
+            "insert": "zz_closure",
+            "format": "PlainText",
+            "named": false
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      }
+    ]
+  }
+}
