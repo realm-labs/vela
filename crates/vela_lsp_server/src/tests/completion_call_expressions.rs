@@ -24,6 +24,11 @@ fn sync_callback_matrix_projects_owned_function_values_and_excludes_async_target
 }
 
 #[test]
+fn callback_factory_matrix_projects_existing_calls_and_reference_boundaries() {
+    verify_fixture("completion-callback-factories");
+}
+
+#[test]
 fn task_value_matrix_projects_argument_choices_and_exact_admission_diagnostics() {
     verify_fixture("completion-task-values");
 }
@@ -110,7 +115,11 @@ fn verify_fixture(name: &str) {
                     .expect("item");
                 assert_eq!(
                     item["kind"],
-                    if expected["kind"] == "Function" { 3 } else { 6 },
+                    match expected["kind"].as_str() {
+                        Some("Function") => 3,
+                        Some("Method") => 2,
+                        _ => 6,
+                    },
                     "{case}"
                 );
                 assert_eq!(item["detail"], expected["detail"]);
@@ -184,6 +193,27 @@ fn verify_fixture(name: &str) {
                 if let Some(applied_file) = expected["appliedFile"].as_str() {
                     let applied = fixture.document(applied_file).expect("applied oracle");
                     assert_eq!(edited, applied.text, "{case}");
+                    if expected.get("target").is_some() {
+                        let point = applied.markers["callee"].start;
+                        let definition = response_value(request::<r::GotoDefinition>(
+                            &mut server,
+                            id,
+                            json!({"textDocument":{"uri":uri(file)},"position":{"line":point.line,"character":point.character+1}}),
+                        ));
+                        id += 1;
+                        assert!(definition["error"].is_null());
+                        if let Some(target) = expected["target"].as_str() {
+                            let target_source = fixture.document(target).expect("target");
+                            let target_range = target_source.markers
+                                [expected["targetMarker"].as_str().expect("target marker")];
+                            assert_eq!(
+                                definition["result"],
+                                json!({"uri":uri(target),"range":{"start":{"line":target_range.start.line,"character":target_range.start.character},"end":{"line":target_range.end.line,"character":target_range.end.character}}})
+                            );
+                        } else {
+                            assert!(definition["result"].is_null(), "metadata-only factory");
+                        }
+                    }
                     let notifications = crate::tests::notification_values(changes.clone());
                     let publication = notifications
                         .iter()

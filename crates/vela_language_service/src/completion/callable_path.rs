@@ -50,6 +50,30 @@ pub(super) fn item(label: &str, kind: CompletionKind, insertion: String) -> Comp
     }
 }
 
+pub(super) fn preserve_argument_list(query: &QueryContext<'_>, items: &mut [CompletionItem]) {
+    let range = query
+        .identifier_range()
+        .unwrap_or(query.cursor().replace_range());
+    if !has_argument_list(query, range.end) {
+        return;
+    }
+    for item in items {
+        if !matches!(
+            item.kind(),
+            CompletionKind::Function | CompletionKind::Method
+        ) {
+            continue;
+        }
+        let Some(path) = item
+            .insert_text()
+            .and_then(|text| text.strip_suffix("($0)"))
+        else {
+            continue;
+        };
+        super::call_operand::set_path_insertion(item, query, path.to_owned());
+    }
+}
+
 pub(super) fn has_argument_list(query: &QueryContext<'_>, end: usize) -> bool {
     let Some(parse) = query.syntax_parse() else {
         return false;

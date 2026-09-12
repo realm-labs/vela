@@ -726,6 +726,14 @@ keep ordinary call insertion. Same-owner reflection signature alternatives remai
 one callable, while compiler-owned task operations cannot become callback values.
 Global stdlib candidates now carry explicit builtin ownership for resolve queries.
 
+Function and method completion preserves an existing argument list, including
+intervening comments and whitespace, instead of inserting a second call. Twenty-one
+shared factory/reference cases apply 82 candidates across source, schema, method,
+import and reflection owners. Exact applied text, definitions and await diagnostics
+distinguish factory calls from direct sync callback references and new call snippets.
+Dynamic callable values keep their existing behavior; this does not infer callback
+arity or execute a factory during analysis.
+
 Thirty-six shared task-admission cases apply completion edits and check complete
 candidate sets plus exact diagnostic codes, messages, ranges and related labels.
 Owned and erased arguments remain available; nested callable/iterator/HostRef
@@ -736,8 +744,8 @@ Trailing continuation parameters remain a host-resume contract. Both test layers
 run Unicode LF/CRLF cases; these static queries do not prove runtime admission.
 
 The [completion coverage review](lsp-completion-coverage-review.md) indexes S5
-proof and the remaining acceptance work. Resume B03.33 with callback factories,
-dynamic callback contracts and the S5 partition review, then the remaining
+proof and the remaining acceptance work. Resume B03.34 with the remaining S5
+partition review and dynamic callback contracts, then the remaining
 semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

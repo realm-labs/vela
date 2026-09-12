@@ -25,6 +25,11 @@ fn sync_callback_matrix_inserts_owned_function_values_and_excludes_async_targets
 }
 
 #[test]
+fn callback_factory_matrix_preserves_existing_calls_and_reference_boundaries() {
+    verify_fixture("completion-callback-factories");
+}
+
+#[test]
 fn task_value_matrix_preserves_argument_choices_and_exact_admission_diagnostics() {
     verify_fixture("completion-task-values");
 }
@@ -152,7 +157,30 @@ fn verify_fixture(name: &str) {
                     assert_eq!(text, applied.text, "{case}");
                     let mut fresh = FixtureWorkspace::new(&spec).expect("fresh fixture");
                     fresh.disk.get_mut(file).expect("file").text = text.clone();
-                    let diagnostics = databases(&fresh).diagnostics_for_document(&uri(file));
+                    let fresh = databases(&fresh);
+                    if expected.get("target").is_some() {
+                        let point = applied.markers["callee"].start;
+                        let definition =
+                            fresh.definition(&uri(file), byte_position(&text, point.byte + 1));
+                        if let Some(target) = expected["target"].as_str() {
+                            let definition = definition.expect("applied factory definition");
+                            let target_source = fixture.document(target).expect("target");
+                            let target_range = target_source.markers
+                                [expected["targetMarker"].as_str().expect("target marker")];
+                            assert_eq!(definition.document_id(), &uri(target));
+                            assert_eq!(
+                                definition.range().start(),
+                                byte_position(&target_source.text, target_range.start.byte)
+                            );
+                            assert_eq!(
+                                definition.range().end(),
+                                byte_position(&target_source.text, target_range.end.byte)
+                            );
+                        } else {
+                            assert!(definition.is_none(), "metadata-only factory");
+                        }
+                    }
+                    let diagnostics = fresh.diagnostics_for_document(&uri(file));
                     let actual = diagnostics
                         .diagnostics()
                         .iter()

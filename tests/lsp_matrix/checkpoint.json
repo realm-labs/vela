@@ -1541,10 +1541,41 @@
         "completion-resolve/syntax/S9/negative/protocol"
       ],
       "summary": "Twenty-five shared await-context queries apply 58 callable candidates under LF/CRLF. Source/dependency/schema functions, aliases, methods and traits retain complete candidate sets, async metadata, resolve ownership, exact edits, applied signatures, named-argument completions, inlay positions and definition URI/ranges across syntax errors. Sync functions and lambdas inside async functions retain await_outside_async diagnostics. Sync/async impl and trait methods distinguish invalid and valid enclosing contexts; ordinary nested async blocks retain no await error. Parenthesized operands retain invalid_await_operand, while their inner asynchronous call also retains async_call_requires_await. Independent marked applied files distinguish exact await-token, parenthesized-operand and inner-call spans. Both layers assert diagnostic code, severity, message and exact related label URI/range/message through the existing data.labels contract. Parser diagnostics match explicit syntax code lists; prior valid fixture expectations remain empty. This test-only change adds two test identities and changes no syntax, completion, runtime or admission semantics. Workspace 4477 passed, two historical ignored; service 625 plus two ignored and protocol 610; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-SoaJoI/results.json passed 9; native editors/vscode/test-results/input-6esKYl/results.json passed 13; strict target/lsp-matrix/run-nmuxIZ/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The 24 requirement references record partial child progress, not whole-partition acceptance. B03 remains unaccepted. Resume B03.33 with callback factories, dynamic callback contracts and S5 partition review; remaining semantic partitions, task default/opaque values and method effects, lifecycle/URI/client sequences and UX04 remain open. Queries do not execute Vela or access live host state. Fresh macOS proof is required when next used. B16 remains deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.33",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S4/positive/service",
+        "completion/syntax/S4/positive/protocol",
+        "completion/syntax/S4/negative/service",
+        "completion/syntax/S4/negative/protocol",
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/negative/protocol",
+        "completion/syntax/S9/positive/service",
+        "completion/syntax/S9/positive/protocol",
+        "completion/syntax/S9/negative/service",
+        "completion/syntax/S9/negative/protocol",
+        "completion-resolve/syntax/S4/positive/service",
+        "completion-resolve/syntax/S4/positive/protocol",
+        "completion-resolve/syntax/S4/negative/service",
+        "completion-resolve/syntax/S4/negative/protocol",
+        "completion-resolve/syntax/S5/positive/service",
+        "completion-resolve/syntax/S5/positive/protocol",
+        "completion-resolve/syntax/S5/negative/service",
+        "completion-resolve/syntax/S5/negative/protocol",
+        "completion-resolve/syntax/S9/positive/service",
+        "completion-resolve/syntax/S9/positive/protocol",
+        "completion-resolve/syntax/S9/negative/service",
+        "completion-resolve/syntax/S9/negative/protocol"
+      ],
+      "summary": "Twenty-one shared callback-factory/reference cases apply 82 candidates under LF/CRLF. A red test exposed duplicate call snippets when selecting a factory whose argument list already existed. Shared callable insertion now preserves that list after the whole identifier, skipping syntax trivia and removing only a generated ($0) suffix for Function/Method candidates. This runs after task/callback eligibility, retaining complete candidate sets, owning source/schema/builtin metadata and direct reference versus new-call rules. Tests cover empty, positional, named and nested arguments, comments/newlines, mid-word edits, source and namespace aliases, source/schema methods, awaited/unawaited asynchronous factories and reflection calls/aliases with dynamic Any returns. Same-name root and API factories deliberately have opposite asyncness. Any/Closure callable parameters keep their existing insertion. Independent marked applied source asserts exact text and source definitions or metadata-only null targets; async calls retain exact missing-await codes, messages, severity, ranges and related labels. Resolve payloads pass through unchanged, and protocol edits restore the original completion result. The shared factory runner also checks Method projection explicitly. Queries execute neither factories nor reflected callbacks and do not access live host state. Workspace 4479 passed, two historical ignored; service 626 plus two ignored and protocol 611; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-i22yjV/results.json passed 9; native editors/vscode/test-results/input-ADTUgF/results.json passed 13; strict target/lsp-matrix/run-FY0jec/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The 24 requirement references record partial child progress, not whole-partition acceptance. B03 remains unaccepted. Resume B03.34 with remaining S5 partition review and dynamic callback contracts, then semantic, lifecycle/URI/client and UX04 proof. Task default/opaque values and method effects remain review items. Fresh macOS evidence is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.33",
-  "nextTask": "B03.33",
+  "activeChild": "B03.34",
+  "nextTask": "B03.34",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -3527,7 +3558,20 @@
     "target/b03-32-input.log",
     "target/b03-32-accepted-regression.log",
     "editors/vscode/test-results/run-SoaJoI/results.json",
-    "editors/vscode/test-results/input-6esKYl/results.json"
+    "editors/vscode/test-results/input-6esKYl/results.json",
+    "target/lsp-matrix/run-FY0jec/report.json",
+    "target/b03-33-baseline.log",
+    "target/b03-33-red.log",
+    "target/b03-33-factory.log",
+    "target/b03-33-libraries.log",
+    "target/b03-33-workspace.log",
+    "target/b03-33-clippy.log",
+    "target/b03-33-node.log",
+    "target/b03-33-editor.log",
+    "target/b03-33-input.log",
+    "target/b03-33-accepted-regression.log",
+    "editors/vscode/test-results/run-i22yjV/results.json",
+    "editors/vscode/test-results/input-ADTUgF/results.json"
   ],
   "openIssues": [
     {
@@ -4148,8 +4192,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "28f4d62117cb84339853852a18f4136c4816a5e2",
-          "treeSha256": "ece5cd127abe7ebb4dce2d4a8241a2a98654ae5ad2e3437fc789eafb442ff01d"
+          "revision": "02bec002bce3274e01979666bdc32f283de59e9a",
+          "treeSha256": "e7222a5ca703cdfe1a1a672e4669e3488062b68b4f40e6cd21a0c2a312001cc9"
         },
         "profile": {
           "platform": "win32",
@@ -4157,11 +4201,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-nmuxIZ/report.json"
+          "target/lsp-matrix/run-FY0jec/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-SoaJoI/results.json --local-results editors/vscode/test-results/input-6esKYl/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-i22yjV/results.json --local-results editors/vscode/test-results/input-ADTUgF/results.json",
             "exitCode": 0
           }
         ]

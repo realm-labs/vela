@@ -1,0 +1,1767 @@
+{
+  "version": 1,
+  "id": "completion-callback-factories",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.callback_factories\"\nname = \"callback_factories\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"functions\":[{\"name\":\"zz_native_sync\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"closure\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"seed\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"defaulted\"}],\"returns\":{\"kind\":\"closure\"}}},{\"name\":\"zz_native_async\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"closure\"}},\"signature\":{\"asyncness\":\"async\",\"parameters\":[{\"name\":\"seed\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"defaulted\"}],\"returns\":{\"kind\":\"closure\"}}}],\"types\":[{\"name\":\"host::Factory\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Factory\"}}],\"methods\":[{\"owner\":\"host::Factory\",\"name\":\"zz_sync\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"closure\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"seed\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"defaulted\"}],\"returns\":{\"kind\":\"closure\"}}},{\"owner\":\"host::Factory\",\"name\":\"zz_async\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"closure\"}},\"signature\":{\"asyncness\":\"async\",\"parameters\":[{\"name\":\"seed\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"defaulted\"}],\"returns\":{\"kind\":\"closure\"}}}]}}",
+    "scripts/api.vela": "/* 中😀 */ pub fn [[sync:start]]zz_async[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } pub async fn [[async:start]]zz_sync[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; }\n",
+    "scripts/factory-empty.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[replace:start]]zz_[[cursor]][[replace:end]]()[[call:end]]); }\n",
+    "expected/factory-empty-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_sync()[[call:end]]); }\n",
+    "expected/factory-empty-1.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_async()[[call:end]]); }\n",
+    "expected/factory-empty-2.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_async()[[call:end]]); }\n",
+    "expected/factory-empty-3.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_sync()[[call:end]]); }\n",
+    "expected/factory-empty-4.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_native_sync()[[call:end]]); }\n",
+    "expected/factory-empty-5.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_native_async()[[call:end]]); }\n",
+    "scripts/factory-positional.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[replace:start]]zz_[[cursor]][[replace:end]](1)[[call:end]]); }\n",
+    "expected/factory-positional-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_sync(1)[[call:end]]); }\n",
+    "expected/factory-positional-1.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_async(1)[[call:end]]); }\n",
+    "expected/factory-positional-2.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_async(1)[[call:end]]); }\n",
+    "expected/factory-positional-3.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_sync(1)[[call:end]]); }\n",
+    "expected/factory-positional-4.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_native_sync(1)[[call:end]]); }\n",
+    "expected/factory-positional-5.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_native_async(1)[[call:end]]); }\n",
+    "scripts/factory-named.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[replace:start]]zz_[[cursor]][[replace:end]](seed = 1)[[call:end]]); }\n",
+    "expected/factory-named-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_sync(seed = 1)[[call:end]]); }\n",
+    "expected/factory-named-1.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_async(seed = 1)[[call:end]]); }\n",
+    "expected/factory-named-2.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_async(seed = 1)[[call:end]]); }\n",
+    "expected/factory-named-3.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_sync(seed = 1)[[call:end]]); }\n",
+    "expected/factory-named-4.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_native_sync(seed = 1)[[call:end]]); }\n",
+    "expected/factory-named-5.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_native_async(seed = 1)[[call:end]]); }\n",
+    "scripts/factory-nested.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { items.filter([[call:start]][[replace:start]]zz_[[cursor]][[replace:end]](consume(1))[[call:end]]); }\n",
+    "expected/factory-nested-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_sync(consume(1))[[call:end]]); }\n",
+    "expected/factory-nested-1.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_async(consume(1))[[call:end]]); }\n",
+    "expected/factory-nested-2.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_async(consume(1))[[call:end]]); }\n",
+    "expected/factory-nested-3.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_sync(consume(1))[[call:end]]); }\n",
+    "expected/factory-nested-4.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_native_sync(consume(1))[[call:end]]); }\n",
+    "expected/factory-nested-5.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_native_async(consume(1))[[call:end]]); }\n",
+    "scripts/factory-comment.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[replace:start]]zz_[[cursor]][[replace:end]]/* keep */ (1)[[call:end]]); }\n",
+    "expected/factory-comment-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_sync/* keep */ (1)[[call:end]]); }\n",
+    "expected/factory-comment-1.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_async/* keep */ (1)[[call:end]]); }\n",
+    "expected/factory-comment-2.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_async/* keep */ (1)[[call:end]]); }\n",
+    "expected/factory-comment-3.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_sync/* keep */ (1)[[call:end]]); }\n",
+    "expected/factory-comment-4.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_native_sync/* keep */ (1)[[call:end]]); }\n",
+    "expected/factory-comment-5.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_native_async/* keep */ (1)[[call:end]]); }\n",
+    "scripts/factory-line-comment.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[replace:start]]zz_[[cursor]][[replace:end]]// keep\n(1)[[call:end]]); }\n",
+    "expected/factory-line-comment-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_sync// keep\n(1)[[call:end]]); }\n",
+    "expected/factory-line-comment-1.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_async// keep\n(1)[[call:end]]); }\n",
+    "expected/factory-line-comment-2.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_async// keep\n(1)[[call:end]]); }\n",
+    "expected/factory-line-comment-3.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_sync// keep\n(1)[[call:end]]); }\n",
+    "expected/factory-line-comment-4.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_native_sync// keep\n(1)[[call:end]]); }\n",
+    "expected/factory-line-comment-5.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_native_async// keep\n(1)[[call:end]]); }\n",
+    "scripts/factory-middle.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[replace:start]]zz_[[cursor]]stale[[replace:end]](1)[[call:end]]); }\n",
+    "expected/factory-middle-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_sync(1)[[call:end]]); }\n",
+    "expected/factory-middle-1.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_async(1)[[call:end]]); }\n",
+    "expected/factory-middle-2.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_async(1)[[call:end]]); }\n",
+    "expected/factory-middle-3.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_sync(1)[[call:end]]); }\n",
+    "expected/factory-middle-4.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_native_sync(1)[[call:end]]); }\n",
+    "expected/factory-middle-5.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_native_async(1)[[call:end]]); }\n",
+    "scripts/factory-awaited.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[replace:start]]zz_[[cursor]][[replace:end]](1)[[call:end]].await); }\n",
+    "expected/factory-awaited-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_sync(1)[[call:end]].await); }\n",
+    "expected/factory-awaited-1.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_async(1)[[call:end]].await); }\n",
+    "expected/factory-awaited-2.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_async(1)[[call:end]].await); }\n",
+    "expected/factory-awaited-3.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_sync(1)[[call:end]].await); }\n",
+    "expected/factory-awaited-4.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_native_sync(1)[[call:end]].await); }\n",
+    "expected/factory-awaited-5.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_native_async(1)[[call:end]].await); }\n",
+    "scripts/factory-qualified.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[replace:start]]zz_[[cursor]][[replace:end]](1)[[call:end]]); }\n",
+    "expected/factory-qualified-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_async(1)[[call:end]]); }\n",
+    "expected/factory-qualified-1.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]api::[[callee]]zz_sync(1)[[call:end]]); }\n",
+    "scripts/factory-namespace.vela": "/* 中😀 */ use api as alias; fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]alias::[[replace:start]]zz_[[cursor]][[replace:end]](1)[[call:end]]); }\n",
+    "expected/factory-namespace-0.txt": "/* 中😀 */ use api as alias; fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]alias::[[callee]]zz_async(1)[[call:end]]); }\n",
+    "expected/factory-namespace-1.txt": "/* 中😀 */ use api as alias; fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]]alias::[[callee]]zz_sync(1)[[call:end]]); }\n",
+    "scripts/factory-imported.vela": "/* 中😀 */ use api::zz_sync as zz_imported; fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[replace:start]]zz_import[[cursor]][[replace:end]](1)[[call:end]]); }\n",
+    "expected/factory-imported-0.txt": "/* 中😀 */ use api::zz_sync as zz_imported; fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.filter([[call:start]][[callee]]zz_imported(1)[[call:end]]); }\n",
+    "scripts/reference.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.map([[call:start]][[replace:start]]zz_[[cursor]][[replace:end]][[call:end]]); }\n",
+    "expected/reference-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.map([[call:start]][[callee]]zz_sync[[call:end]]); }\n",
+    "expected/reference-1.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.map([[call:start]]api::[[callee]]zz_async[[call:end]]); }\n",
+    "expected/reference-2.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>) { items.map([[call:start]][[callee]]zz_native_sync[[call:end]]); }\n",
+    "scripts/ordinary-new-call.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]][[replace:start]]zz_[[cursor]][[replace:end]][[call:end]]); }\n",
+    "expected/ordinary-new-call-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]][[callee]]zz_sync()[[call:end]]); }\n",
+    "expected/ordinary-new-call-1.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]][[callee]]zz_async()[[call:end]]); }\n",
+    "expected/ordinary-new-call-2.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]]api::[[callee]]zz_async()[[call:end]]); }\n",
+    "expected/ordinary-new-call-3.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]]api::[[callee]]zz_sync()[[call:end]]); }\n",
+    "expected/ordinary-new-call-4.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]][[callee]]zz_native_sync()[[call:end]]); }\n",
+    "expected/ordinary-new-call-5.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]][[callee]]zz_native_async()[[call:end]]); }\n",
+    "scripts/ordinary-existing-call.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]][[replace:start]]zz_[[cursor]][[replace:end]](1)[[call:end]]); }\n",
+    "expected/ordinary-existing-call-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]][[callee]]zz_sync(1)[[call:end]]); }\n",
+    "expected/ordinary-existing-call-1.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]][[callee]]zz_async(1)[[call:end]]); }\n",
+    "expected/ordinary-existing-call-2.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]]api::[[callee]]zz_async(1)[[call:end]]); }\n",
+    "expected/ordinary-existing-call-3.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]]api::[[callee]]zz_sync(1)[[call:end]]); }\n",
+    "expected/ordinary-existing-call-4.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]][[callee]]zz_native_sync(1)[[call:end]]); }\n",
+    "expected/ordinary-existing-call-5.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]][[callee]]zz_native_async(1)[[call:end]]); }\n",
+    "scripts/method-factory.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } struct Factory {} impl Factory { fn [[method-sync:start]]zz_sync[[method-sync:end]](self, seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[method-async:start]]zz_async[[method-async:end]](self, seed: i64 = 1) -> Closure { return |value| value > seed; } } async fn main(items: Array<i64>, factory: Factory) { items.filter([[call:start]]factory.[[replace:start]]zz_[[cursor]][[replace:end]](1)[[call:end]]); }\n",
+    "expected/method-factory-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } struct Factory {} impl Factory { fn [[method-sync:start]]zz_sync[[method-sync:end]](self, seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[method-async:start]]zz_async[[method-async:end]](self, seed: i64 = 1) -> Closure { return |value| value > seed; } } async fn main(items: Array<i64>, factory: Factory) { items.filter([[call:start]]factory.[[callee]]zz_sync(1)[[call:end]]); }\n",
+    "expected/method-factory-1.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } struct Factory {} impl Factory { fn [[method-sync:start]]zz_sync[[method-sync:end]](self, seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[method-async:start]]zz_async[[method-async:end]](self, seed: i64 = 1) -> Closure { return |value| value > seed; } } async fn main(items: Array<i64>, factory: Factory) { items.filter([[call:start]]factory.[[callee]]zz_async(1)[[call:end]]); }\n",
+    "scripts/schema-method-factory.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>, factory: host::Factory) { items.filter([[call:start]]factory.[[replace:start]]zz_[[cursor]][[replace:end]](1)[[call:end]].await); }\n",
+    "expected/schema-method-factory-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>, factory: host::Factory) { items.filter([[call:start]]factory.[[callee]]zz_sync(1)[[call:end]].await); }\n",
+    "expected/schema-method-factory-1.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>, factory: host::Factory) { items.filter([[call:start]]factory.[[callee]]zz_async(1)[[call:end]].await); }\n",
+    "scripts/dynamic-any.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>, zz_callback: Any) { items.filter([[call:start]][[replace:start]]zz_call[[cursor]][[replace:end]](1)[[call:end]]); }\n",
+    "expected/dynamic-any-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>, zz_callback: Any) { items.filter([[call:start]][[callee]]zz_callback(1)[[call:end]]); }\n",
+    "scripts/dynamic-closure.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>, zz_callback: Closure) { items.filter([[call:start]][[replace:start]]zz_call[[cursor]][[replace:end]](1)[[call:end]]); }\n",
+    "expected/dynamic-closure-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>, zz_callback: Closure) { items.filter([[call:start]][[callee]]zz_callback(1)[[call:end]]); }\n",
+    "scripts/ordinary-comment-boundary.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]][[replace:start]]zz_[[cursor]][[replace:end]][[call:end]] /* (keep) */); }\n",
+    "expected/ordinary-comment-boundary-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]][[callee]]zz_sync()[[call:end]] /* (keep) */); }\n",
+    "expected/ordinary-comment-boundary-1.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]][[callee]]zz_async()[[call:end]] /* (keep) */); }\n",
+    "expected/ordinary-comment-boundary-2.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]]api::[[callee]]zz_async()[[call:end]] /* (keep) */); }\n",
+    "expected/ordinary-comment-boundary-3.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]]api::[[callee]]zz_sync()[[call:end]] /* (keep) */); }\n",
+    "expected/ordinary-comment-boundary-4.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]][[callee]]zz_native_sync()[[call:end]] /* (keep) */); }\n",
+    "expected/ordinary-comment-boundary-5.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } fn consume(value) { return value; } async fn main(items: Array<i64>) { consume([[call:start]][[callee]]zz_native_async()[[call:end]] /* (keep) */); }\n",
+    "scripts/reflected-factory.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>, context: Any) { items.filter([[call:start]]reflect::[[replace:start]]cal[[cursor]][[replace:end]](context, \"make\")[[call:end]]); }\n",
+    "expected/reflected-factory-0.txt": "/* 中😀 */ fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>, context: Any) { items.filter([[call:start]]reflect::[[callee]]call(context, \"make\")[[call:end]]); }\n",
+    "scripts/reflected-alias.vela": "/* 中😀 */ use reflect::call as zz_reflect; fn [[sync:start]]zz_sync[[sync:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn [[async:start]]zz_async[[async:end]](seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>, context: Any) { items.filter([[call:start]][[replace:start]]zz_ref[[cursor]][[replace:end]](context, \"make\")[[call:end]]); }\n",
+    "expected/reflected-alias-0.txt": "/* 中😀 */ use reflect::call as zz_reflect; fn zz_sync(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn zz_async(seed: i64 = 1) -> Closure { return |value| value > seed; } async fn main(items: Array<i64>, context: Any) { items.filter([[call:start]][[callee]]zz_reflect(context, \"make\")[[call:end]]); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "factory-empty",
+        "file": "scripts/factory-empty.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "factory-empty::zz_sync",
+            "origin": "source",
+            "target": "scripts/factory-empty.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/factory-empty-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "factory-empty::zz_async",
+            "origin": "source",
+            "target": "scripts/factory-empty.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/factory-empty-1.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/factory-empty-2.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "api::zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/factory-empty-3.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": false,
+            "appliedFile": "expected/factory-empty-4.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_native_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": true,
+            "appliedFile": "expected/factory-empty-5.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "factory-positional",
+        "file": "scripts/factory-positional.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "factory-positional::zz_sync",
+            "origin": "source",
+            "target": "scripts/factory-positional.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/factory-positional-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "factory-positional::zz_async",
+            "origin": "source",
+            "target": "scripts/factory-positional.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/factory-positional-1.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/factory-positional-2.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "api::zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/factory-positional-3.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": false,
+            "appliedFile": "expected/factory-positional-4.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_native_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": true,
+            "appliedFile": "expected/factory-positional-5.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "factory-named",
+        "file": "scripts/factory-named.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "factory-named::zz_sync",
+            "origin": "source",
+            "target": "scripts/factory-named.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/factory-named-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "factory-named::zz_async",
+            "origin": "source",
+            "target": "scripts/factory-named.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/factory-named-1.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/factory-named-2.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "api::zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/factory-named-3.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": false,
+            "appliedFile": "expected/factory-named-4.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_native_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": true,
+            "appliedFile": "expected/factory-named-5.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "factory-nested",
+        "file": "scripts/factory-nested.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "factory-nested::zz_sync",
+            "origin": "source",
+            "target": "scripts/factory-nested.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/factory-nested-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "factory-nested::zz_async",
+            "origin": "source",
+            "target": "scripts/factory-nested.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/factory-nested-1.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/factory-nested-2.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "api::zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/factory-nested-3.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": false,
+            "appliedFile": "expected/factory-nested-4.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_native_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": true,
+            "appliedFile": "expected/factory-nested-5.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "factory-comment",
+        "file": "scripts/factory-comment.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "factory-comment::zz_sync",
+            "origin": "source",
+            "target": "scripts/factory-comment.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/factory-comment-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "factory-comment::zz_async",
+            "origin": "source",
+            "target": "scripts/factory-comment.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/factory-comment-1.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/factory-comment-2.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "api::zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/factory-comment-3.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": false,
+            "appliedFile": "expected/factory-comment-4.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_native_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": true,
+            "appliedFile": "expected/factory-comment-5.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "factory-line-comment",
+        "file": "scripts/factory-line-comment.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "factory-line-comment::zz_sync",
+            "origin": "source",
+            "target": "scripts/factory-line-comment.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/factory-line-comment-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "factory-line-comment::zz_async",
+            "origin": "source",
+            "target": "scripts/factory-line-comment.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/factory-line-comment-1.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/factory-line-comment-2.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "api::zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/factory-line-comment-3.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": false,
+            "appliedFile": "expected/factory-line-comment-4.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_native_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": true,
+            "appliedFile": "expected/factory-line-comment-5.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "factory-middle",
+        "file": "scripts/factory-middle.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "factory-middle::zz_sync",
+            "origin": "source",
+            "target": "scripts/factory-middle.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/factory-middle-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "factory-middle::zz_async",
+            "origin": "source",
+            "target": "scripts/factory-middle.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/factory-middle-1.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/factory-middle-2.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "api::zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/factory-middle-3.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": false,
+            "appliedFile": "expected/factory-middle-4.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_native_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": true,
+            "appliedFile": "expected/factory-middle-5.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "factory-awaited",
+        "file": "scripts/factory-awaited.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "factory-awaited::zz_sync",
+            "origin": "source",
+            "target": "scripts/factory-awaited.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/factory-awaited-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "factory-awaited::zz_async",
+            "origin": "source",
+            "target": "scripts/factory-awaited.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/factory-awaited-1.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/factory-awaited-2.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "api::zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/factory-awaited-3.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": false,
+            "appliedFile": "expected/factory-awaited-4.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_native_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": true,
+            "appliedFile": "expected/factory-awaited-5.txt",
+            "diagnostics": []
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "factory-qualified",
+        "file": "scripts/factory-qualified.vela",
+        "items": [
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync",
+            "description": "api::zz_async",
+            "async": false,
+            "appliedFile": "expected/factory-qualified-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "async",
+            "description": "api::zz_sync",
+            "async": true,
+            "appliedFile": "expected/factory-qualified-1.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "factory-namespace",
+        "file": "scripts/factory-namespace.vela",
+        "items": [
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync",
+            "description": "api::zz_async",
+            "async": false,
+            "appliedFile": "expected/factory-namespace-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "async",
+            "description": "api::zz_sync",
+            "async": true,
+            "appliedFile": "expected/factory-namespace-1.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "factory-imported",
+        "file": "scripts/factory-imported.vela",
+        "items": [
+          {
+            "label": "zz_imported",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_imported",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "async",
+            "description": "api::zz_sync",
+            "async": true,
+            "appliedFile": "expected/factory-imported-0.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "reference",
+        "file": "scripts/reference.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "reference::zz_sync",
+            "origin": "source",
+            "target": "scripts/reference.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/reference-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/reference-1.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": false,
+            "appliedFile": "expected/reference-2.txt",
+            "diagnostics": []
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "ordinary-new-call",
+        "file": "scripts/ordinary-new-call.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "ordinary-new-call::zz_sync",
+            "origin": "source",
+            "target": "scripts/ordinary-new-call.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/ordinary-new-call-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "ordinary-new-call::zz_async",
+            "origin": "source",
+            "target": "scripts/ordinary-new-call.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/ordinary-new-call-1.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "api::zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/ordinary-new-call-2.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "api::zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/ordinary-new-call-3.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_native_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": false,
+            "appliedFile": "expected/ordinary-new-call-4.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_native_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": true,
+            "appliedFile": "expected/ordinary-new-call-5.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "ordinary-existing-call",
+        "file": "scripts/ordinary-existing-call.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "ordinary-existing-call::zz_sync",
+            "origin": "source",
+            "target": "scripts/ordinary-existing-call.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/ordinary-existing-call-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "ordinary-existing-call::zz_async",
+            "origin": "source",
+            "target": "scripts/ordinary-existing-call.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/ordinary-existing-call-1.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/ordinary-existing-call-2.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "api::zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/ordinary-existing-call-3.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": false,
+            "appliedFile": "expected/ordinary-existing-call-4.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_native_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": true,
+            "appliedFile": "expected/ordinary-existing-call-5.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "method-factory",
+        "file": "scripts/method-factory.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Method",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "method-factory::Factory.zz_sync",
+            "origin": "source",
+            "target": "scripts/method-factory.vela",
+            "targetMarker": "method-sync",
+            "async": false,
+            "appliedFile": "expected/method-factory-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_async",
+            "kind": "Method",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "method-factory::Factory.zz_async",
+            "origin": "source",
+            "target": "scripts/method-factory.vela",
+            "targetMarker": "method-async",
+            "async": true,
+            "appliedFile": "expected/method-factory-1.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "schema-method-factory",
+        "file": "scripts/schema-method-factory.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Method",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "host::Factory.zz_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": "method-sync",
+            "async": false,
+            "appliedFile": "expected/schema-method-factory-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_async",
+            "kind": "Method",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "host::Factory.zz_async",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": "method-async",
+            "async": true,
+            "appliedFile": "expected/schema-method-factory-1.txt",
+            "diagnostics": []
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "dynamic-any",
+        "file": "scripts/dynamic-any.vela",
+        "items": [
+          {
+            "label": "zz_callback",
+            "kind": "Parameter",
+            "detail": "Any",
+            "insert": "zz_callback",
+            "format": "PlainText",
+            "named": false,
+            "appliedFile": "expected/dynamic-any-0.txt",
+            "diagnostics": []
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "dynamic-closure",
+        "file": "scripts/dynamic-closure.vela",
+        "items": [
+          {
+            "label": "zz_callback",
+            "kind": "Parameter",
+            "detail": "Closure",
+            "insert": "zz_callback",
+            "format": "PlainText",
+            "named": false,
+            "appliedFile": "expected/dynamic-closure-0.txt",
+            "diagnostics": []
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "ordinary-comment-boundary",
+        "file": "scripts/ordinary-comment-boundary.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "ordinary-comment-boundary::zz_sync",
+            "origin": "source",
+            "target": "scripts/ordinary-comment-boundary.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/ordinary-comment-boundary-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "ordinary-comment-boundary::zz_async",
+            "origin": "source",
+            "target": "scripts/ordinary-comment-boundary.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/ordinary-comment-boundary-1.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "api::zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync",
+            "async": false,
+            "appliedFile": "expected/ordinary-comment-boundary-2.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "api::zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "async",
+            "async": true,
+            "appliedFile": "expected/ordinary-comment-boundary-3.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> Closure",
+            "insert": "zz_native_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": false,
+            "appliedFile": "expected/ordinary-comment-boundary-4.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> Closure",
+            "insert": "zz_native_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null,
+            "async": true,
+            "appliedFile": "expected/ordinary-comment-boundary-5.txt",
+            "diagnostics": [
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "call"
+              }
+            ]
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "reflected-factory",
+        "file": "scripts/reflected-factory.vela",
+        "items": [
+          {
+            "label": "call",
+            "kind": "Function",
+            "detail": "Function(Any, String) -> Any",
+            "insert": "call",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "reflect::call",
+            "origin": "builtin",
+            "description": "reflect::call",
+            "target": null,
+            "appliedFile": "expected/reflected-factory-0.txt",
+            "diagnostics": []
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "reflected-alias",
+        "file": "scripts/reflected-alias.vela",
+        "items": [
+          {
+            "label": "zz_reflect",
+            "kind": "Function",
+            "detail": "Function(Any, String) -> Any",
+            "insert": "zz_reflect",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "reflect::call",
+            "origin": "builtin",
+            "description": "reflect::call",
+            "target": null,
+            "appliedFile": "expected/reflected-alias-0.txt",
+            "diagnostics": []
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      }
+    ]
+  }
+}

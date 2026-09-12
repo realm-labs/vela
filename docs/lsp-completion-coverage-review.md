@@ -38,8 +38,13 @@ post-edit signature check.
    insertion across builtin collection/Option/Result/Iterator methods, named and
    reordered slots, same-name source/schema/import owners and exact applied
    definitions. Dynamic callbacks remain dynamic; ordinary source/schema methods
-   do not acquire a guessed sync-only callback contract. Callback factories and
-   dynamic arity/return behavior still need review. Twenty-four
+   do not acquire a guessed sync-only callback contract.
+   `completion-callback-factories` adds 21 contexts and 82 candidate applications:
+   existing argument lists, named/nested arguments, comments/newlines, aliases,
+   source/schema methods, async factories and reflected Any returns. It asserts
+   exact edits, definitions, ownership and await diagnostics while retaining
+   direct reference and new-call policies. Dynamic arity/return behavior still
+   needs review. Twenty-four
    `completion-task-eligibility` cases verify complete static
    target sets, async metadata, canonical resolve ownership, LF/CRLF Unicode edits
    and applied diagnostics. Unknown/dynamic workers do not invent an outcome type;

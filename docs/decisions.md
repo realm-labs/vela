@@ -4563,3 +4563,13 @@ values. Task and callback completion share syntax-call selection and plain-path
 edit construction; this does not add runtime callback execution or a new API.
 Global stdlib function candidates carry explicit builtin symbols, just as their
 qualified and imported counterparts do, so resolve and ownership checks agree.
+
+Function and method completion preserves an existing argument list after the
+whole identifier. Inspect the next non-trivia syntax token and strip only the
+generated `($0)` suffix when it is `(`, reusing plain-path edit construction.
+Apply this shared insertion step after task and callback eligibility policies.
+Source, schema, imported and builtin candidates retain their original ownership
+and asyncness; factory calls are ordinary calls whose results may become callback
+values. This avoids duplicate calls without guessing callback arity or evaluating
+a factory. Direct callback reference slots and new call snippets keep their
+separate insertion rules.
