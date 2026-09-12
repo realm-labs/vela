@@ -68,6 +68,10 @@ fn source_declaration_completion_items(
         .map(|module| module.join())
         .unwrap_or_default();
     let mut accumulator = CompletionAccumulator::new(replace_range, prefix);
+    let local_names = query
+        .local_bindings_before_cursor()
+        .map(|binding| binding.name.as_str())
+        .collect::<std::collections::BTreeSet<_>>();
     let declarations = graph.declarations_by_name_prefix(prefix);
     for (item, symbol) in relative_current_module_items(
         declarations
@@ -84,7 +88,17 @@ fn source_declaration_completion_items(
                 item.kind,
                 AnalysisCompletionKind::Type | AnalysisCompletionKind::Trait
             ) {
-                type_completion_item(item, &symbol, prefix)
+                // A short label is presentation, not a reference to a type in
+                // another module. Keep current-module spelling only when a
+                // visible local does not own that name in expression scope.
+                let insertion = if local_names.contains(item.label.as_str()) {
+                    symbol.clone()
+                } else {
+                    item.label.clone()
+                };
+                let mut completion = type_completion_item(item, &symbol, prefix);
+                completion.insert_text = Some(insertion);
+                completion
             } else {
                 service_item_from_analysis_completion(item, prefix)
             };

@@ -36,7 +36,7 @@ fn completion_uses_short_type_labels_with_owner_details() {
     assert_eq!(reward.kind(), CompletionKind::Type);
     assert_eq!(reward.lookup(), "game::reward::Reward");
     assert_eq!(reward.filter_text(), "game::reward::Reward");
-    assert_eq!(reward.insert_text(), Some("Reward"));
+    assert_eq!(reward.insert_text(), Some("game::reward::Reward"));
     assert_eq!(reward.label_details().description(), Some("game::reward"));
     assert_eq!(
         reward.symbol(),
@@ -48,7 +48,7 @@ fn completion_uses_short_type_labels_with_owner_details() {
     assert_eq!(region.kind(), CompletionKind::Type);
     assert_eq!(region.lookup(), "game::schema::Region");
     assert_eq!(region.filter_text(), "game::schema::Region");
-    assert_eq!(region.insert_text(), Some("Region"));
+    assert_eq!(region.insert_text(), Some("game::schema::Region"));
     assert_eq!(region.label_details().description(), Some("game::schema"));
     assert_eq!(
         region.symbol(),

@@ -1153,10 +1153,21 @@
         "completion/syntax/S5/negative/protocol"
       ],
       "summary": "Combine parameter-name and expression candidates at uncommitted call arguments when positional insertion is legal. Extract shared CallArgumentPosition facts so signature mapping, available names and positional eligibility use the same occupied slots. Preserve distinct named-argument edit identity and visible role description even when a local binding or function parameter shares its label. Replace complete existing labels without adding another equals sign or overwriting values; suppress positional choices in committed labels, after named arguments, in overflow/zero-arity known calls and where later names occupy the current positional slot. Unknown/dynamic targets retain expression authoring. Route reserved Service calls through the same logic. Thirty-five independent shared cases run in service and protocol under LF/CRLF (70 contexts per layer), asserting full label/insert pairs, kinds, types, insertion formats, role descriptions, Unicode ranges, parser-clean applications, repeated results and didChange/restoration. Includes source/schema/Service/enum/dynamic call sites, global function snippets, private/current-module visibility, incomplete EOF calls, lambda/block scope, local shadowing, captures, earlier default parameters and later-local exclusion. Prior named-argument/import/call-context fixtures now compare complete frozen expression sets alongside all parameter candidates; these sets enumerate authored declarations and existing callable vocabulary, not provider responses. Their edit re-query now explicitly checks replacement of the current label, rather than incorrectly requiring it to disappear. Fix private cross-module declaration leakage; use active HIR scopes/ancestor bodies and latest visible declarations for locals. Retain earlier parameters in ParameterDefault parent scope, anchor EOF scope through the actual callee, and take binding types only from local facts so an unknown lambda parameter cannot borrow its enclosing function type. Preserve b03-16-service-red.log (missing ordinary value), focused2.log (missing EOF local), private-red.log, scope-red.log (closed lambda parameter leak), scope-focused.log (unknown parameter borrowed lambda type), and regression-final1.log (default-parent recovery during the refactor). Final full service 598 plus two historical ignored and protocol 585 passed; relevant all-target Clippy, fmt and Node 73 passed. Installed VSIX run-KT5gNg passed 9; Windows input-OgXux9 passed 13; strict run-ObizMp refreshed all 145 accepted B00-B02 requirements with original snapshots intact. Close call-argument-expression-candidates; listed S5 IDs identify partial work only and broad S5 remains unreviewed. B03 is unaccepted; remaining whole-batch scope 1332. Continue B03.17 by independently checking expression candidate identities and inserted references, especially cross-module source/schema type constructors, imported aliases, local/global/schema same-name collisions and selected receiver ownership after applying edits. completion/type_display.rs currently renders and inserts the short type label while retaining a qualified lookup; expression.rs routes global source/schema types through that helper, so verify actual post-edit resolution rather than treating parser-clean text as semantic proof. source_declaration.rs filters visibility but does not enumerate import aliases. Then provider/variable-arity metadata, root Service namespace suggestions and remaining S5/lifecycle/UX04. Fresh macOS proof is required when next used; B16 remains deferred. Find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B03.17",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/protocol"
+      ],
+      "summary": "Expression type completions retain short display labels with canonical filter/symbol/resolve identity, but insert qualified source/schema paths. Keep current-module short spelling only when no visible local owns it. Filter registry types when a source declaration owns their spelling, including private source owners, or a visible local owns an unqualified registry name. Replace whole identifiers in expression/statement contexts to avoid retaining a suffix when accepting mid-token. Eleven independently authored shared cases run under LF/CRLF in service and protocol (22 contexts and 84 type-edit applications per layer). Assert complete label/insert/kind sets, exact byte/UTF-16 edits, parsing, canonical source/schema ownership, exact post-edit source definition URI/ranges, receiver types and member identities/types, resolve edit/identity preservation, and didChange/restoration. Cover cross-module same-name types, current-module/private declarations, visible local collisions, short/aliased/namespace import environments, unqualified/qualified registry types, source/registry path collisions, argument/expression/statement positions and mid-token replacement. Preserve types-red.log (three owners all inserted the same short name), types-focused.log (registered constructor result remained unknown), collision-red.log (private source owner leaked through registry), suffix-red.log (trailing identifier text survived replacement), and regression.log (old short-insert expectations). Existing display-label tests now require semantically resolvable insertion paths; type-hint/module-path behavior remains separately unreviewed. Shared analysis now propagates the exact result fact of an already resolved RegistryType constructor, with independent registered field change/removal/recovery, source precedence and unknown-owner tests. Full workspace passed 4420 tests with two historical ignored, including service 599 plus two ignored and protocol 586. Workspace all-target Clippy, fmt and Node 73 passed. Installed VSIX run-otBROY passed 9; native Windows input-g9W3ul passed 13; strict run-p4OBFx refreshed all 145 accepted B00-B02 requirements with original snapshots intact. These S5 IDs record partial child work only; broad S5 remains unreviewed, B03 remains unaccepted, and remaining whole-batch scope is 1332. Continue B03.18 with independent expression import-alias and namespace-alias candidate/insert/resolve oracles: source_declaration.rs still enumerates canonical declarations without imports, schema/stdlib providers likewise lack contextual alias enumeration, and source function/const short insertions under local shadowing still need actual post-edit ownership proof. Include duplicate/missing/private imports, source/schema/stdlib collisions, dependency alias paths and type-hint/module-path insertion ownership as applicable; preserve this child's constructor evidence. Then provider/variable-arity metadata, root Service namespace suggestions and remaining S5/lifecycle/UX04. Fresh macOS proof is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.17",
-  "nextTask": "B03.17",
+  "activeChild": "B03.18",
+  "nextTask": "B03.18",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -2836,7 +2847,25 @@
     "target/b03-16-accepted-regression.log",
     "target/lsp-matrix/run-2Y0UzR/report.json",
     "editors/vscode/test-results/run-KT5gNg/results.json",
-    "editors/vscode/test-results/input-OgXux9/results.json"
+    "editors/vscode/test-results/input-OgXux9/results.json",
+    "target/lsp-matrix/run-p4OBFx/report.json",
+    "target/b03-17-baseline.log",
+    "target/b03-17-types-red.log",
+    "target/b03-17-types-focused.log",
+    "target/b03-17-collision-red.log",
+    "target/b03-17-suffix-red.log",
+    "target/b03-17-analysis-final.log",
+    "target/b03-17-regression.log",
+    "target/b03-17-regression-final2.log",
+    "target/b03-17-workspace.log",
+    "target/b03-17-clippy.log",
+    "target/b03-17-node.log",
+    "target/b03-17-editor.log",
+    "target/b03-17-input.log",
+    "target/b03-17-accepted-regression.log",
+    "target/lsp-matrix/run-9AJ837/report.json",
+    "editors/vscode/test-results/run-otBROY/results.json",
+    "editors/vscode/test-results/input-g9W3ul/results.json"
   ],
   "openIssues": [
     {
@@ -3457,8 +3486,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "4b2a99107b4e20da44f9fa685ef41b488e788763",
-          "treeSha256": "274f20fecfef4d1aefbde8bd079324e68478ed1494b07c2fba55cc44e36a0ad4"
+          "revision": "bdb58de79618cd571828164f78f106468fff6cd2",
+          "treeSha256": "e61bf746497c8ce330c2a0f4196609b9a9efe28fa5539ce2bd0cc0842a53d9dc"
         },
         "profile": {
           "platform": "win32",
@@ -3466,11 +3495,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-ObizMp/report.json"
+          "target/lsp-matrix/run-p4OBFx/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-KT5gNg/results.json --local-results editors/vscode/test-results/input-OgXux9/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-otBROY/results.json --local-results editors/vscode/test-results/input-g9W3ul/results.json",
             "exitCode": 0
           }
         ]

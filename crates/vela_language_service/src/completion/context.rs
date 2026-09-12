@@ -189,7 +189,9 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
         return CompletionContext {
             kind: CompletionContextKind::Statement,
             prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, offset),
+            replace_range: cursor
+                .identifier_range()
+                .unwrap_or(TextRange::new(prefix_start, offset)),
             module_base: None,
             member_receiver: None,
             record_constructor: None,
@@ -199,9 +201,7 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
         };
     }
 
-    if cursor.kind() == CursorContextKind::Expression {
-        return CompletionContext::expression(prefix_start, prefix);
-    }
-
-    CompletionContext::expression(prefix_start, prefix)
+    let mut context = CompletionContext::expression(prefix_start, prefix);
+    context.replace_range = cursor.identifier_range().unwrap_or(context.replace_range);
+    context
 }

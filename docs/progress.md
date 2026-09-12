@@ -692,8 +692,18 @@ fixtures now assert frozen complete expression sets alongside every parameter.
 Private cross-module declarations and closed lambda/block locals are excluded;
 local shadowing, captures, earlier default parameters and incomplete-call scope
 recovery use HIR ownership. Unknown local facts no longer borrow an enclosing
-expression's type. Source/schema expression insertion ownership, provider and
-variable-arity metadata, broader S5/lifecycle coverage and UX04 remain open.
+expression's type. Expression type candidates now retain short display labels
+while inserting qualified source/schema paths; current-module types retain a
+short insertion only when no visible local owns that spelling. Source owners
+also exclude conflicting registry type candidates, including private declarations.
+Eleven shared cases verify complete candidate/edit sets, same-name ownership,
+whole-identifier replacement, exact post-edit source definitions and the selected
+constructor's receiver members under Unicode LF/CRLF. Protocol tests apply and
+restore overlays and retain resolve identity. Registered record constructors now
+carry their exact static result type into shared analysis; field changes, schema
+removal/recovery, source precedence and unknown owners have regression checks.
+Imported alias candidate enumeration, other expression ownership partitions,
+provider/variable-arity metadata, broader S5/lifecycle coverage and UX04 remain open.
 The earlier macOS input regression stopped on a locked
 desktop; that record does not imply a Windows blocker. Current platform evidence
 must be collected before strict acceptance; see [blocked.md](blocked.md).
@@ -702,7 +712,7 @@ actual suggestion acceptance, F12/back and palettes, modifier-click, context-men
 Peek, exact Unicode targets and no-jump outcomes pass. The installed provider
 suite passes all nine scenarios. The original macOS acceptance remains historical;
 changed driver code needs fresh proof when that machine is next used. Shared
-implementation resumes at B03.17.
+implementation resumes at B03.18.
 
 ### Deferred Tracks
 

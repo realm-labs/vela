@@ -109,7 +109,7 @@ fn lsp_completion_uses_short_type_labels_with_owner_details() {
             detail: "game::reward::Reward",
             filter_text: "game::reward::Reward",
             owner: "game::reward",
-            new_text: "Reward",
+            new_text: "game::reward::Reward",
         },
     );
     assert_no_completion(&response, "game::reward::Reward");
@@ -120,7 +120,7 @@ fn lsp_completion_uses_short_type_labels_with_owner_details() {
             detail: "game::schema::Region",
             filter_text: "game::schema::Region",
             owner: "game::schema",
-            new_text: "Region",
+            new_text: "game::schema::Region",
         },
     );
     assert_no_completion(&response, "game::schema::Region");

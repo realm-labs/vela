@@ -17,6 +17,8 @@ mod call_parameter_tests;
 mod callable_import_tests;
 mod context;
 mod expression;
+#[cfg(test)]
+mod expression_ownership_tests;
 mod item;
 mod lambda_parameter;
 mod local;

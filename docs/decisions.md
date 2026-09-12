@@ -4360,3 +4360,20 @@ callee anchors scope recovery for incomplete calls beyond HIR spans. Binding
 types come from local analysis facts, never an enclosing expression selected by
 a declaration-name span. Cross-module source declarations require public
 visibility. These are tooling queries; no script or host code executes.
+
+## Expression Type Labels Preserve Resolvable Insertions
+
+A short type label is presentation; its replacement text must still identify
+the selected owner. Unqualified expression completion inserts a source/schema
+type's qualified path, retaining the current-module short spelling only when
+no visible local shadows it. Source ownership excludes conflicting registry
+candidates, including private declarations, and a local binding excludes a
+same-name unqualified registry candidate. Preserve canonical symbol/resolve
+identity separately from the display label. Replace the complete identifier in
+expression and statement contexts so accepting in the middle cannot leave a
+suffix behind. Validate applied references and constructor receiver facts as
+well as candidate metadata and parseability.
+
+Shared analysis carries an already resolved registry record constructor's
+exact registered result type into local/member facts. It does not infer a type
+from a global short-name match or replace a source constructor's ownership.

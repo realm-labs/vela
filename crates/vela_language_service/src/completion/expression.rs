@@ -30,6 +30,8 @@ pub(super) fn expression_completion_items(
     items.extend(builtin_value_completion_items(context.prefix()));
     items.extend(schema_type_completion_items(
         schema,
+        graph,
+        query,
         context.replace_range(),
         context.prefix(),
     ));

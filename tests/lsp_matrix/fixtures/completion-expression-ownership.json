@@ -1,0 +1,500 @@
+{
+  "version": 1,
+  "id": "completion-expression-ownership",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.expression_ownership\"\nname = \"expression_ownership\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::TargetToken\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"host::TargetToken\"\n        }\n      },\n      {\n        \"name\": \"api::TargetToken\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"api::TargetToken\"\n        }\n      },\n      {\n        \"name\": \"private::TargetToken\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"private::TargetToken\"\n        }\n      },\n      {\n        \"name\": \"TargetToken\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"TargetToken\"\n        }\n      }\n    ],\n    \"fields\": [\n      {\n        \"owner\": \"host::TargetToken\",\n        \"name\": \"tag\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"i64\"\n        }\n      },\n      {\n        \"owner\": \"api::TargetToken\",\n        \"name\": \"tag\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"bool\"\n        }\n      },\n      {\n        \"owner\": \"private::TargetToken\",\n        \"name\": \"tag\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"bool\"\n        }\n      },\n      {\n        \"owner\": \"TargetToken\",\n        \"name\": \"tag\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"string\"\n        }\n      }\n    ]\n  }\n}\n",
+    "scripts/api.vela": "/* 中😀 */ pub struct [[type:start]]TargetToken[[type:end]] { tag: i64 }\n",
+    "scripts/other.vela": "/* 中😀 */ pub struct [[type:start]]TargetToken[[type:end]] { tag: i64 }\n",
+    "scripts/private.vela": "struct TargetToken { tag: i64 }\n",
+    "scripts/cross_module.vela": "/* 中😀 */ fn main() { let selected = [[replace:start]]TargetT[[cursor]][[replace:end]] { tag: 1 }; selected.ta[[member]]; }\n",
+    "scripts/import_short.vela": "use api::TargetToken;\n/* 中😀 */ fn main() { let selected = [[replace:start]]TargetT[[cursor]][[replace:end]] { tag: 1 }; selected.ta[[member]]; }\n",
+    "scripts/import_alias.vela": "use api::TargetToken as Imported;\n/* 中😀 */ fn main() { let selected = [[replace:start]]TargetT[[cursor]][[replace:end]] { tag: 1 }; selected.ta[[member]]; }\n",
+    "scripts/namespace_alias.vela": "use api as Imported;\n/* 中😀 */ fn main() { let selected = [[replace:start]]TargetT[[cursor]][[replace:end]] { tag: 1 }; selected.ta[[member]]; }\n",
+    "scripts/local_shadow.vela": "/* 中😀 */ fn main() { let TargetToken = 1; let selected = [[replace:start]]TargetT[[cursor]][[replace:end]] { tag: 1 }; selected.ta[[member]]; }\n",
+    "scripts/current_type.vela": "struct [[type:start]]TargetToken[[type:end]] { tag: i64 }\n/* 中😀 */ fn main() { let selected = [[replace:start]]TargetT[[cursor]][[replace:end]] { tag: 1 }; selected.ta[[member]]; }\n",
+    "scripts/current_shadow.vela": "struct [[type:start]]TargetToken[[type:end]] { tag: i64 }\n/* 中😀 */ fn main() { let TargetToken = 1; let selected = [[replace:start]]TargetT[[cursor]][[replace:end]] { tag: 1 }; selected.ta[[member]]; }\n",
+    "scripts/argument.vela": "/* 中😀 */ fn main() { sink([[replace:start]]TargetT[[cursor]][[replace:end]] { tag: 1 }); }\n",
+    "scripts/argument_suffix.vela": "/* 中😀 */ fn main() { sink([[replace:start]]TargetT[[cursor]]oken[[replace:end]] { tag: 1 }); }\n",
+    "scripts/expression_suffix.vela": "/* 中😀 */ fn main() { let selected = [[replace:start]]TargetT[[cursor]]oken[[replace:end]] { tag: 1 }; selected.ta[[member]]; }\n",
+    "scripts/statement_suffix.vela": "/* 中😀 */ fn main() { [[replace:start]]TargetT[[cursor]]oken[[replace:end]] { tag: 1 }; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "cross_module",
+        "file": "scripts/cross_module.vela",
+        "items": [
+          {
+            "label": "TargetToken",
+            "insert": "api::TargetToken",
+            "symbol": "api::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "other::TargetToken",
+            "symbol": "other::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/other.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "host::TargetToken",
+            "symbol": "host::TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "TargetToken",
+            "symbol": "TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "String"
+          }
+        ],
+        "receiver": true
+      },
+      {
+        "id": "import_short",
+        "file": "scripts/import_short.vela",
+        "items": [
+          {
+            "label": "TargetToken",
+            "insert": "api::TargetToken",
+            "symbol": "api::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "other::TargetToken",
+            "symbol": "other::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/other.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "host::TargetToken",
+            "symbol": "host::TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "i64"
+          }
+        ],
+        "receiver": true
+      },
+      {
+        "id": "import_alias",
+        "file": "scripts/import_alias.vela",
+        "items": [
+          {
+            "label": "TargetToken",
+            "insert": "api::TargetToken",
+            "symbol": "api::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "other::TargetToken",
+            "symbol": "other::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/other.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "host::TargetToken",
+            "symbol": "host::TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "TargetToken",
+            "symbol": "TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "String"
+          }
+        ],
+        "receiver": true
+      },
+      {
+        "id": "namespace_alias",
+        "file": "scripts/namespace_alias.vela",
+        "items": [
+          {
+            "label": "TargetToken",
+            "insert": "api::TargetToken",
+            "symbol": "api::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "other::TargetToken",
+            "symbol": "other::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/other.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "host::TargetToken",
+            "symbol": "host::TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "TargetToken",
+            "symbol": "TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "String"
+          }
+        ],
+        "receiver": true
+      },
+      {
+        "id": "local_shadow",
+        "file": "scripts/local_shadow.vela",
+        "items": [
+          {
+            "label": "TargetToken",
+            "insert": "api::TargetToken",
+            "symbol": "api::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "other::TargetToken",
+            "symbol": "other::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/other.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "host::TargetToken",
+            "symbol": "host::TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "TargetToken",
+            "symbol": null,
+            "kind": "Binding",
+            "origin": "local",
+            "target": null,
+            "memberDetail": "i64"
+          }
+        ],
+        "receiver": true
+      },
+      {
+        "id": "current_type",
+        "file": "scripts/current_type.vela",
+        "items": [
+          {
+            "label": "TargetToken",
+            "insert": "api::TargetToken",
+            "symbol": "api::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "other::TargetToken",
+            "symbol": "other::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/other.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "host::TargetToken",
+            "symbol": "host::TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "TargetToken",
+            "symbol": "current_type::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/current_type.vela",
+            "memberDetail": "i64"
+          }
+        ],
+        "receiver": true
+      },
+      {
+        "id": "current_shadow",
+        "file": "scripts/current_shadow.vela",
+        "items": [
+          {
+            "label": "TargetToken",
+            "insert": "api::TargetToken",
+            "symbol": "api::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "other::TargetToken",
+            "symbol": "other::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/other.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "host::TargetToken",
+            "symbol": "host::TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "current_shadow::TargetToken",
+            "symbol": "current_shadow::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/current_shadow.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "TargetToken",
+            "symbol": null,
+            "kind": "Binding",
+            "origin": "local",
+            "target": null,
+            "memberDetail": "i64"
+          }
+        ],
+        "receiver": true
+      },
+      {
+        "id": "argument",
+        "file": "scripts/argument.vela",
+        "items": [
+          {
+            "label": "TargetToken",
+            "insert": "api::TargetToken",
+            "symbol": "api::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "other::TargetToken",
+            "symbol": "other::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/other.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "host::TargetToken",
+            "symbol": "host::TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "TargetToken",
+            "symbol": "TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "String"
+          }
+        ],
+        "receiver": false
+      },
+      {
+        "id": "argument_suffix",
+        "file": "scripts/argument_suffix.vela",
+        "items": [
+          {
+            "label": "TargetToken",
+            "insert": "api::TargetToken",
+            "symbol": "api::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "other::TargetToken",
+            "symbol": "other::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/other.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "host::TargetToken",
+            "symbol": "host::TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "TargetToken",
+            "symbol": "TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "String"
+          }
+        ],
+        "receiver": false
+      },
+      {
+        "id": "expression_suffix",
+        "file": "scripts/expression_suffix.vela",
+        "items": [
+          {
+            "label": "TargetToken",
+            "insert": "api::TargetToken",
+            "symbol": "api::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "other::TargetToken",
+            "symbol": "other::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/other.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "host::TargetToken",
+            "symbol": "host::TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "TargetToken",
+            "symbol": "TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "String"
+          }
+        ],
+        "receiver": true
+      },
+      {
+        "id": "statement_suffix",
+        "file": "scripts/statement_suffix.vela",
+        "items": [
+          {
+            "label": "TargetToken",
+            "insert": "api::TargetToken",
+            "symbol": "api::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "other::TargetToken",
+            "symbol": "other::TargetToken",
+            "kind": "Type",
+            "origin": "source",
+            "target": "scripts/other.vela",
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "host::TargetToken",
+            "symbol": "host::TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "i64"
+          },
+          {
+            "label": "TargetToken",
+            "insert": "TargetToken",
+            "symbol": "TargetToken",
+            "kind": "Type",
+            "origin": "schema",
+            "target": null,
+            "memberDetail": "String"
+          }
+        ],
+        "receiver": false
+      }
+    ]
+  }
+}
