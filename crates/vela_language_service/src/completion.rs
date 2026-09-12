@@ -54,6 +54,7 @@ mod service_parameter_tests;
 mod service_path;
 #[cfg(test)]
 mod service_path_tests;
+mod source_address;
 mod source_declaration;
 mod source_member;
 mod source_module;

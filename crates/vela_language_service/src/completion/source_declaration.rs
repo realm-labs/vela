@@ -1,8 +1,5 @@
 use vela_analysis::{
-    completion::{
-        CompletionItem as AnalysisCompletionItem, CompletionKind as AnalysisCompletionKind,
-        declaration_completion,
-    },
+    completion::{CompletionKind as AnalysisCompletionKind, declaration_completion},
     facts::AnalysisFacts,
 };
 use vela_hir::module_graph::ModuleGraph;
@@ -63,26 +60,35 @@ fn source_declaration_completion_items(
     prefix: &str,
     accepts_kind: impl Fn(AnalysisCompletionKind) -> bool,
 ) -> Vec<CompletionItem> {
-    let current_module = query
-        .module_path()
-        .map(|module| module.join())
-        .unwrap_or_default();
+    let Some(current_module) = query.module_key() else {
+        return Vec::new();
+    };
     let mut accumulator = CompletionAccumulator::new(replace_range, prefix);
     let local_names = query
         .local_bindings_before_cursor()
         .map(|binding| binding.name.as_str())
         .collect::<std::collections::BTreeSet<_>>();
     let declarations = graph.declarations_by_name_prefix(prefix);
-    for (item, symbol) in relative_current_module_items(
-        declarations
-            .into_iter()
-            .filter(|declaration| {
-                declaration.visibility == vela_hir::module_graph::Visibility::Public
-                    || graph.module_key(declaration.module) == query.module_key()
-            })
-            .filter_map(|declaration| declaration_completion(graph, facts, declaration)),
-        &current_module,
-    ) {
+    for declaration in declarations {
+        if declaration.visibility != vela_hir::module_graph::Visibility::Public
+            && graph.module_key(declaration.module) != Some(current_module)
+        {
+            continue;
+        }
+        let Some(address) =
+            super::source_address::declaration_address(graph, current_module, declaration)
+        else {
+            continue;
+        };
+        let Some(mut item) = declaration_completion(graph, facts, declaration) else {
+            continue;
+        };
+        let symbol = item.label.clone();
+        item.label = if graph.module_key(declaration.module) == Some(current_module) {
+            declaration.name.clone()
+        } else {
+            address.clone()
+        };
         if accepts_kind(item.kind) && label_segment_matches(&item.label, prefix) {
             let shadowed = local_names.contains(item.label.as_str());
             let mut completion = if matches!(
@@ -93,7 +99,7 @@ fn source_declaration_completion_items(
                 // another module. Keep current-module spelling only when a
                 // visible local does not own that name in expression scope.
                 let insertion = if local_names.contains(item.label.as_str()) {
-                    symbol.clone()
+                    address.clone()
                 } else {
                     item.label.clone()
                 };
@@ -104,45 +110,18 @@ fn source_declaration_completion_items(
                 service_item_from_analysis_completion(item, prefix)
             };
             if shadowed {
-                completion.metadata.lookup = Some(symbol.clone());
-                completion.metadata.filter_text = Some(symbol.clone());
+                completion.metadata.lookup = Some(address.clone());
+                completion.metadata.filter_text = Some(address.clone());
                 completion.insert_text = Some(
-                    super::analysis_item::callable_insert_text(completion.kind, &symbol)
-                        .unwrap_or_else(|| symbol.clone()),
+                    super::analysis_item::callable_insert_text(completion.kind, &address)
+                        .unwrap_or_else(|| address.clone()),
                 );
             }
+            completion
+                .insert_text
+                .get_or_insert_with(|| completion.label.clone());
             accumulator.add(completion.with_symbol(source_symbol(symbol)));
         }
     }
     accumulator.into_items()
-}
-
-fn relative_current_module_items(
-    items: impl IntoIterator<Item = AnalysisCompletionItem>,
-    current_module: &str,
-) -> Vec<(AnalysisCompletionItem, String)> {
-    if current_module.is_empty() {
-        return items
-            .into_iter()
-            .map(|item| {
-                let symbol = item.label.clone();
-                (item, symbol)
-            })
-            .collect();
-    }
-    let prefix = format!("{current_module}::");
-    items
-        .into_iter()
-        .map(|mut item| {
-            let symbol = item.label.clone();
-            if let Some(relative_label) = item
-                .label
-                .strip_prefix(&prefix)
-                .filter(|relative| !relative.contains("::"))
-            {
-                item.label = relative_label.to_owned();
-            }
-            (item, symbol)
-        })
-        .collect()
 }

@@ -15,6 +15,11 @@ fn package_type_ownership_preserves_dependency_boundaries_and_applied_targets() 
     assert_type_ownership("completion-package-type-ownership");
 }
 
+#[test]
+fn package_callable_ownership_preserves_sets_signatures_and_applied_targets() {
+    assert_type_ownership("completion-package-callables");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -35,10 +40,12 @@ fn assert_type_ownership(fixture_id: &str) {
             let result = db.completion_items(&uri(file), pos);
             assert_eq!(
                 result.context().kind(),
-                if case["context"] == "StructFieldDeclaration" {
-                    crate::CompletionContextKind::StructFieldDeclaration
-                } else {
-                    crate::CompletionContextKind::TypeHint
+                match case["context"].as_str() {
+                    Some("StructFieldDeclaration") =>
+                        crate::CompletionContextKind::StructFieldDeclaration,
+                    Some("Expression") => crate::CompletionContextKind::Expression,
+                    Some("ModulePath") => crate::CompletionContextKind::ModulePath,
+                    _ => crate::CompletionContextKind::TypeHint,
                 },
                 "{case}"
             );
@@ -74,7 +81,9 @@ fn assert_type_ownership(fixture_id: &str) {
                 if expected["origin"] != "local" {
                     assert_eq!(item.symbol(), Some(&expected_symbol), "{case} {expected}");
                 }
-                let edit = item.text_edit().expect("explicit edit");
+                let edit = item
+                    .text_edit()
+                    .unwrap_or_else(|| panic!("explicit edit: {case} {expected}"));
                 assert!(item.documentation().is_none());
                 assert_eq!(
                     serde_json::json!(
@@ -90,7 +99,8 @@ fn assert_type_ownership(fixture_id: &str) {
                 assert_eq!(edit.new_text(), string(expected, "insert"));
                 let insertion = format!(
                     "{}{}",
-                    edit.new_text().replace("$0", "1"),
+                    edit.new_text()
+                        .replace("$0", expected["value"].as_str().unwrap_or("1")),
                     string(case, "applySuffix")
                 );
                 let mut edited = source.text.clone();
@@ -104,6 +114,41 @@ fn assert_type_ownership(fixture_id: &str) {
                 let mut fresh = FixtureWorkspace::new(&spec).expect("fresh");
                 fresh.disk.get_mut(file).expect("file").text = edited.clone();
                 let fresh = databases(&fresh, &layout);
+                if let Some(signature) = expected["signature"].as_str() {
+                    let open = range.start.byte + insertion.find('(').expect("call");
+                    let help = fresh
+                        .signature_help(&uri(file), position(&edited, open + 1))
+                        .expect("applied signature");
+                    assert_eq!(help.signatures().len(), 1, "{case}");
+                    assert_eq!(help.signatures()[0].label(), signature, "{case} {expected}");
+                }
+                if let Some(argument) = expected.get("argument") {
+                    let text = source.text[..range.start.byte].to_owned()
+                        + &string(expected, "insert").replace("$0", "zz_")
+                        + &source.text[range.end.byte..];
+                    let start =
+                        range.start.byte + string(expected, "insert").find('(').expect("call") + 1;
+                    let mut argument_fixture =
+                        FixtureWorkspace::new(&spec).expect("argument fixture");
+                    argument_fixture.disk.get_mut(file).expect("file").text = text.clone();
+                    let arguments = databases(&argument_fixture, &layout)
+                        .completion_items(&uri(file), position(&text, start + 3));
+                    assert_eq!(
+                        arguments
+                            .items()
+                            .iter()
+                            .map(|i| i.label())
+                            .collect::<Vec<_>>(),
+                        [string(argument, "label")],
+                        "{case}"
+                    );
+                    let parameter = &arguments.items()[0];
+                    assert_eq!(parameter.kind(), crate::CompletionKind::Parameter);
+                    assert_eq!(parameter.detail(), string(argument, "detail"));
+                    let edit = parameter.text_edit().expect("parameter edit");
+                    assert_eq!(edit.range(), TextRange::new(start, start + 3));
+                    assert_eq!(edit.new_text(), format!("{} = ", string(argument, "label")));
+                }
                 if case["member"] == true {
                     let byte = source.markers["member"].start.byte + insertion.len()
                         - (range.end.byte - range.start.byte);
@@ -129,7 +174,13 @@ fn assert_type_ownership(fixture_id: &str) {
                         assert_eq!(members.items()[0].detail(), detail, "{case} {expected}");
                     }
                 }
-                let start = range.start.byte + insertion.rfind("::").map_or(0, |i| i + 2);
+                let start = range.start.byte
+                    + insertion
+                        .split('(')
+                        .next()
+                        .expect("path")
+                        .rfind("::")
+                        .map_or(0, |i| i + 2);
                 if let Some(target) = expected["target"].as_str() {
                     let target = if target == "self" { file } else { target };
                     let definition = fresh

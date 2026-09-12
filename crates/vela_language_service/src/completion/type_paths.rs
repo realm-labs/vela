@@ -33,33 +33,11 @@ impl<'a, 'db> TypePaths<'a, 'db> {
             ) {
                 continue;
             }
-            let owner = graph.module_key(declaration.module)?;
             let canonical = graph.qualified_declaration_name(declaration.id)?;
-            let address = if owner.package == current.package {
-                let path = canonical.split("::").map(str::to_owned).collect::<Vec<_>>();
-                if graph
-                    .expand_import_path(graph.module_id(current)?, &path)
-                    .as_ref()
-                    == Some(&path)
-                {
-                    canonical.clone()
-                } else {
-                    format!("crate::{canonical}")
-                }
-            } else {
-                let Some(alias) =
-                    graph
-                        .dependency_aliases(&current.package)
-                        .into_iter()
-                        .find(|alias| {
-                            graph
-                                .resolve_module_path(current, &[alias.to_string()])
-                                .is_some_and(|key| key.package == owner.package)
-                        })
-                else {
-                    continue;
-                };
-                format!("{alias}::{canonical}")
+            let Some(address) =
+                super::source_address::declaration_address(graph, current, declaration)
+            else {
+                continue;
             };
             paths.insert(address, canonical);
         }

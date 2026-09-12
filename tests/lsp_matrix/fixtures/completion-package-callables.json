@@ -1,0 +1,357 @@
+{
+  "version": 1,
+  "id": "completion-package-callables",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.type_aliases\"\nname = \"type_aliases\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n[dependencies]\nexternal = { path = \"deps/external\" }\n",
+    "deps/external/vela.toml": "[package]\nid = \"dev.vela.external\"\nname = \"external\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[dependencies]\nhidden = { path = \"../hidden\" }\n",
+    "deps/hidden/vela.toml": "[package]\nid = \"dev.vela.hidden\"\nname = \"hidden\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"functions\":[{\"name\":\"api::choose\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"String\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"String\"}},\"docs\":\"Wrong registry callable docs.\"}]}}",
+    "scripts/api.vela": "pub fn [[choose:start]]choose[[choose:end]](zz_root: i64) -> i64 { return zz_root; }\npub const [[budget:start]]budget[[budget:end]]: i64 = 1;\nfn [[private:start]]choose_private[[private:end]]() -> () {}\n\n/* 中😀 */ fn run() { let selected = [[replace:start]]cho[[cursor]][[replace:end]]; }\n",
+    "deps/external/scripts/api.vela": "pub fn [[choose:start]]choose[[choose:end]](zz_dep: bool) -> bool { return zz_dep; }\npub const [[budget:start]]budget[[budget:end]]: bool = true;\nfn choose_private() -> () {}\n",
+    "deps/hidden/scripts/api.vela": "pub fn choose_transitive() -> String { return \"\"; }\npub const budget_transitive: String = \"\";\n",
+    "scripts/other.vela": "pub fn unrelated() -> () {}\n",
+    "scripts/functions.vela": "\n/* 中😀 */ fn run() { let selected = [[replace:start]]cho[[cursor]][[replace:end]]; }\n",
+    "scripts/constants.vela": "\n/* 中😀 */ fn run() { let selected = [[replace:start]]bud[[cursor]][[replace:end]]; }\n",
+    "scripts/dependency_qualified.vela": "\n/* 中😀 */ fn run() { let selected = external::api::[[replace:start]]cho[[cursor]][[replace:end]]; }\n",
+    "scripts/crate_qualified.vela": "\n/* 中😀 */ fn run() { let selected = crate::api::[[replace:start]]cho[[cursor]][[replace:end]]; }\n",
+    "scripts/function_alias.vela": "use external::api::choose as AliasChoose;\n/* 中😀 */ fn run() { let selected = [[replace:start]]Ali[[cursor]][[replace:end]]; }\n",
+    "scripts/namespace_alias.vela": "use external::api as AliasSpace;\n/* 中😀 */ fn run() { let selected = AliasSpace::[[replace:start]]cho[[cursor]][[replace:end]]; }\n",
+    "scripts/canonical_shadow.vela": "use other as api;\n/* 中😀 */ fn run() { let selected = [[replace:start]]cho[[cursor]][[replace:end]]; }\n",
+    "scripts/dependency_shadow.vela": "use api as external;\n/* 中😀 */ fn run() { let selected = [[replace:start]]cho[[cursor]][[replace:end]]; }\n",
+    "scripts/unreachable_transitive.vela": "\n/* 中😀 */ fn run() { let selected = [[replace:start]]choose_t[[cursor]][[replace:end]]; }\n",
+    "scripts/private.vela": "\n/* 中😀 */ fn run() { let selected = external::api::[[replace:start]]choose_p[[cursor]][[replace:end]]; }\n",
+    "scripts/missing_dependency.vela": "\n/* 中😀 */ fn run() { let selected = missing::api::[[replace:start]]cho[[cursor]][[replace:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "functions",
+        "file": "scripts/functions.vela",
+        "context": "Expression",
+        "items": [
+          {
+            "label": "api::choose",
+            "insert": "api::choose($0)",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::choose",
+            "target": "scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "signature": "choose(zz_root: i64) -> i64",
+            "value": "1",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            }
+          },
+          {
+            "label": "external::api::choose",
+            "insert": "external::api::choose($0)",
+            "kind": "Function",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::choose",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "signature": "choose(zz_dep: bool) -> bool",
+            "value": "true",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            }
+          }
+        ],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "constants",
+        "file": "scripts/constants.vela",
+        "context": "Expression",
+        "items": [
+          {
+            "label": "api::budget",
+            "insert": "api::budget",
+            "kind": "Const",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::budget",
+            "target": "scripts/api.vela",
+            "marker": "budget",
+            "docs": null
+          },
+          {
+            "label": "external::api::budget",
+            "insert": "external::api::budget",
+            "kind": "Const",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::budget",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "budget",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "dependency_qualified",
+        "file": "scripts/dependency_qualified.vela",
+        "context": "ModulePath",
+        "items": [
+          {
+            "label": "choose",
+            "insert": "choose($0)",
+            "kind": "Function",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::choose",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "signature": "choose(zz_dep: bool) -> bool",
+            "value": "true",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            }
+          }
+        ],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "crate_qualified",
+        "file": "scripts/crate_qualified.vela",
+        "context": "ModulePath",
+        "items": [
+          {
+            "label": "choose",
+            "insert": "choose($0)",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::choose",
+            "target": "scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "signature": "choose(zz_root: i64) -> i64",
+            "value": "1",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            }
+          }
+        ],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "function_alias",
+        "file": "scripts/function_alias.vela",
+        "context": "Expression",
+        "items": [
+          {
+            "label": "AliasChoose",
+            "insert": "AliasChoose($0)",
+            "kind": "Function",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::choose",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "signature": "choose(zz_dep: bool) -> bool",
+            "value": "true",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            }
+          }
+        ],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "namespace_alias",
+        "file": "scripts/namespace_alias.vela",
+        "context": "ModulePath",
+        "items": [
+          {
+            "label": "choose",
+            "insert": "choose($0)",
+            "kind": "Function",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::choose",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "signature": "choose(zz_dep: bool) -> bool",
+            "value": "true",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            }
+          }
+        ],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "canonical_shadow",
+        "file": "scripts/canonical_shadow.vela",
+        "context": "Expression",
+        "items": [
+          {
+            "label": "crate::api::choose",
+            "insert": "crate::api::choose($0)",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::choose",
+            "target": "scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "signature": "choose(zz_root: i64) -> i64",
+            "value": "1",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            }
+          },
+          {
+            "label": "external::api::choose",
+            "insert": "external::api::choose($0)",
+            "kind": "Function",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::choose",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "signature": "choose(zz_dep: bool) -> bool",
+            "value": "true",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            }
+          }
+        ],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "dependency_shadow",
+        "file": "scripts/dependency_shadow.vela",
+        "context": "Expression",
+        "items": [
+          {
+            "label": "api::choose",
+            "insert": "api::choose($0)",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::choose",
+            "target": "scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "signature": "choose(zz_root: i64) -> i64",
+            "value": "1",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            }
+          }
+        ],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "unreachable_transitive",
+        "file": "scripts/unreachable_transitive.vela",
+        "context": "Expression",
+        "items": [],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "private",
+        "file": "scripts/private.vela",
+        "context": "ModulePath",
+        "items": [],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "missing_dependency",
+        "file": "scripts/missing_dependency.vela",
+        "context": "ModulePath",
+        "items": [],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "current_module",
+        "file": "scripts/api.vela",
+        "context": "Expression",
+        "items": [
+          {
+            "label": "choose",
+            "insert": "choose($0)",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::choose",
+            "target": "scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "signature": "choose(zz_root: i64) -> i64",
+            "value": "1",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            }
+          },
+          {
+            "label": "external::api::choose",
+            "insert": "external::api::choose($0)",
+            "kind": "Function",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::choose",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "choose",
+            "docs": null,
+            "signature": "choose(zz_dep: bool) -> bool",
+            "value": "true",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            }
+          },
+          {
+            "label": "choose_private",
+            "insert": "choose_private($0)",
+            "kind": "Function",
+            "detail": "Function() -> ()",
+            "origin": "source",
+            "symbol": "api::choose_private",
+            "target": "scripts/api.vela",
+            "marker": "private",
+            "docs": null,
+            "signature": "choose_private() -> ()",
+            "value": ""
+          }
+        ],
+        "applySuffix": "",
+        "member": false
+      }
+    ]
+  }
+}

@@ -661,10 +661,19 @@ parameter contracts. Continuation completion inserts a static function path,
 while worker and nested expression completions retain call insertion. Shared
 fixtures cover these distinctions, whole-token edits and Unicode LF/CRLF.
 
+Source expression and type completion share a declaration-address resolver that
+checks the exact HIR declaration in the current package/import scope. Dependency
+functions and constants retain usable dependency prefixes, shadowed local paths
+use `crate::`, and inaccessible/transitive declarations cannot leak into lists.
+Twelve shared package cases verify complete sets, explicit edits, resolved docs,
+applied signatures, owned parameter names and exact definition targets under
+Unicode LF/CRLF. Direct qualified dependency paths now navigate without requiring
+their spelling to change during import expansion.
+
 The [completion coverage review](lsp-completion-coverage-review.md) indexes S5
-proof and the remaining acceptance work. Resume B03.24 with dependency callable/
-member identity and cross-feature ownership, then the remaining semantic,
-lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
+proof and the remaining acceptance work. Resume B03.25 with dependency member/
+returned-receiver identity and cross-feature ownership, then the remaining
+semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:
 suggestion acceptance, F12/back and palettes, modifier-click, context-menu Peek,

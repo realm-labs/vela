@@ -13,6 +13,11 @@ fn package_type_ownership_projects_exact_dependency_targets_and_edits() {
     assert_type_ownership("completion-package-type-ownership");
 }
 
+#[test]
+fn package_callable_ownership_projects_sets_signatures_and_applied_targets() {
+    assert_type_ownership("completion-package-callables");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -114,7 +119,8 @@ fn assert_type_ownership(fixture_id: &str) {
                 );
                 let insertion = format!(
                     "{}{}",
-                    string(expected, "insert").replace("$0", "1"),
+                    string(expected, "insert")
+                        .replace("$0", expected["value"].as_str().unwrap_or("1")),
                     string(case, "applySuffix")
                 );
                 let edited = apply_edits(
@@ -145,6 +151,68 @@ fn assert_type_ownership(fixture_id: &str) {
                     &mut server,
                     json!({"textDocument":{"uri":uri(file),"version":version},"contentChanges":[{"text":edited}]}),
                 );
+                if let Some(signature) = expected["signature"].as_str() {
+                    let open = insertion.find('(').expect("call");
+                    let help = response_value(request::<r::SignatureHelpRequest>(
+                        &mut server,
+                        id,
+                        json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":range.start.character+open+1}}),
+                    ));
+                    id += 1;
+                    assert!(help["error"].is_null());
+                    assert_eq!(
+                        help["result"]["signatures"]
+                            .as_array()
+                            .expect("signatures")
+                            .len(),
+                        1,
+                        "{case}"
+                    );
+                    assert_eq!(
+                        help["result"]["signatures"][0]["label"], signature,
+                        "{case} {expected}"
+                    );
+                }
+                if let Some(argument) = expected.get("argument") {
+                    let text = source.text[..range.start.byte].to_owned()
+                        + &string(expected, "insert").replace("$0", "zz_")
+                        + &source.text[range.end.byte..];
+                    let start = range.start.character
+                        + string(expected, "insert").find('(').expect("call")
+                        + 1;
+                    version += 1;
+                    let _ = notify::<n::DidChangeTextDocument>(
+                        &mut server,
+                        json!({"textDocument":{"uri":uri(file),"version":version},"contentChanges":[{"text":text}]}),
+                    );
+                    let response = response_value(request::<r::Completion>(
+                        &mut server,
+                        id,
+                        json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":start+3}}),
+                    ));
+                    id += 1;
+                    assert!(response["error"].is_null());
+                    let parameters = response["result"]["items"].as_array().expect("parameters");
+                    assert_eq!(
+                        parameters
+                            .iter()
+                            .map(|i| string(i, "label"))
+                            .collect::<Vec<_>>(),
+                        [string(argument, "label")],
+                        "{case}"
+                    );
+                    assert_eq!(parameters[0]["detail"], argument["detail"]);
+                    assert_eq!(parameters[0]["kind"], 6);
+                    assert_eq!(
+                        parameters[0]["textEdit"],
+                        json!({"range":{"start":{"line":range.start.line,"character":start},"end":{"line":range.start.line,"character":start+3}},"newText":format!("{} = ",string(argument,"label"))})
+                    );
+                    version += 1;
+                    let _ = notify::<n::DidChangeTextDocument>(
+                        &mut server,
+                        json!({"textDocument":{"uri":uri(file),"version":version},"contentChanges":[{"text":edited}]}),
+                    );
+                }
                 if let Some(target) = expected["target"].as_str() {
                     let target = if target == "self" { file } else { target };
                     let marker = fixture.document(target).expect("target").markers

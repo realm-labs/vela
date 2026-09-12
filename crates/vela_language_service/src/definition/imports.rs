@@ -3,15 +3,12 @@ use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, Vis
 use crate::{LanguageServiceDatabases, QueryContext, symbol_target::SymbolTarget};
 
 impl LanguageServiceDatabases {
-    pub(super) fn definition_from_imported_path(
+    pub(super) fn definition_from_scoped_path(
         &self,
         query: &QueryContext<'_>,
         path: &[String],
     ) -> Option<super::Definition> {
         let expanded = query.expand_import_path(path)?;
-        if expanded == path {
-            return None;
-        }
         let graph = self.hir_db().graph();
         let module = graph.module_id(query.module_key()?)?;
         let declaration = [

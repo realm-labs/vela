@@ -538,7 +538,7 @@ fn definition_from_resolution_at_target(
             Some(definition)
         }
         BindingResolution::QualifiedPath(path) => {
-            databases.definition_from_imported_path(query, path)
+            databases.definition_from_scoped_path(query, path)
         }
         BindingResolution::Import(_) => {
             let site = query
@@ -547,7 +547,7 @@ fn definition_from_resolution_at_target(
                 .iter()
                 .filter_map(hir_path_sites::site)
                 .find(|site| site.segment_range == target.range())?;
-            databases.definition_from_imported_path(query, site.path)
+            databases.definition_from_scoped_path(query, site.path)
         }
     }
 }

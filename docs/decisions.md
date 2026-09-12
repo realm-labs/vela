@@ -4483,3 +4483,19 @@ call parentheses. Worker calls, nested ordinary calls and callback bodies retain
 their ordinary insertion behavior. Use shared callable path rendering to preserve
 whole-identifier edits and existing argument lists for both Service and task
 operations. These are authoring changes, not runtime or task-lifecycle changes.
+
+## Completion Insertions Address Exact Source Declarations
+
+Construct source declaration addresses in the querying package/import scope and
+verify that they resolve to the selected HIR declaration ID. Use a direct
+dependency alias for foreign declarations; use `crate::` when an import shadows
+an otherwise valid current-package path. An unreachable transitive declaration
+has no candidate address. Expression and type completion share this rule, while
+canonical symbol labels remain presentation metadata. Constants also carry
+explicit insertion edits, so applying a candidate preserves its package owner.
+
+Definition navigation resolves qualified source paths in the same scope even
+when import expansion leaves the spelling unchanged. This covers direct
+dependency paths while retaining visibility and unresolved-owner checks. Applied
+function completion must preserve both its exact target location and its own
+signature/parameter names; display-name equality cannot prove package identity.
