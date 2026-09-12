@@ -602,6 +602,44 @@ fn main() {
     assert_stdlib_call(&view, starts_with, "starts_with");
 }
 
+#[test]
+fn stdlib_callback_slots_keep_named_order_and_ignore_unrelated_lambdas() {
+    let (graph, main) = graph(
+        98,
+        r#"
+fn main(callback: Any) {
+    let items = [1].iter();
+    let reordered = items.fold(callback = callback, initial = "seed");
+    let two_lambdas = items.fold(|| "unrelated", |acc, item| item + 1);
+    let lambda_initial = items.fold(|| "unrelated", callback);
+    return reordered;
+}
+"#,
+    );
+    let body = graph.function_body(main).expect("main body");
+    let calls = method_calls(body, "fold");
+    let lambdas = child_lambdas(&graph, body.id);
+    assert_eq!(calls.len(), 3);
+    assert_eq!(lambdas.len(), 3);
+    let function = FunctionId::new(9_801);
+    let generation = ExecutableAnalysisGeneration::from_module_graph(
+        &graph,
+        [ExecutableAnalysisInput::new(function, body.id)],
+    )
+    .expect("slot-qualified callback analysis");
+    let view = generation.view(function).expect("main view");
+    assert_eq!(view.expression(calls[0]), Some(&TypeFact::STRING));
+    assert_eq!(view.expression(calls[1]), Some(&TypeFact::I64));
+    assert_eq!(
+        view.expression(calls[2]),
+        Some(&TypeFact::function(vec![], TypeFact::STRING))
+    );
+    assert_eq!(view.local(lambdas[1].params[1].local), Some(&TypeFact::I64));
+    for call in calls {
+        assert_stdlib_call(&view, call, "fold");
+    }
+}
+
 fn graph(source: u32, text: &str) -> (ModuleGraph, HirDeclId) {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(

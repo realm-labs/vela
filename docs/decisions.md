@@ -4573,3 +4573,13 @@ and asyncness; factory calls are ordinary calls whose results may become callbac
 values. This avoids duplicate calls without guessing callback arity or evaluating
 a factory. Direct callback reference slots and new call snippets keep their
 separate insertion rules.
+
+Stdlib callback specialization consumes HIR arguments in registered parameter
+order, independently of their source order. Only the declared callback slot may
+provide a direct lambda's return and contextual parameter facts; an initial value
+or extra argument cannot supply them. Unknown names, duplicate slots, excess
+arguments and positional arguments after named ones retain unspecialized method
+facts while ordinary validation owns their diagnostics. Incomplete slots remain
+available for analysis during editing. Typed source/schema callback analysis keeps
+its own callable contract. This corrects analysis facts without executing callbacks
+or changing runtime argument admission.

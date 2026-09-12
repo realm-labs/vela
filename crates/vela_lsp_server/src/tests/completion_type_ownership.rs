@@ -34,6 +34,11 @@ fn callback_contract_results_project_direct_lambda_facts_and_erased_boundaries()
 }
 
 #[test]
+fn callback_slot_matrix_projects_registered_slots_and_reordered_result_facts() {
+    assert_type_ownership("completion-callback-slots");
+}
+
+#[test]
 fn async_callable_matrix_projects_owner_metadata_and_applied_await_contracts() {
     assert_type_ownership("completion-async-callables");
 }

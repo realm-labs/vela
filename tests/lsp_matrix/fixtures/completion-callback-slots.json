@@ -1,0 +1,272 @@
+{
+  "version": 1,
+  "id": "completion-callback-slots",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.callback_contracts\"\nname = \"callback_contracts\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{}}",
+    "scripts/api.vela": "/* 中😀 */\npub struct Output { [[payload:start]]payload[[payload:end]]: i64 }\npub struct Other { [[other:start]]other[[other:end]]: bool }\n",
+    "scripts/positional_initial.vela": "/* 中😀 */\nfn run(items: Iterator<i64>, values: Array<i64>, dynamic: Any) { items.fold(api::Output { payload: 1 }, dynamic).[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/named_initial.vela": "/* 中😀 */\nfn run(items: Iterator<i64>, values: Array<i64>, dynamic: Any) { items.fold(initial = api::Output { payload: 1 }, callback = dynamic).[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/reordered_initial.vela": "/* 中😀 */\nfn run(items: Iterator<i64>, values: Array<i64>, dynamic: Any) { items.fold(callback = dynamic, initial = api::Output { payload: 1 }).[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/mixed_initial.vela": "/* 中😀 */\nfn run(items: Iterator<i64>, values: Array<i64>, dynamic: Any) { items.fold(api::Output { payload: 1 }, callback = dynamic).[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/positional_result.vela": "/* 中😀 */\nfn run(items: Iterator<i64>, values: Array<i64>, dynamic: Any) { items.fold(0, |acc, value| api::Output { payload: 1 }).[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/reordered_result.vela": "/* 中😀 */\nfn run(items: Iterator<i64>, values: Array<i64>, dynamic: Any) { items.fold(callback = |acc, value| api::Output { payload: 1 }, initial = 0).[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/unrelated_lambda.vela": "/* 中😀 */\nfn run(items: Iterator<i64>, values: Array<i64>, dynamic: Any) { items.fold(|| api::Output { payload: 1 }, dynamic).[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/reordered_unrelated_lambda.vela": "/* 中😀 */\nfn run(items: Iterator<i64>, values: Array<i64>, dynamic: Any) { items.fold(callback = dynamic, initial = || api::Output { payload: 1 }).[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/two_lambdas.vela": "/* 中😀 */\nfn run(items: Iterator<i64>, values: Array<i64>, dynamic: Any) { items.fold(|| api::Output { payload: 1 }, |acc, value| api::Other { other: true }).[[replace:start]]oth[[cursor]][[replace:end]]; }\n",
+    "scripts/reordered_two_lambdas.vela": "/* 中😀 */\nfn run(items: Iterator<i64>, values: Array<i64>, dynamic: Any) { items.fold(callback = |acc, value| api::Other { other: true }, initial = || api::Output { payload: 1 }).[[replace:start]]oth[[cursor]][[replace:end]]; }\n",
+    "scripts/wrong_name.vela": "/* 中😀 */\nfn run(items: Iterator<i64>, values: Array<i64>, dynamic: Any) { values.map(initial = |value| api::Output { payload: 1 })[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/extra_lambda.vela": "/* 中😀 */\nfn run(items: Iterator<i64>, values: Array<i64>, dynamic: Any) { values.map(dynamic, || api::Output { payload: 1 })[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/duplicate_callback.vela": "/* 中😀 */\nfn run(items: Iterator<i64>, values: Array<i64>, dynamic: Any) { values.map(callback = dynamic, callback = |value| api::Output { payload: 1 })[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/positional_after_named.vela": "/* 中😀 */\nfn run(items: Iterator<i64>, values: Array<i64>, dynamic: Any) { items.fold(callback = |acc, value| api::Output { payload: 1 }, 0).[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
+    "scripts/param_positional.vela": "/* 中😀 */\nfn run(items: Iterator<i64>) { items.fold(api::Output { payload: 1 }, |acc, value| { acc.[[replace:start]]pay[[cursor]][[replace:end]]; acc }); }\n",
+    "scripts/param_reordered.vela": "/* 中😀 */\nfn run(items: Iterator<i64>) { items.fold(callback = |acc, value| { acc.[[replace:start]]pay[[cursor]][[replace:end]]; acc }, initial = api::Output { payload: 1 }); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "positional_initial",
+        "file": "scripts/positional_initial.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Output",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Output.payload",
+            "target": "scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "named_initial",
+        "file": "scripts/named_initial.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Output",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Output.payload",
+            "target": "scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "reordered_initial",
+        "file": "scripts/reordered_initial.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Output",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Output.payload",
+            "target": "scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "mixed_initial",
+        "file": "scripts/mixed_initial.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Output",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Output.payload",
+            "target": "scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "positional_result",
+        "file": "scripts/positional_result.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Output",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Output.payload",
+            "target": "scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "reordered_result",
+        "file": "scripts/reordered_result.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Output",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Output.payload",
+            "target": "scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "unrelated_lambda",
+        "file": "scripts/unrelated_lambda.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "reordered_unrelated_lambda",
+        "file": "scripts/reordered_unrelated_lambda.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "two_lambdas",
+        "file": "scripts/two_lambdas.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Other",
+        "items": [
+          {
+            "label": "other",
+            "insert": "other",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Other.other",
+            "target": "scripts/api.vela",
+            "marker": "other",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "reordered_two_lambdas",
+        "file": "scripts/reordered_two_lambdas.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Other",
+        "items": [
+          {
+            "label": "other",
+            "insert": "other",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Other.other",
+            "target": "scripts/api.vela",
+            "marker": "other",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "wrong_name",
+        "file": "scripts/wrong_name.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "extra_lambda",
+        "file": "scripts/extra_lambda.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "duplicate_callback",
+        "file": "scripts/duplicate_callback.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "positional_after_named",
+        "file": "scripts/positional_after_named.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "param_positional",
+        "file": "scripts/param_positional.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Output",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Output.payload",
+            "target": "scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "param_reordered",
+        "file": "scripts/param_reordered.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "receiver": "api::Output",
+        "items": [
+          {
+            "label": "payload",
+            "insert": "payload",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Output.payload",
+            "target": "scripts/api.vela",
+            "marker": "payload",
+            "docs": null
+          }
+        ]
+      }
+    ]
+  }
+}

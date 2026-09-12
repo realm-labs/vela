@@ -1,12 +1,10 @@
-use std::collections::BTreeSet;
-
 use vela_hir::body::{HirBody, HirCall, HirPathKind};
-use vela_hir::ids::{HirBodyId, HirLocalId};
+use vela_hir::ids::{HirBodyId, HirExprId, HirLocalId};
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::facts::AnalysisFacts;
 use crate::registry::RegistryFacts;
-use crate::stdlib::{StdlibMethodFact, stdlib_method_fact_for_call};
+use crate::stdlib::{StdlibMethodFact, StdlibParameterMetadata, stdlib_method_fact_for_call};
 use crate::type_fact::TypeFact;
 
 use super::local_flow::refine_local_fact;
@@ -66,17 +64,16 @@ impl HirSemanticFacts {
         call: &HirCall,
         schema: Option<&RegistryFacts>,
     ) -> Vec<CallbackSeed> {
-        let mut seeds = Vec::new();
-        let mut specialized_bodies = BTreeSet::new();
-        if let Some((lambda_body, method)) = self.contextual_stdlib_callback(graph, body, call) {
-            let params = method
-                .lambda
-                .map(|lambda| lambda.params)
-                .unwrap_or_default();
-            seeds.extend(lambda_param_seeds(graph, lambda_body, params));
-            specialized_bodies.insert(lambda_body);
+        if let Some(context) = self.contextual_stdlib_call(graph, body, call) {
+            return match (context.lambda_body, context.method.lambda) {
+                (Some(lambda_body), Some(lambda)) => {
+                    lambda_param_seeds(graph, lambda_body, lambda.params)
+                }
+                _ => Vec::new(),
+            };
         }
 
+        let mut seeds = Vec::new();
         if call
             .arguments
             .iter()
@@ -96,9 +93,6 @@ impl HirSemanticFacts {
             let Some(lambda_body) = direct_lambda_body(body, value) else {
                 continue;
             };
-            if specialized_bodies.contains(&lambda_body) {
-                continue;
-            }
             seeds.extend(lambda_param_seeds(graph, lambda_body, params));
         }
         seeds
@@ -110,37 +104,53 @@ impl HirSemanticFacts {
         body: &HirBody,
         call: &HirCall,
     ) -> Option<StdlibMethodFact> {
+        self.contextual_stdlib_call(graph, body, call)
+            .map(|context| context.method)
+    }
+
+    fn contextual_stdlib_call(
+        &self,
+        graph: &ModuleGraph,
+        body: &HirBody,
+        call: &HirCall,
+    ) -> Option<StdlibCallContext> {
         let field = body.field(call.callee)?;
         let receiver = self.fact(field.receiver);
-        let lambda = direct_lambda_context(self, graph, body, call);
-        let arguments = call
-            .arguments
+        let method = stdlib_method_fact_for_call(&receiver, &field.name, None, None, &[])?;
+        let slots = method
+            .parameter_metadata()
+            .and_then(|parameters| argument_slots(call, &parameters));
+        let Some(slots) = slots else {
+            // Invalid or ambiguous placement must not lend a lambda or argument
+            // fact to another parameter. Validation owns the diagnostics.
+            return Some(StdlibCallContext {
+                method,
+                lambda_body: None,
+            });
+        };
+        let callback = method.lambda.as_ref().and_then(|_| {
+            method
+                .params
+                .iter()
+                .position(|fact| matches!(fact, TypeFact::Function { .. }))
+                .and_then(|index| slots[index])
+        });
+        let lambda = direct_lambda_context(self, graph, body, callback);
+        let arguments = slots
             .iter()
-            .map(|argument| {
-                argument
-                    .value
-                    .map_or(TypeFact::Unknown, |value| self.fact(value))
-            })
+            .map(|value| value.map_or(TypeFact::Unknown, |value| self.fact(value)))
             .collect::<Vec<_>>();
-        stdlib_method_fact_for_call(
+        let method = stdlib_method_fact_for_call(
             &receiver,
             &field.name,
             lambda.as_ref().and_then(|context| context.returns.as_ref()),
             lambda.as_ref().map(|context| context.param_count),
             &arguments,
-        )
-    }
-
-    fn contextual_stdlib_callback(
-        &self,
-        graph: &ModuleGraph,
-        body: &HirBody,
-        call: &HirCall,
-    ) -> Option<(HirBodyId, StdlibMethodFact)> {
-        let context = direct_lambda_context(self, graph, body, call)?;
-        let method = self.contextual_stdlib_method_fact(graph, body, call)?;
-        method.lambda.as_ref()?;
-        Some((context.body, method))
+        )?;
+        Some(StdlibCallContext {
+            method,
+            lambda_body: lambda.map(|context| context.body),
+        })
     }
 
     fn resolved_callable_fact(
@@ -168,6 +178,39 @@ impl HirSemanticFacts {
     }
 }
 
+struct StdlibCallContext {
+    method: StdlibMethodFact,
+    lambda_body: Option<HirBodyId>,
+}
+
+fn argument_slots(
+    call: &HirCall,
+    parameters: &[StdlibParameterMetadata],
+) -> Option<Vec<Option<HirExprId>>> {
+    let mut slots = vec![None; parameters.len()];
+    let mut occupied = vec![false; parameters.len()];
+    let mut seen_named = false;
+    for (ordinal, argument) in call.arguments.iter().enumerate() {
+        let index = if let Some(name) = argument.name.as_deref() {
+            seen_named = true;
+            parameters
+                .iter()
+                .position(|parameter| parameter.name == name)?
+        } else if seen_named {
+            return None;
+        } else {
+            ordinal
+        };
+        let occupied = occupied.get_mut(index)?;
+        if *occupied {
+            return None;
+        }
+        *occupied = true;
+        slots[index] = argument.value;
+    }
+    Some(slots)
+}
+
 struct DirectLambdaContext {
     body: HirBodyId,
     returns: Option<TypeFact>,
@@ -178,17 +221,9 @@ fn direct_lambda_context(
     facts: &HirSemanticFacts,
     graph: &ModuleGraph,
     body: &HirBody,
-    call: &HirCall,
+    callback: Option<HirExprId>,
 ) -> Option<DirectLambdaContext> {
-    let mut lambdas = call.arguments.iter().filter_map(|argument| {
-        argument
-            .value
-            .and_then(|value| direct_lambda_body(body, value))
-    });
-    let lambda_body = lambdas.next()?;
-    if lambdas.next().is_some() {
-        return None;
-    }
+    let lambda_body = direct_lambda_body(body, callback?)?;
     let lambda = graph.body(lambda_body)?;
     let returns = facts.body_value(lambda);
     Some(DirectLambdaContext {

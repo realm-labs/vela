@@ -751,9 +751,16 @@ do not invent result members. Both layers check exact choices, edits, resolve an
 definitions under Unicode LF/CRLF. This is static completion proof, not callback
 runtime admission or a new callable compatibility policy.
 
+Stdlib callback analysis now orders argument facts by registered parameter slots.
+Sixteen shared queries retain fold results and contextual parameters through named
+reordering, distinguish two lambdas by their roles, and reject specialization from
+unrelated or ambiguous arguments. Executable analysis independently checks the
+same slot and return boundaries; queries do not invoke callbacks.
+
 The [completion coverage review](lsp-completion-coverage-review.md) indexes S5
-proof and the remaining acceptance work. Resume B03.35 with the remaining S5
-partition review, including contextual callback parameters and returned receivers, then the remaining
+proof and the remaining acceptance work. Resume B03.36 with the remaining S5
+partition review, including shared-method ambiguity and abrupt returned-receiver
+exits, then the remaining
 semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

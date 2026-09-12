@@ -55,6 +55,14 @@ post-edit signature check.
    under Unicode LF/CRLF. Named callbacks currently do not specialize the map
    result from their declared return signature: this records the conservative
    direct-lambda analysis boundary, not a runtime compatibility guarantee.
+   `completion-callback-slots` adds sixteen result/parameter queries for
+   positional, named, reordered and mixed fold arguments; two lambdas in distinct
+   slots; and unknown, duplicate, extra or misplaced arguments. A red case showed
+   reordered fold arguments losing their initial fact. Analysis now orders facts
+   by registered parameters and specializes only the actual callback lambda.
+   Unrelated initial lambdas cannot fabricate result members; a real callback
+   keeps its item/accumulator facts. Both layers assert complete member sets,
+   exact edits, resolve ownership and field definitions under Unicode LF/CRLF.
    Twenty-four
    `completion-task-eligibility` cases verify complete static
    target sets, async metadata, canonical resolve ownership, LF/CRLF Unicode edits
