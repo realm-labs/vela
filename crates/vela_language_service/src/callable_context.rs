@@ -1052,3 +1052,22 @@ fn qualified_declaration_label(
     };
     qualified_source_declaration_name(graph, declaration)
 }
+
+pub(crate) fn service_callable_fact(
+    schema: &RegistryFacts,
+    owner: &str,
+    method: &str,
+    callee: &str,
+) -> Option<CallableFacts> {
+    let signature = schema.trait_method_signature_fact(owner, method)?;
+    Some(CallableFacts {
+        name: callee.to_owned(),
+        params: registry_callable_parameters(signature),
+        returns: signature.returns.clone(),
+        scoped_resource: None,
+        asyncness: signature.asyncness,
+        origin: CallableOrigin::Schema,
+        parameters_named: false,
+        symbol: schema_member_symbol(owner, method),
+    })
+}

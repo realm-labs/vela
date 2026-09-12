@@ -290,3 +290,15 @@ impl InventoryHotfix {
         }));
     }
 }
+
+#[test]
+fn compiler_rejects_named_arguments_for_base_and_pinned_service_calls() {
+    for target in ["service::base::grant", "service::pinned::audit::record"] {
+        let source = format!(
+            "#[service_impl(game::inventory::InventoryService)] impl Patch {{ fn grant(value: i64) -> i64 {{ return {target}(value = value); }} }}"
+        );
+        let error = compile_service_program(&source).expect_err("service arguments are positional");
+        assert!(matches!(error.kind, CompileErrorKind::ServiceCall(message)
+            if message == "service calls accept positional arguments only"));
+    }
+}

@@ -655,8 +655,14 @@ and UX04 remain open. Service-set projection now retains parameter names, asyncn
 nested types and collection mutation contracts. Fourteen shared cases cover
 service receiver completion, occupied slots, forward references and chained
 returns; a real Engine export checks registered Host/Value/view metadata.
-Compiler-owned service namespace authoring and imported callable lookup across
-signature/expected-argument providers still need their focused audit. The desktop locked again during the latest native input regression; see [blocked.md](blocked.md).
+Twenty additional shared cases now check compiler-owned service call arguments:
+positional expression edits, exact signatures/expected parameters, recursive
+and imported helper ownership, ambiguous origins, nested-body rejection and
+incomplete impl recovery. LF/CRLF queries run with complete, absent and ordinary
+same-name schema metadata. Local binding candidates now carry explicit edits.
+Service callee-path candidates, unhinted service parameter propagation and
+imported callable lookup across signature/expected-argument providers still
+need their focused audit. The desktop locked again during the latest native input regression; see [blocked.md](blocked.md).
 
 ### Deferred Tracks
 

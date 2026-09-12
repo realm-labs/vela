@@ -2808,7 +2808,7 @@
     },
     {
       "requirement": "completion/states/repeat/protocol",
-      "assertion": "Repeat every request in the shared member/constructor, source/schema/stdlib/service named-argument and call-argument-context fixtures and assert identical full completion results before any edit. Independently check exact candidate sets under LF/CRLF; the call context fixture also checks signature repetition and the active parameter through encoded URI and UTF-16 positions.",
+      "assertion": "Repeat every request in the shared member/constructor, source/schema/stdlib/service named-argument and call-argument-context fixtures and assert identical full completion results before any edit. Independently check exact candidate sets under LF/CRLF; the call context fixture also checks signature repetition and the active parameter through encoded URI and UTF-16 positions. Static service-call cases repeat full positional expression completions under complete, missing and ordinary same-name schema inputs, then apply exact UTF-16 edits and re-query.",
       "tests": [
         {
           "layer": "protocol",
@@ -2829,6 +2829,10 @@
         {
           "layer": "protocol",
           "name": "tests::completion_named_arguments::service_named_argument_matrix_projects_contracts_and_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::service_calls::service_call_matrix_projects_positional_completion_edits_and_exact_signatures"
         }
       ]
     },
@@ -2844,7 +2848,7 @@
     },
     {
       "requirement": "completion/states/unresolved/protocol",
-      "assertion": "Unknown receiver hints and unhinted receivers, missing record constructors and a missing qualified schema constructor path produce exact empty completion sets. Nearby valid source/schema member and constructor queries prove the workspace remains usable; missing paths cannot fall back to unrelated short-name fields. Standard-library named argument queries also reject missing targets, ambiguous imports and unsupported grouped import syntax; the latter publishes an error diagnostic. Service receiver cases check missing methods, unknown owners and dynamic receivers against exact empty sets.",
+      "assertion": "Unknown receiver hints and unhinted receivers, missing record constructors and a missing qualified schema constructor path produce exact empty completion sets. Nearby valid source/schema member and constructor queries prove the workspace remains usable; missing paths cannot fall back to unrelated short-name fields. Standard-library named argument queries also reject missing targets, ambiguous imports and unsupported grouped import syntax; the latter publishes an error diagnostic. Service receiver cases check missing methods, unknown owners and dynamic receivers against exact empty sets. Static service calls with unknown or ambiguous targets expose no borrowed signatures; local value completion remains usable without inventing named-argument insertions.",
       "tests": [
         {
           "layer": "protocol",
@@ -2861,6 +2865,10 @@
         {
           "layer": "protocol",
           "name": "tests::completion_named_arguments::service_named_argument_matrix_projects_contracts_and_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::service_calls::service_call_matrix_projects_positional_completion_edits_and_exact_signatures"
         }
       ]
     },

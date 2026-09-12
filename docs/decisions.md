@@ -4263,3 +4263,17 @@ wire's explicit tuple/mutation spellings and retain exact schema names. Reject
 malformed hints and duplicate parameter names; an unresolved named type stays
 Unknown. Service projection replaces both an ordinary trait method fact and
 its signature together, preventing stale signature/type disagreement.
+
+
+## Service Call Authoring Follows Positional Compiler Capabilities
+
+Static `service::base` and `service::pinned` calls do not accept named arguments.
+Project their registered names/types for signatures and expected values, while
+completion inserts ordinary expressions. Resolve base ownership through the
+same static declaration-call relation as compiler placement, with finite graph
+traversal and unique-origin checks; pinned calls use exact set member identity.
+Reject nested lambda/default contexts and never fall back to ordinary schema
+functions with reserved names. Share per-declaration HIR service metadata
+validation between tolerant tooling and the strict full compiler catalog.
+Preserve incomplete method children in syntax recovery instead of compensating
+with language-service text scanning; malformed source remains diagnosed.

@@ -369,6 +369,18 @@ and collection mutation shapes normalize to structured registration hints.
 Unknown named types retain unknown leaves rather than borrowing short names.
 Duplicate parameter names and malformed service hints are rejected.
 
+Compiler-owned `service::base` / `service::pinned` calls share service callable
+facts between signature help and expected-argument analysis. They accept only
+positional arguments, so completion inserts expressions rather than `name =`
+labels. Base ownership follows resolved declaration calls back to a unique
+service origin, with cycle detection; pinned targets use exact service-set
+member names. Nested function/default bodies and ambiguous or missing origins
+supply no service signature. Ordinary same-name schema functions cannot replace
+these capabilities. Individual HIR service declarations remain queryable when a
+neighboring service attribute is malformed; full compiler catalogs still fail
+on those errors. Lossless recovery retains methods inside unclosed impl/trait
+bodies while preserving missing-delimiter diagnostics.
+
 When the schema is absent or stale, tooling should degrade to `Any` and report
 schema diagnostics. It must not invent host facts or read host state.
 

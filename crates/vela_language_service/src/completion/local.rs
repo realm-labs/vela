@@ -44,7 +44,7 @@ pub(super) fn local_completion_items(
                 label: local.name.clone(),
                 kind,
                 detail: detail_parts.render(),
-                insert_text: None,
+                insert_text: Some(local.name.clone()),
                 insert_format: CompletionInsertFormat::PlainText,
             }
             .with_detail_parts(detail_parts)

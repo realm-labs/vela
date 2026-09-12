@@ -21,58 +21,9 @@ impl ServiceImplCatalog {
     pub fn from_graph(graph: &ModuleGraph) -> Result<Self, ServiceImplCatalogError> {
         let mut implementations = Vec::new();
         for declaration in graph.declarations_by_kind(DeclarationKind::Impl) {
-            let attrs = graph.declaration_attrs(declaration.id);
-            if !attrs
-                .iter()
-                .any(|attribute| attribute.name == SERVICE_IMPL_ATTRIBUTE)
-            {
-                continue;
+            if let Some(implementation) = ServiceImpl::from_declaration(graph, declaration)? {
+                implementations.push(implementation);
             }
-            let attribute = service_attribute(declaration.id, attrs)?;
-            let service_path = service_path(declaration.id, attribute)?;
-            let metadata = graph.impl_metadata(declaration.id).ok_or_else(|| {
-                catalog_error(
-                    declaration.id,
-                    declaration.span,
-                    ServiceImplCatalogErrorKind::MissingImplMetadata,
-                )
-            })?;
-            if !matches!(metadata.kind, ImplMetadataKind::Inherent) {
-                return Err(catalog_error(
-                    declaration.id,
-                    declaration.span,
-                    ServiceImplCatalogErrorKind::TraitImplUnsupported,
-                ));
-            }
-            let mut methods = Vec::with_capacity(metadata.methods.len());
-            for method in &metadata.methods {
-                let body = graph.impl_method_body(method.node).ok_or_else(|| {
-                    catalog_error(
-                        declaration.id,
-                        method.span,
-                        ServiceImplCatalogErrorKind::MissingMethodBody {
-                            method: method.name.clone(),
-                        },
-                    )
-                })?;
-                methods.push(ServiceImplMethod {
-                    node: method.node,
-                    name: method.name.clone(),
-                    body: body.id,
-                    signature: method.signature.clone(),
-                    module: declaration.module,
-                    origin: body.origin,
-                    name_span: method.name_span,
-                });
-            }
-            implementations.push(ServiceImpl {
-                declaration: declaration.id,
-                service_path,
-                implementation_path: metadata.target_path.clone(),
-                module: declaration.module,
-                span: declaration.span,
-                methods,
-            });
         }
         Ok(Self { implementations })
     }
@@ -103,6 +54,69 @@ pub struct ServiceImpl {
 }
 
 impl ServiceImpl {
+    /// Read one implementation independently so tooling can recover around
+    /// malformed neighboring declarations. Full catalogs still reject any error.
+    pub fn from_declaration(
+        graph: &ModuleGraph,
+        declaration: &crate::module_graph::Declaration,
+    ) -> Result<Option<Self>, ServiceImplCatalogError> {
+        if declaration.kind != DeclarationKind::Impl {
+            return Ok(None);
+        }
+        let attrs = graph.declaration_attrs(declaration.id);
+        if !attrs
+            .iter()
+            .any(|attribute| attribute.name == SERVICE_IMPL_ATTRIBUTE)
+        {
+            return Ok(None);
+        }
+        let attribute = service_attribute(declaration.id, attrs)?;
+        let service_path = service_path(declaration.id, attribute)?;
+        let metadata = graph.impl_metadata(declaration.id).ok_or_else(|| {
+            catalog_error(
+                declaration.id,
+                declaration.span,
+                ServiceImplCatalogErrorKind::MissingImplMetadata,
+            )
+        })?;
+        if !matches!(metadata.kind, ImplMetadataKind::Inherent) {
+            return Err(catalog_error(
+                declaration.id,
+                declaration.span,
+                ServiceImplCatalogErrorKind::TraitImplUnsupported,
+            ));
+        }
+        let mut methods = Vec::with_capacity(metadata.methods.len());
+        for method in &metadata.methods {
+            let body = graph.impl_method_body(method.node).ok_or_else(|| {
+                catalog_error(
+                    declaration.id,
+                    method.span,
+                    ServiceImplCatalogErrorKind::MissingMethodBody {
+                        method: method.name.clone(),
+                    },
+                )
+            })?;
+            methods.push(ServiceImplMethod {
+                node: method.node,
+                name: method.name.clone(),
+                body: body.id,
+                signature: method.signature.clone(),
+                module: declaration.module,
+                origin: body.origin,
+                name_span: method.name_span,
+            });
+        }
+        Ok(Some(Self {
+            declaration: declaration.id,
+            service_path,
+            implementation_path: metadata.target_path.clone(),
+            module: declaration.module,
+            span: declaration.span,
+            methods,
+        }))
+    }
+
     #[must_use]
     pub const fn declaration(&self) -> HirDeclId {
         self.declaration

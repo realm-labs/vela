@@ -1135,3 +1135,6 @@ impl MemberDelimiterDepth {
         }
     }
 }
+
+#[cfg(test)]
+mod method_recovery_tests;

@@ -113,7 +113,10 @@ impl LanguageServiceDatabases {
             return Some(empty_completion_list(CompletionContext::expression(0, "")));
         };
         self.completion_query_is_current(token).then_some(())?;
-        let context = completion_context(&query);
+        let mut context = completion_context(&query);
+        if context.kind() == CompletionContextKind::NamedArgument && query.is_service_call() {
+            context.kind = CompletionContextKind::Expression;
+        }
         let analysis = completion_analysis(self, &query, &context);
         let items = match analysis.context_kind() {
             CompletionContextKind::Expression => self.expression_completion_items(&query, &context),

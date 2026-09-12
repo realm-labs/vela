@@ -1078,16 +1078,25 @@
     },
     {
       "id": "B03.10",
-      "revision": null,
+      "revision": "97290417f",
       "requirements": [
         "completion/states/repeat/protocol",
         "completion/states/unresolved/protocol"
       ],
       "summary": "Preserve service-set callable names, required parameter types, return types and asyncness instead of replacing all types with Unknown. Extract the compile-view TypeHintDef conversion into a shared metadata-only resolver, normalize service wire tuple/mutation spellings through the existing registry parser, and resolve exact schema names. Register all service owners before resolving forward references; replace both trait method facts and signatures together. Reject duplicate parameter names and malformed hints. Three focused schema tests cover literal registration shapes, nested containers, qualified missing types, async/required/empty signatures, forward services and invalid metadata. Fourteen shared service cases check full parameter candidate sets, occupied/prefix slots, Host/Value/tuple/view types, schema returns feeding chained calls, exact signatures, parseable LF/CRLF UTF-16 edits/re-query and negative receivers/methods. A real Engine service-domain export test checks Host context, Value records, read-only slices, owned arrays and growable mutable views without invoking services. Initial failures prove erased metadata/accepted duplicate names; preserve fixture-display/registered-type corrections and Clippy unwrap failures. Full workspace 4402 passed plus two historical ignored; final workspace Clippy/fmt and Node 69 passed. Final source-bound audit run-3CrRe1: service 591 plus two historical ignored, protocol 579; installed run-xURCWD 9 passed. Earlier run-MMmHd6/installed run-SyxFSc preceded a test diagnostic-only lint fix and is retained as history. Broad S5 stays unreviewed, B03 unaccepted, remaining whole-batch scope 1332. Continue B03.11 with actual compiler-owned service::base/service::pinned authoring: current language-service query/completion code does not consume service-set metadata beyond trait projection. Use HIR ServiceImplCatalog and SchemaDb.service_set with exact service/method ownership and negative lexical contexts. Then unify imported external callable lookup across signature/expected-argument providers, resolve name-aware expected type/active parameter mapping, and audit provider-specific/variable-arity metadata before remaining S5/lifecycle/UX04. Fresh native input evidence is still required for strict acceptance; B16 deferred. Find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B03.11",
+      "revision": null,
+      "requirements": [
+        "completion/states/repeat/protocol",
+        "completion/states/unresolved/protocol"
+      ],
+      "summary": "Follow compiler-owned service::base/service::pinned positional call semantics in shared callable queries. Service signatures and expected names/types resolve from static service-set facts; base ownership follows the compiler declaration-call relation back to a unique service origin with finite reverse graph traversal, while pinned calls use exact set member names. Reject nested lambda/default contexts, missing/ambiguous owners and malformed paths without borrowing ordinary same-name schema signatures. Service argument completion inserts expressions; local binding candidates now supply explicit replacement edits. Share per-declaration HIR ServiceImpl validation with the strict full catalog so a malformed neighboring attribute does not erase valid tooling facts. Twenty shared cases run in both layers under LF/CRLF and complete/missing/ordinary-only schema modes: direct/sibling/pinned calls, ordinary pinned helpers, imported/recursive/shared helpers, ambiguous origins, negative nested bodies/targets/attributes, and incomplete EOF method recovery. Assert exact signatures, active ordinal/expected type, full prefix candidate sets, explicit Unicode UTF-16 edits, parser-clean repaired source and re-query. A compiler test pins positional-only rejection for both namespaces. Incomplete impl recovery exposed loss of method children; the syntax parser now preserves bounded impl/trait method parsing without closing delimiters and retains diagnostics/lossless text, with an independent syntax regression test. Preserve initial missing signature/implicit local edit, compile/lint, and incomplete-HIR reproductions. Full workspace 4406 passed plus two historical ignored; relevant syntax/HIR/service/protocol packages, final Clippy/fmt, Node 69 and checkpoint validation passed. Final source-bound audit run-OQcpRw: service 592 plus two historical ignored, protocol 580; installed run-odtd3T 9 passed. Broad S5 stays unreviewed, B03 unaccepted, remaining whole-batch scope 1332. Continue B03.12 with service callee-path candidate sets/ownership/edits: module_path_completion_items still uses ordinary global schema completions and has no service-set provider; reuse semantic ownership for service::base method and service::pinned member/method paths and prevent same-name ordinary facts from leaking into these reserved candidates. Unhinted service implementation parameter propagation remains to audit. Also unify imported external callable lookup across signature/expected-argument providers, fix name-aware argument mapping, and audit provider/variable-arity callables before remaining S5/lifecycle/UX04. Fresh native input is still required for strict acceptance; B16 deferred. Find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.11",
-  "nextTask": "B03.11",
+  "activeChild": "B03.12",
+  "nextTask": "B03.12",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -2658,7 +2667,32 @@
     "target/lsp-matrix/run-MMmHd6/report.json",
     "editors/vscode/test-results/run-SyxFSc/results.json",
     "target/lsp-matrix/run-3CrRe1/report.json",
-    "editors/vscode/test-results/run-xURCWD/results.json"
+    "editors/vscode/test-results/run-xURCWD/results.json",
+    "target/lsp-matrix/b03-11-after.log",
+    "target/lsp-matrix/b03-11-after2.log",
+    "target/lsp-matrix/b03-11-after3.log",
+    "target/lsp-matrix/b03-11-after4.log",
+    "target/lsp-matrix/b03-11-before.log",
+    "target/lsp-matrix/b03-11-clippy-final.log",
+    "target/lsp-matrix/b03-11-clippy.log",
+    "target/lsp-matrix/b03-11-compiler-contract.log",
+    "target/lsp-matrix/b03-11-installed.log",
+    "target/lsp-matrix/b03-11-matrix-final.log",
+    "target/lsp-matrix/b03-11-matrix-final2.log",
+    "target/lsp-matrix/b03-11-matrix-recovered.log",
+    "target/lsp-matrix/b03-11-matrix-recovery.log",
+    "target/lsp-matrix/b03-11-node.log",
+    "target/lsp-matrix/b03-11-packages-final.log",
+    "target/lsp-matrix/b03-11-packages.log",
+    "target/lsp-matrix/b03-11-protocol-modes.log",
+    "target/lsp-matrix/b03-11-protocol.log",
+    "target/lsp-matrix/b03-11-protocol2.log",
+    "target/lsp-matrix/b03-11-recovery-debug.log",
+    "target/lsp-matrix/b03-11-service-modes.log",
+    "target/lsp-matrix/b03-11-workspace.log",
+    "target/lsp-matrix/b03-11-checkpoint.log",
+    "target/lsp-matrix/run-OQcpRw/report.json",
+    "editors/vscode/test-results/run-odtd3T/results.json"
   ],
   "openIssues": [
     {

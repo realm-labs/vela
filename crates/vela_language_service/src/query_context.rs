@@ -25,6 +25,7 @@ mod call;
 #[cfg(test)]
 mod call_argument_tests;
 mod hir_cursor;
+mod service_call;
 use hir_cursor::refine_cursor_with_hir;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -303,6 +304,12 @@ impl<'a> QueryContext<'a> {
         databases: &LanguageServiceDatabases,
         callee: &str,
     ) -> Vec<CallableFacts> {
+        if callee.starts_with("service::") {
+            let path = callee.split("::").map(str::to_owned).collect::<Vec<_>>();
+            if let Some(callables) = self.service_callable_facts(databases, &path) {
+                return callables;
+            }
+        }
         callable_facts(databases, callee)
     }
 
@@ -312,6 +319,9 @@ impl<'a> QueryContext<'a> {
         databases: &LanguageServiceDatabases,
         callee_path: &[String],
     ) -> Vec<CallableFacts> {
+        if let Some(callables) = self.service_callable_facts(databases, callee_path) {
+            return callables;
+        }
         let source = self.source_callable_facts_by_path(databases, callee_path);
         if !source.is_empty() {
             return source;
@@ -1159,3 +1169,6 @@ mod tests {
         assert_eq!(callable.params()[1].name(), "arg1");
     }
 }
+
+#[cfg(test)]
+mod service_call_tests;

@@ -10,6 +10,9 @@ impl<'a> QueryContext<'a> {
         databases: &LanguageServiceDatabases,
         path: &[String],
     ) -> Vec<CallableFacts> {
+        if let Some(callables) = self.service_callable_facts(databases, path) {
+            return callables;
+        }
         let source = self.source_callable_facts_by_path(databases, path);
         let graph = databases.hir_db().graph();
         let source_owned = self

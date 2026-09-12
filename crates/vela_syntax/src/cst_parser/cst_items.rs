@@ -265,7 +265,7 @@ impl CstParser<'_, '_> {
 
         if let Some(body_start) = body {
             self.emit_until(body_start);
-            self.method_body(body_start, method_kind);
+            self.method_body(body_start, method_kind, end);
         }
 
         while self.pos < end {
@@ -506,16 +506,16 @@ impl CstParser<'_, '_> {
         self.builder.finish_node();
     }
 
-    fn method_body(&mut self, start: usize, method_kind: SyntaxKind) {
-        let Some(end) =
-            self.find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
-        else {
-            self.emit_current_token();
-            return;
-        };
-
+    fn method_body(&mut self, start: usize, method_kind: SyntaxKind, limit: usize) {
+        let matched = self
+            .find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
+            .filter(|end| *end <= limit);
+        let end = matched.unwrap_or(limit);
+        let close = matched.map_or(end, |end| end.saturating_sub(1));
+        if matched.is_none() {
+            self.error_at(start, "expected `}`");
+        }
         self.emit_current_token();
-        let close = end.saturating_sub(1);
         while self.pos < close {
             let candidate = self.skip_trivia(self.pos);
             self.emit_until(candidate);
