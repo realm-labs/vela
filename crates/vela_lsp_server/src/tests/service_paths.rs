@@ -4,12 +4,116 @@ use lsp_types::{notification as n, request as r};
 use serde_json::json;
 
 #[test]
+fn service_root_lifecycle_tracks_dirty_origins_and_watched_schema() {
+    for crlf in [false, true] {
+        let mut spec = load("completion-service-roots");
+        if crlf {
+            for text in spec.files.values_mut() {
+                *text = text.replace('\n', "\r\n");
+            }
+        }
+        let fixture = FixtureWorkspace::new(&spec).expect("fixture");
+        let temp = crate::tests::support::unique_temp_root("service-root-lifecycle");
+        let root = temp.join("中文 % workspace");
+        fixture.materialize(&root).expect("materialize");
+        let uri = |file: &str| {
+            lsp_types::Url::from_file_path(root.join(file))
+                .expect("URI")
+                .to_string()
+        };
+        let mut server = TestServer::new();
+        let _ = request::<r::Initialize>(
+            &mut server,
+            1,
+            json!({"processId":null,"rootUri":uri(""),"capabilities":{}}),
+        );
+        let caller_file = "scripts/root_import_caller.vela";
+        let _ = notify::<n::DidOpenTextDocument>(
+            &mut server,
+            json!({"textDocument":{"uri":uri(caller_file),"languageId":"vela","version":1,"text":fixture.document(caller_file).expect("caller").text}}),
+        );
+        let file = "scripts/root_import_helper.vela";
+        let source = fixture.document(file).expect("helper");
+        let point = source.markers["cursor"].start;
+        let mut id = 2;
+        for (index, state) in spec.oracle["lifecycle"]
+            .as_array()
+            .expect("states")
+            .iter()
+            .enumerate()
+        {
+            let caller = state["caller"].as_str().expect("caller");
+            let text = if crlf {
+                caller.replace('\n', "\r\n")
+            } else {
+                caller.to_owned()
+            };
+            let _ = notify::<n::DidChangeTextDocument>(
+                &mut server,
+                json!({"textDocument":{"uri":uri(caller_file),"version":index+2},"contentChanges":[{"text":text}]}),
+            );
+            std::fs::write(
+                root.join("schema.json"),
+                state["schema"].as_str().expect("schema"),
+            )
+            .expect("replace schema");
+            let _ = notify::<n::DidChangeWatchedFiles>(
+                &mut server,
+                json!({"changes":[{"uri":uri("schema.json"),"type":2}]}),
+            );
+            let response = response_value(request::<r::Completion>(
+                &mut server,
+                id,
+                json!({"textDocument":{"uri":uri(file)},"position":{"line":point.line,"character":point.character}}),
+            ));
+            id += 1;
+            assert!(response["error"].is_null(), "{state}: {response}");
+            let items = response["result"]["items"].as_array().expect("items");
+            assert_eq!(
+                json!(items.iter().map(|i| i["label"].clone()).collect::<Vec<_>>()),
+                state["labels"],
+                "CRLF={crlf}: {state}"
+            );
+            for item in items {
+                assert_eq!(
+                    item["data"]["resolve"],
+                    json!({"kind":"documentation","symbol":{"kind":"builtin","name":format!("service::{}",item["label"].as_str().expect("label"))}})
+                );
+                let resolved = response_value(request::<r::ResolveCompletionItem>(
+                    &mut server,
+                    id,
+                    item.clone(),
+                ));
+                id += 1;
+                assert!(resolved["error"].is_null());
+                assert_eq!(resolved["result"], *item);
+            }
+        }
+        // Overlay edits must never write the caller back to disk.
+        assert_eq!(
+            std::fs::read_to_string(root.join(caller_file)).expect("disk caller"),
+            fixture.document(caller_file).expect("caller").text
+        );
+        std::fs::remove_dir_all(temp).expect("cleanup");
+    }
+}
+
+#[test]
 fn service_path_matrix_projects_owned_candidates_resolve_and_utf16_edits() {
+    run_matrix("completion-service-paths");
+}
+
+#[test]
+fn service_root_matrix_projects_contextual_namespaces_and_edits() {
+    run_matrix("completion-service-roots");
+}
+
+fn run_matrix(name: &str) {
     for (crlf, mode) in [false, true]
         .into_iter()
-        .flat_map(|crlf| ["full", "missing", "ordinary"].map(|mode| (crlf, mode)))
+        .flat_map(|crlf| ["full", "missing", "ordinary", "empty"].map(|mode| (crlf, mode)))
     {
-        let mut spec = load("completion-service-paths");
+        let mut spec = load(name);
         if crlf {
             for text in spec.files.values_mut() {
                 *text = text.replace('\n', "\r\n");
@@ -22,6 +126,13 @@ fn service_path_matrix_projects_owned_candidates_resolve_and_utf16_edits() {
             let mut schema: serde_json::Value =
                 serde_json::from_str(&spec.files["schema.json"]).expect("schema");
             schema.as_object_mut().expect("object").remove("serviceSet");
+            spec.files
+                .insert("schema.json".to_owned(), schema.to_string());
+        }
+        if mode == "empty" {
+            let mut schema: serde_json::Value =
+                serde_json::from_str(&spec.files["schema.json"]).expect("schema");
+            schema["serviceSet"]["services"] = serde_json::json!([]);
             spec.files
                 .insert("schema.json".to_owned(), schema.to_string());
         }
@@ -91,7 +202,7 @@ fn service_path_matrix_projects_owned_candidates_resolve_and_utf16_edits() {
                 assert_eq!(item["filterText"], expected["label"]);
                 assert_eq!(
                     item["data"]["resolve"],
-                    json!({"kind":"documentation","symbol":{"kind":"schema","name":expected["symbol"]}})
+                    json!({"kind":"documentation","symbol":{"kind":expected["symbolKind"].as_str().unwrap_or("schema"),"name":expected["symbol"]}})
                 );
                 assert_eq!(
                     item["insertTextFormat"],

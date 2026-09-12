@@ -1236,10 +1236,29 @@
         "completion-resolve/syntax/S5/negative/protocol"
       ],
       "summary": "Source annotations now resolve registered leaves recursively in their declaration module/import scope through one builtin container/tuple shape mapper. Exact expanded registry paths fill only unowned leaves; private, ambiguous, missing and non-type source owners cannot fall through to short-name or colliding registry metadata. Local and declaration facts include functions, constants and state; shared source field/pattern-field and method return queries consume the same schema-aware facts. Callable signature presentation uses schema-aware analysis. Source method lookup resolves implementation and default-trait targets in their owning module rather than matching short-name suffixes; a same-name Provider receiver in another module cannot lend its registered return type. Twenty-nine independently authored callable cases and twelve returned-member cases run under LF/CRLF (82 query contexts per layer), asserting frozen complete candidate sets, names/kinds/details, expected argument types, signatures, whole-label byte/UTF-16 edits, parseable applications/re-query, canonical member ownership and exact resolved documentation. Coverage includes thirteen nested container/tuple forms, direct/type/namespace aliases, source collisions, private/non-type/missing/duplicate hints, Provider implementations/default methods, native known parameter prefixes and extra positional/occupied slots, and indexed return/field/constant/state members. An intentionally unsupported custom generic hint retains a parser-negative assertion and unknown type rather than introducing syntax. Mutation-capability and erased Iterator display expectations follow existing contracts; nineteen independent analysis cases assert full structural TypeFacts (including Iterator elements), callable/field/global flow, Provider discovery identity and exact method inventory. Six schema states in both layers replace field type/name/docs, remove registered types, load invalid metadata and recover; service incremental completion/signature results equal fresh databases. Native prefix tests do not invent a variadic tail type or new registration contract. Preserve hints-red (nested Array leaf unknown), analysis-red (Provider return unavailable), returns-focused2 (source Provider borrowed host::Row), and intermediate oracle/grammar checks as investigation evidence. Final workspace 4443 passed with two historical ignored; service 610 plus two ignored, protocol 594, workspace all-target Clippy/fmt and Node 73 passed. Installed Windows VSIX editors/vscode/test-results/run-XVDYj0/results.json passed 9; native editors/vscode/test-results/input-EBMntW/results.json passed 13; strict target/lsp-matrix/run-ZC2bEJ/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots intact. Progress documentation now records current B03 capabilities/gaps concisely; child detail stays here and in Git. These S5/S8 obligations record a partial child, not partition closure. B03 remains unaccepted and remaining whole-batch scope remains 1332. Continue B03.22 with root Service namespace completion and remaining S5 authoring contracts, then broader dependency/cross-feature identity, lifecycle combinations and UX04 proof. Fresh macOS evidence is required when next used; B16 stays deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.22",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/negative/protocol",
+        "completion/syntax/S8/positive/service",
+        "completion/syntax/S8/positive/protocol",
+        "completion/syntax/S8/negative/service",
+        "completion/syntax/S8/negative/protocol",
+        "completion-resolve/syntax/S5/positive/service",
+        "completion-resolve/syntax/S5/positive/protocol",
+        "completion-resolve/syntax/S5/negative/service",
+        "completion-resolve/syntax/S5/negative/protocol"
+      ],
+      "summary": "Root service:: completion now uses the existing reserved Service path provider. base requires a unique registered static origin; pinned requires a nonempty Service set. Builtin namespace symbols prevent source/schema collision metadata from lending ownership or docs, and the established closure/default/import/type restrictions also apply at the root. Twenty-nine independent shared cases run in full, missing, ordinary-only and empty Service-set modes with Unicode LF/CRLF (232 contexts per layer); they assert complete candidate sets, kind/detail/identity, lazy resolve pass-through, whole-identifier byte/UTF-16 edits, parseable applications and same-identity re-query. Coverage includes exact/prefix/middle/start/unknown positions, already complete calls, direct/recursive/imported helpers, ambiguous/missing origins, lexical collisions, nested blocks/loops, EOF recovery and invalid contexts. Nine lifecycle states per line ending and layer remove/ambiguate/restore unsaved caller origins, remove a schema owner, empty/remove/corrupt/recover the Service set; service queries equal fresh databases and protocol changes leave caller disk bytes unchanged. Existing deeper Service-path tests additionally cover empty sets. Preserve target/b03-22-red.log proving the original root query returned no base/pinned candidates. Workspace 4447 passed, two historical ignored; service 612 plus two ignored and protocol 596; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-1IkLGl/results.json passed 9; native editors/vscode/test-results/input-pTb0wx/results.json passed 13; strict target/lsp-matrix/run-CrMQcz/report.json refreshed all 145 accepted B00-B02 requirements without changing original acceptance snapshots. These S5/S8 obligations record partial child progress, not whole-partition acceptance. B03 remains unaccepted; remaining whole-batch scope stays 1332. Resume B03.23 to review remaining S5 and dependency/cross-feature identity, then lifecycle combinations and UX04 interaction proof. Fresh macOS evidence is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.22",
-  "nextTask": "B03.22",
+  "activeChild": "B03.23",
+  "nextTask": "B03.23",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -3034,7 +3053,21 @@
     "target/b03-21-accepted-regression.log",
     "target/lsp-matrix/run-fspSjl/report.json",
     "editors/vscode/test-results/run-XVDYj0/results.json",
-    "editors/vscode/test-results/input-EBMntW/results.json"
+    "editors/vscode/test-results/input-EBMntW/results.json",
+    "target/lsp-matrix/run-CrMQcz/report.json",
+    "target/b03-22-baseline.log",
+    "target/b03-22-red.log",
+    "target/b03-22-focused.log",
+    "target/b03-22-lifecycle.log",
+    "target/b03-22-workspace.log",
+    "target/b03-22-clippy.log",
+    "target/b03-22-node.log",
+    "target/b03-22-editor.log",
+    "target/b03-22-input.log",
+    "target/b03-22-accepted-regression.log",
+    "target/lsp-matrix/run-x1VxTj/report.json",
+    "editors/vscode/test-results/run-1IkLGl/results.json",
+    "editors/vscode/test-results/input-pTb0wx/results.json"
   ],
   "openIssues": [
     {
@@ -3655,8 +3688,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "21884fe0f7fb8a36d90a6d6fd412cdff634907a0",
-          "treeSha256": "39e754d0f93209ccf495eaa27b356872e390d9ea33b556e978bfc3f3ea5de39a"
+          "revision": "f4a3c85e428b478af851a11fddfd9f750d318ebd",
+          "treeSha256": "eec3d2f395e2c2e6252e7d6b75ec73e46c12a1a0207fc3c0def205e5db51058a"
         },
         "profile": {
           "platform": "win32",
@@ -3664,11 +3697,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-ZC2bEJ/report.json"
+          "target/lsp-matrix/run-CrMQcz/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-XVDYj0/results.json --local-results editors/vscode/test-results/input-EBMntW/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-1IkLGl/results.json --local-results editors/vscode/test-results/input-pTb0wx/results.json",
             "exitCode": 0
           }
         ]

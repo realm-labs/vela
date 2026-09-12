@@ -1,0 +1,601 @@
+{
+  "version": 1,
+  "id": "completion-service-roots",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.service_calls\"\nname = \"service_calls\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Context\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Context\"\n        }\n      },\n      {\n        \"name\": \"host::Reply\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"host::Reply\"\n        }\n      },\n      {\n        \"name\": \"host::Failure\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Failure\",\n          \"variant\": null\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"service::base::handle\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"chosen_bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"service::pinned::peer::take\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"chosen_bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  },\n  \"serviceSet\": {\n    \"id\": \"set\",\n    \"path\": \"api::Services\",\n    \"abiFingerprint\": \"abi\",\n    \"typeBindingChecksum\": \"bindings\",\n    \"services\": [\n      {\n        \"id\": \"handler\",\n        \"member\": \"handler\",\n        \"path\": \"api::Handler\",\n        \"abiFingerprint\": \"handler-abi\",\n        \"methods\": [\n          {\n            \"id\": \"handle\",\n            \"name\": \"handle\",\n            \"path\": \"api::Handler::handle\",\n            \"asyncMethod\": true,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"amount\",\n                \"typeHint\": \"i64\",\n                \"mode\": \"owned\"\n              },\n              {\n                \"name\": \"reason\",\n                \"typeHint\": \"String\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"bool\"\n          },\n          {\n            \"id\": \"other\",\n            \"name\": \"other\",\n            \"path\": \"api::Handler::other\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"value\",\n                \"typeHint\": \"u32\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"()\"\n          }\n        ]\n      },\n      {\n        \"id\": \"peer\",\n        \"member\": \"peer\",\n        \"path\": \"api::Peer\",\n        \"abiFingerprint\": \"peer-abi\",\n        \"methods\": [\n          {\n            \"id\": \"take\",\n            \"name\": \"take\",\n            \"path\": \"api::Peer::take\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"amount\",\n                \"typeHint\": \"u32\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"bool\"\n          }\n        ]\n      }\n    ]\n  }\n}\n",
+    "scripts/service/base.vela": "pub fn ghost() {} pub fn handle(bogus: bool) {}\n",
+    "scripts/service/pinned/peer.vela": "pub fn ghost() {} pub fn take(bogus: bool) {}\n",
+    "scripts/root_patch.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { service::[[replace:start]][[cursor]][[replace:end]]; } }\n",
+    "scripts/root_ordinary.vela": "/* 中😀 */ fn main() { service::[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/root_prefix.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { service::[[replace:start]]ba[[cursor]][[replace:end]]; } }\n",
+    "scripts/root_middle.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { service::[[replace:start]]pi[[cursor]]nned[[replace:end]]; } }\n",
+    "scripts/root_start.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { service::[[replace:start]][[cursor]]pinned[[replace:end]]; } }\n",
+    "scripts/root_complete.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { service::[[replace:start]]base[[cursor]][[replace:end]]; } }\n",
+    "scripts/root_unknown.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { service::[[replace:start]]absent[[cursor]][[replace:end]]; } }\n",
+    "scripts/root_orphan_base.vela": "/* 中😀 */ fn main() { service::[[replace:start]]ba[[cursor]][[replace:end]]; }\n",
+    "scripts/root_helper.vela": "/* 中😀 */ fn helper() { service::[[replace:start]][[cursor]][[replace:end]]; } #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { helper(); } }\n",
+    "scripts/root_recursive.vela": "/* 中😀 */ fn helper() { helper(); service::[[replace:start]][[cursor]][[replace:end]]; } #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { helper(); } }\n",
+    "scripts/root_ambiguous.vela": "/* 中😀 */ fn helper() { service::[[replace:start]][[cursor]][[replace:end]]; } #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { helper(); } } #[service_impl(api::Peer)] impl Other { fn take(x) { helper(); } }\n",
+    "scripts/root_lambda.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { let f = || { service::[[replace:start]][[cursor]][[replace:end]]; }; } }\n",
+    "scripts/root_ordinary_lambda.vela": "/* 中😀 */ fn main() { let f = || { service::[[replace:start]][[cursor]][[replace:end]]; }; }\n",
+    "scripts/root_default.vela": "/* 中😀 */ fn helper(x = service::[[replace:start]][[cursor]][[replace:end]]) {}\n",
+    "scripts/root_missing_service.vela": "/* 中😀 */ #[service_impl(missing::Handler)] impl Patch { fn handle(x) { service::[[replace:start]][[cursor]][[replace:end]]; } }\n",
+    "scripts/root_bad_attribute.vela": "/* 中😀 */ #[service_impl(\"api::Handler\")] impl Patch { fn handle(x) { service::[[replace:start]][[cursor]][[replace:end]]; } }\n",
+    "scripts/root_import.vela": "/* 中😀 */ use service::[[replace:start]][[cursor]][[replace:end]];\n",
+    "scripts/root_type.vela": "/* 中😀 */ fn main(x: service::[[replace:start]][[cursor]][[replace:end]]) {}\n",
+    "scripts/root_local_type.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { let x: service::[[replace:start]][[cursor]][[replace:end]] = 1; } }\n",
+    "scripts/root_const.vela": "/* 中😀 */ const VALUE = service::[[replace:start]][[cursor]][[replace:end]];\n",
+    "scripts/root_incomplete.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { service::[[replace:start]][[cursor]][[replace:end]]\n",
+    "scripts/root_local_collision.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { let service = 1; service::[[replace:start]][[cursor]][[replace:end]]; } }\n",
+    "scripts/root_import_collision.vela": "/* 中😀 */ use collision as service; #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { service::[[replace:start]][[cursor]][[replace:end]]; } }\n",
+    "scripts/collision.vela": "pub fn decoy() {}\n",
+    "scripts/root_import_helper.vela": "/* 中😀 */ pub fn helper() { service::[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/root_import_caller.vela": "use root_import_helper::helper as run; #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { run(); } }\n",
+    "scripts/root_nested_block.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { if true { service::[[replace:start]][[cursor]][[replace:end]]; } } }\n",
+    "scripts/root_loop.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { for x in [1] { service::[[replace:start]][[cursor]][[replace:end]]; } } }\n",
+    "scripts/root_alias.vela": "/* 中😀 */ use service as dispatch; fn main() { dispatch::[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/root_base_existing_call.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { service::[[replace:start]]ba[[cursor]]se[[replace:end]]::handle(1, \"reason\"); } }\n",
+    "scripts/root_pinned_existing_call.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { service::[[replace:start]]pi[[cursor]]nned[[replace:end]]::peer::take(1); } }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "patch",
+        "file": "scripts/root_patch.vela",
+        "items": [
+          {
+            "label": "base",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::base",
+            "insert": "base",
+            "symbol": "service::base",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "pinned",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::pinned",
+            "insert": "pinned",
+            "symbol": "service::pinned",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "ordinary",
+        "file": "scripts/root_ordinary.vela",
+        "items": [
+          {
+            "label": "pinned",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::pinned",
+            "insert": "pinned",
+            "symbol": "service::pinned",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "prefix",
+        "file": "scripts/root_prefix.vela",
+        "items": [
+          {
+            "label": "base",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::base",
+            "insert": "base",
+            "symbol": "service::base",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "middle",
+        "file": "scripts/root_middle.vela",
+        "items": [
+          {
+            "label": "pinned",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::pinned",
+            "insert": "pinned",
+            "symbol": "service::pinned",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "start",
+        "file": "scripts/root_start.vela",
+        "items": [
+          {
+            "label": "base",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::base",
+            "insert": "base",
+            "symbol": "service::base",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "pinned",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::pinned",
+            "insert": "pinned",
+            "symbol": "service::pinned",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "complete",
+        "file": "scripts/root_complete.vela",
+        "items": [
+          {
+            "label": "base",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::base",
+            "insert": "base",
+            "symbol": "service::base",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "unknown",
+        "file": "scripts/root_unknown.vela",
+        "items": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "orphan_base",
+        "file": "scripts/root_orphan_base.vela",
+        "items": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "helper",
+        "file": "scripts/root_helper.vela",
+        "items": [
+          {
+            "label": "base",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::base",
+            "insert": "base",
+            "symbol": "service::base",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "pinned",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::pinned",
+            "insert": "pinned",
+            "symbol": "service::pinned",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "recursive",
+        "file": "scripts/root_recursive.vela",
+        "items": [
+          {
+            "label": "base",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::base",
+            "insert": "base",
+            "symbol": "service::base",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "pinned",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::pinned",
+            "insert": "pinned",
+            "symbol": "service::pinned",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "ambiguous",
+        "file": "scripts/root_ambiguous.vela",
+        "items": [
+          {
+            "label": "pinned",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::pinned",
+            "insert": "pinned",
+            "symbol": "service::pinned",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "lambda",
+        "file": "scripts/root_lambda.vela",
+        "items": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "ordinary_lambda",
+        "file": "scripts/root_ordinary_lambda.vela",
+        "items": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "default",
+        "file": "scripts/root_default.vela",
+        "items": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "missing_service",
+        "file": "scripts/root_missing_service.vela",
+        "items": [
+          {
+            "label": "pinned",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::pinned",
+            "insert": "pinned",
+            "symbol": "service::pinned",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "bad_attribute",
+        "file": "scripts/root_bad_attribute.vela",
+        "items": [
+          {
+            "label": "pinned",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::pinned",
+            "insert": "pinned",
+            "symbol": "service::pinned",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "import",
+        "file": "scripts/root_import.vela",
+        "items": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "type",
+        "file": "scripts/root_type.vela",
+        "items": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "local_type",
+        "file": "scripts/root_local_type.vela",
+        "items": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "const",
+        "file": "scripts/root_const.vela",
+        "items": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "incomplete",
+        "file": "scripts/root_incomplete.vela",
+        "items": [
+          {
+            "label": "base",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::base",
+            "insert": "base",
+            "symbol": "service::base",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "pinned",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::pinned",
+            "insert": "pinned",
+            "symbol": "service::pinned",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": "; } }"
+      },
+      {
+        "id": "local_collision",
+        "file": "scripts/root_local_collision.vela",
+        "items": [
+          {
+            "label": "base",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::base",
+            "insert": "base",
+            "symbol": "service::base",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "pinned",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::pinned",
+            "insert": "pinned",
+            "symbol": "service::pinned",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "import_collision",
+        "file": "scripts/root_import_collision.vela",
+        "items": [
+          {
+            "label": "base",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::base",
+            "insert": "base",
+            "symbol": "service::base",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "pinned",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::pinned",
+            "insert": "pinned",
+            "symbol": "service::pinned",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "import_helper",
+        "file": "scripts/root_import_helper.vela",
+        "items": [
+          {
+            "label": "base",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::base",
+            "insert": "base",
+            "symbol": "service::base",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "pinned",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::pinned",
+            "insert": "pinned",
+            "symbol": "service::pinned",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "nested_block",
+        "file": "scripts/root_nested_block.vela",
+        "items": [
+          {
+            "label": "base",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::base",
+            "insert": "base",
+            "symbol": "service::base",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "pinned",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::pinned",
+            "insert": "pinned",
+            "symbol": "service::pinned",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "loop",
+        "file": "scripts/root_loop.vela",
+        "items": [
+          {
+            "label": "base",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::base",
+            "insert": "base",
+            "symbol": "service::base",
+            "symbolKind": "builtin",
+            "docs": null
+          },
+          {
+            "label": "pinned",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::pinned",
+            "insert": "pinned",
+            "symbol": "service::pinned",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "alias",
+        "file": "scripts/root_alias.vela",
+        "items": [],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "base_existing_call",
+        "file": "scripts/root_base_existing_call.vela",
+        "items": [
+          {
+            "label": "base",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::base",
+            "insert": "base",
+            "symbol": "service::base",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      },
+      {
+        "id": "pinned_existing_call",
+        "file": "scripts/root_pinned_existing_call.vela",
+        "items": [
+          {
+            "label": "pinned",
+            "kind": "Module",
+            "lspKind": 9,
+            "detail": "service::pinned",
+            "insert": "pinned",
+            "symbol": "service::pinned",
+            "symbolKind": "builtin",
+            "docs": null
+          }
+        ],
+        "recoverySuffix": ""
+      }
+    ],
+    "lifecycle": [
+      {
+        "id": "initial",
+        "schema": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Context\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Context\"\n        }\n      },\n      {\n        \"name\": \"host::Reply\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"host::Reply\"\n        }\n      },\n      {\n        \"name\": \"host::Failure\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Failure\",\n          \"variant\": null\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"service::base::handle\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"chosen_bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"service::pinned::peer::take\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"chosen_bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  },\n  \"serviceSet\": {\n    \"id\": \"set\",\n    \"path\": \"api::Services\",\n    \"abiFingerprint\": \"abi\",\n    \"typeBindingChecksum\": \"bindings\",\n    \"services\": [\n      {\n        \"id\": \"handler\",\n        \"member\": \"handler\",\n        \"path\": \"api::Handler\",\n        \"abiFingerprint\": \"handler-abi\",\n        \"methods\": [\n          {\n            \"id\": \"handle\",\n            \"name\": \"handle\",\n            \"path\": \"api::Handler::handle\",\n            \"asyncMethod\": true,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"amount\",\n                \"typeHint\": \"i64\",\n                \"mode\": \"owned\"\n              },\n              {\n                \"name\": \"reason\",\n                \"typeHint\": \"String\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"bool\"\n          },\n          {\n            \"id\": \"other\",\n            \"name\": \"other\",\n            \"path\": \"api::Handler::other\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"value\",\n                \"typeHint\": \"u32\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"()\"\n          }\n        ]\n      },\n      {\n        \"id\": \"peer\",\n        \"member\": \"peer\",\n        \"path\": \"api::Peer\",\n        \"abiFingerprint\": \"peer-abi\",\n        \"methods\": [\n          {\n            \"id\": \"take\",\n            \"name\": \"take\",\n            \"path\": \"api::Peer::take\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"amount\",\n                \"typeHint\": \"u32\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"bool\"\n          }\n        ]\n      }\n    ]\n  }\n}\n",
+        "caller": "use root_import_helper::helper as run; #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { run(); } }\n",
+        "labels": [
+          "base",
+          "pinned"
+        ]
+      },
+      {
+        "id": "dirty_removed_origin",
+        "schema": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Context\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Context\"\n        }\n      },\n      {\n        \"name\": \"host::Reply\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"host::Reply\"\n        }\n      },\n      {\n        \"name\": \"host::Failure\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Failure\",\n          \"variant\": null\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"service::base::handle\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"chosen_bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"service::pinned::peer::take\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"chosen_bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  },\n  \"serviceSet\": {\n    \"id\": \"set\",\n    \"path\": \"api::Services\",\n    \"abiFingerprint\": \"abi\",\n    \"typeBindingChecksum\": \"bindings\",\n    \"services\": [\n      {\n        \"id\": \"handler\",\n        \"member\": \"handler\",\n        \"path\": \"api::Handler\",\n        \"abiFingerprint\": \"handler-abi\",\n        \"methods\": [\n          {\n            \"id\": \"handle\",\n            \"name\": \"handle\",\n            \"path\": \"api::Handler::handle\",\n            \"asyncMethod\": true,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"amount\",\n                \"typeHint\": \"i64\",\n                \"mode\": \"owned\"\n              },\n              {\n                \"name\": \"reason\",\n                \"typeHint\": \"String\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"bool\"\n          },\n          {\n            \"id\": \"other\",\n            \"name\": \"other\",\n            \"path\": \"api::Handler::other\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"value\",\n                \"typeHint\": \"u32\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"()\"\n          }\n        ]\n      },\n      {\n        \"id\": \"peer\",\n        \"member\": \"peer\",\n        \"path\": \"api::Peer\",\n        \"abiFingerprint\": \"peer-abi\",\n        \"methods\": [\n          {\n            \"id\": \"take\",\n            \"name\": \"take\",\n            \"path\": \"api::Peer::take\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"amount\",\n                \"typeHint\": \"u32\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"bool\"\n          }\n        ]\n      }\n    ]\n  }\n}\n",
+        "caller": "fn unrelated() {}",
+        "labels": [
+          "pinned"
+        ]
+      },
+      {
+        "id": "dirty_ambiguous_origin",
+        "schema": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Context\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Context\"\n        }\n      },\n      {\n        \"name\": \"host::Reply\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"host::Reply\"\n        }\n      },\n      {\n        \"name\": \"host::Failure\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Failure\",\n          \"variant\": null\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"service::base::handle\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"chosen_bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"service::pinned::peer::take\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"chosen_bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  },\n  \"serviceSet\": {\n    \"id\": \"set\",\n    \"path\": \"api::Services\",\n    \"abiFingerprint\": \"abi\",\n    \"typeBindingChecksum\": \"bindings\",\n    \"services\": [\n      {\n        \"id\": \"handler\",\n        \"member\": \"handler\",\n        \"path\": \"api::Handler\",\n        \"abiFingerprint\": \"handler-abi\",\n        \"methods\": [\n          {\n            \"id\": \"handle\",\n            \"name\": \"handle\",\n            \"path\": \"api::Handler::handle\",\n            \"asyncMethod\": true,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"amount\",\n                \"typeHint\": \"i64\",\n                \"mode\": \"owned\"\n              },\n              {\n                \"name\": \"reason\",\n                \"typeHint\": \"String\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"bool\"\n          },\n          {\n            \"id\": \"other\",\n            \"name\": \"other\",\n            \"path\": \"api::Handler::other\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"value\",\n                \"typeHint\": \"u32\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"()\"\n          }\n        ]\n      },\n      {\n        \"id\": \"peer\",\n        \"member\": \"peer\",\n        \"path\": \"api::Peer\",\n        \"abiFingerprint\": \"peer-abi\",\n        \"methods\": [\n          {\n            \"id\": \"take\",\n            \"name\": \"take\",\n            \"path\": \"api::Peer::take\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"amount\",\n                \"typeHint\": \"u32\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"bool\"\n          }\n        ]\n      }\n    ]\n  }\n}\n",
+        "caller": "use root_import_helper::helper as run; #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { run(); } }\n #[service_impl(api::Peer)] impl Other { fn take(x) { run(); } }",
+        "labels": [
+          "pinned"
+        ]
+      },
+      {
+        "id": "dirty_recovered_origin",
+        "schema": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Context\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Context\"\n        }\n      },\n      {\n        \"name\": \"host::Reply\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"host::Reply\"\n        }\n      },\n      {\n        \"name\": \"host::Failure\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Failure\",\n          \"variant\": null\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"service::base::handle\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"chosen_bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"service::pinned::peer::take\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"chosen_bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  },\n  \"serviceSet\": {\n    \"id\": \"set\",\n    \"path\": \"api::Services\",\n    \"abiFingerprint\": \"abi\",\n    \"typeBindingChecksum\": \"bindings\",\n    \"services\": [\n      {\n        \"id\": \"handler\",\n        \"member\": \"handler\",\n        \"path\": \"api::Handler\",\n        \"abiFingerprint\": \"handler-abi\",\n        \"methods\": [\n          {\n            \"id\": \"handle\",\n            \"name\": \"handle\",\n            \"path\": \"api::Handler::handle\",\n            \"asyncMethod\": true,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"amount\",\n                \"typeHint\": \"i64\",\n                \"mode\": \"owned\"\n              },\n              {\n                \"name\": \"reason\",\n                \"typeHint\": \"String\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"bool\"\n          },\n          {\n            \"id\": \"other\",\n            \"name\": \"other\",\n            \"path\": \"api::Handler::other\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"value\",\n                \"typeHint\": \"u32\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"()\"\n          }\n        ]\n      },\n      {\n        \"id\": \"peer\",\n        \"member\": \"peer\",\n        \"path\": \"api::Peer\",\n        \"abiFingerprint\": \"peer-abi\",\n        \"methods\": [\n          {\n            \"id\": \"take\",\n            \"name\": \"take\",\n            \"path\": \"api::Peer::take\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"amount\",\n                \"typeHint\": \"u32\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"bool\"\n          }\n        ]\n      }\n    ]\n  }\n}\n",
+        "caller": "use root_import_helper::helper as run; #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { run(); } }\n",
+        "labels": [
+          "base",
+          "pinned"
+        ]
+      },
+      {
+        "id": "removed_owner",
+        "schema": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"host::Context\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Context\"}},{\"name\":\"host::Reply\",\"fact\":{\"kind\":\"record\",\"name\":\"host::Reply\"}},{\"name\":\"host::Failure\",\"fact\":{\"kind\":\"enum\",\"name\":\"host::Failure\",\"variant\":null}}],\"functions\":[{\"name\":\"service::base::handle\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"chosen_bogus\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}},{\"name\":\"service::pinned::peer::take\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"chosen_bogus\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}}]},\"serviceSet\":{\"id\":\"set\",\"path\":\"api::Services\",\"abiFingerprint\":\"abi\",\"typeBindingChecksum\":\"bindings\",\"services\":[{\"id\":\"peer\",\"member\":\"peer\",\"path\":\"api::Peer\",\"abiFingerprint\":\"peer-abi\",\"methods\":[{\"id\":\"take\",\"name\":\"take\",\"path\":\"api::Peer::take\",\"asyncMethod\":false,\"effects\":[],\"parameters\":[{\"name\":\"amount\",\"typeHint\":\"u32\",\"mode\":\"owned\"}],\"returnType\":\"bool\"}]}]}}",
+        "caller": "use root_import_helper::helper as run; #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { run(); } }\n",
+        "labels": [
+          "pinned"
+        ]
+      },
+      {
+        "id": "empty_set",
+        "schema": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"host::Context\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Context\"}},{\"name\":\"host::Reply\",\"fact\":{\"kind\":\"record\",\"name\":\"host::Reply\"}},{\"name\":\"host::Failure\",\"fact\":{\"kind\":\"enum\",\"name\":\"host::Failure\",\"variant\":null}}],\"functions\":[{\"name\":\"service::base::handle\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"chosen_bogus\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}},{\"name\":\"service::pinned::peer::take\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"chosen_bogus\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}}]},\"serviceSet\":{\"id\":\"set\",\"path\":\"api::Services\",\"abiFingerprint\":\"abi\",\"typeBindingChecksum\":\"bindings\",\"services\":[]}}",
+        "caller": "use root_import_helper::helper as run; #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { run(); } }\n",
+        "labels": []
+      },
+      {
+        "id": "invalid_schema",
+        "schema": "{invalid",
+        "caller": "use root_import_helper::helper as run; #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { run(); } }\n",
+        "labels": [],
+        "invalid": true
+      },
+      {
+        "id": "ordinary_facts_only",
+        "schema": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"host::Context\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Context\"}},{\"name\":\"host::Reply\",\"fact\":{\"kind\":\"record\",\"name\":\"host::Reply\"}},{\"name\":\"host::Failure\",\"fact\":{\"kind\":\"enum\",\"name\":\"host::Failure\",\"variant\":null}}],\"functions\":[{\"name\":\"service::base::handle\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"chosen_bogus\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}},{\"name\":\"service::pinned::peer::take\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"chosen_bogus\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}}]}}",
+        "caller": "use root_import_helper::helper as run; #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { run(); } }\n",
+        "labels": []
+      },
+      {
+        "id": "recovered_set",
+        "schema": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Context\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Context\"\n        }\n      },\n      {\n        \"name\": \"host::Reply\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"host::Reply\"\n        }\n      },\n      {\n        \"name\": \"host::Failure\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Failure\",\n          \"variant\": null\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"service::base::handle\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"chosen_bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"service::pinned::peer::take\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"chosen_bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  },\n  \"serviceSet\": {\n    \"id\": \"set\",\n    \"path\": \"api::Services\",\n    \"abiFingerprint\": \"abi\",\n    \"typeBindingChecksum\": \"bindings\",\n    \"services\": [\n      {\n        \"id\": \"handler\",\n        \"member\": \"handler\",\n        \"path\": \"api::Handler\",\n        \"abiFingerprint\": \"handler-abi\",\n        \"methods\": [\n          {\n            \"id\": \"handle\",\n            \"name\": \"handle\",\n            \"path\": \"api::Handler::handle\",\n            \"asyncMethod\": true,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"amount\",\n                \"typeHint\": \"i64\",\n                \"mode\": \"owned\"\n              },\n              {\n                \"name\": \"reason\",\n                \"typeHint\": \"String\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"bool\"\n          },\n          {\n            \"id\": \"other\",\n            \"name\": \"other\",\n            \"path\": \"api::Handler::other\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"value\",\n                \"typeHint\": \"u32\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"()\"\n          }\n        ]\n      },\n      {\n        \"id\": \"peer\",\n        \"member\": \"peer\",\n        \"path\": \"api::Peer\",\n        \"abiFingerprint\": \"peer-abi\",\n        \"methods\": [\n          {\n            \"id\": \"take\",\n            \"name\": \"take\",\n            \"path\": \"api::Peer::take\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"amount\",\n                \"typeHint\": \"u32\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"bool\"\n          }\n        ]\n      }\n    ]\n  }\n}\n",
+        "caller": "use root_import_helper::helper as run; #[service_impl(api::Handler)] impl Patch { async fn handle(x, reason) { run(); } }\n",
+        "labels": [
+          "base",
+          "pinned"
+        ]
+      }
+    ]
+  }
+}

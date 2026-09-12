@@ -19,7 +19,10 @@ pub(super) fn completion_items(
 ) -> Option<Vec<CompletionItem>> {
     let base = query.cursor().module_base()?;
     let path = base.split("::").collect::<Vec<_>>();
-    if !matches!(path.as_slice(), ["service", "base" | "pinned", ..]) {
+    if !matches!(
+        path.as_slice(),
+        ["service"] | ["service", "base" | "pinned", ..]
+    ) {
         return None;
     }
     let mut items = Vec::new();
@@ -39,7 +42,21 @@ pub(super) fn completion_items(
     {
         return Some(items);
     }
-    if path == ["service", "pinned"] {
+    if path == ["service"] {
+        if query
+            .service_path_owner(databases, &["service", "base"])
+            .is_some()
+        {
+            items.push(namespace_item("base"));
+        }
+        if databases
+            .schema_db()
+            .service_set()
+            .is_some_and(|set| !set.services().is_empty())
+        {
+            items.push(namespace_item("pinned"));
+        }
+    } else if path == ["service", "pinned"] {
         if let Some(schema) = databases.schema_db().service_set() {
             items.extend(schema.services().iter().map(|service| {
                 item(
@@ -90,6 +107,13 @@ pub(super) fn completion_items(
         context.prefix(),
         |item| item.label().starts_with(context.prefix()),
     ))
+}
+
+fn namespace_item(name: &str) -> CompletionItem {
+    let path = format!("service::{name}");
+    item(name, CompletionKind::Module, name.to_owned())
+        .with_detail_parts(DisplayParts::type_name(&path))
+        .with_symbol(CompletionSymbol::Builtin(path))
 }
 
 fn item(label: &str, kind: CompletionKind, insertion: String) -> CompletionItem {

@@ -4456,3 +4456,15 @@ Known native parameter metadata supplies only that prefix; extra positional slot
 do not invent names or types, and absent name metadata does not enable indexed
 labels as named arguments. Schema replacement must invalidate nested facts and
 resolved docs as well as the outer callable entry.
+
+## Service Root Completion Uses Static Capabilities
+
+Complete `service::` through the same analysis-only Service path provider as its
+deeper paths. Offer `base` only when static call reachability identifies one
+registered Service origin, and `pinned` only when a nonempty Service set exists.
+Lambda/default-parameter bodies, imports and type contexts do not expose these
+dispatch namespaces. Root entries have builtin namespace identity, so ordinary
+source/schema names cannot lend their documentation or ownership. Replace the
+whole identifier, including a suffix after the cursor in an existing call, and
+recompute availability after source or schema changes. This adds authoring
+support to existing compiler capabilities without changing dispatch semantics.

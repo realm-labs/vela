@@ -646,9 +646,17 @@ known metadata receive no invented parameter names or types; this does not claim
 a new variadic registration contract. Detailed child evidence remains in the
 execution checkpoint and Git.
 
-Remaining B03 work includes root Service namespace completion, broader S5 and
-dependency/cross-feature identity, lifecycle combinations and UX04 interaction
-proof. Shared implementation resumes at B03.22. B00-B02 acceptance snapshots stay
+Root `service::` completion now offers `base` only for a unique registered
+static origin and `pinned` for a nonempty Service set. Compiler-owned namespace
+identity prevents ordinary source/schema names from supplying candidates or docs.
+Twenty-nine shared cases cover whole-token edits, existing calls, helper origins,
+restricted contexts and metadata absence under Unicode LF/CRLF. Nine lifecycle
+states cover dirty removed/ambiguous/recovered callers and replaced/empty/invalid/
+recovered Service sets, with persistent-versus-fresh service equivalence.
+
+Remaining B03 work includes broader S5 and dependency/cross-feature identity,
+lifecycle combinations and UX04 interaction proof. Shared implementation resumes
+at B03.23. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:
 suggestion acceptance, F12/back and palettes, modifier-click, context-menu Peek,
