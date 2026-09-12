@@ -352,6 +352,14 @@ Named-argument completion uses source declarations or explicit registry
 signatures; generated display labels such as `arg0` are not insertable names.
 An explicitly registered parameter named `arg0` remains valid.
 
+Standard-library callable names and default markers come from the same static
+`vela_stdlib` manifest used for registration, while analysis retains specialized
+parameter and return types. This crate contains backend-neutral metadata and
+registry definitions; reading its constants does not execute a host or native
+function. Provider-injected APIs and variable-arity reflection shapes need their
+own explicit metadata. Reserved-word parameter labels may appear in signatures
+but cannot become invalid `name = value` edits.
+
 When the schema is absent or stale, tooling should degrade to `Any` and report
 schema diagnostics. It must not invent host facts or read host state.
 

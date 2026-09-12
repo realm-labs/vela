@@ -66,6 +66,7 @@ const MAP_METHOD_NAMES: &[&str] = &[
     "merge",
     "map_values",
     "filter",
+    "group_by",
     "find",
     "any",
     "all",

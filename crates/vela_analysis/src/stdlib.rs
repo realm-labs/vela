@@ -2,6 +2,8 @@ use crate::type_fact::TypeFact;
 
 mod functions;
 mod methods;
+mod parameter_metadata;
+pub use parameter_metadata::StdlibParameterMetadata;
 mod reflect;
 
 #[cfg(test)]
@@ -29,6 +31,11 @@ pub struct StdlibMethodFact {
 }
 
 impl StdlibMethodFact {
+    #[must_use]
+    pub fn parameter_metadata(&self) -> Option<Vec<StdlibParameterMetadata>> {
+        parameter_metadata::method_parameters(&self.receiver, self.method, self.params.len())
+    }
+
     fn new(receiver: TypeFact, method: &'static str, returns: TypeFact) -> Self {
         Self {
             receiver,
@@ -75,6 +82,11 @@ pub struct StdlibFunctionFact {
 }
 
 impl StdlibFunctionFact {
+    #[must_use]
+    pub fn parameter_metadata(&self) -> Option<Vec<StdlibParameterMetadata>> {
+        parameter_metadata::function_parameters(self.name, self.params.len())
+    }
+
     fn new(name: &'static str, params: Vec<TypeFact>, returns: TypeFact) -> Self {
         let param_names = (0..params.len())
             .map(|index| match index {
@@ -86,6 +98,10 @@ impl StdlibFunctionFact {
                 _ => "arg",
             })
             .collect();
+        let param_names = parameter_metadata::function_parameters(name, params.len())
+            .map_or(param_names, |parameters| {
+                parameters.into_iter().map(|p| p.name).collect()
+            });
         Self {
             name,
             param_names,

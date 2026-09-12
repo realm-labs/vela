@@ -35,8 +35,8 @@
     "scripts/query_schema_missing.vela": "/* 中😀 */ fn main() { unknown::grant([[replace:start]][[cursor]][[replace:end]]); }\n",
     "scripts/query_schema_wrong_owner.vela": "/* 中😀 */ fn main(p: host::Missing) { p.grant([[replace:start]][[cursor]][[replace:end]]); }\n",
     "scripts/query_schema_dynamic.vela": "/* 中😀 */ fn main(p: Any) { p.grant([[replace:start]][[cursor]][[replace:end]]); }\n",
-    "scripts/query_stdlib_indexed.vela": "/* 中😀 */ fn main() { option::some([[replace:start]][[cursor]][[replace:end]]); }\n",
-    "scripts/query_stdlib_method_indexed.vela": "/* 中😀 */ fn main(values: Array<i64>) { values.push([[replace:start]][[cursor]][[replace:end]]); }\n"
+    "scripts/query_stdlib_function.vela": "/* 中😀 */ fn main() { option::some([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_stdlib_method.vela": "/* 中😀 */ fn main(values: Array<i64>) { values.push([[replace:start]][[cursor]][[replace:end]]); }\n"
   },
   "actions": [],
   "oracle": {
@@ -425,14 +425,30 @@
         "parameters": []
       },
       {
-        "id": "stdlib_indexed",
-        "file": "scripts/query_stdlib_indexed.vela",
-        "parameters": []
+        "id": "stdlib_function",
+        "file": "scripts/query_stdlib_function.vela",
+        "parameters": [
+          {
+            "name": "value",
+            "detail": "Any",
+            "insert": "value = "
+          }
+        ],
+        "apply": "value",
+        "value": "1"
       },
       {
-        "id": "stdlib_method_indexed",
-        "file": "scripts/query_stdlib_method_indexed.vela",
-        "parameters": []
+        "id": "stdlib_method",
+        "file": "scripts/query_stdlib_method.vela",
+        "parameters": [
+          {
+            "name": "value",
+            "detail": "i64",
+            "insert": "value = "
+          }
+        ],
+        "apply": "value",
+        "value": "1"
       }
     ]
   }

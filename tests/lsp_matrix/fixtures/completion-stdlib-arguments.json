@@ -1,0 +1,394 @@
+{
+  "version": 1,
+  "id": "completion-stdlib-arguments",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.stdlib_arguments\"\nname = \"stdlib_arguments\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "scripts/query_option_function.vela": "/* 中😀 */ fn main() { option::some([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_option_used.vela": "/* 中😀 */ fn main(value: Option<i64>) { option::unwrap_or(value, [[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_option_named.vela": "/* 中😀 */ fn main() { option::unwrap_or(fallback = 1, [[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_imported.vela": "/* 中😀 */ use option::some; fn main() { some([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_math.vela": "/* 中😀 */ fn main() { math::clamp([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_string.vela": "/* 中😀 */ fn main(text: String) { text.replace([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_bytes.vela": "/* 中😀 */ fn main(data: Bytes) { data.get([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_char.vela": "/* 中😀 */ fn main(ch: char) { ch.to_string([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_range.vela": "/* 中😀 */ fn main(r: Range) { r.len([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_array.vela": "/* 中😀 */ fn main(values: Array<i64>) { values.insert([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_array_default.vela": "/* 中😀 */ fn main(values: Array<i64>) { values.sum([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_array_view.vela": "/* 中😀 */ fn main(values: ArrayView<i64>) { values.get([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_array_mut.vela": "/* 中😀 */ fn main(values: ArrayMut<i64>) { values.insert([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_map.vela": "/* 中😀 */ fn main(values: Map<String, i64>) { values.insert([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_set.vela": "/* 中😀 */ fn main(values: Set<i64>) { values.insert([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_iterator.vela": "/* 中😀 */ fn main(values: Iterator<i64>) { values.take([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_option_method.vela": "/* 中😀 */ fn main(value: Option<i64>) { value.unwrap_or([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_result_method.vela": "/* 中😀 */ fn main(value: Result<i64, String>) { value.unwrap_or([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_reflection.vela": "/* 中😀 */ fn main() { reflect::has_type([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_reserved_name.vela": "/* 中😀 */ fn main() { reflect::implements([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_provider.vela": "/* 中😀 */ fn main() { math::random([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_unknown.vela": "/* 中😀 */ fn main() { missing::some([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_shadowed.vela": "/* 中😀 */ fn main(some: Function) { some([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_dynamic.vela": "/* 中😀 */ fn main(value: Any) { value.unwrap_or([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_array_mut_read.vela": "/* 中😀 */ fn main(values: ArrayMut<i64>) { values.get([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_import_alias.vela": "/* 中😀 */ use option::some as wrap; fn main() { wrap([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_module_alias.vela": "/* 中😀 */ use option as opt; fn main() { opt::some([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_group_import.vela": "/* 中😀 */ use option::{some, none}; fn main() { some([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_ambiguous_import.vela": "/* 中😀 */ use option::some as wrap; use result::ok as wrap; fn main() { wrap([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"functions\": [\n      {\n        \"name\": \"host::growable\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [],\n          \"returns\": {\n            \"kind\": \"arrayMut\",\n            \"element\": {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            \"mutation\": \"growable\"\n          }\n        }\n      }\n    ]\n  }\n}\n",
+    "scripts/query_array_growable.vela": "/* 中😀 */ fn main() { host::growable().insert([[replace:start]][[cursor]][[replace:end]]); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "option_function",
+        "file": "scripts/query_option_function.vela",
+        "parameters": [
+          {
+            "name": "value",
+            "detail": "Any",
+            "insert": "value = "
+          }
+        ],
+        "apply": "value",
+        "value": "1"
+      },
+      {
+        "id": "option_used",
+        "file": "scripts/query_option_used.vela",
+        "parameters": [
+          {
+            "name": "fallback",
+            "detail": "Any",
+            "insert": "fallback = "
+          }
+        ],
+        "apply": "fallback",
+        "value": "2"
+      },
+      {
+        "id": "option_named",
+        "file": "scripts/query_option_named.vela",
+        "parameters": [
+          {
+            "name": "option",
+            "detail": "Option(Any)",
+            "insert": "option = "
+          }
+        ],
+        "apply": "option",
+        "value": "option::none()"
+      },
+      {
+        "id": "imported",
+        "file": "scripts/query_imported.vela",
+        "parameters": [
+          {
+            "name": "value",
+            "detail": "Any",
+            "insert": "value = "
+          }
+        ],
+        "apply": "value",
+        "value": "1"
+      },
+      {
+        "id": "math",
+        "file": "scripts/query_math.vela",
+        "parameters": [
+          {
+            "name": "value",
+            "detail": "i64 | f64",
+            "insert": "value = "
+          },
+          {
+            "name": "min",
+            "detail": "i64 | f64",
+            "insert": "min = "
+          },
+          {
+            "name": "max",
+            "detail": "i64 | f64",
+            "insert": "max = "
+          }
+        ],
+        "apply": "value",
+        "value": "1"
+      },
+      {
+        "id": "string",
+        "file": "scripts/query_string.vela",
+        "parameters": [
+          {
+            "name": "old",
+            "detail": "String",
+            "insert": "old = "
+          },
+          {
+            "name": "new",
+            "detail": "String",
+            "insert": "new = "
+          }
+        ],
+        "apply": "old",
+        "value": "\"x\""
+      },
+      {
+        "id": "bytes",
+        "file": "scripts/query_bytes.vela",
+        "parameters": [
+          {
+            "name": "index",
+            "detail": "i64",
+            "insert": "index = "
+          }
+        ],
+        "apply": "index",
+        "value": "0"
+      },
+      {
+        "id": "char",
+        "file": "scripts/query_char.vela",
+        "parameters": []
+      },
+      {
+        "id": "range",
+        "file": "scripts/query_range.vela",
+        "parameters": []
+      },
+      {
+        "id": "array",
+        "file": "scripts/query_array.vela",
+        "parameters": [
+          {
+            "name": "index",
+            "detail": "i64",
+            "insert": "index = "
+          },
+          {
+            "name": "value",
+            "detail": "i64",
+            "insert": "value = "
+          }
+        ],
+        "apply": "value",
+        "value": "1"
+      },
+      {
+        "id": "array_default",
+        "file": "scripts/query_array_default.vela",
+        "parameters": [
+          {
+            "name": "callback",
+            "detail": "Function(i64) -> i64 (defaulted)",
+            "insert": "callback = "
+          }
+        ],
+        "apply": "callback",
+        "value": "|value| value",
+        "signature": "Array(i64).sum(callback: Function(i64) -> i64 (defaulted)) -> i64",
+        "activeParameter": 0
+      },
+      {
+        "id": "array_view",
+        "file": "scripts/query_array_view.vela",
+        "parameters": [
+          {
+            "name": "index",
+            "detail": "i64",
+            "insert": "index = "
+          }
+        ],
+        "apply": "index",
+        "value": "0"
+      },
+      {
+        "id": "array_mut",
+        "file": "scripts/query_array_mut.vela",
+        "parameters": []
+      },
+      {
+        "id": "map",
+        "file": "scripts/query_map.vela",
+        "parameters": [
+          {
+            "name": "key",
+            "detail": "String",
+            "insert": "key = "
+          },
+          {
+            "name": "value",
+            "detail": "i64",
+            "insert": "value = "
+          }
+        ],
+        "apply": "key",
+        "value": "\"x\""
+      },
+      {
+        "id": "set",
+        "file": "scripts/query_set.vela",
+        "parameters": [
+          {
+            "name": "value",
+            "detail": "i64",
+            "insert": "value = "
+          }
+        ],
+        "apply": "value",
+        "value": "1"
+      },
+      {
+        "id": "iterator",
+        "file": "scripts/query_iterator.vela",
+        "parameters": [
+          {
+            "name": "count",
+            "detail": "i64",
+            "insert": "count = "
+          }
+        ],
+        "apply": "count",
+        "value": "1"
+      },
+      {
+        "id": "option_method",
+        "file": "scripts/query_option_method.vela",
+        "parameters": [
+          {
+            "name": "default",
+            "detail": "Any",
+            "insert": "default = "
+          }
+        ],
+        "apply": "default",
+        "value": "1"
+      },
+      {
+        "id": "result_method",
+        "file": "scripts/query_result_method.vela",
+        "parameters": [
+          {
+            "name": "default",
+            "detail": "Any",
+            "insert": "default = "
+          }
+        ],
+        "apply": "default",
+        "value": "1"
+      },
+      {
+        "id": "reflection",
+        "file": "scripts/query_reflection.vela",
+        "parameters": [
+          {
+            "name": "name",
+            "detail": "String",
+            "insert": "name = "
+          }
+        ],
+        "apply": "name",
+        "value": "\"Player\""
+      },
+      {
+        "id": "reserved_name",
+        "file": "scripts/query_reserved_name.vela",
+        "parameters": [
+          {
+            "name": "target",
+            "detail": "Any",
+            "insert": "target = "
+          }
+        ],
+        "apply": "target",
+        "value": "1"
+      },
+      {
+        "id": "provider",
+        "file": "scripts/query_provider.vela",
+        "parameters": []
+      },
+      {
+        "id": "unknown",
+        "file": "scripts/query_unknown.vela",
+        "parameters": []
+      },
+      {
+        "id": "shadowed",
+        "file": "scripts/query_shadowed.vela",
+        "parameters": []
+      },
+      {
+        "id": "dynamic",
+        "file": "scripts/query_dynamic.vela",
+        "parameters": []
+      },
+      {
+        "id": "array_mut_read",
+        "file": "scripts/query_array_mut_read.vela",
+        "parameters": [
+          {
+            "name": "index",
+            "detail": "i64",
+            "insert": "index = "
+          }
+        ],
+        "apply": "index",
+        "value": "0"
+      },
+      {
+        "id": "import_alias",
+        "file": "scripts/query_import_alias.vela",
+        "parameters": [
+          {
+            "name": "value",
+            "detail": "Any",
+            "insert": "value = "
+          }
+        ],
+        "apply": "value",
+        "value": "1"
+      },
+      {
+        "id": "module_alias",
+        "file": "scripts/query_module_alias.vela",
+        "parameters": [
+          {
+            "name": "value",
+            "detail": "Any",
+            "insert": "value = "
+          }
+        ],
+        "apply": "value",
+        "value": "1"
+      },
+      {
+        "id": "group_import",
+        "file": "scripts/query_group_import.vela",
+        "parameters": [],
+        "diagnosticError": true
+      },
+      {
+        "id": "ambiguous_import",
+        "file": "scripts/query_ambiguous_import.vela",
+        "parameters": []
+      },
+      {
+        "id": "array_growable",
+        "file": "scripts/query_array_growable.vela",
+        "parameters": [
+          {
+            "name": "index",
+            "detail": "i64",
+            "insert": "index = "
+          },
+          {
+            "name": "value",
+            "detail": "i64",
+            "insert": "value = "
+          }
+        ],
+        "apply": "value",
+        "value": "1"
+      }
+    ]
+  }
+}

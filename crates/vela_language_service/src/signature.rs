@@ -1209,9 +1209,12 @@ pub fn main() { source_any().grant(1, 2) }"#;
         assert_eq!(help.active_parameter(), 0);
         assert_eq!(
             help.signatures()[0].label(),
-            "String.split_once(arg0: String) -> Option((String, String))"
+            "String.split_once(separator: String) -> Option((String, String))"
         );
-        assert_eq!(help.signatures()[0].parameters()[0].label(), "arg0: String");
+        assert_eq!(
+            help.signatures()[0].parameters()[0].label(),
+            "separator: String"
+        );
     }
 
     #[test]
@@ -1235,11 +1238,11 @@ pub fn main() { source_any().grant(1, 2) }"#;
         assert_eq!(help.active_parameter(), 1);
         assert_eq!(
             help.signatures()[0].label(),
-            "math::max(arg0: i64 | f64, arg1: i64 | f64) -> i64 | f64"
+            "math::max(left: i64 | f64, right: i64 | f64) -> i64 | f64"
         );
         assert_eq!(
             help.signatures()[0].parameters()[1].label(),
-            "arg1: i64 | f64"
+            "right: i64 | f64"
         );
     }
 }

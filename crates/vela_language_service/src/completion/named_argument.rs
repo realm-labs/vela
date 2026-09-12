@@ -58,7 +58,9 @@ pub(super) fn script_function_parameter_completions(
                 .params()
                 .iter()
                 .skip(positional_count)
-                .filter(|param| !used_names.contains(&param.name()))
+                .filter(|param| {
+                    !used_names.contains(&param.name()) && insertable_parameter_name(param.name())
+                })
                 .map(|param| {
                     let mut detail_parts =
                         display_type_detail_parts(param.type_fact().display_name());
@@ -79,4 +81,10 @@ pub(super) fn script_function_parameter_completions(
                 .collect::<Vec<_>>()
         })
         .collect()
+}
+
+fn insertable_parameter_name(name: &str) -> bool {
+    use vela_syntax::token::{Token, TokenKind};
+    let tokens = vela_syntax::lexer::lex(vela_common::SourceId::new(0), name).tokens;
+    matches!(tokens.as_slice(), [Token { kind: TokenKind::Ident(identifier), .. }, Token { kind: TokenKind::Eof, .. }] if identifier == name)
 }

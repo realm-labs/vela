@@ -14,8 +14,6 @@ vela_package = { workspace = true }
 vela_registry = { workspace = true }
 vela_reflect = { workspace = true }
 vela_syntax = { workspace = true }
-
-[dev-dependencies]
 vela_stdlib = { workspace = true }
 
 [[test]]

@@ -5,8 +5,17 @@ use serde_json::json;
 
 #[test]
 fn named_argument_matrix_projects_exact_parameter_sets_and_parseable_utf16_edits() {
+    verify_fixture("completion-named-arguments");
+}
+
+#[test]
+fn stdlib_named_argument_matrix_projects_registered_names_edits_and_negative_boundaries() {
+    verify_fixture("completion-stdlib-arguments");
+}
+
+fn verify_fixture(fixture_name: &str) {
     for crlf in [false, true] {
-        let mut spec = load("completion-named-arguments");
+        let mut spec = load(fixture_name);
         if crlf {
             for source in spec.files.values_mut() {
                 *source = source.replace('\n', "\r\n");
@@ -37,12 +46,33 @@ fn named_argument_matrix_projects_exact_parameter_sets_and_parseable_utf16_edits
         );
         for (file, source) in &fixture.disk {
             if file.ends_with(".vela") {
-                let _ = notify::<n::DidOpenTextDocument>(
+                let messages = notify::<n::DidOpenTextDocument>(
                     &mut server,
                     json!({"textDocument":{
                         "uri":uri(file),"languageId":"vela","version":1,"text":source.text
                     }}),
                 );
+                if spec.oracle["queries"]
+                    .as_array()
+                    .expect("queries")
+                    .iter()
+                    .any(|query| query["file"] == *file && query["diagnosticError"] == true)
+                {
+                    let notifications = crate::tests::notification_values(messages);
+                    assert!(
+                        notifications
+                            .iter()
+                            .any(|notification| notification["method"]
+                                == "textDocument/publishDiagnostics"
+                                && notification["params"]["uri"] == uri(file)
+                                && notification["params"]["diagnostics"]
+                                    .as_array()
+                                    .is_some_and(|diagnostics| diagnostics
+                                        .iter()
+                                        .any(|d| d["severity"] == 1))),
+                        "invalid import diagnostics: {notifications:?}"
+                    );
+                }
             }
         }
         let mut id = 2;

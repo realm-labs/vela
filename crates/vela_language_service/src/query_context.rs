@@ -319,30 +319,6 @@ impl<'a> QueryContext<'a> {
         callable_facts(databases, &callee_path.join("::"))
     }
 
-    pub(crate) fn named_callable_facts_by_path(
-        &self,
-        databases: &LanguageServiceDatabases,
-        path: &[String],
-    ) -> Vec<CallableFacts> {
-        let source = self.source_callable_facts_by_path(databases, path);
-        let graph = databases.hir_db().graph();
-        let source_owned = self
-            .module_key()
-            .and_then(|key| graph.module_id(key))
-            .is_some_and(|module| {
-                graph
-                    .resolve_visible_declaration_path(module, path, DeclarationKind::Function)
-                    .is_some()
-            });
-        if source_owned {
-            return source;
-        }
-        crate::callable_context::named_schema_callable_facts(
-            databases.schema_db().facts(),
-            &path.join("::"),
-        )
-    }
-
     #[must_use]
     pub fn member_callable_facts(
         &self,
@@ -1023,7 +999,7 @@ mod tests {
             .find(|callable| callable.origin() == CallableOrigin::Stdlib)
             .expect("stdlib function callable facts");
         assert_eq!(stdlib_callable.name(), "math::max");
-        assert_eq!(stdlib_callable.params()[0].name(), "arg0");
+        assert_eq!(stdlib_callable.params()[0].name(), "left");
         assert_eq!(
             stdlib_callable.params()[0].type_fact().display_name(),
             "i64 | f64"

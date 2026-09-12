@@ -4236,4 +4236,17 @@ explicit names, required/defaulted markers and asyncness enter the canonical
 hash. Signature types must agree with the callable fact. Completion tracks
 whether names have an authoritative source; it never infers that from an
 `arg0` spelling. Source owners and exact schema names retain separate parameter
-sets. Standard-library name metadata still needs an independent ABI audit.
+sets. Static standard-library parameter names are audited against registration
+signatures; provider-specific and variable-arity contracts remain separate.
+
+### Standard-Library Callable Names From Registration
+
+B03 promotes the backend-neutral `vela_stdlib` metadata dependency into
+`vela_analysis` and reads fixed-arity function/method parameter names and default
+markers directly from its registration manifest. Existing type specialization
+remains in analysis. Tests compare every represented fixed signature against
+registration definitions and require coverage for every standard function and
+method. Host-injected APIs, static task operands and unmatched variable-arity
+reflection shapes remain explicit exceptions to named insertion until their
+own contracts are verified. Exact source/schema ownership and unambiguous
+external imports take precedence over short-name guesses.

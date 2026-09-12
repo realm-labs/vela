@@ -645,7 +645,13 @@ Static schema export now preserves function/method/trait signatures, including
 parameter names, defaults, asyncness and known spans; malformed or conflicting
 metadata is rejected and signature changes invalidate the hash. Source/schema
 name collisions and generated parameter labels cannot leak into named completion.
-Stdlib parameter-name metadata, broader S5 authoring semantics and UX04 remain open. The desktop locked again during the latest native input regression; see [blocked.md](blocked.md).
+Thirty additional stdlib cases now cover registered names/defaults, parseable
+edits, direct/aliased imports, builtin families, fixed/read-only/growable views,
+reserved labels and negative boundaries. Analysis reads the static registration
+manifest, with inventory checks for every standard function and method;
+`Map.group_by` is restored to the candidate list. Provider-specific/variable-arity
+metadata, service-set signatures, name-aware expected-parameter mapping, broader
+S5 authoring semantics and UX04 remain open. The desktop locked again during the latest native input regression; see [blocked.md](blocked.md).
 
 ### Deferred Tracks
 

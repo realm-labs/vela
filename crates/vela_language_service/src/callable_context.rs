@@ -531,11 +531,17 @@ fn source_variant_callable_facts(
         .collect()
 }
 
-pub(crate) fn named_schema_callable_facts(
+pub(crate) fn named_external_callable_facts(
     schema: &RegistryFacts,
     callee: &str,
 ) -> Vec<CallableFacts> {
-    schema_callable_facts(schema, callee)
+    if schema.function_fact(callee).is_some() {
+        return schema_callable_facts(schema, callee)
+            .into_iter()
+            .filter(|callable| callable.name() == callee)
+            .collect();
+    }
+    stdlib_callable_facts(callee)
         .into_iter()
         .filter(|callable| callable.name() == callee)
         .collect()
@@ -646,23 +652,27 @@ fn stdlib_callable_facts(callee: &str) -> Vec<CallableFacts> {
 }
 
 fn stdlib_callable_fact(fact: StdlibFunctionFact) -> CallableFacts {
+    let metadata = fact.parameter_metadata();
     CallableFacts {
         name: fact.name.to_owned(),
         params: fact
             .params
             .into_iter()
             .zip(fact.param_names)
-            .map(|(type_fact, name)| CallableParameterFacts {
+            .enumerate()
+            .map(|(index, (type_fact, name))| CallableParameterFacts {
                 name: name.to_owned(),
                 type_fact,
-                defaulted: false,
+                defaulted: metadata
+                    .as_ref()
+                    .is_some_and(|params| params[index].defaulted),
             })
             .collect(),
         returns: fact.returns,
         scoped_resource: None,
         asyncness: CallableAsyncness::Sync,
         origin: CallableOrigin::Stdlib,
-        parameters_named: false,
+        parameters_named: metadata.is_some(),
         symbol: builtin_symbol(fact.name),
     }
 }
@@ -671,18 +681,23 @@ fn stdlib_method_callable_fact(
     fact: StdlibMethodFact,
     scoped_resource: Option<ScopedResourceReturnDef>,
 ) -> CallableFacts {
+    let metadata = fact.parameter_metadata();
     let params = fact
         .params
         .iter()
         .enumerate()
         .map(|(index, param)| CallableParameterFacts {
-            name: if is_lambda_parameter(param, fact.lambda.as_ref()) {
+            name: if let Some(parameters) = &metadata {
+                parameters[index].name.to_owned()
+            } else if is_lambda_parameter(param, fact.lambda.as_ref()) {
                 "callback".to_owned()
             } else {
                 format!("arg{index}")
             },
             type_fact: param.clone(),
-            defaulted: false,
+            defaulted: metadata
+                .as_ref()
+                .is_some_and(|params| params[index].defaulted),
         })
         .collect();
     CallableFacts {
@@ -692,7 +707,7 @@ fn stdlib_method_callable_fact(
         scoped_resource,
         asyncness: CallableAsyncness::Sync,
         origin: CallableOrigin::StdlibMethod,
-        parameters_named: false,
+        parameters_named: metadata.is_some(),
         symbol: builtin_member_symbol(&fact.receiver.display_name(), fact.method),
     }
 }

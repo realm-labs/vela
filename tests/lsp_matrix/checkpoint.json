@@ -1060,16 +1060,25 @@
     },
     {
       "id": "B03.8",
-      "revision": null,
+      "revision": "b4f80df53",
       "requirements": [
         "completion/states/repeat/protocol",
         "completion/states/unresolved/protocol"
       ],
       "summary": "Preserve optional function/method/trait CallableSignatureFact metadata across static schema export/import: parameter names, required/defaulted markers, asyncness, parameter/return types and known declaration spans. Four independent schema tests assert literal wire shape, exact restored signatures, metadata hash changes/stale-hash rejection, malformed/disagreeing metadata rejection and unchanged type-only encoding. Extract entry and signature modules; schema.rs is now below 1200 lines. Track authoritative callable parameter names explicitly; named completion accepts real source/schema names (including a genuine registered arg0) and suppresses generated display labels. Resolve source function ownership before exact schema lookup and prevent schema method parameters leaking into same-name source records/traits or falling back to unrelated short type names. Extend the shared named-argument fixture from 18 to 31 cases with function/method/trait signatures, defaults, asyncness, exact sets, parseable UTF-16 edits and re-query, legacy schemas, missing/dynamic receivers and stdlib placeholder negatives. Existing source private/shadowed/method cases now run against colliding schema declarations. Full workspace 4392 passed plus two historical ignored, workspace Clippy and fmt passed; final focused tests/relevant Clippy, Node 69, service 586 plus two historical ignored, protocol 577 and installed VSIX 9 passed. Audit run-4YoEhE matches source identity; installed run-9cEoY7. Preserve the schema-owner reproduction and module-extraction compile failure logs. Broad S5 remains unreviewed; B03 unaccepted; whole-batch remaining stays 1332. Continue B03.9 with actual standard-library parameter ABI/names (StdlibFunctionFact::new generates arg0 labels; only scoped task entries override names), service-set projection, imported schema callable ownership, and the remaining callable/expected-parameter semantics before lifecycle and UX04. Review named-argument signature/expected-type mapping: the current active index is structural, and the out-of-order named case intentionally does not certify semantic highlighting. Fresh native input evidence remains required before strict acceptance; B16 deferred. Find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B03.9",
+      "revision": null,
+      "requirements": [
+        "completion/states/repeat/protocol",
+        "completion/states/unresolved/protocol"
+      ],
+      "summary": "Use the backend-neutral vela_stdlib registration manifest in analysis for fixed-arity callable parameter names and default markers, retaining specialized TypeFacts. Promote the existing test dependency to a production metadata-only dependency; no host/native execution is introduced. Add bidirectional inventory proof for every standard function and method and compare names/defaults with actual registration signatures; retain an exact list of provider/task/unmatched variable-arity shapes without authoritative names. Restore the already implemented Map.group_by method to the candidate list. Use registered names in signatures and named completion, including optional Array.sum callbacks; reject reserved-word labels as invalid insertion names. Resolve direct and aliased external imports for named completion without source/schema short-name borrowing or ambiguous import guesses. Add 30 shared stdlib cases alongside 31 source/schema cases: builtin families, read-only/fixed/growable collection views, direct/function/module aliases, required/defaulted parameters, exact candidate details and parseable UTF-16 edits/re-query, reserved labels, provider/unknown/dynamic/ambiguous negatives and unsupported grouped-import diagnostics. Old stdlib signature expectations now assert real registered names while retaining type/return assertions. Full workspace 4396 passed plus two historical ignored; workspace Clippy/fmt, Node 69, final service 587 plus two historical ignored, protocol 578 and installed VSIX 9 passed. Audit run-sCaMXu matches source identity. Preserve original inventory failures, imported-call reproduction, field/type fixture corrections and stale-label package failures. Broad S5 remains unreviewed; B03 unaccepted; remaining whole-batch scope stays 1332. Continue B03.10 with service-set projection, which currently replaces all parameter/return facts with Unknown and does not populate CallableSignatureFact despite JSON names/asyncness/typeHint strings. Also unify imported external callable lookup across signature and expected-argument providers (the new canonical import route currently serves named insertion), resolve name-aware expected type/active parameter mapping, and audit provider-specific/variable-arity callables before remaining S5/lifecycle/UX04. Fresh native input evidence is still required for strict acceptance; B16 deferred. Find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.9",
-  "nextTask": "B03.9",
+  "activeChild": "B03.10",
+  "nextTask": "B03.10",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -2600,7 +2609,28 @@
     "target/lsp-matrix/b03-8-workspace-final.log",
     "target/lsp-matrix/b03-8-workspace.log",
     "target/lsp-matrix/run-4YoEhE/report.json",
-    "editors/vscode/test-results/run-9cEoY7/results.json"
+    "editors/vscode/test-results/run-9cEoY7/results.json",
+    "target/lsp-matrix/b03-9-baseline.log",
+    "target/lsp-matrix/b03-9-clippy.log",
+    "target/lsp-matrix/b03-9-installed.log",
+    "target/lsp-matrix/b03-9-inventory-final.log",
+    "target/lsp-matrix/b03-9-inventory.log",
+    "target/lsp-matrix/b03-9-inventory2.log",
+    "target/lsp-matrix/b03-9-matrix-final.log",
+    "target/lsp-matrix/b03-9-metadata.log",
+    "target/lsp-matrix/b03-9-metadata2.log",
+    "target/lsp-matrix/b03-9-metadata3.log",
+    "target/lsp-matrix/b03-9-node.log",
+    "target/lsp-matrix/b03-9-packages.log",
+    "target/lsp-matrix/b03-9-packages2.log",
+    "target/lsp-matrix/b03-9-packages3.log",
+    "target/lsp-matrix/b03-9-stdlib-service.log",
+    "target/lsp-matrix/b03-9-stdlib-service2.log",
+    "target/lsp-matrix/b03-9-stdlib-service3.log",
+    "target/lsp-matrix/b03-9-stdlib-service4.log",
+    "target/lsp-matrix/b03-9-workspace.log",
+    "target/lsp-matrix/run-sCaMXu/report.json",
+    "editors/vscode/test-results/run-lGTOSs/results.json"
   ],
   "openIssues": [
     {

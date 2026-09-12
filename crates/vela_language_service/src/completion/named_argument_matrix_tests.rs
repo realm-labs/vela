@@ -6,8 +6,17 @@ use crate::{
 
 #[test]
 fn named_argument_matrix_checks_owner_sets_occupied_slots_and_parseable_edits() {
+    verify_fixture("completion-named-arguments");
+}
+
+#[test]
+fn stdlib_named_argument_matrix_checks_registered_names_and_parseable_edits() {
+    verify_fixture("completion-stdlib-arguments");
+}
+
+fn verify_fixture(fixture_name: &str) {
     for crlf in [false, true] {
-        let mut spec = load("completion-named-arguments");
+        let mut spec = load(fixture_name);
         if crlf {
             for source in spec.files.values_mut() {
                 *source = source.replace('\n', "\r\n");
@@ -18,6 +27,16 @@ fn named_argument_matrix_checks_owner_sets_occupied_slots_and_parseable_edits() 
         for query in spec.oracle["queries"].as_array().expect("queries") {
             let file = query["file"].as_str().expect("file");
             let source = fixture.document(file).expect("source");
+            if query["diagnosticError"] == true {
+                assert!(
+                    db.diagnostics_for_document(&uri(file))
+                        .diagnostics()
+                        .iter()
+                        .any(|diagnostic| diagnostic.severity()
+                            == crate::ServiceDiagnosticSeverity::Error),
+                    "invalid import fixture: {query}"
+                );
+            }
             let range = source.markers["replace"];
             let point = source.markers["cursor"].start;
             let result = db.completion_items(&uri(file), position(&source.text, point.byte));
@@ -62,7 +81,11 @@ fn named_argument_matrix_checks_owner_sets_occupied_slots_and_parseable_edits() 
                     .find(|item| item.label() == expected["name"])
                     .expect("parameter");
                 assert_eq!(item.kind(), crate::CompletionKind::Parameter);
-                assert_eq!(item.detail(), expected["detail"].as_str().expect("detail"));
+                assert_eq!(
+                    item.detail(),
+                    expected["detail"].as_str().expect("detail"),
+                    "{query}"
+                );
                 let edit = item.text_edit().expect("explicit edit");
                 assert_eq!(
                     edit.range(),

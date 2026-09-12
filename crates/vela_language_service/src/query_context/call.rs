@@ -1,8 +1,57 @@
 use super::QueryContext;
+use crate::{LanguageServiceDatabases, callable_context::CallableFacts};
+use vela_hir::module_graph::DeclarationKind;
 use vela_hir::{body::HirBody, ids::HirExprId};
 use vela_syntax::ast::{AstNode, SyntaxCallExpr};
 
 impl<'a> QueryContext<'a> {
+    pub(crate) fn named_callable_facts_by_path(
+        &self,
+        databases: &LanguageServiceDatabases,
+        path: &[String],
+    ) -> Vec<CallableFacts> {
+        let source = self.source_callable_facts_by_path(databases, path);
+        let graph = databases.hir_db().graph();
+        let source_owned = self
+            .module_key()
+            .and_then(|key| graph.module_id(key))
+            .is_some_and(|module| {
+                graph
+                    .resolve_visible_declaration_path(module, path, DeclarationKind::Function)
+                    .is_some()
+            });
+        if source_owned {
+            return source;
+        }
+        let Some(first) = path.first() else {
+            return Vec::new();
+        };
+        let imports = self
+            .module_key()
+            .and_then(|key| graph.module_id(key))
+            .and_then(|module| graph.imports(module));
+        let mut matches = imports
+            .into_iter()
+            .flatten()
+            .filter(|import| import.alias.as_ref().or_else(|| import.path.last()) == Some(first));
+        let imported = matches.next().map(|import| {
+            import
+                .path
+                .iter()
+                .chain(&path[1..])
+                .cloned()
+                .collect::<Vec<_>>()
+        });
+        if matches.next().is_some() {
+            return Vec::new();
+        }
+        let external = imported.as_deref().unwrap_or(path);
+        crate::callable_context::named_external_callable_facts(
+            databases.schema_db().facts(),
+            &external.join("::"),
+        )
+    }
+
     pub(crate) fn syntax_call(&self) -> Option<SyntaxCallExpr> {
         let open = self.call_open_offset()?;
         let snapshot_parse;

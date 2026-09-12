@@ -950,11 +950,11 @@ fn lsp_signature_help_resolves_stdlib_function_call() {
     assert_eq!(response["result"]["activeParameter"], 1);
     assert_eq!(
         response["result"]["signatures"][0]["label"],
-        "math::max(arg0: i64 | f64, arg1: i64 | f64) -> i64 | f64"
+        "math::max(left: i64 | f64, right: i64 | f64) -> i64 | f64"
     );
     assert_eq!(
         response["result"]["signatures"][0]["parameters"][1]["label"],
-        "arg1: i64 | f64"
+        "right: i64 | f64"
     );
 }
 
@@ -1002,11 +1002,11 @@ fn lsp_signature_help_reports_precise_stdlib_option_method_return() {
     assert_eq!(response["result"]["activeParameter"], 0);
     assert_eq!(
         response["result"]["signatures"][0]["label"],
-        "String.split_once(arg0: String) -> Option((String, String))"
+        "String.split_once(separator: String) -> Option((String, String))"
     );
     assert_eq!(
         response["result"]["signatures"][0]["parameters"][0]["label"],
-        "arg0: String"
+        "separator: String"
     );
 }
 
