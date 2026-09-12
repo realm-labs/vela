@@ -1,0 +1,1990 @@
+{
+  "version": 1,
+  "id": "completion-await-contexts",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.type_aliases\"\nname = \"type_aliases\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n[dependencies]\nexternal = { path = \"deps/external\" }\n",
+    "deps/external/vela.toml": "[package]\nid = \"dev.vela.external\"\nname = \"external\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[dependencies]\nhidden = { path = \"../hidden\" }\n",
+    "deps/hidden/vela.toml": "[package]\nid = \"dev.vela.hidden\"\nname = \"hidden\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/api.vela": "/* 中😀 */\npub struct Token {}\nimpl Token {\nasync fn [[own-async:start]]own_async[[own-async:end]](self, zz_root: i64) -> i64 { zz_root }\nfn [[own-sync:start]]own_sync[[own-sync:end]](self, zz_root: i64) -> i64 { zz_root }\n}\npub trait Worker {\nasync fn [[trait-own-async:start]]own_async[[trait-own-async:end]](self, zz_root: i64) -> i64;\nfn [[trait-own-sync:start]]own_sync[[trait-own-sync:end]](self, zz_root: i64) -> i64 { zz_root }\n}\npub async fn [[work-async:start]]work_async[[work-async:end]](zz_root: i64) -> i64 { zz_root }\npub fn [[work-sync:start]]work_sync[[work-sync:end]](zz_root: i64) -> i64 { zz_root }\n",
+    "deps/external/scripts/api.vela": "/* 中😀 */\npub struct Token {}\nimpl Token {\nfn [[own-async:start]]own_async[[own-async:end]](self, zz_dep: bool) -> bool { zz_dep }\nasync fn [[own-sync:start]]own_sync[[own-sync:end]](self, zz_dep: bool) -> bool { zz_dep }\n}\npub trait Worker {\nfn [[trait-own-async:start]]own_async[[trait-own-async:end]](self, zz_dep: bool) -> bool;\nasync fn [[trait-own-sync:start]]own_sync[[trait-own-sync:end]](self, zz_dep: bool) -> bool { zz_dep }\n}\npub fn [[work-async:start]]work_async[[work-async:end]](zz_dep: bool) -> bool { zz_dep }\npub async fn [[work-sync:start]]work_sync[[work-sync:end]](zz_dep: bool) -> bool { zz_dep }\n",
+    "deps/hidden/scripts/api.vela": "/* 中😀 */\npub struct Token {}\nimpl Token {\nasync fn [[own-async:start]]own_async[[own-async:end]](self, zz_hidden: String) -> String { zz_hidden }\nfn [[own-sync:start]]own_sync[[own-sync:end]](self, zz_hidden: String) -> String { zz_hidden }\n}\npub trait Worker {\nasync fn [[trait-own-async:start]]own_async[[trait-own-async:end]](self, zz_hidden: String) -> String;\nfn [[trait-own-sync:start]]own_sync[[trait-own-sync:end]](self, zz_hidden: String) -> String { zz_hidden }\n}\npub async fn [[work-async:start]]work_async[[work-async:end]](zz_hidden: String) -> String { zz_hidden }\npub fn [[work-sync:start]]work_sync[[work-sync:end]](zz_hidden: String) -> String { zz_hidden }\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"host::Handle\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Handle\"}}],\"traits\":[{\"name\":\"host::Worker\",\"fact\":{\"kind\":\"trait\",\"name\":\"host::Worker\"}}],\"methods\":[{\"owner\":\"host::Handle\",\"name\":\"own_async\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"asyncness\":\"async\",\"parameters\":[{\"name\":\"zz_host\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}},{\"owner\":\"host::Handle\",\"name\":\"own_sync\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"zz_host\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}}],\"traitMethods\":[{\"owner\":\"host::Worker\",\"name\":\"own_async\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"asyncness\":\"async\",\"parameters\":[{\"name\":\"zz_host\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}},{\"owner\":\"host::Worker\",\"name\":\"own_sync\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"zz_host\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}}],\"functions\":[{\"name\":\"native::work_async\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"asyncness\":\"async\",\"parameters\":[{\"name\":\"zz_host\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}},{\"name\":\"native::work_sync\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"zz_host\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}}]}}",
+    "scripts/root_method_sync.vela": "/* 中😀 */ fn run(value: api::Token) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; }\n",
+    "expected/root_method_sync-0.txt": "/* 中😀 */ fn run(value: api::Token) { value.own_async(1).[[await:start]]await[[await:end]]; }\n",
+    "expected/root_method_sync-1.txt": "/* 中😀 */ fn run(value: api::Token) { value.own_sync(1).[[await:start]]await[[await:end]]; }\n",
+    "scripts/root_method_lambda.vela": "/* 中😀 */ async fn run(value: api::Token) { let callback = || { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; }; }\n",
+    "expected/root_method_lambda-0.txt": "/* 中😀 */ async fn run(value: api::Token) { let callback = || { value.own_async(1).[[await:start]]await[[await:end]]; }; }\n",
+    "expected/root_method_lambda-1.txt": "/* 中😀 */ async fn run(value: api::Token) { let callback = || { value.own_sync(1).[[await:start]]await[[await:end]]; }; }\n",
+    "scripts/dep_method_sync.vela": "/* 中😀 */ fn run(value: external::api::Token) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; }\n",
+    "expected/dep_method_sync-0.txt": "/* 中😀 */ fn run(value: external::api::Token) { value.own_async(true).[[await:start]]await[[await:end]]; }\n",
+    "expected/dep_method_sync-1.txt": "/* 中😀 */ fn run(value: external::api::Token) { value.own_sync(true).[[await:start]]await[[await:end]]; }\n",
+    "scripts/dep_method_lambda.vela": "/* 中😀 */ async fn run(value: external::api::Token) { let callback = || { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; }; }\n",
+    "expected/dep_method_lambda-0.txt": "/* 中😀 */ async fn run(value: external::api::Token) { let callback = || { value.own_async(true).[[await:start]]await[[await:end]]; }; }\n",
+    "expected/dep_method_lambda-1.txt": "/* 中😀 */ async fn run(value: external::api::Token) { let callback = || { value.own_sync(true).[[await:start]]await[[await:end]]; }; }\n",
+    "scripts/root_alias_sync.vela": "use api::Token as Alias;\n/* 中😀 */ fn run(value: Alias) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; }\n",
+    "expected/root_alias_sync-0.txt": "use api::Token as Alias;\n/* 中😀 */ fn run(value: Alias) { value.own_async(1).[[await:start]]await[[await:end]]; }\n",
+    "expected/root_alias_sync-1.txt": "use api::Token as Alias;\n/* 中😀 */ fn run(value: Alias) { value.own_sync(1).[[await:start]]await[[await:end]]; }\n",
+    "scripts/root_alias_lambda.vela": "use api::Token as Alias;\n/* 中😀 */ async fn run(value: Alias) { let callback = || { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; }; }\n",
+    "expected/root_alias_lambda-0.txt": "use api::Token as Alias;\n/* 中😀 */ async fn run(value: Alias) { let callback = || { value.own_async(1).[[await:start]]await[[await:end]]; }; }\n",
+    "expected/root_alias_lambda-1.txt": "use api::Token as Alias;\n/* 中😀 */ async fn run(value: Alias) { let callback = || { value.own_sync(1).[[await:start]]await[[await:end]]; }; }\n",
+    "scripts/dep_alias_sync.vela": "use external::api::Token as Alias;\n/* 中😀 */ fn run(value: Alias) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; }\n",
+    "expected/dep_alias_sync-0.txt": "use external::api::Token as Alias;\n/* 中😀 */ fn run(value: Alias) { value.own_async(true).[[await:start]]await[[await:end]]; }\n",
+    "expected/dep_alias_sync-1.txt": "use external::api::Token as Alias;\n/* 中😀 */ fn run(value: Alias) { value.own_sync(true).[[await:start]]await[[await:end]]; }\n",
+    "scripts/dep_alias_lambda.vela": "use external::api::Token as Alias;\n/* 中😀 */ async fn run(value: Alias) { let callback = || { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; }; }\n",
+    "expected/dep_alias_lambda-0.txt": "use external::api::Token as Alias;\n/* 中😀 */ async fn run(value: Alias) { let callback = || { value.own_async(true).[[await:start]]await[[await:end]]; }; }\n",
+    "expected/dep_alias_lambda-1.txt": "use external::api::Token as Alias;\n/* 中😀 */ async fn run(value: Alias) { let callback = || { value.own_sync(true).[[await:start]]await[[await:end]]; }; }\n",
+    "scripts/root_trait_sync.vela": "/* 中😀 */ fn run(value: api::Worker) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; }\n",
+    "expected/root_trait_sync-0.txt": "/* 中😀 */ fn run(value: api::Worker) { value.own_async(1).[[await:start]]await[[await:end]]; }\n",
+    "expected/root_trait_sync-1.txt": "/* 中😀 */ fn run(value: api::Worker) { value.own_sync(1).[[await:start]]await[[await:end]]; }\n",
+    "scripts/root_trait_lambda.vela": "/* 中😀 */ async fn run(value: api::Worker) { let callback = || { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; }; }\n",
+    "expected/root_trait_lambda-0.txt": "/* 中😀 */ async fn run(value: api::Worker) { let callback = || { value.own_async(1).[[await:start]]await[[await:end]]; }; }\n",
+    "expected/root_trait_lambda-1.txt": "/* 中😀 */ async fn run(value: api::Worker) { let callback = || { value.own_sync(1).[[await:start]]await[[await:end]]; }; }\n",
+    "scripts/dep_trait_sync.vela": "/* 中😀 */ fn run(value: external::api::Worker) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; }\n",
+    "expected/dep_trait_sync-0.txt": "/* 中😀 */ fn run(value: external::api::Worker) { value.own_async(true).[[await:start]]await[[await:end]]; }\n",
+    "expected/dep_trait_sync-1.txt": "/* 中😀 */ fn run(value: external::api::Worker) { value.own_sync(true).[[await:start]]await[[await:end]]; }\n",
+    "scripts/dep_trait_lambda.vela": "/* 中😀 */ async fn run(value: external::api::Worker) { let callback = || { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; }; }\n",
+    "expected/dep_trait_lambda-0.txt": "/* 中😀 */ async fn run(value: external::api::Worker) { let callback = || { value.own_async(true).[[await:start]]await[[await:end]]; }; }\n",
+    "expected/dep_trait_lambda-1.txt": "/* 中😀 */ async fn run(value: external::api::Worker) { let callback = || { value.own_sync(true).[[await:start]]await[[await:end]]; }; }\n",
+    "scripts/schema_method_sync.vela": "/* 中😀 */ fn run(value: host::Handle) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; }\n",
+    "expected/schema_method_sync-0.txt": "/* 中😀 */ fn run(value: host::Handle) { value.own_async(\"ok\").[[await:start]]await[[await:end]]; }\n",
+    "expected/schema_method_sync-1.txt": "/* 中😀 */ fn run(value: host::Handle) { value.own_sync(\"ok\").[[await:start]]await[[await:end]]; }\n",
+    "scripts/schema_method_lambda.vela": "/* 中😀 */ async fn run(value: host::Handle) { let callback = || { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; }; }\n",
+    "expected/schema_method_lambda-0.txt": "/* 中😀 */ async fn run(value: host::Handle) { let callback = || { value.own_async(\"ok\").[[await:start]]await[[await:end]]; }; }\n",
+    "expected/schema_method_lambda-1.txt": "/* 中😀 */ async fn run(value: host::Handle) { let callback = || { value.own_sync(\"ok\").[[await:start]]await[[await:end]]; }; }\n",
+    "scripts/schema_trait_sync.vela": "/* 中😀 */ fn run(value: host::Worker) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; }\n",
+    "expected/schema_trait_sync-0.txt": "/* 中😀 */ fn run(value: host::Worker) { value.own_async(\"ok\").[[await:start]]await[[await:end]]; }\n",
+    "expected/schema_trait_sync-1.txt": "/* 中😀 */ fn run(value: host::Worker) { value.own_sync(\"ok\").[[await:start]]await[[await:end]]; }\n",
+    "scripts/schema_trait_lambda.vela": "/* 中😀 */ async fn run(value: host::Worker) { let callback = || { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; }; }\n",
+    "expected/schema_trait_lambda-0.txt": "/* 中😀 */ async fn run(value: host::Worker) { let callback = || { value.own_async(\"ok\").[[await:start]]await[[await:end]]; }; }\n",
+    "expected/schema_trait_lambda-1.txt": "/* 中😀 */ async fn run(value: host::Worker) { let callback = || { value.own_sync(\"ok\").[[await:start]]await[[await:end]]; }; }\n",
+    "scripts/functions_sync.vela": "/* 中😀 */ fn run() { [[call:start]][[replace:start]]work_[[cursor]][[replace:end]][[call:end]].await; }\n",
+    "expected/functions_sync-0.txt": "/* 中😀 */ fn run() { api::work_async(1).[[await:start]]await[[await:end]]; }\n",
+    "expected/functions_sync-1.txt": "/* 中😀 */ fn run() { api::work_sync(1).[[await:start]]await[[await:end]]; }\n",
+    "expected/functions_sync-2.txt": "/* 中😀 */ fn run() { external::api::work_async(true).[[await:start]]await[[await:end]]; }\n",
+    "expected/functions_sync-3.txt": "/* 中😀 */ fn run() { external::api::work_sync(true).[[await:start]]await[[await:end]]; }\n",
+    "expected/functions_sync-4.txt": "/* 中😀 */ fn run() { native::work_async(\"ok\").[[await:start]]await[[await:end]]; }\n",
+    "expected/functions_sync-5.txt": "/* 中😀 */ fn run() { native::work_sync(\"ok\").[[await:start]]await[[await:end]]; }\n",
+    "scripts/functions_lambda.vela": "/* 中😀 */ async fn run() { let callback = || { [[call:start]][[replace:start]]work_[[cursor]][[replace:end]][[call:end]].await; }; }\n",
+    "expected/functions_lambda-0.txt": "/* 中😀 */ async fn run() { let callback = || { api::work_async(1).[[await:start]]await[[await:end]]; }; }\n",
+    "expected/functions_lambda-1.txt": "/* 中😀 */ async fn run() { let callback = || { api::work_sync(1).[[await:start]]await[[await:end]]; }; }\n",
+    "expected/functions_lambda-2.txt": "/* 中😀 */ async fn run() { let callback = || { external::api::work_async(true).[[await:start]]await[[await:end]]; }; }\n",
+    "expected/functions_lambda-3.txt": "/* 中😀 */ async fn run() { let callback = || { external::api::work_sync(true).[[await:start]]await[[await:end]]; }; }\n",
+    "expected/functions_lambda-4.txt": "/* 中😀 */ async fn run() { let callback = || { native::work_async(\"ok\").[[await:start]]await[[await:end]]; }; }\n",
+    "expected/functions_lambda-5.txt": "/* 中😀 */ async fn run() { let callback = || { native::work_sync(\"ok\").[[await:start]]await[[await:end]]; }; }\n",
+    "scripts/root_method_sync_impl.vela": "/* 中😀 */ struct Runner {} impl Runner { fn run(self, value: api::Token) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; } }\n",
+    "expected/root_method_sync_impl-0.txt": "/* 中😀 */ struct Runner {} impl Runner { fn run(self, value: api::Token) { value.own_async(1).[[await:start]]await[[await:end]]; } }\n",
+    "expected/root_method_sync_impl-1.txt": "/* 中😀 */ struct Runner {} impl Runner { fn run(self, value: api::Token) { value.own_sync(1).[[await:start]]await[[await:end]]; } }\n",
+    "scripts/root_method_async_impl.vela": "/* 中😀 */ struct Runner {} impl Runner { async fn run(self, value: api::Token) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; } }\n",
+    "expected/root_method_async_impl-0.txt": "/* 中😀 */ struct Runner {} impl Runner { async fn run(self, value: api::Token) { value.own_async(1).[[await:start]]await[[await:end]]; } }\n",
+    "expected/root_method_async_impl-1.txt": "/* 中😀 */ struct Runner {} impl Runner { async fn run(self, value: api::Token) { value.own_sync(1).[[await:start]]await[[await:end]]; } }\n",
+    "scripts/root_method_sync_trait.vela": "/* 中😀 */ trait Runner { fn run(self, value: api::Token) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; } }\n",
+    "expected/root_method_sync_trait-0.txt": "/* 中😀 */ trait Runner { fn run(self, value: api::Token) { value.own_async(1).[[await:start]]await[[await:end]]; } }\n",
+    "expected/root_method_sync_trait-1.txt": "/* 中😀 */ trait Runner { fn run(self, value: api::Token) { value.own_sync(1).[[await:start]]await[[await:end]]; } }\n",
+    "scripts/root_method_async_trait.vela": "/* 中😀 */ trait Runner { async fn run(self, value: api::Token) { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; } }\n",
+    "expected/root_method_async_trait-0.txt": "/* 中😀 */ trait Runner { async fn run(self, value: api::Token) { value.own_async(1).[[await:start]]await[[await:end]]; } }\n",
+    "expected/root_method_async_trait-1.txt": "/* 中😀 */ trait Runner { async fn run(self, value: api::Token) { value.own_sync(1).[[await:start]]await[[await:end]]; } }\n",
+    "scripts/root_method_block.vela": "/* 中😀 */ async fn run(value: api::Token) { { [[call:start]]value.[[replace:start]]own_[[cursor]][[replace:end]][[call:end]].await; } }\n",
+    "expected/root_method_block-0.txt": "/* 中😀 */ async fn run(value: api::Token) { { value.own_async(1).[[await:start]]await[[await:end]]; } }\n",
+    "expected/root_method_block-1.txt": "/* 中😀 */ async fn run(value: api::Token) { { value.own_sync(1).[[await:start]]await[[await:end]]; } }\n",
+    "scripts/root_method_async_parens.vela": "/* 中😀 */ async fn run(value: api::Token) { [[call:start]](value.[[replace:start]]own_[[cursor]][[replace:end]])[[call:end]].await; }\n",
+    "expected/root_method_async_parens-0.txt": "/* 中😀 */ async fn run(value: api::Token) { [[operand:start]]([[missing:start]]value.own_async(1)[[missing:end]])[[operand:end]].[[await:start]]await[[await:end]]; }\n",
+    "expected/root_method_async_parens-1.txt": "/* 中😀 */ async fn run(value: api::Token) { [[operand:start]](value.own_sync(1))[[operand:end]].[[await:start]]await[[await:end]]; }\n",
+    "scripts/root_method_sync_parens.vela": "/* 中😀 */ fn run(value: api::Token) { [[call:start]](value.[[replace:start]]own_[[cursor]][[replace:end]])[[call:end]].await; }\n",
+    "expected/root_method_sync_parens-0.txt": "/* 中😀 */ fn run(value: api::Token) { [[operand:start]]([[missing:start]]value.own_async(1)[[missing:end]])[[operand:end]].[[await:start]]await[[await:end]]; }\n",
+    "expected/root_method_sync_parens-1.txt": "/* 中😀 */ fn run(value: api::Token) { [[operand:start]](value.own_sync(1))[[operand:end]].[[await:start]]await[[await:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "root_method_sync",
+        "file": "scripts/root_method_sync.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async Token.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true,
+            "appliedFile": "expected/root_method_sync-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false,
+            "appliedFile": "expected/root_method_sync-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "root_method_lambda",
+        "file": "scripts/root_method_lambda.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async Token.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true,
+            "appliedFile": "expected/root_method_lambda-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false,
+            "appliedFile": "expected/root_method_lambda-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "dep_method_sync",
+        "file": "scripts/dep_method_sync.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_async(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": false,
+            "appliedFile": "expected/dep_method_sync-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "async Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "true",
+            "signature": "async Token.own_sync(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": true,
+            "appliedFile": "expected/dep_method_sync-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "dep_method_lambda",
+        "file": "scripts/dep_method_lambda.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_async(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": false,
+            "appliedFile": "expected/dep_method_lambda-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "async Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "true",
+            "signature": "async Token.own_sync(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": true,
+            "appliedFile": "expected/dep_method_lambda-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "root_alias_sync",
+        "file": "scripts/root_alias_sync.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async Token.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true,
+            "appliedFile": "expected/root_alias_sync-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false,
+            "appliedFile": "expected/root_alias_sync-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "root_alias_lambda",
+        "file": "scripts/root_alias_lambda.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async Token.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true,
+            "appliedFile": "expected/root_alias_lambda-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false,
+            "appliedFile": "expected/root_alias_lambda-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "dep_alias_sync",
+        "file": "scripts/dep_alias_sync.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_async(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": false,
+            "appliedFile": "expected/dep_alias_sync-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "async Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "true",
+            "signature": "async Token.own_sync(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": true,
+            "appliedFile": "expected/dep_alias_sync-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "dep_alias_lambda",
+        "file": "scripts/dep_alias_lambda.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "true",
+            "signature": "Token.own_async(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": false,
+            "appliedFile": "expected/dep_alias_lambda-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "async Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "true",
+            "signature": "async Token.own_sync(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": true,
+            "appliedFile": "expected/dep_alias_lambda-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "root_trait_sync",
+        "file": "scripts/root_trait_sync.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Worker.own_async",
+            "target": "scripts/api.vela",
+            "marker": "trait-own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async api::Worker.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true,
+            "appliedFile": "expected/root_trait_sync-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Worker.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "trait-own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "api::Worker.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false,
+            "appliedFile": "expected/root_trait_sync-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "root_trait_lambda",
+        "file": "scripts/root_trait_lambda.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Worker.own_async",
+            "target": "scripts/api.vela",
+            "marker": "trait-own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async api::Worker.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true,
+            "appliedFile": "expected/root_trait_lambda-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Worker.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "trait-own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "api::Worker.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false,
+            "appliedFile": "expected/root_trait_lambda-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "dep_trait_sync",
+        "file": "scripts/dep_trait_sync.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Worker.own_async",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "trait-own-async",
+            "docs": null,
+            "value": "true",
+            "signature": "api::Worker.own_async(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": false,
+            "appliedFile": "expected/dep_trait_sync-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "async Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Worker.own_sync",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "trait-own-sync",
+            "docs": null,
+            "value": "true",
+            "signature": "async api::Worker.own_sync(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": true,
+            "appliedFile": "expected/dep_trait_sync-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "dep_trait_lambda",
+        "file": "scripts/dep_trait_lambda.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Worker.own_async",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "trait-own-async",
+            "docs": null,
+            "value": "true",
+            "signature": "api::Worker.own_async(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": false,
+            "appliedFile": "expected/dep_trait_lambda-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "async Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::Worker.own_sync",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "trait-own-sync",
+            "docs": null,
+            "value": "true",
+            "signature": "async api::Worker.own_sync(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": true,
+            "appliedFile": "expected/dep_trait_lambda-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "schema_method_sync",
+        "file": "scripts/schema_method_sync.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(String) -> String",
+            "origin": "schema",
+            "symbol": "host::Handle.own_async",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "async host::Handle.own_async(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": true,
+            "appliedFile": "expected/schema_method_sync-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(String) -> String",
+            "origin": "schema",
+            "symbol": "host::Handle.own_sync",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "host::Handle.own_sync(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": false,
+            "appliedFile": "expected/schema_method_sync-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "schema_method_lambda",
+        "file": "scripts/schema_method_lambda.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(String) -> String",
+            "origin": "schema",
+            "symbol": "host::Handle.own_async",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "async host::Handle.own_async(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": true,
+            "appliedFile": "expected/schema_method_lambda-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(String) -> String",
+            "origin": "schema",
+            "symbol": "host::Handle.own_sync",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "host::Handle.own_sync(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": false,
+            "appliedFile": "expected/schema_method_lambda-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "schema_trait_sync",
+        "file": "scripts/schema_trait_sync.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(String) -> String",
+            "origin": "schema",
+            "symbol": "host::Worker.own_async",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "async host::Worker.own_async(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": true,
+            "appliedFile": "expected/schema_trait_sync-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(String) -> String",
+            "origin": "schema",
+            "symbol": "host::Worker.own_sync",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "host::Worker.own_sync(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": false,
+            "appliedFile": "expected/schema_trait_sync-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "schema_trait_lambda",
+        "file": "scripts/schema_trait_lambda.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(String) -> String",
+            "origin": "schema",
+            "symbol": "host::Worker.own_async",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "async host::Worker.own_async(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": true,
+            "appliedFile": "expected/schema_trait_lambda-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(String) -> String",
+            "origin": "schema",
+            "symbol": "host::Worker.own_sync",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "host::Worker.own_sync(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": false,
+            "appliedFile": "expected/schema_trait_lambda-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "functions_sync",
+        "file": "scripts/functions_sync.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "api::work_async",
+            "insert": "api::work_async($0)",
+            "kind": "Function",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::work_async",
+            "target": "scripts/api.vela",
+            "marker": "work-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async work_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true,
+            "appliedFile": "expected/functions_sync-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "api::work_sync",
+            "insert": "api::work_sync($0)",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::work_sync",
+            "target": "scripts/api.vela",
+            "marker": "work-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "work_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false,
+            "appliedFile": "expected/functions_sync-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "external::api::work_async",
+            "insert": "external::api::work_async($0)",
+            "kind": "Function",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::work_async",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "work-async",
+            "docs": null,
+            "value": "true",
+            "signature": "work_async(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": false,
+            "appliedFile": "expected/functions_sync-2.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "external::api::work_sync",
+            "insert": "external::api::work_sync($0)",
+            "kind": "Function",
+            "detail": "async Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::work_sync",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "work-sync",
+            "docs": null,
+            "value": "true",
+            "signature": "async work_sync(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": true,
+            "appliedFile": "expected/functions_sync-3.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "native::work_async",
+            "insert": "native::work_async($0)",
+            "kind": "Function",
+            "detail": "async Function(String) -> String",
+            "origin": "schema",
+            "symbol": "native::work_async",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "async native::work_async(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": true,
+            "appliedFile": "expected/functions_sync-4.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "native::work_sync",
+            "insert": "native::work_sync($0)",
+            "kind": "Function",
+            "detail": "Function(String) -> String",
+            "origin": "schema",
+            "symbol": "native::work_sync",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "native::work_sync(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": false,
+            "appliedFile": "expected/functions_sync-5.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "functions_lambda",
+        "file": "scripts/functions_lambda.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "api::work_async",
+            "insert": "api::work_async($0)",
+            "kind": "Function",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::work_async",
+            "target": "scripts/api.vela",
+            "marker": "work-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async work_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true,
+            "appliedFile": "expected/functions_lambda-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "api::work_sync",
+            "insert": "api::work_sync($0)",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::work_sync",
+            "target": "scripts/api.vela",
+            "marker": "work-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "work_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false,
+            "appliedFile": "expected/functions_lambda-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "external::api::work_async",
+            "insert": "external::api::work_async($0)",
+            "kind": "Function",
+            "detail": "Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::work_async",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "work-async",
+            "docs": null,
+            "value": "true",
+            "signature": "work_async(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": false,
+            "appliedFile": "expected/functions_lambda-2.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "external::api::work_sync",
+            "insert": "external::api::work_sync($0)",
+            "kind": "Function",
+            "detail": "async Function(bool) -> bool",
+            "origin": "source",
+            "symbol": "api::work_sync",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "work-sync",
+            "docs": null,
+            "value": "true",
+            "signature": "async work_sync(zz_dep: bool) -> bool",
+            "argument": {
+              "label": "zz_dep",
+              "detail": "bool"
+            },
+            "inlay": "zz_dep:",
+            "async": true,
+            "appliedFile": "expected/functions_lambda-3.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "native::work_async",
+            "insert": "native::work_async($0)",
+            "kind": "Function",
+            "detail": "async Function(String) -> String",
+            "origin": "schema",
+            "symbol": "native::work_async",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "async native::work_async(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": true,
+            "appliedFile": "expected/functions_lambda-4.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "native::work_sync",
+            "insert": "native::work_sync($0)",
+            "kind": "Function",
+            "detail": "Function(String) -> String",
+            "origin": "schema",
+            "symbol": "native::work_sync",
+            "target": null,
+            "docs": null,
+            "value": "\"ok\"",
+            "signature": "native::work_sync(zz_host: String) -> String",
+            "argument": {
+              "label": "zz_host",
+              "detail": "String"
+            },
+            "inlay": "zz_host:",
+            "async": false,
+            "appliedFile": "expected/functions_lambda-5.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "root_method_sync_impl",
+        "file": "scripts/root_method_sync_impl.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async Token.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true,
+            "appliedFile": "expected/root_method_sync_impl-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false,
+            "appliedFile": "expected/root_method_sync_impl-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "root_method_async_impl",
+        "file": "scripts/root_method_async_impl.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async Token.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true,
+            "appliedFile": "expected/root_method_async_impl-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false,
+            "appliedFile": "expected/root_method_async_impl-1.txt",
+            "diagnostics": []
+          }
+        ],
+        "syntaxCodes": []
+      },
+      {
+        "id": "root_method_sync_trait",
+        "file": "scripts/root_method_sync_trait.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async Token.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true,
+            "appliedFile": "expected/root_method_sync_trait-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false,
+            "appliedFile": "expected/root_method_sync_trait-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::await_outside_async"
+        ]
+      },
+      {
+        "id": "root_method_async_trait",
+        "file": "scripts/root_method_async_trait.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async Token.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true,
+            "appliedFile": "expected/root_method_async_trait-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false,
+            "appliedFile": "expected/root_method_async_trait-1.txt",
+            "diagnostics": []
+          }
+        ],
+        "syntaxCodes": []
+      },
+      {
+        "id": "root_method_block",
+        "file": "scripts/root_method_block.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async Token.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true,
+            "appliedFile": "expected/root_method_block-0.txt",
+            "diagnostics": []
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false,
+            "appliedFile": "expected/root_method_block-1.txt",
+            "diagnostics": []
+          }
+        ],
+        "syntaxCodes": []
+      },
+      {
+        "id": "root_method_async_parens",
+        "file": "scripts/root_method_async_parens.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async Token.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true,
+            "appliedFile": "expected/root_method_async_parens-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::invalid_await_operand",
+                "message": "`.await` requires a call expression",
+                "label": "this expression is not a call",
+                "marker": "operand"
+              },
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "missing"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false,
+            "appliedFile": "expected/root_method_async_parens-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::invalid_await_operand",
+                "message": "`.await` requires a call expression",
+                "label": "this expression is not a call",
+                "marker": "operand"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::invalid_await_operand"
+        ]
+      },
+      {
+        "id": "root_method_sync_parens",
+        "file": "scripts/root_method_sync_parens.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "checkAwait": false,
+        "items": [
+          {
+            "label": "own_async",
+            "insert": "own_async($0)",
+            "kind": "Method",
+            "detail": "async Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_async",
+            "target": "scripts/api.vela",
+            "marker": "own-async",
+            "docs": null,
+            "value": "1",
+            "signature": "async Token.own_async(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": true,
+            "appliedFile": "expected/root_method_sync_parens-0.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::invalid_await_operand",
+                "message": "`.await` requires a call expression",
+                "label": "this expression is not a call",
+                "marker": "operand"
+              },
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              },
+              {
+                "code": "analysis::async_call_requires_await",
+                "message": "async call requires `.await`",
+                "label": "append `.await` to suspend until this call completes",
+                "marker": "missing"
+              }
+            ]
+          },
+          {
+            "label": "own_sync",
+            "insert": "own_sync($0)",
+            "kind": "Method",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::Token.own_sync",
+            "target": "scripts/api.vela",
+            "marker": "own-sync",
+            "docs": null,
+            "value": "1",
+            "signature": "Token.own_sync(zz_root: i64) -> i64",
+            "argument": {
+              "label": "zz_root",
+              "detail": "i64"
+            },
+            "inlay": "zz_root:",
+            "async": false,
+            "appliedFile": "expected/root_method_sync_parens-1.txt",
+            "diagnostics": [
+              {
+                "code": "syntax::invalid_await_operand",
+                "message": "`.await` requires a call expression",
+                "label": "this expression is not a call",
+                "marker": "operand"
+              },
+              {
+                "code": "syntax::await_outside_async",
+                "message": "`.await` is only allowed inside an async function",
+                "label": "declare the enclosing function with `async fn`",
+                "marker": "await"
+              }
+            ]
+          }
+        ],
+        "syntaxCodes": [
+          "syntax::invalid_await_operand",
+          "syntax::await_outside_async"
+        ]
+      }
+    ]
+  }
+}

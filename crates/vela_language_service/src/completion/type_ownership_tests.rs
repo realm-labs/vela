@@ -36,6 +36,11 @@ fn async_callable_matrix_preserves_owner_metadata_and_applied_await_contracts() 
 }
 
 #[test]
+fn await_context_matrix_preserves_owned_choices_and_exact_syntax_diagnostics() {
+    assert_type_ownership("completion-await-contexts");
+}
+
+#[test]
 fn receiver_assignment_flow_preserves_possible_owners_and_rejects_stale_members() {
     assert_type_ownership("completion-receiver-assignments");
 }
@@ -136,15 +141,50 @@ fn assert_type_ownership(fixture_id: &str) {
                 );
                 let mut edited = source.text.clone();
                 edited.replace_range(range.start.byte..range.end.byte, &insertion);
-                assert!(
+                assert_eq!(
                     vela_syntax::parse::parse_source(&edited)
                         .diagnostics()
-                        .is_empty(),
+                        .iter()
+                        .map(|d| d.code.clone().expect("syntax diagnostic code"))
+                        .collect::<Vec<_>>(),
+                    case["syntaxCodes"]
+                        .as_array()
+                        .map_or_else(Vec::new, |codes| codes
+                            .iter()
+                            .map(|code| code.as_str().expect("syntax code").to_owned())
+                            .collect()),
                     "{case}: {edited}"
                 );
                 let mut fresh = FixtureWorkspace::new(&spec).expect("fresh");
                 fresh.disk.get_mut(file).expect("file").text = edited.clone();
                 let fresh = databases(&fresh, &layout);
+                if let Some(applied_file) = expected["appliedFile"].as_str() {
+                    let applied = fixture.document(applied_file).expect("applied oracle");
+                    assert_eq!(edited, applied.text, "{case}");
+                    let diagnostics = fresh.diagnostics_for_document(&uri(file));
+                    let actual = diagnostics
+                        .diagnostics()
+                        .iter()
+                        .filter(|d| d.code().is_some_and(|code| code.contains("await")))
+                        .collect::<Vec<_>>();
+                    let oracle = expected["diagnostics"]
+                        .as_array()
+                        .expect("await diagnostics");
+                    assert_eq!(actual.len(), oracle.len(), "{case}: {actual:?}");
+                    for (actual, expected) in actual.iter().zip(oracle) {
+                        assert_eq!(actual.code(), expected["code"].as_str());
+                        assert_eq!(actual.message(), string(expected, "message"));
+                        assert_eq!(actual.severity(), crate::ServiceDiagnosticSeverity::Error);
+                        let range = applied.markers[string(expected, "marker")];
+                        let actual_range = actual.range().expect("await diagnostic range");
+                        assert_eq!(actual_range.start(), position(&edited, range.start.byte));
+                        assert_eq!(actual_range.end(), position(&edited, range.end.byte));
+                        assert_eq!(actual.labels().len(), 1);
+                        assert_eq!(actual.labels()[0].message(), string(expected, "label"));
+                        assert_eq!(actual.labels()[0].document_id(), &uri(file));
+                        assert_eq!(actual.labels()[0].range(), actual_range);
+                    }
+                }
                 if case["checkAwait"] == true {
                     let diagnostics = fresh.diagnostics_for_document(&uri(file));
                     let missing = diagnostics

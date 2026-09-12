@@ -33,7 +33,7 @@ post-edit signature check.
 
 ## Remaining B03 Acceptance Work
 
-1. Finish the S5 partition review and remaining async/callback boundaries. The
+1. Finish the S5 partition review and remaining callback boundaries. The
    `completion-sync-callbacks` fixture covers static sync callback reference
    insertion across builtin collection/Option/Result/Iterator methods, named and
    reordered slots, same-name source/schema/import owners and exact applied
@@ -51,8 +51,15 @@ post-edit signature check.
    alias, trait, host and schema cases with opposite asyncness in same-name
    package declarations. Completion details preserve asyncness; applied calls
    retain exact signatures, named parameters, inlays, definitions, missing-await
-   diagnostic ranges and labels under Unicode LF/CRLF. Invalid await contexts,
-   broader callback combinations and remaining opaque/defaulted task values,
+   diagnostic ranges and labels under Unicode LF/CRLF.
+   `completion-await-contexts` adds 25 contexts and 58 candidate applications
+   across source/dependency/schema functions, methods and traits. Sync functions,
+   lambdas and sync methods retain exact invalid-await diagnostics; async methods
+   and blocks retain no await error. Parenthesized operands distinguish the
+   operand rejection from a still-unawaited inner async call. Complete candidate
+   sets, ownership, applied signatures, named parameters, inlays and definitions
+   remain asserted with explicit parser and diagnostic range/message oracles.
+   Broader callback combinations and remaining opaque/defaulted task values,
    method effect chains, schema replacement and host resume contracts still
    require review. Thirty-six task-admission cases now retain complete candidate
    sets through application, assert exact rejection messages, codes, severity,

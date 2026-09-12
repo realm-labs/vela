@@ -701,6 +701,14 @@ validate against the declared signature even without an implementation body.
 Diagnostic ranges and their labels/repair hints use each document's current text
 for protocol UTF-16 projection; invalid ranges cannot be emitted as byte columns.
 
+Twenty-five shared await-context cases retain complete callable choices across
+sync functions, lambdas, sync/async impl and trait methods, and nested async
+blocks. Fifty-eight candidate applications preserve signatures, parameter
+completion, inlays and definitions despite invalid enclosing await contexts.
+Exact syntax diagnostic codes, messages, ranges and labels distinguish the
+await token, a parenthesized operand and an inner unawaited async call under
+Unicode LF/CRLF. Parser diagnostics are compared with explicit fixture oracles.
+
 Static task operand completion now filters workers to declared async functions
 and continuations to synchronous functions with the matching required outcome
 parameter. Twenty-four shared cases cover qualified/imported targets, unknown
@@ -728,8 +736,8 @@ Trailing continuation parameters remain a host-resume contract. Both test layers
 run Unicode LF/CRLF cases; these static queries do not prove runtime admission.
 
 The [completion coverage review](lsp-completion-coverage-review.md) indexes S5
-proof and the remaining acceptance work. Resume B03.32 with the S5 partition
-review and remaining async/callback boundaries, then the remaining
+proof and the remaining acceptance work. Resume B03.33 with callback factories,
+dynamic callback contracts and the S5 partition review, then the remaining
 semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

@@ -34,6 +34,11 @@ fn async_callable_matrix_projects_owner_metadata_and_applied_await_contracts() {
 }
 
 #[test]
+fn await_context_matrix_projects_owned_choices_and_exact_syntax_diagnostics() {
+    assert_type_ownership("completion-await-contexts");
+}
+
+#[test]
 fn receiver_assignment_flow_projects_possible_owners_and_rejects_stale_members() {
     assert_type_ownership("completion-receiver-assignments");
 }
@@ -163,16 +168,65 @@ fn assert_type_ownership(fixture_id: &str) {
                         &source.text[range.end.byte..]
                     )
                 );
-                assert!(
+                assert_eq!(
                     vela_syntax::parse::parse_source(&edited)
                         .diagnostics()
-                        .is_empty()
+                        .iter()
+                        .map(|d| d.code.clone().expect("syntax diagnostic code"))
+                        .collect::<Vec<_>>(),
+                    case["syntaxCodes"]
+                        .as_array()
+                        .map_or_else(Vec::new, |codes| codes
+                            .iter()
+                            .map(|code| code.as_str().expect("syntax code").to_owned())
+                            .collect()),
+                    "{case}: {edited}"
                 );
                 version += 1;
                 let changes = notify::<n::DidChangeTextDocument>(
                     &mut server,
                     json!({"textDocument":{"uri":uri(file),"version":version},"contentChanges":[{"text":edited}]}),
                 );
+                if let Some(applied_file) = expected["appliedFile"].as_str() {
+                    let applied = fixture.document(applied_file).expect("applied oracle");
+                    assert_eq!(edited, applied.text, "{case}");
+                    let notifications = crate::tests::notification_values(changes.clone());
+                    let published = notifications
+                        .iter()
+                        .find(|n| {
+                            n["method"] == "textDocument/publishDiagnostics"
+                                && n["params"]["uri"] == uri(file)
+                        })
+                        .expect("applied diagnostics");
+                    let actual = published["params"]["diagnostics"]
+                        .as_array()
+                        .expect("diagnostics")
+                        .iter()
+                        .filter(|d| {
+                            d["code"]
+                                .as_str()
+                                .is_some_and(|code| code.contains("await"))
+                        })
+                        .collect::<Vec<_>>();
+                    let oracle = expected["diagnostics"]
+                        .as_array()
+                        .expect("await diagnostics");
+                    assert_eq!(actual.len(), oracle.len(), "{case}: {actual:?}");
+                    for (actual, expected) in actual.iter().zip(oracle) {
+                        assert_eq!(actual["code"], expected["code"]);
+                        assert_eq!(actual["message"], expected["message"]);
+                        assert_eq!(actual["severity"], 1);
+                        let range = applied.markers[string(expected, "marker")];
+                        assert_eq!(
+                            actual["range"],
+                            json!({"start":{"line":range.start.line,"character":range.start.character},"end":{"line":range.end.line,"character":range.end.character}})
+                        );
+                        assert_eq!(
+                            actual["data"]["labels"],
+                            json!([{"uri":uri(file),"range":actual["range"],"message":expected["label"]}])
+                        );
+                    }
+                }
                 if case["checkAwait"] == true {
                     let notifications = crate::tests::notification_values(changes);
                     let published = notifications

@@ -1510,10 +1510,41 @@
         "completion-resolve/syntax/S9/negative/protocol"
       ],
       "summary": "Thirty-six shared applied-completion cases cover task admission diagnostics across value and effect boundaries. Complete argument/target candidate sets, insertion formats and ranges, callable ownership/resolve, exact independently marked applied source and parseability are asserted under Unicode LF/CRLF. Owned scalar/string/Array/Map/Option/Result and erased Any arguments retain no task diagnostic. Closure, function, iterator and nested collection/Option/Result/HostRef arguments retain precise rejection paths. Explicit parameter and argument failures have separate ranges; rejected result diagnostics span the complete worker call. Named arguments and middle-of-word replacements preserve the same facts. Synchronous matching continuations may retain trailing runtime resume parameters. Registered ceilings exercise ten individual effect flags, recursive worker and continuation call chains, denied TaskSpawn and missing ceiling metadata. Every admission diagnostic asserts exact code, severity, message, main range and one related label with exact URI/range/message; protocol labels use the existing data.labels contract. Protocol edits restore the original full completion result. No Runtime is executed and no live host state is accessed. This test-only change adds four test identities without changing completion or admission policy. Workspace 4475 passed, two historical ignored; service 624 plus two ignored and protocol 609; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-t2geY2/results.json passed 9; native editors/vscode/test-results/input-2dYow7/results.json passed 13; strict target/lsp-matrix/run-fsUadf/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The 24 referenced requirements record partial child progress, not whole-partition acceptance. B03 remains unaccepted. Resume B03.32 with S5 partition review and remaining async/callback boundaries; opaque/defaulted task values, method effect chains, host resume binding, schema/dependency lifecycle, semantic partitions and UX04 remain open. Fresh macOS proof is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.32",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S4/positive/service",
+        "completion/syntax/S4/positive/protocol",
+        "completion/syntax/S4/negative/service",
+        "completion/syntax/S4/negative/protocol",
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/negative/protocol",
+        "completion/syntax/S9/positive/service",
+        "completion/syntax/S9/positive/protocol",
+        "completion/syntax/S9/negative/service",
+        "completion/syntax/S9/negative/protocol",
+        "completion-resolve/syntax/S4/positive/service",
+        "completion-resolve/syntax/S4/positive/protocol",
+        "completion-resolve/syntax/S4/negative/service",
+        "completion-resolve/syntax/S4/negative/protocol",
+        "completion-resolve/syntax/S5/positive/service",
+        "completion-resolve/syntax/S5/positive/protocol",
+        "completion-resolve/syntax/S5/negative/service",
+        "completion-resolve/syntax/S5/negative/protocol",
+        "completion-resolve/syntax/S9/positive/service",
+        "completion-resolve/syntax/S9/positive/protocol",
+        "completion-resolve/syntax/S9/negative/service",
+        "completion-resolve/syntax/S9/negative/protocol"
+      ],
+      "summary": "Twenty-five shared await-context queries apply 58 callable candidates under LF/CRLF. Source/dependency/schema functions, aliases, methods and traits retain complete candidate sets, async metadata, resolve ownership, exact edits, applied signatures, named-argument completions, inlay positions and definition URI/ranges across syntax errors. Sync functions and lambdas inside async functions retain await_outside_async diagnostics. Sync/async impl and trait methods distinguish invalid and valid enclosing contexts; ordinary nested async blocks retain no await error. Parenthesized operands retain invalid_await_operand, while their inner asynchronous call also retains async_call_requires_await. Independent marked applied files distinguish exact await-token, parenthesized-operand and inner-call spans. Both layers assert diagnostic code, severity, message and exact related label URI/range/message through the existing data.labels contract. Parser diagnostics match explicit syntax code lists; prior valid fixture expectations remain empty. This test-only change adds two test identities and changes no syntax, completion, runtime or admission semantics. Workspace 4477 passed, two historical ignored; service 625 plus two ignored and protocol 610; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-SoaJoI/results.json passed 9; native editors/vscode/test-results/input-6esKYl/results.json passed 13; strict target/lsp-matrix/run-nmuxIZ/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The 24 requirement references record partial child progress, not whole-partition acceptance. B03 remains unaccepted. Resume B03.33 with callback factories, dynamic callback contracts and S5 partition review; remaining semantic partitions, task default/opaque values and method effects, lifecycle/URI/client sequences and UX04 remain open. Queries do not execute Vela or access live host state. Fresh macOS proof is required when next used. B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.32",
-  "nextTask": "B03.32",
+  "activeChild": "B03.33",
+  "nextTask": "B03.33",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -3484,7 +3515,19 @@
     "target/b03-31-input.log",
     "target/b03-31-accepted-regression.log",
     "editors/vscode/test-results/run-t2geY2/results.json",
-    "editors/vscode/test-results/input-2dYow7/results.json"
+    "editors/vscode/test-results/input-2dYow7/results.json",
+    "target/lsp-matrix/run-nmuxIZ/report.json",
+    "target/b03-32-baseline.log",
+    "target/b03-32-await.log",
+    "target/b03-32-await-final.log",
+    "target/b03-32-workspace.log",
+    "target/b03-32-clippy.log",
+    "target/b03-32-node.log",
+    "target/b03-32-editor.log",
+    "target/b03-32-input.log",
+    "target/b03-32-accepted-regression.log",
+    "editors/vscode/test-results/run-SoaJoI/results.json",
+    "editors/vscode/test-results/input-6esKYl/results.json"
   ],
   "openIssues": [
     {
@@ -4105,8 +4148,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "06730a5d3302bde40195379134258b86377d38ac",
-          "treeSha256": "23a3baebfe1ca066aed24c1546bc4d9d17d290fc9560bd37ae77180496fe57c6"
+          "revision": "28f4d62117cb84339853852a18f4136c4816a5e2",
+          "treeSha256": "ece5cd127abe7ebb4dce2d4a8241a2a98654ae5ad2e3437fc789eafb442ff01d"
         },
         "profile": {
           "platform": "win32",
@@ -4114,11 +4157,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-fsUadf/report.json"
+          "target/lsp-matrix/run-nmuxIZ/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-t2geY2/results.json --local-results editors/vscode/test-results/input-2dYow7/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-SoaJoI/results.json --local-results editors/vscode/test-results/input-6esKYl/results.json",
             "exitCode": 0
           }
         ]
