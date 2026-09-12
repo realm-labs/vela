@@ -4320,3 +4320,25 @@ over colliding registry entries, as in compile-target analysis. Preserve visible
 unique enum constructor lookup and build source variant facts from the selected
 declaration. Imported reserved Service paths still require lexical capability.
 Metadata discovery helpers do not define contextual callable ownership.
+
+## Semantic Parameter Slots Remain Separate From CST Argument Indices
+
+Signature help and completion expected-name/type queries select the same callable
+and map the current argument through its parameter metadata. Named arguments own
+their exact parameter even when reordered; earlier positional slots and names
+reserve their parameters. Missing positional expressions still reserve structural
+slots before the first named argument. Empty authoring slots select the first
+available parameter, excluding names already written to the right. Written
+positional expressions after a named argument, duplicate current names, unknown
+names, overflow and named syntax on positional-only Service/enum calls have no
+semantic expected parameter. Later independently valid named arguments can still
+recover after an earlier error. Bare identifiers without an equals sign retain
+positional expression semantics until committed as a parameter label.
+
+Keep the CST comma index unchanged for syntax ownership and recovery. Do not
+infer an expected type from signature rendering fallback: the existing
+[LSP 3.17 signature-help contract](https://raw.githubusercontent.com/microsoft/language-server-protocol/gh-pages/_specifications/lsp/3.17/language/signatureHelp.md)
+defaults missing/out-of-range active parameters to zero and ignores the value
+for zero-arity signatures. Preserve explicit zero presentation for unmapped
+arguments while semantic queries return no expected name or type. This does not
+claim no-highlight UI support or change compiler argument acceptance.

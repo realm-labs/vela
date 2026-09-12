@@ -652,7 +652,7 @@ edits, direct/aliased imports, builtin families, fixed/read-only/growable views,
 reserved labels and negative boundaries. Analysis reads the static registration
 manifest, with inventory checks for every standard function and method;
 `Map.group_by` is restored to the candidate list. Provider-specific/variable-arity
-metadata, name-aware expected-parameter mapping, broader S5 authoring semantics
+metadata, broader S5 authoring semantics
 and UX04 remain open. Service-set projection now retains parameter names, asyncness,
 nested types and collection mutation contracts. Fourteen shared cases cover
 service receiver completion, occupied slots, forward references and chained
@@ -676,7 +676,15 @@ shares source/import ownership across parameter completion, signatures and
 expected-argument facts. Thirty-two shared cases cover aliases, namespace imports,
 source/registry/stdlib collisions, private and shadowed declarations, ambiguous
 or missing imports, reserved Service aliases and visible enum constructors.
-Named argument slot mapping and positional expression candidates remain open.
+Signature highlighting and expected-argument name/type now share semantic
+parameter mapping while preserving the structural CST argument index. Forty-four
+shared cases cover reordered/defaulted names, occupied slots, duplicates, unknown
+names, illegal positional-after-named expressions, missing arguments, nested and
+incomplete calls, zero arity and positional-only Service/enum contracts. Protocol
+queries check LF/CRLF, Unicode positions and incremental prefix edits. Unmapped
+arguments have no expected type; signature presentation uses the LSP 3.17 zero
+fallback. Ordinary argument expression candidates and combined parameter-label
+completion remain open, along with provider/variable-arity metadata and UX04.
 The earlier macOS input regression stopped on a locked
 desktop; that record does not imply a Windows blocker. Current platform evidence
 must be collected before strict acceptance; see [blocked.md](blocked.md).
@@ -685,7 +693,7 @@ actual suggestion acceptance, F12/back and palettes, modifier-click, context-men
 Peek, exact Unicode targets and no-jump outcomes pass. The installed provider
 suite passes all nine scenarios. The original macOS acceptance remains historical;
 changed driver code needs fresh proof when that machine is next used. Shared
-implementation resumes at B03.15.
+implementation resumes at B03.16.
 
 ### Deferred Tracks
 

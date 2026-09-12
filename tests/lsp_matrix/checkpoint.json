@@ -1127,10 +1127,25 @@
         "completion/states/unresolved/protocol"
       ],
       "summary": "Unify contextual callable resolution for parameter completion, signature help and expected-argument facts in query_context/callable.rs. Preserve lexical local/declaration ownership, expand one unambiguous import, resolve source namespace aliases, close private and non-callable declarations to registry fallback, and require exact external function paths. Canonical stdlib functions win over colliding registry facts, matching compile-target analysis. Source enum variants are built from the selected declaration; visible unique short variants remain supported while ambiguous/private/unimported source variants are rejected. Schema short variants require a unique candidate. Imported reserved Service paths still require lexical capability and cannot borrow ordinary same-name schema functions. Context-free discovery helpers remain separate; contextual metadata unit coverage now explicitly imports the external functions it queries. Thirty-two shared independent cases run in service and protocol under LF/CRLF, checking callable identity, exact signature/expected parameter/type, complete named-parameter sets, repeat, explicit Unicode UTF-16 edits, parser-clean application and signature re-query after edits. Preserve b03-14-service-red.log (six unrelated signatures from one imported call), service-regression.log (enum regression during the refactor), and reserved-red.log (alias leaked a reserved schema signature). Final focused cases, full service 596 plus two historical ignored and protocol 583 passed; relevant all-target Clippy, fmt and Node 73 passed. Installed VSIX run-iW6781 passed 9; Windows input-YP56UJ passed 13; strict run-kW8n0A refreshed all 145 B00-B02 obligations with original accepted snapshots intact. B03 remains unaccepted; broad S5 remains unreviewed, whole pending-batch scope 1332. Continue B03.15 with name-aware argument/parameter slot mapping shared by signature highlighting and expected-type/name queries. Existing call_argument_facts active_parameter counts CST separators; completion/analysis.rs::expected_call_argument indexes parameters by that ordinal, and signature.rs clamps the same ordinal. Independently cover out-of-order names, current named-value ownership, mixed occupied slots, unknown/duplicate names, nested/incomplete calls, defaults, zero-arity and rejected Service named syntax. Keep the existing named-argument-active-parameter-mapping issue until independently verified. Then address ordinary positional expression candidates, provider/variable-arity metadata, root Service namespace completion, remaining S5/lifecycle and UX04. macOS requires fresh proof when next used; B16 deferred. Find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B03.15",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/protocol",
+        "signature-help/syntax/S5/positive/service",
+        "signature-help/syntax/S5/negative/service",
+        "signature-help/syntax/S5/positive/protocol",
+        "signature-help/syntax/S5/negative/protocol"
+      ],
+      "summary": "Share semantic argument-to-parameter mapping and ordered callable selection between signature help and completion expected-name/type queries. Preserve the CST separator index. Resolve reordered names; reserve earlier positional slots including missing expressions, prior named slots and following names at empty authoring positions. Unknown names, duplicate current bindings, positional expressions after named arguments, overflow, zero arity and named syntax on positional-only Service/enum targets have no expected parameter. Independently valid later named arguments recover after earlier errors. Unmapped signatures use the documented LSP 3.17 zero presentation fallback, which never supplies an expected type. Forty-four independent shared fixtures run under LF/CRLF in service and protocol (88 contexts per layer): defaults, mixed slots, future names, nested calls/lambdas, comments/strings, multiline Unicode, incomplete calls, source methods, imported schema functions, standard functions, Service receivers, reserved Service calls and enum constructors. Assert exact signatures, active indices, expected names/types and unchanged structural ordinals; protocol repeats and applies an actual UTF-16 incremental non-BMP prefix edit before querying again. Preserve b03-15-mapping-red.log (reason incorrectly selected parameter zero) and b03-15-hole-red.log (missing earlier positional slot shifted highlighting). Final focused checks, service 597 plus two historical ignored and protocol 584 passed; relevant all-target Clippy, fmt and Node 73 passed. Installed VSIX run-JTuk5K passed 9, Windows input-xFcN10 passed 13; strict run-sw1vnY refreshed all 145 B00-B02 obligations with original acceptance records unchanged. The listed S5 requirement IDs identify partial work only: broad completion/signature S5 remain unreviewed and B03/B07 are not accepted. Remaining whole-batch scope 1332. Close the named-argument-active-parameter-mapping semantic issue; B07 still owns full signature/client/render coverage, including any future no-active-parameter capability. Continue B03.16 with independent complete candidate sets for ordinary call expressions and parameter labels, covering the retained peer.take(chosen<cursor>) failure. completion.rs currently chooses only named_argument_completion_items for NamedArgument; context.rs selects that context for bare prefixes/empty slots, suppressing expression locals. Define coexisting name/value choices, preserve distinct insertion semantics for a local sharing a parameter name, reject expression suggestions in committed labels and after named arguments, and unify occupied-slot handling with the new mapping. Existing named-only fixture assertions must evolve with explicit full expected sets rather than silently filtering extras. Then provider/variable-arity metadata, root Service namespace suggestions and remaining S5/lifecycle/UX04. Fresh macOS evidence remains required when next used; B16 deferred. Find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.15",
-  "nextTask": "B03.15",
+  "activeChild": "B03.16",
+  "nextTask": "B03.16",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -2778,7 +2793,21 @@
     "target/b03-14-accepted-regression.log",
     "target/lsp-matrix/run-pzjIKW/report.json",
     "editors/vscode/test-results/run-iW6781/results.json",
-    "editors/vscode/test-results/input-YP56UJ/results.json"
+    "editors/vscode/test-results/input-YP56UJ/results.json",
+    "target/lsp-matrix/run-sw1vnY/report.json",
+    "target/b03-15-baseline.log",
+    "target/b03-15-mapping-red.log",
+    "target/b03-15-hole-red.log",
+    "target/b03-15-regression.log",
+    "target/b03-15-final-focused.log",
+    "target/b03-15-clippy-final.log",
+    "target/b03-15-node.log",
+    "target/b03-15-editor.log",
+    "target/b03-15-input.log",
+    "target/b03-15-accepted-regression.log",
+    "target/lsp-matrix/run-HTLUCL/report.json",
+    "editors/vscode/test-results/run-JTuk5K/results.json",
+    "editors/vscode/test-results/input-xFcN10/results.json"
   ],
   "openIssues": [
     {
@@ -2794,11 +2823,6 @@
       "id": "navigation-unicode-render-styles",
       "owner": "B06",
       "summary": "The retained input-navigation fixture renders make after Chinese/non-BMP text in split mtk13/mtk3/mtk17 spans. Navigation and source geometry are verified, but syntax/semantic style ownership was not assessed in B02. Review this rendered observation during B06 token-position/style coverage; preserve input-ODUwef/rendered-lines.json and the final modifier screenshot rather than treating navigation proof as styling proof."
-    },
-    {
-      "id": "named-argument-active-parameter-mapping",
-      "owner": "B07",
-      "summary": "The shared query active parameter remains a structural argument index. In host::grant(reason = \"x\", <cursor>), named completion correctly offers arg0, while signature highlighting still uses index 1. Define and verify name-aware argument/expected-type mapping in B03/S5 and B07; the metadata fixture checks the exact signature and candidate set but does not certify highlighting for this out-of-order case. Preserve b03-8-named-schema2.log, which observed the ordinal result, and add direct named-value/used-slot assertions before acceptance."
     },
     {
       "id": "call-argument-expression-candidates",
@@ -3409,8 +3433,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "09e2d3400d5debf03e621b928b602e493db71d77",
-          "treeSha256": "a2928e8a0f89219ed1f3a56125dc9596430473d4f5472fba11612a4eceabad9f"
+          "revision": "8c57590c8d74a0a06f4d632a44c884b5ff892f32",
+          "treeSha256": "0924f931598c6a6dec6ebccea6d742b97c522488dcda9eca6fd37d7f95099753"
         },
         "profile": {
           "platform": "win32",
@@ -3418,11 +3442,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-kW8n0A/report.json"
+          "target/lsp-matrix/run-sw1vnY/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-iW6781/results.json --local-results editors/vscode/test-results/input-YP56UJ/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-JTuk5K/results.json --local-results editors/vscode/test-results/input-xFcN10/results.json",
             "exitCode": 0
           }
         ]

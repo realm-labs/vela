@@ -141,6 +141,7 @@ fn assert_workspace_progress(notifications: &[JsonValue]) {
 }
 
 mod call_argument_context;
+mod call_parameter_mapping;
 mod callable_imports;
 mod code_action;
 mod completion_map;

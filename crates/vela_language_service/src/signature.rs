@@ -1,12 +1,7 @@
 use vela_analysis::type_fact::TypeFact;
-use vela_common::SourceId;
 
-use crate::callable_context::{
-    CallableFacts, CallableOrigin, callable_facts, member_callable_facts,
-};
-use crate::{
-    DisplayParts, DocumentId, LanguageServiceDatabases, Position, QueryContext, TextRange,
-};
+use crate::callable_context::CallableFacts;
+use crate::{DisplayParts, DocumentId, LanguageServiceDatabases, Position, QueryContext};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SignatureHelp {
@@ -80,16 +75,6 @@ impl SignatureParameter {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct CallContext {
-    callee: String,
-    callee_path: Option<Vec<String>>,
-    member_receiver: Option<TextRange>,
-    member_method: Option<String>,
-    args_prefix: String,
-    active_parameter: usize,
-}
-
 impl LanguageServiceDatabases {
     #[must_use]
     pub fn signature_help(
@@ -98,113 +83,30 @@ impl LanguageServiceDatabases {
         position: Position,
     ) -> Option<SignatureHelp> {
         let query = QueryContext::from_databases(self, document_id, position)?;
-        let source_id = query.source_id()?;
-        let context = call_context_from_query(&query)?;
-        let signatures = self.signature_candidates_for_context(Some(&query), source_id, &context);
-        if signatures.is_empty() {
-            return None;
-        }
-        let max_parameter = signatures[0].parameters.len().saturating_sub(1);
+        let callables = query.call_target_facts(self);
+        let callable = callables.first()?;
+        // LSP 3.17 falls back to zero for an unmapped parameter. Keep that
+        // presentation fallback separate from semantic expected-type facts.
+        let active_parameter = query.call_parameter_index(callable).unwrap_or(0);
+        let signatures = self.signature_candidates_from_callables(&callables);
         Some(SignatureHelp {
             active_signature: 0,
-            active_parameter: context.active_parameter.min(max_parameter),
+            active_parameter,
             signatures,
         })
-    }
-
-    pub(crate) fn signature_candidates(&self, callee: &str) -> Vec<SignatureInformation> {
-        let callables = callable_facts(self, callee);
-        self.signature_candidates_from_callables(&callables)
-    }
-
-    fn signature_candidates_for_context(
-        &self,
-        query: Option<&QueryContext<'_>>,
-        source_id: SourceId,
-        context: &CallContext,
-    ) -> Vec<SignatureInformation> {
-        if let Some(signatures) = self.member_signatures(source_id, context)
-            && !signatures.is_empty()
-        {
-            return signatures;
-        }
-        if let Some(query) = query {
-            let callables = if let Some(path) = context.callee_path.as_ref() {
-                query.callable_facts_by_path(self, path)
-            } else {
-                query.callable_facts(self, &context.callee)
-            };
-            self.signature_candidates_from_callables(&callables)
-        } else {
-            self.signature_candidates(&context.callee)
-        }
     }
 
     fn signature_candidates_from_callables(
         &self,
         callables: &[CallableFacts],
     ) -> Vec<SignatureInformation> {
-        let mut signatures = callable_signatures_by_origin(callables, CallableOrigin::Source);
-        signatures.extend(callable_signatures_by_origin(
-            callables,
-            CallableOrigin::SourceMethod,
-        ));
-        signatures.extend(callable_signatures_by_origin(
-            callables,
-            CallableOrigin::SourceVariant,
-        ));
-        signatures.extend(callable_signatures_by_origin(
-            callables,
-            CallableOrigin::SchemaVariant,
-        ));
-        signatures.extend(callable_signatures_by_origin(
-            callables,
-            CallableOrigin::Schema,
-        ));
-        signatures.extend(callable_signatures_by_origin(
-            callables,
-            CallableOrigin::SchemaMethod,
-        ));
-        signatures.extend(callable_signatures_by_origin(
-            callables,
-            CallableOrigin::Stdlib,
-        ));
-        signatures.extend(callable_signatures_by_origin(
-            callables,
-            CallableOrigin::StdlibMethod,
-        ));
-        signatures
+        let mut callables = callables.iter().collect::<Vec<_>>();
+        callables.sort_by_key(|callable| callable.origin());
+        callables
+            .into_iter()
+            .map(callable_signature_information)
+            .collect()
     }
-
-    fn member_signatures(
-        &self,
-        source_id: SourceId,
-        context: &CallContext,
-    ) -> Option<Vec<SignatureInformation>> {
-        let method = context.member_method.as_deref()?;
-        let receiver_range = context.member_receiver?;
-        let callables = member_callable_facts(
-            self,
-            source_id,
-            receiver_range,
-            method,
-            &context.args_prefix,
-        );
-        let signatures = self.signature_candidates_from_callables(&callables);
-        (!signatures.is_empty()).then_some(signatures)
-    }
-}
-
-fn call_context_from_query(query: &QueryContext<'_>) -> Option<CallContext> {
-    let call = query.call_argument_facts()?;
-    Some(CallContext {
-        callee: call.callee().to_owned(),
-        callee_path: call.callee_path().map(<[String]>::to_vec),
-        member_receiver: call.member_receiver(),
-        member_method: call.member_method().map(str::to_owned),
-        active_parameter: call.active_parameter(),
-        args_prefix: call.args_prefix().to_owned(),
-    })
 }
 
 fn signature_label(
@@ -250,17 +152,6 @@ fn callable_signature_information(callable: &CallableFacts) -> SignatureInformat
         ),
         parameters,
     }
-}
-
-fn callable_signatures_by_origin(
-    callables: &[CallableFacts],
-    origin: CallableOrigin,
-) -> Vec<SignatureInformation> {
-    callables
-        .iter()
-        .filter(|callable| callable.origin() == origin)
-        .map(callable_signature_information)
-        .collect()
 }
 
 #[cfg(test)]

@@ -273,23 +273,10 @@ fn expected_call_argument(
     databases: &LanguageServiceDatabases,
     query: &QueryContext<'_>,
 ) -> (Option<String>, Option<TypeFact>) {
-    let Some(call) = query.call_argument_facts() else {
-        return (None, None);
-    };
-    let callables = if let Some(receiver) = call.member_receiver() {
-        let Some(method) = call.member_method() else {
-            return (None, None);
-        };
-        query.member_callable_facts(databases, receiver, method, call.args_prefix())
-    } else {
-        let Some(callee_path) = call.callee_path() else {
-            return (None, None);
-        };
-        query.callable_facts_by_path(databases, callee_path)
-    };
+    let callables = query.call_target_facts(databases);
     let Some(param) = callables
-        .iter()
-        .find_map(|callable| callable.params().get(call.active_parameter()))
+        .first()
+        .and_then(|callable| callable.params().get(query.call_parameter_index(callable)?))
     else {
         return (None, None);
     };

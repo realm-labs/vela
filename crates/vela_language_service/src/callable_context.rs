@@ -23,7 +23,8 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+// Declaration order is the stable signature display priority.
+#[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 pub enum CallableOrigin {
     Source,
     SourceMethod,

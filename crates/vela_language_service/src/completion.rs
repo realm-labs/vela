@@ -10,6 +10,8 @@ mod analysis_tests;
 mod builtin_type;
 mod builtin_value;
 #[cfg(test)]
+mod call_parameter_tests;
+#[cfg(test)]
 mod callable_import_tests;
 mod context;
 mod expression;

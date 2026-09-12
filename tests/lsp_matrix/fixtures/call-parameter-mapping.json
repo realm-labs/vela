@@ -1,0 +1,454 @@
+{
+  "version": 1,
+  "id": "call-parameter-mapping",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.service_calls\"\nname = \"service_calls\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Context\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Context\"\n        }\n      },\n      {\n        \"name\": \"host::Reply\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"host::Reply\"\n        }\n      },\n      {\n        \"name\": \"host::Failure\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Failure\",\n          \"variant\": null\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"service::base::handle\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"chosen_bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"service::pinned::peer::take\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"chosen_bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"host::grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"u32\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"count\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"u32\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"flag\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  },\n  \"serviceSet\": {\n    \"id\": \"set\",\n    \"path\": \"api::Services\",\n    \"abiFingerprint\": \"abi\",\n    \"typeBindingChecksum\": \"bindings\",\n    \"services\": [\n      {\n        \"id\": \"handler\",\n        \"member\": \"handler\",\n        \"path\": \"api::Handler\",\n        \"abiFingerprint\": \"handler-abi\",\n        \"methods\": [\n          {\n            \"id\": \"handle\",\n            \"name\": \"handle\",\n            \"path\": \"api::Handler::handle\",\n            \"asyncMethod\": true,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"amount\",\n                \"typeHint\": \"i64\",\n                \"mode\": \"owned\"\n              },\n              {\n                \"name\": \"reason\",\n                \"typeHint\": \"String\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"bool\"\n          },\n          {\n            \"id\": \"other\",\n            \"name\": \"other\",\n            \"path\": \"api::Handler::other\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"value\",\n                \"typeHint\": \"u32\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"()\"\n          }\n        ]\n      },\n      {\n        \"id\": \"peer\",\n        \"member\": \"peer\",\n        \"path\": \"api::Peer\",\n        \"abiFingerprint\": \"peer-abi\",\n        \"methods\": [\n          {\n            \"id\": \"take\",\n            \"name\": \"take\",\n            \"path\": \"api::Peer::take\",\n            \"asyncMethod\": false,\n            \"effects\": [],\n            \"parameters\": [\n              {\n                \"name\": \"amount\",\n                \"typeHint\": \"u32\",\n                \"mode\": \"owned\"\n              }\n            ],\n            \"returnType\": \"bool\"\n          }\n        ]\n      }\n    ]\n  }\n}\n",
+    "scripts/api.vela": "pub fn grant(count: i64, flag: bool, reason: String = \"x\") -> bool { return true; }\npub fn empty() -> bool { return true; }\npub struct Player {}\nimpl Player { fn grant(self, count: i64, flag: bool, reason: String = \"x\") -> bool { return true; } }\npub enum State { Ready(arg0: i64, arg1: String) }\n",
+    "scripts/named_last.vela": "/* 中😀 */ fn main() { api::grant(reason = [[cursor]]); }\n",
+    "scripts/named_middle.vela": "/* 中😀 */ fn main() { api::grant(flag = [[cursor]]); }\n",
+    "scripts/named_first_after_last.vela": "/* 中😀 */ fn main() { api::grant(reason = \"x\", count = [[cursor]]); }\n",
+    "scripts/named_last_after_first.vela": "/* 中😀 */ fn main() { api::grant(count = 1, reason = [[cursor]]); }\n",
+    "scripts/empty_after_last.vela": "/* 中😀 */ fn main() { api::grant(reason = \"x\", [[cursor]]); }\n",
+    "scripts/empty_after_middle.vela": "/* 中😀 */ fn main() { api::grant(flag = true, [[cursor]]); }\n",
+    "scripts/empty_mixed.vela": "/* 中😀 */ fn main() { api::grant(1, reason = \"x\", [[cursor]]); }\n",
+    "scripts/empty_all_used.vela": "/* 中😀 */ fn main() { api::grant(1, flag = true, reason = \"x\", [[cursor]]); }\n",
+    "scripts/default_remaining.vela": "/* 中😀 */ fn main() { api::grant(1, true, [[cursor]]); }\n",
+    "scripts/empty_start.vela": "/* 中😀 */ fn main() { api::grant([[cursor]]); }\n",
+    "scripts/positional_second.vela": "/* 中😀 */ fn main() { api::grant(1, [[cursor]]); }\n",
+    "scripts/positional_overflow.vela": "/* 中😀 */ fn main() { api::grant(1, true, \"x\", 4[[cursor]]); }\n",
+    "scripts/unknown_name.vela": "/* 中😀 */ fn main() { api::grant(missing = [[cursor]]); }\n",
+    "scripts/duplicate_name.vela": "/* 中😀 */ fn main() { api::grant(flag = true, flag = [[cursor]]); }\n",
+    "scripts/duplicate_positional.vela": "/* 中😀 */ fn main() { api::grant(1, count = [[cursor]]); }\n",
+    "scripts/positional_after_named.vela": "/* 中😀 */ fn main() { api::grant(flag = true, 1[[cursor]]); }\n",
+    "scripts/identifier_after_named.vela": "/* 中😀 */ fn main() { api::grant(flag = true, chosen[[cursor]]); }\n",
+    "scripts/known_after_unknown.vela": "/* 中😀 */ fn main() { api::grant(missing = 1, reason = [[cursor]]); }\n",
+    "scripts/empty_after_unknown.vela": "/* 中😀 */ fn main() { api::grant(missing = 1, [[cursor]]); }\n",
+    "scripts/empty_with_following_named.vela": "/* 中😀 */ fn main() { api::grant([[cursor]], count = 1); }\n",
+    "scripts/empty_between_named.vela": "/* 中😀 */ fn main() { api::grant(reason = \"x\", [[cursor]], count = 1); }\n",
+    "scripts/current_before_duplicate.vela": "/* 中😀 */ fn main() { api::grant(flag = [[cursor]], flag = false); }\n",
+    "scripts/inside_named_token.vela": "/* 中😀 */ fn main() { api::grant(rea[[cursor]]son = \"x\"); }\n",
+    "scripts/after_equal_comment.vela": "/* 中😀 */ fn main() { api::grant(reason = /* a,b */ [[cursor]]); }\n",
+    "scripts/after_nested.vela": "/* 中😀 */ fn main() { api::grant(count = api::grant(1, true), reason = [[cursor]]); }\n",
+    "scripts/nested_inner.vela": "/* 中😀 */ fn main() { api::grant(reason = api::grant(flag = [[cursor]])); }\n",
+    "scripts/comma_in_string.vela": "/* 中😀 */ fn main() { api::grant(reason = \"a,b\", flag = [[cursor]]); }\n",
+    "scripts/missing_close.vela": "/* 中😀 */ fn main() { api::grant(reason = \"x\", flag = [[cursor]]",
+    "scripts/zero_empty.vela": "/* 中😀 */ fn main() { api::empty([[cursor]]); }\n",
+    "scripts/zero_named.vela": "/* 中😀 */ fn main() { api::empty(count = [[cursor]]); }\n",
+    "scripts/source_method.vela": "/* 中😀 */ fn main(p: api::Player) { p.grant(reason = \"x\", flag = [[cursor]]); }\n",
+    "scripts/schema_named.vela": "/* 中😀 */ fn main() { host::grant(reason = [[cursor]]); }\n",
+    "scripts/schema_mixed.vela": "/* 中😀 */ fn main() { host::grant(1, reason = \"x\", [[cursor]]); }\n",
+    "scripts/schema_alias.vela": "/* 中😀 */ use host::grant as issue; fn main() { issue(reason = \"x\", count = [[cursor]]); }\n",
+    "scripts/stdlib_named.vela": "/* 中😀 */ fn main() { math::max(right = [[cursor]]); }\n",
+    "scripts/service_named_rejected.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(amount: i64, reason: String) { service::base::handle(reason = [[cursor]]); } }\n",
+    "scripts/service_positional.vela": "/* 中😀 */ #[service_impl(api::Handler)] impl Patch { async fn handle(amount: i64, reason: String) { service::base::handle(1, [[cursor]]); } }\n",
+    "scripts/service_receiver_named.vela": "/* 中😀 */ fn main(peer: api::Peer) { peer.take(amount = [[cursor]]); }\n",
+    "scripts/enum_named_rejected.vela": "/* 中😀 */ fn main() { api::State::Ready(arg1 = [[cursor]]); }\n",
+    "scripts/enum_positional.vela": "/* 中😀 */ fn main() { api::State::Ready(1, [[cursor]]); }\n",
+    "scripts/multiline.vela": "/* 中😀 */ fn main() { api::grant(\n reason = \"a,b\",\n /* 雪😀 */ flag = [[cursor]]); }\n",
+    "scripts/nested_lambda.vela": "/* 中😀 */ fn main() { api::grant(count = apply(|left, right| left), reason = [[cursor]]); }\n",
+    "scripts/missing_earlier_positional.vela": "/* 中😀 */ fn main() { api::grant(, true, [[cursor]]); }\n",
+    "scripts/missing_before_named.vela": "/* 中😀 */ fn main() { api::grant(, reason = \"x\", [[cursor]]); }\n"
+  },
+  "oracle": {
+    "queries": [
+      {
+        "id": "named_last",
+        "file": "scripts/named_last.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 2,
+        "expectedName": "reason",
+        "expectedType": "String",
+        "ordinal": 0
+      },
+      {
+        "id": "named_middle",
+        "file": "scripts/named_middle.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 1,
+        "expectedName": "flag",
+        "expectedType": "bool",
+        "ordinal": 0
+      },
+      {
+        "id": "named_first_after_last",
+        "file": "scripts/named_first_after_last.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 0,
+        "expectedName": "count",
+        "expectedType": "i64",
+        "ordinal": 1
+      },
+      {
+        "id": "named_last_after_first",
+        "file": "scripts/named_last_after_first.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 2,
+        "expectedName": "reason",
+        "expectedType": "String",
+        "ordinal": 1
+      },
+      {
+        "id": "empty_after_last",
+        "file": "scripts/empty_after_last.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 0,
+        "expectedName": "count",
+        "expectedType": "i64",
+        "ordinal": 1
+      },
+      {
+        "id": "empty_after_middle",
+        "file": "scripts/empty_after_middle.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 0,
+        "expectedName": "count",
+        "expectedType": "i64",
+        "ordinal": 1
+      },
+      {
+        "id": "empty_mixed",
+        "file": "scripts/empty_mixed.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 1,
+        "expectedName": "flag",
+        "expectedType": "bool",
+        "ordinal": 2
+      },
+      {
+        "id": "empty_all_used",
+        "file": "scripts/empty_all_used.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 0,
+        "expectedName": null,
+        "expectedType": null,
+        "ordinal": 3
+      },
+      {
+        "id": "default_remaining",
+        "file": "scripts/default_remaining.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 2,
+        "expectedName": "reason",
+        "expectedType": "String",
+        "ordinal": 2
+      },
+      {
+        "id": "empty_start",
+        "file": "scripts/empty_start.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 0,
+        "expectedName": "count",
+        "expectedType": "i64",
+        "ordinal": 0
+      },
+      {
+        "id": "positional_second",
+        "file": "scripts/positional_second.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 1,
+        "expectedName": "flag",
+        "expectedType": "bool",
+        "ordinal": 1
+      },
+      {
+        "id": "positional_overflow",
+        "file": "scripts/positional_overflow.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 0,
+        "expectedName": null,
+        "expectedType": null,
+        "ordinal": 3
+      },
+      {
+        "id": "unknown_name",
+        "file": "scripts/unknown_name.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 0,
+        "expectedName": null,
+        "expectedType": null,
+        "ordinal": 0
+      },
+      {
+        "id": "duplicate_name",
+        "file": "scripts/duplicate_name.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 0,
+        "expectedName": null,
+        "expectedType": null,
+        "ordinal": 1
+      },
+      {
+        "id": "duplicate_positional",
+        "file": "scripts/duplicate_positional.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 0,
+        "expectedName": null,
+        "expectedType": null,
+        "ordinal": 1
+      },
+      {
+        "id": "positional_after_named",
+        "file": "scripts/positional_after_named.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 0,
+        "expectedName": null,
+        "expectedType": null,
+        "ordinal": 1
+      },
+      {
+        "id": "identifier_after_named",
+        "file": "scripts/identifier_after_named.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 0,
+        "expectedName": null,
+        "expectedType": null,
+        "ordinal": 1
+      },
+      {
+        "id": "known_after_unknown",
+        "file": "scripts/known_after_unknown.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 2,
+        "expectedName": "reason",
+        "expectedType": "String",
+        "ordinal": 1
+      },
+      {
+        "id": "empty_after_unknown",
+        "file": "scripts/empty_after_unknown.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 0,
+        "expectedName": "count",
+        "expectedType": "i64",
+        "ordinal": 1
+      },
+      {
+        "id": "empty_with_following_named",
+        "file": "scripts/empty_with_following_named.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 1,
+        "expectedName": "flag",
+        "expectedType": "bool",
+        "ordinal": 0
+      },
+      {
+        "id": "empty_between_named",
+        "file": "scripts/empty_between_named.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 1,
+        "expectedName": "flag",
+        "expectedType": "bool",
+        "ordinal": 1
+      },
+      {
+        "id": "current_before_duplicate",
+        "file": "scripts/current_before_duplicate.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 1,
+        "expectedName": "flag",
+        "expectedType": "bool",
+        "ordinal": 0
+      },
+      {
+        "id": "inside_named_token",
+        "file": "scripts/inside_named_token.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 2,
+        "expectedName": "reason",
+        "expectedType": "String",
+        "ordinal": 0
+      },
+      {
+        "id": "after_equal_comment",
+        "file": "scripts/after_equal_comment.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 2,
+        "expectedName": "reason",
+        "expectedType": "String",
+        "ordinal": 0
+      },
+      {
+        "id": "after_nested",
+        "file": "scripts/after_nested.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 2,
+        "expectedName": "reason",
+        "expectedType": "String",
+        "ordinal": 1
+      },
+      {
+        "id": "nested_inner",
+        "file": "scripts/nested_inner.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 1,
+        "expectedName": "flag",
+        "expectedType": "bool",
+        "ordinal": 0
+      },
+      {
+        "id": "comma_in_string",
+        "file": "scripts/comma_in_string.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 1,
+        "expectedName": "flag",
+        "expectedType": "bool",
+        "ordinal": 1
+      },
+      {
+        "id": "missing_close",
+        "file": "scripts/missing_close.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 1,
+        "expectedName": "flag",
+        "expectedType": "bool",
+        "ordinal": 1
+      },
+      {
+        "id": "zero_empty",
+        "file": "scripts/zero_empty.vela",
+        "signature": "empty() -> bool",
+        "active": 0,
+        "expectedName": null,
+        "expectedType": null,
+        "ordinal": 0
+      },
+      {
+        "id": "zero_named",
+        "file": "scripts/zero_named.vela",
+        "signature": "empty() -> bool",
+        "active": 0,
+        "expectedName": null,
+        "expectedType": null,
+        "ordinal": 0
+      },
+      {
+        "id": "source_method",
+        "file": "scripts/source_method.vela",
+        "signature": "Player.grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 1,
+        "expectedName": "flag",
+        "expectedType": "bool",
+        "ordinal": 1
+      },
+      {
+        "id": "schema_named",
+        "file": "scripts/schema_named.vela",
+        "signature": "host::grant(count: u32, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 2,
+        "expectedName": "reason",
+        "expectedType": "String",
+        "ordinal": 0
+      },
+      {
+        "id": "schema_mixed",
+        "file": "scripts/schema_mixed.vela",
+        "signature": "host::grant(count: u32, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 1,
+        "expectedName": "flag",
+        "expectedType": "bool",
+        "ordinal": 2
+      },
+      {
+        "id": "schema_alias",
+        "file": "scripts/schema_alias.vela",
+        "signature": "host::grant(count: u32, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 0,
+        "expectedName": "count",
+        "expectedType": "u32",
+        "ordinal": 1
+      },
+      {
+        "id": "stdlib_named",
+        "file": "scripts/stdlib_named.vela",
+        "signature": "math::max(left: i64 | f64, right: i64 | f64) -> i64 | f64",
+        "active": 1,
+        "expectedName": "right",
+        "expectedType": "i64 | f64",
+        "ordinal": 0
+      },
+      {
+        "id": "service_named_rejected",
+        "file": "scripts/service_named_rejected.vela",
+        "signature": "async service::base::handle(amount: i64, reason: String) -> bool",
+        "active": 0,
+        "expectedName": null,
+        "expectedType": null,
+        "ordinal": 0
+      },
+      {
+        "id": "service_positional",
+        "file": "scripts/service_positional.vela",
+        "signature": "async service::base::handle(amount: i64, reason: String) -> bool",
+        "active": 1,
+        "expectedName": "reason",
+        "expectedType": "String",
+        "ordinal": 1
+      },
+      {
+        "id": "service_receiver_named",
+        "file": "scripts/service_receiver_named.vela",
+        "signature": "api::Peer.take(amount: u32) -> bool",
+        "active": 0,
+        "expectedName": "amount",
+        "expectedType": "u32",
+        "ordinal": 0
+      },
+      {
+        "id": "enum_named_rejected",
+        "file": "scripts/enum_named_rejected.vela",
+        "signature": "api::State::Ready(arg0: i64, arg1: String) -> api::State::Ready",
+        "active": 0,
+        "expectedName": null,
+        "expectedType": null,
+        "ordinal": 0
+      },
+      {
+        "id": "enum_positional",
+        "file": "scripts/enum_positional.vela",
+        "signature": "api::State::Ready(arg0: i64, arg1: String) -> api::State::Ready",
+        "active": 1,
+        "expectedName": "arg1",
+        "expectedType": "String",
+        "ordinal": 1
+      },
+      {
+        "id": "multiline",
+        "file": "scripts/multiline.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 1,
+        "expectedName": "flag",
+        "expectedType": "bool",
+        "ordinal": 1
+      },
+      {
+        "id": "nested_lambda",
+        "file": "scripts/nested_lambda.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 2,
+        "expectedName": "reason",
+        "expectedType": "String",
+        "ordinal": 1
+      },
+      {
+        "id": "missing_earlier_positional",
+        "file": "scripts/missing_earlier_positional.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 2,
+        "expectedName": "reason",
+        "expectedType": "String",
+        "ordinal": 2
+      },
+      {
+        "id": "missing_before_named",
+        "file": "scripts/missing_before_named.vela",
+        "signature": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "active": 1,
+        "expectedName": "flag",
+        "expectedType": "bool",
+        "ordinal": 2
+      }
+    ]
+  },
+  "actions": []
+}
