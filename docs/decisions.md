@@ -4551,3 +4551,15 @@ navigation steps, and nested ordinary expressions retain ordinary completion.
 This is static authoring guidance; value transfer, effect ceilings and host resume
 bindings remain separate admission checks. Imported/qualified callable metadata
 must retain the owning source or schema signature's asyncness.
+
+Direct path completion in a proven stdlib Function callback parameter inserts a
+function reference and excludes known asynchronous targets. Derive the parameter
+slot from the innermost syntax call and registered named-parameter metadata;
+ordinary nested expressions, dynamic callback values and source/schema methods
+retain their existing policies. Resolve candidate asyncness in the caller's
+scope, permitting multiple signature descriptions only when they share the same
+callable owner. Compiler-owned task operations are not first-class callback
+values. Task and callback completion share syntax-call selection and plain-path
+edit construction; this does not add runtime callback execution or a new API.
+Global stdlib function candidates carry explicit builtin symbols, just as their
+qualified and imported counterparts do, so resolve and ownership checks agree.

@@ -1,0 +1,1683 @@
+{
+  "version": 1,
+  "id": "completion-sync-callbacks",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.callback_completion\"\nname = \"callback_completion\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"functions\":[{\"name\":\"zz_native_sync\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"value\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}},{\"name\":\"zz_native_async\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"asyncness\":\"async\",\"parameters\":[{\"name\":\"value\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}}],\"types\":[{\"name\":\"host::Handle\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Handle\"}}],\"methods\":[{\"owner\":\"host::Handle\",\"name\":\"filter\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}}}]}}",
+    "scripts/api.vela": "/* 中😀 */ pub fn [[sync:start]]zz_async[[sync:end]](value: i64 = 1) -> bool { return true; } pub async fn [[async:start]]zz_sync[[async:end]](value: i64 = 1) -> bool { return true; }\n",
+    "scripts/array-filter.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.filter([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/array-map.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.map([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/array-find.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.find([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/array-any.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.any([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/array-all.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.all([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/array-count.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.count([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/array-retain.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.retain([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/array-group_by.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.group_by([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/array-sort_by.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.sort_by([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/map-filter.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Map<i64, i64>) { items.filter([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/set-filter.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Set<i64>) { items.filter([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/option-filter.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Option<i64>) { items.filter([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/option-map.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Option<i64>) { items.map([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/result-map.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Result<i64, i64>) { items.map([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/result-map-err.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Result<i64, i64>) { items.map_err([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/iterator-filter.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Iterator<i64>) { items.filter([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/iterator-map.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Iterator<i64>) { items.map([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/named-callback.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.filter(callback = [[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/middle-callback.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.filter([[replace:start]]zz_[[cursor]]async[[replace:end]]); }\n",
+    "scripts/comment-callback.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.filter(/* keep */ [[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/qualified-callback.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.filter(api::[[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/namespace-callback.vela": "/* 中😀 */ use api as ns; fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.filter(ns::[[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/imported-callback.vela": "/* 中😀 */ use api::zz_async as zz_imported; fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.filter([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/dynamic-receiver.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Any) { items.filter([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/source-method.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } struct Custom {} impl Custom { fn filter(self, callback: Function) -> i64 { return 1; } } fn main(items: Custom) { items.filter([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/schema-method.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: host::Handle) { items.filter([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/nested-call.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn consume(value) { return value; } fn main(items: Array<i64>) { items.filter(consume([[replace:start]]zz_[[cursor]][[replace:end]])); }\n",
+    "scripts/lambda-body.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.filter(|value| { [[replace:start]]zz_[[cursor]][[replace:end]]; return true; }); }\n",
+    "scripts/dynamic-callback.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>, zz_callback: Any) { items.filter([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/closure-callback.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>, zz_callback: Closure) { items.filter([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/fold-callback.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn [[fold:start]]zz_fold_sync[[fold:end]](total: i64, value: i64) -> i64 { return total + value; } async fn zz_fold_async(total: i64, value: i64) -> i64 { return total + value; } fn main(items: Iterator<i64>) { items.fold(0, [[replace:start]]zz_fold_[[cursor]][[replace:end]]); }\n",
+    "scripts/fold-named-callback.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn [[fold:start]]zz_fold_sync[[fold:end]](total: i64, value: i64) -> i64 { return total + value; } async fn zz_fold_async(total: i64, value: i64) -> i64 { return total + value; } fn main(items: Iterator<i64>) { items.fold(callback = [[replace:start]]zz_fold_[[cursor]][[replace:end]], initial = 0); }\n",
+    "scripts/fold-initial.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn [[fold:start]]zz_fold_sync[[fold:end]](total: i64, value: i64) -> i64 { return total + value; } async fn zz_fold_async(total: i64, value: i64) -> i64 { return total + value; } fn main(items: Iterator<i64>) { items.fold([[replace:start]]zz_[[cursor]][[replace:end]], zz_fold_sync); }\n",
+    "scripts/reflection-call.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.filter(reflect::[[replace:start]]cal[[cursor]][[replace:end]]); }\n",
+    "scripts/task-capability.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<i64>) { items.filter(task::[[replace:start]]spa[[cursor]][[replace:end]]); }\n",
+    "scripts/builtin-global.vela": "/* 中😀 */ fn [[sync:start]]zz_sync[[sync:end]](value: i64 = 1) -> bool { return true; } async fn [[async:start]]zz_async[[async:end]](value: i64 = 1) -> bool { return true; } fn main(items: Array<Option<i64>>) { items.filter([[replace:start]]is_so[[cursor]][[replace:end]]); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "array-filter",
+        "file": "scripts/array-filter.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "array-filter::zz_sync",
+            "origin": "source",
+            "target": "scripts/array-filter.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "array-map",
+        "file": "scripts/array-map.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "array-map::zz_sync",
+            "origin": "source",
+            "target": "scripts/array-map.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "array-find",
+        "file": "scripts/array-find.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "array-find::zz_sync",
+            "origin": "source",
+            "target": "scripts/array-find.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "array-any",
+        "file": "scripts/array-any.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "array-any::zz_sync",
+            "origin": "source",
+            "target": "scripts/array-any.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "array-all",
+        "file": "scripts/array-all.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "array-all::zz_sync",
+            "origin": "source",
+            "target": "scripts/array-all.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "array-count",
+        "file": "scripts/array-count.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "array-count::zz_sync",
+            "origin": "source",
+            "target": "scripts/array-count.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "array-retain",
+        "file": "scripts/array-retain.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "array-retain::zz_sync",
+            "origin": "source",
+            "target": "scripts/array-retain.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "array-group_by",
+        "file": "scripts/array-group_by.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "array-group_by::zz_sync",
+            "origin": "source",
+            "target": "scripts/array-group_by.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "array-sort_by",
+        "file": "scripts/array-sort_by.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "array-sort_by::zz_sync",
+            "origin": "source",
+            "target": "scripts/array-sort_by.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "map-filter",
+        "file": "scripts/map-filter.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "map-filter::zz_sync",
+            "origin": "source",
+            "target": "scripts/map-filter.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "set-filter",
+        "file": "scripts/set-filter.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "set-filter::zz_sync",
+            "origin": "source",
+            "target": "scripts/set-filter.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "option-filter",
+        "file": "scripts/option-filter.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "option-filter::zz_sync",
+            "origin": "source",
+            "target": "scripts/option-filter.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "option-map",
+        "file": "scripts/option-map.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "option-map::zz_sync",
+            "origin": "source",
+            "target": "scripts/option-map.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "result-map",
+        "file": "scripts/result-map.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "result-map::zz_sync",
+            "origin": "source",
+            "target": "scripts/result-map.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "result-map-err",
+        "file": "scripts/result-map-err.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "result-map-err::zz_sync",
+            "origin": "source",
+            "target": "scripts/result-map-err.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "iterator-filter",
+        "file": "scripts/iterator-filter.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "iterator-filter::zz_sync",
+            "origin": "source",
+            "target": "scripts/iterator-filter.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "iterator-map",
+        "file": "scripts/iterator-map.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "iterator-map::zz_sync",
+            "origin": "source",
+            "target": "scripts/iterator-map.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "named-callback",
+        "file": "scripts/named-callback.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "named-callback::zz_sync",
+            "origin": "source",
+            "target": "scripts/named-callback.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "middle-callback",
+        "file": "scripts/middle-callback.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "middle-callback::zz_sync",
+            "origin": "source",
+            "target": "scripts/middle-callback.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "comment-callback",
+        "file": "scripts/comment-callback.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "comment-callback::zz_sync",
+            "origin": "source",
+            "target": "scripts/comment-callback.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "qualified-callback",
+        "file": "scripts/qualified-callback.vela",
+        "items": [
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "description": "api::zz_async",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "namespace-callback",
+        "file": "scripts/namespace-callback.vela",
+        "items": [
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "description": "api::zz_async",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "imported-callback",
+        "file": "scripts/imported-callback.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "imported-callback::zz_sync",
+            "origin": "source",
+            "target": "scripts/imported-callback.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          },
+          {
+            "label": "zz_imported",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_imported",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "description": "api::zz_async",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "dynamic-receiver",
+        "file": "scripts/dynamic-receiver.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "dynamic-receiver::zz_sync",
+            "origin": "source"
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "dynamic-receiver::zz_async",
+            "origin": "source"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source"
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "api::zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema"
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "zz_native_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "source-method",
+        "file": "scripts/source-method.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "source-method::zz_sync",
+            "origin": "source"
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "source-method::zz_async",
+            "origin": "source"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source"
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "api::zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema"
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "zz_native_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "schema-method",
+        "file": "scripts/schema-method.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "schema-method::zz_sync",
+            "origin": "source"
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "schema-method::zz_async",
+            "origin": "source"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source"
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "api::zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema"
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "zz_native_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "nested-call",
+        "file": "scripts/nested-call.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "nested-call::zz_sync",
+            "origin": "source"
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "nested-call::zz_async",
+            "origin": "source"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source"
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "api::zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema"
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "zz_native_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "lambda-body",
+        "file": "scripts/lambda-body.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "lambda-body::zz_sync",
+            "origin": "source"
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "lambda-body::zz_async",
+            "origin": "source"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source"
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "api::zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema"
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "zz_native_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "dynamic-callback",
+        "file": "scripts/dynamic-callback.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "dynamic-callback::zz_sync",
+            "origin": "source",
+            "target": "scripts/dynamic-callback.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          },
+          {
+            "label": "zz_callback",
+            "kind": "Parameter",
+            "detail": "Any",
+            "insert": "zz_callback",
+            "format": "PlainText",
+            "named": false
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "closure-callback",
+        "file": "scripts/closure-callback.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "closure-callback::zz_sync",
+            "origin": "source",
+            "target": "scripts/closure-callback.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source",
+            "target": "scripts/api.vela",
+            "targetMarker": "sync"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema",
+            "target": null,
+            "targetMarker": null
+          },
+          {
+            "label": "zz_callback",
+            "kind": "Parameter",
+            "detail": "Closure",
+            "insert": "zz_callback",
+            "format": "PlainText",
+            "named": false
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "fold-callback",
+        "file": "scripts/fold-callback.vela",
+        "items": [
+          {
+            "label": "zz_fold_sync",
+            "kind": "Function",
+            "detail": "Function(i64, i64) -> i64",
+            "insert": "zz_fold_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "fold-callback::zz_fold_sync",
+            "origin": "source",
+            "target": "scripts/fold-callback.vela",
+            "targetMarker": "fold"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "fold-named-callback",
+        "file": "scripts/fold-named-callback.vela",
+        "items": [
+          {
+            "label": "zz_fold_sync",
+            "kind": "Function",
+            "detail": "Function(i64, i64) -> i64",
+            "insert": "zz_fold_sync",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "fold-named-callback::zz_fold_sync",
+            "origin": "source",
+            "target": "scripts/fold-named-callback.vela",
+            "targetMarker": "fold"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "fold-initial",
+        "file": "scripts/fold-initial.vela",
+        "items": [
+          {
+            "label": "zz_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "fold-initial::zz_sync",
+            "origin": "source"
+          },
+          {
+            "label": "zz_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "fold-initial::zz_async",
+            "origin": "source"
+          },
+          {
+            "label": "api::zz_async",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "api::zz_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_async",
+            "origin": "source"
+          },
+          {
+            "label": "api::zz_sync",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "api::zz_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "api::zz_sync",
+            "origin": "source"
+          },
+          {
+            "label": "zz_native_sync",
+            "kind": "Function",
+            "detail": "Function(i64) -> bool",
+            "insert": "zz_native_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native_sync",
+            "origin": "schema"
+          },
+          {
+            "label": "zz_native_async",
+            "kind": "Function",
+            "detail": "async Function(i64) -> bool",
+            "insert": "zz_native_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "zz_native_async",
+            "origin": "schema"
+          },
+          {
+            "label": "zz_fold_sync",
+            "kind": "Function",
+            "detail": "Function(i64, i64) -> i64",
+            "insert": "zz_fold_sync($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "fold-initial::zz_fold_sync",
+            "origin": "source"
+          },
+          {
+            "label": "zz_fold_async",
+            "kind": "Function",
+            "detail": "async Function(i64, i64) -> i64",
+            "insert": "zz_fold_async($0)",
+            "format": "Snippet",
+            "named": false,
+            "symbol": "fold-initial::zz_fold_async",
+            "origin": "source"
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": false
+      },
+      {
+        "id": "reflection-call",
+        "file": "scripts/reflection-call.vela",
+        "items": [
+          {
+            "label": "call",
+            "kind": "Function",
+            "detail": "Function(Any, String) -> Any",
+            "insert": "call",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "reflect::call",
+            "origin": "builtin",
+            "description": "reflect::call",
+            "target": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "task-capability",
+        "file": "scripts/task-capability.vela",
+        "items": [],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      },
+      {
+        "id": "builtin-global",
+        "file": "scripts/builtin-global.vela",
+        "items": [
+          {
+            "label": "option::is_some",
+            "kind": "Function",
+            "detail": "Function(Option(Any)) -> bool",
+            "insert": "option::is_some",
+            "format": "PlainText",
+            "named": false,
+            "symbol": "option::is_some",
+            "origin": "builtin",
+            "target": null
+          }
+        ],
+        "recoverySuffix": "",
+        "value": "1",
+        "checkTask": true
+      }
+    ]
+  }
+}

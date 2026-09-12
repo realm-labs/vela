@@ -13,7 +13,7 @@ fixture does not certify every combination in an S dimension.
 | Source calls, defaults and named arguments | `completion-named-arguments`, `call-parameter-mapping`, `call-argument-context`, `completion-call-expressions`: occupied/current/future slots, nested delimiters, labels versus values, active/expected parameters, edits. `completion-package-callables` checks same-path dependency functions/constants, exact applied signatures, named parameters and definition locations. `completion-package-members` checks qualified/aliased function returns. | Extend package identity checks to dependency lifecycle combinations and remaining returned-receiver forms. |
 | Source methods and traits | `completion-members`, `completion-callable-hints`, `completion-callable-returns`: inherent/trait/default/Provider methods, hints and returned members. `completion-package-members`: exact sets for same-name types across packages; inherent/default methods, trait receiver signatures, applied parameter edits, resolved docs, definition targets and UTF-16 inlay positions; function/method returns and local bindings. `completion-return-flow`: required/default trait returns, awaited functions/methods, same-owner block/if/else-if/match/lambda results and negative erased/unit/unknown receivers. | `completion-receiver-assignments` checks reassignment, mixed-package branch/match/loop identities, shared field type unions and ambiguous field navigation. Shared-method ambiguity and abrupt exits remain to be reviewed. Source-backed docs and navigation must agree through dependency edits; remaining async restrictions still need review. |
 | Schema/native calls and methods | `completion-named-arguments`, `completion-callable-hints`: explicit and legacy metadata, known parameter prefixes, unknown/Any/extra slots. | Review complete async/await and returned-receiver combinations with replacement/removal of metadata. |
-| Stdlib calls and methods | `completion-stdlib-arguments`: registered names, imported paths, collection mutation variants, builtin owners and negative boundaries. | Final S5 review must consider both expression and parameter-name candidate sets, rather than treating named-argument proof as the whole call workflow. |
+| Stdlib calls and methods | `completion-stdlib-arguments`: registered names, imported paths, collection mutation variants, builtin owners and negative boundaries. `completion-sync-callbacks`: 36 cases for static sync function references, async exclusions, named/reordered slots, dynamic values, canonical resolve/definitions, reflection signature alternatives and ordinary nested calls. | Review callback factories, dynamic arity/return contracts and remaining async contexts together with the complete S5 call workflow. |
 | Imports and unavailable owners | `callable-imports`, `completion-import-aliases`, `completion-expression-ownership`: source/schema/stdlib aliases, local/declaration shadowing, private/missing/duplicate owners. `completion-package-callables` checks direct dependency function/namespace aliases, `crate::` fallback and inaccessible/transitive declarations. `completion-package-members` distinguishes owned methods/returns from same-name direct/transitive and schema declarations. | Review remaining returned-receiver forms and dependency lifecycle combinations. |
 | Service calls and authoring | `completion-service-calls`, `completion-service-paths`, `completion-service-roots`, `completion-service-parameters`, `completion-service-arguments`: unique/ambiguous origins, registered contracts, restricted contexts, schema changes and edits. | Retain these cases in the final S5/S8 mapping and lifecycle review. |
 | Static scoped tasks | `completion-task-paths`, `completion-task-calls`, `completion-task-operands`, `completion-task-eligibility`: builtin ownership, unsupported aliases, positional outer operands, nested ordinary calls, static async worker and synchronous matching continuation sets, qualified/imported ownership, existing parentheses and exact applied diagnostics. | Review value transfer, effect ceilings, host resume bindings and ranking separately; target shape alone does not prove runtime admission. |
@@ -33,8 +33,14 @@ post-edit signature check.
 
 ## Remaining B03 Acceptance Work
 
-1. Finish sync-only callbacks, task value/effect restrictions and the S5 partition
-   review. Twenty-four `completion-task-eligibility` cases verify complete static
+1. Finish task value/effect restrictions and the S5 partition review. The
+   `completion-sync-callbacks` fixture covers static sync callback reference
+   insertion across builtin collection/Option/Result/Iterator methods, named and
+   reordered slots, same-name source/schema/import owners and exact applied
+   definitions. Dynamic callbacks remain dynamic; ordinary source/schema methods
+   do not acquire a guessed sync-only callback contract. Callback factories and
+   dynamic arity/return behavior still need review. Twenty-four
+   `completion-task-eligibility` cases verify complete static
    target sets, async metadata, canonical resolve ownership, LF/CRLF Unicode edits
    and applied diagnostics. Unknown/dynamic workers do not invent an outcome type;
    continuation choices still require static synchronous functions. Nested ordinary
@@ -46,7 +52,7 @@ post-edit signature check.
    package declarations. Completion details preserve asyncness; applied calls
    retain exact signatures, named parameters, inlays, definitions, missing-await
    diagnostic ranges and labels under Unicode LF/CRLF. Invalid await contexts,
-   sync-only callbacks, transferable values, effects and host resume contracts
+   broader callback combinations, transferable values, effects and host resume contracts
    still require review. The
    `completion-receiver-assignments` fixture adds twenty cases for sequential
    writes, retained aliases, if/match/loop joins and chained method returns with

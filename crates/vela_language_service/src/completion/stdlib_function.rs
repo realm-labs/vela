@@ -30,4 +30,10 @@ pub(super) fn stdlib_function_completion_items(
         None,
         |item| label_segment_matches(&item.label, prefix),
     )
+    .into_iter()
+    .map(|item| {
+        let symbol = crate::symbol_ref::builtin_symbol(item.label());
+        item.with_symbol(symbol)
+    })
+    .collect()
 }

@@ -18,6 +18,11 @@ fn task_eligibility_matrix_projects_static_targets_and_matching_continuations() 
     verify_fixture("completion-task-eligibility");
 }
 
+#[test]
+fn sync_callback_matrix_projects_owned_function_values_and_excludes_async_targets() {
+    verify_fixture("completion-sync-callbacks");
+}
+
 fn verify_fixture(name: &str) {
     for crlf in [false, true] {
         let mut spec = load(name);
@@ -165,6 +170,35 @@ fn verify_fixture(name: &str) {
                     json!({"textDocument":{"uri":uri(file),"version":version},"contentChanges":[{"text":edited}]}),
                 );
                 if case["checkTask"] == true {
+                    if expected.get("target").is_some() {
+                        let column = range.start.character
+                            + insertion
+                                .rfind("::")
+                                .map_or(0, |i| insertion[..i + 2].encode_utf16().count())
+                            + 1;
+                        let definition = response_value(request::<r::GotoDefinition>(
+                            &mut server,
+                            id,
+                            json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":column}}),
+                        ));
+                        id += 1;
+                        assert!(definition["error"].is_null());
+                        if let Some(target) = expected["target"].as_str() {
+                            let target_source = fixture.document(target).expect("target");
+                            let target_range = target_source.markers
+                                [expected["targetMarker"].as_str().expect("target marker")];
+                            assert_eq!(
+                                definition["result"],
+                                json!({"uri":uri(target),"range":{"start":{"line":target_range.start.line,"character":target_range.start.character},"end":{"line":target_range.end.line,"character":target_range.end.character}}}),
+                                "{case} {expected}"
+                            );
+                        } else {
+                            assert!(
+                                definition["result"].is_null(),
+                                "schema callback has no source definition"
+                            );
+                        }
+                    }
                     let notifications = crate::tests::notification_values(changes);
                     let diagnostics = notifications
                         .iter()

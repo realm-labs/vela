@@ -11,11 +11,13 @@ mod builtin_type;
 mod builtin_value;
 #[cfg(test)]
 mod call_expression_tests;
+mod call_operand;
 #[cfg(test)]
 mod call_parameter_tests;
 #[cfg(test)]
 mod callable_import_tests;
 mod callable_path;
+mod callback;
 mod context;
 #[cfg(test)]
 mod enum_alias_tests;
@@ -175,6 +177,7 @@ impl LanguageServiceDatabases {
             }
         };
         task_target::adjust_items(self, &query, &mut items);
+        callback::adjust_items(self, &query, &mut items);
         self.completion_query_is_current(token).then_some(())?;
         Some(CompletionList {
             context,

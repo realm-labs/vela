@@ -1,10 +1,10 @@
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, Visibility};
-use vela_syntax::ast::{AstNode, SyntaxCallExpr, SyntaxExpressionKind};
+use vela_syntax::ast::{AstNode, SyntaxExpressionKind};
 
 use crate::{LanguageServiceDatabases, QueryContext};
 
-use super::{CompletionInsertFormat, CompletionItem, CompletionKind};
+use super::{CompletionItem, CompletionKind, call_operand};
 
 enum TargetSlot {
     Worker,
@@ -73,16 +73,7 @@ pub(super) fn adjust_items(
             }
         };
         if path_only {
-            let path = path.to_owned();
-            item.insert_text = Some(path.clone());
-            item.insert_format = CompletionInsertFormat::PlainText;
-            if let Some(edit) = &mut item.metadata.text_edit {
-                edit.new_text = path;
-                if let Some(range) = query.cursor().identifier_range() {
-                    edit.range = range;
-                    item.metadata.edit_range = Some(range);
-                }
-            }
+            call_operand::set_path_insertion(item, query, path.to_owned());
         }
         true
     });
@@ -93,18 +84,7 @@ fn target_slot(graph: &ModuleGraph, query: &QueryContext<'_>) -> Option<TargetSl
     // Module-path cursors do not carry the lexical call context. Select the
     // innermost syntax argument list so qualified targets and nested calls use
     // the same operand policy.
-    let call = query
-        .syntax_parse()?
-        .tree()
-        .syntax()
-        .descendants()
-        .filter_map(SyntaxCallExpr::cast)
-        .filter(|call| {
-            call.l_paren_token()
-                .is_some_and(|open| usize::from(open.text_range().end()) <= offset)
-                && offset <= usize::from(call.syntax().text_range().end())
-        })
-        .min_by_key(|call| call.syntax().text_range().len())?;
+    let call = call_operand::argument_call(query)?;
     let path = call.callee()?.as_path()?.path_segments();
     let [root, operation] = path.as_slice() else {
         return None;

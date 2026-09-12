@@ -19,6 +19,11 @@ fn task_eligibility_matrix_keeps_static_async_workers_and_matching_continuations
     verify_fixture("completion-task-eligibility");
 }
 
+#[test]
+fn sync_callback_matrix_inserts_owned_function_values_and_excludes_async_targets() {
+    verify_fixture("completion-sync-callbacks");
+}
+
 fn verify_fixture(name: &str) {
     for crlf in [false, true] {
         let mut spec = load(name);
@@ -77,6 +82,8 @@ fn verify_fixture(name: &str) {
                 if let Some(symbol) = expected["symbol"].as_str() {
                     let symbol = if expected["origin"] == "schema" {
                         crate::SymbolRef::Schema(symbol.to_owned())
+                    } else if expected["origin"] == "builtin" {
+                        crate::SymbolRef::Builtin(symbol.to_owned())
                     } else {
                         crate::SymbolRef::Source(symbol.to_owned())
                     };
@@ -132,6 +139,31 @@ fn verify_fixture(name: &str) {
                     let mut fresh = FixtureWorkspace::new(&spec).expect("fresh fixture");
                     fresh.disk.get_mut(file).expect("file").text = text.clone();
                     let fresh = databases(&fresh);
+                    if expected.get("target").is_some() {
+                        let byte =
+                            range.start.byte + insertion.rfind("::").map_or(0, |i| i + 2) + 1;
+                        let definition = fresh.definition(&uri(file), byte_position(&text, byte));
+                        if let Some(target) = expected["target"].as_str() {
+                            let definition = definition.expect("applied callback reference");
+                            let target_source = fixture.document(target).expect("target");
+                            let target_range = target_source.markers
+                                [expected["targetMarker"].as_str().expect("target marker")];
+                            assert_eq!(definition.document_id(), &uri(target));
+                            assert_eq!(
+                                definition.range().start(),
+                                byte_position(&target_source.text, target_range.start.byte)
+                            );
+                            assert_eq!(
+                                definition.range().end(),
+                                byte_position(&target_source.text, target_range.end.byte)
+                            );
+                        } else {
+                            assert!(
+                                definition.is_none(),
+                                "schema callback has no source definition"
+                            );
+                        }
+                    }
                     let diagnostics = fresh.diagnostics_for_document(&uri(file));
                     let codes = diagnostics
                         .diagnostics()
@@ -197,6 +229,13 @@ fn databases(fixture: &FixtureWorkspace) -> LanguageServiceDatabases {
     db.load_schema_artifact_json("/workspace/schema.json", &fixture.disk["schema.json"].text);
     assert!(db.schema_db().diagnostics().is_empty());
     db
+}
+
+fn byte_position(text: &str, byte: usize) -> Position {
+    Position::new(
+        text[..byte].bytes().filter(|b| *b == b'\n').count(),
+        byte - text[..byte].rfind('\n').map_or(0, |i| i + 1),
+    )
 }
 
 fn uri(file: &str) -> DocumentId {

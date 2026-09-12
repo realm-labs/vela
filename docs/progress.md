@@ -709,9 +709,18 @@ Applied candidates preserve resolve ownership and task/await diagnostics; a
 changed worker result retains the exact incompatible-continuation diagnostic.
 Qualified and imported callable details retain source/schema asyncness.
 
+Sync-only stdlib callback slots now insert function references and exclude known
+async function targets. Thirty-six shared cases cover Array/Map/Set,
+Option/Result/Iterator, named and reordered fold parameters, source/schema/import
+ownership, exact applied definitions and Unicode LF/CRLF edits. Dynamic callback
+values remain available; ordinary source/schema methods and nested expressions
+keep ordinary call insertion. Same-owner reflection signature alternatives remain
+one callable, while compiler-owned task operations cannot become callback values.
+Global stdlib candidates now carry explicit builtin ownership for resolve queries.
+
 The [completion coverage review](lsp-completion-coverage-review.md) indexes S5
-proof and the remaining acceptance work. Resume B03.30 with sync-only callbacks,
-remaining task value/effect restrictions and S5 review, then the remaining
+proof and the remaining acceptance work. Resume B03.31 with remaining task
+value/effect restrictions and S5 review, then the remaining
 semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:
