@@ -138,8 +138,15 @@ pub(crate) fn source_callable_facts_by_path(
     current_module: &ModuleKey,
 ) -> Vec<CallableFacts> {
     let graph = databases.hir_db().graph();
-    let Some(declaration) =
-        graph.declaration_by_type_path(path, current_module, DeclarationKind::Function)
+    let Some(module) = graph.module_id(current_module) else {
+        return Vec::new();
+    };
+    let Some(declaration) = graph
+        .resolve_visible_declaration_path(module, path, DeclarationKind::Function)
+        .filter(|declaration| {
+            declaration.module == module
+                || declaration.visibility == vela_hir::module_graph::Visibility::Public
+        })
     else {
         return Vec::new();
     };

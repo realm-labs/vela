@@ -1028,7 +1028,7 @@
     },
     {
       "id": "B03.5",
-      "revision": null,
+      "revision": "49b3ecb3d",
       "requirements": [
         "completion/syntax/S4/positive/service",
         "completion/syntax/S4/positive/protocol",
@@ -1040,10 +1040,19 @@
         "completion-resolve/syntax/S4/negative/protocol"
       ],
       "summary": "Add 34 shared enum queries and extend the member fixture to 27 queries. Cover source/schema unit, tuple and record variant paths, imported/local/qualified/private owners, record labels/shorthand/used fields, known variant member fields, wrong constructor shapes and unknown targets. Fix source/schema enum leakage and broad name lookup with visible module resolution; emit explicit variant edits and preserve source record-variant field ownership. Extract source record-field production with owned empty results for invalid/private variants. Preserve known record-constructor variant TypeFacts in shared semantic analysis, with direct constructor-fact assertions. Fix CST field classification to exclude constructor paths and field values, including qualified expression role after a colon; suppress numeric schema tuple slots in record-label completion. Full workspace 4384 passed plus two historical ignored, workspace Clippy and formatting passed; Node 69, service 580 plus two historical ignored, protocol 575 and installed VSIX 9 passed. Final run-lAswh1 verifies all eight S4 syntax obligations against matching source identity; installed run-VCTMMf. Preserve the first workspace failure and focused reproduction logs. B03 remains unaccepted; whole-batch remaining scope stays 1332. Continue B03.6 callable/named-argument and S5 coverage, then remaining syntax/lifecycle/UX04. Fresh native input proof is still required before strict batch acceptance; the latest native attempt recorded a desktop-lock prerequisite, and no old evidence is promoted. B16 stays deferred. Find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B03.6",
+      "revision": null,
+      "requirements": [
+        "completion/states/repeat/protocol",
+        "completion/states/unresolved/protocol"
+      ],
+      "summary": "Add 18 shared source named-argument cases. Fix invalid legacy name-colon insertion to the grammar-required name = value form; update old tests to the real syntax and require parser-clean applied results in both layers (server parser is dev-only). Replace character-based comma/colon scanning with actual CST call/argument ownership, excluding used names before and after the cursor and prior positional slots while preserving nested calls and string punctuation. Resolve imported source functions and source method parameters, reject local callable shadowing and private source functions, and verify complete parameter sets/default markers/UTF-16 edits/re-query. Final service 581 plus two historical ignored, protocol 576, Node 69, relevant Clippy/fmt and installed VSIX 9 passed. Audit run-nmtsGd matches source and supplements repeat/unresolved state proof without marking broad S5 complete; installed run-eYf80C. B03 stays unaccepted and 1332 whole-batch requirements remain. Continue B03.7 with schema/stdlib callable and parameter-name metadata: ordinary static schema facts appear not to serialize CallableSignatureFact and fallback callable parameters use arg0-style placeholders; inspect type-binding metadata before treating these as insertable names. Also review QueryContext active_parameter character scanning separately: this child corrected occupied-slot detection, not the shared active-argument index. Complete broader S5 and remaining syntax/lifecycle/UX04 before acceptance. Fresh native evidence remains required; B16 deferred. Find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.6",
-  "nextTask": "B03.6",
+  "activeChild": "B03.7",
+  "nextTask": "B03.7",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",

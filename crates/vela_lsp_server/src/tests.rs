@@ -144,6 +144,7 @@ mod code_action;
 mod completion_map;
 mod completion_member;
 mod completion_members;
+mod completion_named_arguments;
 mod completion_resolve;
 mod completion_struct;
 mod completion_type;

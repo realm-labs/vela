@@ -2813,6 +2813,10 @@
         {
           "layer": "protocol",
           "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::named_argument_matrix_projects_exact_parameter_sets_and_parseable_utf16_edits"
         }
       ]
     },
@@ -2833,6 +2837,10 @@
         {
           "layer": "protocol",
           "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::named_argument_matrix_projects_exact_parameter_sets_and_parseable_utf16_edits"
         }
       ]
     },

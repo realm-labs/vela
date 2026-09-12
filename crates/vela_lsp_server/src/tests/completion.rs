@@ -731,7 +731,7 @@ fn lsp_named_argument_completion_suggests_unused_script_parameters() {
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"
 pub fn grant(player: Player, amount: i64, reason: String = "quest") -> bool { return true }
-pub fn main(player: Player) { grant(player: player, ) }
+pub fn main(player: Player) { grant(player = player, ) }
 "#;
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
@@ -760,8 +760,8 @@ pub fn main(player: Player) { grant(player: player, ) }
         }),
     ));
 
-    assert_completion_insert_text(&response, "amount", 6, "i64", "amount: ");
-    assert_completion_insert_text(&response, "reason", 6, "String (defaulted)", "reason: ");
+    assert_completion_insert_text(&response, "amount", 6, "i64", "amount = ");
+    assert_completion_insert_text(&response, "reason", 6, "String (defaulted)", "reason = ");
     assert_no_completion(&response, "player");
 }
 

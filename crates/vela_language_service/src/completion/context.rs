@@ -164,7 +164,7 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
     }
 
     if cursor.kind() == CursorContextKind::CallArgument
-        && let Some(call_arguments) = named_argument_completion_context(query.call_argument_facts())
+        && let Some(call_arguments) = named_argument_completion_context(query)
     {
         return CompletionContext {
             kind: CompletionContextKind::NamedArgument,

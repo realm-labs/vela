@@ -631,8 +631,12 @@ source records; missing qualified constructors do not fall back to short names.
 Thirty-four enum cases now cover source/schema unit, tuple and record variants,
 visible owner resolution, constructor fields, applied edits and negative shapes.
 Record construction preserves known enum variant facts; cursor contexts separate
-constructor paths, field labels and field values. Broader authoring semantics
-and UX04 remain open. The desktop locked again during the latest native input regression; see [blocked.md](blocked.md).
+constructor paths, field labels and field values. Eighteen source named-argument
+cases now apply parseable `name = value` edits; CST argument ownership excludes
+used positional/named slots, nested calls and string punctuation. Imported
+functions and source methods retain parameter ownership; private or shadowed
+callables cannot borrow unrelated names. Schema/stdlib parameter-name metadata,
+broader S5 authoring semantics and UX04 remain open. The desktop locked again during the latest native input regression; see [blocked.md](blocked.md).
 
 ### Deferred Tracks
 

@@ -279,9 +279,9 @@ pub(super) struct RecordConstructor {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct CallArgumentContext {
-    pub(super) callee_path: Vec<String>,
     pub(super) callee_range: Option<TextRange>,
     pub(super) used_names: Vec<String>,
+    pub(super) positional_count: usize,
 }
 
 impl CompletionContext {

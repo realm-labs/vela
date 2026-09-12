@@ -14,5 +14,8 @@ serde_json = { workspace = true }
 vela_language_service = { workspace = true }
 vela_package = { workspace = true }
 
+[dev-dependencies]
+vela_syntax = { workspace = true }
+
 [lints]
 workspace = true

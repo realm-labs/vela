@@ -631,7 +631,7 @@ fn named_argument_completion_suggests_unused_script_parameters() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"
 pub fn grant(player: Player, amount: i64, reason: String = "quest") -> bool { return true }
-pub fn main(player: Player) { grant(player: player, ) }
+pub fn main(player: Player) { grant(player = player, ) }
 "#;
     let files = vec![SourceFileSnapshot::new(document.clone(), text)];
     let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
@@ -657,7 +657,7 @@ pub fn main(player: Player) { grant(player: player, ) }
         CompletionContextKind::NamedArgument
     );
     let call_start = text
-        .rfind("grant(player: player")
+        .rfind("grant(player = player")
         .expect("main call should be present");
     assert_eq!(
         completions.context().call_callee_range(),
@@ -668,11 +668,11 @@ pub fn main(player: Player) { grant(player: player, ) }
     assert_completion(&completions, "reason", CompletionKind::Parameter);
     let amount = completion(&completions, "amount");
     assert_eq!(amount.detail(), "i64");
-    assert_eq!(amount.insert_text(), Some("amount: "));
+    assert_eq!(amount.insert_text(), Some("amount = "));
     assert_eq!(amount.insert_format(), CompletionInsertFormat::PlainText);
     let reason = completion(&completions, "reason");
     assert_eq!(reason.detail(), "String (defaulted)");
-    assert_eq!(reason.insert_text(), Some("reason: "));
+    assert_eq!(reason.insert_text(), Some("reason = "));
     assert_eq!(reason.insert_format(), CompletionInsertFormat::PlainText);
 }
 
@@ -681,7 +681,7 @@ fn named_argument_completion_uses_parameter_prefix() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"
 pub fn grant(player: Player, amount: i64, reason: String = "quest") -> bool { return true }
-pub fn main(player: Player) { grant(player: player, am) }
+pub fn main(player: Player) { grant(player = player, am) }
 "#;
     let files = vec![SourceFileSnapshot::new(document.clone(), text)];
     let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
@@ -712,7 +712,7 @@ pub fn main(player: Player) { grant(player: player, am) }
 fn named_argument_completion_uses_hir_callee_path() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let reward = DocumentId::from("/workspace/scripts/game/reward.vela");
-    let main_text = "pub fn main(player: Player) { game::reward::grant(player: player, ) }";
+    let main_text = "pub fn main(player: Player) { game::reward::grant(player = player, ) }";
     let reward_text = "pub fn grant(player: Player, amount: i64, reason: String = \"quest\") -> bool { return true }";
     let files = vec![
         SourceFileSnapshot::new(main.clone(), main_text),

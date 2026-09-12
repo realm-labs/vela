@@ -1,0 +1,282 @@
+{
+  "version": 1,
+  "id": "completion-named-arguments",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.completion_types\"\nname = \"completion_types\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "scripts/api.vela": "pub fn grant(player: i64, amount: i64, reason: String = \"quest\") -> bool { return true; }\npub fn inner(text: String, count: i64 = 1) -> i64 { return 1; }\npub struct Player {}\nimpl Player { fn grant(self, amount: i64, reason: String = \"quest\") -> bool { return true; } }\nfn hidden(secret: i64) {}\n",
+    "scripts/foreign.vela": "pub fn grant(unrelated: String) {}\npub struct Player {}\nimpl Player { fn grant(self, unrelated: String) {} }\n",
+    "scripts/query_all.vela": "/* 中😀 */ fn main() { api::grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_used_named.vela": "/* 中😀 */ fn main() { api::grant(player = 1, [[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_positional.vela": "/* 中😀 */ fn main() { api::grant(1, [[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_prefix.vela": "/* 中😀 */ fn main() { api::grant(player = 1, [[replace:start]]am[[cursor]][[replace:end]]); }\n",
+    "scripts/query_defaulted.vela": "/* 中😀 */ fn main() { api::grant(1, 2, [[replace:start]]re[[cursor]][[replace:end]]); }\n",
+    "scripts/query_mixed.vela": "/* 中😀 */ fn main() { api::grant(1, reason = \"x\", [[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_all_used.vela": "/* 中😀 */ fn main() { api::grant(player = 1, amount = 2, reason = \"x\", [[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_after_cursor.vela": "/* 中😀 */ fn main() { api::grant([[replace:start]][[cursor]][[replace:end]], amount = 2, reason = \"x\"); }\n",
+    "scripts/query_string_comma.vela": "/* 中😀 */ fn main() { api::grant(reason = \"comma, player: not an argument\", [[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_string_brackets.vela": "/* 中😀 */ fn main() { api::grant(reason = \"(, [ { )\", [[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_nested.vela": "/* 中😀 */ fn main() { api::grant(player = api::inner(text = \"x,y\", count = 2), [[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_inner.vela": "/* 中😀 */ fn main() { api::grant(player = api::inner(text = \"x\", [[replace:start]][[cursor]][[replace:end]]), amount = 2); }\n",
+    "scripts/query_imported.vela": "/* 中😀 */ use api::grant; fn main() { grant(1, [[replace:start]]am[[cursor]][[replace:end]]); }\n",
+    "scripts/query_method.vela": "/* 中😀 */ fn main(p: api::Player) { p.grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_method_used.vela": "/* 中😀 */ fn main(p: api::Player) { p.grant(reason = \"x\", [[replace:start]]am[[cursor]][[replace:end]]); }\n",
+    "scripts/query_unknown.vela": "/* 中😀 */ fn main() { missing([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_shadowed.vela": "/* 中😀 */ use api::grant; fn main(grant: Function) { grant([[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/query_private.vela": "/* 中😀 */ fn main() { api::hidden([[replace:start]][[cursor]][[replace:end]]); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "all",
+        "file": "scripts/query_all.vela",
+        "parameters": [
+          {
+            "name": "player",
+            "detail": "i64",
+            "insert": "player = "
+          },
+          {
+            "name": "amount",
+            "detail": "i64",
+            "insert": "amount = "
+          },
+          {
+            "name": "reason",
+            "detail": "String (defaulted)",
+            "insert": "reason = "
+          }
+        ],
+        "apply": null,
+        "value": "1"
+      },
+      {
+        "id": "used_named",
+        "file": "scripts/query_used_named.vela",
+        "parameters": [
+          {
+            "name": "amount",
+            "detail": "i64",
+            "insert": "amount = "
+          },
+          {
+            "name": "reason",
+            "detail": "String (defaulted)",
+            "insert": "reason = "
+          }
+        ],
+        "apply": null,
+        "value": "1"
+      },
+      {
+        "id": "positional",
+        "file": "scripts/query_positional.vela",
+        "parameters": [
+          {
+            "name": "amount",
+            "detail": "i64",
+            "insert": "amount = "
+          },
+          {
+            "name": "reason",
+            "detail": "String (defaulted)",
+            "insert": "reason = "
+          }
+        ],
+        "apply": null,
+        "value": "1"
+      },
+      {
+        "id": "prefix",
+        "file": "scripts/query_prefix.vela",
+        "parameters": [
+          {
+            "name": "amount",
+            "detail": "i64",
+            "insert": "amount = "
+          }
+        ],
+        "apply": "amount",
+        "value": "1"
+      },
+      {
+        "id": "defaulted",
+        "file": "scripts/query_defaulted.vela",
+        "parameters": [
+          {
+            "name": "reason",
+            "detail": "String (defaulted)",
+            "insert": "reason = "
+          }
+        ],
+        "apply": "reason",
+        "value": "\"quest\""
+      },
+      {
+        "id": "mixed",
+        "file": "scripts/query_mixed.vela",
+        "parameters": [
+          {
+            "name": "amount",
+            "detail": "i64",
+            "insert": "amount = "
+          }
+        ],
+        "apply": null,
+        "value": "1"
+      },
+      {
+        "id": "all_used",
+        "file": "scripts/query_all_used.vela",
+        "parameters": [],
+        "apply": null,
+        "value": "1"
+      },
+      {
+        "id": "after_cursor",
+        "file": "scripts/query_after_cursor.vela",
+        "parameters": [
+          {
+            "name": "player",
+            "detail": "i64",
+            "insert": "player = "
+          }
+        ],
+        "apply": "player",
+        "value": "1"
+      },
+      {
+        "id": "string_comma",
+        "file": "scripts/query_string_comma.vela",
+        "parameters": [
+          {
+            "name": "player",
+            "detail": "i64",
+            "insert": "player = "
+          },
+          {
+            "name": "amount",
+            "detail": "i64",
+            "insert": "amount = "
+          }
+        ],
+        "apply": null,
+        "value": "1"
+      },
+      {
+        "id": "string_brackets",
+        "file": "scripts/query_string_brackets.vela",
+        "parameters": [
+          {
+            "name": "player",
+            "detail": "i64",
+            "insert": "player = "
+          },
+          {
+            "name": "amount",
+            "detail": "i64",
+            "insert": "amount = "
+          }
+        ],
+        "apply": null,
+        "value": "1"
+      },
+      {
+        "id": "nested",
+        "file": "scripts/query_nested.vela",
+        "parameters": [
+          {
+            "name": "amount",
+            "detail": "i64",
+            "insert": "amount = "
+          },
+          {
+            "name": "reason",
+            "detail": "String (defaulted)",
+            "insert": "reason = "
+          }
+        ],
+        "apply": null,
+        "value": "1"
+      },
+      {
+        "id": "inner",
+        "file": "scripts/query_inner.vela",
+        "parameters": [
+          {
+            "name": "count",
+            "detail": "i64 (defaulted)",
+            "insert": "count = "
+          }
+        ],
+        "apply": "count",
+        "value": "1"
+      },
+      {
+        "id": "imported",
+        "file": "scripts/query_imported.vela",
+        "parameters": [
+          {
+            "name": "amount",
+            "detail": "i64",
+            "insert": "amount = "
+          }
+        ],
+        "apply": "amount",
+        "value": "1"
+      },
+      {
+        "id": "method",
+        "file": "scripts/query_method.vela",
+        "parameters": [
+          {
+            "name": "amount",
+            "detail": "i64",
+            "insert": "amount = "
+          },
+          {
+            "name": "reason",
+            "detail": "String (defaulted)",
+            "insert": "reason = "
+          }
+        ],
+        "apply": null,
+        "value": "1"
+      },
+      {
+        "id": "method_used",
+        "file": "scripts/query_method_used.vela",
+        "parameters": [
+          {
+            "name": "amount",
+            "detail": "i64",
+            "insert": "amount = "
+          }
+        ],
+        "apply": "amount",
+        "value": "1"
+      },
+      {
+        "id": "unknown",
+        "file": "scripts/query_unknown.vela",
+        "parameters": [],
+        "apply": null,
+        "value": "1"
+      },
+      {
+        "id": "shadowed",
+        "file": "scripts/query_shadowed.vela",
+        "parameters": [],
+        "apply": null,
+        "value": "1"
+      },
+      {
+        "id": "private",
+        "file": "scripts/query_private.vela",
+        "parameters": [],
+        "apply": null,
+        "value": "1"
+      }
+    ]
+  }
+}

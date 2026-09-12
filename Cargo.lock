@@ -1301,6 +1301,7 @@ dependencies = [
  "serde_json",
  "vela_language_service",
  "vela_package",
+ "vela_syntax",
 ]
 
 [[package]]

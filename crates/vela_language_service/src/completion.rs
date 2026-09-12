@@ -25,6 +25,8 @@ mod member_tests;
 mod model;
 mod module_path;
 mod named_argument;
+#[cfg(test)]
+mod named_argument_matrix_tests;
 mod pattern;
 mod record_field;
 mod record_field_source;
@@ -256,8 +258,36 @@ impl LanguageServiceDatabases {
             .iter()
             .map(String::as_str)
             .collect::<Vec<_>>();
-        let callables = query.source_callable_facts_by_path(self, &call.callee_path);
-        let items = script_function_parameter_completions(&callables, &used_names);
+        let Some(facts) = query.call_argument_facts() else {
+            return Vec::new();
+        };
+        if facts.callee_expression().is_some_and(|expression| {
+            matches!(
+                query
+                    .bindings()
+                    .and_then(|bindings| bindings.resolution(expression)),
+                Some(vela_hir::binding::BindingResolution::Local(_))
+            )
+        }) {
+            return Vec::new();
+        }
+        let callables = if let (Some(receiver), Some(method)) =
+            (facts.member_receiver(), facts.member_method())
+        {
+            query
+                .member_callable_facts(self, receiver, method, facts.args_prefix())
+                .into_iter()
+                .filter(|callable| {
+                    callable.origin() == crate::callable_context::CallableOrigin::SourceMethod
+                })
+                .collect()
+        } else if let Some(path) = facts.callee_path() {
+            query.source_callable_facts_by_path(self, path)
+        } else {
+            Vec::new()
+        };
+        let items =
+            script_function_parameter_completions(&callables, &used_names, call.positional_count);
         dedupe_and_filter_service_items(items, context.replace_range(), context.prefix(), |item| {
             label_segment_matches(item.label(), context.prefix())
         })
