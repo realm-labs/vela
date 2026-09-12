@@ -63,6 +63,11 @@ fn abrupt_flow_matrix_projects_reachable_receivers_and_explicit_lambda_returns()
     assert_type_ownership("completion-abrupt-flow");
 }
 
+#[test]
+fn local_exit_matrix_projects_reachable_assignment_owners() {
+    assert_type_ownership("completion-local-exits");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);

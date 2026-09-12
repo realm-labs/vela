@@ -1700,10 +1700,45 @@
         "completion/syntax/S6/negative/protocol"
       ],
       "summary": "Seventeen shared abrupt-flow contexts apply twenty candidate edits under Unicode LF/CRLF in service and protocol. A red case exposed unreachable tails after return still supplying source members. A shared structural HIR traversal separates normal values from explicit invocation returns and derives control flags from the same paths. Return/break/continue stop sequential traversal; branches retain only fallthrough values, expression inputs respect evaluation order, short-circuit paths remain conditional, and loops consume break/continue while retaining possible zero iterations. Nested lambda bodies have separate invocation boundaries. Lambda types and source origins use reachable explicit returns plus fallthrough values; an empty normal set is Never and a reachable absent value is unit. Shared tests assert exact candidate sets, applied edits, signatures, argument/inlay contracts and definition ownership or null results. Thirteen independent analysis cases assert scalar facts, control flags, argument order and nested invocation boundaries. MIR validates iterable exits against the enclosing context; break/continue regressions assert exact outer-loop targets and no inner iterator. Analysis 158 and MIR 226 passed; workspace 4493 passed, two historical ignored; workspace Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-EfKINr/results.json passed 9; native editors/vscode/test-results/input-1ATAwX/results.json passed 13; strict target/lsp-matrix/run-XPfEV9/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The 28 requirement references include the four applicable completion S6 obligations and record partial progress, not partition acceptance. B03 remains unaccepted. Resume B03.38 with local assignment environments at abrupt branch/loop exits and remaining S5 review, then semantic, lifecycle/URI/client and UX04 proof. No script execution or constant-folding policy was added. Fresh macOS evidence is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.38",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S4/positive/service",
+        "completion/syntax/S4/positive/protocol",
+        "completion/syntax/S4/negative/service",
+        "completion/syntax/S4/negative/protocol",
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/negative/protocol",
+        "completion/syntax/S9/positive/service",
+        "completion/syntax/S9/positive/protocol",
+        "completion/syntax/S9/negative/service",
+        "completion/syntax/S9/negative/protocol",
+        "completion-resolve/syntax/S4/positive/service",
+        "completion-resolve/syntax/S4/positive/protocol",
+        "completion-resolve/syntax/S4/negative/service",
+        "completion-resolve/syntax/S4/negative/protocol",
+        "completion-resolve/syntax/S5/positive/service",
+        "completion-resolve/syntax/S5/positive/protocol",
+        "completion-resolve/syntax/S5/negative/service",
+        "completion-resolve/syntax/S5/negative/protocol",
+        "completion-resolve/syntax/S9/positive/service",
+        "completion-resolve/syntax/S9/positive/protocol",
+        "completion-resolve/syntax/S9/negative/service",
+        "completion-resolve/syntax/S9/negative/protocol",
+        "completion/syntax/S6/positive/service",
+        "completion/syntax/S6/positive/protocol",
+        "completion/syntax/S6/negative/service",
+        "completion/syntax/S6/negative/protocol"
+      ],
+      "summary": "Twenty shared local-exit contexts apply forty candidate edits under Unicode LF/CRLF in service and protocol. A red case exposed returning branches contaminating the successor with dependency-owned members. Local traversal now stops sequential and expression-input evaluation at exits, joins only reachable branch successors and records break/continue environment snapshots in the owning loop. Iterable evaluation precedes the new loop scope, preserving outer exits. Loops retain zero iterations and reachable normal/exit states but exclude returned paths. Short-circuit expressions preserve the skipped state. Match guards pass evaluated writes to later arms when false; unguarded wildcard/binding arms consume the unmatched path. Lambda creation does not evaluate its body. Traversal moved to a focused local_flow/walk module while value/refinement helpers retain their ownership. Shared oracles assert exact candidates, metadata, edits, signatures, parameters, inlays and definitions. Twenty-five independent scalar cases cover survivor facts, loop exit snapshots, unreachable arguments and guard order. Analysis 159 passed; workspace 4496 passed, two historical ignored; workspace Clippy/fmt and Node 73 passed. The first workspace attempt failed the pre-existing one-millisecond task deadline test before its expected initial Pending; isolated reproduction and the subsequent complete run passed with no test or timeout changes. Windows VSIX editors/vscode/test-results/run-owHraM/results.json passed 9; native editors/vscode/test-results/input-Y5Ggju/results.json passed 13; strict target/lsp-matrix/run-Nsvquc/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The 28 requirement references record partial progress, not partition acceptance. B03 remains unaccepted. Resume B03.39 with loop-carried state and match-result reachability, then remaining S5/semantic, lifecycle/URI/client and UX04 proof. Fresh macOS evidence is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.38",
-  "nextTask": "B03.38",
+  "activeChild": "B03.39",
+  "nextTask": "B03.39",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -3749,7 +3784,22 @@
     "target/b03-37-input.log",
     "target/b03-37-accepted-regression.log",
     "editors/vscode/test-results/run-EfKINr/results.json",
-    "editors/vscode/test-results/input-1ATAwX/results.json"
+    "editors/vscode/test-results/input-1ATAwX/results.json",
+    "target/lsp-matrix/run-Nsvquc/report.json",
+    "target/b03-38-baseline.log",
+    "target/b03-38-red.log",
+    "target/b03-38-local-exits.log",
+    "target/b03-38-analysis.log",
+    "target/b03-38-deadline.log",
+    "target/b03-38-workspace-first.log",
+    "target/b03-38-workspace.log",
+    "target/b03-38-clippy.log",
+    "target/b03-38-node.log",
+    "target/b03-38-editor.log",
+    "target/b03-38-input.log",
+    "target/b03-38-accepted-regression.log",
+    "editors/vscode/test-results/run-owHraM/results.json",
+    "editors/vscode/test-results/input-Y5Ggju/results.json"
   ],
   "openIssues": [
     {
@@ -4370,8 +4420,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "9c089cd34d56b0beb5398ada3e22866343bbcf6d",
-          "treeSha256": "d93274036bc530fad3d304612cb2162c7d73ae3748862b570a78e0c3692f573e"
+          "revision": "7bf120bab3fe9f9290304566de0c10eeed02fe1f",
+          "treeSha256": "f866e1be77ce276e1a06505c0a3d46143eb7756f1e577149560e1473de4f2b6c"
         },
         "profile": {
           "platform": "win32",
@@ -4379,11 +4429,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-XPfEV9/report.json"
+          "target/lsp-matrix/run-Nsvquc/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-EfKINr/results.json --local-results editors/vscode/test-results/input-1ATAwX/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-owHraM/results.json --local-results editors/vscode/test-results/input-Y5Ggju/results.json",
             "exitCode": 0
           }
         ]

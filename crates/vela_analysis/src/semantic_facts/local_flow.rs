@@ -1,13 +1,12 @@
+mod walk;
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use vela_hir::binding::BindingResolution;
-use vela_hir::body::{
-    HirBinaryOp, HirBody, HirBodyRoot, HirElseBranch, HirExprKind, HirIf,
-    HirInterpolatedStringPart, HirLiteral, HirMatch, HirMatchArmBody, HirStmtKind,
-};
-use vela_hir::ids::{HirBlockId, HirExprId, HirLocalId};
+use vela_hir::body::HirBody;
+use vela_hir::ids::{HirExprId, HirLocalId};
 
-use super::{HirSemanticFacts, iterable_item_fact, pattern_local_facts};
+use super::{HirSemanticFacts, pattern_local_facts};
 use crate::facts::AnalysisFacts;
 use crate::registry::RegistryFacts;
 use crate::type_fact::TypeFact;
@@ -51,6 +50,7 @@ impl HirSemanticFacts {
             expression_types: &self.types,
             source_origins: &self.source_origins,
             uses: BTreeMap::new(),
+            loop_exits: Vec::new(),
         };
         flow.visit_root(&mut environment);
         for expression in body.expressions.keys() {
@@ -72,262 +72,10 @@ struct LocalFlow<'facts> {
     expression_types: &'facts BTreeMap<HirExprId, TypeFact>,
     source_origins: &'facts BTreeMap<HirExprId, ScriptTypeOrigins>,
     uses: BTreeMap<HirExprId, LocalValue>,
+    loop_exits: Vec<Vec<LocalEnvironment>>,
 }
 
 impl LocalFlow<'_> {
-    fn visit_root(&mut self, environment: &mut LocalEnvironment) {
-        match self.body.root {
-            HirBodyRoot::Block(block) => self.visit_block(block, environment),
-            HirBodyRoot::Expr(expression) => self.visit_expression(expression, environment),
-            HirBodyRoot::Empty => {}
-        }
-    }
-
-    fn visit_block(&mut self, block: HirBlockId, environment: &mut LocalEnvironment) {
-        let Some(block) = self.body.blocks.get(&block) else {
-            return;
-        };
-        for statement in &block.statements {
-            let Some(statement) = self.body.statements.get(statement) else {
-                continue;
-            };
-            match &statement.kind {
-                HirStmtKind::Let {
-                    pattern,
-                    initializer,
-                    ..
-                } => {
-                    if let Some(initializer) = initializer {
-                        self.visit_expression(*initializer, environment);
-                    }
-                    if let Some(pattern) = pattern {
-                        let fact = initializer
-                            .map(|initializer| self.fact(initializer, environment))
-                            .unwrap_or(TypeFact::Unknown);
-                        let origins = initializer
-                            .map(|id| self.origins(id, environment))
-                            .unwrap_or_default();
-                        self.bind_pattern(*pattern, &fact, &origins, environment);
-                    }
-                }
-                HirStmtKind::Return { value } => {
-                    if let Some(value) = value {
-                        self.visit_expression(*value, environment);
-                    }
-                }
-                HirStmtKind::For {
-                    patterns,
-                    iterable,
-                    body,
-                } => {
-                    if let Some(iterable) = iterable {
-                        self.visit_expression(*iterable, environment);
-                    }
-                    let entry = environment.clone();
-                    let mut iteration = entry.clone();
-                    let item = iterable
-                        .map(|iterable| iterable_item_fact(&self.fact(iterable, environment)))
-                        .unwrap_or(TypeFact::Unknown);
-                    for (index, pattern) in patterns.iter().enumerate() {
-                        let fact = if patterns.len() == 2 && index == 0 {
-                            TypeFact::I64
-                        } else {
-                            item.clone()
-                        };
-                        self.bind_pattern(
-                            *pattern,
-                            &fact,
-                            &ScriptTypeOrigins::default(),
-                            &mut iteration,
-                        );
-                    }
-                    if let Some(body) = body {
-                        self.visit_block(*body, &mut iteration);
-                    }
-                    *environment = join_environments([&entry, &iteration], self.base);
-                }
-                HirStmtKind::If(value) => self.visit_if(value, environment),
-                HirStmtKind::Match(value) => self.visit_match(value, environment),
-                HirStmtKind::Block(block) => self.visit_block(*block, environment),
-                HirStmtKind::Expr { expression, .. } => {
-                    if let Some(expression) = expression {
-                        self.visit_expression(*expression, environment);
-                    }
-                }
-                HirStmtKind::Break | HirStmtKind::Continue => {}
-            }
-        }
-    }
-
-    fn visit_expression(&mut self, expression: HirExprId, environment: &mut LocalEnvironment) {
-        let Some(value) = self.body.expressions.get(&expression) else {
-            return;
-        };
-        match &value.kind {
-            HirExprKind::Path(_) => {
-                if let Some(BindingResolution::Local(local)) = self.base.resolution(expression) {
-                    self.uses.insert(
-                        expression,
-                        environment.get(local).cloned().unwrap_or_else(|| {
-                            LocalValue::new(TypeFact::Unknown, ScriptTypeOrigins::default())
-                        }),
-                    );
-                }
-            }
-            HirExprKind::Paren { expression }
-            | HirExprKind::Try { expression }
-            | HirExprKind::Await { expression }
-            | HirExprKind::Unary {
-                operand: expression,
-                ..
-            } => self.visit_optional(*expression, environment),
-            HirExprKind::Tuple { elements } | HirExprKind::Array { elements } => {
-                for element in elements {
-                    self.visit_expression(*element, environment);
-                }
-            }
-            HirExprKind::Binary { op, lhs, rhs } => {
-                self.visit_optional(*lhs, environment);
-                if matches!(op, Some(HirBinaryOp::And | HirBinaryOp::Or)) {
-                    let skipped = environment.clone();
-                    let mut evaluated = skipped.clone();
-                    self.visit_optional(*rhs, &mut evaluated);
-                    *environment = join_environments([&skipped, &evaluated], self.base);
-                } else {
-                    self.visit_optional(*rhs, environment);
-                }
-            }
-            HirExprKind::Assign { target, value, .. } => {
-                self.visit_optional(*target, environment);
-                self.visit_optional(*value, environment);
-                if let Some(target) = target
-                    && let Some(BindingResolution::Local(local)) = self.base.resolution(*target)
-                {
-                    let inferred = value
-                        .map(|value| self.fact(value, environment))
-                        .unwrap_or(TypeFact::Unknown);
-                    let fact = self
-                        .base
-                        .local(*local)
-                        .map_or(inferred.clone(), |declared| {
-                            refine_local_fact(declared, inferred)
-                        });
-                    let origins = self
-                        .base
-                        .base_local_script_type(*local)
-                        .cloned()
-                        .map(ScriptTypeOrigins::known)
-                        .unwrap_or_else(|| {
-                            value
-                                .map(|id| self.origins(id, environment))
-                                .unwrap_or_default()
-                        });
-                    set_local(environment, *local, LocalValue::new(fact, origins));
-                }
-            }
-            HirExprKind::Field(field) => self.visit_expression(field.receiver, environment),
-            HirExprKind::Call(call) => {
-                self.visit_expression(call.callee, environment);
-                for argument in &call.arguments {
-                    self.visit_optional(argument.value, environment);
-                }
-            }
-            HirExprKind::Index(index) => {
-                self.visit_expression(index.receiver, environment);
-                self.visit_expression(index.index, environment);
-            }
-            HirExprKind::Map { entries } => {
-                for entry in entries {
-                    self.visit_optional(entry.key, environment);
-                    self.visit_optional(entry.value, environment);
-                }
-            }
-            HirExprKind::Record { fields, .. } => {
-                for field in fields {
-                    self.visit_optional(field.value, environment);
-                }
-            }
-            HirExprKind::Block { block } => self.visit_block(*block, environment),
-            HirExprKind::If(value) => self.visit_if(value, environment),
-            HirExprKind::Match(value) => self.visit_match(value, environment),
-            HirExprKind::Literal(HirLiteral::Interpolated { parts }) => {
-                for part in parts {
-                    if let HirInterpolatedStringPart::Expr(expression) = part {
-                        self.visit_expression(*expression, environment);
-                    }
-                }
-            }
-            HirExprKind::Literal(_)
-            | HirExprKind::Unit
-            | HirExprKind::Lambda { .. }
-            | HirExprKind::Missing => {}
-        }
-    }
-
-    fn visit_if(&mut self, value: &HirIf, environment: &mut LocalEnvironment) {
-        self.visit_optional(value.condition, environment);
-        let entry = environment.clone();
-        let mut then_environment = entry.clone();
-        if let Some(block) = value.then_block {
-            self.visit_block(block, &mut then_environment);
-        }
-        let mut else_environment = entry.clone();
-        if let Some(branch) = &value.else_branch {
-            match branch {
-                HirElseBranch::If(value) => self.visit_if(value, &mut else_environment),
-                HirElseBranch::Block(block) => self.visit_block(*block, &mut else_environment),
-            }
-        }
-        *environment = join_environments([&then_environment, &else_environment], self.base);
-    }
-
-    fn visit_match(&mut self, value: &HirMatch, environment: &mut LocalEnvironment) {
-        self.visit_optional(value.scrutinee, environment);
-        let entry = environment.clone();
-        let scrutinee = value
-            .scrutinee
-            .map(|expression| self.fact(expression, environment))
-            .unwrap_or(TypeFact::Unknown);
-        let mut branches = vec![entry.clone()];
-        for arm in &value.arms {
-            let Some(arm) = self.body.match_arms.get(arm) else {
-                continue;
-            };
-            let mut branch = entry.clone();
-            if let Some(pattern) = arm.pattern {
-                self.bind_pattern(
-                    pattern,
-                    &scrutinee,
-                    &value
-                        .scrutinee
-                        .map(|id| self.origins(id, &entry))
-                        .unwrap_or_default(),
-                    &mut branch,
-                );
-            }
-            self.visit_optional(arm.guard, &mut branch);
-            match arm.body {
-                Some(HirMatchArmBody::Expr(expression)) => {
-                    self.visit_expression(expression, &mut branch);
-                }
-                Some(HirMatchArmBody::Block(block)) => self.visit_block(block, &mut branch),
-                None => {}
-            }
-            branches.push(branch);
-        }
-        *environment = join_environments(branches.iter(), self.base);
-    }
-
-    fn visit_optional(
-        &mut self,
-        expression: Option<HirExprId>,
-        environment: &mut LocalEnvironment,
-    ) {
-        if let Some(expression) = expression {
-            self.visit_expression(expression, environment);
-        }
-    }
-
     fn bind_pattern(
         &self,
         pattern: vela_hir::ids::HirPatternId,

@@ -4606,3 +4606,12 @@ context. MIR validates this iterable boundary instead of requiring every for
 statement to fall through; a diverging iterable creates no inner iterator. This traversal
 does not execute scripts or constant-fold branch conditions; local assignment
 environment joins remain a separate analysis responsibility.
+
+Local assignment environments join only paths that reach the successor. A return
+ends its path; break/continue retain an environment snapshot in the owning loop.
+The loop joins those exits with normal completion and its possible zero-iteration
+entry, while evaluating its iterable before installing the new exit scope.
+Expression inputs stop at divergence and short-circuit operators retain their
+skipped path. Match guards pass evaluated writes to subsequent arms when false;
+an unguarded wildcard or binding consumes the remaining unmatched path. This
+structural, intra-body analysis does not execute scripts or fold conditions.

@@ -115,8 +115,16 @@ post-edit signature check.
    Independent analysis assertions cover thirteen scalar/control-flow cases.
    MIR checks preserve exits from iterable evaluation; nested-loop tests assert
    that iterable break/continue target the enclosing loop without an inner iterator.
-   Local assignment environments at abrupt branch/loop exits still need review;
-   these cases do not certify every possible control-flow combination.
+   `completion-local-exits` adds twenty contexts and forty candidate applications
+   for assignment owners after return/break/continue, nested loops, iterable exits,
+   short-circuiting, match arms/guards and lambda creation. Both runners check
+   exact sets, metadata, applied edits, signatures, parameter/inlay contracts and
+   definition ownership under Unicode LF/CRLF. Twenty-five independent scalar
+   cases assert surviving values, retained loop exit writes, guard evaluation
+   order and ignored unreachable arguments. The local walk joins only reachable
+   successors and snapshots loop exits before later statements can overwrite them.
+   Loop-carried state and match-result reachability still need review; these cases
+   do not certify every possible control-flow combination.
 2. Complete the semantic review of every applicable syntax dimension, including
    item/statement/lexical/control-flow/recovery and async boundaries. S3/S4
    evidence already in the catalog does not close the remaining dimensions.

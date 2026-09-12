@@ -766,8 +766,10 @@ Protocol tests explicitly query null definitions after applying candidate edits.
 Seventeen abrupt-flow cases now exclude unreachable tail receivers and retain
 reachable explicit lambda returns. One HIR traversal supplies normal values,
 invocation returns and control flags; source origins follow the same result sets.
-Resume B03.38 with local assignment environments at abrupt branch/loop exits and
-the remaining S5 partition review, then the remaining
+Local assignment joins now exclude returning branches, stop at exits and retain
+loop exit snapshots. Match guards carry their evaluated state to later arms.
+Resume B03.39 with loop-carried state and match-result reachability review, then
+the remaining S5 partition review and
 semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:
