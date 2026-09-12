@@ -19,6 +19,7 @@ pub(super) fn path_symbol_ref(
     let key = query.module_key()?;
     let module = graph.module_id(key)?;
     for node in query.syntax_parse()?.tree().syntax().descendants() {
+        let is_type = SyntaxTypeHint::can_cast(node.kind());
         let tokens = if let Some(path) = SyntaxPathExpr::cast(node.clone()) {
             path.path_tokens()
         } else if let Some(hint) = SyntaxTypeHint::cast(node) {
@@ -36,14 +37,18 @@ pub(super) fn path_symbol_ref(
         }) else {
             continue;
         };
-        if index + 1 == names.len() && source.is_some() {
+        if !is_type && index + 1 == names.len() && source.is_some() {
             return Some(source.cloned());
         }
         let path = names[..=index]
             .iter()
             .map(|token| token.text().to_owned())
             .collect::<Vec<_>>();
-        let Some(path) = query.expand_import_path(&path) else {
+        let Some(path) = (if is_type {
+            graph.expand_import_path(module, &path)
+        } else {
+            query.expand_import_path(&path)
+        }) else {
             return Some(None);
         };
         if let Some(module_key) = graph.resolve_module_path(key, &path)
@@ -61,7 +66,15 @@ pub(super) fn path_symbol_ref(
         ] {
             if let Some(declaration) = graph.resolve_visible_declaration_path(module, &path, kind) {
                 return Some(
-                    (declaration.module == module || declaration.visibility == Visibility::Public)
+                    ((!is_type
+                        || matches!(
+                            kind,
+                            DeclarationKind::Struct
+                                | DeclarationKind::Enum
+                                | DeclarationKind::Trait
+                        ))
+                        && (declaration.module == module
+                            || declaration.visibility == Visibility::Public))
                         .then(|| {
                             crate::symbol_ref::source_symbol_for_declaration(graph, declaration)
                         }),

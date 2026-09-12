@@ -1,3 +1,4 @@
+mod tuple_field;
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{AstNode, SyntaxMapEntry, SyntaxSourceFile};
 use vela_syntax::lexer::lex;
@@ -145,11 +146,8 @@ pub fn cursor_context_at(
                 .into_iter()
                 .any(|token| {
                     token.parent_ancestors().any(|node| {
-                        matches!(
-                            node.kind(),
-                            vela_syntax::SyntaxKind::TypeHint
-                                | vela_syntax::SyntaxKind::TupleFieldList
-                        ) && node.text_range().contains(offset)
+                        matches!(node.kind(), vela_syntax::SyntaxKind::TypeHint)
+                            && node.text_range().contains(offset)
                     })
                 })
         })
@@ -183,10 +181,10 @@ pub fn cursor_context_at(
         );
     }
 
-    if syntax_parse
-        .as_ref()
-        .is_some_and(|parse| is_record_type_field_context(text, &parse.tree(), prefix_start))
-    {
+    if syntax_parse.as_ref().is_some_and(|parse| {
+        is_record_type_field_context(text, &parse.tree(), prefix_start)
+            || tuple_field::is_tuple_field_name(&parse.tree(), prefix_start)
+    }) {
         return context(
             CursorContextKind::RecordTypeField,
             prefix_start,

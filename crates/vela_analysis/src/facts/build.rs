@@ -113,7 +113,9 @@ impl AnalysisFacts {
                 let fact = type_fact_from_hint_in_module(graph, owner.module, hint);
                 let fact = if matches!(fact, TypeFact::Unknown) {
                     schema
-                        .and_then(|schema| schema_fact_for_hint(schema, &hint.path))
+                        .and_then(|schema| {
+                            schema_fact_for_hint(graph, owner.module, schema, &hint.path)
+                        })
                         .unwrap_or(fact)
                 } else {
                     fact
@@ -166,16 +168,34 @@ impl AnalysisFacts {
     }
 }
 
-fn schema_fact_for_hint(schema: &RegistryFacts, path: &[String]) -> Option<TypeFact> {
-    if path.is_empty() {
+fn schema_fact_for_hint(
+    graph: &ModuleGraph,
+    module: vela_hir::ids::ModuleId,
+    schema: &RegistryFacts,
+    path: &[String],
+) -> Option<TypeFact> {
+    let path = graph.expand_import_path(module, path)?;
+    let current = graph.module_key(module)?;
+    if [
+        DeclarationKind::Struct,
+        DeclarationKind::Enum,
+        DeclarationKind::Trait,
+        DeclarationKind::Function,
+        DeclarationKind::Const,
+        DeclarationKind::State,
+    ]
+    .into_iter()
+    .any(|kind| {
+        graph
+            .declaration_by_type_path(&path, current, kind)
+            .is_some()
+    }) {
         return None;
     }
     let qualified = path.join("::");
     schema
         .type_fact(&qualified)
         .or_else(|| schema.trait_fact(&qualified))
-        .or_else(|| path.last().and_then(|name| schema.type_fact(name)))
-        .or_else(|| path.last().and_then(|name| schema.trait_fact(name)))
         .cloned()
 }
 

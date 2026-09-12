@@ -30,6 +30,7 @@ impl LanguageServiceDatabases {
                 .module_key()
                 .and_then(|key| graph.module_id(key))
                 .and_then(|module| {
+                    let path = graph.expand_import_path(module, &hint.path_segments())?;
                     [
                         DeclarationKind::Struct,
                         DeclarationKind::Enum,
@@ -38,7 +39,7 @@ impl LanguageServiceDatabases {
                     .into_iter()
                     .find_map(|kind| {
                         graph
-                            .resolve_visible_declaration_path(module, &hint.path_segments(), kind)
+                            .declaration_by_type_path(&path, query.module_key()?, kind)
                             .filter(|declaration| {
                                 declaration.module == module
                                     || declaration.visibility == Visibility::Public

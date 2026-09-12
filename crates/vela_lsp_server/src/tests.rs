@@ -154,6 +154,7 @@ mod completion_named_arguments;
 mod completion_resolve;
 mod completion_struct;
 mod completion_type;
+mod completion_type_ownership;
 mod document_sync;
 mod file_watching;
 mod formatting;

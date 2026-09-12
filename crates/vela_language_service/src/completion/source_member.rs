@@ -19,13 +19,16 @@ pub(super) fn source_member_completion_candidates(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     receiver: &TypeFact,
+    owner: Option<vela_hir::ids::HirDeclId>,
 ) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
-    source_field_completion_items(graph, schema, receiver)
+    source_field_completion_items(graph, schema, receiver, owner)
         .into_iter()
         .chain(source_variant_field_completion_items(
-            graph, schema, receiver,
+            graph, schema, receiver, owner,
         ))
-        .chain(source_method_completion_items(graph, schema, receiver))
+        .chain(source_method_completion_items(
+            graph, schema, receiver, owner,
+        ))
         .collect()
 }
 
@@ -33,11 +36,12 @@ fn source_variant_field_completion_items(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     receiver: &TypeFact,
+    owner: Option<vela_hir::ids::HirDeclId>,
 ) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
     if let TypeFact::Union(facts) = receiver {
         return facts
             .iter()
-            .flat_map(|fact| source_variant_field_completion_items(graph, schema, fact))
+            .flat_map(|fact| source_variant_field_completion_items(graph, schema, fact, owner))
             .collect();
     }
     let TypeFact::Enum {
@@ -49,6 +53,7 @@ fn source_variant_field_completion_items(
     };
     let Some(declaration) = graph.declarations().find(|declaration| {
         declaration.kind == DeclarationKind::Enum
+            && owner.is_none_or(|owner| owner == declaration.id)
             && declaration_name_matches(graph, declaration.id, name)
     }) else {
         return Vec::new();
@@ -82,12 +87,14 @@ fn source_field_completion_items(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     receiver: &TypeFact,
+    owner: Option<vela_hir::ids::HirDeclId>,
 ) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
     let owner_names = record_owner_names(receiver);
     graph
         .declarations()
         .filter_map(|declaration| {
-            if declaration.kind != DeclarationKind::Struct
+            if owner.is_some_and(|owner| owner != declaration.id)
+                || declaration.kind != DeclarationKind::Struct
                 || !owner_names
                     .iter()
                     .any(|owner| declaration_name_matches(graph, declaration.id, owner))
@@ -116,13 +123,14 @@ fn source_method_completion_items(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     receiver: &TypeFact,
+    owner: Option<vela_hir::ids::HirDeclId>,
 ) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
-    let mut items = source_impl_method_completion_items(graph, schema, receiver);
+    let mut items = source_impl_method_completion_items(graph, schema, receiver, owner);
     items.extend(source_trait_receiver_method_completion_items(
-        graph, schema, receiver,
+        graph, schema, receiver, owner,
     ));
     items.extend(source_trait_default_method_completion_items(
-        graph, schema, receiver,
+        graph, schema, receiver, owner,
     ));
     items
 }
@@ -131,12 +139,15 @@ fn source_impl_method_completion_items(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     receiver: &TypeFact,
+    owner: Option<vela_hir::ids::HirDeclId>,
 ) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
     let owner_names = record_owner_names(receiver);
     graph
         .declarations()
         .filter_map(|declaration| {
-            if declaration.kind != DeclarationKind::Impl {
+            if declaration.kind != DeclarationKind::Impl
+                || !impl_has_owner(graph, declaration, owner)
+            {
                 return None;
             }
             let metadata = graph.impl_metadata(declaration.id)?;
@@ -164,12 +175,14 @@ fn source_trait_receiver_method_completion_items(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     receiver: &TypeFact,
+    owner: Option<vela_hir::ids::HirDeclId>,
 ) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
     let owner_names = trait_owner_names(receiver);
     graph
         .declarations()
         .filter_map(|declaration| {
-            if declaration.kind != DeclarationKind::Trait
+            if owner.is_some_and(|owner| owner != declaration.id)
+                || declaration.kind != DeclarationKind::Trait
                 || !owner_names
                     .iter()
                     .any(|owner| declaration_name_matches(graph, declaration.id, owner))
@@ -198,12 +211,15 @@ fn source_trait_default_method_completion_items(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     receiver: &TypeFact,
+    owner: Option<vela_hir::ids::HirDeclId>,
 ) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
     let owner_names = record_owner_names(receiver);
     graph
         .declarations()
         .filter_map(|declaration| {
-            if declaration.kind != DeclarationKind::Impl {
+            if declaration.kind != DeclarationKind::Impl
+                || !impl_has_owner(graph, declaration, owner)
+            {
                 return None;
             }
             let metadata = graph.impl_metadata(declaration.id)?;
@@ -349,4 +365,31 @@ fn push_owner_name(owners: &mut Vec<String>, name: &str) {
     if !owners.iter().any(|owner| owner == name) {
         owners.push(name.to_owned());
     }
+}
+
+fn impl_has_owner(
+    graph: &ModuleGraph,
+    declaration: &vela_hir::module_graph::Declaration,
+    owner: Option<vela_hir::ids::HirDeclId>,
+) -> bool {
+    let Some(owner) = owner else {
+        return true;
+    };
+    let Some(metadata) = graph.impl_metadata(declaration.id) else {
+        return false;
+    };
+    let Some(path) = graph.expand_import_path(declaration.module, &metadata.target_path) else {
+        return false;
+    };
+    [
+        DeclarationKind::Struct,
+        DeclarationKind::Enum,
+        DeclarationKind::Trait,
+    ]
+    .into_iter()
+    .any(|kind| {
+        graph
+            .resolve_visible_declaration_path(declaration.module, &path, kind)
+            .is_some_and(|target| target.id == owner)
+    })
 }

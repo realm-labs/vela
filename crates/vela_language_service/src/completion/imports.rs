@@ -24,6 +24,15 @@ pub(super) struct ImportScope<'a, 'db> {
 }
 
 impl<'a, 'db> ImportScope<'a, 'db> {
+    pub(super) fn for_type_hint(
+        databases: &'a LanguageServiceDatabases,
+        query: &'a QueryContext<'db>,
+    ) -> Self {
+        let mut scope = Self::new(databases, query);
+        // Value bindings do not shadow names in a type annotation.
+        scope.locals.clear();
+        scope
+    }
     pub(super) fn external_function_available(&self, path: &str) -> bool {
         let graph = self.databases.hir_db().graph();
         let Some(module) = self.query.module_key().and_then(|key| graph.module_id(key)) else {

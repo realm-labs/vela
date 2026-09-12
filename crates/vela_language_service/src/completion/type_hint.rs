@@ -1,212 +1,102 @@
-use vela_analysis::{
-    completion::{
-        CompletionItem as AnalysisCompletionItem, CompletionKind as AnalysisCompletionKind,
-        declaration_completion, type_completions,
-    },
-    facts::AnalysisFacts,
-    registry::RegistryFacts,
-    type_fact::TypeFact,
-};
-use vela_hir::module_graph::ModuleGraph;
-use vela_package::{ModuleKey, ModulePath};
-
-use crate::{
-    TextRange,
-    symbol_ref::{schema_symbol, source_symbol},
-};
-
-use super::builtin_type::builtin_type_hint_completions;
-
 use super::{
-    CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol,
-    display_type_detail_parts, label_segment_matches, type_display::type_completion_item,
+    CompletionContext, CompletionItem,
+    builtin_type::builtin_type_hint_completions,
+    label_segment_matches,
+    type_paths::{TypePaths, is_type_item},
 };
+use crate::{LanguageServiceDatabases, QueryContext};
 
 pub(super) fn type_hint_completion_items(
-    graph: &ModuleGraph,
-    facts: &AnalysisFacts,
-    schema: &RegistryFacts,
-    current_module: &ModuleKey,
-    replace_range: TextRange,
-    prefix: &str,
-    module_base: Option<&str>,
+    databases: &LanguageServiceDatabases,
+    query: &QueryContext<'_>,
+    context: &CompletionContext,
 ) -> Vec<CompletionItem> {
-    if let Some(module_base) = module_base {
-        return qualified_type_hint_completion_items(
-            graph,
-            schema,
-            facts,
-            current_module,
-            replace_range,
-            prefix,
-            module_base,
-        );
+    let Some(paths) = TypePaths::new(databases, query) else {
+        return Vec::new();
+    };
+    let mut items = Vec::new();
+    if let Some(base) = context.module_base() {
+        let Some(base) = paths.expand(base) else {
+            return items;
+        };
+        let namespace = format!("{base}::");
+        let mut children = paths
+            .paths
+            .keys()
+            .filter_map(|path| path.strip_prefix(&namespace))
+            .filter_map(|suffix| suffix.split("::").next())
+            .map(str::to_owned)
+            .collect::<std::collections::BTreeSet<_>>();
+        let graph = databases.hir_db().graph();
+        if let Some(key) = query.module_key().and_then(|current| {
+            graph.resolve_module_path(
+                current,
+                &base.split("::").map(str::to_owned).collect::<Vec<_>>(),
+            )
+        }) {
+            children.extend(
+                graph
+                    .module_child_segments(&key)
+                    .into_iter()
+                    .map(str::to_owned),
+            );
+            // Keep the namespace spelling that addresses this package.
+            if let Some(module) = graph.module_id(&key) {
+                children.extend(
+                    graph
+                        .declarations_in_module(module)
+                        .into_iter()
+                        .map(|declaration| declaration.name.clone()),
+                );
+            }
+        }
+        for label in children
+            .into_iter()
+            .filter(|label| label.starts_with(context.prefix()))
+        {
+            if let Some(item) = paths.item(&format!("{base}::{label}"), context.prefix(), true) {
+                items.push(item);
+            }
+        }
+    } else {
+        items.extend(builtin_type_hint_completions());
+        for address in paths
+            .paths
+            .keys()
+            .filter(|path| label_segment_matches(path, context.prefix()))
+        {
+            if let Some(item) = paths.item(address, context.prefix(), false) {
+                items.push(item);
+            }
+        }
+        for item in paths
+            .scope
+            .completion_items(context)
+            .into_iter()
+            .filter(is_type_item)
+        {
+            if !items.iter().any(|other| {
+                other.label == item.label
+                    && other.insert_text == item.insert_text
+                    && other.symbol() == item.symbol()
+            }) {
+                items.push(item);
+            }
+        }
     }
-    let mut items = builtin_type_hint_completions();
-    items.extend(
-        type_completions(schema)
-            .into_iter()
-            .map(|item| service_item_from_schema_type(item, prefix)),
-    );
-    items.extend(
-        graph
-            .declarations_by_name_prefix(prefix)
-            .into_iter()
-            .filter_map(|declaration| declaration_completion(graph, facts, declaration))
-            .filter(|item| {
-                matches!(
-                    item.kind,
-                    AnalysisCompletionKind::Type | AnalysisCompletionKind::Trait
-                )
-            })
-            .map(|item| {
-                let qualified_name = item.label.clone();
-                type_completion_item(item, &qualified_name, prefix)
-                    .with_symbol(source_symbol(qualified_name))
-            }),
-    );
-    items.extend(
-        graph
-            .module_child_segments(&ModuleKey::new(
-                current_module.package.clone(),
-                ModulePath::root(),
-            ))
-            .into_iter()
-            .filter(|segment| segment.starts_with(prefix))
-            .map(|segment| {
-                service_item_from_analysis(AnalysisCompletionItem {
-                    label: segment.to_owned(),
-                    kind: AnalysisCompletionKind::Module,
-                    fact: TypeFact::module(segment),
-                })
-            }),
-    );
-    super::dedupe_and_filter_service_items(items, replace_range, prefix, |item| {
-        label_segment_matches(item.label(), prefix)
-    })
-}
-
-fn qualified_type_hint_completion_items(
-    graph: &ModuleGraph,
-    schema: &RegistryFacts,
-    facts: &AnalysisFacts,
-    current_module: &ModuleKey,
-    replace_range: TextRange,
-    prefix: &str,
-    module_base: &str,
-) -> Vec<CompletionItem> {
-    let mut items = type_completions(schema)
-        .into_iter()
-        .map(|item| {
-            let symbol = schema_symbol(&item.label);
-            (item, symbol)
-        })
-        .collect::<Vec<_>>();
-    let module_path = ModulePath::from_qualified(module_base);
-    let module_key = graph
-        .resolve_module_path(current_module, module_path.segments())
-        .unwrap_or_else(|| ModuleKey::new(current_module.package.clone(), module_path));
-    if let Some(module) = graph.module_id(&module_key) {
-        items.extend(
-            graph
-                .declarations_in_module(module)
-                .into_iter()
-                .filter_map(|declaration| declaration_completion(graph, facts, declaration))
-                .filter(is_type_position_analysis_item)
-                .map(|item| {
-                    let symbol = source_symbol(&item.label);
-                    (item, symbol)
-                }),
-        );
-    }
-    items.extend(
-        graph
-            .module_child_segments(&module_key)
-            .into_iter()
-            .map(|segment| AnalysisCompletionItem {
-                label: format!("{module_base}::{segment}"),
-                kind: AnalysisCompletionKind::Module,
-                fact: TypeFact::module(format!("{module_base}::{segment}")),
-            })
-            .map(|item| {
-                let symbol = source_symbol(&item.label);
-                (item, symbol)
-            }),
-    );
     super::dedupe_and_filter_service_items(
-        items
-            .into_iter()
-            .filter_map(|(item, symbol)| {
-                service_item_for_qualified_type_path(item, symbol, module_base, prefix)
-            })
-            .collect(),
-        replace_range,
-        prefix,
-        |item| label_segment_matches(item.label(), prefix),
+        items,
+        context.replace_range(),
+        context.prefix(),
+        |item| label_segment_matches(item.label(), context.prefix()),
     )
-}
-
-fn service_item_for_qualified_type_path(
-    item: AnalysisCompletionItem,
-    symbol: CompletionSymbol,
-    module_base: &str,
-    prefix: &str,
-) -> Option<CompletionItem> {
-    if !is_type_position_analysis_item(&item) {
-        return None;
-    }
-    let suffix = item
-        .label
-        .strip_prefix(module_base)
-        .and_then(|suffix| suffix.strip_prefix("::"))?;
-    if !suffix.starts_with(prefix) {
-        return None;
-    }
-    let label = suffix
-        .split_once("::")
-        .map_or(suffix, |(segment, _)| segment)
-        .to_owned();
-    let qualified_name = format!("{module_base}::{suffix}");
-    let mut completion = type_completion_item(item, &qualified_name, prefix).with_symbol(symbol);
-    completion.label = label;
-    completion.insert_text = Some(completion.label.clone());
-    Some(completion)
-}
-
-fn is_type_position_analysis_item(item: &AnalysisCompletionItem) -> bool {
-    matches!(
-        item.kind,
-        AnalysisCompletionKind::Type
-            | AnalysisCompletionKind::Trait
-            | AnalysisCompletionKind::Module
-    )
-}
-
-fn service_item_from_analysis(item: AnalysisCompletionItem) -> CompletionItem {
-    let detail_parts = display_type_detail_parts(item.fact.display_name());
-    CompletionItem {
-        label: item.label,
-        kind: CompletionKind::from(item.kind),
-        detail: detail_parts.render(),
-        insert_text: None,
-        insert_format: CompletionInsertFormat::PlainText,
-        sort_text: None,
-        metadata: Default::default(),
-    }
-    .with_detail_parts(detail_parts)
-}
-
-fn service_item_from_schema_type(item: AnalysisCompletionItem, prefix: &str) -> CompletionItem {
-    let symbol = schema_symbol(&item.label);
-    let qualified_name = item.label.clone();
-    type_completion_item(item, &qualified_name, prefix).with_symbol(symbol)
 }
 
 #[cfg(test)]
 mod tests {
     use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 
-    use super::*;
+    use super::super::CompletionKind;
     use crate::{
         DocumentId, LanguageServiceDatabases, Position, SourceFileSnapshot, Workspace,
         WorkspaceConfig, WorkspaceRoot, assemble_project_sources,

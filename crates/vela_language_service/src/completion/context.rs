@@ -40,7 +40,9 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
         return CompletionContext {
             kind: CompletionContextKind::TypeHint,
             prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, offset),
+            replace_range: cursor
+                .identifier_range()
+                .unwrap_or(TextRange::new(prefix_start, offset)),
             module_base: None,
             member_receiver: None,
             record_constructor: None,
@@ -141,7 +143,9 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
             return CompletionContext {
                 kind: CompletionContextKind::TypeHint,
                 prefix: prefix.to_owned(),
-                replace_range: TextRange::new(prefix_start, offset),
+                replace_range: cursor
+                    .identifier_range()
+                    .unwrap_or(TextRange::new(prefix_start, offset)),
                 module_base: Some(module_base.to_owned()),
                 member_receiver: None,
                 record_constructor: None,

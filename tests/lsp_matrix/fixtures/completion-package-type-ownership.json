@@ -1,0 +1,179 @@
+{
+  "version": 1,
+  "id": "completion-package-type-ownership",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.type_aliases\"\nname = \"type_aliases\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n[dependencies]\nexternal = { path = \"deps/external\" }\n",
+    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Token\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"host::Token\"\n        },\n        \"docs\": \"Registered token docs 中😀.\"\n      },\n      {\n        \"name\": \"api::Token\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"api::Token\"\n        }\n      },\n      {\n        \"name\": \"api::TokenSecret\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"api::TokenSecret\"\n        }\n      },\n      {\n        \"name\": \"api::TokenFunction\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"api::TokenFunction\"\n        }\n      }\n    ],\n    \"fields\": [\n      {\n        \"owner\": \"host::Token\",\n        \"name\": \"tag\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"i64\"\n        }\n      },\n      {\n        \"owner\": \"api::Token\",\n        \"name\": \"tag\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"bool\"\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"host::grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"registered\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"registered\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::hidden\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"registered\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"option::some\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"registered\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  }\n}\n",
+    "scripts/api.vela": "pub struct [[token:start]]Token[[token:end]] { tag: i64 }\npub enum [[choice:start]]Choice[[choice:end]] { Empty, Value(i64), Record { tag: i64 } }\npub trait [[reader:start]]Reader[[reader:end]] { fn read(self) -> i64; }\nstruct TokenSecret { tag: i64 }\npub fn TokenFunction() {}\n",
+    "deps/external/vela.toml": "[package]\nid = \"dev.vela.external\"\nname = \"external\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[dependencies]\nhidden = { path = \"../hidden\" }\n",
+    "deps/external/scripts/api.vela": "pub struct [[token:start]]Token[[token:end]] { tag: bool }\nstruct SecretToken {}\n",
+    "deps/hidden/vela.toml": "[package]\nid = \"dev.vela.hidden\"\nname = \"hidden\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "deps/hidden/scripts/api.vela": "pub struct SecretToken {}\n",
+    "scripts/canonical.vela": "\n/* 中😀 */ fn run(selected: [[replace:start]]To[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/dependency_qualified.vela": "\n/* 中😀 */ fn run(selected: external::api::[[replace:start]]To[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/dependency_alias.vela": "use external::api::Token as AliasToken;\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/dependency_namespace.vela": "use external::api as AliasSpace;\n/* 中😀 */ fn run(selected: AliasSpace::[[replace:start]]To[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/crate_qualified.vela": "\n/* 中😀 */ fn run(selected: crate::api::[[replace:start]]To[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/private.vela": "use external::api::SecretToken as AliasToken;\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/unreachable_transitive.vela": "\n/* 中😀 */ fn run(selected: [[replace:start]]Secret[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/missing_dependency.vela": "use missing::api::Token as AliasToken;\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/shadowed_dependency.vela": "use api as external;\n/* 中😀 */ fn run(selected: external::api::[[replace:start]]To[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "canonical",
+        "file": "scripts/canonical.vela",
+        "items": [
+          {
+            "label": "Token",
+            "insert": "api::Token",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null,
+            "fieldDetail": "i64"
+          },
+          {
+            "label": "Token",
+            "insert": "external::api::Token",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "token",
+            "docs": null,
+            "fieldDetail": "bool"
+          },
+          {
+            "label": "Token",
+            "insert": "host::Token",
+            "kind": "Type",
+            "detail": "host::Token",
+            "origin": "schema",
+            "symbol": "host::Token",
+            "target": null,
+            "marker": "token",
+            "docs": "Registered token docs 中😀.",
+            "fieldDetail": "i64"
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "dependency_qualified",
+        "file": "scripts/dependency_qualified.vela",
+        "items": [
+          {
+            "label": "Token",
+            "insert": "Token",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "token",
+            "docs": null,
+            "fieldDetail": "bool"
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "dependency_alias",
+        "file": "scripts/dependency_alias.vela",
+        "items": [
+          {
+            "label": "AliasToken",
+            "insert": "AliasToken",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "token",
+            "docs": null,
+            "fieldDetail": "bool"
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "dependency_namespace",
+        "file": "scripts/dependency_namespace.vela",
+        "items": [
+          {
+            "label": "Token",
+            "insert": "Token",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "deps/external/scripts/api.vela",
+            "marker": "token",
+            "docs": null,
+            "fieldDetail": "bool"
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "crate_qualified",
+        "file": "scripts/crate_qualified.vela",
+        "items": [
+          {
+            "label": "Token",
+            "insert": "Token",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null,
+            "fieldDetail": "i64"
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "private",
+        "file": "scripts/private.vela",
+        "items": [],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "unreachable_transitive",
+        "file": "scripts/unreachable_transitive.vela",
+        "items": [],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "missing_dependency",
+        "file": "scripts/missing_dependency.vela",
+        "items": [],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "shadowed_dependency",
+        "file": "scripts/shadowed_dependency.vela",
+        "items": [],
+        "applySuffix": "",
+        "member": true
+      }
+    ]
+  }
+}

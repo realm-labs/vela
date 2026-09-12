@@ -29,6 +29,7 @@ mod hir_cursor;
 mod imports;
 mod locals;
 mod service_call;
+mod source_type;
 use hir_cursor::refine_cursor_with_hir;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

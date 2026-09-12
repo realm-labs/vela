@@ -48,6 +48,7 @@ impl Rewardable for Player {
         databases.hir_db().graph(),
         databases.schema_db().facts(),
         &TypeFact::record("Player"),
+        None,
         TextRange::new(0, 0),
         "",
     );
@@ -75,6 +76,7 @@ impl Rewardable for Player {
         databases.hir_db().graph(),
         databases.schema_db().facts(),
         &TypeFact::host("Player"),
+        None,
         TextRange::new(0, 0),
         "",
     );
@@ -90,6 +92,7 @@ impl Rewardable for Player {
         databases.hir_db().graph(),
         databases.schema_db().facts(),
         &TypeFact::trait_type("SchemaRewardable"),
+        None,
         TextRange::new(0, 0),
         "",
     );
@@ -102,6 +105,7 @@ impl Rewardable for Player {
         databases.hir_db().graph(),
         databases.schema_db().facts(),
         &TypeFact::array(TypeFact::STRING),
+        None,
         TextRange::new(0, 0),
         "",
     );

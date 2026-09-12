@@ -67,6 +67,9 @@ mod type_hint;
 mod type_label_tests;
 #[cfg(test)]
 mod type_matrix_tests;
+#[cfg(test)]
+mod type_ownership_tests;
+mod type_paths;
 
 pub use model::{
     CompletionContext, CompletionContextKind, CompletionInsertFormat, CompletionItem,
@@ -239,6 +242,7 @@ impl LanguageServiceDatabases {
             self.hir_db().graph(),
             self.schema_db().facts(),
             &receiver_fact,
+            query.source_type_for_range(self, receiver.range),
             context.replace_range(),
             context.prefix(),
         );
@@ -335,18 +339,7 @@ impl LanguageServiceDatabases {
         query: &QueryContext<'_>,
         context: &CompletionContext,
     ) -> Vec<CompletionItem> {
-        let Some(current_module) = query.module_key() else {
-            return Vec::new();
-        };
-        type_hint_completion_items(
-            self.hir_db().graph(),
-            self.graph_analysis_facts(),
-            self.schema_db().facts(),
-            current_module,
-            context.replace_range(),
-            context.prefix(),
-            context.module_base(),
-        )
+        type_hint_completion_items(self, query, context)
     }
 }
 

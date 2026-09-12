@@ -709,8 +709,18 @@ members under LF/CRLF. Six overlay states verify target switching, missing,
 duplicate and private imports, then recovery. Ambiguous import bindings remain
 unresolved during HIR refresh; imported record constructors carry their exact
 static owner. Local function/constant shadows retain distinct qualified choices.
-Type-hint and enum/variant import paths, dependency alias ownership,
-provider/variable-arity metadata, broader S5/lifecycle coverage and UX04 remain open.
+Type annotations now enumerate visible type/module imports, preserve resolvable
+qualified insertions and replace whole identifiers. Forty-five shared cases
+cover annotation positions, private/duplicate/missing imports, source/schema
+collisions, namespace shadows, direct dependency aliases and inaccessible
+transitive packages. Applied references retain exact definition locations,
+resolve documentation and record member types under LF/CRLF; six import states
+check cache recovery. Source and registry local hints expand imports without
+short-name fallback. Member completion carries semantic declaration identity
+to distinguish same-named records in different packages. Tuple variant entries
+follow the existing parameter grammar (`name: Type`); bare names are declaration
+positions. Enum/variant constructor imports, broader dependency/cross-feature
+identity, provider/variable-arity metadata, remaining S5/lifecycle and UX04 stay open.
 The earlier macOS input regression stopped on a locked
 desktop; that record does not imply a Windows blocker. Current platform evidence
 must be collected before strict acceptance; see [blocked.md](blocked.md).
@@ -719,7 +729,7 @@ actual suggestion acceptance, F12/back and palettes, modifier-click, context-men
 Peek, exact Unicode targets and no-jump outcomes pass. The installed provider
 suite passes all nine scenarios. The original macOS acceptance remains historical;
 changed driver code needs fresh proof when that machine is next used. Shared
-implementation resumes at B03.19.
+implementation resumes at B03.20.
 
 ### Deferred Tracks
 

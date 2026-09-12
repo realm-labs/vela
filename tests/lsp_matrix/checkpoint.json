@@ -1175,10 +1175,29 @@
         "completion/syntax/S5/negative/protocol"
       ],
       "summary": "Direct and namespace import completions retain authored spelling with canonical source/schema/stdlib identity. Twenty-eight independently authored shared cases under LF/CRLF assert complete candidate/edit sets, metadata and resolve identity, parseable applications, exact source/local definition locations, semantic callable ownership and record receiver/member ownership. Cover source functions/constants/types, schema functions/types, stdlib functions, short imports, namespace roots and qualified members, local/current-declaration shadows, duplicate/identical/missing/private imports, canonical source/schema/stdlib collisions and local-shadowed function/constant qualified choices. Six successive overlay states in both layers switch an import between source owners, reject missing/duplicate/private targets and restore the original owner without stale candidates. HIR single-import expansion preserves declarations and rejects duplicates; binding refresh now retains ambiguity instead of upgrading to one source declaration. Imported source/registry record constructors propagate exact static result facts, with independent nine-case analysis proof. Definition queries consume qualified namespace aliases even when the existing HIR relation is Import. Existing full-expression candidate oracles now include valid aliases and exclude private source fallthrough/unavailable imported bare schema names; malformed group-import syntax remains a negative case. Frozen complete sets remain asserted. Preserve alias-red, namespace-red, constructor-red, source-constructor-red, analysis-focused and regression-red failure evidence. Full workspace passed 4424 tests with two historical ignored (service 601 plus two ignored; protocol 587); all-target workspace Clippy, fmt and Node 73 passed. Installed Windows VSIX provider suite passed 9 and native input suite 13. Strict run-9EPbhe refreshed all 145 accepted B00-B02 requirements, preserving original acceptance snapshots. These S5 IDs record partial child work only; broad S5 remains unreviewed, B03 remains unaccepted and whole-batch remaining scope stays 1332. Continue B03.19 with independently authored type-hint and enum/variant import ownership cases, dependency alias/package boundaries and qualified insertion applications, covering ambiguous/private/missing/colliding owners and source/schema lifecycle where applicable. Then finish provider/variable-arity metadata, root Service namespace suggestions and remaining S5/lifecycle/UX04. Fresh macOS proof is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.19",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S3/positive/service",
+        "completion/syntax/S3/positive/protocol",
+        "completion/syntax/S3/negative/service",
+        "completion/syntax/S3/negative/protocol",
+        "completion/syntax/S8/positive/service",
+        "completion/syntax/S8/positive/protocol",
+        "completion/syntax/S8/negative/service",
+        "completion/syntax/S8/negative/protocol",
+        "completion-resolve/syntax/S3/positive/service",
+        "completion-resolve/syntax/S3/positive/protocol",
+        "completion-resolve/syntax/S3/negative/service",
+        "completion-resolve/syntax/S3/negative/protocol"
+      ],
+      "summary": "Type annotation completion now uses current type/import/package scope, keeps canonical metadata separate from resolvable insertion paths, inserts short names only when they select the same declaration or registered type, uses crate qualification when an import shadows a source namespace, rejects inaccessible registry spellings and replaces the complete identifier. Local value bindings do not shadow annotation type names. Thirty-six independently authored type/import cases plus nine package cases run under LF/CRLF (90 query contexts per layer), asserting frozen complete candidate/edit sets, type/trait/module kind and detail, byte/UTF-16 ranges, canonical resolve metadata and exact resolved documentation, parseable edits, exact post-edit source definition URI/ranges, receiver facts and members, and protocol apply/restore. Dependency cases distinguish identically spelled records in the root and direct dependency by exact definition targets and i64-versus-bool field contracts, preserve dependency aliases and crate paths, and exclude private/unresolved/transitive-only targets. Six import overlay states in both layers check replacement, missing/duplicate/private targets and recovery. Shared source hints expand imports once; registry local hints require exact expanded paths and cannot borrow short-name or source-owned metadata. Ten independent analysis cases cover source/schema aliases, namespace imports, ambiguity, private/unavailable targets and non-type declaration shadows. Applied package tests exposed mixed member field types; member completion now carries available semantic declaration IDs through source field/variant/method selection instead of merging package-less owner spellings. Existing grammar defines tuple variant entries as parameters (name: Type), so bare tuple names are declaration contexts. Correct old type-position fixture syntax and cursor expectations; retain a negative bare-name matrix case rather than adding language syntax. Old unimported Plasma expectations now require defs::Plasma insertion. Preserve types-red (missing alias candidates), types-focused2 (registry alias receiver unknown), types-focused3/4 (the old tuple-position oracle treated a field name as a type), regression (old short insertion), and regression2 (root record borrowed dependency bool field) evidence. Full workspace passed 4430 with two historical ignored; service 604 plus two ignored, protocol 589, workspace all-target Clippy/fmt and Node 73 passed. Installed Windows VSIX run-h0Yifz passed 9 and native input-bqjgza passed 13. Strict run-6EBhF4 refreshed all 145 accepted B00-B02 requirements with original snapshots intact. S3/S8 entries record this partial child, not broad partition closure; B03 remains unaccepted, remaining whole-batch scope stays 1332. Continue B03.20 with independently authored enum/variant constructor import and alias cases (unit/tuple/record/pattern paths), remaining tuple declaration/default/incomplete boundaries and cross-package/source-schema ownership where exposed. Broader package-less cross-feature identity, registered nested hints and provider/variable-arity metadata, root Service namespaces, remaining S5/lifecycle/UX04 still require proof. Preserve type/package fixture evidence. Fresh macOS proof is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.19",
-  "nextTask": "B03.19",
+  "activeChild": "B03.20",
+  "nextTask": "B03.20",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -2896,7 +2915,31 @@
     "target/b03-18-accepted-regression.log",
     "target/lsp-matrix/run-0tlG0p/report.json",
     "editors/vscode/test-results/run-t3o8vq/results.json",
-    "editors/vscode/test-results/input-ol0wst/results.json"
+    "editors/vscode/test-results/input-ol0wst/results.json",
+    "target/lsp-matrix/run-6EBhF4/report.json",
+    "target/b03-19-baseline.log",
+    "target/b03-19-types-red.log",
+    "target/b03-19-types-focused2.log",
+    "target/b03-19-types-focused3.log",
+    "target/b03-19-types-focused4.log",
+    "target/b03-19-types-focused5.log",
+    "target/b03-19-types-focused6.log",
+    "target/b03-19-package-red.log",
+    "target/b03-19-package-focused2.log",
+    "target/b03-19-analysis.log",
+    "target/b03-19-regression.log",
+    "target/b03-19-regression2.log",
+    "target/b03-19-regression3.log",
+    "target/b03-19-protocol-regression3.log",
+    "target/b03-19-workspace.log",
+    "target/b03-19-clippy.log",
+    "target/b03-19-node.log",
+    "target/b03-19-editor.log",
+    "target/b03-19-input.log",
+    "target/b03-19-accepted-regression.log",
+    "target/lsp-matrix/run-lZKBQa/report.json",
+    "editors/vscode/test-results/run-h0Yifz/results.json",
+    "editors/vscode/test-results/input-bqjgza/results.json"
   ],
   "openIssues": [
     {
@@ -3517,8 +3560,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "21a8822c6462f3b8ef3cc52b83f51824c28045fc",
-          "treeSha256": "a898594ed0ca6d4cca64dfb5fb39ce93eafdab4cfd42292aad9fcb39ad848558"
+          "revision": "40e382e3132fb581fd82374f43fb1909366cd1b2",
+          "treeSha256": "a3daafa5ce9efff63ca86cc92f9bc300c2547102edb0c0c917dfa0555381607a"
         },
         "profile": {
           "platform": "win32",
@@ -3526,11 +3569,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-9EPbhe/report.json"
+          "target/lsp-matrix/run-6EBhF4/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-t3o8vq/results.json --local-results editors/vscode/test-results/input-ol0wst/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-h0Yifz/results.json --local-results editors/vscode/test-results/input-bqjgza/results.json",
             "exitCode": 0
           }
         ]

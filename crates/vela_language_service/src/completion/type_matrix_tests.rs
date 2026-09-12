@@ -126,8 +126,9 @@ fn assert_type_matrix(fixture_id: &str) {
                     edit.range(),
                     TextRange::new(range.start.byte, range.end.byte)
                 );
-                assert_eq!(edit.new_text(), item.label());
-                assert_eq!(item.insert_text(), Some(item.label()));
+                let insertion = expected["insert"].as_str().unwrap_or(item.label());
+                assert_eq!(edit.new_text(), insertion);
+                assert_eq!(item.insert_text(), Some(insertion));
                 if item.label() == query["apply"].as_str().expect("applied candidate") {
                     let mut edited = source.text.clone();
                     edited.replace_range(edit.range().start..edit.range().end, edit.new_text());

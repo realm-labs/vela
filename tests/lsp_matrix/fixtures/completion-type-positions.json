@@ -8,7 +8,7 @@
     "scripts/return.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ fn main() -> [[replace:start]]Pl[[cursor]][[replace:end]] {}\n",
     "scripts/local.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ fn main() { let text = \"中😀\"; let value: [[replace:start]]Pl[[cursor]][[replace:end]]; }\n",
     "scripts/field.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ struct Holder { value: [[replace:start]]Pl[[cursor]][[replace:end]] }\n",
-    "scripts/enum_tuple.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ enum Holder { Value([[replace:start]]Pl[[cursor]][[replace:end]]) }\n",
+    "scripts/enum_tuple.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ enum Holder { Value(value: [[replace:start]]Pl[[cursor]][[replace:end]]) }\n",
     "scripts/enum_record.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ enum Holder { Value { value: [[replace:start]]Pl[[cursor]][[replace:end]] } }\n",
     "scripts/trait_method.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ trait Holder { fn call(value: [[replace:start]]Pl[[cursor]][[replace:end]]); }\n",
     "scripts/inherent_method.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ struct Holder {} impl Holder { fn call(self, value: [[replace:start]]Pl[[cursor]][[replace:end]]) {} }\n",
@@ -20,7 +20,7 @@
     "scripts/unknown_type.vela": "use defs::Player;\nuse defs::Play;\nfn main(value: [[replace:start]]NotAType[[cursor]][[replace:end]]) {}\n",
     "scripts/unknown_qualified.vela": "use defs::Player;\nuse defs::Play;\nfn main(value: unknown::[[replace:start]]Pl[[cursor]][[replace:end]]) {}\n",
     "scripts/qualified_parameter.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ fn main(value: defs::[[replace:start]]Pl[[cursor]][[replace:end]]) {}\n",
-    "scripts/qualified_enum.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ enum Holder { Value(defs::[[replace:start]]Pl[[cursor]][[replace:end]]) }\n",
+    "scripts/qualified_enum.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ enum Holder { Value(value: defs::[[replace:start]]Pl[[cursor]][[replace:end]]) }\n",
     "scripts/qualified_schema.vela": "/* 中😀 */ fn main(value: host::[[replace:start]]As[[cursor]][[replace:end]]) {}\n"
   },
   "actions": [],
@@ -92,7 +92,8 @@
             "owner": "defs",
             "symbolKind": "source",
             "symbol": "defs::Plasma",
-            "docs": null
+            "docs": null,
+            "insert": "defs::Plasma"
           }
         ],
         "exclude": [
@@ -153,7 +154,8 @@
             "owner": "defs",
             "symbolKind": "source",
             "symbol": "defs::Plasma",
-            "docs": null
+            "docs": null,
+            "insert": "defs::Plasma"
           }
         ],
         "exclude": [
@@ -214,7 +216,8 @@
             "owner": "defs",
             "symbolKind": "source",
             "symbol": "defs::Plasma",
-            "docs": null
+            "docs": null,
+            "insert": "defs::Plasma"
           }
         ],
         "exclude": [
@@ -275,7 +278,8 @@
             "owner": "defs",
             "symbolKind": "source",
             "symbol": "defs::Plasma",
-            "docs": null
+            "docs": null,
+            "insert": "defs::Plasma"
           }
         ],
         "exclude": [
@@ -336,7 +340,8 @@
             "owner": "defs",
             "symbolKind": "source",
             "symbol": "defs::Plasma",
-            "docs": null
+            "docs": null,
+            "insert": "defs::Plasma"
           }
         ],
         "exclude": [
@@ -397,7 +402,8 @@
             "owner": "defs",
             "symbolKind": "source",
             "symbol": "defs::Plasma",
-            "docs": null
+            "docs": null,
+            "insert": "defs::Plasma"
           }
         ],
         "exclude": [
@@ -458,7 +464,8 @@
             "owner": "defs",
             "symbolKind": "source",
             "symbol": "defs::Plasma",
-            "docs": null
+            "docs": null,
+            "insert": "defs::Plasma"
           }
         ],
         "exclude": [
@@ -519,7 +526,8 @@
             "owner": "defs",
             "symbolKind": "source",
             "symbol": "defs::Plasma",
-            "docs": null
+            "docs": null,
+            "insert": "defs::Plasma"
           }
         ],
         "exclude": [
@@ -580,7 +588,8 @@
             "owner": "defs",
             "symbolKind": "source",
             "symbol": "defs::Plasma",
-            "docs": null
+            "docs": null,
+            "insert": "defs::Plasma"
           }
         ],
         "exclude": [
@@ -641,7 +650,8 @@
             "owner": "defs",
             "symbolKind": "source",
             "symbol": "defs::Plasma",
-            "docs": null
+            "docs": null,
+            "insert": "defs::Plasma"
           }
         ],
         "exclude": [
@@ -702,7 +712,8 @@
             "owner": "defs",
             "symbolKind": "source",
             "symbol": "defs::Plasma",
-            "docs": null
+            "docs": null,
+            "insert": "defs::Plasma"
           }
         ],
         "exclude": [
@@ -763,7 +774,8 @@
             "owner": "defs",
             "symbolKind": "source",
             "symbol": "defs::Plasma",
-            "docs": null
+            "docs": null,
+            "insert": "defs::Plasma"
           }
         ],
         "exclude": [
@@ -824,7 +836,8 @@
             "owner": "defs",
             "symbolKind": "source",
             "symbol": "defs::Plasma",
-            "docs": null
+            "docs": null,
+            "insert": "defs::Plasma"
           }
         ],
         "exclude": [

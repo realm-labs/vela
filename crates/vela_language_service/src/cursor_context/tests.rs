@@ -24,14 +24,18 @@ fn classify_offset(text: &str, offset: usize) -> CursorContext {
 #[test]
 fn syntax_type_positions_distinguish_tuple_types_from_tuple_values_and_calls() {
     for (source, needle) in [
-        ("enum E { Value(Pl) }", "Value(Pl"),
+        ("enum E { Value(value: Pl) }", "value: Pl"),
         ("fn f(value: (i64, Pl)) {}", "i64, Pl"),
     ] {
         assert_eq!(classify(source, needle).kind(), CursorContextKind::Type);
     }
-    let qualified = classify("enum E { Value(types::Pl) }", "types::Pl");
+    let qualified = classify("enum E { Value(value: types::Pl) }", "types::Pl");
     assert_eq!(qualified.kind(), CursorContextKind::ModulePath);
     assert_eq!(qualified.module_path_role(), ModulePathRole::Type);
+    assert_eq!(
+        classify("enum E { Value(Pl) }", "Value(Pl").kind(),
+        CursorContextKind::RecordTypeField
+    );
     for (source, needle) in [
         ("fn f() { let value = (1, pl); }", "1, pl"),
         ("fn f() { E::Value(pl); }", "Value(pl"),

@@ -33,6 +33,8 @@ pub(crate) fn schema_declaration_from_hint_in_module(
     module: ModuleId,
     hint: &HirTypeHint,
 ) -> Option<HirDeclId> {
+    let path = graph.expand_import_path(module, &hint.path)?;
+    let current = graph.module_key(module)?;
     [
         DeclarationKind::Struct,
         DeclarationKind::Enum,
@@ -41,7 +43,7 @@ pub(crate) fn schema_declaration_from_hint_in_module(
     .into_iter()
     .find_map(|kind| {
         graph
-            .resolve_visible_declaration_path(module, &hint.path, kind)
+            .declaration_by_type_path(&path, current, kind)
             .filter(|declaration| {
                 declaration.module == module || declaration.visibility == Visibility::Public
             })

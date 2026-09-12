@@ -1,0 +1,775 @@
+{
+  "version": 1,
+  "id": "completion-type-ownership",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.type_aliases\"\nname = \"type_aliases\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "scripts/api.vela": "pub struct [[token:start]]Token[[token:end]] { tag: i64 }\npub enum [[choice:start]]Choice[[choice:end]] { Empty, Value(i64), Record { tag: i64 } }\npub trait [[reader:start]]Reader[[reader:end]] { fn read(self) -> i64; }\nstruct TokenSecret { tag: i64 }\npub fn TokenFunction() {}\n",
+    "scripts/other.vela": "pub struct [[token:start]]Token[[token:end]] { tag: bool }\n",
+    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Token\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"host::Token\"\n        },\n        \"docs\": \"Registered token docs 中😀.\"\n      },\n      {\n        \"name\": \"api::Token\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"api::Token\"\n        }\n      },\n      {\n        \"name\": \"api::TokenSecret\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"api::TokenSecret\"\n        }\n      },\n      {\n        \"name\": \"api::TokenFunction\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"api::TokenFunction\"\n        }\n      }\n    ],\n    \"fields\": [\n      {\n        \"owner\": \"host::Token\",\n        \"name\": \"tag\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"i64\"\n        }\n      },\n      {\n        \"owner\": \"api::Token\",\n        \"name\": \"tag\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"bool\"\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"host::grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"registered\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"registered\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::hidden\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"registered\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"option::some\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"registered\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  }\n}\n",
+    "scripts/source_alias.vela": "use api::Token as AliasToken;\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/schema_alias.vela": "use host::Token as AliasToken;\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/source_namespace_type.vela": "use api as AliasSpace;\n/* 中😀 */ fn run(selected: AliasSpace::[[replace:start]]To[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/schema_namespace_type.vela": "use host as AliasSpace;\n/* 中😀 */ fn run(selected: AliasSpace::[[replace:start]]To[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/enum_alias.vela": "use api::Choice as AliasChoice;\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]][[replace:end]]) {}\n",
+    "scripts/trait_alias.vela": "use api::Reader as AliasReader;\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]][[replace:end]]) {}\n",
+    "scripts/canonical.vela": "\n/* 中😀 */ fn run(selected: [[replace:start]]To[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/canonical_import.vela": "use api::Token;\n/* 中😀 */ fn run(selected: [[replace:start]]To[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/canonical_qualified.vela": "\n/* 中😀 */ fn run(selected: api::[[replace:start]]To[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/canonical_namespace_collision.vela": "use other as api;\n/* 中😀 */ fn run(selected: [[replace:start]]To[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/schema_namespace_collision.vela": "use api as host;\n/* 中😀 */ fn run(selected: [[replace:start]]To[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/current_private.vela": "struct [[token:start]]Token[[token:end]] { tag: i64 }\n/* 中😀 */ fn run(selected: [[replace:start]]To[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/private.vela": "use api::TokenSecret as AliasToken;\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]][[replace:end]]) {}\n",
+    "scripts/duplicate.vela": "use api::Token as AliasToken; use other::Token as AliasToken;\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]][[replace:end]]) {}\n",
+    "scripts/duplicate_same.vela": "use api::Token as AliasToken; use api::Token as AliasToken;\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]][[replace:end]]) {}\n",
+    "scripts/missing.vela": "use absent::Token as AliasToken;\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]][[replace:end]]) {}\n",
+    "scripts/function.vela": "use api::TokenFunction as AliasToken;\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]][[replace:end]]) {}\n",
+    "scripts/schema_function.vela": "use host::grant as AliasToken;\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]][[replace:end]]) {}\n",
+    "scripts/namespace_private.vela": "use api as AliasSpace;\n/* 中😀 */ fn run(selected: AliasSpace::[[replace:start]]TokenS[[cursor]][[replace:end]]) {}\n",
+    "scripts/namespace_duplicate.vela": "use api as AliasSpace; use host as AliasSpace;\n/* 中😀 */ fn run(selected: AliasSpace::[[replace:start]]To[[cursor]][[replace:end]]) {}\n",
+    "scripts/namespace_unknown.vela": "use absent as AliasSpace;\n/* 中😀 */ fn run(selected: AliasSpace::[[replace:start]]To[[cursor]][[replace:end]]) {}\n",
+    "scripts/namespace_non_type.vela": "use api as AliasSpace;\n/* 中😀 */ fn run(selected: AliasSpace::[[replace:start]]TokenF[[cursor]][[replace:end]]) {}\n",
+    "scripts/declaration_shadow.vela": "use api::Token as AliasToken; struct [[token:start]]AliasToken[[token:end]] { tag: i64 }\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/value_shadow.vela": "use api::Token as AliasToken;\n/* 中😀 */ fn run(AliasToken: i64, selected: [[replace:start]]Ali[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/namespace_value_shadow.vela": "use api as AliasSpace;\n/* 中😀 */ fn run(AliasSpace: i64, selected: AliasSpace::[[replace:start]]To[[cursor]][[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/mid_token.vela": "use api::Token as AliasToken;\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]]asWrong[[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/qualified_mid_token.vela": "use api as AliasSpace;\n/* 中😀 */ fn run(selected: AliasSpace::[[replace:start]]To[[cursor]]kenWrong[[replace:end]]) { selected.ta[[member]]; }\n",
+    "scripts/return.vela": "use api::Token as AliasToken;\n/* 中😀 */ fn run() -> [[replace:start]]Ali[[cursor]][[replace:end]] {}\n",
+    "scripts/field.vela": "use api::Token as AliasToken;\n/* 中😀 */ struct Holder { value: [[replace:start]]Ali[[cursor]][[replace:end]] }\n",
+    "scripts/tuple_variant.vela": "use api::Token as AliasToken;\n/* 中😀 */ enum Holder { Value(value: [[replace:start]]Ali[[cursor]][[replace:end]]) }\n",
+    "scripts/record_variant.vela": "use api::Token as AliasToken;\n/* 中😀 */ enum Holder { Value { value: [[replace:start]]Ali[[cursor]][[replace:end]] } }\n",
+    "scripts/nested.vela": "use api::Token as AliasToken;\n/* 中😀 */ fn run(value: Result<Option<[[replace:start]]Ali[[cursor]][[replace:end]]>, String>) {}\n",
+    "scripts/local.vela": "use api::Token as AliasToken;\n/* 中😀 */ fn run() { let selected: [[replace:start]]Ali[[cursor]][[replace:end]]; selected.ta[[member]]; }\n",
+    "scripts/tuple_field_name.vela": "use api::Token as AliasToken;\n/* 中😀 */ enum Holder { Value([[replace:start]]Ali[[cursor]][[replace:end]]) }\n",
+    "scripts/source_namespace.vela": "use api as AliasSpace;\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]][[replace:end]]) {}\n",
+    "scripts/schema_namespace.vela": "use host as AliasSpace;\n/* 中😀 */ fn run(selected: [[replace:start]]Ali[[cursor]][[replace:end]]) {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "source_alias",
+        "file": "scripts/source_alias.vela",
+        "items": [
+          {
+            "label": "AliasToken",
+            "insert": "AliasToken",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "schema_alias",
+        "file": "scripts/schema_alias.vela",
+        "items": [
+          {
+            "label": "AliasToken",
+            "insert": "AliasToken",
+            "kind": "Type",
+            "detail": "host::Token",
+            "origin": "schema",
+            "symbol": "host::Token",
+            "target": null,
+            "marker": "token",
+            "docs": "Registered token docs 中😀."
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "source_namespace_type",
+        "file": "scripts/source_namespace_type.vela",
+        "items": [
+          {
+            "label": "Token",
+            "insert": "Token",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "schema_namespace_type",
+        "file": "scripts/schema_namespace_type.vela",
+        "items": [
+          {
+            "label": "Token",
+            "insert": "Token",
+            "kind": "Type",
+            "detail": "host::Token",
+            "origin": "schema",
+            "symbol": "host::Token",
+            "target": null,
+            "marker": "token",
+            "docs": "Registered token docs 中😀."
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "enum_alias",
+        "file": "scripts/enum_alias.vela",
+        "items": [
+          {
+            "label": "AliasChoice",
+            "insert": "AliasChoice",
+            "kind": "Type",
+            "detail": "api::Choice",
+            "origin": "source",
+            "symbol": "api::Choice",
+            "target": "scripts/api.vela",
+            "marker": "choice",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "trait_alias",
+        "file": "scripts/trait_alias.vela",
+        "items": [
+          {
+            "label": "AliasReader",
+            "insert": "AliasReader",
+            "kind": "Trait",
+            "detail": "api::Reader",
+            "origin": "source",
+            "symbol": "api::Reader",
+            "target": "scripts/api.vela",
+            "marker": "reader",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "canonical",
+        "file": "scripts/canonical.vela",
+        "items": [
+          {
+            "label": "Token",
+            "insert": "api::Token",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          },
+          {
+            "label": "Token",
+            "insert": "other::Token",
+            "kind": "Type",
+            "detail": "other::Token",
+            "origin": "source",
+            "symbol": "other::Token",
+            "target": "scripts/other.vela",
+            "marker": "token",
+            "docs": null
+          },
+          {
+            "label": "Token",
+            "insert": "host::Token",
+            "kind": "Type",
+            "detail": "host::Token",
+            "origin": "schema",
+            "symbol": "host::Token",
+            "target": null,
+            "marker": "token",
+            "docs": "Registered token docs 中😀."
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "canonical_import",
+        "file": "scripts/canonical_import.vela",
+        "items": [
+          {
+            "label": "Token",
+            "insert": "Token",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          },
+          {
+            "label": "Token",
+            "insert": "other::Token",
+            "kind": "Type",
+            "detail": "other::Token",
+            "origin": "source",
+            "symbol": "other::Token",
+            "target": "scripts/other.vela",
+            "marker": "token",
+            "docs": null
+          },
+          {
+            "label": "Token",
+            "insert": "host::Token",
+            "kind": "Type",
+            "detail": "host::Token",
+            "origin": "schema",
+            "symbol": "host::Token",
+            "target": null,
+            "marker": "token",
+            "docs": "Registered token docs 中😀."
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "canonical_qualified",
+        "file": "scripts/canonical_qualified.vela",
+        "items": [
+          {
+            "label": "Token",
+            "insert": "Token",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "canonical_namespace_collision",
+        "file": "scripts/canonical_namespace_collision.vela",
+        "items": [
+          {
+            "label": "Token",
+            "insert": "crate::api::Token",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          },
+          {
+            "label": "Token",
+            "insert": "other::Token",
+            "kind": "Type",
+            "detail": "other::Token",
+            "origin": "source",
+            "symbol": "other::Token",
+            "target": "scripts/other.vela",
+            "marker": "token",
+            "docs": null
+          },
+          {
+            "label": "Token",
+            "insert": "host::Token",
+            "kind": "Type",
+            "detail": "host::Token",
+            "origin": "schema",
+            "symbol": "host::Token",
+            "target": null,
+            "marker": "token",
+            "docs": "Registered token docs 中😀."
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "schema_namespace_collision",
+        "file": "scripts/schema_namespace_collision.vela",
+        "items": [
+          {
+            "label": "Token",
+            "insert": "api::Token",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          },
+          {
+            "label": "Token",
+            "insert": "other::Token",
+            "kind": "Type",
+            "detail": "other::Token",
+            "origin": "source",
+            "symbol": "other::Token",
+            "target": "scripts/other.vela",
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "current_private",
+        "file": "scripts/current_private.vela",
+        "items": [
+          {
+            "label": "Token",
+            "insert": "api::Token",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          },
+          {
+            "label": "Token",
+            "insert": "other::Token",
+            "kind": "Type",
+            "detail": "other::Token",
+            "origin": "source",
+            "symbol": "other::Token",
+            "target": "scripts/other.vela",
+            "marker": "token",
+            "docs": null
+          },
+          {
+            "label": "Token",
+            "insert": "host::Token",
+            "kind": "Type",
+            "detail": "host::Token",
+            "origin": "schema",
+            "symbol": "host::Token",
+            "target": null,
+            "marker": "token",
+            "docs": "Registered token docs 中😀."
+          },
+          {
+            "label": "Token",
+            "insert": "Token",
+            "kind": "Type",
+            "detail": "current_private::Token",
+            "origin": "source",
+            "symbol": "current_private::Token",
+            "target": "self",
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "private",
+        "file": "scripts/private.vela",
+        "items": [],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "duplicate",
+        "file": "scripts/duplicate.vela",
+        "items": [],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "duplicate_same",
+        "file": "scripts/duplicate_same.vela",
+        "items": [],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "missing",
+        "file": "scripts/missing.vela",
+        "items": [],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "function",
+        "file": "scripts/function.vela",
+        "items": [],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "schema_function",
+        "file": "scripts/schema_function.vela",
+        "items": [],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "namespace_private",
+        "file": "scripts/namespace_private.vela",
+        "items": [],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "namespace_duplicate",
+        "file": "scripts/namespace_duplicate.vela",
+        "items": [],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "namespace_unknown",
+        "file": "scripts/namespace_unknown.vela",
+        "items": [],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "namespace_non_type",
+        "file": "scripts/namespace_non_type.vela",
+        "items": [],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "declaration_shadow",
+        "file": "scripts/declaration_shadow.vela",
+        "items": [
+          {
+            "label": "AliasToken",
+            "insert": "AliasToken",
+            "kind": "Type",
+            "detail": "declaration_shadow::AliasToken",
+            "origin": "source",
+            "symbol": "declaration_shadow::AliasToken",
+            "target": "self",
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "value_shadow",
+        "file": "scripts/value_shadow.vela",
+        "items": [
+          {
+            "label": "AliasToken",
+            "insert": "AliasToken",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "namespace_value_shadow",
+        "file": "scripts/namespace_value_shadow.vela",
+        "items": [
+          {
+            "label": "Token",
+            "insert": "Token",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "mid_token",
+        "file": "scripts/mid_token.vela",
+        "items": [
+          {
+            "label": "AliasToken",
+            "insert": "AliasToken",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "qualified_mid_token",
+        "file": "scripts/qualified_mid_token.vela",
+        "items": [
+          {
+            "label": "Token",
+            "insert": "Token",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "return",
+        "file": "scripts/return.vela",
+        "items": [
+          {
+            "label": "AliasToken",
+            "insert": "AliasToken",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "field",
+        "file": "scripts/field.vela",
+        "items": [
+          {
+            "label": "AliasToken",
+            "insert": "AliasToken",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "tuple_variant",
+        "file": "scripts/tuple_variant.vela",
+        "items": [
+          {
+            "label": "AliasToken",
+            "insert": "AliasToken",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "record_variant",
+        "file": "scripts/record_variant.vela",
+        "items": [
+          {
+            "label": "AliasToken",
+            "insert": "AliasToken",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "nested",
+        "file": "scripts/nested.vela",
+        "items": [
+          {
+            "label": "AliasToken",
+            "insert": "AliasToken",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": false
+      },
+      {
+        "id": "local",
+        "file": "scripts/local.vela",
+        "items": [
+          {
+            "label": "AliasToken",
+            "insert": "AliasToken",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "",
+        "member": true
+      },
+      {
+        "id": "tuple_field_name",
+        "file": "scripts/tuple_field_name.vela",
+        "items": [],
+        "applySuffix": "",
+        "member": false,
+        "context": "StructFieldDeclaration"
+      },
+      {
+        "id": "source_namespace",
+        "file": "scripts/source_namespace.vela",
+        "items": [
+          {
+            "label": "AliasSpace",
+            "insert": "AliasSpace",
+            "kind": "Module",
+            "detail": "api",
+            "origin": "source",
+            "symbol": "api",
+            "target": "scripts/api.vela",
+            "marker": "token",
+            "serviceSymbol": "dev.vela.anonymous::api",
+            "protocolSymbol": "dev.vela.type_aliases::api",
+            "docs": null
+          }
+        ],
+        "applySuffix": "::Token",
+        "member": false
+      },
+      {
+        "id": "schema_namespace",
+        "file": "scripts/schema_namespace.vela",
+        "items": [
+          {
+            "label": "AliasSpace",
+            "insert": "AliasSpace",
+            "kind": "Module",
+            "detail": "host",
+            "origin": "schema",
+            "symbol": "host",
+            "target": null,
+            "marker": "token",
+            "docs": null
+          }
+        ],
+        "applySuffix": "::Token",
+        "member": false
+      }
+    ],
+    "lifecycle": [
+      {
+        "source": "use api::Token as AliasToken;\n/* 中😀 */ fn run(value: Ali[[cursor]]) {}\n",
+        "items": [
+          {
+            "label": "AliasToken",
+            "insert": "AliasToken",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token"
+          }
+        ]
+      },
+      {
+        "source": "use other::Token as AliasToken;\n/* 中😀 */ fn run(value: Ali[[cursor]]) {}\n",
+        "items": [
+          {
+            "label": "AliasToken",
+            "insert": "AliasToken",
+            "kind": "Type",
+            "detail": "other::Token",
+            "origin": "source",
+            "symbol": "other::Token",
+            "target": "scripts/other.vela",
+            "marker": "token"
+          }
+        ]
+      },
+      {
+        "source": "use absent::Token as AliasToken;\n/* 中😀 */ fn run(value: Ali[[cursor]]) {}\n",
+        "items": []
+      },
+      {
+        "source": "use api::Token as AliasToken; use other::Token as AliasToken;\n/* 中😀 */ fn run(value: Ali[[cursor]]) {}\n",
+        "items": []
+      },
+      {
+        "source": "use api::TokenSecret as AliasToken;\n/* 中😀 */ fn run(value: Ali[[cursor]]) {}\n",
+        "items": []
+      },
+      {
+        "source": "use api::Token as AliasToken;\n/* 中😀 */ fn run(value: Ali[[cursor]]) {}\n",
+        "items": [
+          {
+            "label": "AliasToken",
+            "insert": "AliasToken",
+            "kind": "Type",
+            "detail": "api::Token",
+            "origin": "source",
+            "symbol": "api::Token",
+            "target": "scripts/api.vela",
+            "marker": "token"
+          }
+        ]
+      }
+    ]
+  }
+}

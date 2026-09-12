@@ -123,9 +123,12 @@ fn assert_type_matrix(fixture_id: &str) {
                     json!({"range":{
                     "start":{"line":range.start.line,"character":range.start.character},
                     "end":{"line":range.end.line,"character":range.end.character}
-                },"newText":expected["label"]})
+                },"newText":expected.get("insert").unwrap_or(&expected["label"])})
                 );
-                assert_eq!(item["insertText"], expected["label"]);
+                assert_eq!(
+                    &item["insertText"],
+                    expected.get("insert").unwrap_or(&expected["label"])
+                );
                 let resolved = response_value(request::<r::ResolveCompletionItem>(
                     &mut server,
                     id,

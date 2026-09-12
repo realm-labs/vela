@@ -39,6 +39,7 @@ impl MemberCompletionIndex {
         graph: &ModuleGraph,
         schema: &RegistryFacts,
         receiver: &TypeFact,
+        source_owner: Option<vela_hir::ids::HirDeclId>,
         replace_range: TextRange,
         prefix: &str,
     ) -> Self {
@@ -47,7 +48,7 @@ impl MemberCompletionIndex {
             replace_range,
             prefix: prefix.to_owned(),
         };
-        index.extend_source(graph, schema, receiver);
+        index.extend_source(graph, schema, receiver, source_owner);
         index.extend_schema(graph, schema, receiver);
         index.extend_builtin(receiver);
         index
@@ -63,8 +64,16 @@ impl MemberCompletionIndex {
         accumulator.into_items()
     }
 
-    fn extend_source(&mut self, graph: &ModuleGraph, schema: &RegistryFacts, receiver: &TypeFact) {
-        for (item, symbol) in source_member_completion_candidates(graph, schema, receiver) {
+    fn extend_source(
+        &mut self,
+        graph: &ModuleGraph,
+        schema: &RegistryFacts,
+        receiver: &TypeFact,
+        source_owner: Option<vela_hir::ids::HirDeclId>,
+    ) {
+        for (item, symbol) in
+            source_member_completion_candidates(graph, schema, receiver, source_owner)
+        {
             self.push_analysis(item, MemberCompletionSurface::Source, Some(symbol), None);
         }
     }

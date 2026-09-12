@@ -4394,3 +4394,22 @@ analysis consume the same single-import expansion. An imported record carries
 the exact resolved source or registered result fact into receiver queries.
 Applied edits must preserve definition and member ownership through overlay
 changes and recovery. This is static analysis and does not execute host code.
+
+## Type Annotation Completion Uses Type And Package Scope
+
+Type annotation candidates retain canonical metadata separately from the path
+that resolves in the requesting package. Use a short name only when it identifies
+the selected declaration or registered type; use `crate::` when an import shadows
+a source namespace, and a direct dependency alias for another package. Exclude
+unreachable transitive packages, ambiguous imports, private declarations and
+same-path non-types. Local value names do not hide annotation type names.
+
+Resolve source hints and exact registry local hints through single-import
+expansion, without registry short-name fallback. Member completion consumes
+available semantic declaration IDs so identical module/type spellings in two
+packages cannot mix fields or implementation methods. Package-less display text
+is insufficient evidence of member ownership.
+
+Enum tuple fields retain the existing parameter grammar: `Value(name: Type)`.
+The bare identifier in `Value(name)` declares a field, so it must not be treated
+as a type annotation by cursor recovery or completion tests.
